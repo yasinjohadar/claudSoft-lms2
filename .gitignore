@@ -22,5 +22,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# Laravel cache files
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
 # Markdown documentation files
 *.md
