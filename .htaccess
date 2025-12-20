@@ -1,0 +1,40 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Allow access to storage (for uploaded files) - works with both /storage/ and /public/storage/
+    RewriteCond %{REQUEST_URI} ^/storage/
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+    
+    RewriteCond %{REQUEST_URI} ^/public/storage/
+    RewriteRule ^ - [L]
+    
+    # Prevent access to sensitive files and directories (but allow storage)
+    RewriteCond %{REQUEST_URI} !^/storage/
+    RewriteCond %{REQUEST_URI} !^/public/storage/
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor|\.env|composer\.json|composer\.lock|package\.json|package-lock\.json|artisan|\.git|\.gitignore|\.gitattributes|README\.md|DEPLOYMENT_GUIDE\.md) - [F,L]
+    
+    # Redirect all requests to public directory
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /public/$1 [L]
+    
+    # If accessing root directly, redirect to public
+    RewriteCond %{REQUEST_URI} ^/$
+    RewriteRule ^(.*)$ /public/ [L]
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Prevent access to .htaccess files
+<FilesMatch "^\.ht">
+    Require all denied
+</FilesMatch>
+
+# Prevent access to sensitive files
+<FilesMatch "^(\.env|\.env\.backup|\.gitignore|composer\.json|composer\.lock|package\.json|package-lock\.json|artisan|README\.md|DEPLOYMENT_GUIDE\.md)$">
+    Require all denied
+</FilesMatch>
+

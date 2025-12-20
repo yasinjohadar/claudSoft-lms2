@@ -1,0 +1,19 @@
+# robots.txt
+
+# Allow all search engines
+User-agent: *
+Allow: /
+Allow: /courses
+Allow: /blog
+
+# Disallow admin and student panels
+Disallow: /admin/
+Disallow: /student/
+Disallow: /api/
+
+# Disallow private files
+Disallow: /storage/private/
+
+# Sitemap location
+# Note: This file will be served dynamically via route
+# Sitemap URL will be generated automatically
