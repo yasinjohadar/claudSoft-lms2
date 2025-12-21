@@ -66,12 +66,14 @@
                         </div>
 
                         <div class="card-header">
-                            <form action="{{ route('training-camps.index') }}" method="GET" class="row g-3">
+                            <form action="{{ route('training-camps.index') }}" method="GET" class="row g-3 align-items-end">
                                 <div class="col-md-3">
+                                    <label class="form-label mb-1">البحث</label>
                                     <input type="text" name="search" class="form-control"
-                                           placeholder="بحث..." value="{{ request('search') }}">
+                                           placeholder="ابحث عن معسكر..." value="{{ request('search') }}">
                                 </div>
                                 <div class="col-md-2">
+                                    <label class="form-label mb-1">الحالة</label>
                                     <select name="status" class="form-select">
                                         <option value="">جميع الحالات</option>
                                         <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>قادم</option>
@@ -79,7 +81,8 @@
                                         <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>منتهي</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
+                                    <label class="form-label mb-1">التصنيف</label>
                                     <select name="category_id" class="form-select">
                                         <option value="">جميع التصنيفات</option>
                                         @foreach($categories as $cat)
@@ -90,16 +93,22 @@
                                     </select>
                                 </div>
                                 <div class="col-md-2">
+                                    <label class="form-label mb-1">النشاط</label>
                                     <select name="is_active" class="form-select">
                                         <option value="">الكل</option>
                                         <option value="1" {{ request('is_active') == '1' ? 'selected' : '' }}>نشط</option>
                                         <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-secondary w-100">
-                                        <i class="fas fa-search me-1"></i>بحث
-                                    </button>
+                                <div class="col-md-3">
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary flex-fill">
+                                            <i class="fas fa-search me-1"></i>بحث
+                                        </button>
+                                        <a href="{{ route('training-camps.index') }}" class="btn btn-outline-secondary" title="إعادة تعيين">
+                                            <i class="fas fa-redo me-1"></i>إعادة تعيين
+                                        </a>
+                                    </div>
                                 </div>
                             </form>
                         </div>
