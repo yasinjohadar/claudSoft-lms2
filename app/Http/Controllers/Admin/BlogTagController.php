@@ -51,13 +51,17 @@ class BlogTagController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => 'required|string|max:100|unique:blog_tags,name',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
 
             // SEO Fields
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
+        ], [
+            'name.unique' => 'اسم الوسم موجود مسبقاً. يرجى اختيار اسم آخر.',
+            'name.required' => 'اسم الوسم مطلوب.',
+            'name.max' => 'اسم الوسم يجب ألا يتجاوز 100 حرف.',
         ]);
 
         try {
@@ -108,13 +112,17 @@ class BlogTagController extends Controller
     public function update(Request $request, BlogTag $tag)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => 'required|string|max:100|unique:blog_tags,name,' . $tag->id,
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
 
             // SEO Fields
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
+        ], [
+            'name.unique' => 'اسم الوسم موجود مسبقاً. يرجى اختيار اسم آخر.',
+            'name.required' => 'اسم الوسم مطلوب.',
+            'name.max' => 'اسم الوسم يجب ألا يتجاوز 100 حرف.',
         ]);
 
         try {

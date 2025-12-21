@@ -30,20 +30,27 @@
 
         <div class="card custom-card mb-4">
             <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-6">
+                <form method="GET" class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label mb-1">البحث</label>
                         <input type="text" name="search" class="form-control" placeholder="ابحث بالاسم..." value="{{ request('search') }}">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">الترتيب</label>
                         <select name="sort" class="form-select">
                             <option value="">الترتيب الافتراضي</option>
                             <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>الأكثر استخداماً</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> بحث
-                        </button>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="bi bi-search me-1"></i> بحث
+                            </button>
+                            <a href="{{ route('admin.blog.tags.index') }}" class="btn btn-outline-secondary" title="إعادة تعيين">
+                                <i class="bi bi-arrow-clockwise me-1"></i> إعادة تعيين
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -68,7 +75,7 @@
                         <tbody>
                             @forelse($tags as $tag)
                             <tr>
-                                <td>{{ $tag->id }}</td>
+                                <td>{{ $loop->iteration + ($tags->currentPage() - 1) * $tags->perPage() }}</td>
                                 <td>
                                     <span class="badge" style="background-color: {{ $tag->color ?? '#6c757d' }}">
                                         #{{ $tag->name }}

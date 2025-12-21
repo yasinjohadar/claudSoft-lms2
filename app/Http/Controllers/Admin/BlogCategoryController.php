@@ -56,7 +56,7 @@ class BlogCategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:blog_categories,name',
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:blog_categories,id',
             'icon' => 'nullable|string|max:100',
@@ -68,6 +68,10 @@ class BlogCategoryController extends Controller
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
             'meta_keywords' => 'nullable|string',
+        ], [
+            'name.unique' => 'اسم التصنيف موجود مسبقاً. يرجى اختيار اسم آخر.',
+            'name.required' => 'اسم التصنيف مطلوب.',
+            'name.max' => 'اسم التصنيف يجب ألا يتجاوز 255 حرفاً.',
         ]);
 
         try {
@@ -130,7 +134,7 @@ class BlogCategoryController extends Controller
     public function update(Request $request, BlogCategory $category)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:blog_categories,name,' . $category->id,
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:blog_categories,id',
             'icon' => 'nullable|string|max:100',
@@ -142,6 +146,10 @@ class BlogCategoryController extends Controller
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
             'meta_keywords' => 'nullable|string',
+        ], [
+            'name.unique' => 'اسم التصنيف موجود مسبقاً. يرجى اختيار اسم آخر.',
+            'name.required' => 'اسم التصنيف مطلوب.',
+            'name.max' => 'اسم التصنيف يجب ألا يتجاوز 255 حرفاً.',
         ]);
 
         // Ensure is_active is always set (0 or 1)
