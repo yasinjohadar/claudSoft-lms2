@@ -40,10 +40,20 @@ class CourseProgressController extends Controller
             // Get section progress
             $sectionsProgress = [];
             foreach ($course->sections as $section) {
-                $totalModules = $section->modules()->where('is_required', true)->count();
+                // Try required modules first, then fall back to all modules
+                $requiredModules = $section->modules()->where('is_required', true);
+                $totalModules = $requiredModules->count();
+                
+                // If no required modules, count all modules
+                if ($totalModules === 0) {
+                    $modulesToCheck = $section->modules()->get();
+                    $totalModules = $modulesToCheck->count();
+                } else {
+                    $modulesToCheck = $requiredModules->get();
+                }
+                
                 $completedModules = 0;
-
-                foreach ($section->modules()->where('is_required', true)->get() as $module) {
+                foreach ($modulesToCheck as $module) {
                     if ($module->isCompletedBy($student)) {
                         $completedModules++;
                     }
@@ -67,11 +77,22 @@ class CourseProgressController extends Controller
                 ->limit(10)
                 ->get();
 
-            // Get statistics
+            // Get statistics - use required modules, fallback to all modules
+            $requiredModulesQuery = $course->modules()->where('is_required', true);
+            $totalModulesCount = $requiredModulesQuery->count();
+            
+            if ($totalModulesCount === 0) {
+                // Fallback to all modules if no required modules
+                $moduleIds = $course->modules()->pluck('course_modules.id');
+                $totalModulesCount = $moduleIds->count();
+            } else {
+                $moduleIds = $requiredModulesQuery->pluck('course_modules.id');
+            }
+            
             $stats = [
-                'total_modules' => $course->modules()->where('is_required', true)->count(),
+                'total_modules' => $totalModulesCount,
                 'completed_modules' => ModuleCompletion::where('student_id', $student->id)
-                    ->whereIn('module_id', $course->modules()->where('is_required', true)->pluck('course_modules.id'))
+                    ->whereIn('module_id', $moduleIds)
                     ->where('completion_status', 'completed')
                     ->count(),
                 'completion_percentage' => $enrollment->completion_percentage,
@@ -269,11 +290,22 @@ class CourseProgressController extends Controller
             // Calculate fresh stats
             $enrollment->calculateCompletionPercentage();
 
+            // Use required modules, fallback to all modules
+            $requiredModulesQuery = $course->modules()->where('is_required', true);
+            $totalModulesCount = $requiredModulesQuery->count();
+            
+            if ($totalModulesCount === 0) {
+                $moduleIds = $course->modules()->pluck('course_modules.id');
+                $totalModulesCount = $moduleIds->count();
+            } else {
+                $moduleIds = $requiredModulesQuery->pluck('course_modules.id');
+            }
+
             $stats = [
                 'completion_percentage' => $enrollment->completion_percentage,
-                'total_modules' => $course->modules()->where('is_required', true)->count(),
+                'total_modules' => $totalModulesCount,
                 'completed_modules' => ModuleCompletion::where('student_id', $student->id)
-                    ->whereIn('module_id', $course->modules()->where('is_required', true)->pluck('course_modules.id'))
+                    ->whereIn('module_id', $moduleIds)
                     ->where('completion_status', 'completed')
                     ->count(),
                 'average_score' => $this->calculateAverageScore($student, $course),
