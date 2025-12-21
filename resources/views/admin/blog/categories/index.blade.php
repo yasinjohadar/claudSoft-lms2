@@ -92,7 +92,7 @@
                         <tbody>
                             @forelse($categories as $category)
                             <tr>
-                                <td>{{ $category->id }}</td>
+                                <td>{{ $loop->iteration + ($categories->currentPage() - 1) * $categories->perPage() }}</td>
                                 <td>
                                     @if($category->icon)
                                     <i class="{{ $category->icon }} me-2"></i>
