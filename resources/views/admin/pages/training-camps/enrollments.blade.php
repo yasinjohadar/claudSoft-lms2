@@ -163,32 +163,36 @@
                                         </td>
 
                                         <td>
-                                            <div class="btn-group" role="group">
+                                            <div class="d-flex gap-1 flex-wrap">
                                                 @php
                                                     $statusButtons = [
                                                         'pending' => [
                                                             'class' => 'btn-warning',
                                                             'icon' => 'fa-clock',
                                                             'label' => 'قيد الانتظار',
-                                                            'title' => 'تغيير إلى: قيد الانتظار'
+                                                            'title' => 'تغيير إلى: قيد الانتظار',
+                                                            'color' => 'warning'
                                                         ],
                                                         'approved' => [
                                                             'class' => 'btn-success',
                                                             'icon' => 'fa-check-circle',
                                                             'label' => 'مقبول',
-                                                            'title' => 'تغيير إلى: مقبول'
+                                                            'title' => 'تغيير إلى: مقبول',
+                                                            'color' => 'success'
                                                         ],
                                                         'rejected' => [
                                                             'class' => 'btn-danger',
                                                             'icon' => 'fa-times-circle',
                                                             'label' => 'مرفوض',
-                                                            'title' => 'تغيير إلى: مرفوض'
+                                                            'title' => 'تغيير إلى: مرفوض',
+                                                            'color' => 'danger'
                                                         ],
                                                         'cancelled' => [
                                                             'class' => 'btn-secondary',
                                                             'icon' => 'fa-ban',
                                                             'label' => 'ملغي',
-                                                            'title' => 'تغيير إلى: ملغي'
+                                                            'title' => 'تغيير إلى: ملغي',
+                                                            'color' => 'secondary'
                                                         ]
                                                     ];
                                                 @endphp
@@ -196,11 +200,16 @@
                                                 @foreach($statusButtons as $status => $button)
                                                     @if($enrollment->status !== $status)
                                                         <button type="button"
-                                                                class="btn btn-sm {{ $button['class'] }}"
+                                                                class="btn btn-xs {{ $button['class'] }}"
                                                                 title="{{ $button['title'] }}"
-                                                                onclick="changeStatus({{ $enrollment->id }}, '{{ $status }}', '{{ $button['label'] }}')">
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#changeStatusModal"
+                                                                data-enrollment-id="{{ $enrollment->id }}"
+                                                                data-new-status="{{ $status }}"
+                                                                data-status-label="{{ $button['label'] }}"
+                                                                data-status-icon="{{ $button['icon'] }}"
+                                                                data-status-color="{{ $button['color'] }}">
                                                             <i class="fas {{ $button['icon'] }}"></i>
-                                                            <span class="d-none d-md-inline ms-1">{{ $button['label'] }}</span>
                                                         </button>
                                                     @endif
                                                 @endforeach
@@ -231,6 +240,57 @@
 
         </div>
     </div>
+
+    <!-- Change Status Modal -->
+    <div class="modal fade" id="changeStatusModal" tabindex="-1" aria-labelledby="changeStatusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4 px-5">
+                    <div class="mb-4" id="statusIconContainer">
+                        <div class="avatar avatar-xl bg-warning-transparent mx-auto mb-3" id="statusIconWrapper">
+                            <i class="fas fa-clock fs-24 text-warning" id="statusIcon"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3" id="changeStatusModalLabel">تغيير حالة التسجيل</h5>
+                    <p class="text-muted mb-4" id="statusMessage">
+                        هل أنت متأكد من تغيير الحالة إلى <strong id="statusLabelText">قيد الانتظار</strong>؟
+                    </p>
+                    <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>يمكنك تغيير الحالة في أي وقت</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </button>
+                    <button type="button" class="btn" id="confirmStatusChange" style="min-width: 120px;">
+                        <i class="fas fa-check me-2"></i>تأكيد التغيير
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@stop
+
+@section('css')
+<style>
+    .btn-xs {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        border-radius: 0.25rem;
+    }
+    .btn-xs i {
+        font-size: 0.875rem;
+    }
+    #statusIconWrapper {
+        transition: all 0.3s ease;
+    }
+</style>
 @stop
 
 @section('script')
@@ -239,15 +299,85 @@
         $('.alert').fadeOut('slow');
     }, 5000);
 
-    function changeStatus(enrollmentId, newStatus, statusLabel) {
-        if (!confirm(`هل أنت متأكد من تغيير الحالة إلى "${statusLabel}"؟`)) {
+    // Status configuration
+    const statusConfig = {
+        'pending': {
+            icon: 'fa-clock',
+            label: 'قيد الانتظار',
+            color: 'warning',
+            bgClass: 'bg-warning-transparent',
+            textClass: 'text-warning',
+            btnClass: 'btn-warning'
+        },
+        'approved': {
+            icon: 'fa-check-circle',
+            label: 'مقبول',
+            color: 'success',
+            bgClass: 'bg-success-transparent',
+            textClass: 'text-success',
+            btnClass: 'btn-success'
+        },
+        'rejected': {
+            icon: 'fa-times-circle',
+            label: 'مرفوض',
+            color: 'danger',
+            bgClass: 'bg-danger-transparent',
+            textClass: 'text-danger',
+            btnClass: 'btn-danger'
+        },
+        'cancelled': {
+            icon: 'fa-ban',
+            label: 'ملغي',
+            color: 'secondary',
+            bgClass: 'bg-secondary-transparent',
+            textClass: 'text-secondary',
+            btnClass: 'btn-secondary'
+        }
+    };
+
+    let currentEnrollmentId = null;
+    let currentNewStatus = null;
+
+    // Handle modal show
+    const changeStatusModal = document.getElementById('changeStatusModal');
+    if (changeStatusModal) {
+        changeStatusModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            currentEnrollmentId = button.getAttribute('data-enrollment-id');
+            currentNewStatus = button.getAttribute('data-new-status');
+            const statusLabel = button.getAttribute('data-status-label');
+            const statusIcon = button.getAttribute('data-status-icon');
+            const statusColor = button.getAttribute('data-status-color');
+
+            // Update modal content
+            const config = statusConfig[currentNewStatus];
+            if (config) {
+                // Update icon
+                const iconWrapper = document.getElementById('statusIconWrapper');
+                const icon = document.getElementById('statusIcon');
+                iconWrapper.className = `avatar avatar-xl ${config.bgClass} mx-auto mb-3`;
+                icon.className = `fas ${config.icon} fs-24 ${config.textClass}`;
+
+                // Update label
+                document.getElementById('statusLabelText').textContent = config.label;
+
+                // Update confirm button
+                const confirmBtn = document.getElementById('confirmStatusChange');
+                confirmBtn.className = `btn ${config.btnClass}`;
+            }
+        });
+    }
+
+    // Handle confirm button click
+    document.getElementById('confirmStatusChange')?.addEventListener('click', function() {
+        if (!currentEnrollmentId || !currentNewStatus) {
             return;
         }
 
         // Create form and submit
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `{{ url('/admin/training-camps-enrollments') }}/${enrollmentId}/update-status`;
+        form.action = `{{ url('/admin/training-camps-enrollments') }}/${currentEnrollmentId}/update-status`;
         
         // Add CSRF token
         const csrfInput = document.createElement('input');
@@ -260,11 +390,11 @@
         const statusInput = document.createElement('input');
         statusInput.type = 'hidden';
         statusInput.name = 'status';
-        statusInput.value = newStatus;
+        statusInput.value = currentNewStatus;
         form.appendChild(statusInput);
 
         document.body.appendChild(form);
         form.submit();
-    }
+    });
 </script>
 @stop
