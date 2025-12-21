@@ -472,4 +472,61 @@ class TrainingCampController extends Controller
                 ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Update enrollment status.
+     */
+    public function updateEnrollmentStatus(Request $request, string $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $enrollment = \App\Models\CampEnrollment::findOrFail($id);
+            $newStatus = $request->input('status');
+
+            // Validate status
+            $validStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
+            if (!in_array($newStatus, $validStatuses)) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'حالة غير صحيحة');
+            }
+
+            $oldStatus = $enrollment->status;
+
+            // Update status
+            $enrollment->update([
+                'status' => $newStatus,
+                'notes' => $request->input('notes', $enrollment->notes)
+            ]);
+
+            // Handle participants count
+            if ($oldStatus === 'approved' && $newStatus !== 'approved') {
+                // If was approved and now changed, decrement
+                $enrollment->camp->decrement('current_participants');
+            } elseif ($oldStatus !== 'approved' && $newStatus === 'approved') {
+                // If now approved, increment
+                $enrollment->camp->increment('current_participants');
+            }
+
+            DB::commit();
+
+            $statusLabels = [
+                'pending' => 'قيد الانتظار',
+                'approved' => 'مقبول',
+                'rejected' => 'مرفوض',
+                'cancelled' => 'ملغي'
+            ];
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم تغيير الحالة إلى: ' . ($statusLabels[$newStatus] ?? $newStatus));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
 }

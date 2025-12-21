@@ -93,6 +93,7 @@ Route::prefix('admin')
         Route::get('training-camps-enrollments', [TrainingCampController::class, 'enrollments'])->name('training-camps.enrollments');
         Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('training-camps.enrollments.approve');
         Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('training-camps.enrollments.reject');
+        Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('training-camps.enrollments.update-status');
 
         // Invoices routes
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);

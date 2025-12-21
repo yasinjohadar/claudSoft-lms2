@@ -164,55 +164,46 @@
 
                                         <td>
                                             <div class="btn-group" role="group">
-                                                @if($enrollment->status === 'pending')
-                                                    <form action="{{ route('training-camps.enrollments.approve', $enrollment->id) }}"
-                                                          method="POST"
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الطلب؟');">
-                                                        @csrf
-                                                        <button type="submit"
-                                                                class="btn btn-sm btn-success"
-                                                                title="موافقة">
-                                                            <i class="fas fa-check"></i>
+                                                @php
+                                                    $statusButtons = [
+                                                        'pending' => [
+                                                            'class' => 'btn-warning',
+                                                            'icon' => 'fa-clock',
+                                                            'label' => 'قيد الانتظار',
+                                                            'title' => 'تغيير إلى: قيد الانتظار'
+                                                        ],
+                                                        'approved' => [
+                                                            'class' => 'btn-success',
+                                                            'icon' => 'fa-check-circle',
+                                                            'label' => 'مقبول',
+                                                            'title' => 'تغيير إلى: مقبول'
+                                                        ],
+                                                        'rejected' => [
+                                                            'class' => 'btn-danger',
+                                                            'icon' => 'fa-times-circle',
+                                                            'label' => 'مرفوض',
+                                                            'title' => 'تغيير إلى: مرفوض'
+                                                        ],
+                                                        'cancelled' => [
+                                                            'class' => 'btn-secondary',
+                                                            'icon' => 'fa-ban',
+                                                            'label' => 'ملغي',
+                                                            'title' => 'تغيير إلى: ملغي'
+                                                        ]
+                                                    ];
+                                                @endphp
+                                                
+                                                @foreach($statusButtons as $status => $button)
+                                                    @if($enrollment->status !== $status)
+                                                        <button type="button"
+                                                                class="btn btn-sm {{ $button['class'] }}"
+                                                                title="{{ $button['title'] }}"
+                                                                onclick="changeStatus({{ $enrollment->id }}, '{{ $status }}', '{{ $button['label'] }}')">
+                                                            <i class="fas {{ $button['icon'] }}"></i>
+                                                            <span class="d-none d-md-inline ms-1">{{ $button['label'] }}</span>
                                                         </button>
-                                                    </form>
-
-                                                    <button type="button"
-                                                            class="btn btn-sm btn-danger"
-                                                            title="رفض"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#rejectModal{{ $enrollment->id }}">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-
-                                                    <!-- Reject Modal -->
-                                                    <div class="modal fade" id="rejectModal{{ $enrollment->id }}" tabindex="-1">
-                                                        <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title">رفض الطلب</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <form action="{{ route('training-camps.enrollments.reject', $enrollment->id) }}" method="POST">
-                                                                    @csrf
-                                                                    <div class="modal-body">
-                                                                        <div class="mb-3">
-                                                                            <label class="form-label">سبب الرفض (اختياري)</label>
-                                                                            <textarea class="form-control" name="notes" rows="3"
-                                                                                      placeholder="أدخل سبب الرفض..."></textarea>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="modal-footer">
-                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                                        <button type="submit" class="btn btn-danger">رفض الطلب</button>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @else
-                                                    <span class="badge bg-secondary">{{ $enrollment->status_label }}</span>
-                                                @endif
+                                                    @endif
+                                                @endforeach
                                             </div>
                                         </td>
                                     </tr>
@@ -247,5 +238,33 @@
     setTimeout(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
+
+    function changeStatus(enrollmentId, newStatus, statusLabel) {
+        if (!confirm(`هل أنت متأكد من تغيير الحالة إلى "${statusLabel}"؟`)) {
+            return;
+        }
+
+        // Create form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('/admin/training-camps-enrollments') }}/${enrollmentId}/update-status`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+
+        // Add status
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'status';
+        statusInput.value = newStatus;
+        form.appendChild(statusInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
 </script>
 @stop
