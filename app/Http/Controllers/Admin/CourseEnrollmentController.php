@@ -599,10 +599,20 @@ class CourseEnrollmentController extends Controller
             // Get section progress
             $sectionsProgress = [];
             foreach ($enrollment->course->sections as $section) {
-                $totalModules = $section->modules()->where('is_required', true)->count();
+                // Try required modules first, then fall back to all modules
+                $requiredModules = $section->modules()->where('is_required', true);
+                $totalModules = $requiredModules->count();
+                
+                // If no required modules, count all modules
+                if ($totalModules === 0) {
+                    $modulesToCheck = $section->modules()->get();
+                    $totalModules = $modulesToCheck->count();
+                } else {
+                    $modulesToCheck = $requiredModules->get();
+                }
+                
                 $completedModules = 0;
-
-                foreach ($section->modules()->where('is_required', true)->get() as $module) {
+                foreach ($modulesToCheck as $module) {
                     if ($module->isCompletedBy($enrollment->student)) {
                         $completedModules++;
                     }
@@ -626,11 +636,22 @@ class CourseEnrollmentController extends Controller
                 ->limit(10)
                 ->get();
 
-            // Get statistics
+            // Get statistics - use required modules, fallback to all modules
+            $requiredModulesQuery = $enrollment->course->modules()->where('is_required', true);
+            $totalModulesCount = $requiredModulesQuery->count();
+            
+            if ($totalModulesCount === 0) {
+                // Fallback to all modules if no required modules
+                $moduleIds = $enrollment->course->modules()->pluck('course_modules.id');
+                $totalModulesCount = $moduleIds->count();
+            } else {
+                $moduleIds = $requiredModulesQuery->pluck('course_modules.id');
+            }
+            
             $stats = [
-                'total_modules' => $enrollment->course->modules()->where('is_required', true)->count(),
+                'total_modules' => $totalModulesCount,
                 'completed_modules' => \App\Models\ModuleCompletion::where('student_id', $enrollment->student_id)
-                    ->whereIn('module_id', $enrollment->course->modules()->where('is_required', true)->pluck('course_modules.id'))
+                    ->whereIn('module_id', $moduleIds)
                     ->where('completion_status', 'completed')
                     ->count(),
                 'completion_percentage' => $enrollment->completion_percentage ?? 0,

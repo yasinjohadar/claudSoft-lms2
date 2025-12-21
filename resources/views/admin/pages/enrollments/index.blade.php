@@ -6,17 +6,16 @@
 
 @section('css')
 <style>
-    /* Enrollment Card Styles */
+    /* Enrollment Card Styles - Clear visible border */
     .enrollment-card {
-        border-radius: 20px !important;
-        border: 2px solid #e9ecef !important;
+        border-radius: 8px !important;
+        border: 1px solid #dee2e6 !important;
         padding: 0 !important;
         margin-bottom: 1.5rem !important;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
         position: relative !important;
         overflow: hidden !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     }
 
     .enrollment-card::before {
@@ -25,16 +24,18 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 6px;
+        height: 4px;
         background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-        opacity: 1;
+        opacity: 0.8;
         transition: opacity 0.3s;
+        z-index: 1;
     }
 
     .enrollment-card:hover {
-        border-color: #667eea;
-        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.25);
-        transform: translateY(-8px);
+        border-color: #667eea !important;
+        border-width: 3px !important;
+        box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.3), 0 8px 25px rgba(102, 126, 234, 0.2) !important;
+        transform: translateY(-4px);
     }
 
     .enrollment-card:hover::before {
@@ -456,7 +457,7 @@
                         <div class="tab-pane fade show active" id="enrollments-list" role="tabpanel">
 
                             <!-- Filters -->
-                            <form action="{{ route('courses.enrollments.index', $course->id) }}" method="GET" class="filter-section">
+                            <form action="{{ route('courses.enrollments.index', $course->id) }}" method="GET" class="filter-section" style="margin-bottom: 30px !important;">
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label class="form-label">بحث</label>
@@ -492,9 +493,9 @@
                             <!-- Enrollments Grid -->
                             <div class="row">
                                 @forelse($enrollments as $enrollment)
-                                    <div class="col-md-6 col-lg-4">
-                                        <div class="enrollment-card">
-                                            <div class="enrollment-card-body">
+                                    <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+                                        <div class="enrollment-card" style="border: 1px solid #dee2e6 !important; border-radius: 8px !important; padding: 15px !important; margin-bottom: 20px !important;">
+                                            <div class="enrollment-card-body" style="padding: 0 !important;">
                                                 <!-- Header Section -->
                                                 <div class="d-flex justify-content-between align-items-start mb-4">
                                                     <div class="d-flex align-items-center flex-grow-1">

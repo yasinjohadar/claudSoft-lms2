@@ -160,19 +160,26 @@ class CourseEnrollment extends Model
             }
 
             // Get all required modules in the course
-            $totalModules = $course->modules()->where('is_required', true)->count();
+            $requiredModulesQuery = $course->modules()->where('is_required', true);
+            $totalModules = $requiredModulesQuery->count();
+            
+            // If no required modules, count all modules as required (fallback)
+            if ($totalModules === 0) {
+                $totalModules = $course->modules()->count();
+                $moduleIds = $course->modules()->pluck('course_modules.id');
+            } else {
+                $moduleIds = $requiredModulesQuery->pluck('course_modules.id');
+            }
 
             if ($totalModules === 0) {
                 return 0;
             }
 
             // Get completed modules count
-            $completedModules = ModuleCompletion::whereIn('module_id',
-                $course->modules()->where('is_required', true)->pluck('course_modules.id')
-            )
-            ->where('student_id', $student->id)
-            ->where('completion_status', 'completed')
-            ->count();
+            $completedModules = ModuleCompletion::whereIn('module_id', $moduleIds)
+                ->where('student_id', $student->id)
+                ->where('completion_status', 'completed')
+                ->count();
 
             $percentage = ($completedModules / $totalModules) * 100;
 
