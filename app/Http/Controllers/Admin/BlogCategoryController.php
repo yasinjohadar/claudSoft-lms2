@@ -87,6 +87,10 @@ class BlogCategoryController extends Controller
                 $validated['order'] = $maxOrder + 1;
             }
 
+            // Ensure is_active is always set (0 or 1)
+            // If checkbox is checked, value is '1', otherwise it's not sent, so we set it to 0
+            $validated['is_active'] = $request->has('is_active') && $request->is_active == '1' ? 1 : 0;
+
             // Create category
             BlogCategory::create($validated);
 
@@ -139,6 +143,10 @@ class BlogCategoryController extends Controller
             'meta_description' => 'nullable|string',
             'meta_keywords' => 'nullable|string',
         ]);
+
+        // Ensure is_active is always set (0 or 1)
+        // If checkbox is checked, value is '1', otherwise it's not sent, so we set it to 0
+        $validated['is_active'] = $request->has('is_active') && $request->is_active == '1' ? 1 : 0;
 
         try {
             // Prevent category from being its own parent

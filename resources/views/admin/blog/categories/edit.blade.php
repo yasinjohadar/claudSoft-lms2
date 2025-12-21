@@ -43,6 +43,7 @@
 <div class="col-lg-4">
 <div class="card custom-card"><div class="card-body">
 <div class="form-check mb-3">
+<input type="hidden" name="is_active" value="0">
 <input class="form-check-input" type="checkbox" name="is_active" value="1" id="is_active" {{ old('is_active', $category->is_active) ? 'checked' : '' }}>
 <label class="form-check-label" for="is_active">تصنيف نشط</label></div>
 <button type="submit" class="btn btn-primary w-100 mb-2"><i class="bi bi-save me-2"></i>تحديث</button>
