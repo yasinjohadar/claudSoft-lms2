@@ -49,7 +49,7 @@
                                 <a href="{{ $post->url }}" class="card-link">
                                     <div class="card-image">
                                         @if($post->featured_image)
-                                            <img src="{{ asset('storage/' . $post->featured_image) }}"
+                                            <img src="{{ blog_image_url($post->featured_image) }}"
                                                  alt="{{ $post->featured_image_alt ?: $post->title }}"
                                                  title="{{ $post->title }}"
                                                  loading="lazy"
@@ -187,7 +187,7 @@
                             @foreach($posts->take(5) as $latest)
                             <a href="{{ $latest->url }}" class="latest-post-item">
                                 @if($latest->featured_image)
-                                <img src="{{ asset('storage/' . $latest->featured_image) }}"
+                                <img src="{{ blog_image_url($latest->featured_image) }}"
                                      alt="{{ $latest->title }}">
                                 @else
                                 <div class="post-placeholder">

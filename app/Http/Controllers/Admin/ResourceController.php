@@ -19,7 +19,7 @@ class ResourceController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Resource::with(['creator', 'updater', 'courseModules']);
+            $query = Resource::with(['creator', 'updater', 'courseModules.course']);
 
             // Search
             if ($request->filled('search')) {
@@ -31,9 +31,29 @@ class ResourceController extends Controller
                 });
             }
 
-            // Filter by resource type
-            if ($request->filled('resource_type')) {
-                $query->where('resource_type', $request->resource_type);
+            // Filter by resource type (support both 'type' and 'resource_type' for compatibility)
+            $typeFilter = $request->input('type') ?? $request->input('resource_type');
+            if (!empty($typeFilter)) {
+                // Map common file type names to resource_type values
+                $typeMapping = [
+                    'zip' => 'archive',
+                    'rar' => 'archive',
+                    '7z' => 'archive',
+                    'xls' => 'excel',
+                    'xlsx' => 'excel',
+                ];
+                
+                $resourceType = $typeMapping[$typeFilter] ?? $typeFilter;
+                $query->where('resource_type', $resourceType);
+            }
+            
+            // Filter by course
+            if ($request->filled('course_id')) {
+                $courseId = $request->course_id;
+                // Resources are linked to courses through course_modules
+                $query->whereHas('courseModules', function($q) use ($courseId) {
+                    $q->where('course_id', $courseId);
+                });
             }
 
             // Filter by published status

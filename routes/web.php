@@ -61,6 +61,44 @@ Route::middleware(['auth'])->group(function () {
 // مسار بديل للتجربة
 Route::post('toggle-user-status/{id}', [UserController::class, 'toggleStatus'])->name('users.toggle-status-alt');
 
+// Route لعرض صور المدونة (حل بديل إذا لم يعمل storage link)
+Route::get('/storage/blog/images/{filename}', function ($filename) {
+    $path = storage_path('app/public/blog/images/' . $filename);
+    
+    if (!file_exists($path)) {
+        abort(404, 'الصورة غير موجودة');
+    }
+    
+    $mimeType = mime_content_type($path);
+    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+        abort(403, 'نوع الملف غير مسموح');
+    }
+    
+    return response()->file($path, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('filename', '[a-zA-Z0-9._-]+')->name('blog.image');
+
+// Route لعرض صور الكورسات (حل بديل إذا لم يعمل storage link)
+Route::get('/storage/courses/images/{filename}', function ($filename) {
+    $path = storage_path('app/public/courses/images/' . $filename);
+    
+    if (!file_exists($path)) {
+        abort(404, 'الصورة غير موجودة');
+    }
+    
+    $mimeType = mime_content_type($path);
+    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+        abort(403, 'نوع الملف غير مسموح');
+    }
+    
+    return response()->file($path, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('filename', '[a-zA-Z0-9._-]+')->name('course.image');
+
 require __DIR__.'/auth.php';
 require __DIR__.'/student.php';
 require __DIR__.'/admin.php';

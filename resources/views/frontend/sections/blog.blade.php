@@ -16,7 +16,7 @@
                         <!-- Post Image -->
                         <div class="blog-image">
                             @if($post->featured_image)
-                                <img src="{{ asset('storage/' . $post->featured_image) }}"
+                                <img src="{{ blog_image_url($post->featured_image) }}"
                                      alt="{{ $post->featured_image_alt ?: $post->title }}">
                             @else
                                 <div class="blog-image-placeholder">

@@ -124,7 +124,7 @@
                                 <td>
                                     <div class="d-flex align-items-center">
                                         @if($post->featured_image)
-                                        <img src="{{ asset('storage/' . $post->featured_image) }}"
+                                        <img src="{{ blog_image_url($post->featured_image) }}"
                                              alt="{{ $post->title }}"
                                              class="me-2 rounded"
                                              style="width: 50px; height: 50px; object-fit: cover;">

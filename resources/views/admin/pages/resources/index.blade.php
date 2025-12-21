@@ -221,13 +221,16 @@
                                             </td>
                                             <td>
                                                 <span class="badge bg-{{ $iconColor }}-transparent text-uppercase">
-                                                    {{ $extension }}
+                                                    {{ $resource->resource_type ?? $extension }}
                                                 </span>
                                             </td>
                                             <td>
-                                                @if($resource->course)
-                                                    <a href="{{ route('courses.show', $resource->course_id) }}">
-                                                        {{ Str::limit($resource->course->title, 30) }}
+                                                @php
+                                                    $course = $resource->courseModules->first()?->course;
+                                                @endphp
+                                                @if($course)
+                                                    <a href="{{ route('courses.show', $course->id) }}">
+                                                        {{ Str::limit($course->title, 30) }}
                                                     </a>
                                                 @else
                                                     <span class="text-muted">-</span>

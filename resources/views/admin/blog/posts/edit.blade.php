@@ -245,20 +245,7 @@
                             @if($post->featured_image)
                             <div class="mb-3" id="featuredImageContainer">
                                 @php
-                                    // Ensure correct path format
-                                    $imagePath = $post->featured_image;
-                                    // Remove leading slash if exists
-                                    $imagePath = ltrim($imagePath, '/');
-                                    // Build full URL using Storage facade
-                                    try {
-                                        $imageUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($imagePath);
-                                    } catch (\Exception $e) {
-                                        $imageUrl = asset('storage/' . $imagePath);
-                                    }
-                                    // Fallback to asset if URL is not valid
-                                    if (empty($imageUrl) || !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                                        $imageUrl = asset('storage/' . $imagePath);
-                                    }
+                                    $imageUrl = blog_image_url($post->featured_image);
                                 @endphp
                                 <div class="position-relative">
                                     <a href="{{ $imageUrl }}" 

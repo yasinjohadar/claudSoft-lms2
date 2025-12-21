@@ -16,7 +16,12 @@ class BlogSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Categories
+        // Delete existing data (optional - uncomment if you want to reset)
+        // BlogPost::truncate();
+        // BlogCategory::truncate();
+        // BlogTag::truncate();
+
+        // Create Categories (skip if exists)
         $categories = [
             [
                 'name' => 'تطوير الويب',
@@ -78,10 +83,13 @@ class BlogSeeder extends Seeder
         ];
 
         foreach ($categories as $categoryData) {
-            BlogCategory::create($categoryData);
+            BlogCategory::firstOrCreate(
+                ['slug' => $categoryData['slug']],
+                $categoryData
+            );
         }
 
-        // Create Tags
+        // Create Tags (skip if exists)
         $tags = [
             ['name' => 'Laravel', 'slug' => 'laravel', 'color' => '#ff2d20'],
             ['name' => 'PHP', 'slug' => 'php', 'color' => '#777bb4'],
@@ -101,7 +109,10 @@ class BlogSeeder extends Seeder
         ];
 
         foreach ($tags as $tagData) {
-            BlogTag::create($tagData);
+            BlogTag::firstOrCreate(
+                ['slug' => $tagData['slug']],
+                $tagData
+            );
         }
 
         // Get first user as author
@@ -307,35 +318,72 @@ class BlogSeeder extends Seeder
         ];
 
         $createdPosts = [];
+        $newPostsCount = 0;
         foreach ($posts as $postData) {
             $categoryId = $postData['category_id'];
             $postData['blog_category_id'] = $categoryId;
             unset($postData['category_id']);
 
-            $post = BlogPost::create($postData);
-            $createdPosts[] = $post;
+            try {
+                // Check if post exists first
+                $existingPost = BlogPost::where('slug', $postData['slug'])->first();
+                
+                if ($existingPost) {
+                    $this->command->warn('⚠️  المقال "' . $postData['title'] . '" موجود مسبقاً، تم تخطيه');
+                    $createdPosts[] = $existingPost;
+                    continue;
+                }
 
-            // Calculate reading time
-            $post->calculateReadingTime();
+                // Create new post
+                $post = BlogPost::create($postData);
+                $createdPosts[] = $post;
+                $newPostsCount++;
+                
+                // Calculate reading time
+                $post->calculateReadingTime();
+                
+                $this->command->info('✅ تم إنشاء المقال: ' . $postData['title']);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // If duplicate entry error, get existing post
+                if ($e->getCode() == 23000) {
+                    $existingPost = BlogPost::where('slug', $postData['slug'])->first();
+                    if ($existingPost) {
+                        $this->command->warn('⚠️  المقال "' . $postData['title'] . '" موجود مسبقاً، تم تخطيه');
+                        $createdPosts[] = $existingPost;
+                    }
+                } else {
+                    $this->command->error('❌ خطأ في إنشاء المقال "' . $postData['title'] . '": ' . $e->getMessage());
+                }
+            }
         }
 
         // Attach tags to posts
         $allTags = BlogTag::all();
 
         // Post 1 - Laravel guide
-        $createdPosts[0]->tags()->attach([1, 2, 7]); // Laravel, PHP, API
+        if (isset($createdPosts[0])) {
+            $createdPosts[0]->tags()->sync([1, 2, 7]); // Laravel, PHP, API
+        }
 
         // Post 2 - Database
-        $createdPosts[1]->tags()->attach([6]); // MySQL
+        if (isset($createdPosts[1])) {
+            $createdPosts[1]->tags()->sync([6]); // MySQL
+        }
 
         // Post 3 - React
-        $createdPosts[2]->tags()->attach([3, 5, 11, 12]); // JavaScript, React, CSS, HTML
+        if (isset($createdPosts[2])) {
+            $createdPosts[2]->tags()->sync([3, 5, 11, 12]); // JavaScript, React, CSS, HTML
+        }
 
         // Post 4 - Security
-        $createdPosts[3]->tags()->attach([2, 14]); // PHP, أمان
+        if (isset($createdPosts[3])) {
+            $createdPosts[3]->tags()->sync([2, 14]); // PHP, أمان
+        }
 
         // Post 5 - Performance
-        $createdPosts[4]->tags()->attach([3, 11, 12, 15]); // JavaScript, CSS, HTML, أداء
+        if (isset($createdPosts[4])) {
+            $createdPosts[4]->tags()->sync([3, 11, 12, 15]); // JavaScript, CSS, HTML, أداء
+        }
 
         // Update categories posts count
         foreach (BlogCategory::all() as $category) {
@@ -347,8 +395,12 @@ class BlogSeeder extends Seeder
             $tag->updatePostsCount();
         }
 
-        $this->command->info('✅ تم إنشاء ' . count($posts) . ' مقالة بنجاح!');
-        $this->command->info('✅ تم إنشاء ' . count($categories) . ' تصنيف بنجاح!');
-        $this->command->info('✅ تم إنشاء ' . count($tags) . ' وسم بنجاح!');
+        $this->command->info('');
+        $this->command->info('📊 ملخص عملية Seeding:');
+        $this->command->info('   - المقالات: ' . $newPostsCount . ' جديد / ' . count($createdPosts) . ' إجمالي');
+        $this->command->info('   - التصنيفات: ' . count($categories) . ' (تم التحقق من وجودها)');
+        $this->command->info('   - الوسوم: ' . count($tags) . ' (تم التحقق من وجودها)');
+        $this->command->info('');
+        $this->command->info('✅ تم إكمال BlogSeeder بنجاح!');
     }
 }

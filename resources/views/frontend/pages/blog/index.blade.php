@@ -135,7 +135,7 @@
                                 <a href="{{ $featured->url }}" class="featured-link">
                                     <div class="featured-image">
                                         @if($featured->featured_image)
-                                            <img src="{{ asset('storage/' . $featured->featured_image) }}"
+                                            <img src="{{ blog_image_url($featured->featured_image) }}"
                                                  alt="{{ $featured->featured_image_alt ?: $featured->title }}"
                                                  title="{{ $featured->title }}"
                                                  loading="lazy"
@@ -195,7 +195,7 @@
                                     <a href="{{ $post->url }}" class="card-link">
                                         <div class="card-image">
                                             @if($post->featured_image)
-                                                <img src="{{ asset('storage/' . $post->featured_image) }}"
+                                                <img src="{{ blog_image_url($post->featured_image) }}"
                                                      alt="{{ $post->featured_image_alt ?: $post->title }}"
                                                      title="{{ $post->title }}"
                                                      loading="lazy"

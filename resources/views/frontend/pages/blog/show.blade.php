@@ -156,7 +156,7 @@
                     <!-- Featured Image -->
                     @if($post->featured_image)
                     <figure class="featured-image-wrapper mb-4">
-                        <img src="{{ asset('storage/' . $post->featured_image) }}"
+                        <img src="{{ blog_image_url($post->featured_image) }}"
                              alt="{{ $post->featured_image_alt ?: $post->title }}"
                              title="{{ $post->title }}"
                              class="img-fluid"
@@ -288,7 +288,7 @@
                                 <a href="{{ $popular->url }}" class="popular-item">
                                     <div class="popular-image">
                                         @if($popular->featured_image)
-                                            <img src="{{ asset('storage/' . $popular->featured_image) }}"
+                                            <img src="{{ blog_image_url($popular->featured_image) }}"
                                                  alt="{{ $popular->title }}"
                                                  title="{{ $popular->title }}"
                                                  loading="lazy"
@@ -337,7 +337,7 @@
                                 <a href="{{ $related->url }}" class="related-link">
                                     <div class="related-image">
                                         @if($related->featured_image)
-                                            <img src="{{ asset('storage/' . $related->featured_image) }}"
+                                            <img src="{{ blog_image_url($related->featured_image) }}"
                                                  alt="{{ $related->title }}"
                                                  title="{{ $related->title }}"
                                                  loading="lazy"
