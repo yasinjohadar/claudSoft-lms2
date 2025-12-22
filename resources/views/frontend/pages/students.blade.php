@@ -26,16 +26,6 @@
 <section class="students-section py-5">
     <div class="container">
 
-        @if($students->total() > 0)
-        <div class="students-stats mb-4">
-            <div class="row text-center">
-                <div class="col-md-12">
-                    <h5 class="mb-3">إجمالي الطلاب: <span class="text-main">{{ $students->total() }}</span></h5>
-                </div>
-            </div>
-        </div>
-        @endif
-
         <div class="students-grid">
             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
                 @forelse($students as $student)
@@ -53,14 +43,6 @@
                             </div>
                             <div class="student-info">
                                 <h5 class="student-name">{{ $student->name }}</h5>
-                                <p class="student-email">
-                                    <i class="fa-solid fa-envelope"></i> {{ $student->email }}
-                                </p>
-                                @if($student->phone)
-                                <p class="student-phone">
-                                    <i class="fa-solid fa-phone"></i> {{ $student->phone }}
-                                </p>
-                                @endif
                                 <div class="student-meta">
                                     <span class="badge bg-primary">
                                         <i class="fa-solid fa-calendar"></i>
@@ -154,7 +136,7 @@
 /* Student Card */
 .student-card {
     background: white;
-    border-radius: 15px;
+    border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 3px 15px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
@@ -219,21 +201,6 @@
     margin-bottom: 10px;
 }
 
-.student-email,
-.student-phone {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.student-email i,
-.student-phone i {
-    color: var(--main-Color);
-}
 
 .student-meta {
     margin-top: 15px;
