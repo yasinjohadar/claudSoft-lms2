@@ -22,8 +22,14 @@ a {
     /* color: white !important; */
 }
 
+header {
+    position: relative;
+    z-index: 1000;
+    background: white;
+}
+
 .top-header {
-    background-color: WHIRTE;
+    background-color: white;
     height: 60px;
     display: flex;
     align-items: center;
@@ -31,8 +37,8 @@ a {
     padding: 0 20px;
     border-bottom: 1px solid #f2f2f2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
- 
-   
+    position: relative;
+    z-index: 1001;
 }
 
 .left-header a {
@@ -43,9 +49,17 @@ a {
     color: var(--secondary-Color) !important;
 }
 
+.left-header a i {
+    color: var(--secondary-Color) !important;
+}
+
 .left-header a:hover {
     color: var(--secondary-Color) !important;
     opacity: 0.8;
+}
+
+.left-header a:hover i {
+    color: var(--secondary-Color) !important;
 }
 
 .menu-icon {

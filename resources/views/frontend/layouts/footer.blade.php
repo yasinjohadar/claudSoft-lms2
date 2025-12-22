@@ -275,10 +275,12 @@
 .footer-links a i {
     font-size: 12px;
     transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .footer-links a:hover i {
     transform: translateX(-3px);
+    color: #ffffff !important;
 }
 
 /* Contact Info */
@@ -298,7 +300,7 @@
 }
 
 .footer-contact li i {
-    color: #4ecdc4;
+    color: rgba(255, 255, 255, 0.9) !important;
     font-size: 16px;
     margin-top: 2px;
 }
