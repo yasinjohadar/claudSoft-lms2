@@ -35,11 +35,5 @@ class AppServiceProvider extends ServiceProvider
             $contactSettings = ContactSetting::getSettings();
             $view->with('contactSettings', $contactSettings);
         });
-
-        // مشاركة إعدادات الاتصال مع الهيدر
-        View::composer('frontend.layouts.main-header', function ($view) {
-            $contactSettings = ContactSetting::getSettings();
-            $view->with('contactSettings', $contactSettings);
-        });
     }
 }

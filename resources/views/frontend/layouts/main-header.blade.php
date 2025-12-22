@@ -37,45 +37,22 @@ header .navbar-nav .nav-link {
         <div class="container">
             <div class="row">
 
-                <div class="col-6 col-md-6 col-lg-6 d-flex align-items-center">
-                    <a href="/" class="me-2">
+                <div class="col-6 col-md-4">
+                    <a href="/">
                         <img width="60" src="{{ asset('frontend/assets/images/logo.png') }}" alt="logo">
                     </a>
-                    <div class="header-contact-info d-none d-lg-flex align-items-center gap-3">
-                        @php
-                            $contactSettings = $contactSettings ?? \App\Models\ContactSetting::getSettings();
-                            $email = $contactSettings->email_addresses[0]['email'] ?? '';
-                            $phone = $contactSettings->phone_numbers[0]['number'] ?? '';
-                        @endphp
-                        @if($email)
-                        <div class="contact-item d-flex align-items-center">
-                            <i class="fa-solid fa-envelope contact-icon"></i>
-                            <span class="contact-label">للمراسلة:</span>
-                            <span class="contact-text">{{ $email }}</span>
-                        </div>
-                        @endif
-                        @if($phone)
-                        <div class="contact-item d-flex align-items-center">
-                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $phone) }}" target="_blank" class="contact-icon-link">
-                                <i class="fa-brands fa-whatsapp contact-icon"></i>
-                            </a>
-                            <span class="contact-label">للتواصل:</span>
-                            <span class="contact-text" dir="ltr">{{ $phone }}</span>
-                        </div>
-                        @endif
-                    </div>
                 </div>
 
 
 
-                <div class="col-6 col-md-6 col-lg-3 d-flex align-items-center">
-                    <input type="text" class="form-control search-input" placeholder="اكتب للبحث">
+                <div class="col-6 col-md-4 d-flex align-items-center">
+                    <input type="text" class="form-control" placeholder="اكتب   للبحث ">
                 </div>
 
 
 
 
-                <div class="col-lg-3 left-header d-flex align-items-center d-none d-lg-flex justify-content-end">
+                <div class="col-md-4 left-header d-flex align-items-center d-none d-lg-flex justify-content-end">
                     <a href="/blog" role="button" >
                         <span>المدونة</span>
                         <i class="fa-solid fa-book"></i>
