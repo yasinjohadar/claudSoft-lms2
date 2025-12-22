@@ -28,8 +28,52 @@ class StudentController extends Controller
     {
         $student = User::role('student')
                       ->where('is_active', true)
+                      ->with([
+                          'courseEnrollments.course',
+                          'badges',
+                          'achievements',
+                          'userBadges.badge',
+                          'userAchievements.achievement'
+                      ])
                       ->findOrFail($id);
 
-        return view('frontend.pages.student-details', compact('student'));
+        // Get enrollments with course details
+        $enrollments = $student->courseEnrollments()
+            ->with('course')
+            ->orderBy('enrollment_date', 'desc')
+            ->get();
+
+        // Get certificates (completed enrollments with certificates)
+        $certificates = $enrollments->filter(function($enrollment) {
+            return $enrollment->certificate_issued && $enrollment->isCompleted();
+        });
+
+        // Get badges
+        $badges = $student->badges()->orderBy('user_badges.awarded_at', 'desc')->get();
+
+        // Get achievements
+        $achievements = $student->achievements()
+            ->wherePivot('status', 'completed')
+            ->orderBy('user_achievements.completed_at', 'desc')
+            ->get();
+
+        // Statistics
+        $stats = [
+            'total_courses' => $enrollments->count(),
+            'completed_courses' => $enrollments->where('enrollment_status', 'completed')->count(),
+            'active_courses' => $enrollments->where('enrollment_status', 'active')->count(),
+            'certificates_count' => $certificates->count(),
+            'badges_count' => $badges->count(),
+            'achievements_count' => $achievements->count(),
+        ];
+
+        return view('frontend.pages.student-details', compact(
+            'student',
+            'enrollments',
+            'certificates',
+            'badges',
+            'achievements',
+            'stats'
+        ));
     }
 }
