@@ -4,11 +4,11 @@
             <h2 class="mb-0">آراء الطلاب</h2>
             <div class="d-flex gap-3">
                 @auth
-                    <a href="{{ route('frontend.reviews.create') }}" class="btn btn-primary">
+                    <a href="{{ route('frontend.reviews.create') }}" class="btn" style="background: var(--secondary-Color); color: white; border: none;">
                         <i class="fa-solid fa-plus"></i> إضافة تقييمك
                     </a>
                 @endauth
-                <a href="{{ route('frontend.reviews.index') }}" class="btn btn-outline-primary">عرض المزيد</a>
+                <a href="{{ route('frontend.reviews.index') }}" class="btn" style="background: var(--secondary-Color); color: white; border: none;">عرض المزيد</a>
             </div>
         </div>
         <div class="inner-testimonials row row-cols-2 row-cols-sm-2 row-cols-md-3 gap-3 text-center">
@@ -44,7 +44,7 @@
             <div class="col-12 text-center py-5">
                 <p class="text-muted">لا توجد آراء متاحة حالياً</p>
                 @auth
-                    <a href="{{ route('frontend.reviews.create') }}" class="btn btn-primary mt-3">
+                    <a href="{{ route('frontend.reviews.create') }}" class="btn mt-3" style="background: var(--secondary-Color); color: white; border: none;">
                         <i class="fa-solid fa-plus"></i> كن أول من يضيف تقييماً
                     </a>
                 @endauth

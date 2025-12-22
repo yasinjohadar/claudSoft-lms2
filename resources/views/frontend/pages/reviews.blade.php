@@ -29,7 +29,7 @@
         <!-- Add Review Button (Only for authenticated students) -->
         @auth
         <div class="text-center mb-4">
-            <a href="{{ route('frontend.reviews.create') }}" class="btn btn-primary btn-lg">
+            <a href="{{ route('frontend.reviews.create') }}" class="btn btn-lg" style="background: var(--secondary-Color); color: white; border: none;">
                 <i class="fa-solid fa-plus"></i> أضف تقييمك ورأيك حول المنصة
             </a>
         </div>
@@ -97,7 +97,7 @@
                         <h4>لا توجد آراء متاحة حالياً</h4>
                         <p class="text-muted">كن أول من يضيف تقييماً للمنصة!</p>
                         @auth
-                            <a href="{{ route('frontend.reviews.create') }}" class="btn btn-primary mt-3">
+                            <a href="{{ route('frontend.reviews.create') }}" class="btn mt-3" style="background: var(--secondary-Color); color: white; border: none;">
                                 <i class="fa-solid fa-plus"></i> إضافة تقييمك
                             </a>
                         @endauth
