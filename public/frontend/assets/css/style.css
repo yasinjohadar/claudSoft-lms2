@@ -58,32 +58,37 @@ a {
 
 /* Header Contact Info */
 .header-contact-info {
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .contact-item {
-    gap: 8px;
+    gap: 4px;
 }
 
 .contact-text {
     color: #000000;
     font-weight: 500;
+    font-size: 13px;
 }
 
 .contact-label {
-    color: #000000;
-    font-size: 13px;
+    color: #666666;
+    font-size: 12px;
+    margin-left: 3px;
+    margin-right: 3px;
 }
 
 .contact-icon {
     color: var(--secondary-Color);
-    font-size: 18px;
+    font-size: 16px;
+    margin-left: 4px;
 }
 
 .contact-icon-link {
     color: var(--secondary-Color);
     text-decoration: none;
     transition: all 0.3s;
+    margin-left: 4px;
 }
 
 .contact-icon-link:hover {
@@ -93,12 +98,22 @@ a {
 
 /* Search Input - Reduced size */
 .search-input {
-    max-width: 100%;
+    max-width: 200px;
+    font-size: 14px;
 }
 
-@media (min-width: 768px) and (max-width: 991px) {
+@media (min-width: 992px) and (max-width: 1199px) {
     .search-input {
-        max-width: 280px;
+        max-width: 180px;
+    }
+    .header-contact-info {
+        font-size: 12px;
+    }
+    .contact-text {
+        font-size: 12px;
+    }
+    .contact-label {
+        font-size: 11px;
     }
 }
 
