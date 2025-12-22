@@ -426,11 +426,33 @@
                     <div class="share-card">
                         <h5 class="mb-3">شارك هذا الكورس</h5>
                         <div class="social-share d-flex gap-2">
-                            <a href="#" class="share-btn facebook"><i class="fa-brands fa-facebook-f"></i></a>
-                            <a href="#" class="share-btn twitter"><i class="fa-brands fa-twitter"></i></a>
-                            <a href="#" class="share-btn whatsapp"><i class="fa-brands fa-whatsapp"></i></a>
-                            <a href="#" class="share-btn telegram"><i class="fa-brands fa-telegram"></i></a>
-                            <a href="#" class="share-btn copy"><i class="fa-solid fa-link"></i></a>
+                            @if(isset($socialLinks) && $socialLinks->count() > 0)
+                                @foreach($socialLinks as $social)
+                                    @if($social['platform'] == 'copy')
+                                        <a href="#" 
+                                           class="share-btn copy" 
+                                           onclick="copyCourseLink(event); return false;" 
+                                           title="{{ $social['label'] ?? 'نسخ الرابط' }}">
+                                            <i class="fa-solid fa-link"></i>
+                                        </a>
+                                    @else
+                                        <a href="{{ $social['url'] ?? '#' }}" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           class="share-btn {{ $social['platform'] }}" 
+                                           title="{{ $social['label'] ?? '' }}">
+                                            <i class="fa-brands {{ $social['icon'] ?? 'fa-link' }}"></i>
+                                        </a>
+                                    @endif
+                                @endforeach
+                            @else
+                                {{-- Fallback if no social links --}}
+                                <a href="#" class="share-btn facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                                <a href="#" class="share-btn twitter"><i class="fa-brands fa-twitter"></i></a>
+                                <a href="#" class="share-btn whatsapp"><i class="fa-brands fa-whatsapp"></i></a>
+                                <a href="#" class="share-btn telegram"><i class="fa-brands fa-telegram"></i></a>
+                                <a href="#" class="share-btn copy" onclick="copyCourseLink(event); return false;"><i class="fa-solid fa-link"></i></a>
+                            @endif
                         </div>
                     </div>
 
@@ -647,7 +669,7 @@
 }
 
 .btn-enroll {
-    background: var(--main-Color);
+    background: var(--secondary-Color);
     color: #ffffff;
     font-size: 1.1rem;
     font-weight: 600;
@@ -659,21 +681,22 @@
 
 .btn-enroll:hover {
     background: var(--secondary-Color);
+    opacity: 0.9;
     transform: translateY(-2px);
 }
 
 .btn-wishlist {
     background: #ffffff;
-    color: #e74c3c;
+    color: var(--secondary-Color);
     font-weight: 600;
     padding: 12px;
-    border: 2px solid #e74c3c;
+    border: 2px solid var(--secondary-Color);
     border-radius: 8px;
     transition: all 0.3s ease;
 }
 
 .btn-wishlist:hover {
-    background: #e74c3c;
+    background: var(--secondary-Color);
     color: #ffffff;
 }
 
@@ -1208,4 +1231,28 @@
 }
 </style>
 
+@section('script')
+<script>
+function copyCourseLink(event) {
+    event.preventDefault();
+    const courseUrl = window.location.href;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(courseUrl).then(function() {
+        // Show success message
+        const btn = event.currentTarget;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btn.style.background = '#28a745';
+        
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+        alert('فشل نسخ الرابط');
+    });
+}
+</script>
 @endsection

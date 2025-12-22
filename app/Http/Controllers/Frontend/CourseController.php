@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\FrontendCourse;
 use App\Models\FrontendCourseCategory;
+use App\Models\ContactSetting;
 use Illuminate\Http\Request;
 
 class CourseController extends Controller
@@ -90,6 +91,37 @@ class CourseController extends Controller
                                ->limit(4)
                                ->get();
 
-        return view('frontend.pages.course-details', compact('course', 'relatedCourses', 'reviews'));
+        // Get social media links from contact settings
+        $contactSettings = ContactSetting::getSettings();
+        $socialLinks = collect($contactSettings->social_links ?? [])
+            ->where('enabled', true)
+            ->map(function($link) use ($course) {
+                // Replace URL with share links if needed
+                $url = $link['url'] ?? '#';
+                if ($url === '#' || empty($url)) {
+                    // Generate share URL based on platform
+                    $courseUrl = url()->route('frontend.courses.show', $course->slug);
+                    $courseTitle = $course->title;
+                    
+                    switch($link['platform']) {
+                        case 'facebook':
+                            $url = 'https://www.facebook.com/sharer/sharer.php?u=' . urlencode($courseUrl);
+                            break;
+                        case 'twitter':
+                            $url = 'https://twitter.com/intent/tweet?url=' . urlencode($courseUrl) . '&text=' . urlencode($courseTitle);
+                            break;
+                        case 'whatsapp':
+                            $url = 'https://wa.me/?text=' . urlencode($courseTitle . ' ' . $courseUrl);
+                            break;
+                        case 'telegram':
+                            $url = 'https://t.me/share/url?url=' . urlencode($courseUrl) . '&text=' . urlencode($courseTitle);
+                            break;
+                    }
+                }
+                $link['url'] = $url;
+                return $link;
+            });
+
+        return view('frontend.pages.course-details', compact('course', 'relatedCourses', 'reviews', 'socialLinks'));
     }
 }
