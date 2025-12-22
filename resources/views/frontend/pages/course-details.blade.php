@@ -420,12 +420,58 @@
                     <!-- Share Course -->
                     <div class="share-card">
                         <h5 class="mb-3">شارك هذا الكورس</h5>
+                        @php
+                            $courseUrl = urlencode(request()->url());
+                            $courseTitle = urlencode($course->title);
+                        @endphp
                         <div class="social-share d-flex gap-2">
-                            <a href="#" class="share-btn facebook"><i class="fa-brands fa-facebook-f"></i></a>
-                            <a href="#" class="share-btn twitter"><i class="fa-brands fa-twitter"></i></a>
-                            <a href="#" class="share-btn whatsapp"><i class="fa-brands fa-whatsapp"></i></a>
-                            <a href="#" class="share-btn telegram"><i class="fa-brands fa-telegram"></i></a>
-                            <a href="#" class="share-btn copy"><i class="fa-solid fa-link"></i></a>
+                            @if(!empty($socialLinks))
+                                @foreach($socialLinks as $social)
+                                    @if(($social['enabled'] ?? true) && !empty($social['url']))
+                                        @php
+                                            $platform = strtolower($social['platform'] ?? '');
+                                            $shareUrl = '#';
+                                            $iconClass = $social['icon'] ?? 'fa-link';
+                                            $btnClass = 'copy';
+                                            
+                                            // تحديد رابط المشاركة حسب المنصة
+                                            if (str_contains($platform, 'facebook')) {
+                                                $shareUrl = "https://www.facebook.com/sharer/sharer.php?u={$courseUrl}";
+                                                $btnClass = 'facebook';
+                                            } elseif (str_contains($platform, 'twitter') || str_contains($platform, 'x')) {
+                                                $shareUrl = "https://twitter.com/intent/tweet?url={$courseUrl}&text={$courseTitle}";
+                                                $btnClass = 'twitter';
+                                            } elseif (str_contains($platform, 'whatsapp')) {
+                                                $shareUrl = "https://wa.me/?text={$courseTitle}%20{$courseUrl}";
+                                                $btnClass = 'whatsapp';
+                                            } elseif (str_contains($platform, 'telegram')) {
+                                                $shareUrl = "https://t.me/share/url?url={$courseUrl}&text={$courseTitle}";
+                                                $btnClass = 'telegram';
+                                            } elseif (str_contains($platform, 'linkedin')) {
+                                                $shareUrl = "https://www.linkedin.com/shareArticle?mini=true&url={$courseUrl}&title={$courseTitle}";
+                                                $btnClass = 'linkedin';
+                                            }
+                                        @endphp
+                                        <a href="{{ $shareUrl }}" 
+                                           class="share-btn {{ $btnClass }}" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           title="{{ $social['label'] ?? 'شارك' }}">
+                                            <i class="fa-brands {{ $iconClass }}"></i>
+                                        </a>
+                                    @endif
+                                @endforeach
+                            @else
+                                {{-- روابط مشاركة افتراضية في حال عدم وجود إعدادات --}}
+                                <a href="https://www.facebook.com/sharer/sharer.php?u={{ $courseUrl }}" class="share-btn facebook" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                                <a href="https://twitter.com/intent/tweet?url={{ $courseUrl }}&text={{ $courseTitle }}" class="share-btn twitter" target="_blank"><i class="fa-brands fa-twitter"></i></a>
+                                <a href="https://wa.me/?text={{ $courseTitle }}%20{{ $courseUrl }}" class="share-btn whatsapp" target="_blank"><i class="fa-brands fa-whatsapp"></i></a>
+                                <a href="https://t.me/share/url?url={{ $courseUrl }}&text={{ $courseTitle }}" class="share-btn telegram" target="_blank"><i class="fa-brands fa-telegram"></i></a>
+                            @endif
+                            {{-- زر نسخ الرابط --}}
+                            <button type="button" class="share-btn copy" onclick="copyToClipboard('{{ request()->url() }}')" title="نسخ الرابط">
+                                <i class="fa-solid fa-link"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -717,13 +763,23 @@
     background: #0088cc;
 }
 
+.share-btn.linkedin {
+    background: #0077b5;
+}
+
 .share-btn.copy {
     background: #95a5a6;
+    border: none;
+    cursor: pointer;
 }
 
 .share-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.share-btn.copied {
+    background: #27ae60 !important;
 }
 
 /* Curriculum Section */
@@ -1187,6 +1243,34 @@
     }
 }
 </style>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // تغيير مظهر الزر مؤقتاً
+        const copyBtn = document.querySelector('.share-btn.copy');
+        if (copyBtn) {
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            copyBtn.classList.add('copied');
+            
+            setTimeout(function() {
+                copyBtn.innerHTML = originalIcon;
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        }
+    }).catch(function(err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('تم نسخ الرابط!');
+    });
+}
+</script>
 
 @endsection
 

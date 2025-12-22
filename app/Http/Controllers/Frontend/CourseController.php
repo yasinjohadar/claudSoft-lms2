@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\FrontendCourse;
 use App\Models\FrontendCourseCategory;
+use App\Models\ContactSetting;
 use Illuminate\Http\Request;
 
 class CourseController extends Controller
@@ -90,6 +91,10 @@ class CourseController extends Controller
                                ->limit(4)
                                ->get();
 
-        return view('frontend.pages.course-details', compact('course', 'relatedCourses', 'reviews'));
+        // Get social links from contact settings
+        $contactSettings = ContactSetting::getSettings();
+        $socialLinks = $contactSettings->social_links ?? [];
+
+        return view('frontend.pages.course-details', compact('course', 'relatedCourses', 'reviews', 'socialLinks'));
     }
 }
