@@ -216,8 +216,8 @@
                                                 </td>
                                                 <td>{{ $enrollment->enrollment_date ? $enrollment->enrollment_date->format('Y-m-d') : '-' }}</td>
                                                 <td>
-                                                    @if($enrollment->course)
-                                                    <a href="{{ route('frontend.course-details', $enrollment->course->id) }}" 
+                                                    @if($enrollment->course && $enrollment->course->slug)
+                                                    <a href="{{ route('frontend.courses.show', $enrollment->course->slug) }}" 
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="fa-solid fa-eye"></i> عرض
                                                     </a>
@@ -254,8 +254,8 @@
                                                     <i class="fa-solid fa-calendar me-1"></i>
                                                     {{ $certificate->completed_at ? $certificate->completed_at->format('Y-m-d') : '-' }}
                                                 </p>
-                                                @if($certificate->course)
-                                                <a href="{{ route('frontend.course-details', $certificate->course->id) }}" 
+                                                @if($certificate->course && $certificate->course->slug)
+                                                <a href="{{ route('frontend.courses.show', $certificate->course->slug) }}" 
                                                    class="btn btn-sm btn-primary">
                                                     <i class="fa-solid fa-download me-1"></i>تحميل الشهادة
                                                 </a>
