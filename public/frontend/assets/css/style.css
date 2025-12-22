@@ -37,13 +37,15 @@ a {
 
 .left-header a {
     margin-left: 20px;
-    border-left: 1px solid black;
+    border-left: 1px solid var(--secondary-Color) !important;
     padding-left: 15px;
     transition: all 0.3s;
+    color: var(--secondary-Color) !important;
 }
 
 .left-header a:hover {
-    color: var(--secondaryColor) !important;
+    color: var(--secondary-Color) !important;
+    opacity: 0.8;
 }
 
 .menu-icon {
