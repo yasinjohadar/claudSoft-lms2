@@ -91,8 +91,19 @@ a {
     transform: scale(1.1);
 }
 
-/* Hide contact info on small screens */
-@media (max-width: 767px) {
+/* Search Input - Reduced size */
+.search-input {
+    max-width: 100%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .search-input {
+        max-width: 280px;
+    }
+}
+
+/* Hide contact info on small and medium screens */
+@media (max-width: 991px) {
     .header-contact-info {
         display: none !important;
     }
