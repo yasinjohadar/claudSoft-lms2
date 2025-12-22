@@ -56,6 +56,48 @@ a {
     color: var(--secondary-Color) !important;
 }
 
+/* Header Contact Info */
+.header-contact-info {
+    font-size: 14px;
+}
+
+.contact-item {
+    gap: 8px;
+}
+
+.contact-text {
+    color: #000000;
+    font-weight: 500;
+}
+
+.contact-label {
+    color: #000000;
+    font-size: 13px;
+}
+
+.contact-icon {
+    color: var(--secondary-Color);
+    font-size: 18px;
+}
+
+.contact-icon-link {
+    color: var(--secondary-Color);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.contact-icon-link:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+/* Hide contact info on small screens */
+@media (max-width: 767px) {
+    .header-contact-info {
+        display: none !important;
+    }
+}
+
 .menu-icon {
     border-radius: 3px !important;
     box-shadow: none !important;

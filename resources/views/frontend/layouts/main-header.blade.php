@@ -37,10 +37,33 @@ header .navbar-nav .nav-link {
         <div class="container">
             <div class="row">
 
-                <div class="col-6 col-md-4">
-                    <a href="/">
+                <div class="col-6 col-md-4 d-flex align-items-center">
+                    <a href="/" class="me-3">
                         <img width="60" src="{{ asset('frontend/assets/images/logo.png') }}" alt="logo">
                     </a>
+                    <div class="header-contact-info d-none d-md-flex align-items-center gap-4">
+                        @php
+                            $contactSettings = $contactSettings ?? \App\Models\ContactSetting::getSettings();
+                            $email = $contactSettings->email_addresses[0]['email'] ?? '';
+                            $phone = $contactSettings->phone_numbers[0]['number'] ?? '';
+                        @endphp
+                        @if($email)
+                        <div class="contact-item d-flex align-items-center">
+                            <span class="contact-text me-2">{{ $email }}</span>
+                            <span class="contact-label me-2">للمراسلة</span>
+                            <i class="fa-solid fa-envelope contact-icon"></i>
+                        </div>
+                        @endif
+                        @if($phone)
+                        <div class="contact-item d-flex align-items-center">
+                            <span class="contact-text me-2">{{ $phone }}</span>
+                            <span class="contact-label me-2">للتواصل</span>
+                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $phone) }}" target="_blank" class="contact-icon-link">
+                                <i class="fa-brands fa-whatsapp contact-icon"></i>
+                            </a>
+                        </div>
+                        @endif
+                    </div>
                 </div>
 
 
