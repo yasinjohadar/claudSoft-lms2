@@ -52,22 +52,6 @@
                             <i class="fa-solid fa-info-circle"></i> المعلومات الشخصية
                         </h5>
 
-                        <div class="info-item">
-                            <div class="info-label">
-                                <i class="fa-solid fa-envelope"></i> البريد الإلكتروني
-                            </div>
-                            <div class="info-value">{{ $student->email }}</div>
-                        </div>
-
-                        @if($student->phone)
-                        <div class="info-item">
-                            <div class="info-label">
-                                <i class="fa-solid fa-phone"></i> رقم الهاتف
-                            </div>
-                            <div class="info-value">{{ $student->phone }}</div>
-                        </div>
-                        @endif
-
                         @if($student->address)
                         <div class="info-item">
                             <div class="info-label">
@@ -224,7 +208,7 @@
 /* Profile Card */
 .profile-card {
     background: white;
-    border-radius: 15px;
+    border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
@@ -274,7 +258,7 @@
     display: inline-block;
     background: rgba(255, 255, 255, 0.2);
     padding: 8px 20px;
-    border-radius: 20px;
+    border-radius: 6px;
     font-size: 0.9rem;
 }
 
@@ -327,7 +311,7 @@
 /* Statistics Cards */
 .stat-card {
     background: white;
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 25px;
     box-shadow: 0 3px 15px rgba(0,0,0,0.08);
     display: flex;
@@ -345,7 +329,7 @@
     width: 60px;
     height: 60px;
     background: var(--secondary-Color);
-    border-radius: 12px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -369,7 +353,7 @@
 /* About Card */
 .about-card {
     background: white;
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 30px;
     box-shadow: 0 3px 15px rgba(0,0,0,0.08);
 }
@@ -383,7 +367,7 @@
 /* Coming Soon Card */
 .coming-soon-card {
     background: white;
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 60px 30px;
     box-shadow: 0 3px 15px rgba(0,0,0,0.08);
     text-align: center;
