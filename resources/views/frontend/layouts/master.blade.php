@@ -4,7 +4,7 @@
 
     @include("frontend.layouts.head")
 </head>
-<body data-bs-theme="LIGHT" style="display: flex; flex-direction: column; min-height: 100vh;">
+<body data-bs-theme="LIGHT">
     <!-- Page Loader -->
     <div id="page-loader" class="page-loader">
         <div class="loader-content">
@@ -17,17 +17,13 @@
         </div>
     </div>
 
-    <div style="order: 1;">
-        @include("frontend.layouts.main-header")
-    </div>
+    @include("frontend.layouts.main-header")
 
-    <div style="order: 2; flex: 1;">
-        @yield("content")
-    </div>
 
-    <div style="order: 3;">
-        @include("frontend.layouts.footer")
-    </div>
+    @yield("content")
+
+
+    @include("frontend.layouts.footer")
 
     <!-- Page Loader Styles -->
     <style>
