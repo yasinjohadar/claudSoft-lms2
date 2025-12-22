@@ -398,11 +398,6 @@
                             سجل الآن
                         </button>
 
-                        <button class="btn btn-wishlist w-100 mb-3">
-                            <i class="fa-regular fa-heart"></i>
-                            أضف للمفضلة
-                        </button>
-
                         <div class="course-includes">
                             <h5 class="mb-3">يتضمن هذا الكورس:</h5>
                             <ul class="includes-list">
@@ -647,7 +642,7 @@
 }
 
 .btn-enroll {
-    background: var(--main-Color);
+    background: var(--secondary-Color);
     color: #ffffff;
     font-size: 1.1rem;
     font-weight: 600;
@@ -658,23 +653,8 @@
 }
 
 .btn-enroll:hover {
-    background: var(--secondary-Color);
+    background: #1a5276;
     transform: translateY(-2px);
-}
-
-.btn-wishlist {
-    background: #ffffff;
-    color: #e74c3c;
-    font-weight: 600;
-    padding: 12px;
-    border: 2px solid #e74c3c;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.btn-wishlist:hover {
-    background: #e74c3c;
-    color: #ffffff;
 }
 
 .course-includes h5 {
@@ -1207,4 +1187,6 @@
     }
 }
 </style>
+
+@endsection
 
