@@ -20,7 +20,8 @@ class CourseGroupController extends Controller
         try {
             $course = Course::findOrFail($courseId);
 
-            $query = CourseGroup::with(['courses', 'creator', 'members'])
+            $query = CourseGroup::with(['courses', 'creator'])
+                                ->withCount('members')
                 ->whereHas('courses', function($q) use ($courseId) {
                     $q->where('courses.id', $courseId);
                 });
@@ -133,11 +134,13 @@ class CourseGroupController extends Controller
                 'creator',
                 'leaders',
                 'groupEnrollments'
-            ])->findOrFail($id);
+            ])
+            ->withCount('members')
+            ->findOrFail($id);
 
             // Get statistics
             $stats = [
-                'total_members' => $group->getMembersCount(),
+                'total_members' => $group->members_count ?? $group->getMembersCount(),
                 'available_slots' => $group->getAvailableSlots(),
                 'is_full' => $group->isFull(),
                 'leaders_count' => $group->leaders()->count(),
@@ -171,7 +174,9 @@ class CourseGroupController extends Controller
     {
         try {
             $course = Course::findOrFail($courseId);
-            $group = CourseGroup::with('courses')->findOrFail($id);
+            $group = CourseGroup::with('courses')
+                                ->withCount('members')
+                                ->findOrFail($id);
             $courses = Course::all();
 
             return view('admin.pages.groups.edit', compact('course', 'group', 'courses'));
@@ -568,7 +573,8 @@ class CourseGroupController extends Controller
     public function allGroups(Request $request)
     {
         try {
-            $query = CourseGroup::with(['courses', 'creator', 'members']);
+            $query = CourseGroup::with(['courses', 'creator'])
+                                ->withCount('members');
 
             // Search
             if ($request->filled('search')) {
