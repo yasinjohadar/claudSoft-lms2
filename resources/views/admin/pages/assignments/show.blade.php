@@ -510,21 +510,23 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>إجمالي التسليمات</span>
-                                    <span class="badge bg-primary">{{ $stats['total_submissions'] }}</span>
+                                    <span class="badge bg-primary">{{ $stats['total_submissions'] ?? 0 }}</span>
                                 </div>
                                 <div class="progress mb-3" style="height: 6px;">
-                                    <div class="progress-bar bg-primary" style="width: 100%"></div>
+                                    <div class="progress-bar bg-primary" 
+                                         style="width: {{ ($stats['total_submissions'] ?? 0) > 0 ? 100 : 0 }}%">
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>تم التقييم</span>
-                                    <span class="badge bg-success">{{ $stats['graded'] }}</span>
+                                    <span class="badge bg-success">{{ $stats['graded'] ?? 0 }}</span>
                                 </div>
                                 <div class="progress mb-3" style="height: 6px;">
                                     <div class="progress-bar bg-success"
-                                         style="width: {{ $stats['total_submissions'] > 0 ? ($stats['graded'] / $stats['total_submissions']) * 100 : 0 }}%">
+                                         style="width: {{ ($stats['total_submissions'] ?? 0) > 0 ? (($stats['graded'] ?? 0) / ($stats['total_submissions'] ?? 1)) * 100 : 0 }}%">
                                     </div>
                                 </div>
                             </div>
@@ -532,11 +534,11 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>قيد الانتظار</span>
-                                    <span class="badge bg-warning">{{ $stats['pending'] }}</span>
+                                    <span class="badge bg-warning">{{ $stats['pending'] ?? 0 }}</span>
                                 </div>
                                 <div class="progress mb-3" style="height: 6px;">
                                     <div class="progress-bar bg-warning"
-                                         style="width: {{ $stats['total_submissions'] > 0 ? ($stats['pending'] / $stats['total_submissions']) * 100 : 0 }}%">
+                                         style="width: {{ ($stats['total_submissions'] ?? 0) > 0 ? (($stats['pending'] ?? 0) / ($stats['total_submissions'] ?? 1)) * 100 : 0 }}%">
                                     </div>
                                 </div>
                             </div>
@@ -544,11 +546,11 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>مسودات</span>
-                                    <span class="badge bg-secondary">{{ $stats['draft'] }}</span>
+                                    <span class="badge bg-secondary">{{ $stats['draft'] ?? 0 }}</span>
                                 </div>
                                 <div class="progress" style="height: 6px;">
                                     <div class="progress-bar bg-secondary"
-                                         style="width: {{ $stats['total_submissions'] > 0 ? ($stats['draft'] / $stats['total_submissions']) * 100 : 0 }}%">
+                                         style="width: {{ ($stats['total_submissions'] ?? 0) > 0 ? (($stats['draft'] ?? 0) / ($stats['total_submissions'] ?? 1)) * 100 : 0 }}%">
                                     </div>
                                 </div>
                             </div>

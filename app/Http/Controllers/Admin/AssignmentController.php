@@ -230,11 +230,20 @@ class AssignmentController extends Controller
             ->orderBy('submitted_at', 'desc')
             ->paginate(20);
 
+        // Calculate statistics accurately
+        $totalSubmissions = $assignment->submissions()->count();
+        $graded = $assignment->submissions()->where('status', 'graded')->count();
+        $pending = $assignment->submissions()->where('status', 'submitted')->count();
+        $draft = $assignment->submissions()->where('status', 'draft')->count();
+        
+        // Verify: graded + pending + draft should equal total_submissions
+        // (Note: There might be other statuses, so we use total count as source of truth)
+        
         $stats = [
-            'total_submissions' => $assignment->submissions()->count(),
-            'graded' => $assignment->submissions()->where('status', 'graded')->count(),
-            'pending' => $assignment->submissions()->where('status', 'submitted')->count(),
-            'draft' => $assignment->submissions()->where('status', 'draft')->count(),
+            'total_submissions' => $totalSubmissions,
+            'graded' => $graded,
+            'pending' => $pending,
+            'draft' => $draft,
             'average_grade' => $assignment->submissions()
                 ->where('status', 'graded')
                 ->whereNotNull('grade')
