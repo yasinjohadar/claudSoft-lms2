@@ -125,7 +125,7 @@ class QuestionBank extends Model
     public function pools()
     {
         return $this->belongsToMany(QuestionPool::class, 'question_pool_items', 'question_id', 'pool_id')
-            ->withTimestamps();
+            ->withPivot('created_at');
     }
 
     /**
