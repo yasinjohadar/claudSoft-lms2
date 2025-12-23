@@ -59,20 +59,10 @@
                             </div>
 
                             <!-- Media -->
-                            @if($question->media_url)
+                            @if($question->question_image)
                                 <div class="mb-4">
-                                    <h6 class="text-muted mb-2">الوسائط المرفقة:</h6>
-                                    @if($question->media_type == 'image')
-                                        <img src="{{ $question->media_url }}" alt="صورة السؤال" class="img-fluid rounded shadow-sm" style="max-width: 500px;">
-                                    @elseif($question->media_type == 'video')
-                                        <video controls class="w-100 rounded" style="max-width: 500px;">
-                                            <source src="{{ $question->media_url }}" type="video/mp4">
-                                        </video>
-                                    @elseif($question->media_type == 'audio')
-                                        <audio controls class="w-100">
-                                            <source src="{{ $question->media_url }}" type="audio/mpeg">
-                                        </audio>
-                                    @endif
+                                    <h6 class="text-muted mb-2">صورة السؤال:</h6>
+                                    <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال" class="img-fluid rounded shadow-sm" style="max-width: 500px;">
                                 </div>
                             @endif
 
@@ -213,25 +203,21 @@
                             </div>
                             <div class="mb-3">
                                 <small class="text-muted d-block mb-1">مستوى الصعوبة:</small>
-                                @if($question->difficulty == 'easy')
+                                @if($question->difficulty_level == 'easy')
                                     <span class="badge bg-success">سهل</span>
-                                @elseif($question->difficulty == 'medium')
+                                @elseif($question->difficulty_level == 'medium')
                                     <span class="badge bg-warning">متوسط</span>
-                                @else
+                                @elseif($question->difficulty_level == 'hard')
                                     <span class="badge bg-danger">صعب</span>
+                                @elseif($question->difficulty_level == 'expert')
+                                    <span class="badge bg-dark">خبير</span>
+                                @else
+                                    <span class="badge bg-secondary">{{ $question->difficulty_level ?? 'غير محدد' }}</span>
                                 @endif
                             </div>
                             <div class="mb-3">
                                 <small class="text-muted d-block mb-1">الدرجة:</small>
-                                <span class="badge bg-primary fs-15">{{ $question->default_grade }} نقطة</span>
-                            </div>
-                            <div class="mb-3">
-                                <small class="text-muted d-block mb-1">قابل لإعادة الاستخدام:</small>
-                                @if($question->is_reusable)
-                                    <span class="badge bg-success">نعم</span>
-                                @else
-                                    <span class="badge bg-danger">لا</span>
-                                @endif
+                                <span class="badge bg-primary fs-15">{{ $question->default_grade ?? 0 }} نقطة</span>
                             </div>
                             <hr>
                             <div class="mb-2">
@@ -246,7 +232,7 @@
                     </div>
 
                     <!-- Question Pools -->
-                    @if($question->questionPools && $question->questionPools->count() > 0)
+                    @if($question->pools && $question->pools->count() > 0)
                         <div class="card custom-card mb-4">
                             <div class="card-header bg-warning-transparent">
                                 <div class="card-title mb-0">
@@ -255,7 +241,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="list-group list-group-flush">
-                                    @foreach($question->questionPools as $pool)
+                                    @foreach($question->pools as $pool)
                                         <a href="{{ route('question-pools.show', $pool->id) }}" class="list-group-item list-group-item-action">
                                             <i class="fas fa-layer-group me-2 text-warning"></i>{{ $pool->name }}
                                         </a>

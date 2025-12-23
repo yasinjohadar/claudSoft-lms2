@@ -141,18 +141,16 @@ class QuestionBankController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => 'nullable|exists:courses,id',
             'question_type_id' => 'required|exists:question_types,id',
             'question_text' => 'required|string',
             'explanation' => 'nullable|string',
             'default_grade' => 'required|numeric|min:0',
-            'difficulty' => 'required|in:easy,medium,hard',
+            'difficulty_level' => 'required|in:easy,medium,hard,expert',
             'tags' => 'nullable|string',
             'metadata' => 'nullable|array',
-            'media_type' => 'nullable|string',
-            'media_url' => 'nullable|string',
-            'is_active' => 'nullable',
-            'is_reusable' => 'nullable',
+            'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'is_active' => 'nullable|boolean',
             'shuffle_options' => 'nullable',
             // Essay specific
             'min_words' => 'nullable|integer|min:0',
@@ -165,13 +163,20 @@ class QuestionBankController extends Controller
             'correct_option' => 'nullable|integer',
         ]);
 
-        // Handle checkboxes
-        $validated['is_active'] = $request->has('is_active');
-        $validated['is_reusable'] = $request->has('is_reusable');
+        // Handle checkbox
+        $validated['is_active'] = $request->has('is_active') && $request->is_active == '1' ? 1 : 0;
 
-        // Handle tags as array
-        if (!empty($validated['tags']) && is_string($validated['tags'])) {
-            $validated['tags'] = array_map('trim', explode(',', $validated['tags']));
+        // Handle image upload
+        if ($request->hasFile('question_image')) {
+            $validated['question_image'] = $request->file('question_image')->store('question-images', 'public');
+        }
+
+        // Handle tags (convert comma-separated string to array)
+        if ($request->filled('tags')) {
+            $tags = array_map('trim', explode(',', $request->tags));
+            $validated['tags'] = array_filter($tags);
+        } else {
+            $validated['tags'] = null;
         }
 
         // Build metadata for specific question types
@@ -286,7 +291,8 @@ class QuestionBankController extends Controller
             'creator',
             'options',
             'quizQuestions.quiz',
-            'responses'
+            'responses',
+            'pools'
         ])->findOrFail($id);
 
         // Get usage statistics
