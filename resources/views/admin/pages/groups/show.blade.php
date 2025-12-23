@@ -30,6 +30,24 @@
         padding: 2rem;
         margin-bottom: 2rem;
     }
+    /* Remove Member Modal Styles */
+    [id^="removeMemberModal"] .modal-content {
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    [id^="removeMemberModal"] .avatar-xl {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    [id^="removeMemberModal"] .fs-24 {
+        font-size: 2rem;
+    }
+    [id^="removeMemberModal"] .bg-danger-transparent {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
 </style>
 @stop
 
@@ -228,13 +246,15 @@
                                                                 <button type="button" class="btn btn-sm btn-outline-primary" title="تغيير الدور">
                                                                     <i class="fas fa-user-tag"></i>
                                                                 </button>
-                                                                <form action="{{ route('groups.remove-member', [$group->id, $memberRecord->student_id]) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من إزالة هذا العضو؟');">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="إزالة">
-                                                                        <i class="fas fa-user-times"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-outline-danger" 
+                                                                        title="إزالة"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#removeMemberModal{{ $memberRecord->student_id }}"
+                                                                        data-member-name="{{ $memberRecord->student->name }}"
+                                                                        data-member-id="{{ $memberRecord->student_id }}">
+                                                                    <i class="fas fa-user-times"></i>
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -351,6 +371,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Remove Member Modals -->
+    @foreach($members as $memberRecord)
+        @if($memberRecord->student)
+            <div class="modal fade" id="removeMemberModal{{ $memberRecord->student_id }}" tabindex="-1" aria-labelledby="removeMemberModalLabel{{ $memberRecord->student_id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <div class="mb-4">
+                                <div class="avatar avatar-xl mx-auto mb-3 bg-danger-transparent">
+                                    <i class="fas fa-user-times fs-24 text-danger"></i>
+                                </div>
+                                <h5 class="mb-2" id="removeMemberModalLabel{{ $memberRecord->student_id }}">إزالة العضو من المجموعة</h5>
+                                <p class="text-muted mb-0">
+                                    هل أنت متأكد من إزالة <strong>{{ $memberRecord->student->name }}</strong> من هذه المجموعة؟
+                                </p>
+                                <p class="text-danger small mt-2 mb-0">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    لا يمكن التراجع عن هذا الإجراء!
+                                </p>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 pt-0 justify-content-center">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-2"></i>إلغاء
+                            </button>
+                            <form action="{{ route('groups.remove-member', [$group->id, $memberRecord->student_id]) }}" method="POST" class="d-inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-user-times me-2"></i>نعم، إزالة العضو
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
 @stop
 
 @section('script')
