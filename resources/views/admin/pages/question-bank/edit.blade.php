@@ -69,13 +69,14 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">الصعوبة <span class="text-danger">*</span></label>
-                                <select name="difficulty" class="form-select @error('difficulty') is-invalid @enderror" required>
+                                <select name="difficulty_level" class="form-select @error('difficulty_level') is-invalid @enderror" required>
                                     <option value="">اختر مستوى الصعوبة</option>
-                                    <option value="easy" {{ old('difficulty', $question->difficulty) == 'easy' ? 'selected' : '' }}>سهل</option>
-                                    <option value="medium" {{ old('difficulty', $question->difficulty) == 'medium' ? 'selected' : '' }}>متوسط</option>
-                                    <option value="hard" {{ old('difficulty', $question->difficulty) == 'hard' ? 'selected' : '' }}>صعب</option>
+                                    <option value="easy" {{ old('difficulty_level', $question->difficulty_level) == 'easy' ? 'selected' : '' }}>سهل</option>
+                                    <option value="medium" {{ old('difficulty_level', $question->difficulty_level) == 'medium' ? 'selected' : '' }}>متوسط</option>
+                                    <option value="hard" {{ old('difficulty_level', $question->difficulty_level) == 'hard' ? 'selected' : '' }}>صعب</option>
+                                    <option value="expert" {{ old('difficulty_level', $question->difficulty_level) == 'expert' ? 'selected' : '' }}>خبير</option>
                                 </select>
-                                @error('difficulty')
+                                @error('difficulty_level')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -91,26 +92,20 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">الدرجة <span class="text-danger">*</span></label>
-                                <input type="number" name="points" class="form-control @error('points') is-invalid @enderror"
-                                       value="{{ old('points', $question->points) }}" min="0.5" step="0.5" required>
-                                @error('points')
+                                <input type="number" name="default_grade" class="form-control @error('default_grade') is-invalid @enderror"
+                                       value="{{ old('default_grade', $question->default_grade) }}" min="0.5" step="0.5" required>
+                                @error('default_grade')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div class="col-md-6">
                                 <div class="form-check mt-4">
+                                    <input type="hidden" name="is_active" value="0">
                                     <input class="form-check-input" type="checkbox" name="is_active"
-                                           id="is_active" value="1" {{ old('is_active', $question->is_active) ? 'checked' : '' }}>
+                                           id="is_active" value="1" {{ old('is_active', $question->is_active ?? true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_active">
                                         السؤال نشط
-                                    </label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="is_reusable"
-                                           id="is_reusable" value="1" {{ old('is_reusable', $question->is_reusable) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_reusable">
-                                        قابل لإعادة الاستخدام
                                     </label>
                                 </div>
                             </div>
@@ -196,28 +191,17 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">نوع الوسائط</label>
-                                <select name="media_type" id="media_type" class="form-select">
-                                    <option value="text" {{ old('media_type', $question->media_type) == 'text' ? 'selected' : '' }}>لا يوجد</option>
-                                    <option value="image" {{ old('media_type', $question->media_type) == 'image' ? 'selected' : '' }}>صورة</option>
-                                    <option value="audio" {{ old('media_type', $question->media_type) == 'audio' ? 'selected' : '' }}>صوت</option>
-                                    <option value="video" {{ old('media_type', $question->media_type) == 'video' ? 'selected' : '' }}>فيديو</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">رابط الوسائط</label>
-                                <input type="url" name="media_url" class="form-control"
-                                       placeholder="https://example.com/image.jpg"
-                                       value="{{ old('media_url', $question->media_url) }}">
-                            </div>
-                            @if($question->media_url && $question->media_type == 'image')
-                                <div class="col-12">
-                                    <label class="form-label">الصورة الحالية:</label>
-                                    <div>
-                                        <img src="{{ $question->media_url }}" alt="صورة السؤال" class="img-fluid rounded" style="max-width: 400px;">
+                                <label class="form-label">صورة السؤال</label>
+                                <input type="file" name="question_image" class="form-control" accept="image/*">
+                                @if($question->question_image)
+                                    <div class="mt-2">
+                                        <label class="form-label">الصورة الحالية:</label>
+                                        <div>
+                                            <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال" class="img-fluid rounded" style="max-width: 400px;">
+                                        </div>
                                     </div>
-                                </div>
-                            @endif
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>

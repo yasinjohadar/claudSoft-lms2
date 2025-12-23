@@ -11,6 +11,7 @@ use App\Models\CourseSection;
 use App\Models\ProgrammingLanguage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -331,23 +332,36 @@ class QuestionBankController extends Controller
         $question = QuestionBank::findOrFail($id);
 
         $validated = $request->validate([
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => 'nullable|exists:courses,id',
             'question_type_id' => 'required|exists:question_types,id',
             'question_text' => 'required|string',
             'explanation' => 'nullable|string',
-            'points' => 'required|numeric|min:0',
-            'difficulty' => 'required|in:easy,medium,hard',
-            'tags' => 'nullable|array',
-            'metadata' => 'nullable|array',
-            'media_type' => 'nullable|in:text,image,audio,video',
-            'media_url' => 'nullable|string',
+            'default_grade' => 'required|numeric|min:0',
+            'difficulty_level' => 'required|in:easy,medium,hard,expert',
+            'tags' => 'nullable|string',
             'is_active' => 'nullable|boolean',
-            'is_reusable' => 'nullable|boolean',
+            'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Handle checkboxes
-        $validated['is_active'] = $request->has('is_active');
-        $validated['is_reusable'] = $request->has('is_reusable');
+        // Handle checkbox
+        $validated['is_active'] = $request->has('is_active') && $request->is_active == '1' ? 1 : 0;
+
+        // Handle tags (convert comma-separated string to array)
+        if ($request->filled('tags')) {
+            $tags = array_map('trim', explode(',', $request->tags));
+            $validated['tags'] = array_filter($tags);
+        } else {
+            $validated['tags'] = null;
+        }
+
+        // Handle image upload
+        if ($request->hasFile('question_image')) {
+            // Delete old image if exists
+            if ($question->question_image) {
+                Storage::disk('public')->delete($question->question_image);
+            }
+            $validated['question_image'] = $request->file('question_image')->store('question-images', 'public');
+        }
 
         // Set updater
         $validated['updated_by'] = auth()->id();
