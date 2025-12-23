@@ -147,11 +147,30 @@ class CourseGroupController extends Controller
                 'regular_members_count' => $group->members()->where('role', 'member')->count(),
             ];
 
-            // Get paginated members
-            $members = $group->members()
-                ->with('student')
-                ->orderBy('joined_at', 'desc')
-                ->paginate($request->get('per_page', 15));
+            // Get paginated members with search and filters
+            $membersQuery = $group->members()->with('student');
+
+            // Search filter
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $membersQuery->whereHas('student', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+
+            // Role filter
+            if ($request->filled('role')) {
+                $membersQuery->where('role', $request->role);
+            }
+
+            // Sort
+            $sortBy = $request->get('sort', 'joined_at');
+            $sortOrder = $request->get('order', 'desc');
+            $membersQuery->orderBy($sortBy, $sortOrder);
+
+            $members = $membersQuery->paginate($request->get('per_page', 15));
 
             // Get available students (not in this group)
             $groupStudentIds = $group->students->pluck('id')->toArray();

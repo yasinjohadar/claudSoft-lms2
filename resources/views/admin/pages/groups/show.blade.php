@@ -190,6 +190,44 @@
                         </div>
 
                         <div class="card-body">
+                            <!-- Search and Filter Form -->
+                            <form method="GET" action="{{ route('courses.groups.show', [$course->id, $group->id]) }}" class="mb-4">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label">البحث</label>
+                                        <input type="text" name="search" class="form-control"
+                                               placeholder="ابحث بالاسم، الإيميل أو الهاتف..."
+                                               value="{{ request('search') }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">الدور</label>
+                                        <select name="role" class="form-select">
+                                            <option value="">جميع الأدوار</option>
+                                            <option value="leader" {{ request('role') == 'leader' ? 'selected' : '' }}>قائد</option>
+                                            <option value="member" {{ request('role') == 'member' ? 'selected' : '' }}>عضو</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">الترتيب</label>
+                                        <select name="sort" class="form-select">
+                                            <option value="joined_at" {{ request('sort', 'joined_at') == 'joined_at' ? 'selected' : '' }}>تاريخ الانضمام</option>
+                                            <option value="created_at" {{ request('sort') == 'created_at' ? 'selected' : '' }}>تاريخ التسجيل</option>
+                                        </select>
+                                        <input type="hidden" name="order" value="{{ request('order', 'desc') }}">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary flex-fill">
+                                                <i class="fas fa-search me-1"></i>بحث
+                                            </button>
+                                            <a href="{{ route('courses.groups.show', [$course->id, $group->id]) }}" class="btn btn-outline-secondary" title="إعادة تعيين">
+                                                <i class="fas fa-redo me-1"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+
                             @if($members && $members->isNotEmpty())
                                 <div class="table-responsive">
                                     <table class="table table-hover text-nowrap">
