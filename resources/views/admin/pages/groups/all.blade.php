@@ -8,9 +8,20 @@
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <div class="alert alert-danger mb-4" style="font-size: 24px; font-weight: bold;">
-                ⚠️ اختبار: إذا رأيت هذه الرسالة فالصفحة تم تحديثها بنجاح!
-            </div>
+            <!-- Alerts -->
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-check-circle me-2"></i>نجح!</strong> {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-circle me-2"></i>خطأ!</strong> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
 
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
@@ -300,16 +311,99 @@
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>إلغاء
                         </button>
-                        <form action="{{ route('courses.groups.destroy', [$group->courses->first()->id ?? 1, $group->id]) }}" method="POST" class="d-inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash me-2"></i>نعم، احذف المجموعة
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-danger" onclick="deleteGroup({{ $group->id }}, '{{ $group->name }}')">
+                            <i class="fas fa-trash me-2"></i>نعم، احذف المجموعة
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     @endforeach
+
+    <!-- Success/Error Alert Container -->
+    <div id="alertContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;"></div>
+@stop
+
+@section('script')
+<script>
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById('alertContainer');
+        let alertClass, icon, title;
+        
+        if (type === 'success') {
+            alertClass = 'alert-success';
+            icon = 'fa-check-circle';
+            title = 'نجح!';
+        } else if (type === 'error') {
+            alertClass = 'alert-danger';
+            icon = 'fa-exclamation-circle';
+            title = 'خطأ!';
+        } else {
+            alertClass = 'alert-info';
+            icon = 'fa-info-circle';
+            title = 'معلومة';
+        }
+        
+        const alertHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                <strong><i class="fas ${icon} me-2"></i>${title}</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        alertContainer.innerHTML = alertHTML;
+        
+        // Auto hide after 5 seconds (except for info which hides after 2 seconds)
+        const hideDelay = type === 'info' ? 2000 : 5000;
+        setTimeout(() => {
+            const alert = alertContainer.querySelector('.alert');
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 300);
+            }
+        }, hideDelay);
+    }
+
+    function deleteGroup(groupId, groupName) {
+        // Close the modal
+        const modalElement = document.getElementById('deleteModal' + groupId);
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+
+        // Show loading
+        showAlert('info', 'جاري حذف المجموعة...');
+
+        // Send AJAX request
+        const deleteUrl = `{{ url('/admin/groups') }}/${groupId}/delete`;
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message || 'تم حذف المجموعة بنجاح');
+                // Reload page after 1.5 seconds
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showAlert('error', data.message || 'حدث خطأ أثناء حذف المجموعة');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'حدث خطأ أثناء حذف المجموعة: ' + error.message);
+        });
+    }
+</script>
 @stop

@@ -657,4 +657,67 @@ class CourseGroupController extends Controller
 
         return redirect()->route('courses.groups.create', ['course' => $courseId]);
     }
+
+    /**
+     * Delete a group from all-groups page (without course context).
+     */
+    public function deleteGroup($id)
+    {
+        DB::beginTransaction();
+        try {
+            $group = CourseGroup::findOrFail($id);
+
+            // Check if group has members
+            $membersCount = $group->getMembersCount();
+            if ($membersCount > 0) {
+                DB::rollBack();
+                if (request()->expectsJson() || request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "لا يمكن حذف المجموعة لوجود {$membersCount} عضو فيها"
+                    ], 400);
+                }
+                return redirect()
+                    ->route('groups.all')
+                    ->with('error', "لا يمكن حذف المجموعة لوجود {$membersCount} عضو فيها");
+            }
+
+            // Delete image
+            if ($group->image) {
+                Storage::disk('public')->delete($group->image);
+            }
+
+            $group->delete();
+
+            DB::commit();
+
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حذف المجموعة بنجاح'
+                ]);
+            }
+
+            return redirect()
+                ->route('groups.all')
+                ->with('success', 'تم حذف المجموعة بنجاح');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error deleting group: ' . $e->getMessage(), [
+                'group_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()
+                ->route('groups.all')
+                ->with('error', 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage());
+        }
+    }
 }

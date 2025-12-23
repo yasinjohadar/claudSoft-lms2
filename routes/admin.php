@@ -203,6 +203,7 @@ Route::prefix('admin')
         Route::post('enrollments/{enrollmentId}/approve', [CourseEnrollmentController::class, 'approve'])->name('enrollments.approve');
         Route::post('enrollments/{enrollmentId}/reject', [CourseEnrollmentController::class, 'reject'])->name('enrollments.reject');
         Route::get('all-groups', [CourseGroupController::class, 'allGroups'])->name('groups.all');
+        Route::delete('groups/{id}/delete', [CourseGroupController::class, 'deleteGroup'])->name('groups.delete');
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
 
         // ========== Assignments Routes ==========
