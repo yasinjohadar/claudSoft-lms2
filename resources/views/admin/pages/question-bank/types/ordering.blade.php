@@ -80,11 +80,16 @@
 
                                 <div class="col-md-6">
                                     <label class="form-label">الصعوبة <span class="text-danger">*</span></label>
-                                    <select name="difficulty" class="form-select" required>
-                                        <option value="easy" {{ old('difficulty') == 'easy' ? 'selected' : '' }}>سهل</option>
-                                        <option value="medium" {{ old('difficulty', 'medium') == 'medium' ? 'selected' : '' }}>متوسط</option>
-                                        <option value="hard" {{ old('difficulty') == 'hard' ? 'selected' : '' }}>صعب</option>
+                                    <select name="difficulty_level" class="form-select @error('difficulty_level') is-invalid @enderror" required>
+                                        <option value="">اختر مستوى الصعوبة</option>
+                                        <option value="easy" {{ old('difficulty_level') == 'easy' ? 'selected' : '' }}>سهل</option>
+                                        <option value="medium" {{ old('difficulty_level', 'medium') == 'medium' ? 'selected' : '' }}>متوسط</option>
+                                        <option value="hard" {{ old('difficulty_level') == 'hard' ? 'selected' : '' }}>صعب</option>
+                                        <option value="expert" {{ old('difficulty_level') == 'expert' ? 'selected' : '' }}>خبير</option>
                                     </select>
+                                    @error('difficulty_level')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
                                 <div class="col-12">
@@ -220,17 +225,11 @@
                         </div>
                         <div class="card-body">
                             <div class="form-check mb-3">
+                                <input type="hidden" name="is_active" value="0">
                                 <input class="form-check-input" type="checkbox" name="is_active"
-                                       id="is_active" {{ old('is_active', true) ? 'checked' : '' }}>
+                                       id="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
                                 <label class="form-check-label" for="is_active">
                                     السؤال نشط
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_reusable"
-                                       id="is_reusable" {{ old('is_reusable', true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_reusable">
-                                    قابل لإعادة الاستخدام
                                 </label>
                             </div>
                         </div>

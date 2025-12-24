@@ -150,7 +150,7 @@ class QuestionBankController extends Controller
             'tags' => 'nullable|string',
             'metadata' => 'nullable|array',
             'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'nullable|boolean',
+            'is_active' => 'nullable|in:0,1',
             'shuffle_options' => 'nullable',
             // Essay specific
             'min_words' => 'nullable|integer|min:0',
