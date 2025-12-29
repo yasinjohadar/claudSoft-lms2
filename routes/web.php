@@ -99,6 +99,25 @@ Route::get('/storage/courses/images/{filename}', function ($filename) {
     ]);
 })->where('filename', '[a-zA-Z0-9._-]+')->name('course.image');
 
+// Route لعرض صور الكورسات المصغرة (thumbnails) - حل بديل إذا لم يعمل storage link
+Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
+    $path = storage_path('app/public/courses/thumbnails/' . $filename);
+    
+    if (!file_exists($path)) {
+        abort(404, 'الصورة غير موجودة');
+    }
+    
+    $mimeType = mime_content_type($path);
+    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+        abort(403, 'نوع الملف غير مسموح');
+    }
+    
+    return response()->file($path, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('filename', '[a-zA-Z0-9._-]+')->name('course.thumbnail');
+
 require __DIR__.'/auth.php';
 require __DIR__.'/student.php';
 require __DIR__.'/admin.php';

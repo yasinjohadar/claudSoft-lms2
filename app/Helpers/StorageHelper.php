@@ -84,6 +84,9 @@ if (!function_exists('course_image_url')) {
             if (strpos($imagePath, 'courses/images/') !== false) {
                 return route('course.image', ['filename' => $filename]);
             }
+            if (strpos($imagePath, 'courses/thumbnails/') !== false) {
+                return route('course.thumbnail', ['filename' => $filename]);
+            }
         } catch (\Exception $e) {
             // Continue to next method
         }
