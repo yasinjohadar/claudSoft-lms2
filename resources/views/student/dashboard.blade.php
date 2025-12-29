@@ -126,6 +126,18 @@
         overflow: hidden;
     }
 
+    /* Dark Mode for Quick Link Cards */
+    [data-theme-mode="dark"] .quick-link-card {
+        background: var(--custom-white);
+        border-color: var(--default-border);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme-mode="dark"] .quick-link-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+    }
+
     .quick-link-card::before {
         content: '';
         position: absolute;
@@ -210,6 +222,25 @@
         font-size: 1.1rem;
         color: #2c3e50;
         margin: 0;
+    }
+
+    /* Dark Mode for Custom Cards */
+    [data-theme-mode="dark"] .custom-card {
+        background: var(--custom-white);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme-mode="dark"] .custom-card:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme-mode="dark"] .custom-card .card-header {
+        background: var(--default-background);
+        border-bottom-color: var(--default-border);
+    }
+
+    [data-theme-mode="dark"] .custom-card .card-title {
+        color: var(--card-title-color);
     }
 
     /* Progress bars enhancement */
