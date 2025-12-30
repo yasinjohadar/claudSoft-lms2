@@ -237,7 +237,7 @@ class StreakService
             'last_activity_date' => $stats->last_activity_date,
             'current_multiplier' => $currentMultiplier,
             'next_milestone' => $nextMilestone,
-            'days_to_next_milestone' => $nextMilestone ? $nextMilestone - $currentStreak : null,
+            'days_to_next_milestone' => $nextMilestone ? $nextMilestone['days'] - $currentStreak : null,
             'last_7_days' => $last7Days,
             'is_active_today' => $last7Days->where('date', Carbon::today()->format('Y-m-d'))->isNotEmpty(),
         ];
@@ -246,13 +246,19 @@ class StreakService
     /**
      * الحصول على المعلم التالي
      */
-    protected function getNextMilestone(int $currentStreak): ?int
+    protected function getNextMilestone(int $currentStreak): ?array
     {
         $milestones = [7, 14, 30, 60, 90, 180, 365];
+        $streakRewards = config('gamification.points.streak_milestones', []);
 
         foreach ($milestones as $milestone) {
             if ($currentStreak < $milestone) {
-                return $milestone;
+                // إرجاع array يحتوي على معلومات المعلم
+                return [
+                    'days' => $milestone,
+                    'points' => $streakRewards[$milestone]['points'] ?? 0,
+                    'description' => $streakRewards[$milestone]['description'] ?? '',
+                ];
             }
         }
 
