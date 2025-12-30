@@ -120,13 +120,13 @@
                         </div>
                         <div class="card-body">
                             @if(isset($streakRewards) && count($streakRewards) > 0)
-                                @foreach($streakRewards as $days => $points)
+                                @foreach($streakRewards as $days => $reward)
                                     <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded">
                                         <div>
                                             <i class="fas fa-fire text-danger me-2"></i>
                                             <strong>{{ $days }} يوم</strong>
                                         </div>
-                                        <span class="badge bg-warning">+{{ $points }} نقطة</span>
+                                        <span class="badge bg-warning">+{{ $reward['points'] ?? 0 }} نقطة</span>
                                     </div>
                                 @endforeach
                             @else
