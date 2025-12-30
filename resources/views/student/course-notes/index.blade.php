@@ -237,7 +237,9 @@
 document.getElementById('courseFilter').addEventListener('change', function() {
     const courseId = this.value;
     if (courseId) {
-        window.location.href = `{{ route('student.course-notes.by-course', '') }}/${courseId}`;
+        // بناء الـ URL بشكل صحيح باستخدام route helper مع placeholder
+        const routeUrl = `{{ route('student.course-notes.by-course', ['courseId' => '__COURSE_ID__']) }}`;
+        window.location.href = routeUrl.replace('__COURSE_ID__', courseId);
     } else {
         window.location.href = `{{ route('student.course-notes.index') }}`;
     }
