@@ -14,7 +14,8 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $query = User::role('student')
-                    ->where('is_active', true);
+                    ->where('is_active', true)
+                    ->where('is_profile_public', true); // عرض فقط الطلاب الذين لديهم ملفات شخصية عامة
 
         // البحث بالاسم، الهاتف، أو الإيميل
         if ($request->filled('search')) {
@@ -42,6 +43,7 @@ class StudentController extends Controller
     {
         $student = User::role('student')
                       ->where('is_active', true)
+                      ->where('is_profile_public', true) // التحقق من أن الملف الشخصي عام
                       ->with([
                           'courseEnrollments.course',
                           'badges',

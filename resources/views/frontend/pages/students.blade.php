@@ -48,7 +48,7 @@
                                     <i class="fa-solid fa-times"></i>
                                 </a>
                             @endif
-                            <button type="submit" class="btn btn-primary px-4">
+                            <button type="submit" class="btn btn-search px-4">
                                 <i class="fa-solid fa-search me-2"></i>بحث
                             </button>
                         </div>
@@ -203,15 +203,21 @@
     background: white;
 }
 
+.search-form .btn-search,
 .search-form .btn {
     border-radius: 0 50px 50px 0;
     padding: 15px 30px;
     font-weight: 600;
     border: none;
+    background: var(--main-Color) !important;
+    color: white !important;
+    transition: all 0.3s ease;
 }
 
+.search-form .btn-search:hover,
 .search-form .btn:hover {
-    background: var(--secondary-Color);
+    background: var(--secondary-Color) !important;
+    color: white !important;
 }
 
 @media (max-width: 768px) {
