@@ -11,12 +11,26 @@ class StudentController extends Controller
     /**
      * Display a listing of all students
      */
-    public function index()
+    public function index(Request $request)
     {
-        $students = User::role('student')
-                       ->where('is_active', true)
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(12);
+        $query = User::role('student')
+                    ->where('is_active', true);
+
+        // البحث بالاسم، الهاتف، أو الإيميل
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('name_ar', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('full_phone', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->orderBy('created_at', 'desc')
+                          ->paginate(12)
+                          ->withQueryString(); // للحفاظ على معاملات البحث في الروابط
 
         return view('frontend.pages.students', compact('students'));
     }

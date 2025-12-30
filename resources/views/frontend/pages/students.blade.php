@@ -26,6 +26,48 @@
 <section class="students-section py-5">
     <div class="container">
 
+        <!-- Search Box -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="search-box-wrapper">
+                    <form action="{{ route('frontend.students.index') }}" method="GET" class="search-form">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                            </span>
+                            <input 
+                                type="text" 
+                                name="search" 
+                                class="form-control border-start-0" 
+                                placeholder="ابحث عن طالب بالاسم، رقم الهاتف، أو الإيميل..." 
+                                value="{{ request('search') }}"
+                                autocomplete="off"
+                            >
+                            @if(request('search'))
+                                <a href="{{ route('frontend.students.index') }}" class="input-group-text bg-white border-start-0 text-danger" title="مسح البحث">
+                                    <i class="fa-solid fa-times"></i>
+                                </a>
+                            @endif
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fa-solid fa-search me-2"></i>بحث
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @if(request('search'))
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class="fa-solid fa-info-circle me-2"></i>
+                        <span>نتائج البحث عن: <strong>"{{ request('search') }}"</strong> ({{ $students->total() }} نتيجة)</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="students-grid">
             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
                 @forelse($students as $student)
@@ -59,9 +101,18 @@
                 @empty
                 <div class="col-12">
                     <div class="empty-state text-center py-5">
-                        <i class="fa-solid fa-users fa-3x text-muted mb-3"></i>
-                        <h4>لا يوجد طلاب متاحون حالياً</h4>
-                        <p class="text-muted">سيتم عرض الطلاب المسجلين هنا قريباً</p>
+                        @if(request('search'))
+                            <i class="fa-solid fa-search fa-3x text-muted mb-3"></i>
+                            <h4>لم يتم العثور على نتائج</h4>
+                            <p class="text-muted">لا توجد نتائج للبحث عن: "{{ request('search') }}"</p>
+                            <a href="{{ route('frontend.students.index') }}" class="btn btn-primary mt-3">
+                                <i class="fa-solid fa-arrow-right me-2"></i>عرض جميع الطلاب
+                            </a>
+                        @else
+                            <i class="fa-solid fa-users fa-3x text-muted mb-3"></i>
+                            <h4>لا يوجد طلاب متاحون حالياً</h4>
+                            <p class="text-muted">سيتم عرض الطلاب المسجلين هنا قريباً</p>
+                        @endif
                     </div>
                 </div>
                 @endforelse
@@ -117,6 +168,68 @@
 .students-section {
     background-color: #f8f9fa;
     min-height: 70vh;
+}
+
+/* Search Box */
+.search-box-wrapper {
+    margin-bottom: 30px;
+}
+
+.search-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.search-form .input-group {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 50px;
+    overflow: hidden;
+}
+
+.search-form .input-group-text {
+    border: none;
+    padding: 15px 20px;
+}
+
+.search-form .form-control {
+    border: none;
+    padding: 15px 20px;
+    font-size: 1rem;
+    background: white;
+}
+
+.search-form .form-control:focus {
+    box-shadow: none;
+    background: white;
+}
+
+.search-form .btn {
+    border-radius: 0 50px 50px 0;
+    padding: 15px 30px;
+    font-weight: 600;
+    border: none;
+}
+
+.search-form .btn:hover {
+    background: var(--secondary-Color);
+}
+
+@media (max-width: 768px) {
+    .search-form .input-group {
+        flex-direction: column;
+        border-radius: 10px;
+    }
+    
+    .search-form .input-group-text,
+    .search-form .form-control,
+    .search-form .btn {
+        border-radius: 0;
+    }
+    
+    .search-form .btn {
+        width: 100%;
+        border-radius: 0 0 10px 10px;
+    }
 }
 
 .students-stats {
