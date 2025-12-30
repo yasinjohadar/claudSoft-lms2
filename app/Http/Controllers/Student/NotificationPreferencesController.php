@@ -8,14 +8,11 @@ use Illuminate\Http\Request;
 class NotificationPreferencesController extends Controller
 {
     /**
-     * عرض صفحة إعدادات الإشعارات
+     * الحصول على أنواع الإشعارات المتاحة
      */
-    public function index()
+    private function getNotificationTypes(): array
     {
-        $user = auth()->user();
-
-        // أنواع الإشعارات المتاحة
-        $notificationTypes = [
+        return [
             'badge_earned' => [
                 'name' => 'حصلت على شارة جديدة',
                 'icon' => '🏅',
@@ -77,7 +74,14 @@ class NotificationPreferencesController extends Controller
                 'description' => 'عند الفوز بمنافسة',
             ],
         ];
+    }
 
+    /**
+     * عرض صفحة إعدادات الإشعارات
+     */
+    public function index()
+    {
+        $notificationTypes = $this->getNotificationTypes();
         return view('student.settings.notifications', compact('notificationTypes'));
     }
 
@@ -93,19 +97,37 @@ class NotificationPreferencesController extends Controller
             'email_preferences' => 'nullable|array',
         ]);
 
-        // تحديث تفضيلات الإشعارات الداخلية
+        // الحصول على أنواع الإشعارات المتاحة
+        $notificationTypesArray = $this->getNotificationTypes();
+        $notificationTypes = array_keys($notificationTypesArray);
+
+        // تهيئة تفضيلات الإشعارات الداخلية بجميع القيم كـ false
         $notificationPreferences = [];
-        if (isset($validated['notification_preferences'])) {
+        foreach ($notificationTypes as $type) {
+            $notificationPreferences[$type] = false;
+        }
+        
+        // تحديث القيم التي تم إرسالها (المفعّلة فقط)
+        if (isset($validated['notification_preferences']) && is_array($validated['notification_preferences'])) {
             foreach ($validated['notification_preferences'] as $type => $enabled) {
-                $notificationPreferences[$type] = (bool) $enabled;
+                if (in_array($type, $notificationTypes)) {
+                    $notificationPreferences[$type] = (bool) $enabled;
+                }
             }
         }
 
-        // تحديث تفضيلات البريد الإلكتروني
+        // تهيئة تفضيلات البريد الإلكتروني بجميع القيم كـ false
         $emailPreferences = [];
-        if (isset($validated['email_preferences'])) {
+        foreach ($notificationTypes as $type) {
+            $emailPreferences[$type] = false;
+        }
+        
+        // تحديث القيم التي تم إرسالها (المفعّلة فقط)
+        if (isset($validated['email_preferences']) && is_array($validated['email_preferences'])) {
             foreach ($validated['email_preferences'] as $type => $enabled) {
-                $emailPreferences[$type] = (bool) $enabled;
+                if (in_array($type, $notificationTypes)) {
+                    $emailPreferences[$type] = (bool) $enabled;
+                }
             }
         }
 

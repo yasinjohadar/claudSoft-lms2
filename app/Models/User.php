@@ -41,6 +41,8 @@ class User extends Authenticatable
         'date_of_birth',
         'gender',
         'address',
+        'notification_preferences',
+        'email_preferences',
     ];
 
     /**
