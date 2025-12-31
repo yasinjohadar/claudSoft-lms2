@@ -200,10 +200,72 @@ class CourseGroup extends Model
 
     /**
      * Remove a member from the group.
+     * Automatically unenrolls the student from all courses associated with this group.
      */
     public function removeMember(User $user): bool
     {
+        // Unenroll student from all group courses before removing from group
+        $this->unenrollStudentFromGroupCourses($user);
+
+        // Remove member from group
         return $this->members()->where('student_id', $user->id)->delete() > 0;
+    }
+
+    /**
+     * Unenroll student from all courses associated with this group.
+     * Deletes enrollment if student is only enrolled through this group.
+     * If student is enrolled through other groups, leaves enrollment unchanged.
+     *
+     * @param User $student
+     * @return array Returns array with 'deleted' count
+     */
+    public function unenrollStudentFromGroupCourses(User $student): array
+    {
+        $deletedCount = 0;
+
+        // Get all courses associated with this group
+        $courses = $this->courses;
+
+        if ($courses->isEmpty()) {
+            return [
+                'deleted' => 0,
+                'total' => 0
+            ];
+        }
+
+        foreach ($courses as $course) {
+            // Find enrollment for this course
+            $enrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if ($enrollment) {
+                // Check if student is enrolled in this course through other groups
+                $otherGroups = \App\Models\CourseGroup::whereHas('courses', function($q) use ($course) {
+                    $q->where('courses.id', $course->id);
+                })
+                ->whereHas('members', function($q) use ($student) {
+                    $q->where('student_id', $student->id);
+                })
+                ->where('id', '!=', $this->id)
+                ->exists();
+
+                if ($otherGroups) {
+                    // Student is in another group with this course, leave enrollment as is
+                    // Don't modify the enrollment since student is still enrolled through another group
+                    continue;
+                } else {
+                    // Student is only enrolled through this group, delete the enrollment completely
+                    $enrollment->delete();
+                    $deletedCount++;
+                }
+            }
+        }
+
+        return [
+            'deleted' => $deletedCount,
+            'total' => $courses->count()
+        ];
     }
 
     /**
