@@ -37,6 +37,10 @@ class QuizResponse extends Model
         'feedback',
         'auto_graded',
         'graded_at',
+        'ai_graded',
+        'ai_request_id',
+        'ai_feedback',
+        'ai_grading_details',
     ];
 
     /**
@@ -55,6 +59,9 @@ class QuizResponse extends Model
         'answer_order' => 'integer',
         'auto_graded' => 'boolean',
         'graded_at' => 'datetime',
+        'ai_graded' => 'boolean',
+        'ai_feedback' => 'array',
+        'ai_grading_details' => 'array',
     ];
 
     /**
@@ -245,8 +252,13 @@ class QuizResponse extends Model
                 [$isCorrect, $scoreObtained] = $this->gradeFillBlanks();
                 break;
 
+            case 'essay':
+                // Essay questions can be auto-graded using AI
+                $this->autoGradeEssay();
+                return;
+
             default:
-                // Essay and calculated questions require manual grading
+                // Calculated questions require manual grading
                 return;
         }
 
@@ -488,5 +500,52 @@ class QuizResponse extends Model
         $partialScore = ($correctCount / $totalBlanks) * $this->max_score;
 
         return [$isFullyCorrect, $partialScore];
+    }
+
+    /**
+     * Auto-grade essay using AI
+     *
+     * @param string|null $providerName
+     * @return void
+     */
+    public function autoGradeEssay(?string $providerName = null): void
+    {
+        // Check if AI grading is enabled for this question
+        $question = $this->question;
+        if (!$question) {
+            return;
+        }
+
+        $rubric = \App\Models\EssayGradingRubric::where('question_id', $question->id)->first();
+        if ($rubric && !$rubric->ai_grading_enabled) {
+            // AI grading disabled for this question
+            return;
+        }
+
+        try {
+            $essayGradingService = app(\App\Services\AI\EssayGradingService::class);
+            
+            $studentAnswer = $this->response_text ?? '';
+            if (empty($studentAnswer)) {
+                return;
+            }
+
+            $result = $essayGradingService->gradeEssay(
+                $this->id,
+                $question->id,
+                $studentAnswer,
+                $providerName
+            );
+
+            // The grading service already updates the response
+            // This method is just a wrapper for convenience
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AI essay grading failed', [
+                'response_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            // Don't throw - allow manual grading fallback
+        }
     }
 }

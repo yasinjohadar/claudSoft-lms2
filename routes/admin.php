@@ -640,6 +640,31 @@ Route::prefix('admin')
         Route::get('contact-settings/edit', [ContactSettingController::class, 'edit'])->name('admin.contact-settings.edit');
         Route::put('contact-settings', [ContactSettingController::class, 'update'])->name('admin.contact-settings.update');
 
+        // ========== AI Routes ==========
+        Route::prefix('ai')->name('admin.ai.')->group(function () {
+            // AI Providers
+            Route::resource('providers', \App\Http\Controllers\Admin\AI\AIProviderController::class);
+            Route::post('providers/{provider}/test-connection', [\App\Http\Controllers\Admin\AI\AIProviderController::class, 'testConnection'])->name('providers.test-connection');
+            Route::post('providers/{provider}/set-default', [\App\Http\Controllers\Admin\AI\AIProviderController::class, 'setDefault'])->name('providers.set-default');
+
+            // Question Generator
+            Route::get('generate-questions', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'index'])->name('question-generator');
+            Route::post('generate-questions', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'generate'])->name('question-generator.generate');
+            Route::post('enhance-question/{questionId}', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'enhance'])->name('question-generator.enhance');
+            Route::get('courses/{courseId}/lessons', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'getLessons'])->name('question-generator.lessons');
+
+            // Quiz Generator
+            Route::get('generate-quiz', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'index'])->name('quiz-generator');
+            Route::post('generate-quiz', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'generate'])->name('quiz-generator.generate');
+            Route::post('balance-quiz/{quizId}', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'balance'])->name('quiz-generator.balance');
+
+            // Essay Grading
+            Route::get('essay-grading', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'index'])->name('essay-grading');
+            Route::post('essay-grading/{responseId}/grade', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'grade'])->name('essay-grading.grade');
+            Route::post('essay-grading/{responseId}/review', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'review'])->name('essay-grading.review');
+            Route::get('essay-rubrics', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'rubrics'])->name('essay-rubrics');
+        });
+
     });
 
 

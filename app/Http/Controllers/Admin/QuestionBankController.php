@@ -76,8 +76,10 @@ class QuestionBankController extends Controller
     public function create(Request $request)
     {
         $questionTypes = QuestionType::where('is_active', true)->get();
+        $courses = \App\Models\Course::where('is_published', true)->get();
+        $aiProviders = \App\Models\AIProvider::active()->get();
 
-        return view('admin.pages.question-bank.select-type', compact('questionTypes'));
+        return view('admin.pages.question-bank.select-type', compact('questionTypes', 'courses', 'aiProviders'));
     }
 
     /**

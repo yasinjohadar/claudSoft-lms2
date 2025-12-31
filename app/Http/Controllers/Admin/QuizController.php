@@ -73,10 +73,15 @@ class QuizController extends Controller
             $selectedCourse = Course::find($request->course_id);
         }
 
+        $aiProviders = \App\Models\AIProvider::active()->get();
+        $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
+
         return view('admin.pages.quizzes.create', compact(
             'courses',
             'selectedSection',
-            'selectedCourse'
+            'selectedCourse',
+            'aiProviders',
+            'questionTypes'
         ));
     }
 
