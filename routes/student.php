@@ -28,6 +28,7 @@ use App\Http\Controllers\Student\Gamification\SocialActivityController as Studen
 use App\Http\Controllers\Student\Gamification\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Student\NotificationPreferencesController;
 use App\Http\Controllers\Student\NoteController;
+use App\Http\Controllers\Student\StudentFeedbackController;
 use App\Http\Controllers\Student\CourseNoteController;
 use App\Http\Controllers\Student\ReminderController as StudentReminderController;
 use App\Http\Controllers\Student\CalendarController;
@@ -320,6 +321,12 @@ Route::prefix('student')
         Route::prefix('settings')->name('student.settings.')->group(function () {
             Route::get('/notifications', [NotificationPreferencesController::class, 'index'])->name('notifications');
             Route::post('/notifications', [NotificationPreferencesController::class, 'update'])->name('notifications.update');
+        });
+
+        // Student Feedback Routes (ملاحظات AI)
+        Route::prefix('feedback')->name('student.feedback.')->group(function () {
+            Route::get('/', [StudentFeedbackController::class, 'index'])->name('index');
+            Route::get('/{feedback}', [StudentFeedbackController::class, 'show'])->name('show');
         });
 
         // Notes Routes (المفكرة الشخصية)

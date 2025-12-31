@@ -48,6 +48,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - ملاحظات AI -->
+                        <li class="slide">
+                            <a href="{{ route('student.feedback.index') }}" class="side-menu__item">
+                                <i class="fas fa-robot side-menu__icon"></i>
+                                <span class="side-menu__label">ملاحظات AI</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - المعسكرات التدريبية -->
                         <li class="slide">
                             <a href="{{ route('student.training-camps.index') }}" class="side-menu__item">

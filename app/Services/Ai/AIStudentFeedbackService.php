@@ -18,7 +18,7 @@ class AIStudentFeedbackService
     /**
      * توليد ملاحظات عامة للطالب
      */
-    public function generateFeedback(User $student, ?QuizAttempt $attempt = null, ?AIModel $model = null): AIStudentFeedback
+    public function generateFeedback(User $student, ?QuizAttempt $attempt = null, ?AIModel $model = null, array $options = []): AIStudentFeedback
     {
         // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
         set_time_limit(180);
@@ -33,6 +33,12 @@ class AIStudentFeedbackService
 
         try {
             $data = $this->gatherStudentData($student, $attempt);
+            
+            // إضافة التعليمات المخصصة إذا وجدت
+            if (!empty($options['custom_prompt'])) {
+                $data['custom_instructions'] = $options['custom_prompt'];
+            }
+            
             $prompt = $this->promptService->getStudentFeedbackPrompt($student, $data);
             
             $provider = AIProviderFactory::create($model);
@@ -41,16 +47,23 @@ class AIStudentFeedbackService
                 'temperature' => 0.6,
             ]);
 
+            if (empty($response)) {
+                throw new \Exception('لم يتم الحصول على رد من الذكاء الاصطناعي');
+            }
+
             $tokensUsed = $provider->estimateTokens($prompt . $response);
             $cost = $model->getCost($tokensUsed);
 
             // تحليل الاستجابة
             $parsed = $this->parseFeedbackResponse($response);
 
+            // تحديد نوع الملاحظات
+            $feedbackType = $options['feedback_type'] ?? ($attempt ? 'performance' : 'general');
+
             $feedback = AIStudentFeedback::create([
                 'student_id' => $student->id,
                 'quiz_attempt_id' => $attempt?->id,
-                'feedback_type' => $attempt ? 'performance' : 'general',
+                'feedback_type' => $feedbackType,
                 'feedback_text' => $parsed['feedback'] ?? $response,
                 'suggestions' => $parsed['suggestions'] ?? [],
                 'ai_model_id' => $model->id,
@@ -173,21 +186,46 @@ class AIStudentFeedbackService
     {
         $data = [
             'student_name' => $student->name,
+            'student_email' => $student->email,
             'type' => $attempt ? 'performance' : 'general',
         ];
 
         if ($attempt) {
+            // بيانات اختبار محدد
             $data['quiz_title'] = $attempt->quiz->title ?? '';
             $data['score'] = $attempt->score ?? 0;
             $data['max_score'] = $attempt->max_score ?? 0;
             $data['percentage'] = $attempt->percentage ?? 0;
             $data['correct_answers'] = $attempt->questions_correct ?? 0;
             $data['total_questions'] = $attempt->quiz->questions()->count() ?? 0;
+            $data['attempt_date'] = $attempt->created_at?->format('Y-m-d H:i');
         } else {
-            // بيانات عامة
-            $data['total_quizzes'] = $student->quizAttempts()->count();
-            $data['completed_quizzes'] = $student->quizAttempts()->where('status', 'completed')->count();
-            $data['average_score'] = $student->quizAttempts()->where('status', 'completed')->avg('percentage') ?? 0;
+            // بيانات عامة شاملة
+            $quizAttempts = \App\Models\QuizAttempt::where('student_id', $student->id)
+                                                    ->where('status', 'completed')
+                                                    ->get();
+            
+            $data['total_quizzes'] = $quizAttempts->count();
+            $data['completed_quizzes'] = $quizAttempts->count();
+            $data['average_score'] = round($quizAttempts->avg('percentage') ?? 0, 2);
+            
+            // أفضل وأسوأ أداء
+            $bestAttempt = $quizAttempts->sortByDesc('percentage')->first();
+            $worstAttempt = $quizAttempts->sortBy('percentage')->first();
+            
+            if ($bestAttempt) {
+                $data['best_score'] = $bestAttempt->percentage;
+                $data['best_quiz'] = $bestAttempt->quiz->title ?? 'غير محدد';
+            }
+            
+            if ($worstAttempt) {
+                $data['worst_score'] = $worstAttempt->percentage;
+                $data['worst_quiz'] = $worstAttempt->quiz->title ?? 'غير محدد';
+            }
+            
+            // إحصائيات إضافية
+            $data['total_courses'] = $student->enrollments()->count() ?? 0;
+            $data['last_activity'] = $student->last_login_at?->format('Y-m-d H:i') ?? 'غير متاح';
         }
 
         return $data;

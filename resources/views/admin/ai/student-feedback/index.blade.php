@@ -14,6 +14,11 @@
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">ملاحظات AI للطلاب</h5>
             </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('admin.ai.student-feedback.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> توليد ملاحظات جديدة
+                </a>
+            </div>
         </div>
 
         <div class="card custom-card">

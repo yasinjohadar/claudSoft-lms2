@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Models\AIConversation;
 use App\Models\Question;
 use App\Models\Lesson;
+use App\Models\User;
 
 class AIPromptService
 {
@@ -487,14 +488,34 @@ class AIPromptService
             }
             $prompt .= "\n";
         } else {
-            // بيانات عامة
+            // بيانات عامة شاملة
+            $prompt .= "## الإحصائيات العامة:\n";
+            
             if (isset($data['total_quizzes'])) {
-                $prompt .= "عدد الاختبارات المكتملة: {$data['completed_quizzes']} / {$data['total_quizzes']}\n";
+                $prompt .= "عدد الاختبارات المكتملة: {$data['completed_quizzes']}\n";
             }
             if (isset($data['average_score'])) {
                 $prompt .= "متوسط الدرجات: {$data['average_score']}%\n";
             }
+            if (isset($data['best_score']) && isset($data['best_quiz'])) {
+                $prompt .= "أفضل أداء: {$data['best_score']}% في اختبار \"{$data['best_quiz']}\"\n";
+            }
+            if (isset($data['worst_score']) && isset($data['worst_quiz'])) {
+                $prompt .= "أدنى أداء: {$data['worst_score']}% في اختبار \"{$data['worst_quiz']}\"\n";
+            }
+            if (isset($data['total_courses'])) {
+                $prompt .= "عدد الكورسات المسجل فيها: {$data['total_courses']}\n";
+            }
+            if (isset($data['last_activity'])) {
+                $prompt .= "آخر نشاط: {$data['last_activity']}\n";
+            }
             $prompt .= "\n";
+            
+            // إضافة التعليمات المخصصة إن وجدت
+            if (isset($data['custom_instructions']) && !empty($data['custom_instructions'])) {
+                $prompt .= "## تعليمات خاصة:\n";
+                $prompt .= "{$data['custom_instructions']}\n\n";
+            }
         }
 
         $prompt .= "## المطلوب:\n";

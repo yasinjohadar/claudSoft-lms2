@@ -70,6 +70,63 @@ class AIStudentFeedbackController extends Controller
     }
 
     /**
+     * صفحة إنشاء ملاحظات جديدة
+     */
+    public function create()
+    {
+        $students = User::role('student')
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->get();
+        
+        $models = AIModel::where('is_active', true)->get();
+        
+        $feedbackTypes = AIStudentFeedback::FEEDBACK_TYPES;
+
+        return view('admin.ai.student-feedback.create', compact('students', 'models', 'feedbackTypes'));
+    }
+
+    /**
+     * حفظ وتوليد ملاحظات جديدة
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'student_id' => 'required|exists:users,id',
+            'ai_model_id' => 'nullable|exists:ai_models,id',
+            'feedback_type' => 'required|in:performance,general,improvement',
+            'custom_prompt' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $student = User::findOrFail($validated['student_id']);
+            
+            $model = $validated['ai_model_id']
+                ? AIModel::find($validated['ai_model_id'])
+                : null;
+
+            $feedback = $this->feedbackService->generateFeedback(
+                $student, 
+                null, 
+                $model,
+                [
+                    'feedback_type' => $validated['feedback_type'],
+                    'custom_prompt' => $validated['custom_prompt'] ?? null,
+                ]
+            );
+
+            return redirect()->route('admin.ai.student-feedback.show', $feedback)
+                ->with('success', 'تم توليد الملاحظات بنجاح');
+
+        } catch (\Exception $e) {
+            Log::error('Error generating feedback: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء توليد الملاحظات: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
      * عرض ملاحظة واحدة
      */
     public function show(AIStudentFeedback $studentFeedback)

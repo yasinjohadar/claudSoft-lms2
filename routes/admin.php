@@ -685,6 +685,8 @@ Route::prefix('admin')
 
             // Student Feedback
             Route::get('student-feedback', [AIStudentFeedbackController::class, 'index'])->name('student-feedback.index');
+            Route::get('student-feedback/create', [AIStudentFeedbackController::class, 'create'])->name('student-feedback.create');
+            Route::post('student-feedback/store', [AIStudentFeedbackController::class, 'store'])->name('student-feedback.store');
             Route::post('student-feedback/generate/{student}', [AIStudentFeedbackController::class, 'generateFeedback'])->name('student-feedback.generate-feedback');
             Route::get('student-feedback/{studentFeedback}', [AIStudentFeedbackController::class, 'show'])->name('student-feedback.show');
 
