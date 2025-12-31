@@ -6,6 +6,7 @@ use App\Models\AIModel;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\Services\Ai\AIProviderFactory;
 
 class AIModelService
 {
@@ -95,6 +96,96 @@ class AIModelService
         }
 
         return $model->delete();
+    }
+
+    /**
+     * اختبار الموديل
+     */
+    public function testModel(AIModel $model): array
+    {
+        try {
+            // تحديث الـ model من قاعدة البيانات للتأكد من أحدث البيانات
+            $model->refresh();
+            
+            // التحقق من وجود API Key
+            $apiKey = $model->getDecryptedApiKey();
+            
+            if (!$apiKey || trim($apiKey) === '') {
+                return [
+                    'success' => false,
+                    'message' => 'API Key غير موجود. يرجى إدخال API Key أولاً ثم حفظ النموذج.',
+                ];
+            }
+
+            // التحقق من وجود Model Key
+            if (empty($model->model_key)) {
+                return [
+                    'success' => false,
+                    'message' => 'Model Key غير موجود.',
+                ];
+            }
+
+            // إنشاء Provider واختبار الاتصال
+            $provider = AIProviderFactory::create($model);
+            $startTime = microtime(true);
+            $success = $provider->testConnection();
+            $endTime = microtime(true);
+            $responseTime = round(($endTime - $startTime) * 1000, 2); // milliseconds
+
+            if ($success) {
+                return [
+                    'success' => true,
+                    'message' => 'الاتصال ناجح! API Key يعمل بشكل صحيح.',
+                    'response_time_ms' => $responseTime,
+                    'provider' => $model->provider,
+                    'model_key' => $model->model_key,
+                ];
+            } else {
+                // الحصول على رسالة الخطأ من Provider
+                $testResult = $provider->chat([
+                    ['role' => 'user', 'content' => 'Say "OK" only.']
+                ], ['max_tokens' => 10]);
+                
+                // محاولة الحصول على الخطأ من getLastError أولاً
+                $lastError = method_exists($provider, 'getLastError') ? $provider->getLastError() : null;
+                $errorMessage = $lastError ?? $testResult['error'] ?? 'فشل الاتصال. يرجى التحقق من API Key و Model Key.';
+                $statusCode = $testResult['status_code'] ?? null;
+                
+                // إضافة معلومات إضافية للرسالة
+                $detailedMessage = $errorMessage;
+                if ($statusCode) {
+                    $detailedMessage .= " (رمز الخطأ: $statusCode)";
+                }
+                
+                // إضافة معلومات عن Model Key و API Key
+                $detailedMessage .= "\n\nمعلومات التكوين:";
+                $detailedMessage .= "\n- Provider: " . $model->provider;
+                $detailedMessage .= "\n- Model Key: " . $model->model_key;
+                $detailedMessage .= "\n- API Key موجود: " . (!empty($apiKey) ? 'نعم (' . strlen($apiKey) . ' حرف)' : 'لا');
+                $detailedMessage .= "\n- Base URL: " . ($model->base_url ?: 'الافتراضي');
+                $detailedMessage .= "\n- API Endpoint: " . ($model->api_endpoint ?: 'الافتراضي');
+                
+                return [
+                    'success' => false,
+                    'message' => $detailedMessage,
+                    'response_time_ms' => $responseTime,
+                    'provider' => $model->provider,
+                    'model_key' => $model->model_key,
+                    'status_code' => $statusCode,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('Error testing AI model: ' . $e->getMessage(), [
+                'model_id' => $model->id,
+                'provider' => $model->provider,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return [
+                'success' => false,
+                'message' => 'خطأ في الاختبار: ' . $e->getMessage(),
+                'provider' => $model->provider,
+            ];
+        }
     }
 
     /**
