@@ -69,9 +69,11 @@
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ $course->title }}</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.groups.index', $course->id) }}">المجموعات</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('groups.all') }}">المجموعات</a></li>
+                            @if($course)
+                                <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
+                                <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ $course->title }}</a></li>
+                            @endif
                             <li class="breadcrumb-item active">{{ $group->name }}</li>
                         </ol>
                     </nav>
@@ -88,10 +90,16 @@
                         @endif
                     </div>
                     <div class="col-md-4 text-end">
-                        <a href="{{ route('courses.groups.edit', [$course->id, $group->id]) }}" class="btn btn-light me-2">
-                            <i class="fas fa-edit me-2"></i>تعديل
-                        </a>
-                        <form action="{{ route('courses.groups.destroy', [$course->id, $group->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذه المجموعة؟');">
+                        @if($course)
+                            <a href="{{ route('courses.groups.edit', [$course->id, $group->id]) }}" class="btn btn-light me-2">
+                                <i class="fas fa-edit me-2"></i>تعديل
+                            </a>
+                        @else
+                            <a href="{{ route('groups.edit', $group->id) }}" class="btn btn-light me-2">
+                                <i class="fas fa-edit me-2"></i>تعديل
+                            </a>
+                        @endif
+                        <form action="{{ route('groups.delete', $group->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذه المجموعة؟');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger">
@@ -191,7 +199,7 @@
 
                         <div class="card-body">
                             <!-- Search and Filter Form -->
-                            <form method="GET" action="{{ route('courses.groups.show', [$course->id, $group->id]) }}" class="mb-4">
+                            <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4">
                                 <div class="row g-3 align-items-end">
                                     <div class="col-md-4">
                                         <label class="form-label">البحث</label>
@@ -220,7 +228,7 @@
                                             <button type="submit" class="btn btn-primary flex-fill">
                                                 <i class="fas fa-search me-1"></i>بحث
                                             </button>
-                                            <a href="{{ route('courses.groups.show', [$course->id, $group->id]) }}" class="btn btn-outline-secondary" title="إعادة تعيين">
+                                            <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين">
                                                 <i class="fas fa-redo me-1"></i>
                                             </a>
                                         </div>

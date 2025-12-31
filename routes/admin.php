@@ -198,6 +198,9 @@ Route::prefix('admin')
         Route::get('groups/select-course', [CourseGroupController::class, 'selectCourse'])->name('groups.select-course');
         Route::get('groups/create-with-course', [CourseGroupController::class, 'createWithCourse'])->name('groups.create-with-course');
         Route::resource('courses.groups', CourseGroupController::class);
+        // Route for showing group without requiring courseId
+        Route::get('groups/{id}/show', [CourseGroupController::class, 'showGroup'])->name('groups.show');
+        Route::get('groups/{id}/edit', [CourseGroupController::class, 'editGroup'])->name('groups.edit');
         Route::post('groups/{groupId}/add-member', [CourseGroupController::class, 'addMember'])->name('groups.add-member');
         Route::get('groups/{groupId}/bulk-enroll', [CourseGroupController::class, 'showBulkEnrollPage'])->name('groups.bulk-enroll-page');
         Route::post('groups/{groupId}/add-bulk-members', [CourseGroupController::class, 'addBulkMembers'])->name('groups.add-bulk-members');

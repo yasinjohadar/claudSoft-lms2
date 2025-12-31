@@ -195,7 +195,10 @@
                                                                 {{ $group->name }}
                                                             </a>
                                                         @else
-                                                            <span class="text-primary fw-semibold">{{ $group->name }}</span>
+                                                            <a href="{{ route('groups.show', $group->id) }}"
+                                                               class="text-primary fw-semibold">
+                                                                {{ $group->name }}
+                                                            </a>
                                                         @endif
                                                         @if($group->description)
                                                             <small class="d-block text-muted">{{ Str::limit($group->description, 50) }}</small>
@@ -259,12 +262,14 @@
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                     @else
-                                                        <span class="btn btn-sm btn-secondary" title="لا يمكن العرض - لا توجد كورسات مرتبطة">
-                                                            <i class="fas fa-eye-slash"></i>
-                                                        </span>
-                                                        <span class="btn btn-sm btn-secondary" title="لا يمكن التعديل - لا توجد كورسات مرتبطة">
+                                                        <a href="{{ route('groups.show', $group->id) }}"
+                                                           class="btn btn-sm btn-info" title="عرض">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('groups.edit', $group->id) }}"
+                                                           class="btn btn-sm btn-primary" title="تعديل">
                                                             <i class="fas fa-edit"></i>
-                                                        </span>
+                                                        </a>
                                                     @endif
                                                     <button type="button" class="btn btn-sm btn-danger" title="حذف"
                                                             data-bs-toggle="modal"

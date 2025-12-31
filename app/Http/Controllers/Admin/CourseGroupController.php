@@ -156,12 +156,8 @@ class CourseGroupController extends Controller
                 $course = $group->courses->first();
             }
 
-            // If still no course, redirect with error
-            if (!$course) {
-                return redirect()
-                    ->route('groups.all')
-                    ->with('error', 'لا يمكن عرض تفاصيل المجموعة: لا توجد كورسات مرتبطة بهذه المجموعة. يرجى ربط المجموعة بكورس أولاً.');
-            }
+            // If still no course, we'll proceed without it (course will be null)
+            // The view should handle this case gracefully
 
             // Get statistics
             $stats = [
@@ -762,6 +758,94 @@ class CourseGroupController extends Controller
             return redirect()
                 ->route('groups.all')
                 ->with('error', 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show group details without requiring courseId.
+     */
+    public function showGroup(Request $request, $id)
+    {
+        try {
+            $group = CourseGroup::with([
+                'courses',
+                'creator',
+                'leaders',
+                'groupEnrollments'
+            ])
+            ->withCount('members')
+            ->findOrFail($id);
+
+            // Get first course if available, otherwise null
+            $course = $group->courses->first();
+
+            // Get statistics
+            $stats = [
+                'total_members' => $group->members_count ?? $group->getMembersCount(),
+                'available_slots' => $group->getAvailableSlots(),
+                'is_full' => $group->isFull(),
+                'leaders_count' => $group->leaders()->count(),
+                'regular_members_count' => $group->members()->where('role', 'member')->count(),
+            ];
+
+            // Get paginated members with search and filters
+            $membersQuery = $group->members()->with('student');
+
+            // Search filter
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $membersQuery->whereHas('student', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+
+            // Role filter
+            if ($request->filled('role')) {
+                $membersQuery->where('role', $request->role);
+            }
+
+            // Sort
+            $sortBy = $request->get('sort', 'joined_at');
+            $sortOrder = $request->get('order', 'desc');
+            $membersQuery->orderBy($sortBy, $sortOrder);
+
+            $members = $membersQuery->paginate($request->get('per_page', 15));
+
+            // Get available students (not in this group)
+            $groupStudentIds = $group->students->pluck('id')->toArray();
+            $availableStudents = User::role('student')
+                ->whereNotIn('id', $groupStudentIds)
+                ->get();
+
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members'));
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('groups.all')
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Edit group without requiring courseId.
+     */
+    public function editGroup($id)
+    {
+        try {
+            $group = CourseGroup::with('courses')
+                                ->withCount('members')
+                                ->findOrFail($id);
+            
+            // Get first course if available
+            $course = $group->courses->first();
+            $courses = Course::all();
+
+            return view('admin.pages.groups.edit', compact('course', 'group', 'courses'));
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('groups.all')
+                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
         }
     }
 }
