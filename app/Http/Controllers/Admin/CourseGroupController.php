@@ -128,7 +128,6 @@ class CourseGroupController extends Controller
     public function show(Request $request, $courseId, $id)
     {
         try {
-            $course = Course::findOrFail($courseId);
             $group = CourseGroup::with([
                 'courses',
                 'creator',
@@ -137,6 +136,32 @@ class CourseGroupController extends Controller
             ])
             ->withCount('members')
             ->findOrFail($id);
+
+            // Get the course - use provided courseId if valid, otherwise use first course from group
+            $course = null;
+            if ($courseId) {
+                try {
+                    $course = Course::findOrFail($courseId);
+                    // Verify that this course is actually associated with the group
+                    if (!$group->courses->contains('id', $courseId)) {
+                        $course = null;
+                    }
+                } catch (\Exception $e) {
+                    $course = null;
+                }
+            }
+
+            // If no valid course found, try to get first course from group
+            if (!$course && $group->courses->count() > 0) {
+                $course = $group->courses->first();
+            }
+
+            // If still no course, redirect with error
+            if (!$course) {
+                return redirect()
+                    ->route('groups.all')
+                    ->with('error', 'لا يمكن عرض تفاصيل المجموعة: لا توجد كورسات مرتبطة بهذه المجموعة. يرجى ربط المجموعة بكورس أولاً.');
+            }
 
             // Get statistics
             $stats = [

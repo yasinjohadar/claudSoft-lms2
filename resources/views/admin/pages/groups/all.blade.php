@@ -186,10 +186,17 @@
                                                         <i class="fas fa-users"></i>
                                                     </span>
                                                     <div>
-                                                        <a href="{{ route('courses.groups.show', [$group->courses->first()->id ?? 1, $group->id]) }}"
-                                                           class="text-primary fw-semibold">
-                                                            {{ $group->name }}
-                                                        </a>
+                                                        @php
+                                                            $firstCourseForLink = $group->courses->first();
+                                                        @endphp
+                                                        @if($firstCourseForLink)
+                                                            <a href="{{ route('courses.groups.show', [$firstCourseForLink->id, $group->id]) }}"
+                                                               class="text-primary fw-semibold">
+                                                                {{ $group->name }}
+                                                            </a>
+                                                        @else
+                                                            <span class="text-primary fw-semibold">{{ $group->name }}</span>
+                                                        @endif
                                                         @if($group->description)
                                                             <small class="d-block text-muted">{{ Str::limit($group->description, 50) }}</small>
                                                         @endif
@@ -238,14 +245,27 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group">
-                                                    <a href="{{ route('courses.groups.show', [$group->courses->first()->id ?? 1, $group->id]) }}"
-                                                       class="btn btn-sm btn-info" title="عرض">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('courses.groups.edit', [$group->courses->first()->id ?? 1, $group->id]) }}"
-                                                       class="btn btn-sm btn-primary" title="تعديل">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
+                                                    @php
+                                                        $firstCourse = $group->courses->first();
+                                                        $courseId = $firstCourse ? $firstCourse->id : null;
+                                                    @endphp
+                                                    @if($courseId)
+                                                        <a href="{{ route('courses.groups.show', [$courseId, $group->id]) }}"
+                                                           class="btn btn-sm btn-info" title="عرض">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('courses.groups.edit', [$courseId, $group->id]) }}"
+                                                           class="btn btn-sm btn-primary" title="تعديل">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    @else
+                                                        <span class="btn btn-sm btn-secondary" title="لا يمكن العرض - لا توجد كورسات مرتبطة">
+                                                            <i class="fas fa-eye-slash"></i>
+                                                        </span>
+                                                        <span class="btn btn-sm btn-secondary" title="لا يمكن التعديل - لا توجد كورسات مرتبطة">
+                                                            <i class="fas fa-edit"></i>
+                                                        </span>
+                                                    @endif
                                                     <button type="button" class="btn btn-sm btn-danger" title="حذف"
                                                             data-bs-toggle="modal"
                                                             data-bs-target="#deleteModal{{ $group->id }}"
