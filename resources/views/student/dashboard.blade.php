@@ -288,7 +288,11 @@
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div>
-                <h4 class="mb-2">مرحباً بك! 👋</h4>
+                @php
+                    $user = auth()->user();
+                    $displayName = $user->name_ar ?? $user->name ?? '';
+                @endphp
+                <h4 class="mb-2">مرحباً بك{{ $displayName ? ' ' . $displayName : '' }}! 👋</h4>
                 <p class="mb-0 text-muted fs-6">
                     <i class="bi bi-calendar-event me-2"></i>{{ now()->locale('ar')->translatedFormat('l، j F Y') }}
                 </p>
