@@ -296,6 +296,10 @@
                                                        class="btn btn-sm btn-primary" title="تعديل">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
+                                                    <a href="{{ route('courses.enrollments.index', $course->id) }}"
+                                                       class="btn btn-sm btn-success" title="التسجيلات">
+                                                        <i class="fas fa-users"></i>
+                                                    </a>
                                                     <button type="button"
                                                             class="btn btn-sm btn-{{ $course->is_published ? 'warning' : 'success' }}"
                                                             onclick="togglePublish({{ $course->id }}, '{{ e(Str::limit($course->title, 40)) }}', {{ $course->is_published ? 'true' : 'false' }})"

@@ -21,7 +21,8 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Course::with(['category', 'creator', 'enrollments']);
+            $query = Course::with(['category', 'creator'])
+                ->withCount('enrollments');
 
             // Search
             if ($request->filled('search')) {
