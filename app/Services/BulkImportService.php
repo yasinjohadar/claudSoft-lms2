@@ -340,11 +340,7 @@ class BulkImportService
         }
 
         // التحقق من العضوية المسبقة
-        $existingMember = CourseGroupMember::where('group_id', $group->id)
-            ->where('student_id', $user->id)
-            ->first();
-
-        if ($existingMember) {
+        if ($group->hasMember($user)) {
             return [
                 'success' => false,
                 'skipped' => true,
@@ -353,25 +349,26 @@ class BulkImportService
         }
 
         // التحقق من امتلاء المجموعة
-        if ($group->max_members) {
-            $currentMembers = CourseGroupMember::where('group_id', $group->id)->count();
-            if ($currentMembers >= $group->max_members) {
-                return [
-                    'success' => false,
-                    'error' => 'المجموعة ممتلئة (الحد الأقصى: ' . $group->max_members . ')',
-                ];
-            }
+        if ($group->isFull()) {
+            return [
+                'success' => false,
+                'error' => 'المجموعة ممتلئة (الحد الأقصى: ' . $group->max_members . ')',
+            ];
         }
 
         try {
             DB::beginTransaction();
 
-            CourseGroupMember::create([
-                'group_id' => $group->id,
-                'student_id' => $user->id,
-                'role' => 'member',
-                'joined_at' => now(),
-            ]);
+            // Use the addMember method which automatically enrolls students in group courses
+            $member = $group->addMember($user, 'member');
+
+            if (!$member) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'error' => 'فشل في إضافة الطالب إلى المجموعة',
+                ];
+            }
 
             DB::commit();
 
