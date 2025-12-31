@@ -26,6 +26,7 @@ class UpdateProfileRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -67,7 +68,8 @@ class UpdateProfileRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'name' => 'الاسم',
+            'name' => 'الاسم بالإنجليزية',
+            'name_ar' => 'الاسم بالعربية',
             'email' => 'البريد الإلكتروني',
             'phone' => 'رقم الهاتف',
             'national_id' => 'رقم الهوية',

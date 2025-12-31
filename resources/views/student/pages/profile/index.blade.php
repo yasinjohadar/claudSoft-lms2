@@ -156,7 +156,7 @@
                         @endif
                     </div>
                     <div class="col">
-                        <h2 class="mb-2 fw-bold">{{ $student->name }}</h2>
+                        <h2 class="mb-2 fw-bold">{{ $student->name_ar ?? $student->name }}</h2>
                         <p class="mb-1"><i class="fa fa-envelope me-2"></i>{{ $student->email }}</p>
                         @if($student->phone)
                             <p class="mb-1"><i class="fa fa-phone me-2"></i>{{ $student->phone }}</p>
@@ -180,7 +180,18 @@
                                 <div class="col-md-6">
                                     <div class="info-row">
                                         <div class="info-label">
-                                            <i class="fa fa-user text-primary me-2"></i>الاسم الكامل
+                                            <i class="fa fa-user text-primary me-2"></i>الاسم بالعربية
+                                        </div>
+                                        <div class="info-value {{ $student->name_ar ? '' : 'empty' }}">
+                                            {{ $student->name_ar ?? 'غير محدد' }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fa fa-user text-primary me-2"></i>الاسم بالإنجليزية
                                         </div>
                                         <div class="info-value">{{ $student->name }}</div>
                                     </div>

@@ -55,7 +55,13 @@
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">الاسم الكامل <span class="text-danger">*</span></label>
+                                    <label class="form-label">الاسم بالعربية</label>
+                                    <input type="text" class="form-control @error('name_ar') is-invalid @enderror" name="name_ar" value="{{ old('name_ar', $student->name_ar) }}" placeholder="أدخل الاسم بالعربية">
+                                    @error('name_ar')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <small class="text-muted">سيتم استخدام هذا الاسم في الترحيب والعرض</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">الاسم بالإنجليزية <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $student->name) }}" required>
                                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>

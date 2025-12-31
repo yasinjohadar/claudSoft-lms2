@@ -48,6 +48,12 @@ class StudentProfileController extends Controller
             $student->name = $request->name;
             $student->email = $request->email;
 
+            if ($request->filled('name_ar')) {
+                $student->name_ar = $request->name_ar;
+            } else {
+                $student->name_ar = null;
+            }
+
             if ($request->filled('phone')) {
                 $student->phone = $request->phone;
             }
