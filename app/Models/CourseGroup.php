@@ -171,6 +171,7 @@ class CourseGroup extends Model
 
     /**
      * Add a member to the group.
+     * Automatically enrolls the student in all courses associated with this group.
      */
     public function addMember(User $user, string $role = 'member'): ?CourseGroupMember
     {
@@ -182,11 +183,19 @@ class CourseGroup extends Model
             return null;
         }
 
-        return $this->members()->create([
+        // Add member to group
+        $member = $this->members()->create([
             'student_id' => $user->id,
             'role' => $role,
             'joined_at' => now(),
         ]);
+
+        // Automatically enroll student in all group courses
+        if ($member) {
+            $this->enrollStudentInGroupCourses($user);
+        }
+
+        return $member;
     }
 
     /**
@@ -195,5 +204,68 @@ class CourseGroup extends Model
     public function removeMember(User $user): bool
     {
         return $this->members()->where('student_id', $user->id)->delete() > 0;
+    }
+
+    /**
+     * Enroll student in all courses associated with this group.
+     * If student is already enrolled, update the enrollment status to active.
+     *
+     * @param User $student
+     * @param int|null $enrolledBy User ID who is enrolling the student (defaults to group creator or auth user)
+     * @return array Returns array with 'enrolled' count and 'updated' count
+     */
+    public function enrollStudentInGroupCourses(User $student, ?int $enrolledBy = null): array
+    {
+        $enrolledCount = 0;
+        $updatedCount = 0;
+
+        // Get all courses associated with this group
+        $courses = $this->courses;
+
+        if ($courses->isEmpty()) {
+            return [
+                'enrolled' => 0,
+                'updated' => 0,
+                'total' => 0
+            ];
+        }
+
+        // Determine who is enrolling the student
+        $enrolledById = $enrolledBy ?? auth()->id() ?? $this->created_by;
+
+        foreach ($courses as $course) {
+            // Check if student is already enrolled in this course
+            $existingEnrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if ($existingEnrollment) {
+                // Update existing enrollment
+                $existingEnrollment->update([
+                    'enrollment_status' => 'active',
+                    'enrollment_date' => now(),
+                    'enrolled_by' => $enrolledById,
+                ]);
+                $updatedCount++;
+            } else {
+                // Create new enrollment
+                \App\Models\CourseEnrollment::create([
+                    'course_id' => $course->id,
+                    'student_id' => $student->id,
+                    'enrollment_status' => 'active',
+                    'enrollment_date' => now(),
+                    'enrolled_by' => $enrolledById,
+                    'completion_percentage' => 0,
+                    'certificate_issued' => false,
+                ]);
+                $enrolledCount++;
+            }
+        }
+
+        return [
+            'enrolled' => $enrolledCount,
+            'updated' => $updatedCount,
+            'total' => $courses->count()
+        ];
     }
 }
