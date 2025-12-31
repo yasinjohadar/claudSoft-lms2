@@ -364,20 +364,32 @@ class CourseController extends Controller
             // Check if course has active enrollments
             $activeEnrollments = $course->enrollments()->where('enrollment_status', 'active')->count();
             if ($activeEnrollments > 0) {
+                DB::rollBack();
                 return redirect()
                     ->back()
-                    ->with('error', 'لا يمكن حذف الكورس لوجود طلاب مسجلين فيه');
+                    ->with('error', 'لا يمكن حذف الكورس لوجود ' . $activeEnrollments . ' طالب مسجل فيه. يرجى إلغاء تسجيل الطلاب أولاً.');
             }
 
+            $courseTitle = $course->title;
             $course->delete();
 
             DB::commit();
 
             return redirect()
                 ->route('courses.index')
-                ->with('success', 'تم حذف الكورس بنجاح');
+                ->with('success', 'تم حذف الكورس "' . $courseTitle . '" بنجاح.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return redirect()
+                ->back()
+                ->with('error', 'الكورس المطلوب غير موجود.');
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            \Log::error('Error deleting course: ' . $e->getMessage(), [
+                'course_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return redirect()
                 ->back()

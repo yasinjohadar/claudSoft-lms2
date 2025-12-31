@@ -443,6 +443,7 @@
             if (!btn) return;
 
             e.preventDefault();
+            e.stopPropagation();
 
             deleteForm = btn.closest('form.course-delete-form');
             if (!deleteForm) return;
