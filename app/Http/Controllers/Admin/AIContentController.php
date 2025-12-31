@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AIModel;
 use App\Models\Lesson;
 use App\Models\Course;
-use App\Services\AI\AIContentSummaryService;
-use App\Services\AI\AIContentImprovementService;
+use App\Services\Ai\AIContentSummaryService;
+use App\Services\Ai\AIContentImprovementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 

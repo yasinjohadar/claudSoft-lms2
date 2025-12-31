@@ -7,7 +7,7 @@ use App\Models\AIStudentFeedback;
 use App\Models\AIModel;
 use App\Models\User;
 use App\Models\QuizAttempt;
-use App\Services\AI\AIStudentFeedbackService;
+use App\Services\Ai\AIStudentFeedbackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
