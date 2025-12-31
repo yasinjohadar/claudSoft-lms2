@@ -52,15 +52,48 @@
 @stop
 
 @section('content')
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-check-circle me-2"></i>نجح!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
     <div class="main-content app-content">
         <div class="container-fluid">
+            
+            <!-- Alerts -->
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show mb-4 mt-3" role="alert" style="font-size: 1.1rem; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); border-left: 4px solid #28a745; background-color: #d4edda !important; color: #155724 !important;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle me-3 fs-4" style="color: #28a745;"></i>
+                        <div class="flex-grow-1">
+                            <strong class="d-block mb-1" style="color: #155724;">نجح!</strong>
+                            <span style="color: #155724;">{{ session('success') }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show mb-4 mt-3" role="alert" style="font-size: 1.1rem; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); border-left: 4px solid #dc3545; background-color: #f8d7da !important; color: #721c24 !important;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-circle me-3 fs-4" style="color: #dc3545;"></i>
+                        <div class="flex-grow-1">
+                            <strong class="d-block mb-1" style="color: #721c24;">خطأ!</strong>
+                            <span style="color: #721c24;">{{ session('error') }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+            @endif
+
+            @if (session('warning'))
+                <div class="alert alert-warning alert-dismissible fade show mb-4 mt-3" role="alert" style="font-size: 1.1rem; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3); border-left: 4px solid #ffc107; background-color: #fff3cd !important; color: #856404 !important;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-3 fs-4" style="color: #ffc107;"></i>
+                        <div class="flex-grow-1">
+                            <strong class="d-block mb-1" style="color: #856404;">تحذير!</strong>
+                            <span style="color: #856404;">{{ session('warning') }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+            @endif
 
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
@@ -196,6 +229,24 @@
                                 </a>
                             </div>
                         </div>
+                        
+                        <!-- Bulk Actions Bar -->
+                        <div class="card-body border-bottom bg-light" id="bulkActionsBar" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold text-primary" id="selectedCount">0</span>
+                                    <span class="text-muted">عضو محدد</span>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-danger btn-sm" id="bulkRemoveBtn" disabled>
+                                        <i class="fas fa-user-times me-2"></i>فك الارتباط (<span id="bulkRemoveCount">0</span>)
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm ms-2" id="clearSelectionBtn">
+                                        <i class="fas fa-times me-2"></i>إلغاء التحديد
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="card-body">
                             <!-- Search and Filter Form -->
@@ -241,6 +292,9 @@
                                     <table class="table table-hover text-nowrap">
                                         <thead>
                                             <tr>
+                                                <th width="50">
+                                                    <input type="checkbox" id="selectAllMembers" title="تحديد الكل">
+                                                </th>
                                                 <th>#</th>
                                                 <th>اسم الطالب</th>
                                                 <th>البريد الإلكتروني</th>
@@ -254,6 +308,9 @@
                                             @foreach($members as $index => $memberRecord)
                                                 @if($memberRecord->student)
                                                     <tr>
+                                                        <td>
+                                                            <input type="checkbox" class="member-checkbox" value="{{ $memberRecord->student_id }}" data-member-name="{{ $memberRecord->student->name }}">
+                                                        </td>
                                                         <td>{{ ($members->currentPage() - 1) * $members->perPage() + $index + 1 }}</td>
                                                         <td>
                                                             <div class="d-flex align-items-center">
@@ -463,8 +520,127 @@
 
 @section('script')
 <script>
+    // Scroll to top to show alert message
+    if (document.querySelector('.alert')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Auto-hide alerts after 10 seconds (longer for bulk operations)
     setTimeout(function() {
-        $('.alert').fadeOut('slow');
-    }, 5000);
+        $('.alert').fadeOut('slow', function() {
+            $(this).remove();
+        });
+    }, 10000);
+
+    // Bulk Selection and Actions
+    (function() {
+        const selectAllCheckbox = document.getElementById('selectAllMembers');
+        const memberCheckboxes = document.querySelectorAll('.member-checkbox');
+        const bulkActionsBar = document.getElementById('bulkActionsBar');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const bulkRemoveBtn = document.getElementById('bulkRemoveBtn');
+        const bulkRemoveCountSpan = document.getElementById('bulkRemoveCount');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+
+        // Update bulk actions bar visibility and counts
+        function updateBulkActions() {
+            const selected = document.querySelectorAll('.member-checkbox:checked');
+            const count = selected.length;
+            
+            if (count > 0) {
+                bulkActionsBar.style.display = 'block';
+                selectedCountSpan.textContent = count;
+                bulkRemoveCountSpan.textContent = count;
+                bulkRemoveBtn.disabled = false;
+            } else {
+                bulkActionsBar.style.display = 'none';
+                bulkRemoveBtn.disabled = true;
+            }
+
+            // Update select all checkbox state
+            if (selectAllCheckbox) {
+                selectAllCheckbox.indeterminate = count > 0 && count < memberCheckboxes.length;
+                selectAllCheckbox.checked = count === memberCheckboxes.length && count > 0;
+            }
+        }
+
+        // Select all checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                memberCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkActions();
+            });
+        }
+
+        // Individual checkboxes
+        memberCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBulkActions);
+        });
+
+        // Clear selection
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', function() {
+                memberCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+                updateBulkActions();
+            });
+        }
+
+        // Bulk remove
+        if (bulkRemoveBtn) {
+            bulkRemoveBtn.addEventListener('click', function() {
+                const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'));
+                const selectedIds = selected.map(cb => cb.value);
+                const selectedNames = selected.map(cb => cb.getAttribute('data-member-name'));
+
+                if (selectedIds.length === 0) {
+                    alert('يرجى تحديد عضو واحد على الأقل');
+                    return;
+                }
+
+                const confirmMessage = `هل أنت متأكد من إزالة ${selectedIds.length} عضو من المجموعة؟\n\nالأعضاء:\n${selectedNames.join('\n')}\n\nسيتم أيضاً إلغاء تسجيلهم من الكورسات المرتبطة بهذه المجموعة.`;
+
+                if (confirm(confirmMessage)) {
+                    // Create form and submit
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{{ route("groups.bulk-remove-members", $group->id) }}';
+                    
+                    const csrfToken = document.createElement('input');
+                    csrfToken.type = 'hidden';
+                    csrfToken.name = '_token';
+                    csrfToken.value = '{{ csrf_token() }}';
+                    form.appendChild(csrfToken);
+
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    form.appendChild(methodInput);
+
+                    selectedIds.forEach(id => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'member_ids[]';
+                        input.value = id;
+                        form.appendChild(input);
+                    });
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
+        // Initial update
+        updateBulkActions();
+    })();
 </script>
 @stop

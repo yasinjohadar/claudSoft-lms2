@@ -524,6 +524,77 @@ class CourseGroupController extends Controller
     }
 
     /**
+     * Bulk remove members from group.
+     */
+    public function bulkRemoveMembers(Request $request, $groupId)
+    {
+        $validated = $request->validate([
+            'member_ids' => 'required|array|min:1',
+            'member_ids.*' => 'exists:users,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $group = CourseGroup::findOrFail($groupId);
+            $removedCount = 0;
+            $skippedCount = 0;
+            $errors = [];
+
+            foreach ($validated['member_ids'] as $memberId) {
+                try {
+                    $student = User::findOrFail($memberId);
+
+                    if (!$group->hasMember($student)) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    $group->removeMember($student);
+                    $removedCount++;
+                } catch (\Exception $e) {
+                    $errors[] = "خطأ في إزالة العضو ID: {$memberId} - " . $e->getMessage();
+                }
+            }
+
+            DB::commit();
+
+            if ($removedCount === 0) {
+                $message = "لم يتم إزالة أي عضو";
+                if ($skippedCount > 0) {
+                    $message .= " (تم تخطي {$skippedCount} عضو غير موجود في المجموعة)";
+                }
+                return redirect()
+                    ->back()
+                    ->with('warning', $message);
+            }
+
+            $message = "✅ تم فك الارتباط بنجاح! تم إزالة {$removedCount} عضو من المجموعة";
+            if ($removedCount > 1) {
+                $message .= " وتم إلغاء تسجيلهم من الكورسات المرتبطة بهذه المجموعة";
+            } else {
+                $message .= " وتم إلغاء تسجيله من الكورسات المرتبطة بهذه المجموعة";
+            }
+            
+            if ($skippedCount > 0) {
+                $message .= " (تم تخطي {$skippedCount} عضو غير موجود في المجموعة)";
+            }
+            if (!empty($errors)) {
+                $message .= ". " . implode('. ', $errors);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء إزالة الأعضاء: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Update member role.
      */
     public function updateMemberRole(Request $request, $id)
