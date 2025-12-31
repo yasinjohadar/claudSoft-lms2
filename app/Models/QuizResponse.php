@@ -37,10 +37,6 @@ class QuizResponse extends Model
         'feedback',
         'auto_graded',
         'graded_at',
-        'ai_graded',
-        'ai_request_id',
-        'ai_feedback',
-        'ai_grading_details',
     ];
 
     /**
@@ -59,9 +55,6 @@ class QuizResponse extends Model
         'answer_order' => 'integer',
         'auto_graded' => 'boolean',
         'graded_at' => 'datetime',
-        'ai_graded' => 'boolean',
-        'ai_feedback' => 'array',
-        'ai_grading_details' => 'array',
     ];
 
     /**
@@ -516,11 +509,8 @@ class QuizResponse extends Model
             return;
         }
 
-        $rubric = \App\Models\EssayGradingRubric::where('question_id', $question->id)->first();
-        if ($rubric && !$rubric->ai_grading_enabled) {
-            // AI grading disabled for this question
-            return;
-        }
+        // AI grading removed - skip automatic grading for essay questions
+        return;
 
         try {
             $essayGradingService = app(\App\Services\AI\EssayGradingService::class);

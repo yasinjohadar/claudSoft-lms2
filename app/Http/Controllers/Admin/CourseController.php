@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\User;
+use App\Models\Lesson;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -543,5 +544,19 @@ class CourseController extends Controller
                 'message' => 'حدث خطأ أثناء جلب الموديولات: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get lessons for a course (AJAX)
+     */
+    public function getLessons(Course $course)
+    {
+        $lessons = Lesson::whereHas('module.section', function($q) use ($course) {
+            $q->where('course_id', $course->id);
+        })->where('is_published', true)
+          ->select('id', 'title')
+          ->get();
+
+        return response()->json($lessons);
     }
 }

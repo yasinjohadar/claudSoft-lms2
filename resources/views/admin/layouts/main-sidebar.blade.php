@@ -500,36 +500,6 @@
                             </a>
                         </li>
 
-                        <!-- الذكاء الاصطناعي -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.ai.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}">
-                                <i class="fas fa-robot side-menu__icon"></i>
-                                <span class="side-menu__label">الذكاء الاصطناعي</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.ai.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.ai.providers.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.ai.providers.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.providers.*') ? 'active' : '' }}">
-                                        <i class="fas fa-server me-2"></i>مقدمي الخدمة
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.ai.question-generator') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.ai.question-generator') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-generator') ? 'active' : '' }}">
-                                        <i class="fas fa-question-circle me-2"></i>إنشاء الأسئلة
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.ai.quiz-generator') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.ai.quiz-generator') }}" class="side-menu__item {{ request()->routeIs('admin.ai.quiz-generator') ? 'active' : '' }}">
-                                        <i class="fas fa-clipboard-list me-2"></i>إنشاء الاختبارات
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.ai.essay-grading') || request()->routeIs('admin.ai.essay-rubrics') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.ai.essay-grading') }}" class="side-menu__item {{ request()->routeIs('admin.ai.essay-grading') || request()->routeIs('admin.ai.essay-rubrics') ? 'active' : '' }}">
-                                        <i class="fas fa-check-circle me-2"></i>تصحيح المقالي
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
 
                         <!-- Webhooks & Integration -->
                         <li class="slide has-sub {{ request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') ? 'open active' : '' }}">
@@ -578,6 +548,32 @@
                                             <a href="{{ route('admin.n8n.documentation') }}" class="side-menu__item">التوثيق</a>
                                         </li>
                                     </ul>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- الذكاء الاصطناعي -->
+                        <li class="slide has-sub {{ request()->routeIs('admin.ai.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}">
+                                <i class="fas fa-robot side-menu__icon"></i>
+                                <span class="side-menu__label">الذكاء الاصطناعي</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.ai.*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('admin.ai.models.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.models.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.models.*') ? 'active' : '' }}">موديلات AI</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">توليد الأسئلة</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.question-solutions.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-solutions.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-solutions.*') ? 'active' : '' }}">حلول الأسئلة</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.student-feedback.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.student-feedback.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.student-feedback.*') ? 'active' : '' }}">ملاحظات الطلاب</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.settings.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.settings.*') ? 'active' : '' }}">الإعدادات</a>
                                 </li>
                             </ul>
                         </li>

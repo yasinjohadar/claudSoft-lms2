@@ -49,6 +49,13 @@ use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\ContactSettingController;
+use App\Http\Controllers\Admin\AIModelController;
+use App\Http\Controllers\Admin\AIQuestionGenerationController;
+use App\Http\Controllers\Admin\AIQuestionSolvingController;
+use App\Http\Controllers\Admin\AIStudentFeedbackController;
+use App\Http\Controllers\Admin\AIContentController;
+use App\Http\Controllers\Admin\AISettingsController;
+use App\Http\Controllers\Admin\AIGradingSettingsController;
 
 Route::prefix('admin')
     ->middleware('auth')
@@ -112,6 +119,7 @@ Route::prefix('admin')
 
         // Courses routes
         Route::resource('courses', CourseController::class);
+        Route::get('courses/{course}/lessons', [CourseController::class, 'getLessons'])->name('admin.courses.lessons');
         Route::post('courses/{id}/duplicate', [CourseController::class, 'duplicate'])->name('courses.duplicate');
         Route::post('courses/{id}/toggle-publish', [CourseController::class, 'togglePublish'])->name('courses.toggle-publish');
         Route::post('courses/{id}/toggle-visibility', [CourseController::class, 'toggleVisibility'])->name('courses.toggle-visibility');
@@ -642,28 +650,57 @@ Route::prefix('admin')
 
         // ========== AI Routes ==========
         Route::prefix('ai')->name('admin.ai.')->group(function () {
-            // AI Providers
-            Route::resource('providers', \App\Http\Controllers\Admin\AI\AIProviderController::class);
-            Route::post('providers/{provider}/test-connection', [\App\Http\Controllers\Admin\AI\AIProviderController::class, 'testConnection'])->name('providers.test-connection');
-            Route::post('providers/{provider}/set-default', [\App\Http\Controllers\Admin\AI\AIProviderController::class, 'setDefault'])->name('providers.set-default');
+            // AI Models
+            Route::resource('models', AIModelController::class)->names([
+                'index' => 'models.index',
+                'create' => 'models.create',
+                'store' => 'models.store',
+                'edit' => 'models.edit',
+                'update' => 'models.update',
+                'destroy' => 'models.destroy',
+            ]);
+            Route::post('models/{model}/test', [AIModelController::class, 'test'])->name('models.test');
+            Route::post('models/test-temp', [AIModelController::class, 'testTemp'])->name('models.test-temp');
+            Route::post('models/{model}/set-default', [AIModelController::class, 'setDefault'])->name('models.set-default');
+            Route::post('models/{model}/toggle-active', [AIModelController::class, 'toggleActive'])->name('models.toggle-active');
 
-            // Question Generator
-            Route::get('generate-questions', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'index'])->name('question-generator');
-            Route::post('generate-questions', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'generate'])->name('question-generator.generate');
-            Route::post('enhance-question/{questionId}', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'enhance'])->name('question-generator.enhance');
-            Route::get('courses/{courseId}/lessons', [\App\Http\Controllers\Admin\AI\QuestionGeneratorController::class, 'getLessons'])->name('question-generator.lessons');
+            // Question Generations
+            Route::resource('question-generations', AIQuestionGenerationController::class)->names([
+                'index' => 'question-generations.index',
+                'create' => 'question-generations.create',
+                'store' => 'question-generations.store',
+                'show' => 'question-generations.show',
+            ]);
+            Route::post('question-generations/{generation}/process', [AIQuestionGenerationController::class, 'process'])->name('question-generations.process');
+            Route::post('question-generations/{generation}/save', [AIQuestionGenerationController::class, 'save'])->name('question-generations.save');
+            Route::post('question-generations/{generation}/save-selected', [AIQuestionGenerationController::class, 'saveSelected'])->name('question-generations.save-selected');
+            Route::post('question-generations/{generation}/regenerate', [AIQuestionGenerationController::class, 'regenerate'])->name('question-generations.regenerate');
 
-            // Quiz Generator
-            Route::get('generate-quiz', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'index'])->name('quiz-generator');
-            Route::post('generate-quiz', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'generate'])->name('quiz-generator.generate');
-            Route::post('balance-quiz/{quizId}', [\App\Http\Controllers\Admin\AI\QuizGeneratorController::class, 'balance'])->name('quiz-generator.balance');
+            // Question Solutions
+            Route::get('question-solutions', [AIQuestionSolvingController::class, 'index'])->name('question-solutions.index');
+            Route::post('question-solutions/solve/{question}', [AIQuestionSolvingController::class, 'solve'])->name('question-solutions.solve');
+            Route::post('question-solutions/solve-multiple', [AIQuestionSolvingController::class, 'solveMultiple'])->name('question-solutions.solve-multiple');
+            Route::post('question-solutions/{solution}/verify', [AIQuestionSolvingController::class, 'verify'])->name('question-solutions.verify');
+            Route::get('question-solutions/{solution}', [AIQuestionSolvingController::class, 'show'])->name('question-solutions.show');
 
-            // Essay Grading
-            Route::get('essay-grading', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'index'])->name('essay-grading');
-            Route::post('essay-grading/{responseId}/grade', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'grade'])->name('essay-grading.grade');
-            Route::post('essay-grading/{responseId}/review', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'review'])->name('essay-grading.review');
-            Route::get('essay-rubrics', [\App\Http\Controllers\Admin\AI\EssayGradingController::class, 'rubrics'])->name('essay-rubrics');
+            // Student Feedback
+            Route::get('student-feedback', [AIStudentFeedbackController::class, 'index'])->name('student-feedback.index');
+            Route::post('student-feedback/generate/{student}', [AIStudentFeedbackController::class, 'generateFeedback'])->name('student-feedback.generate-feedback');
+            Route::get('student-feedback/{studentFeedback}', [AIStudentFeedbackController::class, 'show'])->name('student-feedback.show');
+
+            // Content
+            Route::post('content/summarize', [AIContentController::class, 'summarize'])->name('content.summarize');
+            Route::get('content/lesson-summary/{lesson}', [AIContentController::class, 'lessonSummary'])->name('content.lesson-summary');
+            Route::post('content/improve', [AIContentController::class, 'improve'])->name('content.improve');
+            Route::post('content/grammar-check', [AIContentController::class, 'grammarCheck'])->name('content.grammar-check');
+
+            // Settings
+            Route::get('settings', [AISettingsController::class, 'index'])->name('settings.index');
+            Route::put('settings', [AISettingsController::class, 'update'])->name('settings.update');
+            Route::get('settings/grading', [AIGradingSettingsController::class, 'index'])->name('settings.grading');
+            Route::put('settings/grading', [AIGradingSettingsController::class, 'update'])->name('settings.grading.update');
         });
+
 
     });
 
