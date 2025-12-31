@@ -50,18 +50,26 @@
         
         .logo-container {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         .logo-container img {
-            max-width: 150px;
+            max-width: 120px;
             height: auto;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
+        }
+        
+        .logo-container .logo-title {
+            color: #0555a2;
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 0;
         }
         
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         
         .login-header h1 {
@@ -241,7 +249,8 @@
 <body>
     <div class="login-container">
         <div class="logo-container">
-            <img src="https://claudsoft.com/wp-content/uploads/2024/10/logo.png" alt="Logo">
+            <img src="{{ asset('assets/logo/logo.png') }}" alt="Logo">
+            <div class="logo-title">أكاديمية كلاودسوفت</div>
         </div>
         
         <div class="login-header">
