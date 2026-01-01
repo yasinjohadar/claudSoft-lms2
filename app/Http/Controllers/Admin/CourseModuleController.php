@@ -351,11 +351,18 @@ class CourseModuleController extends Controller
                 'resources'
             ));
         } catch (\Exception $e) {
-            if ($module && $module->section_id) {
-                return redirect()
-                    ->route('courses.show', $module->course_id)
-                    ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+            // Try to get course_id if module exists
+            try {
+                $module = CourseModule::find($id);
+                if ($module && isset($module->course_id)) {
+                    return redirect()
+                        ->route('courses.show', $module->course_id)
+                        ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+                }
+            } catch (\Exception $e2) {
+                // If we can't get the module, just redirect back
             }
+            
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
@@ -456,6 +463,9 @@ class CourseModuleController extends Controller
         DB::beginTransaction();
         try {
             $module = CourseModule::findOrFail($id);
+            
+            // Save course_id before deletion
+            $courseId = $module->course_id;
 
             // Check if module has completions
             $completionsCount = $module->completions()->count();
@@ -469,7 +479,6 @@ class CourseModuleController extends Controller
 
             DB::commit();
 
-            $courseId = $module->course_id;
             return redirect()
                 ->route('courses.show', $courseId)
                 ->with('success', 'تم حذف الوحدة بنجاح');
