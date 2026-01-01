@@ -73,11 +73,9 @@ class NoteController extends Controller
         return redirect()->back()->with('success', 'تم تحديث الملاحظة بنجاح');
     }
 
-    public function destroy($id)
+    public function destroy(Note $note)
     {
         try {
-            $note = Note::findOrFail($id);
-
             // Check if note belongs to the authenticated user
             if ($note->user_id !== auth()->id()) {
                 return response()->json([
@@ -86,18 +84,19 @@ class NoteController extends Controller
                 ], 403);
             }
 
+            $noteTitle = $note->title;
             $note->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم حذف الملاحظة بنجاح'
+                'message' => 'تم حذف الملاحظة "' . $noteTitle . '" بنجاح'
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الملاحظة غير موجودة'
-            ], 404);
         } catch (\Exception $e) {
+            \Log::error('Note deletion error: ' . $e->getMessage(), [
+                'note_id' => $note->id ?? null,
+                'user_id' => auth()->id()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء حذف الملاحظة: ' . $e->getMessage()

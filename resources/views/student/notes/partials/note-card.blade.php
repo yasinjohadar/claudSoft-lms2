@@ -3,7 +3,7 @@
     $categoryInfo = $categories[$note->category] ?? $categories['personal'];
 @endphp
 
-<div class="card note-card {{ $pinned ? 'pinned' : '' }}" style="border-left-color: {{ $note->color }};">
+<div class="card note-card {{ $pinned ? 'pinned' : '' }}" style="border-left-color: {{ $note->color }};" onclick="viewNote(@json($note))">
     <div class="card-body">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -13,39 +13,39 @@
                     {{ $categoryInfo['icon'] }} {{ $categoryInfo['name'] }}
                 </span>
             </div>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-light" data-bs-toggle="dropdown">
+            <div class="dropdown" onclick="event.stopPropagation();">
+                <button class="btn btn-sm btn-light" data-bs-toggle="dropdown" onclick="event.stopPropagation();">
                     <i class="ri-more-2-fill"></i>
                 </button>
                 <ul class="dropdown-menu">
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);"
-                           onclick='editNote(@json($note))'>
+                           onclick='event.stopPropagation(); editNote(@json($note));'>
                             <i class="ri-edit-line me-2"></i>تعديل
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);"
-                           onclick="togglePin({{ $note->id }})">
+                           onclick="event.stopPropagation(); togglePin({{ $note->id }});">
                             <i class="ri-pushpin-line me-2"></i>{{ $note->is_pinned ? 'إلغاء التثبيت' : 'تثبيت' }}
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);"
-                           onclick="toggleFavorite({{ $note->id }})">
+                           onclick="event.stopPropagation(); toggleFavorite({{ $note->id }});">
                             <i class="ri-star-line me-2"></i>{{ $note->is_favorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة' }}
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);"
-                           onclick="archiveNote({{ $note->id }})">
+                           onclick="event.stopPropagation(); archiveNote({{ $note->id }});">
                             <i class="ri-archive-line me-2"></i>أرشفة
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item text-danger" href="javascript:void(0);"
-                           onclick="deleteNote({{ $note->id }})">
+                           onclick="event.stopPropagation(); deleteNote({{ $note->id }}, event);">
                             <i class="ri-delete-bin-line me-2"></i>حذف
                         </a>
                     </li>

@@ -41,6 +41,44 @@
     .view-toggle .btn {
         border-radius: 8px;
     }
+    
+    /* View Note Modal Styles */
+    #viewNoteModal .modal-content {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    #viewNoteModal .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    #viewNoteContent {
+        line-height: 1.8;
+        font-size: 1.05rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    /* Spin animation */
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    
+    /* Prevent click on card when clicking dropdown */
+    .note-card .dropdown {
+        position: relative;
+        z-index: 10;
+    }
+    
+    .note-card .dropdown-menu {
+        z-index: 1050;
+    }
 </style>
 @endsection
 
@@ -263,6 +301,78 @@
         </div>
     </div>
 </div>
+
+<!-- View Note Modal -->
+<div class="modal fade" id="viewNoteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0" id="viewNoteHeader" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0;">
+                <div class="d-flex align-items-center w-100">
+                    <div class="flex-grow-1">
+                        <h5 class="modal-title mb-0" id="viewNoteTitle">
+                            <i class="ri-file-text-line me-2"></i>عرض الملاحظة
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Category Badge -->
+                <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge px-3 py-2 shadow-sm" id="viewNoteCategory" style="font-size: 0.95rem; font-weight: 600;">
+                        <i class="ri-folder-line me-1"></i>
+                    </span>
+                    <span class="badge bg-warning text-dark ms-2 px-3 py-2 shadow-sm" id="viewNoteImportant" style="display: none; font-weight: 600;">
+                        <i class="ri-star-fill me-1"></i>مهمة ⭐
+                    </span>
+                    <span class="badge bg-info text-white ms-2 px-3 py-2 shadow-sm" id="viewNotePinned" style="display: none; font-weight: 600;">
+                        <i class="ri-pushpin-fill me-1"></i>مثبتة 📌
+                    </span>
+                </div>
+
+                <!-- Content -->
+                <div class="mb-4">
+                    <div class="p-4 rounded shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-right: 5px solid; min-height: 150px;" id="viewNoteContent">
+                    </div>
+                </div>
+
+                <!-- Details -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6" id="viewNoteReminder" style="display: none;">
+                        <div class="d-flex align-items-center p-3 rounded shadow-sm" style="background: linear-gradient(135deg, #e7f3ff 0%, #cfe2ff 100%); border-right: 3px solid #0d6efd;">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; flex-shrink: 0;">
+                                <i class="ri-alarm-line fs-5"></i>
+                            </div>
+                            <div class="ms-3">
+                                <small class="text-muted d-block mb-1" style="font-size: 0.85rem;">⏰ تذكير في</small>
+                                <strong id="viewNoteReminderDate" class="text-primary"></strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center p-3 rounded shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-right: 3px solid #6c757d;">
+                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; flex-shrink: 0;">
+                                <i class="ri-time-line fs-5"></i>
+                            </div>
+                            <div class="ms-3">
+                                <small class="text-muted d-block mb-1" style="font-size: 0.85rem;">📅 تاريخ الإنشاء</small>
+                                <strong id="viewNoteCreatedAt" class="text-dark"></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="ri-close-line me-2"></i>إغلاق
+                </button>
+                <button type="button" class="btn btn-primary" id="editNoteFromViewBtn">
+                    <i class="ri-edit-line me-2"></i>تعديل
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -322,14 +432,31 @@ document.addEventListener('DOMContentLoaded', function() {
                         backgroundColor: '{{ $note->color }}',
                         borderColor: '{{ $note->color }}',
                         extendedProps: {
-                            content: '{{ str_replace(["\n", "\r"], ' ', addslashes($note->content)) }}'
+                            content: '{{ str_replace(["\n", "\r"], ' ', addslashes($note->content)) }}',
+                            category: '{{ $note->category }}',
+                            color: '{{ $note->color }}',
+                            is_important: {{ $note->is_important ? 'true' : 'false' }},
+                            is_pinned: {{ $note->is_pinned ? 'true' : 'false' }},
+                            reminder_at: '{{ $note->reminder_at ? $note->reminder_at->format('Y-m-d H:i:s') : '' }}'
                         }
                     },
                     @endif
                 @endforeach
             ],
             eventClick: function(info) {
-                alert('الملاحظة: ' + info.event.title + '\n\n' + info.event.extendedProps.content);
+                // Get note data from event
+                const note = {
+                    id: info.event.id,
+                    title: info.event.title,
+                    content: info.event.extendedProps.content || '',
+                    category: info.event.extendedProps.category || 'personal',
+                    color: info.event.extendedProps.color || '#3b82f6',
+                    is_important: info.event.extendedProps.is_important || false,
+                    is_pinned: info.event.extendedProps.is_pinned || false,
+                    reminder_at: info.event.extendedProps.reminder_at || null,
+                    created_at: info.event.start
+                };
+                viewNote(note);
             }
         });
         calendar.render();
@@ -403,9 +530,107 @@ function editNote(note) {
     modal.show();
 }
 
+// View Note
+function viewNote(note) {
+    const categories = @json(\App\Models\Note::getCategories());
+    const categoryInfo = categories[note.category] || categories['personal'];
+    const noteColor = note.color || categoryInfo.color || '#3b82f6';
+    
+    // Convert hex to rgb for gradient
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    };
+    
+    const rgb = hexToRgb(noteColor);
+    const lighterColor = rgb ? `rgb(${Math.min(255, rgb.r + 30)}, ${Math.min(255, rgb.g + 30)}, ${Math.min(255, rgb.b + 30)})` : noteColor;
+    
+    // Set header gradient
+    const header = document.getElementById('viewNoteHeader');
+    header.style.background = `linear-gradient(135deg, ${noteColor} 0%, ${lighterColor} 100%)`;
+    
+    // Set title
+    document.getElementById('viewNoteTitle').innerHTML = `<i class="ri-file-text-line me-2"></i>${note.title}`;
+    
+    // Set category badge
+    const categoryBadge = document.getElementById('viewNoteCategory');
+    categoryBadge.textContent = `${categoryInfo.icon} ${categoryInfo.name}`;
+    categoryBadge.style.backgroundColor = categoryInfo.color + '20';
+    categoryBadge.style.color = categoryInfo.color;
+    
+    // Set content
+    document.getElementById('viewNoteContent').innerHTML = note.content.replace(/\n/g, '<br>');
+    document.getElementById('viewNoteContent').style.borderRightColor = noteColor;
+    
+    // Set important badge
+    if (note.is_important) {
+        document.getElementById('viewNoteImportant').style.display = 'inline-block';
+    } else {
+        document.getElementById('viewNoteImportant').style.display = 'none';
+    }
+    
+    // Set pinned badge
+    if (note.is_pinned) {
+        document.getElementById('viewNotePinned').style.display = 'inline-block';
+    } else {
+        document.getElementById('viewNotePinned').style.display = 'none';
+    }
+    
+    // Set reminder
+    if (note.reminder_at) {
+        const reminderDate = new Date(note.reminder_at);
+        document.getElementById('viewNoteReminderDate').textContent = reminderDate.toLocaleString('ar-SA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById('viewNoteReminder').style.display = 'block';
+    } else {
+        document.getElementById('viewNoteReminder').style.display = 'none';
+    }
+    
+    // Set created at
+    const createdAt = new Date(note.created_at);
+    document.getElementById('viewNoteCreatedAt').textContent = createdAt.toLocaleString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    // Set edit button
+    document.getElementById('editNoteFromViewBtn').onclick = function() {
+        bootstrap.Modal.getInstance(document.getElementById('viewNoteModal')).hide();
+        editNote(note);
+    };
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('viewNoteModal'));
+    modal.show();
+}
+
 // Delete Note
-function deleteNote(noteId) {
-    if (confirm('هل أنت متأكد من حذف هذه الملاحظة؟')) {
+function deleteNote(noteId, event) {
+    // Prevent event bubbling if called from dropdown
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    if (confirm('هل أنت متأكد من حذف هذه الملاحظة؟ سيتم حذفها نهائياً.')) {
+        // Show loading
+        const loadingToast = document.createElement('div');
+        loadingToast.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+        loadingToast.style.zIndex = '9999';
+        loadingToast.innerHTML = '<div class="alert alert-info"><i class="ri-loader-4-line spin me-2"></i>جاري الحذف...</div>';
+        document.body.appendChild(loadingToast);
+        
         fetch(`/student/notes/${noteId}`, {
             method: 'DELETE',
             headers: {
@@ -423,17 +648,48 @@ function deleteNote(noteId) {
             return response.json();
         })
         .then(data => {
+            // Remove loading
+            loadingToast.remove();
+            
             if (data.success) {
-                // Show success message
-                alert(data.message || 'تم حذف الملاحظة بنجاح');
-                location.reload();
+                // Show success toast
+                const successToast = document.createElement('div');
+                successToast.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+                successToast.style.zIndex = '9999';
+                successToast.innerHTML = `<div class="alert alert-success alert-dismissible fade show">
+                    <i class="ri-checkbox-circle-line me-2"></i>${data.message || 'تم حذف الملاحظة بنجاح'}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+                document.body.appendChild(successToast);
+                
+                // Reload after 1 second
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
             } else {
                 alert(data.message || 'فشل حذف الملاحظة');
             }
         })
         .catch(error => {
+            // Remove loading
+            loadingToast.remove();
+            
             console.error('Error:', error);
-            alert(error.message || 'حدث خطأ أثناء حذف الملاحظة');
+            
+            // Show error toast
+            const errorToast = document.createElement('div');
+            errorToast.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+            errorToast.style.zIndex = '9999';
+            errorToast.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">
+                <i class="ri-error-warning-line me-2"></i>${error.message || 'حدث خطأ أثناء حذف الملاحظة'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+            document.body.appendChild(errorToast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                errorToast.remove();
+            }, 5000);
         });
     }
 }
