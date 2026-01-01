@@ -1,13 +1,35 @@
 @php
-    $video = $module->content; // Assuming polymorphic relationship
+    $video = $module->modulable; // Get the video from modulable relationship
 @endphp
+
+<style>
+    /* Force Video Container Styles */
+    #videoContainer {
+        position: relative !important;
+        width: 100% !important;
+        padding-bottom: 56.25% !important; /* 16:9 */
+        height: 0 !important;
+        background: #000 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+    #videoContainer iframe,
+    #videoContainer video {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border: none !important;
+    }
+</style>
 
 <!-- Video Player -->
 <div class="video-container" id="videoContainer">
     @if($video)
         @if($video->video_type == 'upload')
             <!-- Uploaded Video -->
-            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;">
+            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                 <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
                 متصفحك لا يدعم تشغيل الفيديو.
             </video>
@@ -18,7 +40,8 @@
                     src="https://www.youtube.com/embed/{{ $video->youtube_id }}?enablejsapi=1&rel=0"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen>
+                    allowfullscreen
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
             </iframe>
 
         @elseif($video->video_type == 'vimeo')
@@ -26,7 +49,8 @@
             <iframe src="https://player.vimeo.com/video/{{ $video->vimeo_id }}?title=0&byline=0&portrait=0"
                     frameborder="0"
                     allow="autoplay; fullscreen; picture-in-picture"
-                    allowfullscreen>
+                    allowfullscreen
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
             </iframe>
 
         @elseif($video->video_type == 'url' || $video->video_type == 'external')
@@ -43,11 +67,12 @@
                         src="{{ $video->video_url }}"
                         frameborder="0"
                         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                        allowfullscreen>
+                        allowfullscreen
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
                 </iframe>
             @else
                 <!-- External URL (direct video) -->
-                <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;">
+                <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                     <source src="{{ $video->video_url }}" type="video/mp4">
                     متصفحك لا يدعم تشغيل الفيديو.
                 </video>
