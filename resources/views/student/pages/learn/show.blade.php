@@ -241,7 +241,8 @@
     .video-container {
         position: relative;
         width: 100%;
-        min-height: 500px;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 Aspect Ratio - same as YouTube */
         background: #000;
         border-radius: 12px;
         overflow: hidden;
@@ -255,7 +256,6 @@
         left: 0;
         width: 100%;
         height: 100%;
-        min-height: 500px;
         border: none;
     }
 
