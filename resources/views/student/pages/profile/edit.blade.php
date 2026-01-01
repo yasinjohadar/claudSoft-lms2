@@ -66,9 +66,9 @@
                                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $student->email) }}" required>
-                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <label class="form-label">البريد الإلكتروني</label>
+                                    <input type="email" class="form-control" value="{{ $student->email }}" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                                    <small class="text-muted">لا يمكن تغيير البريد الإلكتروني</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">رقم الهاتف</label>

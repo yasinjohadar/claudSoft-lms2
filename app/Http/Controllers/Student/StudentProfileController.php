@@ -46,7 +46,7 @@ class StudentProfileController extends Controller
 
             // Update basic information
             $student->name = $request->name;
-            $student->email = $request->email;
+            // Email cannot be changed by student
 
             if ($request->filled('name_ar')) {
                 $student->name_ar = $request->name_ar;
