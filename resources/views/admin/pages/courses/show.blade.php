@@ -1033,7 +1033,12 @@
                 'Accept': 'application/json',
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 location.reload();
@@ -1043,7 +1048,7 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('حدث خطأ في الاتصال');
+            alert('حدث خطأ في الاتصال: ' + error.message);
         });
     }
 
@@ -1103,3 +1108,4 @@
     }, 5000);
 </script>
 @stop
+
