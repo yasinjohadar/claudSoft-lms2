@@ -101,6 +101,13 @@ class CourseLearningController extends Controller
                 }
             ])->findOrFail($moduleId);
 
+            // Check if module is visible
+            if (!$module->is_visible) {
+                return redirect()
+                    ->route('student.courses.show', $module->course_id)
+                    ->with('error', 'هذا الدرس غير متاح حالياً');
+            }
+
             // Load questions for question modules
             if ($module->module_type === 'question_module' && $module->modulable) {
                 $module->modulable->load(['questions.questionType']);

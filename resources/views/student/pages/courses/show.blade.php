@@ -486,7 +486,7 @@
                                 <div class="card-body p-0">
                                     @if($course->sections->count() > 0)
                                         <div class="accordion accordion-customicon1 accordion-primary" id="courseCurriculumAccordion">
-                                            @foreach($course->sections as $index => $section)
+                                            @foreach($course->sections->where('is_visible', true) as $index => $section)
                                                 <div class="accordion-item">
                                                     <h2 class="accordion-header" id="heading-{{ $section->id }}">
                                                         <button class="accordion-button {{ $index == 0 ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse"
@@ -509,7 +509,7 @@
                                                     <div id="collapse-{{ $section->id }}" class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}"
                                                          aria-labelledby="heading-{{ $section->id }}" data-bs-parent="#courseCurriculumAccordion">
                                                         <div class="accordion-body">
-                                                            @forelse($section->modules as $module)
+                                                            @forelse($section->modules->where('is_visible', true) as $module)
                                                                 @php
                                                                     $canAccess = $enrollment || $module->is_preview;
                                                                     $moduleUrl = $canAccess ? route('student.learn.module', $module->id) : '#';

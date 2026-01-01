@@ -134,6 +134,12 @@ class CourseController extends Controller
         try {
             $course = Course::with([
                 'category',
+                'sections' => function($q) {
+                    $q->where('is_visible', true)->orderBy('sort_order');
+                },
+                'sections.modules' => function($q) {
+                    $q->where('is_visible', true)->orderBy('sort_order');
+                },
                 'sections.modules.modulable',
                 'instructors'
             ])->findOrFail($id);
@@ -155,11 +161,11 @@ class CourseController extends Controller
                 }
             }
 
-            // Get course statistics
+            // Get course statistics (only visible)
             $stats = [
                 'total_students' => $course->enrollments()->count(),
-                'total_sections' => $course->sections()->count(),
-                'total_modules' => $course->modules()->count(),
+                'total_sections' => $course->sections()->where('is_visible', true)->count(),
+                'total_modules' => $course->modules()->where('is_visible', true)->count(),
                 'average_rating' => 0, // TODO: Implement rating system
             ];
 

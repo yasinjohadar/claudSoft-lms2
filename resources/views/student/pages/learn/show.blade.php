@@ -390,7 +390,7 @@
 
             <!-- Sections & Modules -->
             <div class="sidebar-sections">
-                @foreach($course->sections as $section)
+                @foreach($course->sections->where('is_visible', true) as $section)
                     <div class="section-item">
                         <div class="section-header {{ $currentSection && $currentSection->id == $section->id ? 'active' : '' }}"
                              onclick="toggleSection({{ $section->id }})">
