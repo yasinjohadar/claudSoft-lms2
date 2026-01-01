@@ -68,13 +68,14 @@
                             {{-- Video Container with 16:9 Aspect Ratio --}}
                             <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
                                 @if($isBunnyUrl)
-                                    {{-- Bunny.net Video --}}
+                                    {{-- Bunny.net Video - Full Width --}}
                                     <iframe 
                                         src="{{ $videoUrl }}"
-                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                                        style="position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: 0; max-width: none !important;"
                                         frameborder="0"
                                         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                                        allowfullscreen>
+                                        allowfullscreen
+                                        loading="lazy">
                                     </iframe>
                                 @elseif($video->video_type == 'youtube')
                                     @php
