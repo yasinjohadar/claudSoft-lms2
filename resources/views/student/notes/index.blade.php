@@ -397,6 +397,14 @@
                             <label class="form-label">تذكير في (اختياري)</label>
                             <input type="datetime-local" name="reminder_at" class="form-control" id="editReminder">
                         </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input type="checkbox" name="is_important" value="1" class="form-check-input" id="editIsImportant">
+                                <label class="form-check-label" for="editIsImportant">
+                                    <i class="ri-star-line me-1"></i>ملاحظة مهمة
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -625,12 +633,45 @@ function archiveNote(noteId) {
 
 // Edit Note
 function editNote(note) {
-    document.getElementById('editNoteForm').action = `/student/notes/${note.id}`;
-    document.getElementById('editTitle').value = note.title;
-    document.getElementById('editContent').value = note.content;
-    document.getElementById('editCategory').value = note.category;
-    document.getElementById('editColor').value = note.color;
-    document.getElementById('editReminder').value = note.reminder_at ? note.reminder_at.replace(' ', 'T').substring(0, 16) : '';
+    if (!note || !note.id) {
+        console.error('Invalid note data for editing:', note);
+        return;
+    }
+    
+    // Use route helper to generate the correct URL
+    const updateUrl = '{{ route("student.notes.update", ":id") }}'.replace(':id', note.id);
+    document.getElementById('editNoteForm').action = updateUrl;
+    
+    document.getElementById('editTitle').value = note.title || '';
+    document.getElementById('editContent').value = note.content || '';
+    document.getElementById('editCategory').value = note.category || 'personal';
+    document.getElementById('editColor').value = note.color || '#3b82f6';
+    
+    // Handle reminder_at - it might be a string or Date object
+    let reminderValue = '';
+    if (note.reminder_at) {
+        try {
+            const reminderDate = new Date(note.reminder_at);
+            if (!isNaN(reminderDate.getTime())) {
+                // Format as YYYY-MM-DDTHH:mm for datetime-local input
+                const year = reminderDate.getFullYear();
+                const month = String(reminderDate.getMonth() + 1).padStart(2, '0');
+                const day = String(reminderDate.getDate()).padStart(2, '0');
+                const hours = String(reminderDate.getHours()).padStart(2, '0');
+                const minutes = String(reminderDate.getMinutes()).padStart(2, '0');
+                reminderValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+        } catch (e) {
+            console.error('Error parsing reminder_at:', e);
+        }
+    }
+    document.getElementById('editReminder').value = reminderValue;
+    
+    // Handle is_important checkbox
+    const isImportantCheckbox = document.getElementById('editIsImportant');
+    if (isImportantCheckbox) {
+        isImportantCheckbox.checked = note.is_important === true || note.is_important === 'true' || note.is_important === 1 || note.is_important === '1';
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('editNoteModal'));
     modal.show();

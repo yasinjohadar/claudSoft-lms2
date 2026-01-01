@@ -50,27 +50,68 @@ class NoteController extends Controller
         return redirect()->back()->with('success', 'تم إضافة الملاحظة بنجاح');
     }
 
-    public function update(Request $request, Note $note)
+    public function update(Request $request, $note)
     {
-        if ($note->user_id !== auth()->id()) {
-            abort(403);
+        try {
+            // Handle both route model binding and direct ID
+            $noteModel = $note instanceof Note ? $note : Note::findOrFail($note);
+            
+            \Log::info('Note update attempt', [
+                'note_id' => $noteModel->id,
+                'note_user_id' => $noteModel->user_id,
+                'auth_user_id' => auth()->id(),
+                'note_param_type' => gettype($note)
+            ]);
+            
+            // Check if note belongs to the authenticated user
+            if ((int)$noteModel->user_id !== (int)auth()->id()) {
+                \Log::warning('Unauthorized note update attempt', [
+                    'note_id' => $noteModel->id,
+                    'note_user_id' => $noteModel->user_id,
+                    'auth_user_id' => auth()->id()
+                ]);
+                
+                abort(403, 'غير مصرح لك بتعديل هذه الملاحظة');
+            }
+
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'content' => 'required|string',
+                'category' => 'required|string',
+                'color' => 'nullable|string',
+                'reminder_at' => 'nullable|date',
+                'is_important' => 'nullable|in:0,1,true,false',
+            ]);
+
+            // Handle checkbox: if present and has value, set to true, otherwise false
+            $validated['is_important'] = $request->filled('is_important') && ($request->is_important == '1' || $request->is_important === true || $request->is_important === 'true');
+
+            $noteModel->update($validated);
+
+            \Log::info('Note updated successfully', [
+                'note_id' => $noteModel->id,
+                'user_id' => auth()->id()
+            ]);
+
+            return redirect()->back()->with('success', 'تم تحديث الملاحظة بنجاح');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::warning('Note not found for update', [
+                'note_param' => $note,
+                'user_id' => auth()->id()
+            ]);
+            
+            abort(404, 'الملاحظة غير موجودة');
+        } catch (\Exception $e) {
+            \Log::error('Note update error: ' . $e->getMessage(), [
+                'note_param' => is_object($note) ? $note->id : $note,
+                'user_id' => auth()->id(),
+                'exception' => get_class($e)
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء تحديث الملاحظة: ' . $e->getMessage())
+                ->withInput();
         }
-
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'category' => 'required|string',
-            'color' => 'nullable|string',
-            'reminder_at' => 'nullable|date',
-            'is_important' => 'nullable|in:0,1,true,false',
-        ]);
-
-        // Handle checkbox: if present and has value, set to true, otherwise false
-        $validated['is_important'] = $request->filled('is_important') && ($request->is_important == '1' || $request->is_important === true || $request->is_important === 'true');
-
-        $note->update($validated);
-
-        return redirect()->back()->with('success', 'تم تحديث الملاحظة بنجاح');
     }
 
     public function destroy($note)
@@ -136,37 +177,67 @@ class NoteController extends Controller
         }
     }
 
-    public function togglePin(Note $note)
+    public function togglePin($note)
     {
-        if ($note->user_id !== auth()->id()) {
-            abort(403);
+        try {
+            $noteModel = $note instanceof Note ? $note : Note::findOrFail($note);
+            
+            if ((int)$noteModel->user_id !== (int)auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بتعديل هذه الملاحظة'
+                ], 403);
+            }
+
+            $noteModel->update(['is_pinned' => !$noteModel->is_pinned]);
+
+            return response()->json(['success' => true, 'is_pinned' => $noteModel->is_pinned]);
+        } catch (\Exception $e) {
+            \Log::error('Toggle pin error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'حدث خطأ'], 500);
         }
-
-        $note->update(['is_pinned' => !$note->is_pinned]);
-
-        return response()->json(['success' => true, 'is_pinned' => $note->is_pinned]);
     }
 
-    public function toggleFavorite(Note $note)
+    public function toggleFavorite($note)
     {
-        if ($note->user_id !== auth()->id()) {
-            abort(403);
+        try {
+            $noteModel = $note instanceof Note ? $note : Note::findOrFail($note);
+            
+            if ((int)$noteModel->user_id !== (int)auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بتعديل هذه الملاحظة'
+                ], 403);
+            }
+
+            $noteModel->update(['is_favorite' => !$noteModel->is_favorite]);
+
+            return response()->json(['success' => true, 'is_favorite' => $noteModel->is_favorite]);
+        } catch (\Exception $e) {
+            \Log::error('Toggle favorite error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'حدث خطأ'], 500);
         }
-
-        $note->update(['is_favorite' => !$note->is_favorite]);
-
-        return response()->json(['success' => true, 'is_favorite' => $note->is_favorite]);
     }
 
-    public function archive(Note $note)
+    public function archive($note)
     {
-        if ($note->user_id !== auth()->id()) {
-            abort(403);
+        try {
+            $noteModel = $note instanceof Note ? $note : Note::findOrFail($note);
+            
+            if ((int)$noteModel->user_id !== (int)auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بتعديل هذه الملاحظة'
+                ], 403);
+            }
+
+            $noteModel->update(['is_archived' => !$noteModel->is_archived]);
+
+            return response()->json(['success' => true, 'is_archived' => $noteModel->is_archived]);
+        } catch (\Exception $e) {
+            \Log::error('Archive error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'حدث خطأ'], 500);
         }
-
-        $note->update(['is_archived' => !$note->is_archived]);
-
-        return response()->json(['success' => true, 'is_archived' => $note->is_archived]);
     }
 
     public function archived()
