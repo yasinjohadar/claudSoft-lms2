@@ -1,5 +1,13 @@
 @php
     $video = $module->modulable; // Get the video from modulable relationship
+    
+    // Check if it's a Bunny URL regardless of video_type
+    $isBunnyUrl = $video && $video->video_url && (
+        str_contains($video->video_url, 'mediadelivery.net') ||
+        str_contains($video->video_url, 'bunny.net') ||
+        str_contains($video->video_url, 'b-cdn.net') ||
+        str_contains($video->video_url, 'iframe.mediadelivery')
+    );
 @endphp
 
 <style>
@@ -27,7 +35,18 @@
 <!-- Video Player -->
 <div class="video-container" id="videoContainer">
     @if($video)
-        @if($video->video_type == 'upload')
+        {{-- Check Bunny URL first (highest priority) --}}
+        @if($isBunnyUrl)
+            <!-- Bunny.net Video (iframe) - Full Size -->
+            <iframe id="bunnyPlayer"
+                    src="{{ $video->video_url }}"
+                    frameborder="0"
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                    allowfullscreen
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
+            </iframe>
+
+        @elseif($video->video_type == 'upload')
             <!-- Uploaded Video -->
             <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                 <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
@@ -53,30 +72,12 @@
                     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
             </iframe>
 
-        @elseif($video->video_type == 'url' || $video->video_type == 'external')
-            @php
-                $isBunnyUrl = $video->video_url && (
-                    str_contains($video->video_url, 'mediadelivery.net') ||
-                    str_contains($video->video_url, 'bunny.net') ||
-                    str_contains($video->video_url, 'b-cdn.net')
-                );
-            @endphp
-            @if($isBunnyUrl)
-                <!-- Bunny.net Video (iframe) -->
-                <iframe id="bunnyPlayer"
-                        src="{{ $video->video_url }}"
-                        frameborder="0"
-                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                        allowfullscreen
-                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
-                </iframe>
-            @else
-                <!-- External URL (direct video) -->
-                <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                    <source src="{{ $video->video_url }}" type="video/mp4">
-                    متصفحك لا يدعم تشغيل الفيديو.
-                </video>
-            @endif
+        @elseif($video->video_url)
+            <!-- External URL (direct video) -->
+            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                <source src="{{ $video->video_url }}" type="video/mp4">
+                متصفحك لا يدعم تشغيل الفيديو.
+            </video>
         @endif
 
         <!-- Video Progress Indicator -->
