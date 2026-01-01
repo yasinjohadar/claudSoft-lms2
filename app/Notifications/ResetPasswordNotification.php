@@ -50,17 +50,18 @@ class ResetPasswordNotification extends Notification
         $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
         
         $userName = $notifiable->name_ar ?? $notifiable->name ?? 'عزيزي المستخدم';
+        $appUrl = config('app.url');
+        $logoUrl = $appUrl . '/assets/logo/logo.png';
 
         return (new MailMessage)
             ->subject('إعادة تعيين كلمة المرور - أكاديمية كلاودسوفت')
-            ->greeting('مرحباً ' . $userName . '!')
-            ->line('لقد تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في أكاديمية كلاودسوفت.')
-            ->action('إعادة تعيين كلمة المرور', $url)
-            ->line('يرجى الضغط على الزر أعلاه لإعادة تعيين كلمة المرور الخاصة بك.')
-            ->line('**مهم:** هذا الرابط سينتهي خلال ' . $expireMinutes . ' دقيقة.')
-            ->line('إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان.')
-            ->line('لن يتم تغيير كلمة المرور الخاصة بك إلا إذا قمت بالضغط على الرابط أعلاه.')
-            ->salutation('مع تحياتنا،<br>فريق أكاديمية كلاودسوفت');
+            ->view('emails.reset-password', [
+                'url' => $url,
+                'userName' => $userName,
+                'expireMinutes' => $expireMinutes,
+                'logoUrl' => $logoUrl,
+                'appUrl' => $appUrl,
+            ]);
     }
 
     /**
