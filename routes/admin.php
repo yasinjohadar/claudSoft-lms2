@@ -471,6 +471,7 @@ Route::prefix('admin')
             Route::get('/', [\App\Http\Controllers\Admin\EmailSettingController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\EmailSettingController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\EmailSettingController::class, 'store'])->name('store');
+            Route::post('/test-temp', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testTemp'])->name('test-temp');
             Route::get('/{emailSetting}/edit', [\App\Http\Controllers\Admin\EmailSettingController::class, 'edit'])->name('edit');
             Route::put('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'update'])->name('update');
             Route::delete('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'destroy'])->name('destroy');

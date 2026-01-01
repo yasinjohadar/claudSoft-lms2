@@ -176,6 +176,9 @@
                         </div>
                     </div>
                     <div class="card-footer text-end">
+                        <button type="button" class="btn btn-info me-2" onclick="testConnectionBeforeSave()">
+                            <i class="ri-test-tube-line me-1"></i> اختبار الاتصال
+                        </button>
                         <button type="submit" class="btn btn-primary">
                             <i class="ri-save-line me-1"></i> حفظ الإعدادات
                         </button>
@@ -187,8 +190,9 @@
 </div>
 </div>
 <!-- End::app-content -->
+@stop
 
-@push('scripts')
+@section('script')
 <script>
 // Toggle password visibility
 function togglePassword() {
@@ -207,24 +211,99 @@ function togglePassword() {
 }
 
 // Auto-fill settings based on provider selection
-document.getElementById('provider').addEventListener('change', async function() {
-    const provider = this.value;
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('provider');
+    if (providerSelect) {
+        providerSelect.addEventListener('change', async function() {
+            const provider = this.value;
 
-    if (!provider || provider === 'custom') {
+            if (!provider || provider === 'custom') {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/settings/email/provider/${provider}`);
+                const data = await response.json();
+
+                document.getElementById('mail_host').value = data.mail_host || '';
+                document.getElementById('mail_port').value = data.mail_port || 587;
+                document.getElementById('mail_encryption').value = data.mail_encryption || 'tls';
+            } catch (error) {
+                console.error('Error loading provider preset:', error);
+            }
+        });
+    }
+});
+
+// Test connection before saving
+async function testConnectionBeforeSave() {
+    // Get form values
+    const mailHost = document.getElementById('mail_host').value;
+    const mailPort = document.getElementById('mail_port').value;
+    const mailUsername = document.getElementById('mail_username').value;
+    const mailPassword = document.getElementById('mail_password').value;
+    const mailEncryption = document.getElementById('mail_encryption').value;
+    const mailFromAddress = document.getElementById('mail_from_address').value;
+
+    // Validate required fields
+    if (!mailHost || !mailPort || !mailUsername || !mailPassword || !mailFromAddress) {
+        alert('يرجى ملء جميع الحقول المطلوبة قبل الاختبار');
         return;
     }
 
-    try {
-        const response = await fetch(`/admin/settings/email/provider/${provider}`);
-        const data = await response.json();
-
-        document.getElementById('mail_host').value = data.mail_host || '';
-        document.getElementById('mail_port').value = data.mail_port || 587;
-        document.getElementById('mail_encryption').value = data.mail_encryption || 'tls';
-    } catch (error) {
-        console.error('Error loading provider preset:', error);
+    // Ask for test email
+    const testEmail = prompt('أدخل البريد الإلكتروني لإرسال بريد اختباري إليه:', mailFromAddress);
+    if (!testEmail) {
+        return;
     }
-});
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+        alert('يرجى إدخال بريد إلكتروني صحيح');
+        return;
+    }
+
+    // Show loading
+    const testBtn = event.target;
+    const originalText = testBtn.innerHTML;
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="ri-loader-4-line ri-spin me-1"></i> جاري الاختبار...';
+
+    try {
+        const response = await fetch('{{ route("admin.settings.email.test-temp") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                mail_host: mailHost,
+                mail_port: mailPort,
+                mail_username: mailUsername,
+                mail_password: mailPassword,
+                mail_encryption: mailEncryption,
+                mail_from_address: mailFromAddress,
+                mail_from_name: document.getElementById('mail_from_name').value || 'Test',
+                test_email: testEmail
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ ' + result.message);
+        } else {
+            alert('❌ ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ حدث خطأ أثناء اختبار الاتصال: ' + error.message);
+    } finally {
+        testBtn.disabled = false;
+        testBtn.innerHTML = originalText;
+    }
+}
 </script>
-@endpush
-@endsection
+@stop

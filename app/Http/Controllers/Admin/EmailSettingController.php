@@ -191,4 +191,55 @@ class EmailSettingController extends Controller
 
         return response()->json(['error' => 'Provider not found'], 404);
     }
+
+    /**
+     * Test email configuration before saving (temporary test)
+     */
+    public function testTemp(Request $request)
+    {
+        $validated = $request->validate([
+            'mail_host' => 'required|string|max:255',
+            'mail_port' => 'required|integer',
+            'mail_username' => 'required|string|max:255',
+            'mail_password' => 'required|string',
+            'mail_encryption' => 'required|in:tls,ssl,none',
+            'mail_from_address' => 'required|email',
+            'mail_from_name' => 'required|string|max:255',
+            'test_email' => 'required|email',
+        ]);
+
+        try {
+            // Temporarily set mail configuration
+            config([
+                'mail.mailers.smtp.host' => $validated['mail_host'],
+                'mail.mailers.smtp.port' => $validated['mail_port'],
+                'mail.mailers.smtp.username' => $validated['mail_username'],
+                'mail.mailers.smtp.password' => $validated['mail_password'],
+                'mail.mailers.smtp.encryption' => $validated['mail_encryption'] !== 'none' ? $validated['mail_encryption'] : null,
+                'mail.from.address' => $validated['mail_from_address'],
+                'mail.from.name' => $validated['mail_from_name'],
+            ]);
+
+            // Send test email
+            Mail::raw('هذا بريد اختبار من نظام إدارة التعلم. إذا استلمت هذه الرسالة، فإن إعدادات SMTP تعمل بشكل صحيح.', function ($message) use ($validated) {
+                $message->to($validated['test_email'])
+                    ->subject('اختبار إعدادات البريد الإلكتروني - LMS');
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال البريد الاختباري بنجاح إلى ' . $validated['test_email'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Email test failed (temp)', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل إرسال البريد الاختباري: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

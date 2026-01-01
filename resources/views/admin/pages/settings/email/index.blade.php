@@ -232,7 +232,7 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
 </div>
 <!-- End::app-content -->
 
@@ -264,8 +264,9 @@
         </div>
     </div>
 </div>
+@stop
 
-@push('scripts')
+@section('script')
 <script>
 function testEmail(settingId, defaultEmail) {
     document.getElementById('testSettingId').value = settingId;
@@ -310,5 +311,4 @@ async function sendTestEmail() {
     }
 }
 </script>
-@endpush
-@endsection
+@stop
