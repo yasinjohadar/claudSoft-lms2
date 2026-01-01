@@ -3,7 +3,17 @@
     $categoryInfo = $categories[$note->category] ?? $categories['personal'];
 @endphp
 
-<div class="card note-card {{ $pinned ? 'pinned' : '' }}" style="border-left-color: {{ $note->color }};" onclick="viewNote(@json($note))">
+<div class="card note-card {{ $pinned ? 'pinned' : '' }}" style="border-left-color: {{ $note->color }}; cursor: pointer;" onclick="viewNote({
+    id: {{ $note->id }},
+    title: {{ json_encode($note->title) }},
+    content: {{ json_encode($note->content) }},
+    category: {{ json_encode($note->category) }},
+    color: {{ json_encode($note->color) }},
+    is_important: {{ $note->is_important ? 'true' : 'false' }},
+    is_pinned: {{ $note->is_pinned ? 'true' : 'false' }},
+    reminder_at: {{ $note->reminder_at ? json_encode($note->reminder_at->format('Y-m-d H:i:s')) : 'null' }},
+    created_at: {{ json_encode($note->created_at->format('Y-m-d H:i:s')) }}
+})">
     <div class="card-body">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-start mb-2">

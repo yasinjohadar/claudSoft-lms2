@@ -11,10 +11,15 @@
         transition: all 0.3s ease;
         border-left: 4px solid;
         cursor: pointer;
+        user-select: none;
     }
     .note-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        border-left-width: 6px;
+    }
+    .note-card:active {
+        transform: translateY(-2px);
     }
     .note-card.pinned {
         background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
@@ -633,6 +638,12 @@ function editNote(note) {
 
 // View Note
 function viewNote(note) {
+    // Ensure note is an object with required properties
+    if (!note || typeof note !== 'object') {
+        console.error('Invalid note data:', note);
+        return;
+    }
+    
     const categories = @json(\App\Models\Note::getCategories());
     const categoryInfo = categories[note.category] || categories['personal'];
     const noteColor = note.color || categoryInfo.color || '#3b82f6';
@@ -694,29 +705,51 @@ function viewNote(note) {
     }
     
     // Set reminder
-    if (note.reminder_at) {
-        const reminderDate = new Date(note.reminder_at);
-        document.getElementById('viewNoteReminderDate').textContent = reminderDate.toLocaleString('ar-SA', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        document.getElementById('viewNoteReminder').style.display = 'block';
+    if (note.reminder_at && note.reminder_at !== 'null' && note.reminder_at !== null) {
+        try {
+            const reminderDate = new Date(note.reminder_at);
+            if (!isNaN(reminderDate.getTime()) && reminderDate.getTime() > 0) {
+                document.getElementById('viewNoteReminderDate').textContent = reminderDate.toLocaleString('ar-SA', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                document.getElementById('viewNoteReminder').style.display = 'block';
+            } else {
+                document.getElementById('viewNoteReminder').style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Error parsing reminder_at:', e);
+            document.getElementById('viewNoteReminder').style.display = 'none';
+        }
     } else {
         document.getElementById('viewNoteReminder').style.display = 'none';
     }
     
     // Set created at
-    const createdAt = new Date(note.created_at);
-    document.getElementById('viewNoteCreatedAt').textContent = createdAt.toLocaleString('ar-SA', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (note.created_at) {
+        try {
+            const createdAt = new Date(note.created_at);
+            if (!isNaN(createdAt.getTime()) && createdAt.getTime() > 0) {
+                document.getElementById('viewNoteCreatedAt').textContent = createdAt.toLocaleString('ar-SA', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } else {
+                document.getElementById('viewNoteCreatedAt').textContent = 'غير محدد';
+            }
+        } catch (e) {
+            console.error('Error parsing created_at:', e);
+            document.getElementById('viewNoteCreatedAt').textContent = 'غير محدد';
+        }
+    } else {
+        document.getElementById('viewNoteCreatedAt').textContent = 'غير محدد';
+    }
     
     // Set edit button
     document.getElementById('editNoteFromViewBtn').onclick = function() {
