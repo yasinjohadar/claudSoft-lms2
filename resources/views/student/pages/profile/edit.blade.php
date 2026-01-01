@@ -95,11 +95,6 @@
                                     @error('gender')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">المدينة</label>
-                                    <input type="text" class="form-control @error('city') is-invalid @enderror" name="city" value="{{ old('city', $student->city) }}">
-                                    @error('city')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="col-md-6">
                                     <label class="form-label">الجنسية</label>
                                     <select class="form-select @error('nationality_id') is-invalid @enderror" name="nationality_id">
                                         <option value="">اختر الجنسية</option>

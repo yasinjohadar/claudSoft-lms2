@@ -43,7 +43,6 @@ class UpdateProfileRequest extends FormRequest
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'gender' => ['nullable', 'string', 'in:male,female'],
             'address' => ['nullable', 'string', 'max:500'],
-            'city' => ['nullable', 'string', 'max:100'],
             'nationality_id' => ['nullable', 'exists:nationalities,id'],
             'photo' => [
                 'nullable',
@@ -70,7 +69,6 @@ class UpdateProfileRequest extends FormRequest
             'date_of_birth' => 'تاريخ الميلاد',
             'gender' => 'الجنس',
             'address' => 'العنوان',
-            'city' => 'المدينة',
             'nationality_id' => 'الجنسية',
             'photo' => 'الصورة الشخصية',
         ];

@@ -55,7 +55,6 @@ class StudentProfileController extends Controller
             $student->date_of_birth = $request->input('date_of_birth');
             $student->gender = $request->input('gender');
             $student->address = $request->input('address');
-            $student->city = $request->input('city');
             $student->nationality_id = $request->input('nationality_id');
 
             // Public profile toggle (checked => 1, unchecked => 0)

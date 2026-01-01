@@ -159,10 +159,7 @@
                         <h2 class="mb-2 fw-bold">{{ $student->name_ar ?? $student->name }}</h2>
                         <p class="mb-1"><i class="fa fa-envelope me-2"></i>{{ $student->email }}</p>
                         @if($student->phone)
-                            <p class="mb-1"><i class="fa fa-phone me-2"></i>{{ $student->phone }}</p>
-                        @endif
-                        @if($student->city)
-                            <p class="mb-0"><i class="fa fa-map-marker-alt me-2"></i>{{ $student->city }}</p>
+                            <p class="mb-0"><i class="fa fa-phone me-2"></i>{{ $student->phone }}</p>
                         @endif
                     </div>
                 </div>
@@ -256,17 +253,6 @@
                                             @else
                                                 غير محدد
                                             @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="info-row">
-                                        <div class="info-label">
-                                            <i class="fa fa-map-marker-alt text-primary me-2"></i>المدينة
-                                        </div>
-                                        <div class="info-value {{ $student->city ? '' : 'empty' }}">
-                                            {{ $student->city ?? 'غير محدد' }}
                                         </div>
                                     </div>
                                 </div>
