@@ -51,12 +51,23 @@ class NewPasswordController extends Controller
             }
         );
 
+        // Translate status messages to Arabic
+        // The status is already a translation key (e.g., 'passwords.reset', 'passwords.user')
+        $messages = [
+            'passwords.reset' => 'تم إعادة تعيين كلمة المرور بنجاح.',
+            'passwords.user' => 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
+            'passwords.token' => 'رابط إعادة تعيين كلمة المرور غير صحيح أو منتهي الصلاحية.',
+            'passwords.throttled' => 'يرجى الانتظار قبل إعادة المحاولة.',
+        ];
+
+        $message = $messages[$status] ?? trans($status, [], 'ar');
+
         // If the password was successfully reset, we will redirect the user back to
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
         return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
+                    ? redirect()->route('login')->with('status', $message)
                     : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+                        ->withErrors(['email' => $message]);
     }
 }

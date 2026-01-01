@@ -36,9 +36,20 @@ class PasswordResetLinkController extends Controller
             $request->only('email')
         );
 
+        // Translate status messages to Arabic
+        // The status is already a translation key (e.g., 'passwords.sent', 'passwords.user')
+        $messages = [
+            'passwords.sent' => 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
+            'passwords.user' => 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
+            'passwords.token' => 'رابط إعادة تعيين كلمة المرور غير صحيح أو منتهي الصلاحية.',
+            'passwords.throttled' => 'يرجى الانتظار قبل إعادة المحاولة.',
+        ];
+
+        $message = $messages[$status] ?? trans($status, [], 'ar');
+
         return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
+                    ? back()->with('status', $message)
                     : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+                        ->withErrors(['email' => $message]);
     }
 }

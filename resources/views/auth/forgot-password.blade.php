@@ -213,13 +213,20 @@
         
         <div class="login-header">
             <h1>نسيت كلمة المرور؟</h1>
-            <p>لا مشكلة. فقط أخبرنا بعنوان بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور الذي سيسمح لك باختيار كلمة مرور جديدة.</p>
+            <p>لا مشكلة! أدخل بريدك الإلكتروني أدناه وسنرسل لك رابط إعادة تعيين كلمة المرور.</p>
+            <p style="font-size: 14px; color: #888; margin-top: 10px;">
+                <strong>ماذا ستفعل بعد ذلك؟</strong><br>
+                1️⃣ افتح بريدك الإلكتروني<br>
+                2️⃣ ابحث عن رسالة من أكاديمية كلاودسوفت<br>
+                3️⃣ اضغط على الرابط الموجود في الرسالة<br>
+                4️⃣ أدخل كلمة مرور جديدة
+            </p>
         </div>
 
         @if ($errors->any())
             <div class="alert alert-danger">
                 <strong>خطأ!</strong>
-                <ul>
+                <ul style="margin-top: 8px; margin-bottom: 0;">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -228,8 +235,20 @@
         @endif
 
         @if (session('status'))
-            <div class="alert alert-success">
-                {{ session('status') }}
+            <div class="alert alert-success" style="line-height: 1.8;">
+                <strong style="display: block; margin-bottom: 10px; font-size: 16px;">✅ تم إرسال رابط إعادة تعيين كلمة المرور!</strong>
+                <div style="font-size: 14px;">
+                    <p style="margin-bottom: 8px;"><strong>الخطوات التالية:</strong></p>
+                    <ol style="margin-right: 20px; margin-bottom: 0;">
+                        <li>افتح بريدك الإلكتروني (<strong>{{ old('email') }}</strong>)</li>
+                        <li>ابحث عن رسالة من "أكاديمية كلاودسوفت" (قد تكون في مجلد الرسائل المزعجة)</li>
+                        <li>اضغط على زر "إعادة تعيين كلمة المرور" أو على الرابط الموجود في الرسالة</li>
+                        <li>أدخل كلمة مرور جديدة وقوية</li>
+                    </ol>
+                    <p style="margin-top: 10px; margin-bottom: 0; color: #666;">
+                        <small>💡 <strong>ملاحظة:</strong> إذا لم تجد الرسالة، تحقق من مجلد الرسائل المزعجة (Spam).</small>
+                    </p>
+                </div>
             </div>
         @endif
 
