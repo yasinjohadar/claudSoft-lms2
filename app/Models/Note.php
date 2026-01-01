@@ -19,6 +19,7 @@ class Note extends Model
         'is_pinned',
         'is_favorite',
         'is_archived',
+        'is_important',
         'reminder_at',
     ];
 
@@ -26,6 +27,7 @@ class Note extends Model
         'is_pinned' => 'boolean',
         'is_favorite' => 'boolean',
         'is_archived' => 'boolean',
+        'is_important' => 'boolean',
         'reminder_at' => 'datetime',
     ];
 

@@ -42,6 +42,7 @@ class NoteController extends Controller
         ]);
 
         $validated['user_id'] = auth()->id();
+        $validated['is_important'] = $request->has('is_important') ? true : false;
 
         Note::create($validated);
 
@@ -60,7 +61,10 @@ class NoteController extends Controller
             'category' => 'required|string',
             'color' => 'nullable|string',
             'reminder_at' => 'nullable|date',
+            'is_important' => 'nullable|boolean',
         ]);
+
+        $validated['is_important'] = $request->has('is_important') ? true : false;
 
         $note->update($validated);
 
@@ -70,12 +74,25 @@ class NoteController extends Controller
     public function destroy(Note $note)
     {
         if ($note->user_id !== auth()->id()) {
-            abort(403);
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح لك بحذف هذه الملاحظة'
+            ], 403);
         }
 
-        $note->delete();
+        try {
+            $note->delete();
 
-        return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف الملاحظة بنجاح'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حذف الملاحظة: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function togglePin(Note $note)

@@ -410,16 +410,33 @@ function deleteNote(noteId) {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'حدث خطأ أثناء الحذف');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
+                // Show success message
+                alert(data.message || 'تم حذف الملاحظة بنجاح');
                 location.reload();
+            } else {
+                alert(data.message || 'فشل حذف الملاحظة');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message || 'حدث خطأ أثناء حذف الملاحظة');
         });
     }
 }
 </script>
 @endsection
+
