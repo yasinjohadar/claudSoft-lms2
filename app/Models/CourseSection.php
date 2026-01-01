@@ -103,7 +103,7 @@ class CourseSection extends Model
      */
     public function scopeVisible($query)
     {
-        return $query->where('is_visible', true);
+        return $query->where('course_sections.is_visible', true);
     }
 
     /**

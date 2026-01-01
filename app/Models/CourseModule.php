@@ -91,7 +91,7 @@ class CourseModule extends Model
      */
     public function scopeVisible($query)
     {
-        return $query->where('is_visible', true);
+        return $query->where('course_modules.is_visible', true);
     }
 
     /**
