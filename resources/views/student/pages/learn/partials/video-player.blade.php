@@ -1,269 +1,130 @@
 @php
-    $video = $module->modulable; // Get the video from modulable relationship
+    $video = $module->modulable;
     
-    // Check if it's a Bunny URL regardless of video_type
-    $isBunnyUrl = $video && $video->video_url && (
-        str_contains($video->video_url, 'mediadelivery.net') ||
-        str_contains($video->video_url, 'bunny.net') ||
-        str_contains($video->video_url, 'b-cdn.net') ||
-        str_contains($video->video_url, 'iframe.mediadelivery')
-    );
+    // Check Bunny URL
+    $isBunnyUrl = false;
+    $videoUrl = '';
+    
+    if ($video) {
+        $videoUrl = $video->video_url ?? '';
+        $isBunnyUrl = !empty($videoUrl) && (
+            str_contains($videoUrl, 'mediadelivery.net') ||
+            str_contains($videoUrl, 'bunny.net') ||
+            str_contains($videoUrl, 'b-cdn.net') ||
+            str_contains($videoUrl, 'iframe.mediadelivery')
+        );
+    }
 @endphp
 
-<style>
-    /* Force Video Container Styles */
-    #videoContainer {
-        position: relative !important;
-        width: 100% !important;
-        padding-bottom: 56.25% !important; /* 16:9 */
-        height: 0 !important;
-        background: #000 !important;
-        border-radius: 12px !important;
-        overflow: hidden !important;
-    }
-    #videoContainer iframe,
-    #videoContainer video {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        border: none !important;
-    }
-</style>
-
-<!-- Video Player -->
-<div class="video-container" id="videoContainer">
-    @if($video)
-        {{-- Check Bunny URL first (highest priority) --}}
-        @if($isBunnyUrl)
-            <!-- Bunny.net Video (iframe) - Full Size -->
-            <iframe id="bunnyPlayer"
-                    src="{{ $video->video_url }}"
+<!-- Video Player Container - FULL WIDTH -->
+<div class="video-wrapper" style="width: 100%; margin-bottom: 1.5rem;">
+    <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 12px; overflow: hidden;">
+        @if($video)
+            @if($isBunnyUrl)
+                {{-- Bunny.net Video --}}
+                <iframe 
+                    src="{{ $videoUrl }}"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
                     frameborder="0"
-                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                    allowfullscreen
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
-            </iframe>
-
-        @elseif($video->video_type == 'upload')
-            <!-- Uploaded Video -->
-            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
-                متصفحك لا يدعم تشغيل الفيديو.
-            </video>
-
-        @elseif($video->video_type == 'youtube')
-            <!-- YouTube Video -->
-            <iframe id="youtubePlayer"
-                    src="https://www.youtube.com/embed/{{ $video->youtube_id }}?enablejsapi=1&rel=0"
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+            @elseif($video->video_type == 'youtube')
+                {{-- YouTube Video --}}
+                <iframe 
+                    src="https://www.youtube.com/embed/{{ $video->youtube_id }}?rel=0"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
-            </iframe>
-
-        @elseif($video->video_type == 'vimeo')
-            <!-- Vimeo Video -->
-            <iframe src="https://player.vimeo.com/video/{{ $video->vimeo_id }}?title=0&byline=0&portrait=0"
+                    allowfullscreen>
+                </iframe>
+            @elseif($video->video_type == 'vimeo')
+                {{-- Vimeo Video --}}
+                <iframe 
+                    src="https://player.vimeo.com/video/{{ $video->vimeo_id }}"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
                     frameborder="0"
                     allow="autoplay; fullscreen; picture-in-picture"
-                    allowfullscreen
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
-            </iframe>
-
-        @elseif($video->video_url)
-            <!-- External URL (direct video) -->
-            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                <source src="{{ $video->video_url }}" type="video/mp4">
-                متصفحك لا يدعم تشغيل الفيديو.
-            </video>
-        @endif
-
-        <!-- Video Progress Indicator -->
-        <div class="module-progress-indicator">
-            <i class="fas fa-clock text-primary me-1"></i>
-            <span id="videoProgress">0%</span> مكتمل
-        </div>
-    @else
-        <div class="d-flex align-items-center justify-content-center h-100 bg-dark text-white">
-            <div class="text-center">
-                <i class="fas fa-video-slash fa-3x mb-3 opacity-50"></i>
-                <p>الفيديو غير متوفر حالياً</p>
+                    allowfullscreen>
+                </iframe>
+            @elseif($video->video_type == 'upload' && $video->video_path)
+                {{-- Uploaded Video --}}
+                <video 
+                    id="courseVideo" 
+                    controls 
+                    controlsList="nodownload"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                    <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
+                </video>
+            @elseif(!empty($videoUrl))
+                {{-- External URL --}}
+                <video 
+                    id="courseVideo" 
+                    controls 
+                    controlsList="nodownload"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                    <source src="{{ $videoUrl }}" type="video/mp4">
+                </video>
+            @else
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white;">
+                    <div class="text-center">
+                        <i class="fas fa-video-slash fa-3x mb-3"></i>
+                        <p>الفيديو غير متوفر</p>
+                    </div>
+                </div>
+            @endif
+        @else
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white;">
+                <div class="text-center">
+                    <i class="fas fa-video-slash fa-3x mb-3"></i>
+                    <p>الفيديو غير متوفر</p>
+                </div>
             </div>
-        </div>
-    @endif
+        @endif
+    </div>
 </div>
 
-<!-- Video Information -->
 @if($video)
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="text-center p-3 bg-light rounded">
-                <i class="fas fa-clock text-primary fa-2x mb-2"></i>
-                <div class="fw-bold">{{ $video->duration ?? 'غير محدد' }}</div>
-                <small class="text-muted">المدة</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="text-center p-3 bg-light rounded">
-                <i class="fas fa-eye text-success fa-2x mb-2"></i>
-                <div class="fw-bold">{{ $video->views_count ?? 0 }}</div>
-                <small class="text-muted">المشاهدات</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="text-center p-3 bg-light rounded">
-                <i class="fas fa-video text-danger fa-2x mb-2"></i>
-                <div class="fw-bold">{{ $video->quality ?? 'HD' }}</div>
-                <small class="text-muted">الجودة</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="text-center p-3 bg-light rounded">
-                <i class="fas fa-language text-info fa-2x mb-2"></i>
-                <div class="fw-bold">{{ $video->language == 'ar' ? 'عربي' : 'إنجليزي' }}</div>
-                <small class="text-muted">اللغة</small>
-            </div>
+<!-- Video Info -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="text-center p-3 bg-light rounded">
+            <i class="fas fa-clock text-primary fa-2x mb-2"></i>
+            <div class="fw-bold">{{ $video->duration ?? 'غير محدد' }}</div>
+            <small class="text-muted">المدة</small>
         </div>
     </div>
-
-    <!-- Video Description -->
-    @if($video->description)
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>حول هذا الفيديو</h6>
-            </div>
-            <div class="card-body">
-                <p class="mb-0">{{ $video->description }}</p>
-            </div>
+    <div class="col-md-3">
+        <div class="text-center p-3 bg-light rounded">
+            <i class="fas fa-eye text-success fa-2x mb-2"></i>
+            <div class="fw-bold">{{ $video->views_count ?? 0 }}</div>
+            <small class="text-muted">المشاهدات</small>
         </div>
-    @endif
-
-    <!-- Video Transcript (if available) -->
-    @if($video->transcript)
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="fas fa-closed-captioning me-2"></i>النص المكتوب</h6>
-                <button class="btn btn-sm btn-outline-primary" onclick="toggleTranscript()">
-                    <i class="fas fa-chevron-down" id="transcriptToggle"></i>
-                </button>
-            </div>
-            <div class="card-body d-none" id="transcriptContent">
-                <div style="white-space: pre-wrap; line-height: 1.8;">{{ $video->transcript }}</div>
-            </div>
+    </div>
+    <div class="col-md-3">
+        <div class="text-center p-3 bg-light rounded">
+            <i class="fas fa-video text-danger fa-2x mb-2"></i>
+            <div class="fw-bold">{{ $video->quality ?? 'HD' }}</div>
+            <small class="text-muted">الجودة</small>
         </div>
-    @endif
-
-    <!-- Video Resources/Attachments -->
-    @if($video->attachments && count($video->attachments) > 0)
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>المرفقات</h6>
-            </div>
-            <div class="card-body">
-                @foreach($video->attachments as $attachment)
-                    <div class="resource-item">
-                        <div class="d-flex align-items-center">
-                            <div class="resource-icon bg-primary-transparent text-primary">
-                                <i class="fas fa-file-{{ $attachment['type'] ?? 'pdf' }}"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">{{ $attachment['name'] }}</div>
-                                <small class="text-muted">{{ $attachment['size'] ?? '' }}</small>
-                            </div>
-                        </div>
-                        <a href="{{ route('student.videos.download-attachment', ['videoId' => $video->id, 'attachmentId' => $attachment['id']]) }}"
-                           class="btn btn-sm btn-primary"
-                           download>
-                            <i class="fas fa-download me-1"></i>تحميل
-                        </a>
-                    </div>
-                @endforeach
-            </div>
+    </div>
+    <div class="col-md-3">
+        <div class="text-center p-3 bg-light rounded">
+            <i class="fas fa-language text-info fa-2x mb-2"></i>
+            <div class="fw-bold">{{ ($video->language ?? 'ar') == 'ar' ? 'عربي' : 'إنجليزي' }}</div>
+            <small class="text-muted">اللغة</small>
         </div>
-    @endif
+    </div>
+</div>
+
+@if($video->description)
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>حول هذا الفيديو</h6>
+    </div>
+    <div class="card-body">
+        <p class="mb-0">{{ $video->description }}</p>
+    </div>
+</div>
 @endif
-
-@push('scripts')
-<script>
-    // Video Progress Tracking
-    let videoProgressInterval;
-    let totalWatched = 0;
-
-    @if($video && $video->video_type == 'upload')
-        const video = document.getElementById('courseVideo');
-        if (video) {
-            // Track video progress every 10 seconds
-            video.addEventListener('play', function() {
-                videoProgressInterval = setInterval(() => {
-                    updateVideoProgress();
-                }, 10000); // Every 10 seconds
-            });
-
-            video.addEventListener('pause', function() {
-                clearInterval(videoProgressInterval);
-                updateVideoProgress(); // Save on pause
-            });
-
-            video.addEventListener('ended', function() {
-                clearInterval(videoProgressInterval);
-                updateVideoProgress();
-                // Auto-mark as complete if 90% watched
-                if (totalWatched / video.duration >= 0.9) {
-                    document.getElementById('markCompleteForm')?.submit();
-                }
-            });
-
-            video.addEventListener('timeupdate', function() {
-                const progress = (video.currentTime / video.duration) * 100;
-                document.getElementById('videoProgress').textContent = Math.round(progress) + '%';
-            });
-        }
-
-        function updateVideoProgress() {
-            if (!video) return;
-
-            totalWatched = video.currentTime;
-            const totalDuration = video.duration;
-
-            // Send progress to server
-            fetch('{{ route('student.modules.track-video-progress', $module->id) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    watched_seconds: Math.floor(totalWatched),
-                    total_seconds: Math.floor(totalDuration)
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.is_completed) {
-                    console.log('Video auto-completed at 90%');
-                }
-            })
-            .catch(error => console.error('Error tracking video progress:', error));
-        }
-    @endif
-
-    // Toggle Transcript
-    function toggleTranscript() {
-        const content = document.getElementById('transcriptContent');
-        const toggle = document.getElementById('transcriptToggle');
-
-        content.classList.toggle('d-none');
-
-        if (content.classList.contains('d-none')) {
-            toggle.classList.remove('fa-chevron-up');
-            toggle.classList.add('fa-chevron-down');
-        } else {
-            toggle.classList.remove('fa-chevron-down');
-            toggle.classList.add('fa-chevron-up');
-        }
-    }
-</script>
-@endpush
+@endif

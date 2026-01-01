@@ -6,27 +6,6 @@
 
 @section('css')
 <style>
-    .video-container {
-        position: relative;
-        width: 100%;
-        height: 0;
-        padding-bottom: 56.25%; /* 16:9 Aspect Ratio - same as YouTube */
-        background: #000;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .video-container iframe,
-    .video-container video {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-    }
-
-
     .card {
         border-radius: 12px;
         border: 1px solid #e5e7eb;
@@ -37,7 +16,6 @@
         position: sticky;
         top: 100px;
     }
-
 </style>
 @stop
 
@@ -75,47 +53,56 @@
 
                 <!-- Video -->
                 @if($module->module_type == 'video' && $module->modulable)
+                    @php 
+                        $video = $module->modulable;
+                        $videoUrl = $video->video_url ?? '';
+                        $isBunnyUrl = !empty($videoUrl) && (
+                            str_contains($videoUrl, 'mediadelivery.net') ||
+                            str_contains($videoUrl, 'bunny.net') ||
+                            str_contains($videoUrl, 'b-cdn.net') ||
+                            str_contains($videoUrl, 'iframe.mediadelivery')
+                        );
+                    @endphp
                     <div class="card">
                         <div class="card-body p-3">
-                            <div class="video-container">
-                                @php $video = $module->modulable; @endphp
-                                @if($video->video_type == 'youtube')
+                            {{-- Video Container with 16:9 Aspect Ratio --}}
+                            <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+                                @if($isBunnyUrl)
+                                    {{-- Bunny.net Video --}}
+                                    <iframe 
+                                        src="{{ $videoUrl }}"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                                        frameborder="0"
+                                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                                        allowfullscreen>
+                                    </iframe>
+                                @elseif($video->video_type == 'youtube')
                                     @php
-                                        preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\\/|.*[?&]v=)|youtu\.be\/)([^"&?\\/ ]{11})/', $video->video_url, $matches);
-                                        $youtubeId = $matches[1] ?? null;
+                                        preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\\/|.*[?&]v=)|youtu\.be\/)([^"&?\\/ ]{11})/', $videoUrl, $matches);
+                                        $youtubeId = $matches[1] ?? $video->youtube_id ?? null;
                                     @endphp
                                     @if($youtubeId)
-                                        <iframe src="https://www.youtube.com/embed/{{ $youtubeId }}"
-                                                width="100%"
-                                                height="600"
-                                                allowfullscreen></iframe>
+                                        <iframe 
+                                            src="https://www.youtube.com/embed/{{ $youtubeId }}"
+                                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                                            frameborder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen>
+                                        </iframe>
                                     @endif
                                 @elseif($video->video_type == 'upload' && $video->video_path)
-                                    <video controls width="100%" height="600">
+                                    <video 
+                                        controls 
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                                         <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
                                     </video>
-                                @elseif($video->video_type == 'url' || $video->video_type == 'external')
-                                    @php
-                                        $isBunnyUrl = $video->video_url && (
-                                            str_contains($video->video_url, 'mediadelivery.net') ||
-                                            str_contains($video->video_url, 'bunny.net') ||
-                                            str_contains($video->video_url, 'b-cdn.net')
-                                        );
-                                    @endphp
-                                    @if($isBunnyUrl)
-                                        <!-- Bunny.net Video (iframe) -->
-                                        <iframe src="{{ $video->video_url }}"
-                                                frameborder="0"
-                                                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                                                allowfullscreen>
-                                        </iframe>
-                                    @else
-                                        <!-- External URL (direct video) -->
-                                        <video controls width="100%" height="600">
-                                            <source src="{{ $video->video_url }}" type="video/mp4">
-                                            متصفحك لا يدعم تشغيل الفيديو.
-                                        </video>
-                                    @endif
+                                @elseif(!empty($videoUrl))
+                                    {{-- External URL --}}
+                                    <video 
+                                        controls 
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                                        <source src="{{ $videoUrl }}" type="video/mp4">
+                                    </video>
                                 @endif
                             </div>
                         </div>
