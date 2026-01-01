@@ -88,6 +88,30 @@
                                     <video controls width="100%" height="600">
                                         <source src="{{ asset('storage/' . $video->video_path) }}" type="video/mp4">
                                     </video>
+                                @elseif($video->video_type == 'url' || $video->video_type == 'external')
+                                    @php
+                                        $isBunnyUrl = $video->video_url && (
+                                            str_contains($video->video_url, 'mediadelivery.net') ||
+                                            str_contains($video->video_url, 'bunny.net') ||
+                                            str_contains($video->video_url, 'b-cdn.net')
+                                        );
+                                    @endphp
+                                    @if($isBunnyUrl)
+                                        <!-- Bunny.net Video (iframe) -->
+                                        <iframe src="{{ $video->video_url }}"
+                                                width="100%"
+                                                height="600"
+                                                frameborder="0"
+                                                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                                                allowfullscreen>
+                                        </iframe>
+                                    @else
+                                        <!-- External URL (direct video) -->
+                                        <video controls width="100%" height="600">
+                                            <source src="{{ $video->video_url }}" type="video/mp4">
+                                            متصفحك لا يدعم تشغيل الفيديو.
+                                        </video>
+                                    @endif
                                 @endif
                             </div>
                         </div>

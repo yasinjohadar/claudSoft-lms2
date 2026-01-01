@@ -29,12 +29,30 @@
                     allowfullscreen>
             </iframe>
 
-        @elseif($video->video_type == 'url')
-            <!-- External URL -->
-            <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;">
-                <source src="{{ $video->video_url }}" type="video/mp4">
-                متصفحك لا يدعم تشغيل الفيديو.
-            </video>
+        @elseif($video->video_type == 'url' || $video->video_type == 'external')
+            @php
+                $isBunnyUrl = $video->video_url && (
+                    str_contains($video->video_url, 'mediadelivery.net') ||
+                    str_contains($video->video_url, 'bunny.net') ||
+                    str_contains($video->video_url, 'b-cdn.net')
+                );
+            @endphp
+            @if($isBunnyUrl)
+                <!-- Bunny.net Video (iframe) -->
+                <iframe id="bunnyPlayer"
+                        src="{{ $video->video_url }}"
+                        frameborder="0"
+                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                        allowfullscreen
+                        style="width: 100%; height: 100%; min-height: 500px; border: none;">
+                </iframe>
+            @else
+                <!-- External URL (direct video) -->
+                <video id="courseVideo" controls controlsList="nodownload" oncontextmenu="return false;">
+                    <source src="{{ $video->video_url }}" type="video/mp4">
+                    متصفحك لا يدعم تشغيل الفيديو.
+                </video>
+            @endif
         @endif
 
         <!-- Video Progress Indicator -->
