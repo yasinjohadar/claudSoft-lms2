@@ -36,6 +36,7 @@ class User extends Authenticatable
         'is_profile_public',
         'is_connected',
         'avatar',
+        'photo', // الصورة الشخصية
         'student_id',
         'last_login_at',
         'last_login_ip',
@@ -43,6 +44,7 @@ class User extends Authenticatable
         'date_of_birth',
         'gender',
         'address',
+        'city', // المدينة
         'notification_preferences',
         'email_preferences',
     ];

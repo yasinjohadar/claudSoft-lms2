@@ -18,7 +18,7 @@ class StudentProfileController extends Controller
      */
     public function index()
     {
-        $student = auth()->user();
+        $student = auth()->user()->load('nationality');
 
         return view('student.pages.profile.index', compact('student'));
     }
@@ -48,39 +48,15 @@ class StudentProfileController extends Controller
             $student->name = $request->name;
             // Email cannot be changed by student
 
-            if ($request->filled('name_ar')) {
-                $student->name_ar = $request->name_ar;
-            } else {
-                $student->name_ar = null;
-            }
-
-            if ($request->filled('phone')) {
-                $student->phone = $request->phone;
-            }
-
-            if ($request->filled('national_id')) {
-                $student->national_id = $request->national_id;
-            }
-
-            if ($request->filled('date_of_birth')) {
-                $student->date_of_birth = $request->date_of_birth;
-            }
-
-            if ($request->filled('gender')) {
-                $student->gender = $request->gender;
-            }
-
-            if ($request->filled('address')) {
-                $student->address = $request->address;
-            }
-
-            if ($request->filled('city')) {
-                $student->city = $request->city;
-            }
-
-            if ($request->filled('nationality_id')) {
-                $student->nationality_id = $request->nationality_id;
-            }
+            // Update all fields (including nullable ones)
+            $student->name_ar = $request->input('name_ar');
+            $student->phone = $request->input('phone');
+            $student->national_id = $request->input('national_id');
+            $student->date_of_birth = $request->input('date_of_birth');
+            $student->gender = $request->input('gender');
+            $student->address = $request->input('address');
+            $student->city = $request->input('city');
+            $student->nationality_id = $request->input('nationality_id');
 
             // Public profile toggle (checked => 1, unchecked => 0)
             // إذا لم يُرسل الحقل فهذا يعني أن السويتش مغلق

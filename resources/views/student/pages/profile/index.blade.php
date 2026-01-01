@@ -234,7 +234,11 @@
                                             <i class="fa fa-calendar text-primary me-2"></i>تاريخ الميلاد
                                         </div>
                                         <div class="info-value {{ $student->date_of_birth ? '' : 'empty' }}">
-                                            {{ $student->date_of_birth ?? 'غير محدد' }}
+                                            @if($student->date_of_birth)
+                                                {{ \Carbon\Carbon::parse($student->date_of_birth)->format('Y-m-d') }}
+                                            @else
+                                                غير محدد
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
