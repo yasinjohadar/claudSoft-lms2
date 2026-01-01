@@ -7,6 +7,9 @@
 @section('css')
 <style>
     .video-container {
+        position: relative;
+        width: 100%;
+        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
         background: #000;
         border-radius: 12px;
         overflow: hidden;
@@ -14,10 +17,12 @@
 
     .video-container iframe,
     .video-container video {
-        display: block;
-        width: 100%;
-        border: none;
-        border-radius: 12px;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border: none !important;
     }
 
 
@@ -99,8 +104,6 @@
                                     @if($isBunnyUrl)
                                         <!-- Bunny.net Video (iframe) -->
                                         <iframe src="{{ $video->video_url }}"
-                                                width="100%"
-                                                height="600"
                                                 frameborder="0"
                                                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                                                 allowfullscreen>

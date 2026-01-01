@@ -43,8 +43,7 @@
                         src="{{ $video->video_url }}"
                         frameborder="0"
                         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                        allowfullscreen
-                        style="width: 100%; height: 100%; min-height: 500px; border: none;">
+                        allowfullscreen>
                 </iframe>
             @else
                 <!-- External URL (direct video) -->
