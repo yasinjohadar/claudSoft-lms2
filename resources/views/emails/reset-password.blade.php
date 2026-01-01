@@ -163,7 +163,12 @@
     <div class="email-container">
         <!-- Header with Logo -->
         <div class="email-header">
-            <img src="{{ $logoUrl }}" alt="أكاديمية كلاودسوفت" style="max-width: 150px; height: auto;">
+            @if(!empty($logoUrl))
+                <img src="{{ $logoUrl }}" alt="أكاديمية كلاودسوفت" style="max-width: 150px; height: auto; display: block; margin: 0 auto;">
+            @else
+                <!-- Fallback: Show text logo if image fails -->
+                <div style="font-size: 32px; font-weight: 800; color: #ffffff; margin-bottom: 10px;">أكاديمية</div>
+            @endif
             <div class="logo-title">أكاديمية كلاودسوفت</div>
         </div>
         

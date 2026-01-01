@@ -50,8 +50,23 @@ class ResetPasswordNotification extends Notification
         $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
         
         $userName = $notifiable->name_ar ?? $notifiable->name ?? 'عزيزي المستخدم';
-        $appUrl = config('app.url');
-        $logoUrl = $appUrl . '/assets/logo/logo.png';
+        $appUrl = rtrim(config('app.url'), '/');
+        
+        // Generate logo URL - use absolute URL for email clients
+        $logoPath = public_path('assets/logo/logo.png');
+        $logoUrl = null;
+        
+        // Try to embed image as base64 if file exists (works in most email clients)
+        if (file_exists($logoPath)) {
+            $imageData = file_get_contents($logoPath);
+            $imageBase64 = base64_encode($imageData);
+            $imageInfo = getimagesize($logoPath);
+            $mimeType = $imageInfo['mime'] ?? 'image/png';
+            $logoUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
+        } else {
+            // Fallback to URL if file doesn't exist or base64 fails
+            $logoUrl = $appUrl . '/assets/logo/logo.png';
+        }
 
         return (new MailMessage)
             ->subject('إعادة تعيين كلمة المرور - أكاديمية كلاودسوفت')
