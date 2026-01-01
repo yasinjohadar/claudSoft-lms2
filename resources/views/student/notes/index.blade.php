@@ -201,7 +201,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-check mt-4">
-                                <input type="checkbox" name="is_important" class="form-check-input" id="isImportant">
+                                <input type="checkbox" name="is_important" value="1" class="form-check-input" id="isImportant">
                                 <label class="form-check-label" for="isImportant">ملاحظة مهمة ⭐</label>
                             </div>
                         </div>

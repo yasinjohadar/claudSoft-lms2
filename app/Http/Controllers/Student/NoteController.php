@@ -38,11 +38,12 @@ class NoteController extends Controller
             'category' => 'required|string',
             'color' => 'nullable|string',
             'reminder_at' => 'nullable|date',
-            'is_important' => 'nullable|boolean',
+            'is_important' => 'nullable|in:0,1,true,false',
         ]);
 
         $validated['user_id'] = auth()->id();
-        $validated['is_important'] = $request->has('is_important') ? true : false;
+        // Handle checkbox: if present and has value, set to true, otherwise false
+        $validated['is_important'] = $request->filled('is_important') && ($request->is_important == '1' || $request->is_important === true || $request->is_important === 'true');
 
         Note::create($validated);
 
@@ -61,32 +62,41 @@ class NoteController extends Controller
             'category' => 'required|string',
             'color' => 'nullable|string',
             'reminder_at' => 'nullable|date',
-            'is_important' => 'nullable|boolean',
+            'is_important' => 'nullable|in:0,1,true,false',
         ]);
 
-        $validated['is_important'] = $request->has('is_important') ? true : false;
+        // Handle checkbox: if present and has value, set to true, otherwise false
+        $validated['is_important'] = $request->filled('is_important') && ($request->is_important == '1' || $request->is_important === true || $request->is_important === 'true');
 
         $note->update($validated);
 
         return redirect()->back()->with('success', 'تم تحديث الملاحظة بنجاح');
     }
 
-    public function destroy(Note $note)
+    public function destroy($id)
     {
-        if ($note->user_id !== auth()->id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'غير مصرح لك بحذف هذه الملاحظة'
-            ], 403);
-        }
-
         try {
+            $note = Note::findOrFail($id);
+
+            // Check if note belongs to the authenticated user
+            if ($note->user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بحذف هذه الملاحظة'
+                ], 403);
+            }
+
             $note->delete();
 
             return response()->json([
                 'success' => true,
                 'message' => 'تم حذف الملاحظة بنجاح'
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الملاحظة غير موجودة'
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
