@@ -176,7 +176,7 @@
                                             </td>
                                             <td>{{ $question->default_grade }}</td>
                                             <td>
-                                                @if($question->course_id)
+                                                @if($question->course_id && $question->course)
                                                     <span class="badge bg-success-transparent">{{ $question->course->title }}</span>
                                                 @else
                                                     <span class="badge bg-info-transparent">عام</span>

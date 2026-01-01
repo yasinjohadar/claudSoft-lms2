@@ -348,7 +348,15 @@ class CourseSectionController extends Controller
                     return $query->whereNotIn('id', $existingQuestionIds);
                 })
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->filter(function($question) {
+                    // Filter out questions with invalid course relationships
+                    // If course_id exists but course relationship is null, skip it
+                    if ($question->course_id && !$question->course) {
+                        return false;
+                    }
+                    return true;
+                });
 
             // Get question types for creating new questions
             $questionTypes = QuestionType::where('is_active', true)
