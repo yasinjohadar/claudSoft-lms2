@@ -73,28 +73,60 @@ class NoteController extends Controller
         return redirect()->back()->with('success', 'تم تحديث الملاحظة بنجاح');
     }
 
-    public function destroy(Note $note)
+    public function destroy($note)
     {
         try {
+            // Handle both route model binding and direct ID
+            $noteModel = $note instanceof Note ? $note : Note::findOrFail($note);
+            
+            \Log::info('Note deletion attempt', [
+                'note_id' => $noteModel->id,
+                'note_user_id' => $noteModel->user_id,
+                'auth_user_id' => auth()->id(),
+                'note_param_type' => gettype($note)
+            ]);
+            
             // Check if note belongs to the authenticated user
-            if ($note->user_id !== auth()->id()) {
+            if ((int)$noteModel->user_id !== (int)auth()->id()) {
+                \Log::warning('Unauthorized note deletion attempt', [
+                    'note_id' => $noteModel->id,
+                    'note_user_id' => $noteModel->user_id,
+                    'auth_user_id' => auth()->id()
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'غير مصرح لك بحذف هذه الملاحظة'
+                    'message' => 'غير مصرح لك بحذف هذه الملاحظة. الملاحظة لا تنتمي إلى حسابك.'
                 ], 403);
             }
 
-            $noteTitle = $note->title;
-            $note->delete();
+            $noteTitle = $noteModel->title;
+            $noteModel->delete();
+
+            \Log::info('Note deleted successfully', [
+                'note_id' => $noteModel->id,
+                'user_id' => auth()->id()
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'تم حذف الملاحظة "' . $noteTitle . '" بنجاح'
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::warning('Note not found for deletion', [
+                'note_param' => $note,
+                'user_id' => auth()->id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'الملاحظة غير موجودة'
+            ], 404);
         } catch (\Exception $e) {
             \Log::error('Note deletion error: ' . $e->getMessage(), [
-                'note_id' => $note->id ?? null,
-                'user_id' => auth()->id()
+                'note_param' => is_object($note) ? $note->id : $note,
+                'user_id' => auth()->id(),
+                'exception' => get_class($e)
             ]);
 
             return response()->json([

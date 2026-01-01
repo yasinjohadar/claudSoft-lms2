@@ -46,11 +46,25 @@
     #viewNoteModal .modal-content {
         border-radius: 15px;
         overflow: hidden;
+        background: var(--default-body-bg, #ffffff);
+        color: var(--default-text-color, #333);
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal .modal-content {
+        background: #1a1d29;
+        color: #e9ecef;
     }
     
     #viewNoteModal .modal-body {
         max-height: 70vh;
         overflow-y: auto;
+        background: var(--default-body-bg, #ffffff);
+        color: var(--default-text-color, #333);
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal .modal-body {
+        background: #1a1d29;
+        color: #e9ecef;
     }
     
     #viewNoteContent {
@@ -58,6 +72,93 @@
         font-size: 1.05rem;
         white-space: pre-wrap;
         word-wrap: break-word;
+        background: var(--default-body-bg, #f8f9fa);
+        color: var(--default-text-color, #333);
+    }
+    
+    [data-theme-mode="dark"] #viewNoteContent {
+        background: #252836;
+        color: #e9ecef;
+    }
+    
+    #viewNoteModal .modal-footer {
+        background: var(--default-body-bg, #ffffff);
+        border-top: 1px solid var(--default-border, #dee2e6);
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal .modal-footer {
+        background: #1a1d29;
+        border-top-color: #2d3142;
+    }
+    
+    /* Note Content Box */
+    .note-content-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    }
+    
+    [data-theme-mode="dark"] .note-content-box {
+        background: linear-gradient(135deg, #252836 0%, #1a1d29 100%);
+    }
+    
+    /* Reminder Box */
+    .reminder-box {
+        background: linear-gradient(135deg, #e7f3ff 0%, #cfe2ff 100%);
+        border-right: 3px solid #0d6efd;
+    }
+    
+    [data-theme-mode="dark"] .reminder-box {
+        background: linear-gradient(135deg, #1e3a5f 0%, #153048 100%);
+        border-right-color: #4a9eff;
+    }
+    
+    /* Created Date Box */
+    .created-date-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-right: 3px solid #6c757d;
+    }
+    
+    [data-theme-mode="dark"] .created-date-box {
+        background: linear-gradient(135deg, #2d3142 0%, #252836 100%);
+        border-right-color: #6c757d;
+    }
+    
+    .created-date-text {
+        color: #333;
+    }
+    
+    [data-theme-mode="dark"] .created-date-text {
+        color: #e9ecef;
+    }
+    
+    /* Badge colors in dark mode */
+    [data-theme-mode="dark"] #viewNoteModal .badge.bg-warning {
+        background-color: #f59e0b !important;
+        color: #fff !important;
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal .text-muted {
+        color: #adb5bd !important;
+    }
+    
+    /* Modal buttons in dark mode */
+    [data-theme-mode="dark"] #viewNoteModal .btn-secondary {
+        background-color: #2d3142;
+        border-color: #2d3142;
+        color: #e9ecef;
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal .btn-primary {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    /* Text colors in dark mode */
+    [data-theme-mode="dark"] #viewNoteModal .text-primary {
+        color: #4a9eff !important;
+    }
+    
+    [data-theme-mode="dark"] #viewNoteModal strong {
+        color: #e9ecef;
     }
     
     /* Spin animation */
@@ -332,14 +433,14 @@
 
                 <!-- Content -->
                 <div class="mb-4">
-                    <div class="p-4 rounded shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-right: 5px solid; min-height: 150px;" id="viewNoteContent">
+                    <div class="p-4 rounded shadow-sm note-content-box" style="border-right: 5px solid; min-height: 150px;" id="viewNoteContent">
                     </div>
                 </div>
 
                 <!-- Details -->
                 <div class="row g-3 mb-3">
                     <div class="col-md-6" id="viewNoteReminder" style="display: none;">
-                        <div class="d-flex align-items-center p-3 rounded shadow-sm" style="background: linear-gradient(135deg, #e7f3ff 0%, #cfe2ff 100%); border-right: 3px solid #0d6efd;">
+                        <div class="d-flex align-items-center p-3 rounded shadow-sm reminder-box">
                             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; flex-shrink: 0;">
                                 <i class="ri-alarm-line fs-5"></i>
                             </div>
@@ -350,13 +451,13 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="d-flex align-items-center p-3 rounded shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-right: 3px solid #6c757d;">
+                        <div class="d-flex align-items-center p-3 rounded shadow-sm created-date-box">
                             <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; flex-shrink: 0;">
                                 <i class="ri-time-line fs-5"></i>
                             </div>
                             <div class="ms-3">
                                 <small class="text-muted d-block mb-1" style="font-size: 0.85rem;">📅 تاريخ الإنشاء</small>
-                                <strong id="viewNoteCreatedAt" class="text-dark"></strong>
+                                <strong id="viewNoteCreatedAt" class="created-date-text"></strong>
                             </div>
                         </div>
                     </div>
@@ -563,8 +664,20 @@ function viewNote(note) {
     categoryBadge.style.color = categoryInfo.color;
     
     // Set content
-    document.getElementById('viewNoteContent').innerHTML = note.content.replace(/\n/g, '<br>');
-    document.getElementById('viewNoteContent').style.borderRightColor = noteColor;
+    const contentBox = document.getElementById('viewNoteContent');
+    contentBox.innerHTML = note.content.replace(/\n/g, '<br>');
+    contentBox.style.borderRightColor = noteColor;
+    
+    // Adjust colors for dark mode
+    const isDarkMode = document.documentElement.getAttribute('data-theme-mode') === 'dark';
+    if (isDarkMode) {
+        // In dark mode, use lighter border color
+        const rgb = hexToRgb(noteColor);
+        if (rgb) {
+            const lighterBorder = `rgb(${Math.min(255, rgb.r + 50)}, ${Math.min(255, rgb.g + 50)}, ${Math.min(255, rgb.b + 50)})`;
+            contentBox.style.borderRightColor = lighterBorder;
+        }
+    }
     
     // Set important badge
     if (note.is_important) {
@@ -631,17 +744,24 @@ function deleteNote(noteId, event) {
         loadingToast.innerHTML = '<div class="alert alert-info"><i class="ri-loader-4-line spin me-2"></i>جاري الحذف...</div>';
         document.body.appendChild(loadingToast);
         
-        fetch(`/student/notes/${noteId}`, {
+        const deleteUrl = `/student/notes/${noteId}`;
+        console.log('Deleting note:', noteId, 'URL:', deleteUrl);
+        
+        fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
         })
         .then(response => {
+            console.log('Delete response status:', response.status);
             if (!response.ok) {
                 return response.json().then(data => {
+                    console.error('Delete error:', data);
                     throw new Error(data.message || 'حدث خطأ أثناء الحذف');
                 });
             }
