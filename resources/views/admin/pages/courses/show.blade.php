@@ -749,6 +749,18 @@
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-edit me-1"></i>تحرير
                                                     </a>
+                                                @elseif($module->module_type == 'video' && $module->modulable_id)
+                                                    {{-- زر تعديل الفيديو مباشرة --}}
+                                                    <a href="{{ route('videos.edit', $module->modulable_id) }}"
+                                                       class="btn btn-sm btn-outline-warning"
+                                                       title="تعديل الفيديو مباشرة">
+                                                        <i class="fas fa-video me-1"></i>تعديل الفيديو
+                                                    </a>
+                                                    {{-- زر تعديل الوحدة --}}
+                                                    <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}"
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-edit me-1"></i>تحرير الوحدة
+                                                    </a>
                                                 @else
                                                     <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}"
                                                        class="btn btn-sm btn-outline-primary">
