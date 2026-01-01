@@ -12,6 +12,7 @@ use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CourseModuleController extends Controller
 {
@@ -350,8 +351,13 @@ class CourseModuleController extends Controller
                 'videos',
                 'resources'
             ));
+        } catch (ModelNotFoundException $e) {
+            // Module not found - try to get course_id from URL or redirect back
+            return redirect()
+                ->back()
+                ->with('error', 'الوحدة المطلوبة غير موجودة أو تم حذفها.');
         } catch (\Exception $e) {
-            // Try to get course_id if module exists
+            // Other errors - try to get course_id if module exists
             try {
                 $module = CourseModule::find($id);
                 if ($module && isset($module->course_id)) {
