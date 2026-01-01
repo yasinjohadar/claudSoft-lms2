@@ -326,7 +326,7 @@ class CourseModuleController extends Controller
     /**
      * Show the form for editing the specified module.
      */
-    public function edit($id)
+    public function edit($sectionId, $id)
     {
         try {
             $module = CourseModule::with(['course', 'section', 'modulable'])->findOrFail($id);
@@ -378,7 +378,7 @@ class CourseModuleController extends Controller
     /**
      * Update the specified module in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $sectionId, $id)
     {
         $module = CourseModule::findOrFail($id);
 
@@ -464,7 +464,7 @@ class CourseModuleController extends Controller
     /**
      * Remove the specified module from storage (soft delete).
      */
-    public function destroy($id)
+    public function destroy($sectionId, $id)
     {
         DB::beginTransaction();
         try {
