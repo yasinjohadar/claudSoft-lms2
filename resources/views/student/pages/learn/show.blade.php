@@ -237,26 +237,29 @@
         transition: all 0.3s;
     }
 
-    /* Video Player */
-    .video-container {
-        position: relative;
-        width: 100%;
-        height: 0;
-        padding-bottom: 56.25%; /* 16:9 Aspect Ratio - same as YouTube */
-        background: #000;
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 1.5rem;
+    /* Video Player - Full Width like YouTube */
+    .video-container,
+    #videoContainer {
+        position: relative !important;
+        width: 100% !important;
+        height: 0 !important;
+        padding-bottom: 56.25% !important; /* 16:9 Aspect Ratio - same as YouTube */
+        background: #000 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        margin-bottom: 1.5rem !important;
     }
 
     .video-container iframe,
-    .video-container video {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
+    .video-container video,
+    #videoContainer iframe,
+    #videoContainer video {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border: none !important;
     }
 
     /* Lesson Content */
