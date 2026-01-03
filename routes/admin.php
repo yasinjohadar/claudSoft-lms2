@@ -56,6 +56,7 @@ use App\Http\Controllers\Admin\AIStudentFeedbackController;
 use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AISettingsController;
 use App\Http\Controllers\Admin\AIGradingSettingsController;
+use App\Http\Controllers\Admin\ImpersonationController;
 
 Route::prefix('admin')
     ->middleware('auth')
@@ -89,6 +90,10 @@ Route::prefix('admin')
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::get('users/{userId}/courses', [UserController::class, 'showCourses'])->name('admin.users.courses');
+
+        // Impersonation routes
+        Route::post('impersonate/{user}', [ImpersonationController::class, 'impersonate'])->name('admin.impersonate');
+        Route::post('stop-impersonate', [ImpersonationController::class, 'stop'])->name('admin.stop-impersonate');
 
         // Course Categories routes
         Route::resource('course-categories', CourseCategoryController::class);

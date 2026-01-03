@@ -362,4 +362,43 @@ class User extends Authenticatable
     {
         $this->notify(new ResetPasswordNotification($token));
     }
+
+    // ========================================
+    // Impersonation Methods
+    // ========================================
+
+    /**
+     * Check if current user is being impersonated.
+     *
+     * @return bool
+     */
+    public function isImpersonating(): bool
+    {
+        return \Illuminate\Support\Facades\Session::has('impersonate');
+    }
+
+    /**
+     * Get the original admin user who is impersonating.
+     *
+     * @return \App\Models\User|null
+     */
+    public function getOriginalUser(): ?User
+    {
+        if (!$this->isImpersonating()) {
+            return null;
+        }
+
+        $impersonateData = \Illuminate\Support\Facades\Session::get('impersonate');
+        return self::find($impersonateData['original_user_id'] ?? null);
+    }
+
+    /**
+     * Check if user can impersonate other users.
+     *
+     * @return bool
+     */
+    public function canImpersonate(): bool
+    {
+        return $this->hasRole('admin');
+    }
 }

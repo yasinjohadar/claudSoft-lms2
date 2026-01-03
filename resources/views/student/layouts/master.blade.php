@@ -31,6 +31,8 @@
 
     <div class="page">
 
+        {{-- Impersonation Banner --}}
+        @include('components.impersonation-banner')
 
         @include('student.layouts.main-header')
 

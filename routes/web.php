@@ -51,6 +51,17 @@ Route::middleware(['auth', 'check.user.active'])->group(function () {
 
 });
 
+// Impersonation routes
+// Route للدخول باستخدام token (لا يحتاج auth لأنه سيسجل الدخول)
+Route::get('/impersonate/{token}', [\App\Http\Controllers\Admin\ImpersonationController::class, 'loginWithToken'])
+    ->name('impersonate.login');
+
+// Route لإيقاف Impersonation - يجب أن يكون متاحاً حتى أثناء Impersonation
+Route::middleware('auth')->group(function () {
+    Route::post('/admin/stop-impersonate', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stop'])
+        ->name('admin.stop-impersonate');
+});
+
 
 
 // مسار toggle-status بدون middleware check.user.active

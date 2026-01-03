@@ -20,11 +20,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
             'webhook.verify' => \App\Http\Middleware\VerifyWebhookSignature::class,
+            'impersonate' => \App\Http\Middleware\ImpersonateMiddleware::class,
         ]);
 
         // Add middleware to parse multipart/form-data for PUT/PATCH requests - PREPEND to run first
         $middleware->web(prepend: [
             \App\Http\Middleware\ParseMultipartFormData::class,
+        ]);
+
+        // Add impersonate middleware to web group to share data with views
+        $middleware->web(append: [
+            \App\Http\Middleware\ImpersonateMiddleware::class,
         ]);
     })
     ->withEvents(discover: [

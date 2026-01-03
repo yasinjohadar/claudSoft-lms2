@@ -200,6 +200,15 @@
                                                                 title="عرض الكورسات">
                                                                 <i class="fas fa-book"></i>
                                                             </a>
+                                                            @if($user->is_active)
+                                                                <button type="button" 
+                                                                        class="btn btn-success btn-sm me-1 impersonate-btn" 
+                                                                        data-user-id="{{ $user->id }}"
+                                                                        data-user-name="{{ $user->name }}"
+                                                                        title="الدخول كطالب في تبويب جديد">
+                                                                    <i class="fas fa-user-secret"></i>
+                                                                </button>
+                                                            @endif
                                                         @endif
                                                         <a class="btn btn-info btn-sm me-1"
                                                             href="{{ route('users.edit', $user->id) }}"
@@ -257,5 +266,209 @@
 
 @stop
 
-@section('js')
+@section('scripts')
+<!-- Modal للدخول كطالب -->
+<div class="modal fade" id="impersonateModal" tabindex="-1" aria-labelledby="impersonateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="impersonateModalLabel">
+                    <i class="fas fa-user-secret me-2"></i>
+                    الدخول كـ <span id="impersonateUserName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="alert alert-success mb-4">
+                    <i class="fas fa-clipboard-check fa-2x mb-2"></i>
+                    <h5 class="mb-1">تم نسخ الرابط تلقائياً! ✓</h5>
+                </div>
+                
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3">
+                            <i class="fas fa-keyboard me-2"></i>
+                            الخطوات:
+                        </h6>
+                        <div class="d-flex flex-column gap-2 text-start">
+                            <div class="step">
+                                <span class="badge bg-primary rounded-circle me-2">1</span>
+                                اضغط <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> لفتح نافذة مخفية
+                            </div>
+                            <div class="step">
+                                <span class="badge bg-primary rounded-circle me-2">2</span>
+                                اضغط <kbd>Ctrl</kbd> + <kbd>V</kbd> للصق الرابط
+                            </div>
+                            <div class="step">
+                                <span class="badge bg-primary rounded-circle me-2">3</span>
+                                اضغط <kbd>Enter</kbd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label small text-muted">الرابط (تم نسخه):</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="impersonateUrl" readonly dir="ltr" style="font-size: 11px;">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" id="copyUrlBtn" title="نسخ مرة أخرى">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">صالح لمدة 60 دقيقة</small>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    let currentImpersonateUrl = '';
+    
+    function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+        
+        document.body.removeChild(textArea);
+        return Promise.resolve();
+    }
+    
+    function showImpersonateModal(url, userName) {
+        currentImpersonateUrl = url;
+        document.getElementById('impersonateUrl').value = url;
+        document.getElementById('impersonateUserName').textContent = userName;
+        
+        // نسخ الرابط تلقائياً
+        copyToClipboard(url).then(function() {
+            // إظهار الـ Modal
+            const modal = new bootstrap.Modal(document.getElementById('impersonateModal'));
+            modal.show();
+        });
+    }
+    
+    function handleImpersonateClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const btn = e.currentTarget;
+        const userId = btn.getAttribute('data-user-id');
+        const userName = btn.getAttribute('data-user-name');
+        
+        if (!userId) {
+            alert('خطأ: لم يتم العثور على معرف المستخدم');
+            return;
+        }
+
+        // إظهار loading
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        // الحصول على CSRF token
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : null;
+        
+        if (!csrfToken) {
+            alert('خطأ: لم يتم العثور على CSRF token');
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            return;
+        }
+        
+        // إرسال طلب لإنشاء token
+        fetch('{{ url("/admin/impersonate") }}/' + userId, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
+        .then(data => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            
+            if (data.success && data.url) {
+                // إظهار Modal مع الرابط
+                showImpersonateModal(data.url, userName);
+            } else {
+                alert('حدث خطأ: ' + (data.message || 'فشل في إنشاء رابط الدخول'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            let errorMessage = 'حدث خطأ أثناء إنشاء رابط الدخول';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            alert(errorMessage);
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        });
+    }
+    
+    function initImpersonateButtons() {
+        // أزرار الدخول كطالب
+        document.querySelectorAll('.impersonate-btn').forEach(function(btn) {
+            btn.addEventListener('click', handleImpersonateClick);
+        });
+        
+        // زر نسخ الرابط
+        const copyBtn = document.getElementById('copyUrlBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                copyToClipboard(currentImpersonateUrl).then(function() {
+                    const originalHTML = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(function() {
+                        copyBtn.innerHTML = originalHTML;
+                    }, 2000);
+                });
+            });
+        }
+    }
+    
+    // محاولة التهيئة عند تحميل الصفحة
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initImpersonateButtons);
+    } else {
+        initImpersonateButtons();
+    }
+})();
+</script>
 @stop
