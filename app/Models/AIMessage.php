@@ -40,3 +40,4 @@ class AIMessage extends Model
     }
 }
 
+

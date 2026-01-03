@@ -78,6 +78,8 @@ class FrontendCourseController extends Controller
             'price' => 'nullable|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
             'currency' => 'required|string|max:10',
             'status' => 'required|in:draft,published,archived',
             'requirements' => 'nullable|string',
@@ -110,6 +112,11 @@ class FrontendCourseController extends Controller
             if ($validated['status'] === 'published' && !isset($validated['published_at'])) {
                 $validated['published_at'] = now();
             }
+
+            // Handle checkboxes (if not present in request, set to false)
+            $validated['is_free'] = $request->has('is_free') && $request->is_free == '1';
+            $validated['is_featured'] = $request->has('is_featured') && $request->is_featured == '1';
+            $validated['is_active'] = $request->has('is_active') && $request->is_active == '1';
 
             // Create course
             $course = FrontendCourse::create($validated);
@@ -167,6 +174,8 @@ class FrontendCourseController extends Controller
             'price' => 'nullable|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
             'currency' => 'required|string|max:10',
             'status' => 'required|in:draft,published,archived',
             'requirements' => 'nullable|string',
@@ -204,6 +213,11 @@ class FrontendCourseController extends Controller
             if ($validated['status'] === 'published' && $frontendCourse->status !== 'published') {
                 $validated['published_at'] = now();
             }
+
+            // Handle checkboxes (if not present in request, set to false)
+            $validated['is_free'] = $request->has('is_free') && $request->is_free == '1';
+            $validated['is_featured'] = $request->has('is_featured') && $request->is_featured == '1';
+            $validated['is_active'] = $request->has('is_active') && $request->is_active == '1';
 
             // Update course
             $frontendCourse->update($validated);

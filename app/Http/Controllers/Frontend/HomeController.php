@@ -28,6 +28,7 @@ class HomeController extends Controller
                         ->published()
                         ->featured()
                         ->orderBy('order', 'asc')
+                        ->orderBy('created_at', 'desc')
                         ->limit(8)
                         ->get();
 

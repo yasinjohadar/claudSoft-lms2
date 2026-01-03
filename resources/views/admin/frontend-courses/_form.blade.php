@@ -232,6 +232,28 @@
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_featured" value="1"
+                               id="is_featured" {{ old('is_featured', $course->is_featured ?? false) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_featured">
+                            كورس مميز
+                        </label>
+                    </div>
+                    <small class="text-muted">الكورسات المميزة تظهر في الصفحة الرئيسية</small>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" value="1"
+                               id="is_active" {{ old('is_active', $course->is_active ?? true) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_active">
+                            نشط
+                        </label>
+                    </div>
+                    <small class="text-muted">الكورسات النشطة فقط تظهر في الواجهة الأمامية</small>
+                </div>
             </div>
         </div>
 

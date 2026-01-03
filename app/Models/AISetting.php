@@ -60,3 +60,4 @@ class AISetting extends Model
     }
 }
 
+
