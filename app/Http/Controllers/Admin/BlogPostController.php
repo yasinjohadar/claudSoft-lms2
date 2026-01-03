@@ -135,8 +135,12 @@ class BlogPostController extends Controller
             }
 
             // Set published_at if status is published and not set
-            if ($validated['status'] === 'published' && !isset($validated['published_at'])) {
-                $validated['published_at'] = now();
+            if ($validated['status'] === 'published') {
+                // If published_at is not set or is in the future, set it to now
+                if (!isset($validated['published_at']) || 
+                    (isset($validated['published_at']) && strtotime($validated['published_at']) > time())) {
+                    $validated['published_at'] = now();
+                }
             }
 
             // Set default schema type
@@ -313,7 +317,16 @@ class BlogPostController extends Controller
             }
 
             // Set published_at if status changed to published
-            if ($validated['status'] === 'published' && $post->status !== 'published' && !isset($validated['published_at'])) {
+            if ($validated['status'] === 'published' && $post->status !== 'published') {
+                // If published_at is not set or is in the future, set it to now
+                if (!isset($validated['published_at']) || 
+                    (isset($validated['published_at']) && strtotime($validated['published_at']) > time())) {
+                    $validated['published_at'] = now();
+                }
+            }
+            
+            // If status is published and published_at is in the future, update it to now
+            if ($validated['status'] === 'published' && isset($validated['published_at']) && strtotime($validated['published_at']) > time()) {
                 $validated['published_at'] = now();
             }
 
