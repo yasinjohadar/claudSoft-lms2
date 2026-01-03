@@ -24,16 +24,59 @@ class CourseEnrollmentController extends Controller
     /**
      * Display enrollments for a course.
      */
-    public function index($courseId)
+    public function index(Request $request, $courseId)
     {
         try {
             $course = Course::findOrFail($courseId);
 
-            $enrollments = CourseEnrollment::with(['student', 'enrolledBy'])
-                ->where('course_id', $courseId)
-                ->orderBy('enrollment_date', 'desc')
-                ->paginate(20);
+            // Build query with filters
+            $query = CourseEnrollment::with(['student', 'enrolledBy'])
+                ->where('course_id', $courseId);
 
+            // Search filter
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('student', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('name_ar', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // Status filter
+            if ($request->filled('status')) {
+                $query->where('enrollment_status', $request->status);
+            }
+
+            // Sort filter
+            $sort = $request->get('sort', 'recent');
+            $needsJoin = false;
+            
+            switch ($sort) {
+                case 'progress':
+                    $query->orderBy('completion_percentage', 'desc')
+                          ->orderBy('enrollment_date', 'desc');
+                    break;
+                case 'name':
+                    $query->join('users', 'course_enrollments.student_id', '=', 'users.id')
+                          ->orderBy('users.name', 'asc')
+                          ->select('course_enrollments.*');
+                    $needsJoin = true;
+                    break;
+                case 'recent':
+                default:
+                    $query->orderBy('enrollment_date', 'desc');
+                    break;
+            }
+
+            $enrollments = $query->paginate(20)->appends($request->query());
+            
+            // Reload relationships if we used join
+            if ($needsJoin) {
+                $enrollments->load(['student', 'enrolledBy']);
+            }
+
+            // Calculate stats (always from all enrollments, not filtered)
             $stats = [
                 'total' => $course->enrollments()->count(),
                 'active' => $course->enrollments()->where('enrollment_status', 'active')->count(),
@@ -84,80 +127,135 @@ class CourseEnrollmentController extends Controller
     }
 
     /**
-     * Enroll individual student.
+     * Enroll individual student(s) - supports multiple students.
      */
     public function enrollIndividual(Request $request, $courseId)
     {
         try {
             $validated = $request->validate([
-                'student_id' => 'required|exists:users,id',
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'required|exists:users,id',
                 'enrollment_status' => 'nullable|in:active,pending,suspended',
             ], [
-                'student_id.required' => 'يرجى اختيار طالب',
-                'student_id.exists' => 'الطالب المحدد غير موجود',
+                'student_ids.required' => 'يرجى اختيار طالب واحد على الأقل',
+                'student_ids.array' => 'يجب اختيار طلاب',
+                'student_ids.min' => 'يرجى اختيار طالب واحد على الأقل',
+                'student_ids.*.required' => 'يجب اختيار طالب صحيح',
+                'student_ids.*.exists' => 'أحد الطلاب المحددين غير موجود',
             ]);
+
+            // Handle send_notification checkbox (checkboxes send "on" when checked, nothing when unchecked)
+            $sendNotification = $request->has('send_notification');
 
             DB::beginTransaction();
             
             $course = Course::findOrFail($courseId);
+            $studentIds = array_unique($validated['student_ids']); // Remove duplicates
+            $enrollmentStatus = $validated['enrollment_status'] ?? 'active';
 
-            // Check if already enrolled
-            $exists = CourseEnrollment::where('course_id', $courseId)
-                ->where('student_id', $validated['student_id'])
-                ->exists();
+            // Get already enrolled students
+            $existingEnrollments = CourseEnrollment::where('course_id', $courseId)
+                ->whereIn('student_id', $studentIds)
+                ->pluck('student_id')
+                ->toArray();
 
-            if ($exists) {
+            // Filter out already enrolled students
+            $newStudentIds = array_diff($studentIds, $existingEnrollments);
+
+            if (empty($newStudentIds)) {
                 DB::rollBack();
+                $message = count($studentIds) === 1 
+                    ? 'الطالب مسجل بالفعل في هذا الكورس'
+                    : 'جميع الطلاب المحددين مسجلون بالفعل في هذا الكورس';
+                
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->withErrors(['student_id' => 'الطالب مسجل بالفعل في هذا الكورس'])
-                    ->with('error', 'الطالب مسجل بالفعل في هذا الكورس');
+                    ->withErrors(['student_ids' => $message])
+                    ->with('error', $message);
             }
 
-            // Check if course is full
-            if ($course->isFull()) {
-                DB::rollBack();
-                return redirect()
-                    ->back()
-                    ->withInput()
-                    ->withErrors(['course' => 'الكورس ممتلئ ولا يمكن إضافة طلاب جدد'])
-                    ->with('error', 'الكورس ممتلئ ولا يمكن إضافة طلاب جدد');
+            // Check if course has capacity for new enrollments
+            if ($course->max_students) {
+                $currentEnrollments = CourseEnrollment::where('course_id', $courseId)->count();
+                $availableSlots = $course->max_students - $currentEnrollments;
+                
+                if ($availableSlots < count($newStudentIds)) {
+                    DB::rollBack();
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->withErrors(['course' => "الكورس لديه {$availableSlots} مقعد متاح فقط. لا يمكن إضافة " . count($newStudentIds) . " طالب"])
+                        ->with('error', "الكورس لديه {$availableSlots} مقعد متاح فقط");
+                }
             }
 
-            $enrollment = CourseEnrollment::create([
-                'course_id' => $courseId,
-                'student_id' => $validated['student_id'],
-                'enrollment_date' => now(),
-                'enrollment_status' => $validated['enrollment_status'] ?? 'active',
-                'enrolled_by' => auth()->id(),
-                'completion_percentage' => 0,
-            ]);
+            // Create enrollments
+            $enrollments = [];
+            $enrolledById = auth()->id();
+            
+            foreach ($newStudentIds as $studentId) {
+                $enrollments[] = CourseEnrollment::create([
+                    'course_id' => $courseId,
+                    'student_id' => $studentId,
+                    'enrollment_date' => now(),
+                    'enrollment_status' => $enrollmentStatus,
+                    'enrolled_by' => $enrolledById,
+                    'completion_percentage' => 0,
+                ]);
+            }
 
             DB::commit();
 
-            // Dispatch n8n webhook event
-            if ($enrollment->enrollment_status === 'active') {
-                try {
-                    event(new N8nWebhookEvent('student.enrolled', [
-                        'student_id' => $enrollment->student_id,
-                        'student_name' => $enrollment->student->name ?? null,
-                        'student_email' => $enrollment->student->email ?? null,
-                        'course_id' => $enrollment->course_id,
-                        'course_title' => $course->title ?? null,
-                        'enrollment_id' => $enrollment->id,
-                        'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                        'enrolled_by' => $enrollment->enrolled_by,
-                    ]));
-                } catch (\Exception $e) {
-                    // Log webhook error but don't fail enrollment
-                    \Log::warning('Webhook event failed: ' . $e->getMessage());
+            // Dispatch n8n webhook events for active enrollments
+            if ($enrollmentStatus === 'active') {
+                foreach ($enrollments as $enrollment) {
+                    try {
+                        $student = $enrollment->student;
+                        event(new N8nWebhookEvent('student.enrolled', [
+                            'student_id' => $enrollment->student_id,
+                            'student_name' => $student->name ?? null,
+                            'student_email' => $student->email ?? null,
+                            'course_id' => $enrollment->course_id,
+                            'course_title' => $course->title ?? null,
+                            'enrollment_id' => $enrollment->id,
+                            'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
+                            'enrolled_by' => $enrollment->enrolled_by,
+                        ]));
+                    } catch (\Exception $e) {
+                        // Log webhook error but don't fail enrollment
+                        \Log::warning('Webhook event failed: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // Build success message
+            $enrolledCount = count($enrollments);
+            $skippedCount = count($existingEnrollments);
+            
+            $message = '';
+            if ($enrolledCount > 0) {
+                if ($enrolledCount === 1) {
+                    $message = 'تم تسجيل طالب واحد بنجاح';
+                } else {
+                    $message = "تم تسجيل {$enrolledCount} طلاب بنجاح";
+                }
+            }
+            
+            if ($skippedCount > 0) {
+                if ($message) {
+                    $message .= '. ';
+                }
+                if ($skippedCount === 1) {
+                    $message .= 'تم تخطي طالب واحد (مسجل مسبقاً)';
+                } else {
+                    $message .= "تم تخطي {$skippedCount} طلاب (مسجلون مسبقاً)";
                 }
             }
 
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('success', 'تم تسجيل الطالب بنجاح');
+                ->with('success', $message);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()
                 ->back()

@@ -90,6 +90,11 @@ Route::prefix('admin')
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::get('users/{userId}/courses', [UserController::class, 'showCourses'])->name('admin.users.courses');
+        Route::get('users/{user}/student-details', [UserController::class, 'studentDetails'])->name('users.student-details');
+        Route::post('users/{user}/add-to-group', [UserController::class, 'addToGroup'])->name('users.add-to-group');
+        Route::post('users/{user}/remove-from-group', [UserController::class, 'removeFromGroup'])->name('users.remove-from-group');
+        Route::post('users/{user}/enroll-course', [UserController::class, 'enrollCourse'])->name('users.enroll-course');
+        Route::post('users/{user}/unenroll-course', [UserController::class, 'unenrollCourse'])->name('users.unenroll-course');
 
         // Impersonation routes
         Route::post('impersonate/{user}', [ImpersonationController::class, 'impersonate'])->name('admin.impersonate');
@@ -135,6 +140,14 @@ Route::prefix('admin')
         Route::post('sections/{id}/toggle-visibility', [CourseSectionController::class, 'toggleVisibility'])->name('sections.toggle-visibility');
         Route::post('sections/{id}/toggle-lock', [CourseSectionController::class, 'toggleLock'])->name('sections.toggle-lock');
         Route::post('sections/reorder', [CourseSectionController::class, 'reorder'])->name('sections.reorder');
+
+        // Section Access Restrictions routes
+        Route::get('sections/{section}/restrictions', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getSectionRestrictions'])->name('sections.restrictions.get');
+        Route::post('sections/{section}/restrictions/sync', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncSectionRestrictions'])->name('sections.restrictions.sync');
+
+        // Module Access Restrictions routes
+        Route::get('modules/{module}/restrictions', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getModuleRestrictions'])->name('modules.restrictions.get');
+        Route::post('modules/{module}/restrictions/sync', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncModuleRestrictions'])->name('modules.restrictions.sync');
 
         // Section Questions Management routes
         Route::get('sections/{sectionId}/questions', [CourseSectionController::class, 'manageQuestions'])->name('sections.questions.manage');

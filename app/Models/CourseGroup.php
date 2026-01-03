@@ -33,6 +33,7 @@ class CourseGroup extends Model
     public function courses()
     {
         return $this->belongsToMany(Course::class, 'course_group_courses', 'group_id', 'course_id')
+                    ->withPivot('is_visible')
                     ->withTimestamps();
     }
 
@@ -328,6 +329,121 @@ class CourseGroup extends Model
             'enrolled' => $enrolledCount,
             'updated' => $updatedCount,
             'total' => $courses->count()
+        ];
+    }
+
+    /**
+     * Handle course attachment - enroll all current members in newly attached courses.
+     *
+     * @param array|int $courseIds Course ID(s) that were attached
+     * @return array Returns array with enrollment statistics
+     */
+    public function handleCourseAttached($courseIds): array
+    {
+        $courseIds = is_array($courseIds) ? $courseIds : [$courseIds];
+        
+        if (empty($courseIds)) {
+            return [
+                'enrolled' => 0,
+                'updated' => 0,
+                'total_members' => 0
+            ];
+        }
+
+        $members = $this->members()->with('student')->get();
+        $enrolledCount = 0;
+        $updatedCount = 0;
+
+        foreach ($members as $member) {
+            $result = $this->enrollStudentInGroupCourses($member->student);
+            $enrolledCount += $result['enrolled'];
+            $updatedCount += $result['updated'];
+        }
+
+        return [
+            'enrolled' => $enrolledCount,
+            'updated' => $updatedCount,
+            'total_members' => $members->count()
+        ];
+    }
+
+    /**
+     * Handle course detachment - unenroll all current members from detached courses.
+     *
+     * @param array|int $courseIds Course ID(s) that were detached
+     * @return array Returns array with unenrollment statistics
+     */
+    public function handleCourseDetached($courseIds): array
+    {
+        $courseIds = is_array($courseIds) ? $courseIds : [$courseIds];
+        
+        if (empty($courseIds)) {
+            return [
+                'deleted' => 0,
+                'total_members' => 0
+            ];
+        }
+
+        $members = $this->members()->with('student')->get();
+        $deletedCount = 0;
+
+        foreach ($members as $member) {
+            // Get courses that were detached
+            $detachedCourses = \App\Models\Course::whereIn('id', $courseIds)->get();
+            
+            foreach ($detachedCourses as $course) {
+                // Find enrollment for this course
+                $enrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+                    ->where('student_id', $member->student_id)
+                    ->first();
+
+                if ($enrollment) {
+                    // Check if student is enrolled in this course through other groups
+                    $otherGroups = \App\Models\CourseGroup::whereHas('courses', function($q) use ($course) {
+                        $q->where('courses.id', $course->id);
+                    })
+                    ->whereHas('members', function($q) use ($member) {
+                        $q->where('student_id', $member->student_id);
+                    })
+                    ->where('id', '!=', $this->id)
+                    ->exists();
+
+                    if (!$otherGroups) {
+                        // Student is only enrolled through this group, delete the enrollment
+                        $enrollment->delete();
+                        $deletedCount++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'deleted' => $deletedCount,
+            'total_members' => $members->count()
+        ];
+    }
+
+    /**
+     * Handle course sync - enroll members in new courses and unenroll from removed courses.
+     *
+     * @param array $oldCourseIds Previous course IDs
+     * @param array $newCourseIds New course IDs
+     * @return array Returns array with enrollment/unenrollment statistics
+     */
+    public function handleCoursesSynced(array $oldCourseIds, array $newCourseIds): array
+    {
+        $addedCourseIds = array_diff($newCourseIds, $oldCourseIds);
+        $removedCourseIds = array_diff($oldCourseIds, $newCourseIds);
+
+        $attachResult = $this->handleCourseAttached($addedCourseIds);
+        $detachResult = $this->handleCourseDetached($removedCourseIds);
+
+        return [
+            'enrolled' => $attachResult['enrolled'],
+            'updated' => $attachResult['updated'],
+            'deleted' => $detachResult['deleted'],
+            'added_courses' => count($addedCourseIds),
+            'removed_courses' => count($removedCourseIds)
         ];
     }
 }

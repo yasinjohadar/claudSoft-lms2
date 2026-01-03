@@ -575,6 +575,13 @@
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                         <div></div>
                                         <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-warning manage-restrictions-btn"
+                                                    data-type="section"
+                                                    data-id="{{ $section->id }}"
+                                                    data-title="{{ $section->title }}"
+                                                    title="إدارة القيود للمجموعات">
+                                                <i class="fas fa-users-cog me-1"></i>قيود المجموعات
+                                            </button>
                                             <a href="{{ route('sections.questions.manage', $section->id) }}"
                                                class="btn btn-sm btn-outline-success"
                                                title="إدارة الأسئلة"
@@ -713,6 +720,13 @@
                                                     </div>
                                                 </div>
                                             <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-warning manage-restrictions-btn"
+                                                        data-type="module"
+                                                        data-id="{{ $module->id }}"
+                                                        data-title="{{ $module->title }}"
+                                                        title="إدارة القيود للمجموعات">
+                                                    <i class="fas fa-users-cog me-1"></i>قيود
+                                                </button>
                                                 @if($module->module_type == 'assignment' && $module->modulable_id)
                                                     <a href="{{ route('assignments.show', $module->modulable_id) }}"
                                                        class="btn btn-sm btn-outline-info">
@@ -1106,6 +1120,182 @@
     setTimeout(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
+
+    // Access Restrictions Management
+    let currentRestrictions = {
+        type: null,
+        id: null,
+        title: null
+    };
+
+    // Handle manage restrictions button click
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.manage-restrictions-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                const id = this.getAttribute('data-id');
+                const title = this.getAttribute('data-title');
+
+                currentRestrictions.type = type;
+                currentRestrictions.id = id;
+                currentRestrictions.title = title;
+
+                loadRestrictions(type, id);
+            });
+        });
+    });
+
+    // Load restrictions
+    function loadRestrictions(type, id) {
+        const url = type === 'section' 
+            ? `/admin/sections/${id}/restrictions`
+            : `/admin/modules/${id}/restrictions`;
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'حدث خطأ في تحميل القيود');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update modal title
+                document.getElementById('restrictionsModalTitle').textContent = 
+                    `إدارة القيود - ${currentRestrictions.title}`;
+
+                // Clear and populate groups list
+                const groupsList = document.getElementById('restrictionsGroupsList');
+                groupsList.innerHTML = '';
+
+                if (data.all_groups && data.all_groups.length > 0) {
+                    data.all_groups.forEach(function(group) {
+                        const isChecked = data.restricted_group_ids.includes(group.id);
+                        const groupItem = document.createElement('div');
+                        groupItem.className = 'form-check mb-3';
+                        groupItem.innerHTML = `
+                            <input class="form-check-input" type="checkbox" 
+                                   value="${group.id}" id="group_${group.id}" 
+                                   ${isChecked ? 'checked' : ''}>
+                            <label class="form-check-label" for="group_${group.id}">
+                                <strong>${group.name}</strong>
+                                ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
+                            </label>
+                        `;
+                        groupsList.appendChild(groupItem);
+                    });
+                } else {
+                    groupsList.innerHTML = '<div class="alert alert-info">لا توجد مجموعات مرتبطة بهذا الكورس</div>';
+                }
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('restrictionsModal'));
+                modal.show();
+            } else {
+                alert(data.message || 'حدث خطأ في تحميل القيود');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message || 'حدث خطأ في الاتصال');
+        });
+    }
+
+    // Save restrictions
+    function saveRestrictions() {
+        const groupsList = document.getElementById('restrictionsGroupsList');
+        const checkboxes = groupsList.querySelectorAll('input[type="checkbox"]:checked');
+        const groupIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        const type = currentRestrictions.type;
+        const id = currentRestrictions.id;
+        const url = type === 'section'
+            ? `/admin/sections/${id}/restrictions/sync`
+            : `/admin/modules/${id}/restrictions/sync`;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                group_ids: groupIds
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('restrictionsModal'));
+                modal.hide();
+
+                // Show success message
+                if (typeof toastr !== 'undefined') {
+                    toastr.success(data.message || 'تم تحديث القيود بنجاح');
+                } else {
+                    alert(data.message || 'تم تحديث القيود بنجاح');
+                }
+
+                // Optionally reload page to show updated restrictions
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                alert(data.message || 'حدث خطأ في حفظ القيود');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
 </script>
+
+<!-- Access Restrictions Modal -->
+<div class="modal fade" id="restrictionsModal" tabindex="-1" aria-labelledby="restrictionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title" id="restrictionsModalTitle">
+                    <i class="fas fa-users-cog me-2"></i>
+                    إدارة القيود
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>ملاحظة:</strong> حدد المجموعات التي يمكنها الوصول إلى هذا المحتوى. إذا لم تحدد أي مجموعة، سيكون المحتوى متاحاً لجميع المجموعات.
+                </div>
+                <div id="restrictionsGroupsList">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">جاري التحميل...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    إلغاء
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveRestrictions()">
+                    <i class="fas fa-save me-1"></i>
+                    حفظ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @stop
 

@@ -129,11 +129,12 @@ class Course extends Model
     }
 
     /**
-     * Get the groups for the course.
+     * Get the groups for the course (Many-to-Many).
      */
     public function groups()
     {
-        return $this->hasMany(CourseGroup::class);
+        return $this->belongsToMany(CourseGroup::class, 'course_group_courses', 'course_id', 'group_id')
+                    ->withTimestamps();
     }
 
     /**

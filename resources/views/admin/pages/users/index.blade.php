@@ -209,6 +209,13 @@
                                                                     <i class="fas fa-user-secret"></i>
                                                                 </button>
                                                             @endif
+                                                            @if($user->hasRole('student'))
+                                                                <a href="{{ route('users.student-details', $user->id) }}" 
+                                                                   class="btn btn-info btn-sm me-1"
+                                                                   title="عرض تفاصيل الطالب والمجموعات">
+                                                                    <i class="fas fa-users"></i>
+                                                                </a>
+                                                            @endif
                                                         @endif
                                                         <a class="btn btn-info btn-sm me-1"
                                                             href="{{ route('users.edit', $user->id) }}"

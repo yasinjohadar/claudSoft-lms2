@@ -107,6 +107,10 @@ class CourseGroupController extends Controller
             // Attach courses to group
             $group->courses()->attach($courseIds);
 
+            // Enroll all current members in the attached courses (if any members exist)
+            // Note: At creation time, there are usually no members yet, but we handle it for consistency
+            $group->handleCourseAttached($courseIds);
+
             DB::commit();
 
             return redirect()
@@ -256,8 +260,24 @@ class CourseGroupController extends Controller
             // Update group
             $group->update($validated);
 
-            // Sync courses (this will add new and remove old)
-            $group->courses()->sync($courseIds);
+            // Get old course IDs before sync
+            $oldCourseIds = $group->courses->pluck('id')->toArray();
+
+            // Prepare sync data with visibility settings
+            $syncData = [];
+            $courseVisibility = $request->input('course_visibility', []);
+            
+            foreach ($courseIds as $courseId) {
+                $syncData[$courseId] = [
+                    'is_visible' => isset($courseVisibility[$courseId]) && $courseVisibility[$courseId] == '1'
+                ];
+            }
+
+            // Sync courses with visibility settings
+            $group->courses()->sync($syncData);
+
+            // Handle enrollment changes for added/removed courses
+            $group->handleCoursesSynced($oldCourseIds, $courseIds);
 
             DB::commit();
 

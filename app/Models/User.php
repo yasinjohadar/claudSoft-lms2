@@ -118,6 +118,14 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    /**
+     * Get all course group memberships for this user.
+     */
+    public function courseGroupMemberships()
+    {
+        return $this->hasMany(CourseGroupMember::class, 'student_id');
+    }
+
     // ========================================
     // Gamification System Relationships
     // ========================================

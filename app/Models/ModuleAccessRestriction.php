@@ -26,6 +26,17 @@ class ModuleAccessRestriction extends Model
         return $this->belongsTo(CourseModule::class, 'module_id');
     }
 
+    /**
+     * Get the group for this restriction (if restriction_type is 'group').
+     */
+    public function group()
+    {
+        if ($this->restriction_type !== 'group') {
+            return null;
+        }
+        return $this->belongsTo(CourseGroup::class, 'restriction_id');
+    }
+
     // Scopes
 
     /**

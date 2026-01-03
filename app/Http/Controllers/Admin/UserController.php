@@ -423,5 +423,257 @@ public function showCourses($userId)
     return view('admin.pages.users.courses', compact('student', 'enrollments', 'stats'));
 }
 
+/**
+ * Display student details including groups and courses
+ */
+public function studentDetails(User $user)
+{
+    // التحقق من أن المستخدم طالب
+    if (!$user->hasRole('student')) {
+        return redirect()->route('users.index')
+            ->with('error', 'هذا المستخدم ليس طالباً');
+    }
+
+    // جلب المجموعات التي ينتمي إليها الطالب
+    $groupMemberships = \App\Models\CourseGroupMember::where('student_id', $user->id)
+        ->with(['group.courses' => function($query) {
+            $query->wherePivot('is_visible', true);
+        }])
+        ->orderByDesc('joined_at')
+        ->get();
+
+    // جلب جميع الكورسات المسجلة فيها الطالب
+    $enrollments = \App\Models\CourseEnrollment::where('student_id', $user->id)
+        ->with(['course.category', 'course.instructor'])
+        ->orderBy('enrollment_date', 'desc')
+        ->get();
+
+    // جلب الكورسات المنفصلة (غير المرتبطة بمجموعات)
+    $enrolledCourseIds = $enrollments->pluck('course_id')->toArray();
+    $groupCourseIds = $groupMemberships->flatMap(function($membership) {
+        return $membership->group->courses->pluck('id');
+    })->unique()->toArray();
+    
+    $standaloneCourseIds = array_diff($enrolledCourseIds, $groupCourseIds);
+    $standaloneCourses = \App\Models\Course::whereIn('id', $standaloneCourseIds)
+        ->with(['category', 'instructor'])
+        ->get();
+
+    // جلب جميع المجموعات المتاحة (لإضافة الطالب إليها)
+    $availableGroups = \App\Models\CourseGroup::where('is_active', true)
+        ->whereDoesntHave('members', function($query) use ($user) {
+            $query->where('student_id', $user->id);
+        })
+        ->with('courses')
+        ->orderBy('name')
+        ->get();
+
+    // جلب جميع الكورسات المتاحة (غير المسجلة فيها الطالب)
+    $availableCourses = \App\Models\Course::where('is_published', true)
+        ->where('is_visible', true)
+        ->whereNotIn('id', $enrolledCourseIds)
+        ->with(['category', 'instructor'])
+        ->orderBy('title')
+        ->get();
+
+    return view('admin.pages.users.student-details', compact(
+        'user',
+        'groupMemberships',
+        'enrollments',
+        'standaloneCourses',
+        'availableGroups',
+        'availableCourses'
+    ));
+}
+
+/**
+ * Add student to a group
+ */
+public function addToGroup(Request $request, User $user)
+{
+    $request->validate([
+        'group_id' => 'required|exists:course_groups,id',
+        'role' => 'nullable|in:member,leader',
+    ]);
+
+    try {
+        $group = \App\Models\CourseGroup::findOrFail($request->group_id);
+
+        // التحقق من أن الطالب ليس في المجموعة بالفعل
+        if ($group->hasMember($user)) {
+            return redirect()->back()
+                ->with('error', 'الطالب موجود بالفعل في هذه المجموعة');
+        }
+
+        // التحقق من أن المجموعة ليست ممتلئة
+        if ($group->isFull()) {
+            return redirect()->back()
+                ->with('error', 'المجموعة ممتلئة');
+        }
+
+        // إضافة الطالب للمجموعة
+        $role = $request->input('role', 'member');
+        $member = $group->addMember($user, $role);
+
+        if ($member) {
+            return redirect()->back()
+                ->with('success', "تم إضافة الطالب {$user->name} إلى المجموعة {$group->name} بنجاح");
+        } else {
+            return redirect()->back()
+                ->with('error', 'فشل إضافة الطالب إلى المجموعة');
+        }
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->with('error', 'حدث خطأ: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Remove student from a group
+ */
+public function removeFromGroup(Request $request, User $user)
+{
+    $request->validate([
+        'group_id' => 'required|exists:course_groups,id',
+    ]);
+
+    try {
+        $group = \App\Models\CourseGroup::findOrFail($request->group_id);
+
+        // التحقق من أن الطالب موجود في المجموعة
+        if (!$group->hasMember($user)) {
+            return redirect()->back()
+                ->with('error', 'الطالب غير موجود في هذه المجموعة');
+        }
+
+        // إزالة الطالب من المجموعة
+        $removed = $group->removeMember($user);
+
+        if ($removed) {
+            return redirect()->back()
+                ->with('success', "تم إزالة الطالب {$user->name} من المجموعة {$group->name} بنجاح");
+        } else {
+            return redirect()->back()
+                ->with('error', 'فشل إزالة الطالب من المجموعة');
+        }
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->with('error', 'حدث خطأ: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Enroll student in a course
+ */
+public function enrollCourse(Request $request, User $user)
+{
+    $request->validate([
+        'course_id' => 'required|exists:courses,id',
+        'enrollment_status' => 'nullable|in:active,pending,suspended',
+    ]);
+
+    try {
+        $course = \App\Models\Course::findOrFail($request->course_id);
+
+        // التحقق من أن الطالب ليس مسجلاً في الكورس بالفعل
+        $existingEnrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+            ->where('student_id', $user->id)
+            ->first();
+
+        if ($existingEnrollment) {
+            return redirect()->back()
+                ->with('error', 'الطالب مسجل بالفعل في هذا الكورس');
+        }
+
+        // التحقق من أن الكورس ليس ممتلئاً
+        if ($course->max_students) {
+            $currentEnrollments = \App\Models\CourseEnrollment::where('course_id', $course->id)->count();
+            if ($currentEnrollments >= $course->max_students) {
+                return redirect()->back()
+                    ->with('error', 'الكورس ممتلئ');
+            }
+        }
+
+        // تسجيل الطالب في الكورس
+        $enrollment = \App\Models\CourseEnrollment::create([
+            'course_id' => $course->id,
+            'student_id' => $user->id,
+            'enrollment_date' => now(),
+            'enrollment_status' => $request->input('enrollment_status', 'active'),
+            'enrolled_by' => auth()->id(),
+            'completion_percentage' => 0,
+            'certificate_issued' => false,
+        ]);
+
+        // Dispatch n8n webhook event
+        if ($enrollment->enrollment_status === 'active') {
+            try {
+                event(new N8nWebhookEvent('student.enrolled', [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name ?? null,
+                    'student_email' => $user->email ?? null,
+                    'course_id' => $course->id,
+                    'course_title' => $course->title ?? null,
+                    'enrollment_id' => $enrollment->id,
+                    'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
+                    'enrolled_by' => $enrollment->enrolled_by,
+                ]));
+            } catch (\Exception $e) {
+                \Log::warning('Webhook event failed for enrollment ' . $enrollment->id . ': ' . $e->getMessage());
+            }
+        }
+
+        return redirect()->back()
+            ->with('success', "تم تسجيل الطالب {$user->name} في الكورس {$course->title} بنجاح");
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->with('error', 'حدث خطأ: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Unenroll student from a course
+ */
+public function unenrollCourse(Request $request, User $user)
+{
+    $request->validate([
+        'course_id' => 'required|exists:courses,id',
+    ]);
+
+    try {
+        $course = \App\Models\Course::findOrFail($request->course_id);
+
+        // البحث عن التسجيل
+        $enrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+            ->where('student_id', $user->id)
+            ->first();
+
+        if (!$enrollment) {
+            return redirect()->back()
+                ->with('error', 'الطالب غير مسجل في هذا الكورس');
+        }
+
+        // التحقق من أن الطالب ليس مسجلاً في الكورس من خلال مجموعة
+        $groupEnrollments = \App\Models\CourseGroupMember::where('student_id', $user->id)
+            ->whereHas('group.courses', function($query) use ($course) {
+                $query->where('courses.id', $course->id);
+            })
+            ->exists();
+
+        if ($groupEnrollments) {
+            return redirect()->back()
+                ->with('error', 'لا يمكن إزالة الطالب من الكورس لأنه مسجل من خلال مجموعة. يرجى إزالته من المجموعة أولاً');
+        }
+
+        // حذف التسجيل
+        $enrollment->delete();
+
+        return redirect()->back()
+            ->with('success', "تم إزالة الطالب {$user->name} من الكورس {$course->title} بنجاح");
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->with('error', 'حدث خطأ: ' . $e->getMessage());
+    }
+}
 
 }

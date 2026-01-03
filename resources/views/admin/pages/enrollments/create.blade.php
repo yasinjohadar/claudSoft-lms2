@@ -37,19 +37,34 @@
                                 @csrf
 
                                 <div class="mb-3">
-                                    <label class="form-label">الطالب <span class="text-danger">*</span></label>
+                                    <label class="form-label">الطلاب <span class="text-danger">*</span></label>
                                     @if($students->count() > 0)
-                                        <select name="student_id" class="form-select @error('student_id') is-invalid @enderror" required>
-                                            <option value="">اختر طالب</option>
+                                        <select name="student_ids[]" id="studentSelect" class="form-select @error('student_ids') is-invalid @enderror" multiple required>
                                             @foreach($students as $student)
-                                                <option value="{{ $student->id }}" {{ old('student_id') == $student->id ? 'selected' : '' }}>
-                                                    {{ $student->name }} - {{ $student->email }}
+                                                @php
+                                                    $displayName = $student->name;
+                                                    if ($student->name_ar) {
+                                                        $displayName .= ' (' . $student->name_ar . ')';
+                                                    }
+                                                    $displayName .= ' - ' . $student->email;
+                                                @endphp
+                                                <option value="{{ $student->id }}" 
+                                                        {{ (is_array(old('student_ids')) && in_array($student->id, old('student_ids'))) ? 'selected' : '' }}>
+                                                    {{ $displayName }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                        @error('student_id')
+                                        @error('student_ids')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <small class="text-muted">
+                                            <i class="fas fa-search me-1"></i>
+                                            ابدأ بالكتابة للبحث عن الطلاب بالاسم (عربي/إنجليزي) أو البريد الإلكتروني. يمكنك اختيار عدة طلاب
+                                        </small>
+                                        <div id="selectedCount" class="mt-2 text-primary" style="display: none;">
+                                            <i class="fas fa-users me-1"></i>
+                                            <span id="selectedCountText">0</span> طالب محدد
+                                        </div>
                                     @else
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
@@ -72,8 +87,9 @@
                                         <i class="fas fa-arrow-right me-2"></i>رجوع
                                     </a>
                                     @if($students->count() > 0)
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-user-plus me-2"></i>تسجيل الطالب
+                                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                                            <i class="fas fa-user-plus me-2"></i>
+                                            <span id="submitBtnText">تسجيل الطلاب</span>
                                         </button>
                                     @endif
                                 </div>
@@ -111,16 +127,134 @@
 @section('script')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Choices.js for searchable multi-select
+        const studentSelect = document.getElementById('studentSelect');
+        let choicesInstance = null;
+        
+        if (studentSelect) {
+            // Wait for Choices.js to be available
+            const initChoices = function() {
+                if (typeof Choices !== 'undefined' || typeof window.Choices !== 'undefined') {
+                    const ChoicesClass = typeof Choices !== 'undefined' ? Choices : window.Choices;
+                    
+                    // Destroy existing instance if any
+                    if (studentSelect._choicesjs) {
+                        studentSelect._choicesjs.destroy();
+                    }
+                    
+                    choicesInstance = new ChoicesClass(studentSelect, {
+                        removeItemButton: true,
+                        searchEnabled: true,
+                        searchChoices: true,
+                        placeholder: true,
+                        placeholderValue: 'اختر طالب أو أكثر',
+                        searchPlaceholderValue: 'ابحث بالاسم (عربي/إنجليزي) أو البريد الإلكتروني...',
+                        itemSelectText: '',
+                        shouldSort: false,
+                        allowHTML: true,
+                        fuseOptions: {
+                            threshold: 0.4,
+                            minMatchCharLength: 1,
+                            includeScore: false
+                        },
+                        classNames: {
+                            containerOuter: 'choices',
+                            containerInner: 'choices__inner',
+                            input: 'choices__input',
+                            inputCloned: 'choices__input--cloned',
+                            list: 'choices__list',
+                            listItems: 'choices__list--multiple',
+                            listSingle: 'choices__list--single',
+                            listDropdown: 'choices__list--dropdown',
+                            item: 'choices__item',
+                            itemSelectable: 'choices__item--selectable',
+                            itemDisabled: 'choices__item--disabled',
+                            itemChoice: 'choices__item--choice',
+                            placeholder: 'choices__placeholder',
+                            group: 'choices__group',
+                            groupHeading: 'choices__heading',
+                            button: 'choices__button',
+                            activeState: 'is-active',
+                            focusState: 'is-focused',
+                            openState: 'is-open',
+                            disabledState: 'is-disabled',
+                            highlightedState: 'is-highlighted',
+                            selectedState: 'is-selected',
+                            flippedState: 'is-flipped',
+                            loadingState: 'is-loading',
+                            noResults: 'has-no-results',
+                            noChoices: 'has-no-choices'
+                        }
+                    });
+
+                    // Update selected count when choices change
+                    studentSelect.addEventListener('change', function() {
+                        updateSelectedCount();
+                    });
+
+                    // Also listen to Choices.js events
+                    studentSelect.addEventListener('addItem', function() {
+                        updateSelectedCount();
+                    });
+
+                    studentSelect.addEventListener('removeItem', function() {
+                        updateSelectedCount();
+                    });
+
+                    // Initial count update
+                    updateSelectedCount();
+                } else {
+                    // Retry after a short delay if Choices.js is not loaded yet
+                    setTimeout(initChoices, 100);
+                }
+            };
+            
+            initChoices();
+        }
+
+        // Update selected count display
+        function updateSelectedCount() {
+            const selectedCountDiv = document.getElementById('selectedCount');
+            const selectedCountText = document.getElementById('selectedCountText');
+            const submitBtnText = document.getElementById('submitBtnText');
+            
+            if (studentSelect) {
+                const selectedOptions = Array.from(studentSelect.selectedOptions);
+                const count = selectedOptions.length;
+                
+                if (count > 0) {
+                    selectedCountDiv.style.display = 'block';
+                    selectedCountText.textContent = count;
+                    
+                    if (submitBtnText) {
+                        if (count === 1) {
+                            submitBtnText.textContent = 'تسجيل طالب واحد';
+                        } else {
+                            submitBtnText.textContent = `تسجيل ${count} طلاب`;
+                        }
+                    }
+                } else {
+                    selectedCountDiv.style.display = 'none';
+                    if (submitBtnText) {
+                        submitBtnText.textContent = 'تسجيل الطلاب';
+                    }
+                }
+            }
+        }
+
+        // Form validation
         const form = document.querySelector('form[action*="enroll-individual"]');
         
         if (form) {
             form.addEventListener('submit', function(e) {
-                const studentSelect = form.querySelector('select[name="student_id"]');
+                const selectedOptions = studentSelect ? Array.from(studentSelect.selectedOptions) : [];
                 
-                if (!studentSelect.value) {
+                if (!studentSelect || selectedOptions.length === 0) {
                     e.preventDefault();
-                    alert('يرجى اختيار طالب');
-                    studentSelect.focus();
+                    alert('يرجى اختيار طالب واحد على الأقل');
+                    if (studentSelect) {
+                        studentSelect.focus();
+                    }
                     return false;
                 }
             });

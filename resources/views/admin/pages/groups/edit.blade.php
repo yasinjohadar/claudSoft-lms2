@@ -58,17 +58,55 @@
                         <!-- Select Courses -->
                         <div class="mb-4">
                             <label class="form-label required">الكورسات المرتبطة</label>
-                            <select name="course_ids[]" class="form-select @error('course_ids') is-invalid @enderror"
-                                    multiple size="8" required>
+                            <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
                                 @foreach($courses as $courseItem)
-                                    <option value="{{ $courseItem->id }}"
-                                            {{ (old('course_ids') ? in_array($courseItem->id, old('course_ids')) : $group->courses->contains($courseItem->id)) ? 'selected' : '' }}>
-                                        {{ $courseItem->title }}
-                                        @if($courseItem->code)({{ $courseItem->code }})@endif
-                                    </option>
+                                    @php
+                                        $isSelected = old('course_ids') 
+                                            ? in_array($courseItem->id, old('course_ids')) 
+                                            : $group->courses->contains($courseItem->id);
+                                        $pivotData = $group->courses->where('id', $courseItem->id)->first();
+                                        $isVisible = old("course_visibility.{$courseItem->id}") !== null 
+                                            ? old("course_visibility.{$courseItem->id}") 
+                                            : ($pivotData ? $pivotData->pivot->is_visible ?? true : true);
+                                    @endphp
+                                    <div class="form-check mb-3 p-2 border-bottom">
+                                        <div class="d-flex align-items-center">
+                                            <input class="form-check-input course-checkbox" 
+                                                   type="checkbox" 
+                                                   name="course_ids[]" 
+                                                   value="{{ $courseItem->id }}" 
+                                                   id="course_{{ $courseItem->id }}"
+                                                   {{ $isSelected ? 'checked' : '' }}
+                                                   onchange="toggleCourseVisibility({{ $courseItem->id }})">
+                                            <label class="form-check-label flex-grow-1 ms-2" for="course_{{ $courseItem->id }}">
+                                                <strong>{{ $courseItem->title }}</strong>
+                                                @if($courseItem->code)
+                                                    <span class="text-muted">({{ $courseItem->code }})</span>
+                                                @endif
+                                            </label>
+                                        </div>
+                                        @if($isSelected)
+                                            <div class="mt-2 ms-4">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           name="course_visibility[{{ $courseItem->id }}]" 
+                                                           value="1"
+                                                           id="visibility_{{ $courseItem->id }}"
+                                                           {{ $isVisible ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="visibility_{{ $courseItem->id }}">
+                                                        <i class="fas fa-eye me-1"></i>ظاهر للطلاب
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
-                            </select>
-                            <small class="text-muted">اضغط Ctrl/Cmd واضغط على الكورسات لتحديد عدة كورسات</small>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                حدد الكورسات المرتبطة بهذه المجموعة. يمكنك تحديد ما إذا كان كل كورس ظاهراً أم مخفياً للطلاب.
+                            </small>
                             @error('course_ids')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -134,4 +172,45 @@
 
         </div>
     </div>
+@stop
+
+@section('script')
+<script>
+    function toggleCourseVisibility(courseId) {
+        const checkbox = document.getElementById('course_' + courseId);
+        const formCheck = checkbox.closest('.form-check');
+        let visibilityDiv = formCheck.querySelector('.mt-2');
+        
+        if (checkbox.checked) {
+            if (!visibilityDiv) {
+                const newDiv = document.createElement('div');
+                newDiv.className = 'mt-2 ms-4';
+                newDiv.innerHTML = `
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               name="course_visibility[${courseId}]" 
+                               value="1"
+                               id="visibility_${courseId}"
+                               checked>
+                        <label class="form-check-label" for="visibility_${courseId}">
+                            <i class="fas fa-eye me-1"></i>ظاهر للطلاب
+                        </label>
+                    </div>
+                `;
+                formCheck.appendChild(newDiv);
+            } else {
+                visibilityDiv.style.display = 'block';
+            }
+        } else {
+            if (visibilityDiv) {
+                visibilityDiv.style.display = 'none';
+                const visibilityCheckbox = visibilityDiv.querySelector('input[type="checkbox"]');
+                if (visibilityCheckbox) {
+                    visibilityCheckbox.checked = false;
+                }
+            }
+        }
+    }
+</script>
 @stop

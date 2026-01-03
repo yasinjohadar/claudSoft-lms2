@@ -26,6 +26,17 @@ class SectionAccessRestriction extends Model
         return $this->belongsTo(CourseSection::class, 'section_id');
     }
 
+    /**
+     * Get the group for this restriction (if restriction_type is 'group').
+     */
+    public function group()
+    {
+        if ($this->restriction_type !== 'group') {
+            return null;
+        }
+        return $this->belongsTo(CourseGroup::class, 'restriction_id');
+    }
+
     // Scopes
 
     /**

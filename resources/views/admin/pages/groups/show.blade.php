@@ -402,12 +402,23 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">اختر الطالب</label>
-                            <select name="student_id" class="form-select" required>
+                            <select name="student_id" id="singleStudentSelect" class="form-select" required>
                                 <option value="">-- اختر طالب --</option>
                                 @foreach($availableStudents ?? [] as $student)
-                                    <option value="{{ $student->id }}">{{ $student->name }} ({{ $student->email }})</option>
+                                    @php
+                                        $displayName = $student->name;
+                                        if ($student->name_ar) {
+                                            $displayName .= ' (' . $student->name_ar . ')';
+                                        }
+                                        $displayName .= ' - ' . $student->email;
+                                    @endphp
+                                    <option value="{{ $student->id }}">{{ $displayName }}</option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">
+                                <i class="fas fa-search me-1"></i>
+                                ابدأ بالكتابة للبحث عن الطالب بالاسم (عربي/إنجليزي) أو البريد الإلكتروني
+                            </small>
                         </div>
 
                         <div class="mb-3">
@@ -442,12 +453,26 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">اختر الطلاب</label>
-                            <select name="student_ids[]" id="bulkStudentSelect" class="form-select" multiple size="10" required>
+                            <select name="student_ids[]" id="bulkStudentSelect" class="form-select" multiple required>
                                 @foreach($availableStudents ?? [] as $student)
-                                    <option value="{{ $student->id }}">{{ $student->name }} ({{ $student->email }})</option>
+                                    @php
+                                        $displayName = $student->name;
+                                        if ($student->name_ar) {
+                                            $displayName .= ' (' . $student->name_ar . ')';
+                                        }
+                                        $displayName .= ' - ' . $student->email;
+                                    @endphp
+                                    <option value="{{ $student->id }}">{{ $displayName }}</option>
                                 @endforeach
                             </select>
-                            <small class="text-muted">اضغط Ctrl/Cmd لتحديد عدة طلاب</small>
+                            <small class="text-muted">
+                                <i class="fas fa-search me-1"></i>
+                                ابدأ بالكتابة للبحث عن الطلاب بالاسم (عربي/إنجليزي) أو البريد الإلكتروني. يمكنك اختيار عدة طلاب.
+                            </small>
+                            <div id="bulkSelectedCount" class="mt-2 text-primary" style="display: none;">
+                                <i class="fas fa-users me-1"></i>
+                                <span id="bulkSelectedCountText">0</span> طالب محدد
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -642,5 +667,161 @@
         // Initial update
         updateBulkActions();
     })();
+
+    // Initialize Choices.js for single student select
+    let singleChoicesInstance = null;
+    const singleMemberModal = document.getElementById('addMemberModal');
+    if (singleMemberModal) {
+        singleMemberModal.addEventListener('shown.bs.modal', function() {
+            const singleStudentSelect = document.getElementById('singleStudentSelect');
+            
+            if (singleStudentSelect && !singleChoicesInstance) {
+                const initSingleChoices = function() {
+                    if (typeof Choices !== 'undefined' || typeof window.Choices !== 'undefined') {
+                        const ChoicesClass = typeof Choices !== 'undefined' ? Choices : window.Choices;
+                        
+                        if (singleStudentSelect._choicesjs) {
+                            singleStudentSelect._choicesjs.destroy();
+                        }
+                        
+                        singleChoicesInstance = new ChoicesClass(singleStudentSelect, {
+                            searchEnabled: true,
+                            searchChoices: true,
+                            placeholder: true,
+                            placeholderValue: '-- اختر طالب --',
+                            searchPlaceholderValue: 'ابحث بالاسم (عربي/إنجليزي) أو البريد الإلكتروني...',
+                            itemSelectText: '',
+                            shouldSort: false,
+                            allowHTML: true,
+                            fuseOptions: {
+                                threshold: 0.4,
+                                minMatchCharLength: 1,
+                                includeScore: false
+                            },
+                        });
+                    } else {
+                        setTimeout(initSingleChoices, 100);
+                    }
+                };
+                
+                initSingleChoices();
+            }
+        });
+    }
+
+    // Initialize Choices.js for bulk student select
+    let bulkChoicesInstance = null;
+    
+    // Initialize when modal is shown
+    const bulkMembersModal = document.getElementById('addBulkMembersModal');
+    if (bulkMembersModal) {
+        bulkMembersModal.addEventListener('shown.bs.modal', function() {
+            const bulkStudentSelect = document.getElementById('bulkStudentSelect');
+            
+            if (bulkStudentSelect && !bulkChoicesInstance) {
+                // Wait for Choices.js to be available
+                const initBulkChoices = function() {
+                    if (typeof Choices !== 'undefined' || typeof window.Choices !== 'undefined') {
+                        const ChoicesClass = typeof Choices !== 'undefined' ? Choices : window.Choices;
+                        
+                        // Destroy existing instance if any
+                        if (bulkStudentSelect._choicesjs) {
+                            bulkStudentSelect._choicesjs.destroy();
+                        }
+                        
+                        bulkChoicesInstance = new ChoicesClass(bulkStudentSelect, {
+                            removeItemButton: true,
+                            searchEnabled: true,
+                            searchChoices: true,
+                            placeholder: true,
+                            placeholderValue: 'اختر طالب أو أكثر',
+                            searchPlaceholderValue: 'ابحث بالاسم (عربي/إنجليزي) أو البريد الإلكتروني...',
+                            itemSelectText: '',
+                            shouldSort: false,
+                            allowHTML: true,
+                            fuseOptions: {
+                                threshold: 0.4,
+                                minMatchCharLength: 1,
+                                includeScore: false
+                            },
+                            classNames: {
+                                containerOuter: 'choices',
+                                containerInner: 'choices__inner',
+                                input: 'choices__input',
+                                inputCloned: 'choices__input--cloned',
+                                list: 'choices__list',
+                                listItems: 'choices__list--multiple',
+                                listSingle: 'choices__list--single',
+                                listDropdown: 'choices__list--dropdown',
+                                item: 'choices__item',
+                                itemSelectable: 'choices__item--selectable',
+                                itemDisabled: 'choices__item--disabled',
+                                itemChoice: 'choices__item--choice',
+                                placeholder: 'choices__placeholder',
+                                group: 'choices__group',
+                                groupHeading: 'choices__heading',
+                                button: 'choices__button',
+                                activeState: 'is-active',
+                                focusState: 'is-focused',
+                                openState: 'is-open',
+                                disabledState: 'is-disabled',
+                                highlightedState: 'is-highlighted',
+                                selectedState: 'is-selected',
+                                flippedState: 'is-flipped',
+                                loadingState: 'is-loading',
+                                noResults: 'has-no-results',
+                                noChoices: 'has-no-choices'
+                            }
+                        });
+
+                        // Update selected count when choices change
+                        bulkStudentSelect.addEventListener('change', function() {
+                            updateBulkSelectedCount();
+                        });
+
+                        bulkStudentSelect.addEventListener('addItem', function() {
+                            updateBulkSelectedCount();
+                        });
+
+                        bulkStudentSelect.addEventListener('removeItem', function() {
+                            updateBulkSelectedCount();
+                        });
+
+                        // Initial count update
+                        updateBulkSelectedCount();
+                    } else {
+                        // Retry after a short delay if Choices.js is not loaded yet
+                        setTimeout(initBulkChoices, 100);
+                    }
+                };
+                
+                initBulkChoices();
+            }
+        });
+
+        // Clean up when modal is hidden
+        bulkMembersModal.addEventListener('hidden.bs.modal', function() {
+            // Don't destroy, just keep it for next time
+        });
+    }
+
+    // Update selected count display
+    function updateBulkSelectedCount() {
+        const selectedCountDiv = document.getElementById('bulkSelectedCount');
+        const selectedCountText = document.getElementById('bulkSelectedCountText');
+        const bulkStudentSelect = document.getElementById('bulkStudentSelect');
+        
+        if (bulkStudentSelect) {
+            const selectedOptions = Array.from(bulkStudentSelect.selectedOptions);
+            const count = selectedOptions.length;
+            
+            if (count > 0) {
+                if (selectedCountDiv) selectedCountDiv.style.display = 'block';
+                if (selectedCountText) selectedCountText.textContent = count;
+            } else {
+                if (selectedCountDiv) selectedCountDiv.style.display = 'none';
+            }
+        }
+    }
 </script>
 @stop
