@@ -1,7 +1,89 @@
 @extends('frontend.layouts.master')
 
-@section('title', $student->name . ' - الملف الشخصي')
-@section('meta_description', 'الملف الشخصي للطالب ' . $student->name)
+@php
+    $pageTitle = $student->name . ' - الملف الشخصي | ' . config('app.name');
+    $pageDescription = 'الملف الشخصي للطالب ' . $student->name . ($student->bio ? ' - ' . Str::limit(strip_tags($student->bio), 150) : '');
+    $pageKeywords = 'طالب, ملف شخصي, ' . $student->name;
+    $canonicalUrl = route('frontend.students.show', $student->id);
+    $ogImage = $student->avatar ? asset('storage/' . $student->avatar) : asset('frontend/assets/img/default-course.jpg');
+@endphp
+
+@section('title', $pageTitle)
+@section('meta_description', $pageDescription)
+@section('meta_keywords', $pageKeywords)
+
+@push('head')
+    {{-- Canonical URL --}}
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    {{-- Open Graph Meta Tags --}}
+    <meta property="og:title" content="{{ $pageTitle }}">
+    <meta property="og:description" content="{{ $pageDescription }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:type" content="profile">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:locale" content="ar_SA">
+    <meta property="profile:first_name" content="{{ explode(' ', $student->name)[0] ?? $student->name }}">
+    <meta property="profile:username" content="{{ $student->name }}">
+
+    {{-- Twitter Card Meta Tags --}}
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ $pageTitle }}">
+    <meta name="twitter:description" content="{{ $pageDescription }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+
+    {{-- Robots Meta --}}
+    <meta name="robots" content="index, follow">
+
+    {{-- Breadcrumb Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "الرئيسية",
+                "item": "{{ route('frontend.home') }}"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "الطلاب",
+                "item": "{{ route('frontend.students.index') }}"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "{{ $student->name }}",
+                "item": "{{ $canonicalUrl }}"
+            }
+        ]
+    }
+    </script>
+
+    {{-- Person Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "{{ $student->name }}",
+        "url": "{{ $canonicalUrl }}",
+        @if($student->avatar)
+        "image": "{{ asset('storage/' . $student->avatar) }}",
+        @endif
+        @if($student->bio)
+        "description": "{{ Str::limit(strip_tags($student->bio), 200) }}",
+        @endif
+        "memberOf": {
+            "@type": "EducationalOrganization",
+            "name": "{{ config('app.name') }}"
+        }
+    }
+    </script>
+@endpush
 
 @section('content')
 

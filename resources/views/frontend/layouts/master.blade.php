@@ -5,6 +5,15 @@
     @include("frontend.layouts.head")
 </head>
 <body data-bs-theme="LIGHT">
+    @php
+        $googleSettings = \App\Models\GoogleSetting::getSettings();
+    @endphp
+    @if($googleSettings->gtm_enabled && $googleSettings->gtm_container_id)
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $googleSettings->gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    @endif
     <!-- Page Loader -->
     <div id="page-loader" class="page-loader">
         <div class="loader-content">

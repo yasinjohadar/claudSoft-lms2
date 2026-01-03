@@ -1,7 +1,77 @@
 @extends('frontend.layouts.master')
 
-@section('title', 'اتصل بنا')
-@section('meta_description', 'تواصل معنا - نحن هنا للإجابة على استفساراتك ومساعدتك')
+@php
+    $pageTitle = 'اتصل بنا - ' . config('app.name');
+    $pageDescription = 'تواصل معنا - نحن هنا للإجابة على استفساراتك ومساعدتك. يمكنك الوصول إلينا عبر الهاتف، البريد الإلكتروني، أو زيارة مقرنا';
+    $pageKeywords = 'اتصل بنا, تواصل, دعم, خدمة العملاء, معلومات الاتصال';
+    $canonicalUrl = route('frontend.contact');
+    $ogImage = asset('frontend/assets/img/default-course.jpg');
+@endphp
+
+@section('title', $pageTitle)
+@section('meta_description', $pageDescription)
+@section('meta_keywords', $pageKeywords)
+
+@push('head')
+    {{-- Canonical URL --}}
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    {{-- Open Graph Meta Tags --}}
+    <meta property="og:title" content="{{ $pageTitle }}">
+    <meta property="og:description" content="{{ $pageDescription }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:locale" content="ar_SA">
+
+    {{-- Twitter Card Meta Tags --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $pageTitle }}">
+    <meta name="twitter:description" content="{{ $pageDescription }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+
+    {{-- Robots Meta --}}
+    <meta name="robots" content="index, follow">
+
+    {{-- Breadcrumb Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "الرئيسية",
+                "item": "{{ route('frontend.home') }}"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "اتصل بنا",
+                "item": "{{ $canonicalUrl }}"
+            }
+        ]
+    }
+    </script>
+
+    {{-- ContactPage Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ContactPage",
+        "name": "{{ $pageTitle }}",
+        "description": "{{ $pageDescription }}",
+        "url": "{{ $canonicalUrl }}",
+        "mainEntity": {
+            "@type": "Organization",
+            "name": "{{ config('app.name') }}",
+            "url": "{{ route('frontend.home') }}"
+        }
+    }
+    </script>
+@endpush
 
 @section('content')
 

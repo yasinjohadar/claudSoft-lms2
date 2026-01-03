@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\FrontendCourse;
 use App\Models\BlogPost;
+use App\Models\BlogCategory;
+use App\Models\BlogTag;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
@@ -71,6 +73,59 @@ class SitemapController extends Controller
                 '0.8'
             );
         }
+
+        // Blog Categories
+        $categories = BlogCategory::where('is_active', true)
+            ->where('is_indexable', true)
+            ->select('slug', 'updated_at')
+            ->get();
+
+        foreach ($categories as $category) {
+            $sitemap .= $this->addUrl(
+                route('frontend.blog.category', $category->slug),
+                $category->updated_at,
+                'weekly',
+                '0.7'
+            );
+        }
+
+        // Blog Tags
+        $tags = BlogTag::where('is_active', true)
+            ->where('is_indexable', true)
+            ->where('posts_count', '>', 0)
+            ->select('slug', 'updated_at')
+            ->get();
+
+        foreach ($tags as $tag) {
+            $sitemap .= $this->addUrl(
+                route('frontend.blog.tag', $tag->slug),
+                $tag->updated_at,
+                'monthly',
+                '0.6'
+            );
+        }
+
+        // Additional Pages
+        $sitemap .= $this->addUrl(
+            route('frontend.reviews.index'),
+            now(),
+            'weekly',
+            '0.7'
+        );
+
+        $sitemap .= $this->addUrl(
+            route('frontend.students.index'),
+            now(),
+            'weekly',
+            '0.7'
+        );
+
+        $sitemap .= $this->addUrl(
+            route('frontend.contact'),
+            now(),
+            'monthly',
+            '0.6'
+        );
 
         $sitemap .= '</urlset>';
 

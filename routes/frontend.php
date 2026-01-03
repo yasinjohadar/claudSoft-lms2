@@ -34,18 +34,30 @@ Route::get('/sitemap.xml', [\App\Http\Controllers\Frontend\SitemapController::cl
 
 // Robots.txt Route (dynamic)
 Route::get('/robots.txt', function() {
-    $content = "# robots.txt\n\n";
+    $content = "# robots.txt\n";
+    $content .= "# Generated automatically for " . config('app.name') . "\n\n";
+    
     $content .= "# Allow all search engines\n";
     $content .= "User-agent: *\n";
     $content .= "Allow: /\n";
     $content .= "Allow: /courses\n";
-    $content .= "Allow: /blog\n\n";
+    $content .= "Allow: /blog\n";
+    $content .= "Allow: /reviews\n";
+    $content .= "Allow: /students\n";
+    $content .= "Allow: /contact\n\n";
+    
     $content .= "# Disallow admin and student panels\n";
     $content .= "Disallow: /admin/\n";
     $content .= "Disallow: /student/\n";
     $content .= "Disallow: /api/\n\n";
+    
     $content .= "# Disallow private files\n";
-    $content .= "Disallow: /storage/private/\n\n";
+    $content .= "Disallow: /storage/private/\n";
+    $content .= "Disallow: /storage/temp/\n\n";
+    
+    $content .= "# Crawl-delay (optional, helps with server load)\n";
+    $content .= "# Crawl-delay: 1\n\n";
+    
     $content .= "# Sitemap location\n";
     $content .= "Sitemap: " . url('/sitemap.xml') . "\n";
     

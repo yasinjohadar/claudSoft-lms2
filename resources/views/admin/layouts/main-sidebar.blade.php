@@ -492,6 +492,14 @@
                             </a>
                         </li>
 
+                        <!-- إعدادات Google -->
+                        <li class="slide {{ request()->routeIs('admin.google-settings.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.google-settings.edit') }}" class="side-menu__item {{ request()->routeIs('admin.google-settings.*') ? 'active' : '' }}">
+                                <i class="fab fa-google side-menu__icon"></i>
+                                <span class="side-menu__label">إعدادات Google</span>
+                            </a>
+                        </li>
+
                         <!-- التقويم -->
                         <li class="slide {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
                         <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">

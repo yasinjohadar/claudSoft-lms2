@@ -26,6 +26,11 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $pageTitle }}">
     <meta name="twitter:description" content="{{ $pageDescription }}">
+    @php
+        $ogImage = asset('frontend/assets/img/default-course.jpg');
+    @endphp
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
 
     {{-- Robots Meta --}}
     <meta name="robots" content="index, follow">
@@ -64,6 +69,28 @@
         }
     }
     </script>
+
+    @if(isset($faqs) && $faqs->count() > 0)
+    {{-- FAQPage Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            @foreach($faqs as $index => $faq)
+            {
+                "@type": "Question",
+                "name": "{{ addslashes($faq->question) }}",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "{{ addslashes(strip_tags($faq->answer)) }}"
+                }
+            }{{ !$loop->last ? ',' : '' }}
+            @endforeach
+        ]
+    }
+    </script>
+    @endif
 @endpush
 
 @section('content')

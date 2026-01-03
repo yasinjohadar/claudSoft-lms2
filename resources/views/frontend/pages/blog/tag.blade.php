@@ -1,7 +1,97 @@
 @extends('frontend.layouts.master')
 
-@section('title', $tag->meta_title ?: $tag->name . ' - المدونة')
-@section('meta_description', $tag->meta_description ?: 'تصفح مقالات ' . $tag->name)
+@php
+    $pageTitle = ($tag->meta_title ?: $tag->name) . ' - المدونة | ' . config('app.name');
+    $pageDescription = $tag->meta_description ?: 'تصفح مقالات ' . $tag->name . ' في المدونة';
+    $pageKeywords = $tag->name . ', مدونة, مقالات, وسوم';
+    $canonicalUrl = $tag->url;
+    $ogImage = asset('frontend/assets/img/default-blog.jpg');
+@endphp
+
+@section('title', $pageTitle)
+@section('meta_description', $pageDescription)
+@section('meta_keywords', $pageKeywords)
+
+@push('head')
+    {{-- Canonical URL --}}
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    {{-- Open Graph Meta Tags --}}
+    <meta property="og:title" content="{{ $pageTitle }}">
+    <meta property="og:description" content="{{ $pageDescription }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:locale" content="ar_SA">
+
+    {{-- Twitter Card Meta Tags --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $pageTitle }}">
+    <meta name="twitter:description" content="{{ $pageDescription }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+
+    {{-- Robots Meta --}}
+    <meta name="robots" content="{{ $tag->is_indexable ? 'index, follow' : 'noindex, follow' }}">
+
+    {{-- Breadcrumb Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "الرئيسية",
+                "item": "{{ route('frontend.home') }}"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "المدونة",
+                "item": "{{ route('frontend.blog.index') }}"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "{{ $tag->name }}",
+                "item": "{{ $canonicalUrl }}"
+            }
+        ]
+    }
+    </script>
+
+    {{-- CollectionPage Schema --}}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "{{ $tag->name }}",
+        "description": "{{ $pageDescription }}",
+        "url": "{{ $canonicalUrl }}",
+        "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": {{ $posts->total() ?? 0 }},
+            "itemListElement": [
+                @if(isset($posts) && $posts->count() > 0)
+                @foreach($posts->take(10) as $index => $post)
+                {
+                    "@type": "ListItem",
+                    "position": {{ $index + 1 }},
+                    "item": {
+                        "@type": "Article",
+                        "name": "{{ $post->title }}",
+                        "url": "{{ $post->url }}"
+                    }
+                }{{ !$loop->last ? ',' : '' }}
+                @endforeach
+                @endif
+            ]
+        }
+    }
+    </script>
+@endpush
 
 @section('content')
 
