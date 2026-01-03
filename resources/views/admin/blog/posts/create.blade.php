@@ -5,8 +5,8 @@
 @stop
 
 @section('styles')
-<!-- TinyMCE Editor -->
-<script src="https://cdn.tiny.mce.com/1/tinymce.min.js" referrerpolicy="origin"></script>
+<!-- Prism.js for Syntax Highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
 @endsection
 
 @section('content')
@@ -54,9 +54,27 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label">عنوان المقال <span class="text-danger">*</span></label>
-                                <input type="text" name="title" class="form-control @error('title') is-invalid @enderror"
+                                <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror"
                                        value="{{ old('title') }}" required>
                                 @error('title')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">الرابط (Slug) <span class="text-danger">*</span></label>
+                                <input type="text" name="slug" id="slug" class="form-control @error('slug') is-invalid @enderror"
+                                       value="{{ old('slug') }}" required>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> رابط المقال في الموقع (يمكن كتابته بالعربية أو الإنجليزية)
+                                    <br>
+                                    <span class="text-muted">مثال عربي: تطور-الذكاء-الاصطناعي</span>
+                                    <span class="text-muted ms-2">مثال إنجليزي: ai-development</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="generateSlug">
+                                        <i class="fas fa-magic"></i> توليد تلقائي من العنوان
+                                    </button>
+                                </small>
+                                @error('slug')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -72,7 +90,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label">المحتوى <span class="text-danger">*</span></label>
-                                <textarea name="content" id="content" class="form-control @error('content') is-invalid @enderror">{{ old('content') }}</textarea>
+                                <textarea name="content" id="content" class="form-control @error('content') is-invalid @enderror" rows="10">{{ old('content') }}</textarea>
                                 @error('content')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -286,27 +304,124 @@
 @endsection
 
 @section('scripts')
+<!-- Prism.js for Syntax Highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+<!-- TinyMCE Editor -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@5.10.9/tinymce.min.js"></script>
 <script>
-// TinyMCE Editor
+// TinyMCE Editor - Enhanced with Code Blocks and Advanced Features
 tinymce.init({
-    selector: '#content',
-    height: 500,
-    directionality: 'rtl',
-    language: 'ar',
-    plugins: [
-        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+        selector: '#content',
+        height: 600,
+        directionality: 'rtl',
+        language: 'ar',
+        plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+            'anchor', 'searchreplace', 'visualblocks', 'visualchars', 'code', 'codesample',
+            'fullscreen', 'insertdatetime', 'media', 'table', 'help', 'wordcount',
+            'emoticons', 'directionality', 'nonbreaking', 'pagebreak', 'save', 'template'
+        ],
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image media table | codesample code | emoticons charmap | removeformat | fullscreen preview | help',
+        menubar: 'file edit view insert format tools table help',
+        content_style: 'body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 14px; direction: rtl; line-height: 1.6; }',
+        
+    // Code Sample Configuration
+    codesample_languages: [
+        { text: 'HTML/XML', value: 'markup' },
+        { text: 'JavaScript', value: 'javascript' },
+        { text: 'CSS', value: 'css' },
+        { text: 'PHP', value: 'php' },
+        { text: 'Python', value: 'python' },
+        { text: 'Java', value: 'java' },
+        { text: 'C++', value: 'cpp' },
+        { text: 'C#', value: 'csharp' },
+        { text: 'SQL', value: 'sql' },
+        { text: 'JSON', value: 'json' },
+        { text: 'Bash/Shell', value: 'bash' },
+        { text: 'TypeScript', value: 'typescript' },
+        { text: 'Ruby', value: 'ruby' },
+        { text: 'Go', value: 'go' },
+        { text: 'Swift', value: 'swift' },
+        { text: 'Kotlin', value: 'kotlin' },
+        { text: 'Dart', value: 'dart' },
+        { text: 'Rust', value: 'rust' }
     ],
-    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | link image | code | help',
-    menubar: 'file edit view insert format tools table help',
-    content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; direction: rtl; }',
+    codesample_global_prismjs: true,
+    
+    // Image Settings
     image_advtab: true,
+    image_caption: true,
+    image_title: true,
     relative_urls: false,
     remove_script_host: false,
     file_picker_types: 'image',
     automatic_uploads: true,
     images_upload_url: '/upload',
+    
+    // Media Settings
+    media_live_embeds: true,
+    
+    // Table Settings
+    table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
+    table_resize_bars: true,
+    table_default_attributes: {
+        border: '1'
+    },
+    
+    // RTL Support
+    rtl_ui: true,
+    
+    // Additional Settings
+    branding: false,
+    elementpath: true,
+    resize: true,
+    contextmenu: 'link image table',
+    paste_as_text: false,
+    paste_data_images: true
+});
+
+// Slug Generation - Supports both Arabic and English
+function generateSlug(text) {
+    if (!text) return '';
+    
+    let slug = text.toString().trim();
+    
+    // Replace spaces and multiple spaces with single hyphen
+    slug = slug
+        .replace(/\s+/g, '-')           // Replace spaces with -
+        .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9-]/g, '') // Keep Arabic, English, numbers, and hyphens
+        .replace(/-+/g, '-')            // Replace multiple - with single -
+        .replace(/^-+/, '')             // Trim - from start
+        .replace(/-+$/, '');            // Trim - from end
+    
+    return slug || 'post-' + Date.now();
+}
+
+// Auto-generate slug from title
+document.getElementById('title')?.addEventListener('input', function() {
+    const slugInput = document.getElementById('slug');
+    if (slugInput && !slugInput.dataset.manualEdit) {
+        const title = this.value;
+        slugInput.value = generateSlug(title);
+    }
+});
+
+// Manual slug generation button
+document.getElementById('generateSlug')?.addEventListener('click', function() {
+    const titleInput = document.getElementById('title');
+    const slugInput = document.getElementById('slug');
+    if (titleInput && slugInput) {
+        slugInput.value = generateSlug(titleInput.value);
+        slugInput.dataset.manualEdit = 'false';
+    }
+});
+
+// Mark slug as manually edited when user types
+document.getElementById('slug')?.addEventListener('input', function() {
+    this.dataset.manualEdit = 'true';
 });
 
 // Image Preview

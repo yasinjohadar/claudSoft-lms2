@@ -72,6 +72,7 @@ class BlogPostController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required', 'string', 'max:255', 'regex:/^[\p{Arabic}a-zA-Z0-9\s-]+$/u', 'unique:blog_posts,slug'],
             'excerpt' => 'nullable|string',
             'content' => 'required|string',
             'category_id' => 'required|exists:blog_categories,id',
@@ -103,8 +104,15 @@ class BlogPostController extends Controller
         DB::beginTransaction();
 
         try {
-            // Generate slug - handle Arabic text better
+            // Use provided slug or generate from title
             $slug = $validated['slug'] ?? Str::slug($validated['title'], '-', 'ar');
+            
+            // Clean slug: replace spaces with hyphens and remove invalid characters
+            // Keep Arabic characters, English letters, numbers, and hyphens
+            $slug = preg_replace('/\s+/', '-', trim($slug)); // Replace spaces with hyphens
+            $slug = preg_replace('/[^\p{Arabic}a-zA-Z0-9-]/u', '', $slug); // Remove invalid chars
+            $slug = preg_replace('/-+/', '-', $slug); // Replace multiple hyphens with single
+            $slug = trim($slug, '-'); // Trim hyphens from start and end
             
             // If slug is empty after conversion, use a fallback
             if (empty($slug)) {
@@ -243,6 +251,7 @@ class BlogPostController extends Controller
         // Validate the request
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'slug' => ['required', 'string', 'max:255', 'regex:/^[\p{Arabic}a-zA-Z0-9\s-]+$/u', 'unique:blog_posts,slug,' . $post->id],
             'excerpt' => 'nullable|string',
             'content' => 'required|string',
             'category_id' => 'required|exists:blog_categories,id',
@@ -288,24 +297,29 @@ class BlogPostController extends Controller
                 'category_id' => $validated['category_id'] ?? 'not set'
             ]);
 
-            // Update slug if title changed
-            if ($validated['title'] !== $post->title && empty($validated['slug'])) {
-                $slug = Str::slug($validated['title'], '-', 'ar');
-                
-                // If slug is empty after conversion, use a fallback
-                if (empty($slug)) {
-                    $slug = 'post-' . $post->id . '-' . time();
-                }
-
-                // Check for unique slug
-                $counter = 1;
-                $originalSlug = $slug;
-                while (BlogPost::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
-                    $slug = $originalSlug . '-' . $counter++;
-                }
-                
-                $validated['slug'] = $slug;
+            // Use provided slug or generate from title if not provided
+            $slug = $validated['slug'] ?? Str::slug($validated['title'], '-', 'ar');
+            
+            // Clean slug: replace spaces with hyphens and remove invalid characters
+            // Keep Arabic characters, English letters, numbers, and hyphens
+            $slug = preg_replace('/\s+/', '-', trim($slug)); // Replace spaces with hyphens
+            $slug = preg_replace('/[^\p{Arabic}a-zA-Z0-9-]/u', '', $slug); // Remove invalid chars
+            $slug = preg_replace('/-+/', '-', $slug); // Replace multiple hyphens with single
+            $slug = trim($slug, '-'); // Trim hyphens from start and end
+            
+            // If slug is empty after conversion, use a fallback
+            if (empty($slug)) {
+                $slug = 'post-' . $post->id . '-' . time();
             }
+
+            // Check for unique slug (excluding current post)
+            $counter = 1;
+            $originalSlug = $slug;
+            while (BlogPost::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
+                $slug = $originalSlug . '-' . $counter++;
+            }
+            
+            $validated['slug'] = $slug;
 
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {

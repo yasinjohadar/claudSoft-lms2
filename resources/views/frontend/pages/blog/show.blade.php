@@ -11,6 +11,9 @@
 @section('meta_keywords', $seoTags['keywords'])
 
 @push('head')
+    {{-- Prism.js for Code Syntax Highlighting --}}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    
     {{-- Canonical URL --}}
     <link rel="canonical" href="{{ $seoTags['canonical'] }}">
 
@@ -492,13 +495,126 @@
     font-size: 0.95em;
 }
 
+/* Code Blocks Styling */
 .article-content pre {
+    position: relative;
     background: #2d2d2d;
     color: #f8f8f2;
     padding: 20px;
     border-radius: 10px;
     overflow-x: auto;
     margin: 30px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #1e1e1e;
+}
+
+.article-content pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* Code Block Header with Language Name and Copy Button */
+.code-block-wrapper {
+    position: relative;
+    margin: 30px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: #2d2d2d;
+}
+
+.code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.code-block-language {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.code-block-language i {
+    color: #4a9eff;
+}
+
+.code-block-copy {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #3a3a3a;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.code-block-copy:hover {
+    background: #4a9eff;
+    transform: translateY(-1px);
+}
+
+.code-block-copy:active {
+    transform: translateY(0);
+}
+
+.code-block-copy.copied {
+    background: #10b981;
+}
+
+.code-block-copy.copied::after {
+    content: "تم النسخ!";
+    margin-right: 6px;
+}
+
+.code-block-content {
+    padding: 20px;
+    overflow-x: auto;
+    margin: 0;
+    background: #2d2d2d;
+}
+
+.code-block-content pre {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.code-block-content code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+/* Hide Prism.js default copy buttons */
+div[class*="prism"] button[class*="copy"],
+div[class*="prism"] .prism-copy-button,
+.prism-copy-button,
+.prism-toolbar button[data-copy-state],
+pre[class*="language-"] button,
+code[class*="language-"] button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
 }
 
 /* Article Tags */
@@ -941,5 +1057,150 @@
     }
 }
 </style>
+
+<!-- Prism.js for Syntax Highlighting -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Process all code blocks in article content
+    const articleContent = document.querySelector('.article-content');
+    if (!articleContent) return;
+    
+    // Find all pre > code blocks (from TinyMCE codesample plugin)
+    const codeBlocks = articleContent.querySelectorAll('pre code[class*="language-"]');
+    
+    codeBlocks.forEach(function(codeBlock) {
+        const pre = codeBlock.parentElement;
+        if (!pre) return;
+        
+        // Skip if already processed
+        if (pre.classList.contains('processed')) return;
+        pre.classList.add('processed');
+        
+        // Get language from class
+        const languageClass = Array.from(codeBlock.classList).find(cls => cls.startsWith('language-'));
+        const language = languageClass ? languageClass.replace('language-', '') : 'text';
+        
+        // Language name mapping
+        const languageNames = {
+            'php': 'PHP',
+            'javascript': 'JavaScript',
+            'js': 'JavaScript',
+            'python': 'Python',
+            'java': 'Java',
+            'cpp': 'C++',
+            'csharp': 'C#',
+            'sql': 'SQL',
+            'json': 'JSON',
+            'bash': 'Bash',
+            'shell': 'Shell',
+            'typescript': 'TypeScript',
+            'html': 'HTML',
+            'css': 'CSS',
+            'markup': 'HTML/XML',
+            'xml': 'XML',
+            'ruby': 'Ruby',
+            'go': 'Go',
+            'rust': 'Rust',
+            'swift': 'Swift',
+            'kotlin': 'Kotlin',
+            'dart': 'Dart',
+            'text': 'Text'
+        };
+        
+        const languageName = languageNames[language] || language.toUpperCase();
+        
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+        
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+        
+        // Language label
+        const languageLabel = document.createElement('div');
+        languageLabel.className = 'code-block-language';
+        languageLabel.innerHTML = '<i class="fas fa-code"></i> ' + languageName;
+        
+        // Copy button
+        const copyButton = document.createElement('button');
+        copyButton.className = 'code-block-copy';
+        copyButton.innerHTML = '<i class="fas fa-copy"></i> نسخ';
+        copyButton.setAttribute('aria-label', 'نسخ الكود');
+        
+        // Copy functionality
+        copyButton.addEventListener('click', function() {
+            const text = codeBlock.textContent || codeBlock.innerText;
+            
+            // Use modern Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    copyButton.classList.add('copied');
+                    copyButton.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+                    
+                    setTimeout(function() {
+                        copyButton.classList.remove('copied');
+                        copyButton.innerHTML = '<i class="fas fa-copy"></i> نسخ';
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Failed to copy:', err);
+                    fallbackCopy(text, copyButton);
+                });
+            } else {
+                fallbackCopy(text, copyButton);
+            }
+        });
+        
+        // Fallback copy method
+        function fallbackCopy(text, button) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                button.classList.add('copied');
+                button.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+                
+                setTimeout(function() {
+                    button.classList.remove('copied');
+                    button.innerHTML = '<i class="fas fa-copy"></i> نسخ';
+                }, 2000);
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                alert('فشل نسخ الكود. يرجى نسخه يدوياً.');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        // Create content wrapper
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'code-block-content';
+        
+        // Assemble structure
+        header.appendChild(languageLabel);
+        header.appendChild(copyButton);
+        contentWrapper.appendChild(pre.cloneNode(true));
+        
+        wrapper.appendChild(header);
+        wrapper.appendChild(contentWrapper);
+        
+        // Replace original pre with wrapper
+        pre.parentNode.replaceChild(wrapper, pre);
+    });
+    
+    // Re-run Prism highlighting after processing
+    if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+    }
+});
+</script>
 
 @endsection
