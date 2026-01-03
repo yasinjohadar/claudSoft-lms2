@@ -215,6 +215,21 @@ class CourseController extends Controller
                 });
             });
 
+            // Load access restrictions for sections and modules
+            $course->sections->each(function ($section) {
+                $section->load(['accessRestrictions' => function($query) {
+                    $query->where('restriction_type', 'group')
+                          ->where('access_type', 'allow');
+                }]);
+                
+                $section->modules->each(function ($module) {
+                    $module->load(['accessRestrictions' => function($query) {
+                        $query->where('restriction_type', 'group')
+                              ->where('access_type', 'allow');
+                    }]);
+                });
+            });
+
             // Get statistics
             $stats = [
                 'total_enrollments' => $course->enrollments_count ?? $course->enrollments()->count(),

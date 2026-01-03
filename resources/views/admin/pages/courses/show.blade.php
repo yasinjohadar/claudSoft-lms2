@@ -552,6 +552,11 @@
                                         <div>
                                             <i class="fas fa-folder me-2"></i>
                                             {{ $section->title }}
+                                            @if($section->accessRestrictions && $section->accessRestrictions->count() > 0)
+                                                <span class="badge bg-warning text-dark ms-2" title="هذا القسم له قيود وصول">
+                                                    <i class="fas fa-lock me-1"></i>قيود
+                                                </span>
+                                            @endif
                                             @if($section->description)
                                                 <br><small class="text-muted fw-normal">{{ $section->description }}</small>
                                             @endif
@@ -690,7 +695,14 @@
                                                         @endif
                                                     </span>
                                                     <div>
-                                                        <h6 class="mb-1 fw-semibold text-dark">{{ $module->title }}</h6>
+                                                        <h6 class="mb-1 fw-semibold text-dark">
+                                                            {{ $module->title }}
+                                                            @if($module->accessRestrictions && $module->accessRestrictions->count() > 0)
+                                                                <span class="badge bg-warning text-dark ms-2" title="هذه الوحدة لها قيود وصول">
+                                                                    <i class="fas fa-lock me-1"></i>قيود
+                                                                </span>
+                                                            @endif
+                                                        </h6>
                                                         <small class="text-muted">
                                                             <span class="badge bg-light text-default me-1">
                                                                 @if($module->module_type == 'lesson') درس
@@ -1176,15 +1188,26 @@
                 groupsList.innerHTML = '';
 
                 if (data.all_groups && data.all_groups.length > 0) {
+                    console.log('Loading groups:', {
+                        all_groups: data.all_groups,
+                        restricted_group_ids: data.restricted_group_ids
+                    });
+                    
                     data.all_groups.forEach(function(group) {
-                        const isChecked = data.restricted_group_ids.includes(group.id);
+                        // Convert both to numbers for comparison
+                        const groupId = parseInt(group.id);
+                        const restrictedIds = Array.isArray(data.restricted_group_ids) 
+                            ? data.restricted_group_ids.map(id => parseInt(id))
+                            : [];
+                        const isChecked = restrictedIds.includes(groupId);
+                        
                         const groupItem = document.createElement('div');
                         groupItem.className = 'form-check mb-3';
                         groupItem.innerHTML = `
                             <input class="form-check-input" type="checkbox" 
-                                   value="${group.id}" id="group_${group.id}" 
+                                   value="${groupId}" id="group_${groupId}" 
                                    ${isChecked ? 'checked' : ''}>
-                            <label class="form-check-label" for="group_${group.id}">
+                            <label class="form-check-label" for="group_${groupId}">
                                 <strong>${group.name}</strong>
                                 ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
                             </label>
@@ -1214,11 +1237,23 @@
         const checkboxes = groupsList.querySelectorAll('input[type="checkbox"]:checked');
         const groupIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
+        console.log('Saving restrictions:', {
+            type: currentRestrictions.type,
+            id: currentRestrictions.id,
+            groupIds: groupIds
+        });
+
         const type = currentRestrictions.type;
         const id = currentRestrictions.id;
         const url = type === 'section'
             ? `/admin/sections/${id}/restrictions/sync`
             : `/admin/modules/${id}/restrictions/sync`;
+
+        // Disable save button to prevent double submission
+        const saveBtn = document.getElementById('saveRestrictionsBtn');
+        const originalBtnText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري الحفظ...';
 
         fetch(url, {
             method: 'POST',
@@ -1231,8 +1266,16 @@
                 group_ids: groupIds
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Network response was not ok');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Save response:', data);
             if (data.success) {
                 // Close modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('restrictionsModal'));
@@ -1245,17 +1288,21 @@
                     alert(data.message || 'تم تحديث القيود بنجاح');
                 }
 
-                // Optionally reload page to show updated restrictions
+                // Reload page to show updated restrictions
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
             } else {
                 alert(data.message || 'حدث خطأ في حفظ القيود');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnText;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('حدث خطأ في الاتصال');
+            console.error('Error saving restrictions:', error);
+            alert('حدث خطأ في الاتصال: ' + error.message);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnText;
         });
     }
 </script>
@@ -1289,7 +1336,7 @@
                     <i class="fas fa-times me-1"></i>
                     إلغاء
                 </button>
-                <button type="button" class="btn btn-primary" onclick="saveRestrictions()">
+                <button type="button" class="btn btn-primary" id="saveRestrictionsBtn" onclick="saveRestrictions()">
                     <i class="fas fa-save me-1"></i>
                     حفظ
                 </button>

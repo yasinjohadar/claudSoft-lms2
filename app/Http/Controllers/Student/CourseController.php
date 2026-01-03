@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseEnrollment;
+use App\Services\AccessControlService;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -132,6 +133,9 @@ class CourseController extends Controller
     public function show($id)
     {
         try {
+            $student = auth()->user();
+            $accessControl = new AccessControlService();
+            
             $course = Course::with([
                 'category',
                 'sections' => function($q) {
@@ -144,22 +148,34 @@ class CourseController extends Controller
                 'instructors'
             ])->findOrFail($id);
 
-            $student = auth()->user();
+            // Check course access using AccessControlService
+            $courseAccess = $accessControl->canAccessCourse($course, $student);
+            if (!$courseAccess['can_access']) {
+                return redirect()
+                    ->route('student.courses.index')
+                    ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
+            }
 
-            // Check if student is enrolled
-            $enrollment = CourseEnrollment::where('course_id', $course->id)
-                ->where('student_id', $student->id)
-                ->first();
+            $enrollment = $courseAccess['enrollment'] ?? null;
 
-            // Check if course is published and visible (allow enrolled students to see unpublished courses)
-            if (!$course->is_published || !$course->is_visible) {
-                // If student is enrolled, allow access even if course is unpublished
-                if (!$enrollment) {
-                    return redirect()
-                        ->route('student.courses.index')
-                        ->with('error', 'هذا الكورس غير متاح حالياً');
+            // Filter sections and modules based on access restrictions
+            $accessibleSections = collect();
+            foreach ($course->sections as $section) {
+                $sectionAccess = $accessControl->canAccessSection($section, $student);
+                if ($sectionAccess['can_access']) {
+                    // Filter modules within accessible sections
+                    $accessibleModules = collect();
+                    foreach ($section->modules as $module) {
+                        $moduleAccess = $accessControl->canAccessModule($module, $student);
+                        if ($moduleAccess['can_access']) {
+                            $accessibleModules->push($module);
+                        }
+                    }
+                    $section->setRelation('modules', $accessibleModules);
+                    $accessibleSections->push($section);
                 }
             }
+            $course->setRelation('sections', $accessibleSections);
 
             // Get course statistics (only visible)
             $stats = [

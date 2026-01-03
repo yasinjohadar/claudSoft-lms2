@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\ModuleCompletion;
 use App\Models\SectionCompletion;
 use App\Models\Resource;
+use App\Services\AccessControlService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -86,6 +87,8 @@ class CourseLearningController extends Controller
     {
         try {
             $student = auth()->user();
+            $accessControl = new AccessControlService();
+            
             $module = CourseModule::with([
                 'course',
                 'course.sections' => function($q) {
@@ -101,11 +104,12 @@ class CourseLearningController extends Controller
                 }
             ])->findOrFail($moduleId);
 
-            // Check if module is visible
-            if (!$module->is_visible) {
+            // Check module access using AccessControlService
+            $moduleAccess = $accessControl->canAccessModule($module, $student);
+            if (!$moduleAccess['can_access']) {
                 return redirect()
                     ->route('student.courses.show', $module->course_id)
-                    ->with('error', 'هذا الدرس غير متاح حالياً');
+                    ->with('error', $moduleAccess['reason'] ?? 'هذا الدرس غير متاح حالياً');
             }
 
             // Load questions for question modules
@@ -113,17 +117,10 @@ class CourseLearningController extends Controller
                 $module->modulable->load(['questions.questionType']);
             }
 
-            // Check enrollment or preview access
+            // Get enrollment
             $enrollment = CourseEnrollment::where('course_id', $module->course_id)
                 ->where('student_id', $student->id)
                 ->first();
-
-            // Allow access if enrolled OR module is preview
-            if (!$module->is_preview && (!$enrollment || !$enrollment->isActive())) {
-                return redirect()
-                    ->route('student.courses.show', $module->course_id)
-                    ->with('error', 'أنت غير مسجل في هذا الكورس');
-            }
 
             // Update last accessed if enrolled
             if ($enrollment) {
