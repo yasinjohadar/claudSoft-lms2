@@ -139,6 +139,137 @@
                 </div>
                 <!-- /الإحصائيات الرئيسية -->
 
+                <!-- ودجات الوصول السريع -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5 class="mb-3">
+                            <i class="fe fe-grid me-2"></i>
+                            الوصول السريع
+                        </h5>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('users.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-primary-gradient mb-2">
+                                    <i class="fe fe-users fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة المستخدمين</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('courses.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-danger-gradient mb-2">
+                                    <i class="fe fe-book-open fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الكورسات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('enrollments.all') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-success-gradient mb-2">
+                                    <i class="fe fe-user-check fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الالتحاقات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('admin.certificates.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-warning-gradient mb-2">
+                                    <i class="fe fe-award fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الشهادات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('quizzes.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-info-gradient mb-2">
+                                    <i class="fe fe-file-text fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الاختبارات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('assignments.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-purple-gradient mb-2">
+                                    <i class="fe fe-edit fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الواجبات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('question-bank.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-teal-gradient mb-2">
+                                    <i class="fe fe-help-circle fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">بنك الأسئلة</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('invoices.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-orange-gradient mb-2">
+                                    <i class="fe fe-file fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة الفواتير</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('payments.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-green-gradient mb-2">
+                                    <i class="fe fe-credit-card fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة المدفوعات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('groups.all') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-indigo-gradient mb-2">
+                                    <i class="fe fe-users fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إدارة المجموعات</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('admin.frontend-courses.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-pink-gradient mb-2">
+                                    <i class="fe fe-globe fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">الكورسات الأمامية</h6>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+                        <a href="{{ route('admin.settings.email.index') }}" class="card quick-access-card text-decoration-none">
+                            <div class="card-body text-center p-3">
+                                <div class="quick-access-icon bg-dark-gradient mb-2">
+                                    <i class="fe fe-mail fs-24 text-fixed-white"></i>
+                                </div>
+                                <h6 class="mb-0 text-dark">إعدادات البريد</h6>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <!-- /ودجات الوصول السريع -->
+
                 <!-- مخطط بسيط + ملخص اليوم -->
                 <div class="row">
                     <div class="col-md-12 col-lg-12 col-xl-7">
@@ -436,6 +567,65 @@
             </div>
         </div>
         <!-- End::app-content -->
+@stop
+
+@section('styles')
+<style>
+    .quick-access-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+        height: 100%;
+    }
+    
+    .quick-access-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: #0555a2;
+    }
+    
+    .quick-access-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-access-card:hover .quick-access-icon {
+        transform: scale(1.1);
+    }
+    
+    .bg-purple-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .bg-teal-gradient {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .bg-orange-gradient {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .bg-green-gradient {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .bg-indigo-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .bg-pink-gradient {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .bg-dark-gradient {
+        background: linear-gradient(135deg, #434343 0%, #000000 100%);
+    }
+</style>
 @stop
 
 @push('dashboard-scripts')

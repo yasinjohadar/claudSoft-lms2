@@ -10,9 +10,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title> @yield('page-title')</title>
-    <meta name="Description" content="أفضل موقع للاعلانات المبوبة">
+    <meta name="Description" content="منصة تعليمية متكاملة تقدم كورسات ودورات تدريبية احترافية مع شهادات معتمدة. تعلم من أفضل المدربين في مختلف المجالات">
     <meta name="Author" content="claudSoft">
-    <meta name="keywords" content="إعلانات , لوحة التحكم">
+    <meta name="keywords" content="منصة تعليمية, كورسات, دورات تدريبية, تعلم إلكتروني, شهادات معتمدة, لوحة التحكم">
 
     @include('admin.layouts.head')
 </head>
