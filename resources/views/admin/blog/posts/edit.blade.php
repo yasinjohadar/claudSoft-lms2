@@ -359,8 +359,10 @@
 <!-- TinyMCE Editor -->
 <script src="https://cdn.jsdelivr.net/npm/tinymce@5.10.9/tinymce.min.js"></script>
 <script>
-// TinyMCE Editor - Enhanced with Code Blocks and Advanced Features
-tinymce.init({
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    // TinyMCE Editor - Enhanced with Code Blocks and Advanced Features
+    tinymce.init({
         selector: '#content',
         height: 600,
         directionality: 'rtl',
@@ -425,49 +427,51 @@ tinymce.init({
     contextmenu: 'link image table',
     paste_as_text: false,
     paste_data_images: true
-});
-
-// Slug Generation - Supports both Arabic and English
-function generateSlug(text) {
-    if (!text) return '';
+    });
     
-    let slug = text.toString().trim();
-    
-    // Replace spaces and multiple spaces with single hyphen
-    slug = slug
-        .replace(/\s+/g, '-')           // Replace spaces with -
-        .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9-]/g, '') // Keep Arabic, English, numbers, and hyphens
-        .replace(/-+/g, '-')            // Replace multiple - with single -
-        .replace(/^-+/, '')             // Trim - from start
-        .replace(/-+$/, '');            // Trim - from end
-    
-    return slug || 'post-' + Date.now();
-}
-
-// Auto-generate slug from title (only if slug is empty or matches old title)
-const titleInput = document.getElementById('title');
-const slugInput = document.getElementById('slug');
-const originalTitle = titleInput?.value || '';
-const originalSlug = slugInput?.value || '';
-
-titleInput?.addEventListener('input', function() {
-    if (slugInput && !slugInput.dataset.manualEdit) {
-        const title = this.value;
-        slugInput.value = generateSlug(title);
+    // Slug Generation - Supports both Arabic and English
+    function generateSlug(text) {
+        if (!text) return '';
+        
+        let slug = text.toString().trim();
+        
+        // Replace spaces and multiple spaces with single hyphen
+        slug = slug
+            .replace(/\s+/g, '-')           // Replace spaces with -
+            .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9-]/g, '') // Keep Arabic, English, numbers, and hyphens
+            .replace(/-+/g, '-')            // Replace multiple - with single -
+            .replace(/^-+/, '')             // Trim - from start
+            .replace(/-+$/, '');            // Trim - from end
+        
+        return slug || 'post-' + Date.now();
     }
-});
 
-// Manual slug generation button
-document.getElementById('generateSlug')?.addEventListener('click', function() {
+    // Auto-generate slug from title
+    const titleInput = document.getElementById('title');
+    const slugInput = document.getElementById('slug');
+    
     if (titleInput && slugInput) {
-        slugInput.value = generateSlug(titleInput.value);
-        slugInput.dataset.manualEdit = 'false';
-    }
-});
+        titleInput.addEventListener('input', function() {
+            if (!slugInput.dataset.manualEdit) {
+                const title = this.value;
+                slugInput.value = generateSlug(title);
+            }
+        });
 
-// Mark slug as manually edited when user types
-slugInput?.addEventListener('input', function() {
-    this.dataset.manualEdit = 'true';
+        // Manual slug generation button
+        const generateSlugBtn = document.getElementById('generateSlug');
+        if (generateSlugBtn) {
+            generateSlugBtn.addEventListener('click', function() {
+                slugInput.value = generateSlug(titleInput.value);
+                slugInput.dataset.manualEdit = 'false';
+            });
+        }
+
+        // Mark slug as manually edited when user types
+        slugInput.addEventListener('input', function() {
+            this.dataset.manualEdit = 'true';
+        });
+    }
 });
 
 document.getElementById('featuredImage')?.addEventListener('change', function(e) {
