@@ -103,15 +103,22 @@ class BlogPostController extends Controller
         DB::beginTransaction();
 
         try {
-            // Generate slug
-            $validated['slug'] = Str::slug($validated['title']);
+            // Generate slug - handle Arabic text better
+            $slug = $validated['slug'] ?? Str::slug($validated['title'], '-', 'ar');
+            
+            // If slug is empty after conversion, use a fallback
+            if (empty($slug)) {
+                $slug = 'post-' . time();
+            }
 
             // Check for unique slug
             $counter = 1;
-            $originalSlug = $validated['slug'];
-            while (BlogPost::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $counter++;
+            $originalSlug = $slug;
+            while (BlogPost::where('slug', $slug)->exists()) {
+                $slug = $originalSlug . '-' . $counter++;
             }
+            
+            $validated['slug'] = $slug;
 
             // Set author
             $validated['author_id'] = Auth::id();
@@ -135,6 +142,11 @@ class BlogPostController extends Controller
             // Set default schema type
             if (!isset($validated['schema_type'])) {
                 $validated['schema_type'] = 'Article';
+            }
+
+            // Set is_indexable to true by default if not set
+            if (!isset($validated['is_indexable'])) {
+                $validated['is_indexable'] = true;
             }
 
             // Extract tags before creating post
@@ -273,15 +285,22 @@ class BlogPostController extends Controller
             ]);
 
             // Update slug if title changed
-            if ($validated['title'] !== $post->title) {
-                $validated['slug'] = Str::slug($validated['title']);
+            if ($validated['title'] !== $post->title && empty($validated['slug'])) {
+                $slug = Str::slug($validated['title'], '-', 'ar');
+                
+                // If slug is empty after conversion, use a fallback
+                if (empty($slug)) {
+                    $slug = 'post-' . $post->id . '-' . time();
+                }
 
                 // Check for unique slug
                 $counter = 1;
-                $originalSlug = $validated['slug'];
-                while (BlogPost::where('slug', $validated['slug'])->where('id', '!=', $post->id)->exists()) {
-                    $validated['slug'] = $originalSlug . '-' . $counter++;
+                $originalSlug = $slug;
+                while (BlogPost::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
+                    $slug = $originalSlug . '-' . $counter++;
                 }
+                
+                $validated['slug'] = $slug;
             }
 
             // Handle featured image upload
@@ -296,6 +315,11 @@ class BlogPostController extends Controller
             // Set published_at if status changed to published
             if ($validated['status'] === 'published' && $post->status !== 'published' && !isset($validated['published_at'])) {
                 $validated['published_at'] = now();
+            }
+
+            // Set is_indexable to true by default if not set
+            if (!isset($validated['is_indexable'])) {
+                $validated['is_indexable'] = true;
             }
 
             // Map category_id to blog_category_id

@@ -60,6 +60,7 @@ class BlogController extends Controller
 
         $featuredPosts = BlogPost::with(['author', 'category'])
                                 ->published()
+                                ->indexable()
                                 ->featured()
                                 ->limit(3)
                                 ->get();
