@@ -293,13 +293,17 @@ class CourseSectionController extends Controller
 
             $status = $section->is_visible ? 'مرئي' : 'مخفي';
 
-            return redirect()
-                ->back()
-                ->with('success', "تم تحديث الظهور إلى: {$status}");
+            return response()->json([
+                'success' => true,
+                'message' => "تم تحديث الظهور إلى: {$status}",
+                'is_visible' => $section->is_visible,
+                'status_text' => $status
+            ]);
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث الظهور: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تحديث الظهور: ' . $e->getMessage()
+            ], 500);
         }
     }
 

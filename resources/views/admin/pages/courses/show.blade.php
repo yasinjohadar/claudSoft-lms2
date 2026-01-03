@@ -576,6 +576,34 @@
                             <div id="section-{{ $section->id }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}"
                                  aria-labelledby="heading-{{ $section->id }}" data-bs-parent="#sectionsAccordion">
                                 <div class="accordion-body">
+                                    <!-- Add Activity Buttons (Top) -->
+                                    <div class="mb-3 p-3 bg-light rounded">
+                                        <p class="text-muted mb-2 fw-semibold"><i class="fas fa-plus-circle me-2"></i>إضافة محتوى جديد:</p>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <a href="{{ route('sections.modules.create', $section->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-book-open me-1"></i>درس
+                                            </a>
+                                            <a href="{{ route('videos.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-play me-1"></i>فيديو
+                                            </a>
+                                            <a href="{{ route('assignments.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-warning">
+                                                <i class="fas fa-tasks me-1"></i>واجب
+                                            </a>
+                                            <a href="{{ route('quizzes.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-question-circle me-1"></i>اختبار
+                                            </a>
+                                            <a href="{{ route('question-modules.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-clipboard-question me-1"></i>وحدة أسئلة
+                                            </a>
+                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-clipboard-question me-1"></i>أسئلة
+                                            </a>
+                                            <a href="{{ route('resources.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-file me-1"></i>مورد
+                                            </a>
+                                        </div>
+                                    </div>
+
                                     <!-- Section Header with Actions -->
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                         <div></div>
@@ -893,34 +921,6 @@
                                             </div>
                                         </div>
                                     @endif
-
-                                    <!-- Add Activity Buttons -->
-                                    <div class="mt-3 p-3 bg-light rounded">
-                                        <p class="text-muted mb-2 fw-semibold"><i class="fas fa-plus-circle me-2"></i>إضافة محتوى جديد:</p>
-                                        <div class="d-flex gap-2 flex-wrap">
-                                            <a href="{{ route('sections.modules.create', $section->id) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-book-open me-1"></i>درس
-                                            </a>
-                                            <a href="{{ route('videos.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-play me-1"></i>فيديو
-                                            </a>
-                                            <a href="{{ route('assignments.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-warning">
-                                                <i class="fas fa-tasks me-1"></i>واجب
-                                            </a>
-                                            <a href="{{ route('quizzes.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-question-circle me-1"></i>اختبار
-                                            </a>
-                                            <a href="{{ route('question-modules.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-clipboard-question me-1"></i>وحدة أسئلة
-                                            </a>
-                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-outline-danger">
-                                                <i class="fas fa-clipboard-question me-1"></i>أسئلة
-                                            </a>
-                                            <a href="{{ route('resources.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file me-1"></i>مورد
-                                            </a>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1052,6 +1052,14 @@
             ? `/admin/sections/${id}/toggle-visibility`
             : `/admin/modules/${id}/toggle-visibility`;
 
+        // Show loading state
+        const modal = new bootstrap.Modal(document.getElementById('visibilityModal'));
+        const modalBody = document.getElementById('visibilityModalBody');
+        const modalTitle = document.getElementById('visibilityModalTitle');
+        modalTitle.textContent = 'جاري التحديث...';
+        modalBody.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></div>';
+        modal.show();
+
         fetch(url, {
             method: 'POST',
             headers: {
@@ -1061,20 +1069,56 @@
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.text().then(text => {
+                    // Try to parse as JSON, if fails, show the text
+                    try {
+                        return JSON.parse(text);
+                    } catch {
+                        throw new Error('حدث خطأ في الاستجابة من الخادم');
+                    }
+                });
             }
             return response.json();
         })
         .then(data => {
             if (data.success) {
-                location.reload();
+                modalTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>نجح التحديث';
+                modalBody.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        ${data.message || 'تم التحديث بنجاح'}
+                    </div>
+                `;
+                setTimeout(() => {
+                    modal.hide();
+                    location.reload();
+                }, 1000);
             } else {
-                alert(data.message || 'حدث خطأ');
+                modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>حدث خطأ';
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${data.message || 'حدث خطأ'}
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    </div>
+                `;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('حدث خطأ في الاتصال: ' + error.message);
+            modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>حدث خطأ';
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>حدث خطأ في الاتصال:</strong><br>
+                    ${error.message || 'يرجى المحاولة مرة أخرى'}
+                </div>
+                <div class="text-end mt-3">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            `;
         });
     }
 
@@ -1344,5 +1388,48 @@
         </div>
     </div>
 </div>
+
+<!-- Visibility Toggle Modal -->
+<div class="modal fade" id="visibilityModal" tabindex="-1" aria-labelledby="visibilityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="visibilityModalTitle">
+                    <i class="fas fa-info-circle me-2"></i>تحديث الحالة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="visibilityModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visibility Toggle Modal -->
+<div class="modal fade" id="visibilityModal" tabindex="-1" aria-labelledby="visibilityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="visibilityModalTitle">
+                    <i class="fas fa-info-circle me-2"></i>تحديث الحالة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="visibilityModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @stop
 

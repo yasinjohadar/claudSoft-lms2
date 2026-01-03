@@ -530,7 +530,7 @@ class CourseModuleController extends Controller
     /**
      * Toggle module visibility.
      */
-    public function toggleVisibility(Request $request, $id)
+public function toggleVisibility(Request $request, $id)
     {
         try {
             $module = CourseModule::findOrFail($id);
@@ -539,28 +539,17 @@ class CourseModuleController extends Controller
 
             $status = $module->is_visible ? 'مرئية' : 'مخفية';
 
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "تم تحديث حالة الظهور إلى: {$status}",
-                    'is_visible' => $module->is_visible
-                ]);
-            }
-
-            return redirect()
-                ->back()
-                ->with('success', "تم تحديث حالة الظهور إلى: {$status}");
+            return response()->json([
+                'success' => true,
+                'message' => "تم تحديث حالة الظهور إلى: {$status}",
+                'is_visible' => $module->is_visible,
+                'status_text' => $status
+            ]);
         } catch (\Exception $e) {
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'حدث خطأ أثناء تحديث حالة الظهور: ' . $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث حالة الظهور: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تحديث حالة الظهور: ' . $e->getMessage()
+            ], 500);
         }
     }
 
