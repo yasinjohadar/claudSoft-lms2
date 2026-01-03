@@ -4,6 +4,15 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>@yield("title")</title>
 
+    {{-- Favicon and Site Icons (for Google Search Results) --}}
+    {{-- Google uses favicon.ico from root or the icon specified in <link rel="icon"> --}}
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('frontend/assets/images/logo.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('frontend/assets/images/logo.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('frontend/assets/images/logo.png') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    {{-- For better Google Search Results icon, ensure favicon.ico exists in public root --}}
+
     {{-- Basic Meta Tags --}}
     @hasSection('meta_description')
     <meta name="description" content="@yield('meta_description')">
