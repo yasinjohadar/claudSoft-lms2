@@ -312,7 +312,21 @@ class BlogPost extends Model
         // Auto-generate slug if not provided
         static::creating(function ($post) {
             if (empty($post->slug)) {
-                $post->slug = Str::slug($post->title);
+                $slug = Str::slug($post->title, '-', 'ar');
+                
+                // If slug is empty after conversion, use a fallback
+                if (empty($slug)) {
+                    $slug = 'post-' . time();
+                }
+                
+                // Check for unique slug
+                $counter = 1;
+                $originalSlug = $slug;
+                while (static::where('slug', $slug)->exists()) {
+                    $slug = $originalSlug . '-' . $counter++;
+                }
+                
+                $post->slug = $slug;
             }
 
             // Set schema times
