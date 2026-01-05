@@ -218,7 +218,17 @@
                             </h5>
                         </div>
                         <div class="text-end">
-                            <div class="fs-4 fw-bold {{ $response && $response->is_correct ? 'text-success' : 'text-danger' }}">
+                            @php
+                                $scoreColorClass = 'text-secondary';
+                                if ($response && $response->is_correct === true) {
+                                    $scoreColorClass = 'text-success';
+                                } elseif ($response && $response->is_correct === false) {
+                                    $scoreColorClass = 'text-danger';
+                                } elseif ($response && $response->is_correct === null && $requiresManualGrading) {
+                                    $scoreColorClass = 'text-warning';
+                                }
+                            @endphp
+                            <div class="fs-4 fw-bold {{ $scoreColorClass }}">
                                 {{ number_format($response->score_obtained ?? 0, 2) }} / {{ number_format($response->max_score ?? 0, 2) }}
                             </div>
                             <small class="text-muted">الدرجة</small>
@@ -269,9 +279,30 @@
                                         
                                         $isCorrectOption = $option->is_correct;
                                     @endphp
-                                    <div class="option mb-2 p-3 rounded border
-                                        {{ $isCorrectOption ? 'border-success bg-success bg-opacity-10' : '' }}
-                                        {{ $isStudentAnswer && !$isCorrectOption ? 'border-danger bg-danger bg-opacity-10' : '' }}">
+                                    @php
+                                        // Determine border and background colors
+                                        $optionBorderClass = '';
+                                        $optionBgClass = '';
+                                        
+                                        if ($isStudentAnswer && $isCorrectOption) {
+                                            // Student selected correct answer - green
+                                            $optionBorderClass = 'border-success';
+                                            $optionBgClass = 'bg-success bg-opacity-10';
+                                        } elseif ($isStudentAnswer && !$isCorrectOption) {
+                                            // Student selected wrong answer - red
+                                            $optionBorderClass = 'border-danger';
+                                            $optionBgClass = 'bg-danger bg-opacity-10';
+                                        } elseif ($isCorrectOption && !$isStudentAnswer) {
+                                            // Correct answer but student didn't select - green (subtle)
+                                            $optionBorderClass = 'border-success';
+                                            $optionBgClass = 'bg-success bg-opacity-5';
+                                        } else {
+                                            // Not selected and not correct - default
+                                            $optionBorderClass = 'border-secondary';
+                                            $optionBgClass = '';
+                                        }
+                                    @endphp
+                                    <div class="option mb-2 p-3 rounded border {{ $optionBorderClass }} {{ $optionBgClass }}">
                                         <div class="d-flex align-items-start">
                                             <div class="me-3">
                                                 @if($isCorrectOption)
@@ -284,11 +315,15 @@
                                             </div>
                                             <div class="flex-grow-1">
                                                 {!! $option->option_text !!}
-                                                @if($isStudentAnswer && !$isCorrectOption)
-                                                    <span class="badge bg-danger ms-2">إجابتك</span>
+                                                @if($isStudentAnswer)
+                                                    <span class="badge {{ $isCorrectOption ? 'bg-success' : 'bg-danger' }} ms-2">
+                                                        <i class="fas fa-user me-1"></i>إجابتك
+                                                    </span>
                                                 @endif
                                                 @if($isCorrectOption)
-                                                    <span class="badge bg-success ms-2">الإجابة الصحيحة</span>
+                                                    <span class="badge bg-success ms-2">
+                                                        <i class="fas fa-check-circle me-1"></i>الإجابة الصحيحة
+                                                    </span>
                                                 @endif
                                             </div>
                                         </div>
@@ -300,7 +335,7 @@
                                 <div class="row">
                                     @php
                                         $correctAnswer = $question->options->where('is_correct', true)->first();
-                                        $correctValue = $correctAnswer ? ($correctAnswer->option_text === 'صحيح' || $correctAnswer->option_text === 'true' ? 'true' : 'false') : null;
+                                        $correctValue = $correctAnswer ? (strtolower(strip_tags($correctAnswer->option_text)) === 'صح' || strtolower(strip_tags($correctAnswer->option_text)) === 'true' || strtolower(strip_tags($correctAnswer->option_text)) === 'صحيح' ? 'true' : 'false') : null;
                                         $studentAnswerRaw = $response ? $response->student_answer : null;
                                         
                                         // Extract student answer value
@@ -316,41 +351,111 @@
                                                 // If it's an option ID, get the option text
                                                 $selectedOption = $question->options->find($studentAnswer);
                                                 if ($selectedOption) {
-                                                    $studentAnswer = strtolower($selectedOption->option_text) === 'صح' ? 'true' : 'false';
+                                                    $optionText = strtolower(strip_tags($selectedOption->option_text));
+                                                    $studentAnswer = ($optionText === 'صح' || $optionText === 'true' || $optionText === 'صحيح') ? 'true' : 'false';
                                                 }
                                             } elseif (is_string($studentAnswer)) {
-                                                $studentAnswer = strtolower($studentAnswer);
-                                                if ($studentAnswer === 'صح' || $studentAnswer === 'true' || $studentAnswer === '1') {
+                                                $answerStr = strtolower(strip_tags($studentAnswer));
+                                                if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
                                                     $studentAnswer = 'true';
-                                                } elseif ($studentAnswer === 'خطأ' || $studentAnswer === 'false' || $studentAnswer === '0') {
+                                                } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
                                                     $studentAnswer = 'false';
                                                 }
                                             }
                                         }
+                                        
+                                        // Determine if answer is correct
+                                        $isCorrect = ($studentAnswer === $correctValue);
                                     @endphp
                                     <div class="col-md-6">
-                                        <div class="p-3 rounded border {{ $correctValue === 'true' ? 'border-success bg-success bg-opacity-10' : '' }}
-                                            {{ $studentAnswer === 'true' && $correctValue !== 'true' ? 'border-danger bg-danger bg-opacity-10' : '' }}">
-                                            <i class="fas fa-check-circle {{ $correctValue === 'true' ? 'text-success' : 'text-muted' }} me-2"></i>
-                                            صحيح
-                                            @if($studentAnswer === 'true')
-                                                <span class="badge {{ $correctValue === 'true' ? 'bg-success' : 'bg-danger' }} ms-2">إجابتك</span>
+                                        @php
+                                            // Determine border and background colors for "صحيح" option
+                                            $isTrueCorrect = ($correctValue === 'true');
+                                            $isTrueSelected = ($studentAnswer === 'true');
+                                            $trueBorderClass = '';
+                                            $trueBgClass = '';
+                                            $trueIconClass = '';
+                                            
+                                            if ($isTrueSelected && $isTrueCorrect) {
+                                                // Student selected correct answer - green
+                                                $trueBorderClass = 'border-success';
+                                                $trueBgClass = 'bg-success bg-opacity-10';
+                                                $trueIconClass = 'text-success';
+                                            } elseif ($isTrueSelected && !$isTrueCorrect) {
+                                                // Student selected wrong answer - red
+                                                $trueBorderClass = 'border-danger';
+                                                $trueBgClass = 'bg-danger bg-opacity-10';
+                                                $trueIconClass = 'text-danger';
+                                            } elseif ($isTrueCorrect && !$isTrueSelected) {
+                                                // Correct answer but student didn't select - green (subtle)
+                                                $trueBorderClass = 'border-success';
+                                                $trueBgClass = 'bg-success bg-opacity-5';
+                                                $trueIconClass = 'text-success';
+                                            } else {
+                                                // Not selected and not correct - muted
+                                                $trueBorderClass = 'border-secondary';
+                                                $trueBgClass = '';
+                                                $trueIconClass = 'text-muted';
+                                            }
+                                        @endphp
+                                        <div class="p-3 rounded border {{ $trueBorderClass }} {{ $trueBgClass }}">
+                                            <i class="fas fa-check-circle {{ $trueIconClass }} me-2"></i>
+                                            <strong>صحيح</strong>
+                                            @if($isTrueSelected)
+                                                <span class="badge {{ $isTrueCorrect ? 'bg-success' : 'bg-danger' }} ms-2">
+                                                    <i class="fas fa-user me-1"></i>إجابتك
+                                                </span>
                                             @endif
-                                            @if($correctValue === 'true')
-                                                <span class="badge bg-success ms-2">الإجابة الصحيحة</span>
+                                            @if($isTrueCorrect)
+                                                <span class="badge bg-success ms-2">
+                                                    <i class="fas fa-check-circle me-1"></i>الإجابة الصحيحة
+                                                </span>
                                             @endif
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="p-3 rounded border {{ $correctValue === 'false' ? 'border-success bg-success bg-opacity-10' : '' }}
-                                            {{ $studentAnswer === 'false' && $correctValue !== 'false' ? 'border-danger bg-danger bg-opacity-10' : '' }}">
-                                            <i class="fas fa-times-circle {{ $correctValue === 'false' ? 'text-success' : 'text-muted' }} me-2"></i>
-                                            خطأ
-                                            @if($studentAnswer === 'false')
-                                                <span class="badge {{ $correctValue === 'false' ? 'bg-success' : 'bg-danger' }} ms-2">إجابتك</span>
+                                        @php
+                                            // Determine border and background colors for "خطأ" option
+                                            $isFalseCorrect = ($correctValue === 'false');
+                                            $isFalseSelected = ($studentAnswer === 'false');
+                                            $falseBorderClass = '';
+                                            $falseBgClass = '';
+                                            $falseIconClass = '';
+                                            
+                                            if ($isFalseSelected && $isFalseCorrect) {
+                                                // Student selected correct answer - green
+                                                $falseBorderClass = 'border-success';
+                                                $falseBgClass = 'bg-success bg-opacity-10';
+                                                $falseIconClass = 'text-success';
+                                            } elseif ($isFalseSelected && !$isFalseCorrect) {
+                                                // Student selected wrong answer - red
+                                                $falseBorderClass = 'border-danger';
+                                                $falseBgClass = 'bg-danger bg-opacity-10';
+                                                $falseIconClass = 'text-danger';
+                                            } elseif ($isFalseCorrect && !$isFalseSelected) {
+                                                // Correct answer but student didn't select - green (subtle)
+                                                $falseBorderClass = 'border-success';
+                                                $falseBgClass = 'bg-success bg-opacity-5';
+                                                $falseIconClass = 'text-success';
+                                            } else {
+                                                // Not selected and not correct - muted
+                                                $falseBorderClass = 'border-secondary';
+                                                $falseBgClass = '';
+                                                $falseIconClass = 'text-muted';
+                                            }
+                                        @endphp
+                                        <div class="p-3 rounded border {{ $falseBorderClass }} {{ $falseBgClass }}">
+                                            <i class="fas fa-times-circle {{ $falseIconClass }} me-2"></i>
+                                            <strong>خطأ</strong>
+                                            @if($isFalseSelected)
+                                                <span class="badge {{ $isFalseCorrect ? 'bg-success' : 'bg-danger' }} ms-2">
+                                                    <i class="fas fa-user me-1"></i>إجابتك
+                                                </span>
                                             @endif
-                                            @if($correctValue === 'false')
-                                                <span class="badge bg-success ms-2">الإجابة الصحيحة</span>
+                                            @if($isFalseCorrect)
+                                                <span class="badge bg-success ms-2">
+                                                    <i class="fas fa-check-circle me-1"></i>الإجابة الصحيحة
+                                                </span>
                                             @endif
                                         </div>
                                     </div>
