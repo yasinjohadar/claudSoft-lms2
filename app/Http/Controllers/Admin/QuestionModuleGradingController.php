@@ -58,6 +58,7 @@ class QuestionModuleGradingController extends Controller
         }
 
         // Get responses that need manual grading - only short_answer and essay types
+        // First get all responses of these types, then filter in PHP to check student_answer properly
         $responsesNeedingGrading = $attempt->responses()
             ->whereHas('question.questionType', function($q) {
                 $q->whereIn('name', ['short_answer', 'essay']);
@@ -66,16 +67,48 @@ class QuestionModuleGradingController extends Controller
                 $query->whereNull('is_correct')
                       ->orWhereNull('score_obtained');
             })
-            ->whereNotNull('student_answer') // Only show questions that have answers
+            ->whereNotNull('student_answer') // Basic check - student_answer column is not null
             ->with(['question.questionType', 'question.options'])
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->filter(function($response) {
+                // Filter in PHP to properly check array/string values
+                $studentAnswer = $response->student_answer;
+                if ($studentAnswer === null) {
+                    return false;
+                }
+                if (is_array($studentAnswer)) {
+                    return !empty($studentAnswer);
+                }
+                $answerStr = trim((string)$studentAnswer);
+                return $answerStr !== '' && $answerStr !== 'null' && $answerStr !== '[]';
+            })
+            ->values(); // Re-index the collection
 
-        // Get all responses for display
+        // Get all responses for display (including auto-graded ones)
         $allResponses = $attempt->responses()
             ->with(['question.questionType', 'question.options'])
             ->orderBy('id')
             ->get();
+        
+        // Log for debugging
+        Log::info('Question Module Grading - Show', [
+            'attempt_id' => $attemptId,
+            'total_responses' => $allResponses->count(),
+            'responses_needing_grading' => $responsesNeedingGrading->count(),
+            'responses_data' => $allResponses->map(function($r) {
+                return [
+                    'id' => $r->id,
+                    'question_id' => $r->question_id,
+                    'question_type' => $r->question->questionType->name ?? 'unknown',
+                    'has_student_answer' => !empty($r->student_answer),
+                    'student_answer_type' => gettype($r->student_answer),
+                    'student_answer_value' => is_array($r->student_answer) ? json_encode($r->student_answer) : $r->student_answer,
+                    'is_correct' => $r->is_correct,
+                    'score_obtained' => $r->score_obtained,
+                ];
+            })->toArray(),
+        ]);
 
         return view('admin.pages.question-module-grading.show', compact('attempt', 'responsesNeedingGrading', 'allResponses'));
     }

@@ -624,9 +624,27 @@ class QuestionModuleAttemptController extends Controller
                 ], 404);
             }
 
-            // Save answer
+            // Save answer - ensure it's properly formatted
+            $answerToSave = $validated['answer'];
+            
+            // Log for debugging
+            Log::info('Saving answer', [
+                'attempt_id' => $attempt->id,
+                'question_id' => $validated['question_id'],
+                'answer_type' => gettype($answerToSave),
+                'answer_value' => is_array($answerToSave) ? json_encode($answerToSave, JSON_UNESCAPED_UNICODE) : $answerToSave,
+            ]);
+            
             $response->update([
-                'student_answer' => $validated['answer'],
+                'student_answer' => $answerToSave,
+            ]);
+            
+            // Verify it was saved
+            $response->refresh();
+            Log::info('Answer saved', [
+                'response_id' => $response->id,
+                'saved_answer_type' => gettype($response->student_answer),
+                'saved_answer_value' => is_array($response->student_answer) ? json_encode($response->student_answer, JSON_UNESCAPED_UNICODE) : $response->student_answer,
             ]);
 
             return response()->json([
@@ -857,26 +875,54 @@ class QuestionModuleAttemptController extends Controller
 
             // Grade only auto-gradable responses (skip short_answer and essay)
             foreach ($attempt->responses as $response) {
-                if ($response->student_answer !== null && $response->student_answer !== '') {
-                    // Check if it's an array and not empty
-                    $hasAnswer = false;
-                    if (is_array($response->student_answer) && !empty($response->student_answer)) {
-                        $hasAnswer = true;
-                    } elseif (!is_array($response->student_answer) && trim($response->student_answer) !== '') {
-                        $hasAnswer = true;
+                // Check if response has an answer
+                $hasAnswer = false;
+                $studentAnswer = $response->student_answer;
+                
+                if ($studentAnswer !== null) {
+                    if (is_array($studentAnswer)) {
+                        // Check if array is not empty
+                        $hasAnswer = !empty($studentAnswer);
+                    } else {
+                        // Check if string is not empty
+                        $hasAnswer = trim((string)$studentAnswer) !== '' && $studentAnswer !== 'null' && $studentAnswer !== '[]';
+                    }
+                }
+                
+                if ($hasAnswer) {
+                    // Load question type if not loaded
+                    if (!$response->relationLoaded('question')) {
+                        $response->load('question.questionType');
                     }
                     
-                    if ($hasAnswer) {
-                        // Check if question type supports auto-grading
-                        $questionType = $response->question->questionType->name ?? '';
-                        $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
-                        
-                        // Only auto-grade if it doesn't require manual grading
-                        if (!$requiresManualGrading) {
-                            $response->gradeResponse();
-                        }
-                        // For short_answer and essay, leave is_correct and score_obtained as null
+                    // Check if question type supports auto-grading
+                    $questionType = $response->question->questionType->name ?? '';
+                    $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
+                    
+                    // Only auto-grade if it doesn't require manual grading
+                    if (!$requiresManualGrading) {
+                        Log::info('Auto-grading response', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                            'student_answer' => is_array($studentAnswer) ? json_encode($studentAnswer) : $studentAnswer,
+                        ]);
+                        $response->gradeResponse();
+                    } else {
+                        Log::info('Skipping manual grading question', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                        ]);
                     }
+                    // For short_answer and essay, leave is_correct and score_obtained as null
+                } else {
+                    Log::warning('Response has no answer', [
+                        'response_id' => $response->id,
+                        'question_id' => $response->question_id,
+                        'student_answer' => $studentAnswer,
+                        'student_answer_type' => gettype($studentAnswer),
+                    ]);
                 }
             }
 

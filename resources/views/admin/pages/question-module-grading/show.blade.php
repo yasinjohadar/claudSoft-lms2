@@ -61,7 +61,10 @@
                         @php
                             $question = $response->question;
                             $questionNumber = $index + 1;
-                            $needsGrading = $response->is_correct === null || $response->score_obtained === null;
+                            $questionTypeName = $question->questionType->name ?? '';
+                            $requiresManualGrading = in_array($questionTypeName, ['short_answer', 'essay']);
+                            // Only show grading section for manual grading questions
+                            $needsGrading = $requiresManualGrading && ($response->is_correct === null || $response->score_obtained === null);
                         @endphp
 
                         <div class="card custom-card mb-4 {{ $needsGrading ? 'border-warning' : '' }}">
@@ -105,19 +108,27 @@
                                             $studentAnswer = $response->student_answer;
                                             $questionTypeName = $question->questionType->name ?? '';
                                             
-                                            // Debug: Log the answer format
-                                            // Log::info('Student Answer Debug', [
-                                            //     'response_id' => $response->id,
-                                            //     'question_type' => $questionTypeName,
-                                            //     'answer_type' => gettype($studentAnswer),
-                                            //     'answer_value' => $studentAnswer,
-                                            //     'is_array' => is_array($studentAnswer),
-                                            //     'is_empty' => empty($studentAnswer),
-                                            // ]);
+                                            // Debug output for troubleshooting
+                                            $debugInfo = [
+                                                'response_id' => $response->id,
+                                                'question_id' => $question->id,
+                                                'question_type' => $questionTypeName,
+                                                'answer_type' => gettype($studentAnswer),
+                                                'answer_value' => is_array($studentAnswer) ? json_encode($studentAnswer, JSON_UNESCAPED_UNICODE) : $studentAnswer,
+                                                'is_null' => $studentAnswer === null,
+                                                'is_empty_string' => $studentAnswer === '',
+                                                'is_empty_array' => is_array($studentAnswer) && empty($studentAnswer),
+                                            ];
                                         @endphp
                                         
                                         @if($studentAnswer === null || $studentAnswer === '' || (is_array($studentAnswer) && empty($studentAnswer)))
                                             <span class="text-muted">لم يتم الإجابة</span>
+                                            @if(config('app.debug') && !empty($studentAnswer))
+                                                <div class="mt-2">
+                                                    <small class="text-muted d-block">Debug Info:</small>
+                                                    <pre class="small bg-light p-2 rounded">{{ json_encode($debugInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                </div>
+                                            @endif
                                         @elseif($questionTypeName === 'multiple_choice_single' || $questionTypeName === 'true_false')
                                             @php
                                                 // Handle different formats: direct ID, string ID, or array with key
@@ -257,7 +268,16 @@
                                             @endif
                                         @else
                                             {{-- Fallback: display as JSON for debugging --}}
-                                            <pre class="mb-0 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            <div class="alert alert-warning">
+                                                <strong>تنسيق غير معروف:</strong>
+                                                <pre class="mb-0 small mt-2">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            </div>
+                                            @if(config('app.debug'))
+                                                <div class="mt-2">
+                                                    <small class="text-muted d-block">Debug Info:</small>
+                                                    <pre class="small bg-light p-2 rounded">{{ json_encode($debugInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                </div>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -280,14 +300,16 @@
                                 @endif
 
                                 <!-- Current Grade Status -->
-                                @if(!$needsGrading)
+                                @if(!$needsGrading && ($response->is_correct !== null || $response->score_obtained !== null))
                                     <div class="mb-3">
-                                        <div class="alert alert-{{ $response->is_correct ? 'success' : 'danger' }}">
+                                        <div class="alert alert-{{ $response->is_correct ? 'success' : ($response->is_correct === false ? 'danger' : 'info') }}">
                                             <strong>الدرجة المحصلة:</strong> {{ $response->score_obtained ?? 0 }} / {{ $response->max_score }}
-                                            @if($response->is_correct)
+                                            @if($response->is_correct === true)
                                                 <span class="badge bg-success ms-2">صحيح</span>
-                                            @else
+                                            @elseif($response->is_correct === false)
                                                 <span class="badge bg-danger ms-2">خطأ</span>
+                                            @else
+                                                <span class="badge bg-info ms-2">مُصحح تلقائياً</span>
                                             @endif
                                         </div>
                                         @if($response->feedback)
