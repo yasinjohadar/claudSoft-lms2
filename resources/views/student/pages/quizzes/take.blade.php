@@ -250,7 +250,11 @@
                                 @case('fill_blanks')
                                     @php
                                         $questionText = $question->question_text;
-                                        $blankCount = substr_count($questionText, '[[blank]]');
+                                        
+                                        // Support both formats: [[blank]] and ___
+                                        // First, normalize the text by replacing ___ with [[blank]]
+                                        $normalizedText = preg_replace('/_{3,}/', '[[blank]]', $questionText);
+                                        $blankCount = substr_count($normalizedText, '[[blank]]');
                                         
                                         // Ensure $savedAnswer is converted to indexed array
                                         $savedAnswers = [];
@@ -279,7 +283,8 @@
                                             }
                                         }
                                         
-                                        $parts = preg_split('/\[\[blank\]\]/', $questionText);
+                                        // Split by [[blank]] (after normalization)
+                                        $parts = preg_split('/\[\[blank\]\]/', $normalizedText);
                                     @endphp
                                     <div class="fill-blank-container" data-question-id="{{ $question->id }}">
                                         <div class="p-4 bg-light rounded border">
