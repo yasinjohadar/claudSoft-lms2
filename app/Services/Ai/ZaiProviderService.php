@@ -63,45 +63,78 @@ class ZaiProviderService extends AIProviderService
 
             // تحويل الـ response body إلى UTF-8 بشكل صحيح
             $rawBody = $response->body();
-            $body = mb_convert_encoding($rawBody, 'UTF-8', 'auto');
+            
+            // التحقق من الترميز وإصلاحه إذا لزم الأمر
+            if (!mb_check_encoding($rawBody, 'UTF-8')) {
+                // محاولة تحويل الترميز
+                $body = mb_convert_encoding($rawBody, 'UTF-8', 'auto');
+                // إذا فشل التحويل، استخدم utf8_encode كحل بديل
+                if (!mb_check_encoding($body, 'UTF-8')) {
+                    $body = mb_convert_encoding($rawBody, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
+                }
+            } else {
+                $body = $rawBody;
+            }
+            
+            // تنظيف النص من الأحرف غير الصالحة في UTF-8
+            $body = mb_convert_encoding($body, 'UTF-8', 'UTF-8');
             
             Log::info('Z.ai API Response', [
                 'status' => $response->status(),
                 'success' => $response->successful(),
                 'body_length' => strlen($body),
                 'body_preview' => mb_substr($body, 0, 500),
+                'encoding_valid' => mb_check_encoding($body, 'UTF-8'),
             ]);
 
             if ($response->successful()) {
-                $data = json_decode($body, true);
-                
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::error('Z.ai JSON decode error', [
-                        'error' => json_last_error_msg(),
-                        'body' => $body,
+                try {
+                    $data = json_decode($body, true, 512, JSON_INVALID_UTF8_IGNORE);
+                    
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        Log::error('Z.ai JSON decode error', [
+                            'error' => json_last_error_msg(),
+                            'error_code' => json_last_error(),
+                            'body_preview' => mb_substr($body, 0, 500),
+                        ]);
+                        $this->setLastError('خطأ في تحليل رد Z.ai: ' . json_last_error_msg());
+                        return [
+                            'success' => false,
+                            'error' => 'خطأ في تحليل رد Z.ai',
+                        ];
+                    }
+                    
+                    $content = $data['choices'][0]['message']['content'] ?? '';
+                    
+                    // التحقق من ترميز المحتوى المستخرج
+                    if (!empty($content) && !mb_check_encoding($content, 'UTF-8')) {
+                        $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+                    }
+                    
+                    Log::info('Z.ai content extracted', [
+                        'content_length' => strlen($content),
+                        'content_preview' => mb_substr($content, 0, 500),
+                        'encoding_valid' => mb_check_encoding($content, 'UTF-8'),
                     ]);
-                    $this->setLastError('خطأ في تحليل رد Z.ai: ' . json_last_error_msg());
+                    
+                    return [
+                        'success' => true,
+                        'content' => $content,
+                        'tokens_used' => $data['usage']['total_tokens'] ?? 0,
+                        'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
+                        'completion_tokens' => $data['usage']['completion_tokens'] ?? 0,
+                        'model_used' => $data['model'] ?? $this->model->model_key,
+                    ];
+                } catch (\JsonException $e) {
+                    Log::error('Z.ai JSON exception: ' . $e->getMessage(), [
+                        'body_preview' => mb_substr($body, 0, 500),
+                    ]);
+                    $this->setLastError('خطأ في تحليل رد Z.ai: ' . $e->getMessage());
                     return [
                         'success' => false,
                         'error' => 'خطأ في تحليل رد Z.ai',
                     ];
                 }
-                
-                $content = $data['choices'][0]['message']['content'] ?? '';
-                
-                Log::info('Z.ai content extracted', [
-                    'content_length' => strlen($content),
-                    'content_preview' => mb_substr($content, 0, 500),
-                ]);
-                
-                return [
-                    'success' => true,
-                    'content' => $content,
-                    'tokens_used' => $data['usage']['total_tokens'] ?? 0,
-                    'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
-                    'completion_tokens' => $data['usage']['completion_tokens'] ?? 0,
-                    'model_used' => $data['model'] ?? $this->model->model_key,
-                ];
             }
 
             // معالجة الأخطاء
