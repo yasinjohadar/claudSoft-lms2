@@ -489,8 +489,8 @@
                                             @foreach($course->sections->where('is_visible', true) as $index => $section)
                                                 <div class="accordion-item">
                                                     <h2 class="accordion-header" id="heading-{{ $section->id }}">
-                                                        <button class="accordion-button {{ $index == 0 ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse"
-                                                                data-bs-target="#collapse-{{ $section->id }}" aria-expanded="{{ $index == 0 ? 'true' : 'false' }}"
+                                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                                                data-bs-target="#collapse-{{ $section->id }}" aria-expanded="false"
                                                                 aria-controls="collapse-{{ $section->id }}">
                                                             <div class="d-flex align-items-center w-100 justify-content-between me-3">
                                                                 <div>
@@ -506,7 +506,7 @@
                                                             </div>
                                                         </button>
                                                     </h2>
-                                                    <div id="collapse-{{ $section->id }}" class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}"
+                                                    <div id="collapse-{{ $section->id }}" class="accordion-collapse collapse"
                                                          aria-labelledby="heading-{{ $section->id }}" data-bs-parent="#courseCurriculumAccordion">
                                                         <div class="accordion-body">
                                                             @forelse($section->modules->where('is_visible', true) as $module)
