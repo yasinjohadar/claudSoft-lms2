@@ -582,6 +582,9 @@
                                 <li class="slide {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">توليد الأسئلة</a>
                                 </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.question-creation.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-creation.create') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-creation.*') ? 'active' : '' }}">إنشاء أسئلة</a>
+                                </li>
                                 <li class="slide {{ request()->routeIs('admin.ai.question-solutions.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.question-solutions.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-solutions.*') ? 'active' : '' }}">حلول الأسئلة</a>
                                 </li>

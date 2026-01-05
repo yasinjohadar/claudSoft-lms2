@@ -708,7 +708,10 @@ Route::prefix('admin')
             Route::post('models/{model}/set-default', [AIModelController::class, 'setDefault'])->name('models.set-default');
             Route::post('models/{model}/toggle-active', [AIModelController::class, 'toggleActive'])->name('models.toggle-active');
 
-            // Question Generations
+            // Question Creation (Direct creation to question bank)
+            Route::get('question-creation/create', [\App\Http\Controllers\Admin\AIQuestionCreationController::class, 'create'])->name('question-creation.create');
+            Route::post('question-creation', [\App\Http\Controllers\Admin\AIQuestionCreationController::class, 'store'])->name('question-creation.store');
+
             Route::resource('question-generations', AIQuestionGenerationController::class)->names([
                 'index' => 'question-generations.index',
                 'create' => 'question-generations.create',
