@@ -286,26 +286,13 @@ class QuizResponse extends Model
                     $selectedOptionId = $answer;
                 }
             }
-        } elseif (!empty($this->response_text)) {
-            // For true/false, response_text might be "true" or "false"
-            $selectedOptionId = $this->response_text;
         }
 
         if (!$selectedOptionId) {
             return false;
         }
 
-        // For true/false, check if the value matches the correct option
-        if (in_array($selectedOptionId, ['true', 'false'])) {
-            $correctOption = $this->question->options()->where('is_correct', true)->first();
-            if ($correctOption) {
-                // Check if the option text contains "صحيح" for true or "خطأ" for false
-                $optionText = strip_tags($correctOption->option_text ?? '');
-                $isTrueCorrect = (stripos($optionText, 'صحيح') !== false || stripos($optionText, 'true') !== false);
-                return ($selectedOptionId === 'true' && $isTrueCorrect) || ($selectedOptionId === 'false' && !$isTrueCorrect);
-            }
-        }
-
+        // Find the selected option and check if it's correct
         $option = QuestionOption::find($selectedOptionId);
 
         return $option && $option->is_correct;
@@ -349,7 +336,116 @@ class QuizResponse extends Model
      */
     private function gradeTrueFalse(): bool
     {
-        return $this->gradeMultipleChoiceSingle();
+        // Log input for debugging
+        \Log::info('=== QUIZ GRADING TRUE/FALSE ===', [
+            'response_id' => $this->id,
+            'question_id' => $this->question_id,
+            'response_text' => $this->response_text,
+            'response_data' => $this->response_data,
+            'selected_option_ids' => $this->selected_option_ids,
+        ]);
+        
+        // Handle multiple formats: direct value, array with key, or option ID
+        $answer = null;
+        
+        // Try to get answer from different sources
+        if (!empty($this->response_data)) {
+            $answer = $this->response_data['answer'] ?? null;
+            if (is_array($answer) && !empty($answer)) {
+                $answer = array_values($answer)[0] ?? null;
+            }
+        }
+        
+        if ($answer === null && !empty($this->selected_option_ids)) {
+            $answer = is_array($this->selected_option_ids) ? $this->selected_option_ids[0] : $this->selected_option_ids;
+        }
+        
+        if ($answer === null && !empty($this->response_text)) {
+            $answer = $this->response_text;
+        }
+        
+        if (!$answer) {
+            \Log::warning('No answer found for true/false question', [
+                'response_id' => $this->id,
+                'question_id' => $this->question_id,
+            ]);
+            return false;
+        }
+
+        // Load all options
+        $options = $this->question->options()->get();
+        $correctOption = $options->where('is_correct', true)->first();
+
+        if (!$correctOption) {
+            \Log::warning('No correct option found for true/false question', [
+                'response_id' => $this->id,
+                'question_id' => $this->question_id,
+            ]);
+            return false;
+        }
+
+        // Convert answer to 'true' or 'false' string
+        $answerValue = null;
+        
+        // If answer is numeric, it might be an option ID
+        if (is_numeric($answer)) {
+            $selectedOption = $options->find($answer);
+            if ($selectedOption) {
+                // Convert option text to 'true' or 'false'
+                $optionText = strtolower(trim(strip_tags($selectedOption->option_text)));
+                \Log::info('Numeric answer - found option', [
+                    'option_id' => $answer,
+                    'option_text' => $optionText,
+                    'option_text_original' => $selectedOption->option_text,
+                ]);
+                $answerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1' || $optionText === 'صحيح') ? 'true' : 'false';
+            } else {
+                \Log::warning('Numeric answer but option not found', [
+                    'option_id' => $answer,
+                    'available_options' => $options->pluck('id', 'option_text')->toArray(),
+                ]);
+            }
+        } else {
+            // Direct string value
+            $answerStr = strtolower(trim(strip_tags((string)$answer)));
+            \Log::info('String answer processing', [
+                'answer_original' => $answer,
+                'answer_cleaned' => $answerStr,
+            ]);
+            if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
+                $answerValue = 'true';
+            } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+                $answerValue = 'false';
+            }
+        }
+        
+        if ($answerValue === null) {
+            \Log::warning('Could not determine answer value', [
+                'response_id' => $this->id,
+                'question_id' => $this->question_id,
+                'answer' => $answer,
+                'answer_type' => gettype($answer),
+            ]);
+            return false;
+        }
+
+        // Get correct answer - handle HTML tags in option text
+        $correctOptionText = strtolower(trim(strip_tags($correctOption->option_text)));
+        $correctAnswer = ($correctOptionText === 'صح' || $correctOptionText === 'true' || $correctOptionText === '1' || $correctOptionText === 'صحيح') ? 'true' : 'false';
+        
+        $isCorrect = $answerValue === $correctAnswer;
+        
+        \Log::info('=== QUIZ TRUE/FALSE GRADING RESULT ===', [
+            'response_id' => $this->id,
+            'question_id' => $this->question_id,
+            'student_answer_value' => $answerValue,
+            'correct_answer_value' => $correctAnswer,
+            'correct_option_text' => $correctOptionText,
+            'correct_option_text_original' => $correctOption->option_text,
+            'is_correct' => $isCorrect,
+        ]);
+
+        return $isCorrect;
     }
 
     /**

@@ -170,7 +170,61 @@
                                 <div class="mb-3">
                                     <p class="text-muted mb-2"><strong>إجابتك:</strong></p>
                                     <div class="p-3 bg-light rounded">
-                                        @if($response->response_text)
+                                        @if($question->questionType->name == 'true_false')
+                                            @php
+                                                // Get student answer value
+                                                $studentAnswerValue = null;
+                                                if ($response->response_text) {
+                                                    $answerStr = strtolower(trim(strip_tags($response->response_text)));
+                                                    if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
+                                                        $studentAnswerValue = 'true';
+                                                    } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+                                                        $studentAnswerValue = 'false';
+                                                    }
+                                                } elseif ($response->selected_option_ids && !empty($response->selected_option_ids)) {
+                                                    $optionId = is_array($response->selected_option_ids) ? $response->selected_option_ids[0] : $response->selected_option_ids;
+                                                    $selectedOption = $question->options->find($optionId);
+                                                    if ($selectedOption) {
+                                                        $optionText = strtolower(trim(strip_tags($selectedOption->option_text)));
+                                                        $studentAnswerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1' || $optionText === 'صحيح') ? 'true' : 'false';
+                                                    }
+                                                } elseif ($response->response_data && isset($response->response_data['answer'])) {
+                                                    $answer = $response->response_data['answer'];
+                                                    if (is_array($answer) && !empty($answer)) {
+                                                        $answer = $answer[0];
+                                                    }
+                                                    if (is_numeric($answer)) {
+                                                        $selectedOption = $question->options->find($answer);
+                                                        if ($selectedOption) {
+                                                            $optionText = strtolower(trim(strip_tags($selectedOption->option_text)));
+                                                            $studentAnswerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1' || $optionText === 'صحيح') ? 'true' : 'false';
+                                                        }
+                                                    } else {
+                                                        $answerStr = strtolower(trim(strip_tags((string)$answer)));
+                                                        if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
+                                                            $studentAnswerValue = 'true';
+                                                        } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+                                                            $studentAnswerValue = 'false';
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // Display answer
+                                                if ($studentAnswerValue === 'true') {
+                                                    $displayText = 'صحيح';
+                                                    $badgeClass = $response->is_correct ? 'bg-success' : 'bg-danger';
+                                                } elseif ($studentAnswerValue === 'false') {
+                                                    $displayText = 'خطأ';
+                                                    $badgeClass = $response->is_correct ? 'bg-success' : 'bg-danger';
+                                                } else {
+                                                    $displayText = 'لم يتم الإجابة';
+                                                    $badgeClass = 'bg-secondary';
+                                                }
+                                            @endphp
+                                            <span class="badge {{ $badgeClass }} text-white fs-14 px-3 py-2">
+                                                {{ $displayText }}
+                                            </span>
+                                        @elseif($response->response_text)
                                             {{ $response->response_text }}
                                         @elseif($response->selected_option_ids)
                                             <ul class="mb-0">
@@ -207,7 +261,19 @@
                                                     @endforeach
                                                 </ul>
                                             @elseif($question->questionType->name == 'true_false')
-                                                {{ $question->metadata['correct_answer'] ?? 'true' }}
+                                                @php
+                                                    $correctOption = $question->options->where('is_correct', true)->first();
+                                                    if ($correctOption) {
+                                                        $correctOptionText = strtolower(trim(strip_tags($correctOption->option_text)));
+                                                        $correctAnswerValue = ($correctOptionText === 'صح' || $correctOptionText === 'true' || $correctOptionText === '1' || $correctOptionText === 'صحيح') ? 'true' : 'false';
+                                                        $displayText = $correctAnswerValue === 'true' ? 'صحيح' : 'خطأ';
+                                                    } else {
+                                                        $displayText = 'غير محدد';
+                                                    }
+                                                @endphp
+                                                <span class="badge bg-success text-white fs-14 px-3 py-2">
+                                                    {{ $displayText }}
+                                                </span>
                                             @else
                                                 {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
                                             @endif
