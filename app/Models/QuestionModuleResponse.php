@@ -109,7 +109,18 @@ class QuestionModuleResponse extends Model
      */
     private function gradeMultipleChoiceSingle($question, $studentAnswer)
     {
-        if (!isset($studentAnswer['selected_option'])) {
+        // Handle both formats: direct ID or array with 'selected_option' key
+        $selectedOptionId = null;
+        
+        if (is_array($studentAnswer)) {
+            // New format: array with 'selected_option' key
+            $selectedOptionId = $studentAnswer['selected_option'] ?? null;
+        } else {
+            // Old format: direct ID (string or int)
+            $selectedOptionId = $studentAnswer;
+        }
+        
+        if (!$selectedOptionId) {
             return false;
         }
 
@@ -119,7 +130,7 @@ class QuestionModuleResponse extends Model
             return false;
         }
 
-        return $studentAnswer['selected_option'] == $correctOption->id;
+        return (int)$selectedOptionId == (int)$correctOption->id;
     }
 
     /**
@@ -127,12 +138,28 @@ class QuestionModuleResponse extends Model
      */
     private function gradeMultipleChoiceMultiple($question, $studentAnswer)
     {
-        if (!isset($studentAnswer['selected_options']) || !is_array($studentAnswer['selected_options'])) {
+        // Handle both formats: direct array or array with 'selected_options' key
+        $selectedOptions = null;
+        
+        if (is_array($studentAnswer)) {
+            if (isset($studentAnswer['selected_options']) && is_array($studentAnswer['selected_options'])) {
+                // New format: array with 'selected_options' key
+                $selectedOptions = $studentAnswer['selected_options'];
+            } elseif (isset($studentAnswer[0])) {
+                // Old format: direct array of IDs
+                $selectedOptions = $studentAnswer;
+            }
+        }
+        
+        if (!$selectedOptions || !is_array($selectedOptions) || empty($selectedOptions)) {
             return false;
         }
 
         $correctOptions = $question->options()->where('is_correct', true)->pluck('id')->toArray();
-        $selectedOptions = $studentAnswer['selected_options'];
+        
+        // Convert to int for comparison
+        $selectedOptions = array_map('intval', $selectedOptions);
+        $correctOptions = array_map('intval', $correctOptions);
 
         sort($correctOptions);
         sort($selectedOptions);
@@ -145,7 +172,17 @@ class QuestionModuleResponse extends Model
      */
     private function gradeTrueFalse($question, $studentAnswer)
     {
-        if (!isset($studentAnswer['answer'])) {
+        // Handle both formats: direct value or array with 'answer' key
+        $answer = null;
+        
+        if (is_array($studentAnswer)) {
+            $answer = $studentAnswer['answer'] ?? null;
+        } else {
+            // Direct value (string 'true' or 'false')
+            $answer = $studentAnswer;
+        }
+        
+        if (!$answer) {
             return false;
         }
 
@@ -157,7 +194,7 @@ class QuestionModuleResponse extends Model
 
         $correctAnswer = strtolower($correctOption->option_text) === 'صح' ? 'true' : 'false';
 
-        return $studentAnswer['answer'] === $correctAnswer;
+        return (string)$answer === (string)$correctAnswer;
     }
 
     /**
@@ -165,12 +202,22 @@ class QuestionModuleResponse extends Model
      */
     private function gradeShortAnswer($question, $studentAnswer)
     {
-        if (!isset($studentAnswer['answer'])) {
+        // Handle both formats: direct text or array with 'answer' key
+        $answerText = null;
+        
+        if (is_array($studentAnswer)) {
+            $answerText = $studentAnswer['answer'] ?? null;
+        } else {
+            // Direct text answer
+            $answerText = $studentAnswer;
+        }
+        
+        if (!$answerText || trim($answerText) === '') {
             return false;
         }
 
         $correctAnswers = $question->options()->where('is_correct', true)->pluck('option_text')->toArray();
-        $studentAnswerText = trim(strtolower($studentAnswer['answer']));
+        $studentAnswerText = trim(strtolower($answerText));
 
         foreach ($correctAnswers as $correctAnswer) {
             if (trim(strtolower($correctAnswer)) === $studentAnswerText) {

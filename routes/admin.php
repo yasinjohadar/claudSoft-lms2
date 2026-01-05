@@ -312,6 +312,15 @@ Route::prefix('admin')
         Route::post('question-modules/{id}/toggle-publish', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'togglePublish'])->name('question-modules.toggle-publish');
         Route::post('question-modules/{id}/toggle-visibility', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'toggleVisibility'])->name('question-modules.toggle-visibility');
 
+        // Question Module Grading
+        Route::prefix('question-module-grading')->name('admin.question-module-grading.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'show'])->name('show');
+            Route::post('/responses/{responseId}/grade', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'gradeResponse'])->name('grade-response');
+            Route::post('/bulk-grade', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'gradeBulk'])->name('bulk-grade');
+            Route::post('/{attemptId}/complete', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'completeGrading'])->name('complete');
+        });
+
         // ========== Gamification Routes ==========
 
         Route::prefix('gamification')->name('admin.gamification.')->group(function () {

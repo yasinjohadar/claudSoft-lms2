@@ -286,6 +286,14 @@
                             </ul>
                         </li>
 
+                        <!-- تصحيح اختبارات الكورسات -->
+                        <li class="slide {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.question-module-grading.index') }}" class="side-menu__item {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
+                                <i class="fas fa-check-circle side-menu__icon"></i>
+                                <span class="side-menu__label">تصحيح اختبارات الكورسات</span>
+                            </a>
+                        </li>
+
                         <!-- بنك الأسئلة -->
                         <li class="slide has-sub {{ request()->routeIs('question-bank.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('question-bank.*') ? 'active' : '' }}">
