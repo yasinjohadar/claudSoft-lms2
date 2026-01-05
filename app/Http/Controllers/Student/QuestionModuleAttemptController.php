@@ -17,6 +17,21 @@ class QuestionModuleAttemptController extends Controller
      */
     public function start($questionModuleId)
     {
+        // Get module_id from request (passed as query parameter)
+        $moduleIdFromRequest = request()->get('module_id');
+        
+        // Store the referer URL for error redirects
+        $referer = request()->headers->get('referer');
+        $moduleIdFromReferer = null;
+        
+        // Try to extract module ID from referer URL
+        if ($referer && preg_match('/\/student\/learn\/modules\/(\d+)/', $referer, $matches)) {
+            $moduleIdFromReferer = $matches[1];
+        }
+        
+        // Use module_id from request, referer, or null
+        $fallbackModuleId = $moduleIdFromRequest ?? $moduleIdFromReferer;
+        
         try {
             $student = auth()->user();
             $questionModule = QuestionModule::with(['questions.questionType', 'questions.options'])
@@ -24,9 +39,14 @@ class QuestionModuleAttemptController extends Controller
 
             // Get course module for redirect on error
             $courseModule = $questionModule->courseModules()->first();
-            $redirectToModule = function($message) use ($courseModule) {
+            $redirectToModule = function($message) use ($courseModule, $fallbackModuleId) {
                 if ($courseModule) {
                     return redirect()->route('student.learn.module', $courseModule->id)
+                        ->with('error', $message);
+                }
+                // If no course module, try to redirect to the module from request/referer
+                if ($fallbackModuleId) {
+                    return redirect()->route('student.learn.module', $fallbackModuleId)
                         ->with('error', $message);
                 }
                 return redirect()->route('student.dashboard')
@@ -110,6 +130,12 @@ class QuestionModuleAttemptController extends Controller
             
             if ($courseModule) {
                 return redirect()->route('student.learn.module', $courseModule->id)
+                    ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
+            }
+            
+            // If no course module, try to redirect to the module from request/referer
+            if ($fallbackModuleId) {
+                return redirect()->route('student.learn.module', $fallbackModuleId)
                     ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
             }
             

@@ -555,7 +555,7 @@
                                         لديك محاولة غير مكتملة، يرجى إكمالها أو إرسالها
                                     </p>
                                 @elseif($canAttempt)
-                                    <a href="{{ route('student.question-module.start', $questionModule->id) }}" class="btn btn-lg btn-primary">
+                                    <a href="{{ route('student.question-module.start', $questionModule->id) }}?module_id={{ $module->id }}" class="btn btn-lg btn-primary">
                                         <i class="fas fa-play me-2"></i>بدء الاختبار
                                     </a>
                                     <p class="text-muted small mt-2 mb-0">
