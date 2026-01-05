@@ -4,6 +4,7 @@
 لوحة التحكم
 @stop
 
+
 @push('styles')
 <style>
     /* Enhanced Stats Cards - Big Colorful Style */
@@ -285,6 +286,27 @@
 <!-- Start::app-content -->
 <div class="main-content app-content">
     <div class="container-fluid">
+        
+        {{-- Display Error Messages --}}
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                <strong><i class="fas fa-exclamation-circle me-2"></i>خطأ!</strong> 
+                {{ session('error') }}
+                @if(session('error_source') === 'question_module_start')
+                    <br><small class="text-muted">يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني</small>
+                @endif
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                <strong><i class="fas fa-check-circle me-2"></i>نجح!</strong> 
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+        
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div>

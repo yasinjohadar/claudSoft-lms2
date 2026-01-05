@@ -44,6 +44,10 @@
 
         @include('student.layouts.main-sidebar')
 
+        {{-- Flash Messages --}}
+        <div class="container-fluid mt-3">
+            @include('student.components.alerts')
+        </div>
 
         @yield('content')
 
