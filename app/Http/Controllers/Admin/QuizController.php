@@ -527,15 +527,8 @@ class QuizController extends Controller
         // Get IDs of questions already in the quiz to exclude them
         $existingQuestionIds = $quiz->questions()->select('question_bank.id')->pluck('question_bank.id')->toArray();
         
-        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options'])
-            ->where(function($query) use ($quiz) {
-                if ($quiz->course_id) {
-                    $query->where('course_id', $quiz->course_id)
-                          ->orWhereNull('course_id');
-                } else {
-                    $query->whereNull('course_id');
-                }
-            })
+        // Get all active questions (no automatic course filtering)
+        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
             ->where('is_active', true)
             ->whereNotIn('id', $existingQuestionIds)
             ->orderBy('created_at', 'desc')
@@ -544,7 +537,10 @@ class QuizController extends Controller
         // Get question types for filtering
         $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
 
-        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes'));
+        // Get all courses for filtering dropdown
+        $courses = \App\Models\Course::where('is_published', true)->get();
+
+        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses'));
     }
 
     /**

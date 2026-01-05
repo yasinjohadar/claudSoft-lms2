@@ -181,9 +181,11 @@
                             <label class="form-label">الكورس</label>
                             <select id="filter-course" class="form-select">
                                 <option value="">جميع الكورسات</option>
-                                @if($quiz->course)
-                                    <option value="{{ $quiz->course->id }}" selected>{{ $quiz->course->title }}</option>
-                                @endif
+                                @foreach($courses as $course)
+                                    <option value="{{ $course->id }}" {{ $quiz->course_id == $course->id ? 'selected' : '' }}>
+                                        {{ $course->title }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
