@@ -534,7 +534,7 @@ class QuizController extends Controller
                 }
             })
             ->where('is_active', true)
-            ->whereNotIn('id', $quiz->questions()->pluck('question_bank.id'))
+            ->whereNotIn('id', $quiz->questions()->pluck('id'))
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -562,7 +562,7 @@ class QuizController extends Controller
 
             // If _method is PUT, update existing question settings
             if ($request->input('_method') === 'PUT') {
-                if (!$quiz->questions()->where('question_id', $validated['question_id'])->exists()) {
+                if (!$quiz->questions()->where('id', $validated['question_id'])->exists()) {
                     return response()->json([
                         'success' => false,
                         'message' => 'السؤال غير موجود في هذا الاختبار',
@@ -584,32 +584,38 @@ class QuizController extends Controller
                 ]);
             }
 
-            // Check if question is already added
-            if ($quiz->questions()->where('question_id', $validated['question_id'])->exists()) {
+            // Use transaction with lock to prevent race conditions
+            return DB::transaction(function() use ($quiz, $validated, $grade, $isRequired) {
+                // Lock the quiz row for update
+                $quiz = Quiz::lockForUpdate()->findOrFail($quiz->id);
+
+                // Check if question is already added
+                if ($quiz->questions()->where('id', $validated['question_id'])->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'السؤال موجود بالفعل في هذا الاختبار',
+                    ], 400);
+                }
+
+                // Get next order
+                $maxOrder = $quiz->quizQuestions()->max('question_order') ?? 0;
+
+                // Add question to quiz
+                $quiz->questions()->attach($validated['question_id'], [
+                    'question_order' => $maxOrder + 1,
+                    'question_grade' => $grade,
+                    'is_required' => $isRequired,
+                ]);
+
+                // Recalculate max_score
+                $maxScore = $quiz->calculateMaxScore();
+                $quiz->update(['max_score' => $maxScore]);
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'السؤال موجود بالفعل في هذا الاختبار',
-                ], 400);
-            }
-
-            // Get next order
-            $maxOrder = $quiz->quizQuestions()->max('question_order') ?? 0;
-
-            // Add question to quiz
-            $quiz->questions()->attach($validated['question_id'], [
-                'question_order' => $maxOrder + 1,
-                'question_grade' => $grade,
-                'is_required' => $isRequired,
-            ]);
-
-            // Recalculate max_score
-            $maxScore = $quiz->calculateMaxScore();
-            $quiz->update(['max_score' => $maxScore]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'تم إضافة السؤال بنجاح',
-            ]);
+                    'success' => true,
+                    'message' => 'تم إضافة السؤال بنجاح',
+                ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -692,7 +698,7 @@ class QuizController extends Controller
                 }
             })
             ->where('is_active', true)
-            ->whereNotIn('id', $quiz->questions()->pluck('question_bank.id'))
+            ->whereNotIn('id', $quiz->questions()->pluck('id'))
             ->orderBy('created_at', 'desc')
             ->get();
 

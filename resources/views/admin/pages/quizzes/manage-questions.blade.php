@@ -367,10 +367,13 @@ $(document).ready(function() {
             if (index >= selectedQuestions.length) {
                 btn.prop('disabled', false).html('<i class="fas fa-download me-1"></i>استيراد الأسئلة المحددة');
                 if (imported > 0) {
-                    toastr.success(`تم استيراد ${imported} من ${total} سؤال بنجاح`);
+                    const message = failed > 0 
+                        ? `تم استيراد ${imported} من ${total} سؤال بنجاح. فشل استيراد ${failed} سؤال (قد تكون موجودة مسبقاً)`
+                        : `تم استيراد ${imported} من ${total} سؤال بنجاح`;
+                    toastr.success(message);
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    toastr.error('فشل استيراد جميع الأسئلة');
+                    toastr.error('فشل استيراد جميع الأسئلة. قد تكون جميع الأسئلة موجودة مسبقاً في الاختبار');
                 }
                 return;
             }
@@ -385,12 +388,28 @@ $(document).ready(function() {
                     question_grade: question.grade
                 },
                 success: function(response) {
-                    imported++;
+                    if (response.success) {
+                        imported++;
+                    } else {
+                        failed++;
+                        // Log warning for duplicate questions
+                        if (response.message && response.message.includes('موجود')) {
+                            console.warn('Question already exists:', question.id, response.message);
+                        } else {
+                            console.error('Error importing question:', question.id, response.message);
+                        }
+                    }
                     importNext(index + 1);
                 },
                 error: function(xhr) {
                     failed++;
-                    console.error('Error importing question:', question.id, xhr.responseJSON);
+                    const errorMessage = xhr.responseJSON?.message || 'حدث خطأ غير معروف';
+                    // Log warning for duplicate questions (400 status)
+                    if (xhr.status === 400 && errorMessage.includes('موجود')) {
+                        console.warn('Question already exists:', question.id, errorMessage);
+                    } else {
+                        console.error('Error importing question:', question.id, xhr.responseJSON || errorMessage);
+                    }
                     importNext(index + 1);
                 }
             });
