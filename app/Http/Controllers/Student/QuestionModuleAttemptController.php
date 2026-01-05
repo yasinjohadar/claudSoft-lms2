@@ -627,25 +627,59 @@ class QuestionModuleAttemptController extends Controller
             // Save answer - ensure it's properly formatted
             $answerToSave = $validated['answer'];
             
+            // Handle null or empty answers
+            if ($answerToSave === null || $answerToSave === '') {
+                Log::warning('Attempted to save null or empty answer', [
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $validated['question_id'],
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الإجابة فارغة',
+                ], 400);
+            }
+            
             // Log for debugging
-            Log::info('Saving answer', [
+            Log::info('=== SAVING ANSWER ===', [
                 'attempt_id' => $attempt->id,
+                'response_id' => $response->id,
                 'question_id' => $validated['question_id'],
                 'answer_type' => gettype($answerToSave),
                 'answer_value' => is_array($answerToSave) ? json_encode($answerToSave, JSON_UNESCAPED_UNICODE) : $answerToSave,
+                'answer_is_array' => is_array($answerToSave),
+                'answer_is_empty' => is_array($answerToSave) ? empty($answerToSave) : (trim((string)$answerToSave) === ''),
             ]);
             
-            $response->update([
+            // Update the response
+            $updateResult = $response->update([
                 'student_answer' => $answerToSave,
             ]);
             
-            // Verify it was saved
+            // Verify it was saved by refreshing from database
             $response->refresh();
-            Log::info('Answer saved', [
+            
+            // Check if it was actually saved
+            $savedAnswer = $response->getOriginal('student_answer'); // Get raw value from DB
+            $savedAnswerDecoded = json_decode($savedAnswer, true);
+            
+            Log::info('=== ANSWER SAVED ===', [
                 'response_id' => $response->id,
-                'saved_answer_type' => gettype($response->student_answer),
-                'saved_answer_value' => is_array($response->student_answer) ? json_encode($response->student_answer, JSON_UNESCAPED_UNICODE) : $response->student_answer,
+                'update_result' => $updateResult,
+                'saved_raw' => $savedAnswer,
+                'saved_decoded' => $savedAnswerDecoded,
+                'saved_cast' => $response->student_answer,
+                'saved_type' => gettype($response->student_answer),
             ]);
+            
+            if ($response->student_answer === null || (is_array($response->student_answer) && empty($response->student_answer))) {
+                Log::error('Answer was not saved correctly!', [
+                    'response_id' => $response->id,
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $validated['question_id'],
+                    'original_answer' => $answerToSave,
+                    'saved_answer' => $response->student_answer,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -747,7 +781,47 @@ class QuestionModuleAttemptController extends Controller
             Log::info('Submitting attempt', [
                 'attempt_id' => $attempt->id,
                 'student_id' => $student->id,
+                'request_data' => $request->all(),
             ]);
+            
+            // Save answers from request if provided (fallback if AJAX saves failed)
+            if ($request->has('answers') && is_array($request->answers)) {
+                Log::info('Saving answers from request', [
+                    'attempt_id' => $attempt->id,
+                    'answers_count' => count($request->answers),
+                ]);
+                
+                foreach ($request->answers as $questionId => $answerJson) {
+                    try {
+                        $answer = json_decode($answerJson, true);
+                        if ($answer === null && json_last_error() !== JSON_ERROR_NONE) {
+                            // If JSON decode fails, treat as string
+                            $answer = $answerJson;
+                        }
+                        
+                        $response = $attempt->responses()->where('question_id', $questionId)->first();
+                        if ($response) {
+                            Log::info('Saving answer from request', [
+                                'response_id' => $response->id,
+                                'question_id' => $questionId,
+                                'answer' => is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : $answer,
+                            ]);
+                            
+                            $response->update([
+                                'student_answer' => $answer,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error saving answer from request', [
+                            'question_id' => $questionId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                // Reload responses after saving
+                $attempt->load('responses');
+            }
             
             $this->submitAttempt($attempt, false);
 

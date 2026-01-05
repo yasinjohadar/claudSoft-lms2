@@ -1256,31 +1256,43 @@
         }
 
         // Save all answers one final time before submitting
+        // Force save ALL questions, not just answered ones
         const savePromises = [];
         $('.question-container').each(function() {
             const questionId = parseInt($(this).data('question-id'));
-            if (questionId && answeredQuestions.has(questionId)) {
+            if (questionId) {
+                console.log('Saving answer for question:', questionId, 'before submit');
                 // Save this answer - saveAnswer now returns a promise
                 const promise = saveAnswer(questionId);
-                if (promise) {
+                if (promise && promise.then) {
                     savePromises.push(promise);
+                } else {
+                    // If saveAnswer returns a resolved promise, add a small delay
+                    savePromises.push(Promise.resolve());
                 }
             }
         });
+        
+        console.log('Total promises to wait for:', savePromises.length);
 
         // Wait for all answers to be saved, then submit
         if (savePromises.length > 0) {
             Promise.all(savePromises).then(() => {
-                // Small delay to ensure all AJAX requests complete
+                console.log('All answers saved, submitting form...');
+                // Longer delay to ensure all AJAX requests complete and database is updated
                 setTimeout(() => {
                     submitForm();
-                }, 300);
-            }).catch(() => {
+                }, 1000); // Increased from 300ms to 1000ms
+            }).catch((error) => {
+                console.error('Error saving answers:', error);
                 // Even if some saves fail, proceed with submission
-                submitForm();
+                setTimeout(() => {
+                    submitForm();
+                }, 1000);
             });
         } else {
-            // No answers to save, submit immediately
+            // No questions found, submit immediately
+            console.warn('No questions found to save!');
             submitForm();
         }
         
@@ -1296,6 +1308,81 @@
                 value: '{{ csrf_token() }}'
             }));
 
+            // Collect all answers from the current form state and add to form
+            console.log('Collecting all answers for final submission...');
+            $('.question-container').each(function() {
+                const questionId = $(this).data('question-id');
+                let answer = null;
+                
+                // Radio buttons
+                const radioInput = $(`input[type="radio"][name="question_${questionId}"]:checked`);
+                if (radioInput.length > 0) {
+                    answer = radioInput.val();
+                    console.log('Question', questionId, '- Radio answer:', answer);
+                }
+
+                // Checkboxes
+                const checkboxInputs = $(`input[type="checkbox"][name="question_${questionId}[]"]:checked`);
+                if (checkboxInputs.length > 0) {
+                    answer = checkboxInputs.map(function() { return $(this).val(); }).get();
+                    console.log('Question', questionId, '- Checkbox answer:', answer);
+                }
+
+                // Textareas
+                const textareaInput = $(`textarea[name="question_${questionId}"]`);
+                if (textareaInput.length > 0) {
+                    answer = textareaInput.val();
+                    console.log('Question', questionId, '- Textarea answer:', answer);
+                }
+
+                // Matching selects
+                const matchingSelects = $(`select[name^="question_${questionId}["]`);
+                if (matchingSelects.length > 0) {
+                    answer = {};
+                    matchingSelects.each(function() {
+                        const optionId = $(this).attr('name').match(/\[(\d+)\]/)[1];
+                        const val = $(this).val();
+                        if (val) {
+                            answer[optionId] = val;
+                        }
+                    });
+                    console.log('Question', questionId, '- Matching answer:', answer);
+                }
+
+                // Ordering
+                const orderingInput = $(`#ordering-input-${questionId}`);
+                if (orderingInput.length > 0) {
+                    answer = JSON.parse(orderingInput.val() || '[]');
+                    console.log('Question', questionId, '- Ordering answer:', answer);
+                }
+
+                // Fill in blanks
+                const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
+                if (fillBlankInputs.length > 0) {
+                    answer = {};
+                    fillBlankInputs.each(function() {
+                        const blankIndex = $(this).data('blank-index');
+                        const value = $(this).val().trim();
+                        if (value) {
+                            answer[blankIndex] = value;
+                        }
+                    });
+                    console.log('Question', questionId, '- Fill blank answer:', answer);
+                }
+
+                if (answer !== null) {
+                    form.append($('<input>', {
+                        type: 'hidden',
+                        name: `answers[${questionId}]`,
+                        value: JSON.stringify(answer)
+                    }));
+                    console.log('Added answer for question', questionId, 'to form');
+                } else {
+                    console.warn('No answer found for question', questionId);
+                }
+            });
+
+            console.log('Submitting form with all answers...');
             $('body').append(form);
             form.submit();
         }
