@@ -12,6 +12,7 @@ use App\Models\AIModel;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Services\Ai\AIProviderFactory;
 
 class AIQuestionCreationService
 {
@@ -139,8 +140,8 @@ class AIQuestionCreationService
         );
 
         // استخدام نفس منطق AIQuestionGenerationService
-        $provider = $this->modelService->getProviderForModel($model);
-        $response = $provider->generate($prompt, [
+        $provider = AIProviderFactory::create($model);
+        $response = $provider->generateText($prompt, [
             'max_tokens' => $model->max_tokens ?? 4000,
             'temperature' => $model->temperature ?? 0.7,
         ]);
