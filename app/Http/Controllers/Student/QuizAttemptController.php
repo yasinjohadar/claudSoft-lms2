@@ -113,7 +113,7 @@ class QuizAttemptController extends Controller
     public function start(Request $request, $id)
     {
         $studentId = auth()->id();
-        $quiz = Quiz::with(['settings', 'quizQuestions'])->findOrFail($id);
+        $quiz = Quiz::with(['settings', 'quizQuestions.question.questionType'])->findOrFail($id);
 
         // Validate quiz password if required
         if ($quiz->settings && $quiz->settings->requiresPassword()) {
@@ -174,13 +174,34 @@ class QuizAttemptController extends Controller
             foreach ($questionIds as $index => $questionId) {
                 $quizQuestion = $quiz->quizQuestions()
                     ->where('question_id', $questionId)
+                    ->with('question.questionType')
                     ->first();
+
+                if (!$quizQuestion || !$quizQuestion->question) {
+                    \Illuminate\Support\Facades\Log::warning('Quiz question not found', [
+                        'quiz_id' => $quiz->id,
+                        'question_id' => $questionId,
+                    ]);
+                    continue; // Skip if question not found
+                }
+
+                // Get question_type_id - required field
+                $questionTypeId = $quizQuestion->question->question_type_id;
+                if (!$questionTypeId) {
+                    \Illuminate\Support\Facades\Log::warning('Question has no question_type_id', [
+                        'question_id' => $questionId,
+                    ]);
+                    continue; // Skip if question has no type
+                }
+
+                // Get max_score from quizQuestion (question_grade) or question default_grade or 1.0
+                $maxScore = $quizQuestion->getGrade(); // This method handles null values and returns 1.0 as default
 
                 QuizResponse::create([
                     'attempt_id' => $attempt->id,
                     'question_id' => $questionId,
-                    'question_type_id' => $quizQuestion->question->question_type_id,
-                    'max_score' => $quizQuestion->max_score,
+                    'question_type_id' => $questionTypeId,
+                    'max_score' => $maxScore,
                     'answer_order' => $index + 1,
                     'marked_for_review' => false,
                 ]);
