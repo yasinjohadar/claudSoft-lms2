@@ -224,6 +224,122 @@
                                             <span class="badge {{ $badgeClass }} text-white fs-14 px-3 py-2">
                                                 {{ $displayText }}
                                             </span>
+                                        @elseif($question->questionType->name == 'fill_blanks')
+                                            @php
+                                                // Extract answer from response_data
+                                                $fillBlanksAnswer = null;
+                                                if ($response->response_data) {
+                                                    $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                                    if (isset($responseData['answer'])) {
+                                                        $fillBlanksAnswer = $responseData['answer'];
+                                                    } else {
+                                                        $fillBlanksAnswer = $responseData;
+                                                    }
+                                                } elseif ($response->response_text) {
+                                                    $fillBlanksAnswer = json_decode($response->response_text, true);
+                                                }
+                                                
+                                                // Display fill blanks answer
+                                                if ($fillBlanksAnswer && is_array($fillBlanksAnswer) && !empty($fillBlanksAnswer)) {
+                                                    $questionText = $question->question_text;
+                                                    $normalizedText = preg_replace('/_{3,}/', '[[blank]]', $questionText);
+                                                    $parts = preg_split('/\[\[blank\]\]/', $normalizedText);
+                                                    $savedAnswers = [];
+                                                    foreach ($fillBlanksAnswer as $key => $value) {
+                                                        if (is_numeric($key)) {
+                                                            $savedAnswers[(int)$key] = $value;
+                                                        }
+                                                    }
+                                                } else {
+                                                    $fillBlanksAnswer = null;
+                                                }
+                                            @endphp
+                                            @if($fillBlanksAnswer && is_array($fillBlanksAnswer) && !empty($savedAnswers))
+                                                <div class="p-3 bg-white rounded border">
+                                                    @foreach($parts as $index => $part)
+                                                        <span>{!! $part !!}</span>
+                                                        @if($index < count($parts) - 1)
+                                                            <span class="badge bg-primary text-white px-3 py-2 ms-1">
+                                                                {{ $savedAnswers[$index] ?? '___' }}
+                                                            </span>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                            @endif
+                                        @elseif($question->questionType->name == 'matching')
+                                            @php
+                                                $matchingAnswer = null;
+                                                if ($response->response_data) {
+                                                    $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                                    if (isset($responseData['answer'])) {
+                                                        $matchingAnswer = $responseData['answer'];
+                                                    } else {
+                                                        $matchingAnswer = $responseData;
+                                                    }
+                                                }
+                                            @endphp
+                                            @if($matchingAnswer && is_array($matchingAnswer) && !empty($matchingAnswer))
+                                                <ul class="mb-0">
+                                                    @foreach($question->options as $option)
+                                                        @if(isset($matchingAnswer[$option->id]))
+                                                            <li class="mb-2">
+                                                                <strong>{{ $option->option_text }}:</strong> {{ $matchingAnswer[$option->id] }}
+                                                            </li>
+                                                        @endif
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                            @endif
+                                        @elseif($question->questionType->name == 'ordering')
+                                            @php
+                                                $orderingAnswer = null;
+                                                if ($response->response_data) {
+                                                    $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                                    if (isset($responseData['answer'])) {
+                                                        $orderingAnswer = $responseData['answer'];
+                                                    } else {
+                                                        $orderingAnswer = $responseData;
+                                                    }
+                                                }
+                                            @endphp
+                                            @if($orderingAnswer && is_array($orderingAnswer) && !empty($orderingAnswer))
+                                                <ol class="mb-0">
+                                                    @foreach($orderingAnswer as $optionId)
+                                                        @php
+                                                            $option = $question->options->find($optionId);
+                                                        @endphp
+                                                        @if($option)
+                                                            <li class="mb-2">{{ $option->option_text }}</li>
+                                                        @endif
+                                                    @endforeach
+                                                </ol>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                            @endif
+                                        @elseif(in_array($question->questionType->name, ['numerical', 'calculated']))
+                                            @php
+                                                $numericalAnswer = null;
+                                                if ($response->response_text) {
+                                                    $numericalAnswer = $response->response_text;
+                                                } elseif ($response->response_data) {
+                                                    $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                                    if (isset($responseData['answer'])) {
+                                                        $numericalAnswer = is_array($responseData['answer']) ? (string)($responseData['answer']['numeric_value'] ?? $responseData['answer'][0] ?? '') : (string)$responseData['answer'];
+                                                    } elseif (isset($responseData['numeric_value'])) {
+                                                        $numericalAnswer = (string)$responseData['numeric_value'];
+                                                    } else {
+                                                        $numericalAnswer = is_numeric($responseData) ? (string)$responseData : null;
+                                                    }
+                                                }
+                                            @endphp
+                                            @if($numericalAnswer !== null && $numericalAnswer !== '')
+                                                <span class="badge bg-info text-white fs-14 px-3 py-2">{{ $numericalAnswer }}</span>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                            @endif
                                         @elseif($response->response_text)
                                             {{ $response->response_text }}
                                         @elseif($response->selected_option_ids)
@@ -241,6 +357,20 @@
                                                     @endif
                                                 @endforeach
                                             </ul>
+                                        @elseif($response->response_data)
+                                            @php
+                                                $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                                if (isset($responseData['answer'])) {
+                                                    $genericAnswer = $responseData['answer'];
+                                                } else {
+                                                    $genericAnswer = $responseData;
+                                                }
+                                            @endphp
+                                            @if(is_array($genericAnswer))
+                                                <pre class="mb-0">{{ json_encode($genericAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @else
+                                                {{ $genericAnswer }}
+                                            @endif
                                         @else
                                             <span class="text-muted">لم يتم الإجابة</span>
                                         @endif
@@ -274,6 +404,91 @@
                                                 <span class="badge bg-success text-white fs-14 px-3 py-2">
                                                     {{ $displayText }}
                                                 </span>
+                                            @elseif($question->questionType->name == 'fill_blanks')
+                                                @php
+                                                    $correctAnswers = $question->metadata['correct_answers'] ?? [];
+                                                    $questionText = $question->question_text;
+                                                    $normalizedText = preg_replace('/_{3,}/', '[[blank]]', $questionText);
+                                                    $parts = preg_split('/\[\[blank\]\]/', $normalizedText);
+                                                @endphp
+                                                @if(!empty($correctAnswers))
+                                                    <div class="p-3 bg-white rounded border">
+                                                        @foreach($parts as $index => $part)
+                                                            <span>{!! $part !!}</span>
+                                                            @if($index < count($parts) - 1)
+                                                                <span class="badge bg-success text-white px-3 py-2 ms-1">
+                                                                    {{ $correctAnswers[$index] ?? '___' }}
+                                                                </span>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                @endif
+                                            @elseif($question->questionType->name == 'matching')
+                                                @php
+                                                    $correctMatching = [];
+                                                    foreach ($question->options as $option) {
+                                                        if ($option->is_correct) {
+                                                            $correctMatching[$option->id] = $option->feedback ?? $option->option_text;
+                                                        }
+                                                    }
+                                                @endphp
+                                                @if(!empty($correctMatching))
+                                                    <ul class="mb-0">
+                                                        @foreach($correctMatching as $optionId => $correctAnswer)
+                                                            @php
+                                                                $option = $question->options->find($optionId);
+                                                            @endphp
+                                                            @if($option)
+                                                                <li class="mb-2">
+                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctAnswer }}
+                                                                </li>
+                                                            @endif
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                @endif
+                                            @elseif($question->questionType->name == 'ordering')
+                                                @php
+                                                    $correctOrder = $question->options->where('is_correct', true)->sortBy('option_order')->pluck('id')->toArray();
+                                                    if (empty($correctOrder)) {
+                                                        $correctOrder = $question->options->sortBy('option_order')->pluck('id')->toArray();
+                                                    }
+                                                @endphp
+                                                @if(!empty($correctOrder))
+                                                    <ol class="mb-0">
+                                                        @foreach($correctOrder as $optionId)
+                                                            @php
+                                                                $option = $question->options->find($optionId);
+                                                            @endphp
+                                                            @if($option)
+                                                                <li class="mb-2">{{ $option->option_text }}</li>
+                                                            @endif
+                                                        @endforeach
+                                                    </ol>
+                                                @else
+                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                @endif
+                                            @elseif(in_array($question->questionType->name, ['numerical', 'calculated']))
+                                                @php
+                                                    $correctNumerical = $question->metadata['correct_answer'] ?? $question->metadata['answer'] ?? null;
+                                                @endphp
+                                                @if($correctNumerical !== null)
+                                                    <span class="badge bg-success text-white fs-14 px-3 py-2">{{ $correctNumerical }}</span>
+                                                @else
+                                                    {{ 'راجع المدرس' }}
+                                                @endif
+                                            @elseif($question->questionType->name == 'short_answer')
+                                                @php
+                                                    $correctShortAnswer = $question->metadata['correct_answer'] ?? $question->metadata['answer'] ?? null;
+                                                @endphp
+                                                @if($correctShortAnswer !== null)
+                                                    {{ $correctShortAnswer }}
+                                                @else
+                                                    {{ 'راجع المدرس' }}
+                                                @endif
                                             @else
                                                 {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
                                             @endif
