@@ -908,8 +908,10 @@
     }
 
     function saveFillBlankAnswer(questionId) {
+        questionId = parseInt(questionId); // Ensure it's a number
         const answer = {};
         let allAnswered = true;
+        let hasAnyAnswer = false;
 
         $(`.fill-blank-input[data-question-id="${questionId}"]`).each(function() {
             const blankIndex = $(this).data('blank-index');
@@ -917,22 +919,23 @@
 
             if (value) {
                 answer[blankIndex] = value;
+                hasAnyAnswer = true;
             } else {
                 allAnswered = false;
             }
         });
 
-        // Update answered questions set
-        if (allAnswered && Object.keys(answer).length > 0) {
-            answeredQuestions.add(parseInt(questionId));
+        // Update answered questions set - mark as answered if at least one blank is filled
+        if (hasAnyAnswer && Object.keys(answer).length > 0) {
+            answeredQuestions.add(questionId);
         } else {
-            answeredQuestions.delete(parseInt(questionId));
+            answeredQuestions.delete(questionId);
         }
 
         updateProgress();
         updateQuestionNavigation();
 
-        // Send AJAX request
+        // Send AJAX request - save even if not all blanks are filled
         if (Object.keys(answer).length > 0) {
             $.ajax({
                 url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
@@ -944,9 +947,35 @@
                 },
                 success: function(response) {
                     console.log('Fill blank answer saved:', response);
+                    // Update answered status based on response
+                    if (response.success && hasAnyAnswer) {
+                        answeredQuestions.add(questionId);
+                        updateProgress();
+                        updateQuestionNavigation();
+                    }
                 },
                 error: function(xhr) {
-                    console.error('Error saving answer:', xhr);
+                    console.error('Error saving fill blank answer:', xhr);
+                    if (xhr.responseJSON && xhr.responseJSON.time_up) {
+                        timeUp();
+                    }
+                }
+            });
+        } else {
+            // Even if no answer, try to save empty answer to clear previous answers
+            $.ajax({
+                url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    question_id: questionId,
+                    answer: {}
+                },
+                success: function(response) {
+                    console.log('Fill blank answer cleared:', response);
+                },
+                error: function(xhr) {
+                    console.error('Error clearing fill blank answer:', xhr);
                 }
             });
         }
@@ -1268,17 +1297,17 @@
         const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
         if (fillBlankInputs.length > 0) {
             answer = {};
-            let allFilled = true;
+            let hasAnyAnswer = false;
             fillBlankInputs.each(function() {
                 const blankIndex = $(this).data('blank-index');
                 const value = $(this).val().trim();
                 if (value) {
                     answer[blankIndex] = value;
-                } else {
-                    allFilled = false;
+                    hasAnyAnswer = true;
                 }
             });
-            hasValidAnswer = allFilled && Object.keys(answer).length > 0;
+            // Mark as valid if at least one blank is filled
+            hasValidAnswer = hasAnyAnswer && Object.keys(answer).length > 0;
             console.log('Fill blank answer:', answer, '- valid:', hasValidAnswer);
         }
 
