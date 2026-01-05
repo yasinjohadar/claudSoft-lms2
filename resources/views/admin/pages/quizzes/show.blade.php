@@ -24,6 +24,9 @@
                     </nav>
                 </div>
                 <div class="mt-3 mt-md-0">
+                    <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-success me-2">
+                        <i class="fas fa-question-circle me-1"></i>إدارة الأسئلة
+                    </a>
                     <a href="{{ route('quizzes.edit', $quiz->id) }}" class="btn btn-primary me-2">
                         <i class="fas fa-edit me-1"></i>تعديل
                     </a>
@@ -216,8 +219,8 @@
                             <div class="card-title mb-0">
                                 <i class="fas fa-list me-2 text-secondary"></i>الأسئلة ({{ $quiz->quizQuestions->count() }})
                             </div>
-                            <a href="{{ route('question-bank.index', ['course_id' => $quiz->course_id]) }}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-plus me-1"></i>إضافة أسئلة
+                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-sm btn-success">
+                                <i class="fas fa-cog me-1"></i>إدارة الأسئلة
                             </a>
                         </div>
                         <div class="card-body p-0">

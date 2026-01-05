@@ -252,6 +252,13 @@ Route::prefix('admin')
         Route::post('quizzes/{id}/toggle-publish', [\App\Http\Controllers\Admin\QuizController::class, 'togglePublish'])->name('quizzes.toggle-publish');
         Route::get('quizzes/course/{courseId}/lessons', [\App\Http\Controllers\Admin\QuizController::class, 'getLessons'])->name('quizzes.get-lessons');
         Route::post('quizzes/{id}/recalculate-score', [\App\Http\Controllers\Admin\QuizController::class, 'recalculateScore'])->name('quizzes.recalculate-score');
+        
+        // Quiz Questions Management
+        Route::get('quizzes/{id}/manage-questions', [\App\Http\Controllers\Admin\QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');
+        Route::get('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
+        Route::post('quizzes/{id}/add-question', [\App\Http\Controllers\Admin\QuizController::class, 'addQuestion'])->name('quizzes.add-question');
+        Route::delete('quizzes/{id}/remove-question/{questionId}', [\App\Http\Controllers\Admin\QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
+        Route::post('quizzes/{id}/reorder-questions', [\App\Http\Controllers\Admin\QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
 
         // Question Bank Management
         Route::get('question-bank/create/{type}', [\App\Http\Controllers\Admin\QuestionBankController::class, 'createByType'])->name('question-bank.create.type');

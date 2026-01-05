@@ -167,15 +167,14 @@ class QuizController extends Controller
 
             DB::commit();
 
-            // التوجيه: إذا جاء من قسم، نرجع للكورس، وإلا لصفحة الاختبار
+            // التوجيه: إذا جاء من قسم، نرجع لصفحة إدارة الأسئلة، وإلا لصفحة الاختبار
             if ($request->filled('section_id')) {
-                $section = CourseSection::find($request->section_id);
-                return redirect()->route('courses.show', $section->course_id)
-                    ->with('success', 'تم إنشاء الاختبار وربطه بالقسم بنجاح');
+                return redirect()->route('quizzes.manage-questions', $quiz->id)
+                    ->with('success', 'تم إنشاء الاختبار بنجاح. يمكنك الآن إضافة الأسئلة');
             }
 
-            return redirect()->route('quizzes.show', $quiz->id)
-                ->with('success', 'تم إنشاء الاختبار بنجاح');
+            return redirect()->route('quizzes.manage-questions', $quiz->id)
+                ->with('success', 'تم إنشاء الاختبار بنجاح. يمكنك الآن إضافة الأسئلة');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()
@@ -515,4 +514,195 @@ class QuizController extends Controller
 
         return ($passedAttempts / $completedAttempts) * 100;
     }
+
+    /**
+     * Show the page to manage questions in the quiz.
+     */
+    public function manageQuestions($id)
+    {
+        $quiz = Quiz::with(['questions.questionType', 'questions.options', 'course'])
+            ->findOrFail($id);
+
+        // Get available questions from the question bank
+        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options'])
+            ->where(function($query) use ($quiz) {
+                if ($quiz->course_id) {
+                    $query->where('course_id', $quiz->course_id)
+                          ->orWhereNull('course_id');
+                } else {
+                    $query->whereNull('course_id');
+                }
+            })
+            ->where('is_active', true)
+            ->whereNotIn('id', $quiz->questions()->pluck('question_bank.id'))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get question types for filtering
+        $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
+
+        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes'));
+    }
+
+    /**
+     * Add a question to the quiz (AJAX).
+     */
+    public function addQuestion(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'question_id' => 'required|exists:question_bank,id',
+                'question_grade' => 'nullable|numeric|min:0',
+                'is_required' => 'nullable|boolean',
+            ]);
+
+            $quiz = Quiz::findOrFail($id);
+            $grade = $validated['question_grade'] ?? 1.0;
+            $isRequired = $validated['is_required'] ?? false;
+
+            // If _method is PUT, update existing question settings
+            if ($request->input('_method') === 'PUT') {
+                if (!$quiz->questions()->where('question_id', $validated['question_id'])->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'السؤال غير موجود في هذا الاختبار',
+                    ], 404);
+                }
+
+                $quiz->questions()->updateExistingPivot($validated['question_id'], [
+                    'question_grade' => $grade,
+                    'is_required' => $isRequired,
+                ]);
+
+                // Recalculate max_score
+                $maxScore = $quiz->calculateMaxScore();
+                $quiz->update(['max_score' => $maxScore]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تحديث إعدادات السؤال بنجاح',
+                ]);
+            }
+
+            // Check if question is already added
+            if ($quiz->questions()->where('question_id', $validated['question_id'])->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'السؤال موجود بالفعل في هذا الاختبار',
+                ], 400);
+            }
+
+            // Get next order
+            $maxOrder = $quiz->quizQuestions()->max('question_order') ?? 0;
+
+            // Add question to quiz
+            $quiz->questions()->attach($validated['question_id'], [
+                'question_order' => $maxOrder + 1,
+                'question_grade' => $grade,
+                'is_required' => $isRequired,
+            ]);
+
+            // Recalculate max_score
+            $maxScore = $quiz->calculateMaxScore();
+            $quiz->update(['max_score' => $maxScore]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إضافة السؤال بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إضافة السؤال: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove a question from the quiz (AJAX).
+     */
+    public function removeQuestion($id, $questionId)
+    {
+        try {
+            $quiz = Quiz::findOrFail($id);
+            $quiz->questions()->detach($questionId);
+
+            // Recalculate max_score
+            $maxScore = $quiz->calculateMaxScore();
+            $quiz->update(['max_score' => $maxScore]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إزالة السؤال بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إزالة السؤال: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reorder questions in the quiz (AJAX).
+     */
+    public function reorderQuestions(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'question_ids' => 'required|array',
+                'question_ids.*' => 'exists:question_bank,id',
+            ]);
+
+            $quiz = Quiz::findOrFail($id);
+
+            foreach ($validated['question_ids'] as $order => $questionId) {
+                $quiz->questions()->updateExistingPivot($questionId, [
+                    'question_order' => $order + 1,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إعادة ترتيب الأسئلة بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إعادة ترتيب الأسئلة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Show import questions page/modal.
+     */
+    public function importQuestions($id)
+    {
+        $quiz = Quiz::with('course')->findOrFail($id);
+
+        // Get available questions from the question bank
+        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
+            ->where(function($query) use ($quiz) {
+                if ($quiz->course_id) {
+                    $query->where('course_id', $quiz->course_id)
+                          ->orWhereNull('course_id');
+                } else {
+                    $query->whereNull('course_id');
+                }
+            })
+            ->where('is_active', true)
+            ->whereNotIn('id', $quiz->questions()->pluck('question_bank.id'))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get question types for filtering
+        $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
+
+        // Get courses for filtering
+        $courses = \App\Models\Course::where('is_published', true)->get();
+
+        return view('admin.pages.quizzes.import-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses'));
+    }
+
 }

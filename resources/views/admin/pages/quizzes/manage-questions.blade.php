@@ -1,0 +1,477 @@
+@extends('admin.layouts.master')
+
+@section('page-title')
+    إدارة الأسئلة - {{ $quiz->title }}
+@stop
+
+@section('content')
+    <div class="main-content app-content">
+        <div class="container-fluid">
+
+            <!-- Page Header -->
+            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+                <div>
+                    <h4 class="mb-0">إدارة الأسئلة</h4>
+                    <nav>
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('quizzes.show', $quiz->id) }}">{{ $quiz->title }}</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">إدارة الأسئلة</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+
+            @include('admin.components.alerts')
+
+            <!-- Quiz Info Card -->
+            <div class="card custom-card mb-4">
+                <div class="card-header">
+                    <div class="card-title">معلومات الاختبار</div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>العنوان:</strong> {{ $quiz->title }}</p>
+                            @if($quiz->description)
+                                <p><strong>الوصف:</strong> {{ $quiz->description }}</p>
+                            @endif
+                            <p><strong>الكورس:</strong> {{ $quiz->course->title ?? 'غير محدد' }}</p>
+                            <p><strong>نوع الاختبار:</strong> 
+                                @if($quiz->quiz_type === 'practice')
+                                    تدريبي
+                                @elseif($quiz->quiz_type === 'graded')
+                                    مُقيّم
+                                @elseif($quiz->quiz_type === 'final_exam')
+                                    اختبار نهائي
+                                @else
+                                    استبيان
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>عدد الأسئلة:</strong> {{ $quiz->questions->count() }}</p>
+                            <p><strong>الدرجة القصوى:</strong> {{ number_format($quiz->max_score, 2) }}</p>
+                            <p><strong>الدرجة المطلوبة للنجاح:</strong> {{ $quiz->passing_grade }}%</p>
+                            @if($quiz->time_limit)
+                                <p><strong>الوقت المحدد:</strong> {{ $quiz->time_limit }} دقيقة</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions Management -->
+            <div class="row">
+                <div class="col-xl-12">
+                    <div class="card custom-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="card-title">الأسئلة المرتبطة بالاختبار ({{ $quiz->questions->count() }})</div>
+                            <div>
+                                <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
+                                    <i class="fas fa-plus-circle me-1"></i>إنشاء سؤال جديد
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
+                                    <i class="fas fa-download me-1"></i>استيراد من بنك الأسئلة
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @if($quiz->questions->count() > 0)
+                                <div class="table-responsive">
+                                    <table class="table text-nowrap table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th width="50">#</th>
+                                                <th>السؤال</th>
+                                                <th>النوع</th>
+                                                <th>الدرجة</th>
+                                                <th>مطلوب</th>
+                                                <th width="150">الإجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="questions-sortable">
+                                            @foreach($quiz->questions as $question)
+                                                <tr data-id="{{ $question->id }}">
+                                                    <td><i class="fas fa-grip-vertical handle" style="cursor: move;"></i></td>
+                                                    <td>
+                                                        <div class="d-flex align-items-start">
+                                                            <div>
+                                                                <a href="{{ route('question-bank.show', $question->id) }}" target="_blank" class="fw-semibold">
+                                                                    {!! Str::limit(strip_tags($question->question_text), 100) !!}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary-transparent">
+                                                            {{ $question->questionType->display_name }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number"
+                                                               class="form-control form-control-sm question-grade"
+                                                               value="{{ $question->pivot->question_grade ?? $question->default_grade }}"
+                                                               data-question-id="{{ $question->id }}"
+                                                               step="0.5"
+                                                               min="0"
+                                                               style="width: 80px;">
+                                                    </td>
+                                                    <td>
+                                                        <input type="checkbox"
+                                                               class="form-check-input question-required"
+                                                               data-question-id="{{ $question->id }}"
+                                                               {{ $question->pivot->is_required ?? false ? 'checked' : '' }}>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-danger remove-question"
+                                                                data-question-id="{{ $question->id }}">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-4">
+                                    <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p>
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
+                                        <i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Import Question Modal -->
+    <div class="modal fade" id="importQuestionModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">استيراد أسئلة من بنك الأسئلة</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">البحث</label>
+                            <input type="text" id="search-questions" class="form-control" placeholder="ابحث في الأسئلة...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">نوع السؤال</label>
+                            <select id="filter-question-type" class="form-select">
+                                <option value="">جميع الأنواع</option>
+                                @foreach($questionTypes as $type)
+                                    <option value="{{ $type->id }}">{{ $type->display_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">الكورس</label>
+                            <select id="filter-course" class="form-select">
+                                <option value="">جميع الكورسات</option>
+                                @if($quiz->course)
+                                    <option value="{{ $quiz->course->id }}" selected>{{ $quiz->course->title }}</option>
+                                @endif
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table text-nowrap table-hover">
+                            <thead class="sticky-top bg-light">
+                                <tr>
+                                    <th width="50">
+                                        <input type="checkbox" id="select-all-questions">
+                                    </th>
+                                    <th>السؤال</th>
+                                    <th>النوع</th>
+                                    <th>الكورس</th>
+                                    <th width="100">الدرجة الافتراضية</th>
+                                </tr>
+                            </thead>
+                            <tbody id="available-questions-list">
+                                @forelse($availableQuestions as $question)
+                                    <tr class="question-row" 
+                                        data-question-id="{{ $question->id }}"
+                                        data-question-type="{{ $question->question_type_id }}"
+                                        data-course-id="{{ $question->course_id ?? '' }}"
+                                        data-question-text="{{ strip_tags($question->question_text) }}">
+                                        <td>
+                                            <input type="checkbox" 
+                                                   class="question-checkbox" 
+                                                   value="{{ $question->id }}"
+                                                   data-grade="{{ $question->default_grade }}">
+                                        </td>
+                                        <td>{!! Str::limit(strip_tags($question->question_text), 80) !!}</td>
+                                        <td><span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span></td>
+                                        <td>{{ $question->course->title ?? 'عام' }}</td>
+                                        <td>{{ $question->default_grade }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">لا توجد أسئلة متاحة للاستيراد</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="import-selected-questions">
+                        <i class="fas fa-download me-1"></i>استيراد الأسئلة المحددة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Question Modal -->
+    <div class="modal fade" id="createQuestionModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">إنشاء سؤال جديد</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">اختر نوع السؤال الذي تريد إنشاءه:</p>
+                    <div class="row g-3">
+                        @foreach($questionTypes as $type)
+                            <div class="col-md-4">
+                                <a href="{{ route('question-bank.create.type', $type->name) }}?quiz_id={{ $quiz->id }}"
+                                   class="card custom-card text-center hover-card"
+                                   style="text-decoration: none; transition: all 0.3s;">
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <i class="{{ $type->icon ?? 'fas fa-question-circle' }} fa-3x text-primary"></i>
+                                        </div>
+                                        <h6 class="card-title mb-2">{{ $type->display_name }}</h6>
+                                        @if($type->description)
+                                            <p class="card-text text-muted small">{{ $type->description }}</p>
+                                        @endif
+                                    </div>
+                                </a>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@stop
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Make table sortable
+    const el = document.getElementById('questions-sortable');
+    if (el) {
+        const sortable = Sortable.create(el, {
+            handle: '.handle',
+            animation: 150,
+            onEnd: function(evt) {
+                const order = [];
+                $('#questions-sortable tr').each(function() {
+                    order.push($(this).data('id'));
+                });
+
+                $.ajax({
+                    url: '{{ route('quizzes.reorder-questions', $quiz->id) }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        question_ids: order
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            toastr.success(response.message || 'تم إعادة ترتيب الأسئلة بنجاح');
+                        }
+                    },
+                    error: function() {
+                        toastr.error('حدث خطأ أثناء إعادة الترتيب');
+                        location.reload();
+                    }
+                });
+            }
+        });
+    }
+
+    // Select all questions
+    $('#select-all-questions').on('change', function() {
+        $('.question-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Filter questions
+    function filterQuestions() {
+        const searchText = $('#search-questions').val().toLowerCase();
+        const questionType = $('#filter-question-type').val();
+        const courseId = $('#filter-course').val();
+
+        $('.question-row').each(function() {
+            const $row = $(this);
+            const questionText = $row.data('question-text').toLowerCase();
+            const rowQuestionType = $row.data('question-type');
+            const rowCourseId = $row.data('course-id') || '';
+
+            const matchesSearch = !searchText || questionText.includes(searchText);
+            const matchesType = !questionType || rowQuestionType == questionType;
+            const matchesCourse = !courseId || rowCourseId == courseId;
+
+            if (matchesSearch && matchesType && matchesCourse) {
+                $row.show();
+            } else {
+                $row.hide();
+            }
+        });
+    }
+
+    $('#search-questions, #filter-question-type, #filter-course').on('input change', filterQuestions);
+
+    // Import selected questions
+    $('#import-selected-questions').on('click', function() {
+        const selectedQuestions = [];
+        $('.question-checkbox:checked').each(function() {
+            selectedQuestions.push({
+                id: $(this).val(),
+                grade: $(this).data('grade') || 1.0
+            });
+        });
+
+        if (selectedQuestions.length === 0) {
+            toastr.warning('يرجى اختيار سؤال واحد على الأقل');
+            return;
+        }
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الاستيراد...');
+
+        let imported = 0;
+        let failed = 0;
+        const total = selectedQuestions.length;
+
+        function importNext(index) {
+            if (index >= selectedQuestions.length) {
+                btn.prop('disabled', false).html('<i class="fas fa-download me-1"></i>استيراد الأسئلة المحددة');
+                if (imported > 0) {
+                    toastr.success(`تم استيراد ${imported} من ${total} سؤال بنجاح`);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    toastr.error('فشل استيراد جميع الأسئلة');
+                }
+                return;
+            }
+
+            const question = selectedQuestions[index];
+            $.ajax({
+                url: '{{ route('quizzes.add-question', $quiz->id) }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    question_id: question.id,
+                    question_grade: question.grade
+                },
+                success: function(response) {
+                    imported++;
+                    importNext(index + 1);
+                },
+                error: function(xhr) {
+                    failed++;
+                    console.error('Error importing question:', question.id, xhr.responseJSON);
+                    importNext(index + 1);
+                }
+            });
+        }
+
+        importNext(0);
+    });
+
+    // Remove question
+    $(document).on('click', '.remove-question', function() {
+        if (!confirm('هل أنت متأكد من إزالة هذا السؤال من الاختبار؟')) return;
+
+        const questionId = $(this).data('question-id');
+        const btn = $(this);
+        btn.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ route('quizzes.remove-question', [$quiz->id, ':questionId']) }}'.replace(':questionId', questionId),
+            method: 'DELETE',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success(response.message || 'تم إزالة السؤال بنجاح');
+                    setTimeout(() => location.reload(), 500);
+                }
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء إزالة السؤال');
+                btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // Update question grade
+    $(document).on('change', '.question-grade', function() {
+        const questionId = $(this).data('question-id');
+        const grade = $(this).val();
+
+        $.ajax({
+            url: '{{ route('quizzes.add-question', $quiz->id) }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                question_id: questionId,
+                question_grade: grade,
+                _method: 'PUT'
+            },
+            success: function(response) {
+                toastr.success('تم تحديث درجة السؤال بنجاح');
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء تحديث الدرجة');
+            }
+        });
+    });
+
+    // Update question required status
+    $(document).on('change', '.question-required', function() {
+        const questionId = $(this).data('question-id');
+        const isRequired = $(this).prop('checked');
+
+        $.ajax({
+            url: '{{ route('quizzes.add-question', $quiz->id) }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                question_id: questionId,
+                is_required: isRequired ? 1 : 0,
+                _method: 'PUT'
+            },
+            success: function(response) {
+                toastr.success('تم تحديث حالة السؤال بنجاح');
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء تحديث الحالة');
+            }
+        });
+    });
+});
+</script>
+@stop
+
