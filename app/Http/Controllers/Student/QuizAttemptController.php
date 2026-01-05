@@ -235,23 +235,39 @@ class QuizAttemptController extends Controller
         }
 
         // Get questions in the order specified for this attempt
-        $orderedQuestions = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
+        $questions = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
             $quizQuestion = $attempt->quiz->quizQuestions()
                 ->where('question_id', $questionId)
-                ->with('question.options')
+                ->with('question.questionType', 'question.options')
                 ->first();
+
+            if (!$quizQuestion) {
+                return null;
+            }
 
             $response = $attempt->responses()
                 ->where('question_id', $questionId)
                 ->first();
 
-            return [
-                'quiz_question' => $quizQuestion,
-                'response' => $response,
-            ];
-        });
+            // Get the question with pivot data
+            $question = $quizQuestion->question;
+            // Add pivot data for grade
+            $question->setRelation('pivot', (object)[
+                'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
+            ]);
 
-        return view('student.pages.quizzes.take', compact('attempt', 'orderedQuestions'));
+            return $question;
+        })->filter();
+
+        // Calculate remaining time
+        $remainingTime = null;
+        if ($attempt->quiz->time_limit) {
+            $elapsedSeconds = $attempt->started_at->diffInSeconds(now());
+            $totalSeconds = $attempt->quiz->time_limit * 60;
+            $remainingTime = max(0, $totalSeconds - $elapsedSeconds);
+        }
+
+        return view('student.pages.quizzes.take', compact('attempt', 'questions', 'remainingTime'));
     }
 
     /**
@@ -278,8 +294,10 @@ class QuizAttemptController extends Controller
             ], 400);
         }
 
+        // Support both old format (response_text, selected_option_ids) and new format (answer)
         $validated = $request->validate([
             'question_id' => 'required|exists:question_bank,id',
+            'answer' => 'nullable', // New format - can be string, array, or object
             'response_text' => 'nullable|string',
             'response_data' => 'nullable|array',
             'selected_option_ids' => 'nullable|array',
@@ -292,13 +310,65 @@ class QuizAttemptController extends Controller
                 ->where('question_id', $validated['question_id'])
                 ->firstOrFail();
 
-            $response->update([
-                'response_text' => $validated['response_text'] ?? null,
-                'response_data' => $validated['response_data'] ?? null,
-                'selected_option_ids' => $validated['selected_option_ids'] ?? null,
-                'time_spent' => $validated['time_spent'] ?? $response->time_spent,
-                'marked_for_review' => $validated['marked_for_review'] ?? $response->marked_for_review,
-            ]);
+            // Get question type to determine how to save
+            $question = $response->question ?? \App\Models\QuestionBank::with('questionType')->find($validated['question_id']);
+            $questionType = $question->questionType->name ?? '';
+
+            // If answer parameter is provided, use it (new format like QuestionModule)
+            if ($request->has('answer')) {
+                $answer = $validated['answer'];
+                
+                // Convert JSON string to array if needed
+                if (is_string($answer)) {
+                    $decoded = json_decode($answer, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $answer = $decoded;
+                    }
+                }
+
+                // Save based on question type
+                if (in_array($questionType, ['multiple_choice_single', 'true_false'])) {
+                    // Single value - save as selected_option_ids array or response_text
+                    if (is_array($answer)) {
+                        $response->update([
+                            'selected_option_ids' => $answer,
+                            'response_data' => ['answer' => $answer],
+                        ]);
+                    } else {
+                        $response->update([
+                            'response_text' => (string)$answer,
+                            'response_data' => ['answer' => $answer],
+                        ]);
+                    }
+                } elseif ($questionType === 'multiple_choice_multiple') {
+                    // Multiple values - save as selected_option_ids array
+                    $answerArray = is_array($answer) ? $answer : [$answer];
+                    $response->update([
+                        'selected_option_ids' => $answerArray,
+                        'response_data' => ['answer' => $answerArray],
+                    ]);
+                } elseif (in_array($questionType, ['short_answer', 'essay'])) {
+                    // Text answer
+                    $response->update([
+                        'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string)$answer),
+                        'response_data' => ['answer' => $answer],
+                    ]);
+                } else {
+                    // Complex types (matching, ordering, fill_blanks, drag_drop) - save as response_data
+                    $response->update([
+                        'response_data' => is_array($answer) ? $answer : ['answer' => $answer],
+                    ]);
+                }
+            } else {
+                // Old format - use existing fields
+                $response->update([
+                    'response_text' => $validated['response_text'] ?? $response->response_text,
+                    'response_data' => $validated['response_data'] ?? $response->response_data,
+                    'selected_option_ids' => $validated['selected_option_ids'] ?? $response->selected_option_ids,
+                    'time_spent' => $validated['time_spent'] ?? $response->time_spent,
+                    'marked_for_review' => $validated['marked_for_review'] ?? $response->marked_for_review,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -356,6 +426,65 @@ class QuizAttemptController extends Controller
 
         DB::beginTransaction();
         try {
+            // Save answers from request if provided (fallback if AJAX saves failed)
+            if ($request->has('answers') && is_array($request->answers)) {
+                foreach ($request->answers as $questionId => $answerJson) {
+                    try {
+                        $answer = json_decode($answerJson, true);
+                        if ($answer === null && json_last_error() !== JSON_ERROR_NONE) {
+                            // If JSON decode fails, treat as string
+                            $answer = $answerJson;
+                        }
+                        
+                        $response = $attempt->responses()->where('question_id', $questionId)->first();
+                        if ($response) {
+                            // Get question type
+                            $question = $response->question ?? \App\Models\QuestionBank::with('questionType')->find($questionId);
+                            $questionType = $question->questionType->name ?? '';
+                            
+                            // Save based on question type (same logic as saveAnswer)
+                            if (in_array($questionType, ['multiple_choice_single', 'true_false'])) {
+                                if (is_array($answer)) {
+                                    $response->update([
+                                        'selected_option_ids' => $answer,
+                                        'response_data' => ['answer' => $answer],
+                                    ]);
+                                } else {
+                                    $response->update([
+                                        'response_text' => (string)$answer,
+                                        'response_data' => ['answer' => $answer],
+                                    ]);
+                                }
+                            } elseif ($questionType === 'multiple_choice_multiple') {
+                                $answerArray = is_array($answer) ? $answer : [$answer];
+                                $response->update([
+                                    'selected_option_ids' => $answerArray,
+                                    'response_data' => ['answer' => $answerArray],
+                                ]);
+                            } elseif (in_array($questionType, ['short_answer', 'essay'])) {
+                                $response->update([
+                                    'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string)$answer),
+                                    'response_data' => ['answer' => $answer],
+                                ]);
+                            } else {
+                                $response->update([
+                                    'response_data' => is_array($answer) ? $answer : ['answer' => $answer],
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Continue with other answers even if one fails
+                        \Illuminate\Support\Facades\Log::error('Error saving answer from request in submit', [
+                            'question_id' => $questionId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
+                // Reload responses after saving
+                $attempt->load(['responses.question.questionType', 'responses.question.options']);
+            }
+
             // Calculate time spent
             $timeSpent = $attempt->calculateTimeSpent();
 
@@ -363,16 +492,29 @@ class QuizAttemptController extends Controller
             $attempt->submit();
             $attempt->update(['time_spent' => $timeSpent]);
 
-            // Auto-grade all auto-gradable questions
+            // Reload responses with relationships before grading
+            $attempt->load(['responses.question.questionType', 'responses.question.options']);
+
+            // Auto-grade all auto-gradable questions (only those that don't require manual grading)
             foreach ($attempt->responses as $response) {
-                $questionType = $response->questionType->name ?? '';
-
-                // Skip essay and calculated questions (require manual grading)
-                if (in_array($questionType, ['essay', 'calculated'])) {
-                    continue;
+                $questionType = $response->question->questionType->name ?? '';
+                
+                // Only auto-grade questions that don't require manual grading
+                $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
+                
+                // Check if response has an answer
+                $hasAnswer = false;
+                if ($response->response_data && !empty($response->response_data)) {
+                    $hasAnswer = true;
+                } elseif ($response->selected_option_ids && !empty($response->selected_option_ids)) {
+                    $hasAnswer = true;
+                } elseif ($response->response_text && trim($response->response_text) !== '') {
+                    $hasAnswer = true;
                 }
-
-                $response->autoGrade();
+                
+                if (!$requiresManualGrading && $hasAnswer) {
+                    $response->autoGrade();
+                }
             }
 
             // Calculate final scores

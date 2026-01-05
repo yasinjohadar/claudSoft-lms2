@@ -245,6 +245,10 @@ class QuizResponse extends Model
                 [$isCorrect, $scoreObtained] = $this->gradeFillBlanks();
                 break;
 
+            case 'drag_drop':
+                [$isCorrect, $scoreObtained] = $this->gradeDragDrop();
+                break;
+
             case 'essay':
                 // Essay questions can be auto-graded using AI
                 $this->autoGradeEssay();
@@ -268,14 +272,38 @@ class QuizResponse extends Model
      */
     private function gradeMultipleChoiceSingle(): bool
     {
-        if (empty($this->selected_option_ids)) {
-            return false;
+        // Support both formats: selected_option_ids (old) and response_data['answer'] (new)
+        $selectedOptionId = null;
+        
+        if (!empty($this->selected_option_ids)) {
+            $selectedOptionId = is_array($this->selected_option_ids) ? $this->selected_option_ids[0] : $this->selected_option_ids;
+        } elseif (!empty($this->response_data)) {
+            $answer = $this->response_data['answer'] ?? null;
+            if ($answer !== null) {
+                if (is_array($answer)) {
+                    $selectedOptionId = $answer[0] ?? null;
+                } else {
+                    $selectedOptionId = $answer;
+                }
+            }
+        } elseif (!empty($this->response_text)) {
+            // For true/false, response_text might be "true" or "false"
+            $selectedOptionId = $this->response_text;
         }
-
-        $selectedOptionId = $this->selected_option_ids[0] ?? null;
 
         if (!$selectedOptionId) {
             return false;
+        }
+
+        // For true/false, check if the value matches the correct option
+        if (in_array($selectedOptionId, ['true', 'false'])) {
+            $correctOption = $this->question->options()->where('is_correct', true)->first();
+            if ($correctOption) {
+                // Check if the option text contains "صحيح" for true or "خطأ" for false
+                $optionText = strip_tags($correctOption->option_text ?? '');
+                $isTrueCorrect = (stripos($optionText, 'صحيح') !== false || stripos($optionText, 'true') !== false);
+                return ($selectedOptionId === 'true' && $isTrueCorrect) || ($selectedOptionId === 'false' && !$isTrueCorrect);
+            }
         }
 
         $option = QuestionOption::find($selectedOptionId);
@@ -392,7 +420,32 @@ class QuizResponse extends Model
             return [false, 0];
         }
 
-        $pairs = $this->response_data['pairs'] ?? [];
+        // Support both formats: 'pairs' (old) and 'answer' (new from QuestionModule format)
+        $answerData = $this->response_data['answer'] ?? $this->response_data['pairs'] ?? $this->response_data;
+        
+        // If answer is an object/array with option IDs as keys, convert to pairs format
+        $pairs = [];
+        if (is_array($answerData)) {
+            // Check if it's in the new format (option_id => feedback value)
+            $isNewFormat = false;
+            foreach ($answerData as $key => $value) {
+                if (is_numeric($key) && is_string($value)) {
+                    $isNewFormat = true;
+                    // Convert to pairs: option_id => feedback
+                    $option = $this->question->options->find($key);
+                    if ($option) {
+                        $pairs[] = [
+                            'left' => $key,
+                            'right' => $value, // This is the feedback value
+                        ];
+                    }
+                } elseif (isset($value['left']) && isset($value['right'])) {
+                    // Already in pairs format
+                    $pairs[] = $value;
+                }
+            }
+        }
+
         $correctPairs = 0;
         $totalPairs = 0;
 
@@ -400,9 +453,9 @@ class QuizResponse extends Model
 
         foreach ($pairs as $pair) {
             $leftId = $pair['left'] ?? null;
-            $rightId = $pair['right'] ?? null;
+            $rightValue = $pair['right'] ?? null;
 
-            if (!$leftId || !$rightId) {
+            if (!$leftId || !$rightValue) {
                 continue;
             }
 
@@ -411,7 +464,8 @@ class QuizResponse extends Model
             // Find if this pair is correct
             $option = $options->firstWhere('id', $leftId);
 
-            if ($option && $option->match_pair_id == $rightId) {
+            // Check if the right value matches the option's feedback
+            if ($option && $option->feedback == $rightValue) {
                 $correctPairs++;
             }
         }
@@ -432,19 +486,33 @@ class QuizResponse extends Model
     private function gradeOrdering(): bool
     {
         if (empty($this->response_data)) {
-            return false;
+            return [false, 0];
         }
 
-        $sequence = $this->response_data['sequence'] ?? [];
+        // Support both formats: 'sequence' (old) and 'answer' (new from QuestionModule format)
+        $sequence = $this->response_data['answer'] ?? $this->response_data['sequence'] ?? [];
 
         if (empty($sequence)) {
             return false;
+        }
+
+        // If sequence is a JSON string, decode it
+        if (is_string($sequence)) {
+            $decoded = json_decode($sequence, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $sequence = $decoded;
+            }
         }
 
         $correctSequence = $this->question->options()
             ->orderBy('option_order')
             ->pluck('id')
             ->toArray();
+
+        // Compare arrays (both should be arrays of IDs)
+        if (!is_array($sequence) || !is_array($correctSequence)) {
+            return false;
+        }
 
         return $sequence === $correctSequence;
     }
@@ -458,7 +526,9 @@ class QuizResponse extends Model
             return [false, 0];
         }
 
-        $answers = $this->response_data['answers'] ?? [];
+        // Support both formats: 'answers' (old) and 'answer' (new from QuestionModule format)
+        $answers = $this->response_data['answer'] ?? $this->response_data['answers'] ?? [];
+
         $metadata = $this->question->metadata ?? [];
         $correctAnswers = $metadata['correct_answers'] ?? [];
         $caseSensitive = $metadata['case_sensitive'] ?? false;
@@ -491,6 +561,54 @@ class QuizResponse extends Model
 
         $isFullyCorrect = $correctCount === $totalBlanks;
         $partialScore = ($correctCount / $totalBlanks) * $this->max_score;
+
+        return [$isFullyCorrect, $partialScore];
+    }
+
+    /**
+     * Grade drag and drop question.
+     */
+    private function gradeDragDrop(): array
+    {
+        if (empty($this->response_data)) {
+            return [false, 0];
+        }
+
+        // Support both formats: 'answer' (new from QuestionModule format) and direct response_data
+        $answerData = $this->response_data['answer'] ?? $this->response_data;
+
+        if (empty($answerData) || !is_array($answerData)) {
+            return [false, 0];
+        }
+
+        $correctPairs = 0;
+        $totalPairs = 0;
+
+        $options = $this->question->options;
+
+        // Format: option_id => feedback_value
+        foreach ($answerData as $optionId => $feedbackValue) {
+            if (!is_numeric($optionId)) {
+                continue;
+            }
+
+            $totalPairs++;
+
+            // Find the option
+            $option = $options->find($optionId);
+
+            // Check if the feedback value matches the option's feedback
+            if ($option && $option->feedback == $feedbackValue) {
+                $correctPairs++;
+            }
+        }
+
+        if ($totalPairs === 0) {
+            return [false, 0];
+        }
+
+        $isFullyCorrect = $correctPairs === $totalPairs;
+        $partialScore = ($correctPairs / $totalPairs) * $this->max_score;
 
         return [$isFullyCorrect, $partialScore];
     }

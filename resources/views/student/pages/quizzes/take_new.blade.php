@@ -970,7 +970,7 @@
 
         // Send AJAX request
         $.ajax({
-            url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
+            url: "{{ route('student.question-module.save-answer', $attempt->id) }}",
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
