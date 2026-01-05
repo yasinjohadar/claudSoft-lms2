@@ -395,6 +395,68 @@
                                                class="ordering-input">
                                     </div>
                                     @break
+
+                                @case('numerical')
+                                    @php
+                                        $metadata = $question->metadata ?? [];
+                                        $tolerance = $metadata['tolerance'] ?? 0;
+                                        $hint = $metadata['hint'] ?? null;
+                                    @endphp
+                                    <div class="mb-3">
+                                        @if($hint)
+                                            <div class="alert alert-info mb-3">
+                                                <i class="fas fa-lightbulb me-2"></i>
+                                                <strong>ملاحظة:</strong> {{ $hint }}
+                                            </div>
+                                        @endif
+                                        <input type="number"
+                                               class="form-control answer-input"
+                                               name="question_{{ $question->id }}"
+                                               id="numerical_{{ $question->id }}"
+                                               value="{{ $savedAnswer }}"
+                                               step="any"
+                                               placeholder="أدخل الرقم..."
+                                               data-question-id="{{ $question->id }}"
+                                               style="font-size: 1.1rem; padding: 12px;">
+                                        @if($tolerance > 0)
+                                            <small class="text-muted mt-2 d-block">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                هامش الخطأ المسموح: ±{{ $tolerance }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                    @break
+
+                                @case('calculated')
+                                    @php
+                                        $metadata = $question->metadata ?? [];
+                                        $tolerance = $metadata['tolerance'] ?? 0;
+                                        $formula = $metadata['formula'] ?? null;
+                                    @endphp
+                                    <div class="mb-3">
+                                        @if($formula)
+                                            <div class="alert alert-primary mb-3">
+                                                <i class="fas fa-calculator me-2"></i>
+                                                <strong>المعادلة:</strong> {{ $formula }}
+                                            </div>
+                                        @endif
+                                        <input type="number"
+                                               class="form-control answer-input"
+                                               name="question_{{ $question->id }}"
+                                               id="calculated_{{ $question->id }}"
+                                               value="{{ $savedAnswer }}"
+                                               step="any"
+                                               placeholder="أدخل النتيجة..."
+                                               data-question-id="{{ $question->id }}"
+                                               style="font-size: 1.1rem; padding: 12px;">
+                                        @if($tolerance > 0)
+                                            <small class="text-muted mt-2 d-block">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                هامش الخطأ المسموح: ±{{ $tolerance }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                    @break
                             @endswitch
                         </div>
 
@@ -663,6 +725,10 @@
     let currentQuestionIndex = 0;
     let answeredQuestions = new Set();
     let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
+    // Ensure remainingTimeSeconds is an integer
+    if (remainingTimeSeconds !== null) {
+        remainingTimeSeconds = Math.floor(remainingTimeSeconds);
+    }
     let timerInterval = null;
     let isSubmitting = false; // Track if quiz is being submitted
 
@@ -1018,6 +1084,22 @@
                 console.log('Question', questionId, '(textarea) - has answer:', hasAnswer, '- value:', value);
             }
 
+            // Check for numerical input
+            const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
+            if (numericalInput.length > 0) {
+                const value = numericalInput.val();
+                hasAnswer = value !== '' && value !== null && !isNaN(value);
+                console.log('Question', questionId, '(numerical) - has answer:', hasAnswer, '- value:', value);
+            }
+
+            // Check for calculated input
+            const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
+            if (calculatedInput.length > 0) {
+                const value = calculatedInput.val();
+                hasAnswer = value !== '' && value !== null && !isNaN(value);
+                console.log('Question', questionId, '(calculated) - has answer:', hasAnswer, '- value:', value);
+            }
+
             // Check for matching selects
             const matchingSelects = $(`select[name^="question_${questionId}["]`);
             if (matchingSelects.length > 0) {
@@ -1093,8 +1175,10 @@
     }
 
     function updateTimerDisplay() {
+        // Ensure remainingTimeSeconds is an integer
+        remainingTimeSeconds = Math.floor(remainingTimeSeconds);
         const minutes = Math.floor(remainingTimeSeconds / 60);
-        const seconds = remainingTimeSeconds % 60;
+        const seconds = Math.floor(remainingTimeSeconds % 60);
         $('#timer-minutes').text(String(minutes).padStart(2, '0'));
         $('#timer-seconds').text(String(seconds).padStart(2, '0'));
     }
@@ -1146,6 +1230,22 @@
             console.log('Textarea answer:', answer, '- valid:', hasValidAnswer);
         }
 
+        // Check for numerical input
+        const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
+        if (numericalInput.length > 0) {
+            answer = numericalInput.val();
+            hasValidAnswer = answer !== '' && answer !== null && !isNaN(answer);
+            console.log('Numerical answer:', answer, '- valid:', hasValidAnswer);
+        }
+
+        // Check for calculated input
+        const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
+        if (calculatedInput.length > 0) {
+            answer = calculatedInput.val();
+            hasValidAnswer = answer !== '' && answer !== null && !isNaN(answer);
+            console.log('Calculated answer:', answer, '- valid:', hasValidAnswer);
+        }
+
         // Check for matching selects
         const matchingSelects = $(`select[name^="question_${questionId}["]`);
         if (matchingSelects.length > 0) {
@@ -1162,6 +1262,24 @@
             });
             hasValidAnswer = allAnswered && Object.keys(answer).length > 0;
             console.log('Matching answer:', answer, '- valid:', hasValidAnswer);
+        }
+
+        // Check for fill in blank inputs
+        const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
+        if (fillBlankInputs.length > 0) {
+            answer = {};
+            let allFilled = true;
+            fillBlankInputs.each(function() {
+                const blankIndex = $(this).data('blank-index');
+                const value = $(this).val().trim();
+                if (value) {
+                    answer[blankIndex] = value;
+                } else {
+                    allFilled = false;
+                }
+            });
+            hasValidAnswer = allFilled && Object.keys(answer).length > 0;
+            console.log('Fill blank answer:', answer, '- valid:', hasValidAnswer);
         }
 
         // Update answered questions set
@@ -1350,6 +1468,20 @@
                 if (textareaInput.length > 0) {
                     answer = textareaInput.val();
                     console.log('Question', questionId, '- Textarea answer:', answer);
+                }
+
+                // Numerical input
+                const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
+                if (numericalInput.length > 0) {
+                    answer = numericalInput.val();
+                    console.log('Question', questionId, '- Numerical answer:', answer);
+                }
+
+                // Calculated input
+                const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
+                if (calculatedInput.length > 0) {
+                    answer = calculatedInput.val();
+                    console.log('Question', questionId, '- Calculated answer:', answer);
                 }
 
                 // Matching selects

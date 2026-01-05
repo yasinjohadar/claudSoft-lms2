@@ -374,6 +374,12 @@ class QuizAttemptController extends Controller
                         'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string)$answer),
                         'response_data' => ['answer' => $answer],
                     ]);
+                } elseif (in_array($questionType, ['numerical', 'calculated'])) {
+                    // Numerical answer - save as response_text (string representation of number)
+                    $response->update([
+                        'response_text' => is_string($answer) ? $answer : (is_numeric($answer) ? (string)$answer : ''),
+                        'response_data' => ['answer' => $answer, 'numeric_value' => is_numeric($answer) ? (float)$answer : null],
+                    ]);
                 } else {
                     // Complex types (matching, ordering, fill_blanks, drag_drop) - save as response_data
                     $response->update([
