@@ -646,13 +646,77 @@ class QuestionModuleAttemptController extends Controller
      */
     public function submit(Request $request, $attemptId)
     {
+        // CRITICAL: Log immediately at the start of the method
+        try {
+            Log::info('=== QuestionModuleAttemptController::submit METHOD CALLED ===', [
+                'attempt_id_param' => $attemptId,
+                'attempt_id_type' => gettype($attemptId),
+                'user_id' => auth()->id(),
+                'user_authenticated' => auth()->check(),
+                'url' => request()->fullUrl(),
+                'method' => request()->method(),
+            ]);
+        } catch (\Exception $logError) {
+            @file_put_contents(storage_path('logs/submit_method_debug.log'), 
+                date('Y-m-d H:i:s') . " - Method called with attempt_id: " . var_export($attemptId, true) . "\n", 
+                FILE_APPEND
+            );
+        }
+        
         try {
             $student = auth()->user();
+            
+            if (!$student) {
+                Log::error('No authenticated user in submit method');
+                return redirect()->route('login')
+                    ->with('error', 'يجب تسجيل الدخول أولاً');
+            }
+            
+            // Handle attemptId - convert to int if needed
+            $attemptIdInt = is_numeric($attemptId) ? (int)$attemptId : (is_object($attemptId) && isset($attemptId->id) ? (int)$attemptId->id : (int)$attemptId);
+            
+            Log::info('Loading attempt for submit', [
+                'attempt_id_param' => $attemptId,
+                'attempt_id_int' => $attemptIdInt,
+                'student_id' => $student->id,
+            ]);
+            
             $attempt = QuestionModuleAttempt::with(['responses', 'questionModule'])
-                ->findOrFail($attemptId);
+                ->find($attemptIdInt);
+            
+            if (!$attempt) {
+                Log::error('Attempt not found in submit method', [
+                    'attempt_id' => $attemptIdInt,
+                    'student_id' => $student->id,
+                ]);
+                
+                // Try to get fallback module ID from session
+                $fallbackModuleId = session()->get('fallback_module_id');
+                if ($fallbackModuleId) {
+                    return redirect()->route('student.learn.module', $fallbackModuleId)
+                        ->with('error', 'المحاولة غير موجودة');
+                }
+                
+                return redirect()->route('student.dashboard')
+                    ->with('error', 'المحاولة غير موجودة');
+            }
+            
+            Log::info('Attempt loaded for submit', [
+                'attempt_id' => $attempt->id,
+                'attempt_student_id' => $attempt->student_id,
+                'current_student_id' => $student->id,
+                'student_id_match' => (int)$attempt->student_id == (int)$student->id,
+            ]);
 
-            // Check ownership
-            if ($attempt->student_id !== $student->id) {
+            // Check ownership - use == instead of !== for type flexibility
+            if ((int)$attempt->student_id !== (int)$student->id) {
+                Log::error('Attempt ownership mismatch in submit', [
+                    'attempt_student_id' => $attempt->student_id,
+                    'attempt_student_id_type' => gettype($attempt->student_id),
+                    'current_student_id' => $student->id,
+                    'current_student_id_type' => gettype($student->id),
+                    'attempt_id' => $attempt->id,
+                ]);
                 return redirect()->route('student.dashboard')
                     ->with('error', 'غير مصرح لك بإرسال هذا الاختبار');
             }
@@ -662,13 +726,50 @@ class QuestionModuleAttemptController extends Controller
                 return redirect()->route('student.question-module.result', $attempt->id);
             }
 
+            Log::info('Submitting attempt', [
+                'attempt_id' => $attempt->id,
+                'student_id' => $student->id,
+            ]);
+            
             $this->submitAttempt($attempt, false);
+
+            Log::info('Attempt submitted successfully', [
+                'attempt_id' => $attempt->id,
+                'student_id' => $student->id,
+            ]);
 
             return redirect()->route('student.question-module.result', $attempt->id)
                 ->with('success', 'تم إرسال الاختبار بنجاح');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Attempt not found in submit method', [
+                'attempt_id' => $attemptId ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+            
+            // Try to get fallback module ID from session
+            $fallbackModuleId = session()->get('fallback_module_id');
+            if ($fallbackModuleId) {
+                return redirect()->route('student.learn.module', $fallbackModuleId)
+                    ->with('error', 'المحاولة غير موجودة');
+            }
+            
+            return redirect()->route('student.dashboard')
+                ->with('error', 'المحاولة غير موجودة');
         } catch (\Exception $e) {
+            Log::error('Error in QuestionModuleAttemptController::submit', [
+                'attempt_id' => $attemptId ?? 'unknown',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $errorMessage = config('app.debug') 
+                ? 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage()
+                : 'حدث خطأ أثناء إرسال الاختبار. يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.';
+            
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage());
+                ->with('error', $errorMessage);
         }
     }
 
@@ -686,8 +787,13 @@ class QuestionModuleAttemptController extends Controller
                 'responses.question.options'
             ])->findOrFail($attemptId);
 
-            // Check ownership
-            if ($attempt->student_id !== $student->id) {
+            // Check ownership - use == instead of !== for type flexibility
+            if ((int)$attempt->student_id !== (int)$student->id) {
+                Log::error('Attempt ownership mismatch in result', [
+                    'attempt_student_id' => $attempt->student_id,
+                    'current_student_id' => $student->id,
+                    'attempt_id' => $attempt->id,
+                ]);
                 return redirect()->route('student.dashboard')
                     ->with('error', 'غير مصرح لك بالوصول لهذه النتيجة');
             }
