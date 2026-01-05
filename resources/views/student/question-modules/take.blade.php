@@ -647,6 +647,7 @@
     let answeredQuestions = new Set();
     let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
     let timerInterval = null;
+    let isSubmitting = false; // Track if quiz is being submitted
 
     // Initialize on page load
     $(document).ready(function() {
@@ -1243,6 +1244,12 @@
 
     // Submit quiz
     function submitQuiz(autoSubmit = false) {
+        // Mark as submitting to prevent beforeunload warning
+        isSubmitting = true;
+        
+        // Remove beforeunload listener
+        window.removeEventListener('beforeunload', preventUnload);
+        
         if (timerInterval) {
             clearInterval(timerInterval);
         }
@@ -1261,6 +1268,24 @@
         $('body').append(form);
         form.submit();
     }
+    
+    // Prevent accidental page close - only when quiz is in progress
+    function preventUnload(e) {
+        // Don't show warning if quiz is being submitted
+        if (isSubmitting) {
+            return;
+        }
+        
+        // Only show warning if there are answered questions
+        if (answeredQuestions.size > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        }
+    }
+    
+    // Add event listener
+    window.addEventListener('beforeunload', preventUnload);
 
     // Toast notification
     function showToast(message, type = 'info') {
@@ -1278,10 +1303,5 @@
         });
     }
 
-    // Prevent accidental page close
-    window.addEventListener('beforeunload', function (e) {
-        e.preventDefault();
-        e.returnValue = '';
-    });
 </script>
 @endpush
