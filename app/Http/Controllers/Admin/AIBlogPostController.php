@@ -87,10 +87,13 @@ class AIBlogPostController extends Controller
                 ]
             );
 
+            // تنظيف جميع البيانات من الأحرف غير الصالحة في UTF-8
+            $blogPostData = $this->cleanUtf8Data($blogPostData);
+
             return response()->json([
                 'success' => true,
                 'data' => $blogPostData
-            ]);
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
 
         } catch (\Exception $e) {
             Log::error('Error generating blog post with AI: ' . $e->getMessage(), [
@@ -272,6 +275,27 @@ class AIBlogPostController extends Controller
                             ->with('error', 'حدث خطأ أثناء حفظ المقال: ' . $e->getMessage())
                             ->withInput();
         }
+    }
+
+    /**
+     * تنظيف البيانات من الأحرف غير الصالحة في UTF-8
+     */
+    private function cleanUtf8Data($data)
+    {
+        if (is_array($data)) {
+            return array_map([$this, 'cleanUtf8Data'], $data);
+        } elseif (is_string($data)) {
+            // التحقق من الترميز وإصلاحه
+            if (!mb_check_encoding($data, 'UTF-8')) {
+                $data = mb_convert_encoding($data, 'UTF-8', 'auto');
+            }
+            // إزالة الأحرف غير الصالحة
+            $data = mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            // إزالة BOM إذا كان موجوداً
+            $data = preg_replace('/^\xEF\xBB\xBF/', '', $data);
+            return $data;
+        }
+        return $data;
     }
 }
 

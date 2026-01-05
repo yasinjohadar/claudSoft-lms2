@@ -238,7 +238,20 @@ class ZaiProviderService extends AIProviderService
             return '';
         }
         
-        return $result['content'] ?? '';
+        $content = $result['content'] ?? '';
+        
+        // تنظيف المحتوى من الأحرف غير الصالحة في UTF-8
+        if (!empty($content)) {
+            if (!mb_check_encoding($content, 'UTF-8')) {
+                $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+            }
+            // إزالة الأحرف غير الصالحة
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+            // إزالة BOM إذا كان موجوداً
+            $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+        }
+        
+        return $content;
     }
 
     public function estimateTokens(string $text): int
