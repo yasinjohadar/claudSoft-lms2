@@ -9,6 +9,7 @@ use App\Models\QuestionModuleResponse;
 use App\Models\CourseEnrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuestionModuleAttemptController extends Controller
 {
@@ -83,13 +84,18 @@ class QuestionModuleAttemptController extends Controller
                 return redirect()->route('student.question-module.take', $inProgressAttempt->id);
             }
 
+            // Check if module has questions
+            $questions = $questionModule->questions;
+            if ($questions->isEmpty()) {
+                return $redirectToModule('هذا الاختبار لا يحتوي على أسئلة');
+            }
+
             // Create new attempt
             DB::beginTransaction();
             try {
                 $attemptNumber = $questionModule->studentAttempts($student->id)->count() + 1;
 
                 // Prepare questions order
-                $questions = $questionModule->questions;
                 $questionIds = $questions->pluck('id')->toArray();
 
                 // Shuffle if required
@@ -109,10 +115,16 @@ class QuestionModuleAttemptController extends Controller
                 // Create response records for all questions
                 foreach ($questionIds as $questionId) {
                     $question = $questions->find($questionId);
+                    if (!$question) {
+                        throw new \Exception("السؤال رقم {$questionId} غير موجود");
+                    }
+                    
+                    $grade = $question->pivot->question_grade ?? 1.0;
+                    
                     QuestionModuleResponse::create([
                         'attempt_id' => $attempt->id,
                         'question_id' => $questionId,
-                        'max_score' => $question->pivot->question_grade,
+                        'max_score' => $grade,
                     ]);
                 }
 
@@ -121,6 +133,12 @@ class QuestionModuleAttemptController extends Controller
                 return redirect()->route('student.question-module.take', $attempt->id);
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Error creating question module attempt', [
+                    'question_module_id' => $questionModuleId,
+                    'student_id' => $student->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
                 throw $e;
             }
         } catch (\Exception $e) {
@@ -177,13 +195,25 @@ class QuestionModuleAttemptController extends Controller
             }
 
             // Get questions in order
-            $questionOrder = $attempt->question_order;
+            $questionOrder = $attempt->question_order ?? [];
+            
+            if (empty($questionOrder)) {
+                // If no question order, get all questions from module
+                $questionOrder = $attempt->questionModule->questions->pluck('id')->toArray();
+            }
+            
             $questions = collect();
             foreach ($questionOrder as $questionId) {
                 $question = $attempt->questionModule->questions->find($questionId);
                 if ($question) {
                     $questions->push($question);
                 }
+            }
+
+            // Check if we have questions
+            if ($questions->isEmpty()) {
+                return redirect()->route('student.dashboard')
+                    ->with('error', 'لا توجد أسئلة في هذا الاختبار');
             }
 
             $remainingTime = $attempt->getRemainingTime();
