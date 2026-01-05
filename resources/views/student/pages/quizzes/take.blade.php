@@ -108,8 +108,22 @@
                                 $response = $attempt->responses->where('question_id', $question->id)->first();
                                 // QuizResponse uses response_data or selected_option_ids, convert to student_answer format
                                 if ($response) {
-                                    if ($response->response_data) {
-                                        $savedAnswer = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                    // For numerical and calculated questions, prefer response_text
+                                    if (in_array($question->questionType->name, ['numerical', 'calculated']) && $response->response_text) {
+                                        $savedAnswer = $response->response_text;
+                                    } elseif ($response->response_data) {
+                                        $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
+                                        // If response_data has 'answer' key, use it; otherwise use the whole array
+                                        if (is_array($responseData) && isset($responseData['answer'])) {
+                                            // For numerical/calculated, extract the numeric value if it's nested
+                                            if (in_array($question->questionType->name, ['numerical', 'calculated'])) {
+                                                $savedAnswer = is_array($responseData['answer']) ? (string)($responseData['answer']['numeric_value'] ?? $responseData['answer'][0] ?? '') : (string)$responseData['answer'];
+                                            } else {
+                                                $savedAnswer = $responseData['answer'];
+                                            }
+                                        } else {
+                                            $savedAnswer = $responseData;
+                                        }
                                     } elseif ($response->selected_option_ids) {
                                         $savedAnswer = is_array($response->selected_option_ids) ? $response->selected_option_ids : json_decode($response->selected_option_ids, true);
                                         // If single value, convert to direct value
@@ -401,6 +415,8 @@
                                         $metadata = $question->metadata ?? [];
                                         $tolerance = $metadata['tolerance'] ?? 0;
                                         $hint = $metadata['hint'] ?? null;
+                                        // Ensure savedAnswer is a string for numerical input
+                                        $numericalAnswer = is_array($savedAnswer) ? (isset($savedAnswer['answer']) ? (string)$savedAnswer['answer'] : (string)($savedAnswer[0] ?? '')) : (string)($savedAnswer ?? '');
                                     @endphp
                                     <div class="mb-3">
                                         @if($hint)
@@ -413,7 +429,7 @@
                                                class="form-control answer-input"
                                                name="question_{{ $question->id }}"
                                                id="numerical_{{ $question->id }}"
-                                               value="{{ $savedAnswer }}"
+                                               value="{{ $numericalAnswer }}"
                                                step="any"
                                                placeholder="أدخل الرقم..."
                                                data-question-id="{{ $question->id }}"
@@ -432,6 +448,8 @@
                                         $metadata = $question->metadata ?? [];
                                         $tolerance = $metadata['tolerance'] ?? 0;
                                         $formula = $metadata['formula'] ?? null;
+                                        // Ensure savedAnswer is a string for calculated input
+                                        $calculatedAnswer = is_array($savedAnswer) ? (isset($savedAnswer['answer']) ? (string)$savedAnswer['answer'] : (string)($savedAnswer[0] ?? '')) : (string)($savedAnswer ?? '');
                                     @endphp
                                     <div class="mb-3">
                                         @if($formula)
@@ -444,7 +462,7 @@
                                                class="form-control answer-input"
                                                name="question_{{ $question->id }}"
                                                id="calculated_{{ $question->id }}"
-                                               value="{{ $savedAnswer }}"
+                                               value="{{ $calculatedAnswer }}"
                                                step="any"
                                                placeholder="أدخل النتيجة..."
                                                data-question-id="{{ $question->id }}"
