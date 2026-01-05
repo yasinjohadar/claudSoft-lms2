@@ -525,12 +525,18 @@ class QuizController extends Controller
 
         // Get available questions from the question bank
         // Get IDs of questions already in the quiz to exclude them
-        $existingQuestionIds = $quiz->questions()->select('question_bank.id')->pluck('question_bank.id')->toArray();
+        // Use pivot table directly for accurate results
+        $existingQuestionIds = DB::table('quiz_questions')
+            ->where('quiz_id', $quiz->id)
+            ->pluck('question_id')
+            ->toArray();
         
         // Get all active questions (no automatic course filtering)
         $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
             ->where('is_active', true)
-            ->whereNotIn('id', $existingQuestionIds)
+            ->when(!empty($existingQuestionIds), function($query) use ($existingQuestionIds) {
+                return $query->whereNotIn('id', $existingQuestionIds);
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -561,7 +567,11 @@ class QuizController extends Controller
 
             // If _method is PUT, update existing question settings
             if ($request->input('_method') === 'PUT') {
-                if (!$quiz->questions()->where('id', $validated['question_id'])->exists()) {
+                // Check if question exists in quiz using pivot table
+                if (!DB::table('quiz_questions')
+                    ->where('quiz_id', $quiz->id)
+                    ->where('question_id', $validated['question_id'])
+                    ->exists()) {
                     return response()->json([
                         'success' => false,
                         'message' => 'السؤال غير موجود في هذا الاختبار',
@@ -588,8 +598,11 @@ class QuizController extends Controller
                 // Lock the quiz row for update
                 $quiz = Quiz::lockForUpdate()->findOrFail($quiz->id);
 
-                // Check if question is already added
-                if ($quiz->questions()->where('id', $validated['question_id'])->exists()) {
+                // Check if question is already added - use pivot table directly for accurate check
+                if (DB::table('quiz_questions')
+                    ->where('quiz_id', $quiz->id)
+                    ->where('question_id', $validated['question_id'])
+                    ->exists()) {
                     return response()->json([
                         'success' => false,
                         'message' => 'السؤال موجود بالفعل في هذا الاختبار',
@@ -688,19 +701,18 @@ class QuizController extends Controller
 
         // Get available questions from the question bank
         // Get IDs of questions already in the quiz to exclude them
-        $existingQuestionIds = $quiz->questions()->select('question_bank.id')->pluck('question_bank.id')->toArray();
+        // Use pivot table directly for accurate results
+        $existingQuestionIds = DB::table('quiz_questions')
+            ->where('quiz_id', $quiz->id)
+            ->pluck('question_id')
+            ->toArray();
         
+        // Get all active questions (no automatic course filtering)
         $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
-            ->where(function($query) use ($quiz) {
-                if ($quiz->course_id) {
-                    $query->where('course_id', $quiz->course_id)
-                          ->orWhereNull('course_id');
-                } else {
-                    $query->whereNull('course_id');
-                }
-            })
             ->where('is_active', true)
-            ->whereNotIn('id', $existingQuestionIds)
+            ->when(!empty($existingQuestionIds), function($query) use ($existingQuestionIds) {
+                return $query->whereNotIn('id', $existingQuestionIds);
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 

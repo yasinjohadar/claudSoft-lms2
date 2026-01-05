@@ -381,6 +381,8 @@ $(document).ready(function() {
             }
 
             const question = selectedQuestions[index];
+            console.log(`Importing question ${index + 1}/${total}: ID=${question.id}, Grade=${question.grade}`);
+            
             $.ajax({
                 url: '{{ route('quizzes.add-question', $quiz->id) }}',
                 method: 'POST',
@@ -390,10 +392,13 @@ $(document).ready(function() {
                     question_grade: question.grade
                 },
                 success: function(response) {
+                    console.log(`Question ${question.id} response:`, response);
                     if (response.success) {
                         imported++;
+                        console.log(`✓ Question ${question.id} imported successfully`);
                     } else {
                         failed++;
+                        console.warn(`✗ Question ${question.id} failed:`, response.message);
                         // Log warning for duplicate questions
                         if (response.message && response.message.includes('موجود')) {
                             console.warn('Question already exists:', question.id, response.message);
@@ -405,7 +410,12 @@ $(document).ready(function() {
                 },
                 error: function(xhr) {
                     failed++;
-                    const errorMessage = xhr.responseJSON?.message || 'حدث خطأ غير معروف';
+                    const errorMessage = xhr.responseJSON?.message || xhr.statusText || 'حدث خطأ غير معروف';
+                    console.error(`✗ Question ${question.id} error:`, {
+                        status: xhr.status,
+                        message: errorMessage,
+                        response: xhr.responseJSON
+                    });
                     // Log warning for duplicate questions (400 status)
                     if (xhr.status === 400 && errorMessage.includes('موجود')) {
                         console.warn('Question already exists:', question.id, errorMessage);
