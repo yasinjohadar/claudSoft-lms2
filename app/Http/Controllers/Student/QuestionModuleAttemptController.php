@@ -16,46 +16,105 @@ class QuestionModuleAttemptController extends Controller
     /**
      * Start a new attempt for a question module.
      */
-    public function start($questionModuleId)
+    public function start($questionModule)
     {
-        // Get module_id from request (passed as query parameter)
-        $moduleIdFromRequest = request()->get('module_id');
-        
-        // Store the referer URL for error redirects
-        $referer = request()->headers->get('referer');
-        $moduleIdFromReferer = null;
-        
-        // Try to extract module ID from referer URL
-        if ($referer && preg_match('/\/student\/learn\/modules\/(\d+)/', $referer, $matches)) {
-            $moduleIdFromReferer = $matches[1];
-        }
-        
-        // Use module_id from request, referer, or null
-        $fallbackModuleId = $moduleIdFromRequest ?? $moduleIdFromReferer;
+        // Initialize variables for error handling
+        $questionModuleId = null;
+        $fallbackModuleId = null;
+        $courseModule = null;
         
         try {
+            // Handle both ID and model binding
+            $questionModuleId = is_numeric($questionModule) ? (int)$questionModule : (is_object($questionModule) ? $questionModule->id : (int)$questionModule);
+            
+            // Validate questionModuleId
+            if (!$questionModuleId || $questionModuleId <= 0) {
+                Log::error('Invalid question module ID', [
+                    'question_module_param' => $questionModule,
+                    'question_module_type' => gettype($questionModule),
+                    'user_id' => auth()->id(),
+                ]);
+                return $this->handleError('معرف الاختبار غير صحيح', null);
+            }
+            
+            // Validate student authentication early
             $student = auth()->user();
-            $questionModule = QuestionModule::with(['questions.questionType', 'questions.options'])
-                ->findOrFail($questionModuleId);
+            if (!$student) {
+                Log::error('No authenticated user in start method - early validation');
+                return redirect()->route('login')
+                    ->with('error', 'يجب تسجيل الدخول أولاً');
+            }
+            
+            // Validate student role
+            if (!$student->hasRole('student')) {
+                Log::error('User does not have student role', [
+                    'user_id' => $student->id,
+                    'roles' => $student->getRoleNames(),
+                ]);
+                return redirect()->route('student.dashboard')
+                    ->with('error', 'ليس لديك صلاحية للوصول إلى هذه الصفحة');
+            }
+            
+            Log::info('QuestionModuleAttemptController::start called', [
+                'question_module_id' => $questionModuleId,
+                'question_module_param' => $questionModule,
+                'question_module_type' => gettype($questionModule),
+                'user_id' => auth()->id(),
+                'url' => request()->fullUrl(),
+                'referer' => request()->headers->get('referer'),
+            ]);
+
+            // Get module_id from request (passed as query parameter)
+            $moduleIdFromRequest = request()->get('module_id');
+            
+            // Store the referer URL for error redirects
+            $referer = request()->headers->get('referer');
+            $moduleIdFromReferer = null;
+            
+            // Try to extract module ID from referer URL
+            if ($referer && preg_match('/\/student\/learn\/modules\/(\d+)/', $referer, $matches)) {
+                $moduleIdFromReferer = $matches[1];
+            }
+            
+            // Use module_id from request, referer, or null
+            $fallbackModuleId = $moduleIdFromRequest ?? $moduleIdFromReferer;
+            
+            Log::info('Fallback module ID', [
+                'module_id_from_request' => $moduleIdFromRequest,
+                'module_id_from_referer' => $moduleIdFromReferer,
+                'fallback_module_id' => $fallbackModuleId,
+            ]);
+            
+            Log::info('Loading question module', ['question_module_id' => $questionModuleId]);
+            
+            // If $questionModule is already a model instance, use it; otherwise load it
+            if (!($questionModule instanceof QuestionModule)) {
+                $questionModule = QuestionModule::with(['questions.questionType', 'questions.options'])
+                    ->findOrFail($questionModuleId);
+            } else {
+                $questionModule->load(['questions.questionType', 'questions.options']);
+            }
+            
+            Log::info('Question module loaded', [
+                'question_module_id' => $questionModule->id,
+                'title' => $questionModule->title,
+                'questions_count' => $questionModule->questions->count(),
+            ]);
 
             // Get course module for redirect on error
             $courseModule = $questionModule->courseModules()->first();
-            $redirectToModule = function($message) use ($courseModule, $fallbackModuleId) {
-                if ($courseModule) {
-                    return redirect()->route('student.learn.module', $courseModule->id)
-                        ->with('error', $message);
-                }
-                // If no course module, try to redirect to the module from request/referer
-                if ($fallbackModuleId) {
-                    return redirect()->route('student.learn.module', $fallbackModuleId)
-                        ->with('error', $message);
-                }
-                return redirect()->route('student.dashboard')
-                    ->with('error', $message);
+            
+            // Create redirect helper function
+            $redirectToModule = function($message) use ($courseModule, $fallbackModuleId, $questionModuleId) {
+                return $this->handleError($message, $courseModule, $fallbackModuleId, $questionModuleId);
             };
 
             // Check if module is available
             if (!$questionModule->isAvailable()) {
+                Log::warning('Question module not available', [
+                    'question_module_id' => $questionModule->id,
+                    'student_id' => $student->id,
+                ]);
                 return $redirectToModule('هذا الاختبار غير متاح حالياً');
             }
 
@@ -66,12 +125,36 @@ class QuestionModuleAttemptController extends Controller
                     ->first();
 
                 if (!$enrollment || !$enrollment->isActive()) {
+                    Log::warning('Student not enrolled or enrollment inactive', [
+                        'question_module_id' => $questionModule->id,
+                        'course_module_id' => $courseModule->id,
+                        'student_id' => $student->id,
+                        'enrollment_exists' => $enrollment ? true : false,
+                        'enrollment_active' => $enrollment ? $enrollment->isActive() : false,
+                    ]);
                     return $redirectToModule('أنت غير مسجل في هذا الكورس');
                 }
+                
+                Log::info('Enrollment verified', [
+                    'enrollment_id' => $enrollment->id,
+                    'course_id' => $courseModule->course_id,
+                    'student_id' => $student->id,
+                ]);
+            } else {
+                Log::warning('No course module found for question module', [
+                    'question_module_id' => $questionModule->id,
+                ]);
             }
 
             // Check if student can attempt
             if (!$questionModule->canStudentAttempt($student->id)) {
+                $attemptsCount = $questionModule->studentAttempts($student->id)->where('status', 'completed')->count();
+                Log::warning('Student cannot attempt - max attempts reached', [
+                    'question_module_id' => $questionModule->id,
+                    'student_id' => $student->id,
+                    'attempts_count' => $attemptsCount,
+                    'attempts_allowed' => $questionModule->attempts_allowed,
+                ]);
                 return $redirectToModule('لقد استنفدت جميع المحاولات المسموحة');
             }
 
@@ -81,14 +164,29 @@ class QuestionModuleAttemptController extends Controller
                 ->first();
 
             if ($inProgressAttempt) {
+                Log::info('Redirecting to in-progress attempt', [
+                    'attempt_id' => $inProgressAttempt->id,
+                    'question_module_id' => $questionModule->id,
+                    'student_id' => $student->id,
+                ]);
                 return redirect()->route('student.question-module.take', $inProgressAttempt->id);
             }
 
             // Check if module has questions
             $questions = $questionModule->questions;
             if ($questions->isEmpty()) {
+                Log::error('Question module has no questions', [
+                    'question_module_id' => $questionModule->id,
+                    'student_id' => $student->id,
+                ]);
                 return $redirectToModule('هذا الاختبار لا يحتوي على أسئلة');
             }
+            
+            Log::info('Starting attempt creation', [
+                'question_module_id' => $questionModule->id,
+                'questions_count' => $questions->count(),
+                'student_id' => $student->id,
+            ]);
 
             // Create new attempt
             DB::beginTransaction();
@@ -130,35 +228,79 @@ class QuestionModuleAttemptController extends Controller
 
                 DB::commit();
 
+                Log::info('Attempt created successfully', [
+                    'attempt_id' => $attempt->id,
+                    'question_module_id' => $questionModuleId,
+                    'student_id' => $student->id,
+                    'attempt_number' => $attemptNumber,
+                    'questions_count' => count($questionIds),
+                ]);
+
                 return redirect()->route('student.question-module.take', $attempt->id);
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error('Error creating question module attempt', [
+                Log::error('Error creating question module attempt (inner catch)', [
                     'question_module_id' => $questionModuleId,
                     'student_id' => $student->id,
                     'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
                 ]);
                 throw $e;
             }
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Question module not found', [
+                'question_module_id' => $questionModuleId ?? 'unknown',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            // Try to get course module for redirect
+            if ($questionModuleId) {
+                try {
+                    $questionModule = QuestionModule::find($questionModuleId);
+                    if ($questionModule) {
+                        $courseModule = $questionModule->courseModules()->first();
+                    }
+                } catch (\Exception $ex) {
+                    Log::error('Failed to get course module for redirect', [
+                        'error' => $ex->getMessage(),
+                    ]);
+                }
+            }
+            
+            return $this->handleError('الاختبار غير موجود', $courseModule, $fallbackModuleId, $questionModuleId);
+            
         } catch (\Exception $e) {
-            // Get course module for redirect on error
-            $questionModule = QuestionModule::find($questionModuleId);
-            $courseModule = $questionModule ? $questionModule->courseModules()->first() : null;
+            Log::error('Error in QuestionModuleAttemptController::start (outer catch)', [
+                'question_module_id' => $questionModuleId ?? 'unknown',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
-            if ($courseModule) {
-                return redirect()->route('student.learn.module', $courseModule->id)
-                    ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
+            // Try to get course module for redirect
+            if ($questionModuleId) {
+                try {
+                    $questionModule = QuestionModule::find($questionModuleId);
+                    if ($questionModule) {
+                        $courseModule = $questionModule->courseModules()->first();
+                    }
+                } catch (\Exception $ex) {
+                    Log::error('Failed to get course module for redirect', [
+                        'error' => $ex->getMessage(),
+                    ]);
+                }
             }
             
-            // If no course module, try to redirect to the module from request/referer
-            if ($fallbackModuleId) {
-                return redirect()->route('student.learn.module', $fallbackModuleId)
-                    ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
-            }
+            $errorMessage = config('app.debug') 
+                ? 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage()
+                : 'حدث خطأ أثناء بدء الاختبار. يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.';
             
-            return redirect()->route('student.dashboard')
-                ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
+            return $this->handleError($errorMessage, $courseModule, $fallbackModuleId, $questionModuleId);
         }
     }
 
@@ -418,5 +560,65 @@ class QuestionModuleAttemptController extends Controller
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Helper: Handle errors and redirect appropriately.
+     * 
+     * @param string $message Error message to display
+     * @param \App\Models\CourseModule|null $courseModule Course module for redirect
+     * @param int|null $fallbackModuleId Fallback module ID from request/referer
+     * @param int|null $questionModuleId Question module ID for logging
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function handleError(string $message, $courseModule = null, $fallbackModuleId = null, $questionModuleId = null)
+    {
+        Log::warning('Redirecting due to error', [
+            'message' => $message,
+            'course_module_id' => $courseModule ? $courseModule->id : null,
+            'fallback_module_id' => $fallbackModuleId,
+            'question_module_id' => $questionModuleId,
+            'user_id' => auth()->id(),
+        ]);
+        
+        // Priority 1: Redirect to course module if available
+        if ($courseModule) {
+            return redirect()->route('student.learn.module', $courseModule->id)
+                ->with('error', $message);
+        }
+        
+        // Priority 2: Redirect to fallback module from request/referer
+        if ($fallbackModuleId) {
+            return redirect()->route('student.learn.module', $fallbackModuleId)
+                ->with('error', $message);
+        }
+        
+        // Priority 3: Try to get course module from question module
+        if ($questionModuleId) {
+            try {
+                $questionModule = QuestionModule::find($questionModuleId);
+                if ($questionModule) {
+                    $courseModule = $questionModule->courseModules()->first();
+                    if ($courseModule) {
+                        return redirect()->route('student.learn.module', $courseModule->id)
+                            ->with('error', $message);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to get course module in handleError', [
+                    'question_module_id' => $questionModuleId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        // Last resort: Redirect to dashboard with error message
+        Log::error('Redirecting to dashboard as last resort', [
+            'message' => $message,
+            'question_module_id' => $questionModuleId,
+        ]);
+        
+        return redirect()->route('student.dashboard')
+            ->with('error', $message);
     }
 }

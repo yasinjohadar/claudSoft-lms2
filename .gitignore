@@ -26,5 +26,7 @@ Thumbs.db
 /bootstrap/cache/*
 !/bootstrap/cache/.gitignore
 
-# Markdown documentation files
-*.md
+# Markdown documentation files (keep deployment guides)
+# *.md
+DEPLOYMENT.md
+TROUBLESHOOTING.md
