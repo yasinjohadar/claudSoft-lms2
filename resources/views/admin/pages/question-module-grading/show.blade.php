@@ -103,33 +103,130 @@
                                     <div class="p-3 bg-light rounded">
                                         @php
                                             $studentAnswer = $response->student_answer;
+                                            $questionTypeName = $question->questionType->name ?? '';
+                                            
+                                            // Helper function to extract option ID
+                                            $getOptionId = function($answer) {
+                                                if (is_array($answer)) {
+                                                    return $answer['selected_option'] ?? $answer['answer'] ?? (is_numeric(array_values($answer)[0] ?? null) ? (int)array_values($answer)[0] : null);
+                                                }
+                                                return is_numeric($answer) ? (int)$answer : null;
+                                            };
+                                            
+                                            // Helper function to extract option IDs array
+                                            $getOptionIds = function($answer) {
+                                                if (is_array($answer)) {
+                                                    if (isset($answer['selected_options'])) {
+                                                        return array_map('intval', $answer['selected_options']);
+                                                    }
+                                                    // Check if all values are numeric (direct array of IDs)
+                                                    $allNumeric = true;
+                                                    foreach ($answer as $val) {
+                                                        if (!is_numeric($val)) {
+                                                            $allNumeric = false;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if ($allNumeric) {
+                                                        return array_map('intval', $answer);
+                                                    }
+                                                }
+                                                return [];
+                                            };
+                                            
+                                            // Helper function to extract text answer
+                                            $getTextAnswer = function($answer) {
+                                                if (is_array($answer)) {
+                                                    return $answer['answer'] ?? (isset($answer[0]) && !is_numeric($answer[0]) ? $answer[0] : null);
+                                                }
+                                                return !is_numeric($answer) ? $answer : null;
+                                            };
                                         @endphp
                                         
-                                        @if(is_array($studentAnswer))
-                                            @if(isset($studentAnswer['selected_option']))
-                                                @php $selectedOption = $question->options->find($studentAnswer['selected_option']); @endphp
+                                        @if(empty($studentAnswer))
+                                            <span class="text-muted">لم يتم الإجابة</span>
+                                        @elseif($questionTypeName === 'multiple_choice_single' || $questionTypeName === 'true_false')
+                                            @php $optionId = $getOptionId($studentAnswer); @endphp
+                                            @if($optionId)
+                                                @php $selectedOption = $question->options->find($optionId); @endphp
                                                 @if($selectedOption)
                                                     <div class="alert alert-info mb-0">
-                                                        <i class="fas fa-check-circle me-2"></i>{{ $selectedOption->option_text }}
+                                                        <i class="fas fa-check-circle me-2"></i>{!! $selectedOption->option_text !!}
                                                     </div>
+                                                @else
+                                                    <span class="text-danger">الخيار المحدد غير موجود (ID: {{ $optionId }})</span>
+                                                    <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                                 @endif
-                                            @elseif(isset($studentAnswer['selected_options']))
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
+                                        @elseif($questionTypeName === 'multiple_choice_multiple')
+                                            @php $optionIds = $getOptionIds($studentAnswer); @endphp
+                                            @if(!empty($optionIds))
                                                 <ul class="mb-0">
                                                     @foreach($question->options as $option)
-                                                        @if(in_array($option->id, $studentAnswer['selected_options']))
-                                                            <li>{{ $option->option_text }}</li>
+                                                        @if(in_array((int)$option->id, $optionIds))
+                                                            <li>{!! $option->option_text !!}</li>
                                                         @endif
                                                     @endforeach
                                                 </ul>
-                                            @elseif(isset($studentAnswer['answer']))
-                                                <p class="mb-0">{{ $studentAnswer['answer'] }}</p>
                                             @else
                                                 <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                             @endif
-                                        @elseif($studentAnswer)
-                                            <p class="mb-0">{{ $studentAnswer }}</p>
+                                        @elseif($questionTypeName === 'short_answer' || $questionTypeName === 'essay')
+                                            @php $answerText = $getTextAnswer($studentAnswer); @endphp
+                                            @if($answerText && trim($answerText) !== '')
+                                                <p class="mb-0">{!! nl2br(e($answerText)) !!}</p>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
+                                        @elseif($questionTypeName === 'fill_blanks')
+                                            @if(is_array($studentAnswer) && !empty($studentAnswer))
+                                                <div class="mb-0">
+                                                    @foreach($studentAnswer as $index => $blankAnswer)
+                                                        <div class="mb-2">
+                                                            <strong>الفراغ {{ $index + 1 }}:</strong> 
+                                                            <span class="badge bg-secondary">{{ e($blankAnswer) }}</span>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
+                                        @elseif($questionTypeName === 'matching')
+                                            @if(is_array($studentAnswer) && !empty($studentAnswer))
+                                                <ul class="mb-0">
+                                                    @foreach($studentAnswer as $optionId => $matchedValue)
+                                                        @php $option = $question->options->find($optionId); @endphp
+                                                        <li class="mb-2">
+                                                            <strong>{!! $option ? $option->option_text : 'Option #' . $optionId !!}:</strong> 
+                                                            <span class="badge bg-info">{{ e($matchedValue) }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
+                                        @elseif($questionTypeName === 'ordering')
+                                            @if(is_array($studentAnswer) && !empty($studentAnswer))
+                                                <ol class="mb-0">
+                                                    @foreach($studentAnswer as $order => $optionId)
+                                                        @php $option = $question->options->find($optionId); @endphp
+                                                        <li>{!! $option ? $option->option_text : 'Option #' . $optionId !!}</li>
+                                                    @endforeach
+                                                </ol>
+                                            @else
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
                                         @else
-                                            <span class="text-muted">لم يتم الإجابة</span>
+                                            {{-- Fallback: display as JSON for debugging --}}
+                                            <pre class="mb-0 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         @endif
                                     </div>
                                 </div>
@@ -339,7 +436,7 @@ $(document).ready(function() {
             data: {
                 _token: '{{ csrf_token() }}',
                 score_obtained: score,
-                is_correct: isCorrect === '1',
+                is_correct: isCorrect, // Send as '1' or '0' string, controller will handle conversion
                 feedback: feedback
             },
             success: function(response) {

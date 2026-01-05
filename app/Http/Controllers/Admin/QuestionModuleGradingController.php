@@ -82,10 +82,21 @@ class QuestionModuleGradingController extends Controller
     public function gradeResponse(Request $request, $responseId)
     {
         $validated = $request->validate([
-            'is_correct' => 'nullable|boolean',
+            'is_correct' => 'nullable',
             'score_obtained' => 'required|numeric|min:0',
             'feedback' => 'nullable|string|max:1000',
         ]);
+        
+        // Handle is_correct - convert string '1'/'0'/'true'/'false' to boolean
+        $isCorrect = null;
+        if ($request->has('is_correct') && $request->input('is_correct') !== null && $request->input('is_correct') !== '') {
+            $isCorrectValue = $request->input('is_correct');
+            if ($isCorrectValue === '1' || $isCorrectValue === 1 || $isCorrectValue === true || $isCorrectValue === 'true') {
+                $isCorrect = true;
+            } elseif ($isCorrectValue === '0' || $isCorrectValue === 0 || $isCorrectValue === false || $isCorrectValue === 'false') {
+                $isCorrect = false;
+            }
+        }
 
         try {
             $response = QuestionModuleResponse::with(['attempt', 'question'])->findOrFail($responseId);
@@ -94,7 +105,7 @@ class QuestionModuleGradingController extends Controller
             $scoreObtained = min($validated['score_obtained'], $response->max_score);
 
             $response->update([
-                'is_correct' => $validated['is_correct'] ?? ($scoreObtained > 0),
+                'is_correct' => $isCorrect ?? ($scoreObtained >= $response->max_score),
                 'score_obtained' => $scoreObtained,
                 'feedback' => $validated['feedback'] ?? null,
             ]);
