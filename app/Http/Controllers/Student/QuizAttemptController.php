@@ -231,8 +231,8 @@ class QuizAttemptController extends Controller
 
         $studentId = auth()->id();
 
-        // Verify ownership
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه المحاولة');
         }
 
@@ -299,8 +299,8 @@ class QuizAttemptController extends Controller
         $attempt = QuizAttempt::findOrFail($attemptId);
         $studentId = auth()->id();
 
-        // Verify ownership
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             return response()->json([
                 'success' => false,
                 'message' => 'غير مصرح لك بالوصول إلى هذه المحاولة'
@@ -411,8 +411,8 @@ class QuizAttemptController extends Controller
         $attempt = QuizAttempt::findOrFail($attemptId);
         $studentId = auth()->id();
 
-        // Verify ownership
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             return response()->json(['success' => false], 403);
         }
 
@@ -435,8 +435,8 @@ class QuizAttemptController extends Controller
         $attempt = QuizAttempt::with(['quiz', 'responses'])->findOrFail($attemptId);
         $studentId = auth()->id();
 
-        // Verify ownership
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             return back()->withErrors(['error' => 'غير مصرح لك بالوصول إلى هذه المحاولة']);
         }
 
@@ -595,7 +595,8 @@ class QuizAttemptController extends Controller
         $studentId = auth()->id();
 
         // Verify ownership
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             return response()->json([
                 'success' => false,
                 'message' => 'غير مصرح لك'
@@ -697,7 +698,8 @@ class QuizAttemptController extends Controller
         $attempt = QuizAttempt::with('responses')->findOrFail($attemptId);
         $studentId = auth()->id();
 
-        if ($attempt->student_id !== $studentId) {
+        // Verify ownership - use type casting for consistency
+        if ((int)$attempt->student_id !== (int)$studentId) {
             return response()->json(['success' => false], 403);
         }
 
