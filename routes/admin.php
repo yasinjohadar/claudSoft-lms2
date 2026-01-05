@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\N8nWebhookController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\FrontendCourseController;
 use App\Http\Controllers\Admin\BlogPostController;
+use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\FaqController;
@@ -633,6 +634,11 @@ Route::prefix('admin')
 
         // Blog Posts Management
         Route::prefix('blog')->name('admin.blog.')->group(function () {
+            // AI Posts
+            Route::get('ai-posts/create', [AIBlogPostController::class, 'create'])->name('ai-posts.create');
+            Route::post('ai-posts', [AIBlogPostController::class, 'store'])->name('ai-posts.store');
+            Route::post('ai-posts/generate', [AIBlogPostController::class, 'generate'])->name('ai-posts.generate');
+
             // Posts
             Route::resource('posts', BlogPostController::class)->names([
                 'index' => 'posts.index',

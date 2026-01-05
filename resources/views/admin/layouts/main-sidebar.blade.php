@@ -124,6 +124,11 @@
                                         <i class="ri-article-line me-2"></i>المقالات
                                     </a>
                                 </li>
+                                <li class="slide {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.blog.ai-posts.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
+                                        <i class="fas fa-robot me-2"></i>إنشاء مقال بالذكاء الاصطناعي
+                                    </a>
+                                </li>
                                 <li class="slide {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.blog.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
                                         <i class="ri-folder-line me-2"></i>التصنيفات
