@@ -22,29 +22,36 @@ class QuestionModuleAttemptController extends Controller
             $questionModule = QuestionModule::with(['questions.questionType', 'questions.options'])
                 ->findOrFail($questionModuleId);
 
+            // Get course module for redirect on error
+            $courseModule = $questionModule->courseModules()->first();
+            $redirectToModule = function($message) use ($courseModule) {
+                if ($courseModule) {
+                    return redirect()->route('student.learn.module', $courseModule->id)
+                        ->with('error', $message);
+                }
+                return redirect()->route('student.dashboard')
+                    ->with('error', $message);
+            };
+
             // Check if module is available
             if (!$questionModule->isAvailable()) {
-                return redirect()->back()
-                    ->with('error', 'هذا الاختبار غير متاح حالياً');
+                return $redirectToModule('هذا الاختبار غير متاح حالياً');
             }
 
             // Check enrollment
-            $courseModule = $questionModule->courseModules()->first();
             if ($courseModule) {
                 $enrollment = CourseEnrollment::where('course_id', $courseModule->course_id)
                     ->where('student_id', $student->id)
                     ->first();
 
                 if (!$enrollment || !$enrollment->isActive()) {
-                    return redirect()->back()
-                        ->with('error', 'أنت غير مسجل في هذا الكورس');
+                    return $redirectToModule('أنت غير مسجل في هذا الكورس');
                 }
             }
 
             // Check if student can attempt
             if (!$questionModule->canStudentAttempt($student->id)) {
-                return redirect()->back()
-                    ->with('error', 'لقد استنفدت جميع المحاولات المسموحة');
+                return $redirectToModule('لقد استنفدت جميع المحاولات المسموحة');
             }
 
             // Check if there's an in-progress attempt
@@ -97,7 +104,16 @@ class QuestionModuleAttemptController extends Controller
                 throw $e;
             }
         } catch (\Exception $e) {
-            return redirect()->back()
+            // Get course module for redirect on error
+            $questionModule = QuestionModule::find($questionModuleId);
+            $courseModule = $questionModule ? $questionModule->courseModules()->first() : null;
+            
+            if ($courseModule) {
+                return redirect()->route('student.learn.module', $courseModule->id)
+                    ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
+            }
+            
+            return redirect()->route('student.dashboard')
                 ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
         }
     }
@@ -148,7 +164,24 @@ class QuestionModuleAttemptController extends Controller
 
             return view('student.question-modules.take', compact('attempt', 'questions', 'remainingTime'));
         } catch (\Exception $e) {
-            return redirect()->back()
+            // Get course module for redirect on error
+            try {
+                $attempt = QuestionModuleAttempt::with('questionModule')->find($attemptId);
+                $courseModule = null;
+                
+                if ($attempt && $attempt->questionModule) {
+                    $courseModule = $attempt->questionModule->courseModules()->first();
+                }
+                
+                if ($courseModule) {
+                    return redirect()->route('student.learn.module', $courseModule->id)
+                        ->with('error', 'حدث خطأ أثناء تحميل الاختبار: ' . $e->getMessage());
+                }
+            } catch (\Exception $ex) {
+                // If we can't get the module, just redirect to dashboard
+            }
+            
+            return redirect()->route('student.dashboard')
                 ->with('error', 'حدث خطأ أثناء تحميل الاختبار: ' . $e->getMessage());
         }
     }
