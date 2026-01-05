@@ -855,14 +855,27 @@ class QuestionModuleAttemptController extends Controller
                 })->toArray(),
             ]);
 
-            // Grade all responses that have answers
+            // Grade only auto-gradable responses (skip short_answer and essay)
             foreach ($attempt->responses as $response) {
                 if ($response->student_answer !== null && $response->student_answer !== '') {
                     // Check if it's an array and not empty
+                    $hasAnswer = false;
                     if (is_array($response->student_answer) && !empty($response->student_answer)) {
-                        $response->gradeResponse();
+                        $hasAnswer = true;
                     } elseif (!is_array($response->student_answer) && trim($response->student_answer) !== '') {
-                        $response->gradeResponse();
+                        $hasAnswer = true;
+                    }
+                    
+                    if ($hasAnswer) {
+                        // Check if question type supports auto-grading
+                        $questionType = $response->question->questionType->name ?? '';
+                        $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
+                        
+                        // Only auto-grade if it doesn't require manual grading
+                        if (!$requiresManualGrading) {
+                            $response->gradeResponse();
+                        }
+                        // For short_answer and essay, leave is_correct and score_obtained as null
                     }
                 }
             }

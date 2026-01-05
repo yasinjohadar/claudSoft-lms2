@@ -57,12 +57,16 @@ class QuestionModuleGradingController extends Controller
                 ->with('error', 'لا يمكن تصحيح محاولة لم يتم تسليمها بعد');
         }
 
-        // Get responses that need manual grading (is_correct is null or score_obtained is null)
+        // Get responses that need manual grading - only short_answer and essay types
         $responsesNeedingGrading = $attempt->responses()
+            ->whereHas('question.questionType', function($q) {
+                $q->whereIn('name', ['short_answer', 'essay']);
+            })
             ->where(function($query) {
                 $query->whereNull('is_correct')
                       ->orWhereNull('score_obtained');
             })
+            ->whereNotNull('student_answer') // Only show questions that have answers
             ->with(['question.questionType', 'question.options'])
             ->orderBy('id')
             ->get();

@@ -168,6 +168,10 @@
                             <h5 class="mb-2">
                                 <span class="badge bg-secondary me-2">السؤال {{ $index + 1 }}</span>
                                 <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
+                                @php
+                                    $questionTypeName = $question->questionType->name ?? '';
+                                    $requiresManualGrading = in_array($questionTypeName, ['short_answer', 'essay']);
+                                @endphp
                                 @if($response && $response->is_correct === true)
                                     <span class="badge bg-success">
                                         <i class="fas fa-check me-1"></i>إجابة صحيحة
@@ -176,13 +180,17 @@
                                     <span class="badge bg-danger">
                                         <i class="fas fa-times me-1"></i>إجابة خاطئة
                                     </span>
-                                @elseif(!$response)
+                                @elseif(!$response || !$response->student_answer)
                                     <span class="badge bg-secondary">
                                         <i class="fas fa-minus me-1"></i>لم يتم الإجابة
                                     </span>
-                                @else
+                                @elseif($requiresManualGrading && ($response->is_correct === null || $response->score_obtained === null))
                                     <span class="badge bg-warning">
                                         <i class="fas fa-clock me-1"></i>بانتظار التصحيح
+                                    </span>
+                                @else
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-info-circle me-1"></i>تم التصحيح
                                     </span>
                                 @endif
                             </h5>
@@ -218,9 +226,25 @@
                                 @foreach($question->options as $option)
                                     @php
                                         $studentAnswer = $response ? $response->student_answer : null;
-                                        $isStudentAnswer = $studentAnswer && (is_array($studentAnswer)
-                                            ? in_array($option->id, $studentAnswer)
-                                            : $studentAnswer == $option->id);
+                                        $isStudentAnswer = false;
+                                        
+                                        if ($studentAnswer) {
+                                            if (is_array($studentAnswer)) {
+                                                // Handle array format: direct array of IDs or array with keys
+                                                if (isset($studentAnswer['selected_options'])) {
+                                                    $isStudentAnswer = in_array($option->id, array_map('intval', $studentAnswer['selected_options']));
+                                                } elseif (isset($studentAnswer['selected_option'])) {
+                                                    $isStudentAnswer = (int)$option->id == (int)$studentAnswer['selected_option'];
+                                                } else {
+                                                    // Direct array of IDs
+                                                    $isStudentAnswer = in_array((int)$option->id, array_map('intval', $studentAnswer));
+                                                }
+                                            } else {
+                                                // Direct value (string or int)
+                                                $isStudentAnswer = (int)$option->id == (int)$studentAnswer;
+                                            }
+                                        }
+                                        
                                         $isCorrectOption = $option->is_correct;
                                     @endphp
                                     <div class="option mb-2 p-3 rounded border
@@ -255,7 +279,32 @@
                                     @php
                                         $correctAnswer = $question->options->where('is_correct', true)->first();
                                         $correctValue = $correctAnswer ? ($correctAnswer->option_text === 'صحيح' || $correctAnswer->option_text === 'true' ? 'true' : 'false') : null;
-                                        $studentAnswer = $response ? $response->student_answer : null;
+                                        $studentAnswerRaw = $response ? $response->student_answer : null;
+                                        
+                                        // Extract student answer value
+                                        $studentAnswer = null;
+                                        if ($studentAnswerRaw) {
+                                            if (is_array($studentAnswerRaw)) {
+                                                $studentAnswer = $studentAnswerRaw['answer'] ?? $studentAnswerRaw['selected_option'] ?? null;
+                                            } else {
+                                                $studentAnswer = $studentAnswerRaw;
+                                            }
+                                            // Convert to 'true' or 'false' string
+                                            if (is_numeric($studentAnswer)) {
+                                                // If it's an option ID, get the option text
+                                                $selectedOption = $question->options->find($studentAnswer);
+                                                if ($selectedOption) {
+                                                    $studentAnswer = strtolower($selectedOption->option_text) === 'صح' ? 'true' : 'false';
+                                                }
+                                            } elseif (is_string($studentAnswer)) {
+                                                $studentAnswer = strtolower($studentAnswer);
+                                                if ($studentAnswer === 'صح' || $studentAnswer === 'true' || $studentAnswer === '1') {
+                                                    $studentAnswer = 'true';
+                                                } elseif ($studentAnswer === 'خطأ' || $studentAnswer === 'false' || $studentAnswer === '0') {
+                                                    $studentAnswer = 'false';
+                                                }
+                                            }
+                                        }
                                     @endphp
                                     <div class="col-md-6">
                                         <div class="p-3 rounded border {{ $correctValue === 'true' ? 'border-success bg-success bg-opacity-10' : '' }}
@@ -291,7 +340,38 @@
                                 <div class="mb-3">
                                     <strong class="d-block mb-2">إجابتك:</strong>
                                     <div class="p-3 bg-light rounded border">
-                                        {{ $response && $response->student_answer ? $response->student_answer : 'لم يتم الإجابة' }}
+                                        @php
+                                            $studentAnswerRaw = $response ? $response->student_answer : null;
+                                            $answerText = 'لم يتم الإجابة';
+                                            
+                                            if ($studentAnswerRaw) {
+                                                if (is_array($studentAnswerRaw)) {
+                                                    // Extract text from array
+                                                    $answerText = $studentAnswerRaw['answer'] ?? $studentAnswerRaw['text'] ?? null;
+                                                    // If still null, try to get first non-numeric value
+                                                    if ($answerText === null) {
+                                                        foreach ($studentAnswerRaw as $key => $val) {
+                                                            if (!is_numeric($val) && !is_numeric($key)) {
+                                                                $answerText = $val;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    // If still null, use first value
+                                                    if ($answerText === null && !empty($studentAnswerRaw)) {
+                                                        $answerText = is_array($studentAnswerRaw[0] ?? null) ? json_encode($studentAnswerRaw[0]) : ($studentAnswerRaw[0] ?? '');
+                                                    }
+                                                } else {
+                                                    // Direct string value
+                                                    $answerText = (string)$studentAnswerRaw;
+                                                }
+                                                
+                                                if (empty(trim($answerText))) {
+                                                    $answerText = 'لم يتم الإجابة';
+                                                }
+                                            }
+                                        @endphp
+                                        {!! nl2br(e($answerText)) !!}
                                     </div>
                                 </div>
                                 @if($question->model_answer)

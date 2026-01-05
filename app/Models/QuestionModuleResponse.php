@@ -66,7 +66,9 @@ class QuestionModuleResponse extends Model
                 break;
 
             case 'short_answer':
-                $isCorrect = $this->gradeShortAnswer($question, $studentAnswer);
+            case 'essay':
+                // Manual grading required - do not auto-grade
+                $isCorrect = null;
                 break;
 
             case 'ordering':
@@ -82,7 +84,7 @@ class QuestionModuleResponse extends Model
                 break;
 
             default:
-                // For essay and other manual grading types
+                // For other manual grading types
                 $isCorrect = null;
                 break;
         }
