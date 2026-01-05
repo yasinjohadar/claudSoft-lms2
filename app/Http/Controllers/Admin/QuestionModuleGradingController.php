@@ -104,8 +104,15 @@ class QuestionModuleGradingController extends Controller
             // Ensure score doesn't exceed max_score
             $scoreObtained = min($validated['score_obtained'], $response->max_score);
 
+            // Determine is_correct: if explicitly set, use it; otherwise, true only if score equals max_score
+            $finalIsCorrect = $isCorrect;
+            if ($finalIsCorrect === null) {
+                // Auto-determine: correct only if score equals max_score
+                $finalIsCorrect = ($scoreObtained >= $response->max_score);
+            }
+            
             $response->update([
-                'is_correct' => $isCorrect ?? ($scoreObtained >= $response->max_score),
+                'is_correct' => $finalIsCorrect,
                 'score_obtained' => $scoreObtained,
                 'feedback' => $validated['feedback'] ?? null,
             ]);
@@ -201,13 +208,15 @@ class QuestionModuleGradingController extends Controller
 
             // Check if all responses are graded
             $ungradedCount = $attempt->responses()
-                ->whereNull('is_correct')
-                ->orWhereNull('score_obtained')
+                ->where(function($query) {
+                    $query->whereNull('is_correct')
+                          ->orWhereNull('score_obtained');
+                })
                 ->count();
 
             if ($ungradedCount > 0) {
                 return redirect()->back()
-                    ->with('error', 'يجب تصحيح جميع الإجابات أولاً');
+                    ->with('error', 'يجب تصحيح جميع الإجابات أولاً. لا يزال هناك ' . $ungradedCount . ' سؤال يحتاج تصحيح.');
             }
 
             // Recalculate scores one final time
