@@ -384,12 +384,35 @@
                                             <strong><i class="fas fa-lightbulb me-1"></i>الإجابة الصحيحة:</strong>
                                         </p>
                                         <div class="p-3 bg-success-transparent rounded border border-success">
-                                            @if(in_array($question->questionType->name, ['multiple_choice_single', 'multiple_choice_multiple', 'matching', 'ordering']))
-                                                <ul class="mb-0">
-                                                    @foreach($question->options->where('is_correct', true) as $option)
-                                                        <li>{{ $option->option_text }}</li>
-                                                    @endforeach
-                                                </ul>
+                                            @if($question->questionType->name == 'multiple_choice_single')
+                                                @php
+                                                    $correctOptions = $question->options->where('is_correct', true);
+                                                @endphp
+                                                @if($correctOptions->isNotEmpty())
+                                                    <ul class="mb-0">
+                                                        @foreach($correctOptions as $option)
+                                                            <li>{{ $option->option_text }}</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    {{ 'راجع المدرس' }}
+                                                @endif
+                                            @elseif($question->questionType->name == 'multiple_choice_multiple')
+                                                @php
+                                                    // For multiple choice multiple, get all options where is_correct is true
+                                                    $correctOptions = $question->options->filter(function($option) {
+                                                        return $option->is_correct === true || $option->is_correct === 1;
+                                                    });
+                                                @endphp
+                                                @if($correctOptions->isNotEmpty())
+                                                    <ul class="mb-0">
+                                                        @foreach($correctOptions as $option)
+                                                            <li>{{ $option->option_text }}</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    {{ 'راجع المدرس' }}
+                                                @endif
                                             @elseif($question->questionType->name == 'true_false')
                                                 @php
                                                     $correctOption = $question->options->where('is_correct', true)->first();
@@ -452,20 +475,14 @@
                                                 @endif
                                             @elseif($question->questionType->name == 'ordering')
                                                 @php
-                                                    $correctOrder = $question->options->where('is_correct', true)->sortBy('option_order')->pluck('id')->toArray();
-                                                    if (empty($correctOrder)) {
-                                                        $correctOrder = $question->options->sortBy('option_order')->pluck('id')->toArray();
-                                                    }
+                                                    // For ordering questions, the correct order is always based on option_order
+                                                    // All options should be sorted by option_order to get the correct sequence
+                                                    $correctOrder = $question->options->sortBy('option_order')->values();
                                                 @endphp
-                                                @if(!empty($correctOrder))
+                                                @if($correctOrder->isNotEmpty())
                                                     <ol class="mb-0">
-                                                        @foreach($correctOrder as $optionId)
-                                                            @php
-                                                                $option = $question->options->find($optionId);
-                                                            @endphp
-                                                            @if($option)
-                                                                <li class="mb-2">{{ $option->option_text }}</li>
-                                                            @endif
+                                                        @foreach($correctOrder as $option)
+                                                            <li class="mb-2">{{ $option->option_text }}</li>
                                                         @endforeach
                                                     </ol>
                                                 @else
