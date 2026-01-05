@@ -344,8 +344,8 @@
                                 <!-- Current Grade Status -->
                                 @if(!$needsGrading && ($response->is_correct !== null || $response->score_obtained !== null))
                                     <div class="mb-3">
-                                        <div class="alert alert-{{ $response->is_correct ? 'success' : ($response->is_correct === false ? 'danger' : 'info') }}">
-                                            <strong>الدرجة المحصلة:</strong> {{ $response->score_obtained ?? 0 }} / {{ $response->max_score }}
+                                        <div class="alert alert-{{ $response->is_correct === true ? 'success' : ($response->is_correct === false ? 'danger' : 'info') }}">
+                                            <strong>الدرجة المحصلة:</strong> {{ number_format($response->score_obtained ?? 0, 2) }} / {{ number_format($response->max_score ?? 0, 2) }}
                                             @if($response->is_correct === true)
                                                 <span class="badge bg-success ms-2">صحيح</span>
                                             @elseif($response->is_correct === false)
@@ -451,16 +451,20 @@
                             <hr>
 
                             <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">الدرجة الحالية:</span>
-                                    <strong class="text-primary" id="current-score">{{ number_format($attempt->total_score ?? 0, 2) }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">النسبة المئوية:</span>
-                                    <strong class="text-{{ ($attempt->percentage ?? 0) >= ($attempt->questionModule->pass_percentage ?? 60) ? 'success' : 'danger' }}" id="percentage-score">
-                                        {{ number_format($attempt->percentage ?? 0, 1) }}%
-                                    </strong>
-                                </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">الدرجة الحالية:</span>
+                                        <strong class="text-primary" id="current-score">{{ number_format($attempt->total_score ?? 0, 2) }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">الدرجة القصوى:</span>
+                                        <strong class="text-secondary">{{ number_format($attempt->responses->sum('max_score') ?? 0, 2) }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">النسبة المئوية:</span>
+                                        <strong class="text-{{ ($attempt->percentage ?? 0) >= ($attempt->questionModule->pass_percentage ?? 60) ? 'success' : 'danger' }}" id="percentage-score">
+                                            {{ number_format($attempt->percentage ?? 0, 1) }}%
+                                        </strong>
+                                    </div>
                             </div>
 
                             <div class="progress" style="height: 10px;">

@@ -23,16 +23,16 @@
         <!-- End Page Header -->
     <!-- Summary Card -->
     <div class="card mb-4">
-        <div class="card-header {{ $attempt->is_passed ? 'bg-success' : 'bg-danger' }} text-white">
+        <div class="card-header {{ ($attempt->is_passed ?? false) ? 'bg-success' : 'bg-danger' }} text-white">
             <div class="row align-items-center">
                 <div class="col">
                     <h3 class="mb-0">
-                        <i class="fas fa-{{ $attempt->is_passed ? 'check-circle' : 'times-circle' }} me-2"></i>
+                        <i class="fas fa-{{ ($attempt->is_passed ?? false) ? 'check-circle' : 'times-circle' }} me-2"></i>
                         {{ $attempt->questionModule->title }}
                     </h3>
                 </div>
                 <div class="col-auto">
-                    @if($attempt->is_passed)
+                    @if($attempt->is_passed ?? false)
                         <span class="badge bg-white text-success fs-4 px-4 py-2">
                             <i class="fas fa-trophy me-2"></i>ناجح
                         </span>
@@ -51,10 +51,10 @@
                     <div class="text-center p-4 border rounded">
                         <div class="text-muted mb-2">الدرجة النهائية</div>
                         <div class="display-4 fw-bold text-primary">
-                            {{ number_format($attempt->total_score, 2) }}
+                            {{ number_format($attempt->total_score ?? 0, 2) }}
                         </div>
                         <div class="text-muted">
-                            من {{ number_format($attempt->responses->sum('max_score'), 2) }}
+                            من {{ number_format($attempt->responses->sum('max_score') ?? 0, 2) }}
                         </div>
                     </div>
                 </div>
@@ -63,11 +63,11 @@
                 <div class="col-md-3">
                     <div class="text-center p-4 border rounded">
                         <div class="text-muted mb-2">النسبة المئوية</div>
-                        <div class="display-4 fw-bold {{ $attempt->is_passed ? 'text-success' : 'text-danger' }}">
-                            {{ number_format($attempt->percentage, 1) }}%
+                        <div class="display-4 fw-bold {{ ($attempt->is_passed ?? false) ? 'text-success' : 'text-danger' }}">
+                            {{ number_format($attempt->percentage ?? 0, 1) }}%
                         </div>
                         <div class="text-muted">
-                            الحد الأدنى: {{ $attempt->questionModule->pass_percentage }}%
+                            الحد الأدنى: {{ $attempt->questionModule->pass_percentage ?? 50 }}%
                         </div>
                     </div>
                 </div>
@@ -110,23 +110,45 @@
                 </div>
                 <div class="progress" style="height: 25px;">
                     @php
+                        $totalCount = $attempt->responses->count();
                         $correctCount = $attempt->responses->where('is_correct', true)->count();
                         $incorrectCount = $attempt->responses->where('is_correct', false)->count();
-                        $manualGradingCount = $attempt->responses->where('is_correct', null)->where('student_answer', '!=', null)->count();
-                        $totalCount = $attempt->responses->count();
-                        $correctPercentage = ($correctCount / $totalCount) * 100;
-                        $incorrectPercentage = ($incorrectCount / $totalCount) * 100;
-                        $manualPercentage = ($manualGradingCount / $totalCount) * 100;
+                        // Manual grading: questions that require manual grading (short_answer, essay) and have answers but no score yet
+                        $manualGradingCount = $attempt->responses->filter(function($r) {
+                            $questionType = $r->question->questionType->name ?? '';
+                            $requiresManual = in_array($questionType, ['short_answer', 'essay']);
+                            $hasAnswer = $r->student_answer !== null && $r->student_answer !== '' && !(is_array($r->student_answer) && empty($r->student_answer));
+                            $notGraded = $r->is_correct === null || $r->score_obtained === null;
+                            return $requiresManual && $hasAnswer && $notGraded;
+                        })->count();
+                        // Unanswered questions
+                        $unansweredCount = $attempt->responses->filter(function($r) {
+                            return $r->student_answer === null || $r->student_answer === '' || (is_array($r->student_answer) && empty($r->student_answer));
+                        })->count();
+                        
+                        $correctPercentage = $totalCount > 0 ? ($correctCount / $totalCount) * 100 : 0;
+                        $incorrectPercentage = $totalCount > 0 ? ($incorrectCount / $totalCount) * 100 : 0;
+                        $manualPercentage = $totalCount > 0 ? ($manualGradingCount / $totalCount) * 100 : 0;
+                        $unansweredPercentage = $totalCount > 0 ? ($unansweredCount / $totalCount) * 100 : 0;
                     @endphp
+                    @if($correctCount > 0)
                     <div class="progress-bar bg-success" style="width: {{ $correctPercentage }}%">
                         {{ $correctCount }} صحيح
                     </div>
+                    @endif
+                    @if($incorrectCount > 0)
                     <div class="progress-bar bg-danger" style="width: {{ $incorrectPercentage }}%">
                         {{ $incorrectCount }} خطأ
                     </div>
+                    @endif
                     @if($manualGradingCount > 0)
                     <div class="progress-bar bg-warning" style="width: {{ $manualPercentage }}%">
                         {{ $manualGradingCount }} بانتظار التصحيح
+                    </div>
+                    @endif
+                    @if($unansweredCount > 0)
+                    <div class="progress-bar bg-secondary" style="width: {{ $unansweredPercentage }}%">
+                        {{ $unansweredCount }} لم يتم الإجابة
                     </div>
                     @endif
                 </div>

@@ -1025,6 +1025,7 @@ class QuestionModuleAttemptController extends Controller
                         'question_type' => $r->question->questionType->name ?? 'unknown',
                         'is_correct' => $r->is_correct,
                         'score_obtained' => $r->score_obtained,
+                        'max_score' => $r->max_score,
                     ];
                 })->toArray(),
             ]);
@@ -1033,8 +1034,32 @@ class QuestionModuleAttemptController extends Controller
             $attempt->markAsCompleted();
             $attempt->update(['time_spent' => $timeSpent]);
 
+            // Reload responses to ensure we have the latest scores before calculating
+            $attempt->load('responses');
+            
+            Log::info('=== BEFORE CALCULATE SCORES ===', [
+                'attempt_id' => $attempt->id,
+                'responses_scores' => $attempt->responses->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'score_obtained' => $r->score_obtained,
+                        'max_score' => $r->max_score,
+                    ];
+                })->toArray(),
+            ]);
+
             // Calculate scores
             $attempt->calculateScores();
+            
+            // Reload attempt to get updated scores
+            $attempt->refresh();
+            
+            Log::info('=== AFTER CALCULATE SCORES ===', [
+                'attempt_id' => $attempt->id,
+                'total_score' => $attempt->total_score,
+                'percentage' => $attempt->percentage,
+                'is_passed' => $attempt->is_passed,
+            ]);
 
             DB::commit();
         } catch (\Exception $e) {

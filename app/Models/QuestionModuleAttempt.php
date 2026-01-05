@@ -85,17 +85,59 @@ class QuestionModuleAttempt extends Model
      */
     public function calculateScores()
     {
-        $totalScore = $this->responses()->sum('score_obtained');
-        $maxScore = $this->responses()->sum('max_score');
+        // Reload responses to ensure we have the latest data
+        $this->load('responses');
+        
+        // Calculate total score - handle null values as 0
+        $totalScore = $this->responses->sum(function($response) {
+            return $response->score_obtained ?? 0;
+        });
+        
+        // Calculate max score
+        $maxScore = $this->responses->sum(function($response) {
+            return $response->max_score ?? 0;
+        });
+        
+        // Calculate percentage
         $percentage = $maxScore > 0 ? ($totalScore / $maxScore) * 100 : 0;
 
         $passPercentage = $this->questionModule->pass_percentage ?? 50;
         $isPassed = $percentage >= $passPercentage;
 
+        // Log for debugging
+        \Log::info('=== CALCULATING SCORES ===', [
+            'attempt_id' => $this->id,
+            'responses_count' => $this->responses->count(),
+            'total_score' => $totalScore,
+            'max_score' => $maxScore,
+            'percentage' => $percentage,
+            'pass_percentage' => $passPercentage,
+            'is_passed' => $isPassed,
+            'responses_detail' => $this->responses->map(function($r) {
+                return [
+                    'id' => $r->id,
+                    'question_id' => $r->question_id,
+                    'score_obtained' => $r->score_obtained,
+                    'max_score' => $r->max_score,
+                    'is_correct' => $r->is_correct,
+                ];
+            })->toArray(),
+        ]);
+
         $this->update([
             'total_score' => $totalScore,
             'percentage' => $percentage,
             'is_passed' => $isPassed,
+        ]);
+        
+        // Refresh to ensure updated values are available
+        $this->refresh();
+        
+        \Log::info('=== SCORES CALCULATED ===', [
+            'attempt_id' => $this->id,
+            'total_score' => $this->total_score,
+            'percentage' => $this->percentage,
+            'is_passed' => $this->is_passed,
         ]);
     }
 

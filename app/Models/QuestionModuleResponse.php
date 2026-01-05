@@ -174,6 +174,15 @@ class QuestionModuleResponse extends Model
      */
     private function gradeTrueFalse($question, $studentAnswer)
     {
+        // Log input for debugging
+        \Log::info('=== GRADING TRUE/FALSE ===', [
+            'response_id' => $this->id,
+            'question_id' => $question->id,
+            'student_answer_raw' => $studentAnswer,
+            'student_answer_type' => gettype($studentAnswer),
+            'student_answer_is_array' => is_array($studentAnswer),
+        ]);
+        
         // Handle multiple formats: direct value, array with key, or option ID
         $answer = null;
         
@@ -189,12 +198,22 @@ class QuestionModuleResponse extends Model
         }
         
         if (!$answer) {
+            \Log::warning('No answer found for true/false question', [
+                'response_id' => $this->id,
+                'question_id' => $question->id,
+            ]);
             return false;
         }
 
-        $correctOption = $question->options()->where('is_correct', true)->first();
+        // Load all options
+        $options = $question->options()->get();
+        $correctOption = $options->where('is_correct', true)->first();
 
         if (!$correctOption) {
+            \Log::warning('No correct option found for true/false question', [
+                'response_id' => $this->id,
+                'question_id' => $question->id,
+            ]);
             return false;
         }
 
@@ -203,29 +222,63 @@ class QuestionModuleResponse extends Model
         
         // If answer is numeric, it might be an option ID
         if (is_numeric($answer)) {
-            $selectedOption = $question->options()->find($answer);
+            $selectedOption = $options->find($answer);
             if ($selectedOption) {
                 // Convert option text to 'true' or 'false'
-                $optionText = strtolower(trim($selectedOption->option_text));
-                $answerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1') ? 'true' : 'false';
+                $optionText = strtolower(trim(strip_tags($selectedOption->option_text)));
+                \Log::info('Numeric answer - found option', [
+                    'option_id' => $answer,
+                    'option_text' => $optionText,
+                    'option_text_original' => $selectedOption->option_text,
+                ]);
+                $answerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1' || $optionText === 'صحيح') ? 'true' : 'false';
+            } else {
+                \Log::warning('Numeric answer but option not found', [
+                    'option_id' => $answer,
+                    'available_options' => $options->pluck('id', 'option_text')->toArray(),
+                ]);
             }
         } else {
             // Direct string value
-            $answerStr = strtolower(trim((string)$answer));
-            if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1') {
+            $answerStr = strtolower(trim(strip_tags((string)$answer)));
+            \Log::info('String answer processing', [
+                'answer_original' => $answer,
+                'answer_cleaned' => $answerStr,
+            ]);
+            if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
                 $answerValue = 'true';
-            } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+            } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0' || $answerStr === 'خطأ') {
                 $answerValue = 'false';
             }
         }
         
         if ($answerValue === null) {
+            \Log::warning('Could not determine answer value', [
+                'response_id' => $this->id,
+                'question_id' => $question->id,
+                'answer' => $answer,
+                'answer_type' => gettype($answer),
+            ]);
             return false;
         }
 
-        $correctAnswer = strtolower(trim($correctOption->option_text)) === 'صح' ? 'true' : 'false';
+        // Get correct answer - handle HTML tags in option text
+        $correctOptionText = strtolower(trim(strip_tags($correctOption->option_text)));
+        $correctAnswer = ($correctOptionText === 'صح' || $correctOptionText === 'true' || $correctOptionText === '1' || $correctOptionText === 'صحيح') ? 'true' : 'false';
+        
+        $isCorrect = $answerValue === $correctAnswer;
+        
+        \Log::info('=== TRUE/FALSE GRADING RESULT ===', [
+            'response_id' => $this->id,
+            'question_id' => $question->id,
+            'student_answer_value' => $answerValue,
+            'correct_answer_value' => $correctAnswer,
+            'correct_option_text' => $correctOptionText,
+            'correct_option_text_original' => $correctOption->option_text,
+            'is_correct' => $isCorrect,
+        ]);
 
-        return $answerValue === $correctAnswer;
+        return $isCorrect;
     }
 
     /**
