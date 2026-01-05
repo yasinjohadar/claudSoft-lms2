@@ -59,7 +59,7 @@ class ZaiProviderService extends AIProviderService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . trim($apiKey),
                 'Content-Type' => 'application/json',
-            ])->withoutVerifying()->timeout(180)->post($fullUrl, $payload);
+            ])->withoutVerifying()->timeout(500)->post($fullUrl, $payload);
 
             // تحويل الـ response body إلى UTF-8 بشكل صحيح
             $rawBody = $response->body();

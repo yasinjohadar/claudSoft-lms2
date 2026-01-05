@@ -27,8 +27,8 @@ class AIBlogPostService
         $language = $options['language'] ?? 'ar';
         $category = $options['category'] ?? null;
 
-        // زيادة وقت التنفيذ
-        set_time_limit(300);
+        // زيادة وقت التنفيذ إلى 500 ثانية لتوليد المقالات الطويلة
+        set_time_limit(500);
 
         try {
             // توليد المحتوى الرئيسي
@@ -89,7 +89,16 @@ class AIBlogPostService
             Log::error('Error generating blog post: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'topic' => $topic,
+                'model' => $model->name ?? 'unknown',
+                'options' => $options,
             ]);
+            
+            // تحسين رسالة الخطأ
+            $errorMessage = $e->getMessage();
+            if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Timeout') !== false) {
+                throw new \Exception('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى أو تقليل طول المحتوى المطلوب.');
+            }
+            
             throw $e;
         }
     }
@@ -146,25 +155,47 @@ class AIBlogPostService
     \"excerpt\": \"مقتطف قصير من المقال (100-150 كلمة)\"
 }";
 
-        $provider = AIProviderFactory::create($model);
-        $response = $provider->generateText($prompt, [
-            'max_tokens' => $model->max_tokens ?? 4000,
-            'temperature' => $model->temperature ?? 0.7,
-        ]);
+        try {
+            $provider = AIProviderFactory::create($model);
+            $response = $provider->generateText($prompt, [
+                'max_tokens' => $model->max_tokens ?? 4000,
+                'temperature' => $model->temperature ?? 0.7,
+            ]);
 
-        // Parse JSON response
-        $data = $this->parseJSONResponse($response);
-        
-        if (!isset($data['title']) || !isset($data['content'])) {
-            // Fallback: use topic as title and response as content
-            $data = [
-                'title' => $topic,
-                'content' => $response,
-                'excerpt' => $this->generateExcerpt($response, $language),
-            ];
+            // التحقق من أن الاستجابة ليست فارغة
+            if (empty($response)) {
+                Log::warning('Empty response from AI provider', [
+                    'topic' => $topic,
+                    'model' => $model->name,
+                ]);
+                throw new \Exception('لم يتم استلام استجابة من موديل AI. يرجى المحاولة مرة أخرى.');
+            }
+
+            // Parse JSON response
+            $data = $this->parseJSONResponse($response);
+            
+            if (!isset($data['title']) || !isset($data['content'])) {
+                // Fallback: use topic as title and response as content
+                Log::info('Using fallback for content generation', [
+                    'topic' => $topic,
+                    'response_length' => strlen($response),
+                ]);
+                $data = [
+                    'title' => $topic,
+                    'content' => $response,
+                    'excerpt' => $this->generateExcerpt($response, $language),
+                ];
+            }
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Error in generateContent: ' . $e->getMessage(), [
+                'topic' => $topic,
+                'model' => $model->name ?? 'unknown',
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new \Exception('خطأ في توليد المحتوى: ' . $e->getMessage());
         }
-
-        return $data;
     }
 
     /**
@@ -196,21 +227,32 @@ class AIBlogPostService
     \"focus_keyword\": \"الكلمة المفتاحية الرئيسية\"
 }";
 
-        $provider = AIProviderFactory::create($model);
-        $response = $provider->generateText($prompt, [
-            'max_tokens' => 500,
-            'temperature' => 0.5,
-        ]);
+        try {
+            $provider = AIProviderFactory::create($model);
+            $response = $provider->generateText($prompt, [
+                'max_tokens' => 500,
+                'temperature' => 0.5,
+            ]);
 
-        $data = $this->parseJSONResponse($response);
+            $data = $this->parseJSONResponse($response);
 
-        // Fallbacks
-        return [
-            'meta_title' => $data['meta_title'] ?? Str::limit($title, 60),
-            'meta_description' => $data['meta_description'] ?? Str::limit(strip_tags($content), 160),
-            'meta_keywords' => $data['meta_keywords'] ?? $this->extractKeywords($content),
-            'focus_keyword' => $data['focus_keyword'] ?? $this->extractMainKeyword($topic, $content),
-        ];
+            // Fallbacks مع تحسين
+            return [
+                'meta_title' => $data['meta_title'] ?? Str::limit($title, 60),
+                'meta_description' => $data['meta_description'] ?? Str::limit(strip_tags($content), 160),
+                'meta_keywords' => $data['meta_keywords'] ?? $this->extractKeywords($content),
+                'focus_keyword' => $data['focus_keyword'] ?? $this->extractMainKeyword($topic, $content),
+            ];
+        } catch (\Exception $e) {
+            Log::warning('Error generating SEO fields, using fallbacks: ' . $e->getMessage());
+            // استخدام fallbacks عند فشل توليد SEO
+            return [
+                'meta_title' => Str::limit($title, 60),
+                'meta_description' => Str::limit(strip_tags($content), 160),
+                'meta_keywords' => $this->extractKeywords($content),
+                'focus_keyword' => $this->extractMainKeyword($topic, $content),
+            ];
+        }
     }
 
     /**

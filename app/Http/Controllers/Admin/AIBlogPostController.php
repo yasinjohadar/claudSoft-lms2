@@ -96,11 +96,30 @@ class AIBlogPostController extends Controller
             Log::error('Error generating blog post with AI: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'validated_data' => $validated,
+                'model_id' => $validated['ai_model_id'] ?? null,
+                'topic' => $validated['topic'] ?? null,
             ]);
+
+            // تحسين رسالة الخطأ لتكون أكثر وضوحاً
+            $errorMessage = $e->getMessage();
+            
+            // تحديد نوع الخطأ وإعطاء رسالة مناسبة
+            if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Timeout') !== false) {
+                $userMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى أو تقليل طول المحتوى المطلوب.';
+            } elseif (strpos($errorMessage, 'API Key') !== false || strpos($errorMessage, 'api key') !== false) {
+                $userMessage = 'مشكلة في API Key. يرجى التحقق من إعدادات الموديل.';
+            } elseif (strpos($errorMessage, 'quota') !== false || strpos($errorMessage, 'رصيد') !== false) {
+                $userMessage = 'رصيد الموديل غير كافٍ. يرجى التحقق من رصيدك.';
+            } elseif (strpos($errorMessage, 'connection') !== false || strpos($errorMessage, 'اتصال') !== false) {
+                $userMessage = 'مشكلة في الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.';
+            } else {
+                $userMessage = 'حدث خطأ أثناء توليد المقال: ' . $errorMessage;
+            }
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء توليد المقال: ' . $e->getMessage()
+                'message' => $userMessage,
+                'error_details' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
