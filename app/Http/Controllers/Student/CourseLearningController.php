@@ -117,6 +117,11 @@ class CourseLearningController extends Controller
                 $module->modulable->load(['questions.questionType']);
             }
 
+            // Load quiz data for quiz modules
+            if ($module->module_type === 'quiz' && $module->modulable) {
+                $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
+            }
+
             // Get enrollment
             $enrollment = CourseEnrollment::where('course_id', $module->course_id)
                 ->where('student_id', $student->id)
