@@ -544,9 +544,9 @@
                     @forelse($course->sections()->orderBy('order_index')->get() as $section)
                         <div class="accordion-item">
                             <h2 class="accordion-header d-flex align-items-stretch" id="heading-{{ $section->id }}">
-                                <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }} flex-grow-1" type="button"
+                                <button class="accordion-button collapsed flex-grow-1" type="button"
                                         data-bs-toggle="collapse" data-bs-target="#section-{{ $section->id }}"
-                                        aria-expanded="{{ $loop->first ? 'true' : 'false' }}" aria-controls="section-{{ $section->id }}"
+                                        aria-expanded="false" aria-controls="section-{{ $section->id }}"
                                         style="border-left: none; border-top-left-radius: 0; border-bottom-left-radius: 0;">
                                     <div class="d-flex align-items-center w-100 justify-content-between me-3">
                                         <div>
@@ -568,12 +568,12 @@
                                 </button>
                                 <a href="{{ route('sections.questions.manage', $section->id) }}"
                                    class="btn btn-success d-flex align-items-center px-3"
-                                   style="border-radius: 0; border-top-left-radius: var(--bs-border-radius); border-bottom-left-radius: {{ $loop->first ? '0' : 'var(--bs-border-radius)' }};"
+                                   style="border-radius: 0; border-top-left-radius: var(--bs-border-radius); border-bottom-left-radius: var(--bs-border-radius);"
                                    title="إدارة الأسئلة">
                                     <i class="fas fa-question-circle me-1"></i>أسئلة
                                 </a>
                             </h2>
-                            <div id="section-{{ $section->id }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}"
+                            <div id="section-{{ $section->id }}" class="accordion-collapse collapse"
                                  aria-labelledby="heading-{{ $section->id }}" data-bs-parent="#sectionsAccordion">
                                 <div class="accordion-body">
                                     <!-- Add Activity Buttons (Top) -->
