@@ -769,8 +769,8 @@
                             @endif
                         </div>
 
-                        <!-- Course Content - Hidden for Question Modules to avoid distracting students -->
-                        @if($module->module_type != 'question_module')
+                        <!-- Course Content - Hidden for Question Modules and Quizzes to avoid distracting students -->
+                        @if($module->module_type != 'question_module' && $module->module_type != 'quiz')
                             <div class="card-header bg-light border-top">
                                 <h6 class="mb-0 fw-semibold"><i class="fas fa-list me-2"></i>محتوى الكورس</h6>
                             </div>
