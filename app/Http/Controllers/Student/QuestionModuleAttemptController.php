@@ -405,27 +405,56 @@ class QuestionModuleAttemptController extends Controller
                     ->with('error', 'يجب تسجيل الدخول أولاً');
             }
             
-            Log::info('Loading attempt', ['attempt_id' => $attemptId]);
+            // Handle attemptId - convert to int if needed
+            $attemptIdInt = is_numeric($attemptId) ? (int)$attemptId : (is_object($attemptId) && isset($attemptId->id) ? (int)$attemptId->id : (int)$attemptId);
+            
+            Log::info('Loading attempt', [
+                'attempt_id_param' => $attemptId,
+                'attempt_id_type' => gettype($attemptId),
+                'attempt_id_int' => $attemptIdInt,
+                'student_id' => $student->id,
+            ]);
             
             $attempt = QuestionModuleAttempt::with([
                 'questionModule.questions.questionType',
                 'questionModule.questions.options',
                 'responses.question.questionType',
                 'responses.question.options'
-            ])->findOrFail($attemptId);
+            ])->find($attemptIdInt);
+            
+            if (!$attempt) {
+                Log::error('Attempt not found', [
+                    'attempt_id' => $attemptIdInt,
+                    'student_id' => $student->id,
+                ]);
+                
+                // Try to get fallback module ID from session
+                $fallbackModuleId = session()->get('fallback_module_id');
+                if ($fallbackModuleId) {
+                    return redirect()->route('student.learn.module', $fallbackModuleId)
+                        ->with('error', 'المحاولة غير موجودة');
+                }
+                
+                return redirect()->route('student.dashboard')
+                    ->with('error', 'المحاولة غير موجودة');
+            }
             
             Log::info('Attempt loaded', [
                 'attempt_id' => $attempt->id,
-                'student_id' => $attempt->student_id,
+                'attempt_student_id' => $attempt->student_id,
+                'current_student_id' => $student->id,
+                'student_id_match' => $attempt->student_id == $student->id,
                 'status' => $attempt->status,
                 'question_module_id' => $attempt->question_module_id,
             ]);
-
-            // Check ownership
-            if ($attempt->student_id !== $student->id) {
+            
+            // Check ownership - use == instead of !== for type flexibility
+            if ((int)$attempt->student_id !== (int)$student->id) {
                 Log::error('Attempt ownership mismatch', [
                     'attempt_student_id' => $attempt->student_id,
+                    'attempt_student_id_type' => gettype($attempt->student_id),
                     'current_student_id' => $student->id,
+                    'current_student_id_type' => gettype($student->id),
                     'attempt_id' => $attempt->id,
                 ]);
                 return redirect()->route('student.dashboard')
