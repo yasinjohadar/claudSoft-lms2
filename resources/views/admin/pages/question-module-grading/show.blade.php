@@ -105,64 +105,74 @@
                                             $studentAnswer = $response->student_answer;
                                             $questionTypeName = $question->questionType->name ?? '';
                                             
-                                            // Helper function to extract option ID
-                                            $getOptionId = function($answer) {
-                                                if (is_array($answer)) {
-                                                    return $answer['selected_option'] ?? $answer['answer'] ?? (is_numeric(array_values($answer)[0] ?? null) ? (int)array_values($answer)[0] : null);
-                                                }
-                                                return is_numeric($answer) ? (int)$answer : null;
-                                            };
-                                            
-                                            // Helper function to extract option IDs array
-                                            $getOptionIds = function($answer) {
-                                                if (is_array($answer)) {
-                                                    if (isset($answer['selected_options'])) {
-                                                        return array_map('intval', $answer['selected_options']);
-                                                    }
-                                                    // Check if all values are numeric (direct array of IDs)
-                                                    $allNumeric = true;
-                                                    foreach ($answer as $val) {
-                                                        if (!is_numeric($val)) {
-                                                            $allNumeric = false;
-                                                            break;
-                                                        }
-                                                    }
-                                                    if ($allNumeric) {
-                                                        return array_map('intval', $answer);
-                                                    }
-                                                }
-                                                return [];
-                                            };
-                                            
-                                            // Helper function to extract text answer
-                                            $getTextAnswer = function($answer) {
-                                                if (is_array($answer)) {
-                                                    return $answer['answer'] ?? (isset($answer[0]) && !is_numeric($answer[0]) ? $answer[0] : null);
-                                                }
-                                                return !is_numeric($answer) ? $answer : null;
-                                            };
+                                            // Debug: Log the answer format
+                                            // Log::info('Student Answer Debug', [
+                                            //     'response_id' => $response->id,
+                                            //     'question_type' => $questionTypeName,
+                                            //     'answer_type' => gettype($studentAnswer),
+                                            //     'answer_value' => $studentAnswer,
+                                            //     'is_array' => is_array($studentAnswer),
+                                            //     'is_empty' => empty($studentAnswer),
+                                            // ]);
                                         @endphp
                                         
-                                        @if(empty($studentAnswer))
+                                        @if($studentAnswer === null || $studentAnswer === '' || (is_array($studentAnswer) && empty($studentAnswer)))
                                             <span class="text-muted">لم يتم الإجابة</span>
                                         @elseif($questionTypeName === 'multiple_choice_single' || $questionTypeName === 'true_false')
-                                            @php $optionId = $getOptionId($studentAnswer); @endphp
-                                            @if($optionId)
-                                                @php $selectedOption = $question->options->find($optionId); @endphp
-                                                @if($selectedOption)
-                                                    <div class="alert alert-info mb-0">
-                                                        <i class="fas fa-check-circle me-2"></i>{!! $selectedOption->option_text !!}
-                                                    </div>
-                                                @else
-                                                    <span class="text-danger">الخيار المحدد غير موجود (ID: {{ $optionId }})</span>
-                                                    <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                                                @endif
+                                            @php
+                                                // Handle different formats: direct ID, string ID, or array with key
+                                                $optionId = null;
+                                                if (is_array($studentAnswer)) {
+                                                    $optionId = $studentAnswer['selected_option'] ?? $studentAnswer['answer'] ?? null;
+                                                    // If still null, try to get first numeric value
+                                                    if ($optionId === null) {
+                                                        foreach ($studentAnswer as $key => $val) {
+                                                            if (is_numeric($val)) {
+                                                                $optionId = (int)$val;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    // Direct value - could be string or number
+                                                    $optionId = is_numeric($studentAnswer) ? (int)$studentAnswer : null;
+                                                }
+                                                
+                                                if ($optionId) {
+                                                    $selectedOption = $question->options->find($optionId);
+                                                } else {
+                                                    $selectedOption = null;
+                                                }
+                                            @endphp
+                                            @if($selectedOption)
+                                                <div class="alert alert-info mb-0">
+                                                    <i class="fas fa-check-circle me-2"></i>{!! $selectedOption->option_text !!}
+                                                </div>
                                             @else
-                                                <span class="text-muted">لم يتم الإجابة</span>
+                                                <span class="text-danger">الخيار المحدد غير موجود (ID: {{ $optionId ?? 'null' }})</span>
                                                 <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                             @endif
                                         @elseif($questionTypeName === 'multiple_choice_multiple')
-                                            @php $optionIds = $getOptionIds($studentAnswer); @endphp
+                                            @php
+                                                $optionIds = [];
+                                                if (is_array($studentAnswer)) {
+                                                    if (isset($studentAnswer['selected_options'])) {
+                                                        $optionIds = array_map('intval', (array)$studentAnswer['selected_options']);
+                                                    } else {
+                                                        // Direct array of IDs
+                                                        foreach ($studentAnswer as $val) {
+                                                            if (is_numeric($val)) {
+                                                                $optionIds[] = (int)$val;
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    // Single value - shouldn't happen for multiple choice, but handle it
+                                                    if (is_numeric($studentAnswer)) {
+                                                        $optionIds = [(int)$studentAnswer];
+                                                    }
+                                                }
+                                            @endphp
                                             @if(!empty($optionIds))
                                                 <ul class="mb-0">
                                                     @foreach($question->options as $option)
@@ -176,7 +186,24 @@
                                                 <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                             @endif
                                         @elseif($questionTypeName === 'short_answer' || $questionTypeName === 'essay')
-                                            @php $answerText = $getTextAnswer($studentAnswer); @endphp
+                                            @php
+                                                $answerText = '';
+                                                if (is_array($studentAnswer)) {
+                                                    $answerText = $studentAnswer['answer'] ?? $studentAnswer['text'] ?? null;
+                                                    // If still null, try to get first non-numeric value
+                                                    if ($answerText === null) {
+                                                        foreach ($studentAnswer as $key => $val) {
+                                                            if (!is_numeric($val) && !is_numeric($key)) {
+                                                                $answerText = $val;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    // Direct string value
+                                                    $answerText = (string)$studentAnswer;
+                                                }
+                                            @endphp
                                             @if($answerText && trim($answerText) !== '')
                                                 <p class="mb-0">{!! nl2br(e($answerText)) !!}</p>
                                             @else
@@ -216,8 +243,12 @@
                                             @if(is_array($studentAnswer) && !empty($studentAnswer))
                                                 <ol class="mb-0">
                                                     @foreach($studentAnswer as $order => $optionId)
-                                                        @php $option = $question->options->find($optionId); @endphp
-                                                        <li>{!! $option ? $option->option_text : 'Option #' . $optionId !!}</li>
+                                                        @php 
+                                                            // Handle both indexed arrays [0 => id, 1 => id] and direct arrays [id, id]
+                                                            $actualOptionId = is_numeric($optionId) ? (int)$optionId : (int)$order;
+                                                            $option = $question->options->find($actualOptionId);
+                                                        @endphp
+                                                        <li>{!! $option ? $option->option_text : 'Option #' . $actualOptionId !!}</li>
                                                     @endforeach
                                                 </ol>
                                             @else
