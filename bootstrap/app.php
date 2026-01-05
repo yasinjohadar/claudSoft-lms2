@@ -33,12 +33,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ImpersonateMiddleware::class,
         ]);
         
-        // Add debug middleware for question modules (only in non-production)
-        if (config('app.debug')) {
-            $middleware->web(append: [
-                \App\Http\Middleware\DebugQuestionModuleRoute::class,
-            ]);
-        }
+        // Add debug middleware for question modules (only in debug mode and not in production)
+        // Disabled by default to avoid potential issues - enable manually if needed for debugging
+        // if (config('app.debug') && config('app.env') !== 'production') {
+        //     $middleware->web(append: [
+        //         \App\Http\Middleware\DebugQuestionModuleRoute::class,
+        //     ]);
+        // }
     })
     ->withEvents(discover: [
         __DIR__.'/../app/Listeners',
