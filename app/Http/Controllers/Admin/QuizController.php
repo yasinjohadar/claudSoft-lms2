@@ -524,6 +524,9 @@ class QuizController extends Controller
             ->findOrFail($id);
 
         // Get available questions from the question bank
+        // Get IDs of questions already in the quiz to exclude them
+        $existingQuestionIds = $quiz->questions()->select('question_bank.id')->pluck('question_bank.id')->toArray();
+        
         $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options'])
             ->where(function($query) use ($quiz) {
                 if ($quiz->course_id) {
@@ -534,7 +537,7 @@ class QuizController extends Controller
                 }
             })
             ->where('is_active', true)
-            ->whereNotIn('id', $quiz->questions()->pluck('id'))
+            ->whereNotIn('id', $existingQuestionIds)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -688,6 +691,9 @@ class QuizController extends Controller
         $quiz = Quiz::with('course')->findOrFail($id);
 
         // Get available questions from the question bank
+        // Get IDs of questions already in the quiz to exclude them
+        $existingQuestionIds = $quiz->questions()->select('question_bank.id')->pluck('question_bank.id')->toArray();
+        
         $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
             ->where(function($query) use ($quiz) {
                 if ($quiz->course_id) {
@@ -698,7 +704,7 @@ class QuizController extends Controller
                 }
             })
             ->where('is_active', true)
-            ->whereNotIn('id', $quiz->questions()->pluck('id'))
+            ->whereNotIn('id', $existingQuestionIds)
             ->orderBy('created_at', 'desc')
             ->get();
 
