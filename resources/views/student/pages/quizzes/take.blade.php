@@ -113,8 +113,31 @@
                                         $savedAnswer = $response->response_text;
                                     } elseif ($response->response_data) {
                                         $responseData = is_array($response->response_data) ? $response->response_data : json_decode($response->response_data, true);
-                                        // If response_data has 'answer' key, use it; otherwise use the whole array
-                                        if (is_array($responseData) && isset($responseData['answer'])) {
+                                        
+                                        // Special handling for fill_blanks - data is stored as indexed array {0: "answer1", 1: "answer2"}
+                                        if ($question->questionType->name === 'fill_blanks') {
+                                            // If response_data has 'answer' key, use it; otherwise use the whole array
+                                            if (is_array($responseData) && isset($responseData['answer'])) {
+                                                $savedAnswer = $responseData['answer'];
+                                            } else {
+                                                // Check if responseData is already an indexed array (0, 1, 2, etc.)
+                                                $isIndexedArray = is_array($responseData) && array_keys($responseData) === range(0, count($responseData) - 1);
+                                                if ($isIndexedArray) {
+                                                    $savedAnswer = $responseData;
+                                                } else {
+                                                    // Try to extract indexed values from object/associative array
+                                                    $savedAnswer = [];
+                                                    foreach ($responseData as $key => $value) {
+                                                        if (is_numeric($key)) {
+                                                            $savedAnswer[(int)$key] = $value;
+                                                        } elseif ($key === 'answer' && is_array($value)) {
+                                                            $savedAnswer = $value;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } elseif (is_array($responseData) && isset($responseData['answer'])) {
                                             // For numerical/calculated, extract the numeric value if it's nested
                                             if (in_array($question->questionType->name, ['numerical', 'calculated'])) {
                                                 $savedAnswer = is_array($responseData['answer']) ? (string)($responseData['answer']['numeric_value'] ?? $responseData['answer'][0] ?? '') : (string)$responseData['answer'];
@@ -228,7 +251,34 @@
                                     @php
                                         $questionText = $question->question_text;
                                         $blankCount = substr_count($questionText, '[[blank]]');
-                                        $savedAnswers = is_array($savedAnswer) ? $savedAnswer : [];
+                                        
+                                        // Ensure $savedAnswer is converted to indexed array
+                                        $savedAnswers = [];
+                                        if ($savedAnswer !== null) {
+                                            if (is_array($savedAnswer)) {
+                                                // Convert associative array to indexed array if needed
+                                                foreach ($savedAnswer as $key => $value) {
+                                                    if (is_numeric($key)) {
+                                                        $savedAnswers[(int)$key] = $value;
+                                                    }
+                                                }
+                                                // If no numeric keys found, try to use values directly
+                                                if (empty($savedAnswers) && !empty($savedAnswer)) {
+                                                    $savedAnswers = array_values($savedAnswer);
+                                                }
+                                            } else {
+                                                // If it's a string, try to decode it
+                                                $decoded = json_decode($savedAnswer, true);
+                                                if (is_array($decoded)) {
+                                                    foreach ($decoded as $key => $value) {
+                                                        if (is_numeric($key)) {
+                                                            $savedAnswers[(int)$key] = $value;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
                                         $parts = preg_split('/\[\[blank\]\]/', $questionText);
                                     @endphp
                                     <div class="fill-blank-container" data-question-id="{{ $question->id }}">
