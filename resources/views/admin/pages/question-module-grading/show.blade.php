@@ -129,7 +129,7 @@
                                                     <pre class="small bg-light p-2 rounded">{{ json_encode($debugInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                                 </div>
                                             @endif
-                                        @elseif($questionTypeName === 'multiple_choice_single' || $questionTypeName === 'true_false')
+                                        @elseif($questionTypeName === 'multiple_choice_single')
                                             @php
                                                 // Handle different formats: direct ID, string ID, or array with key
                                                 $optionId = null;
@@ -161,6 +161,48 @@
                                                 </div>
                                             @else
                                                 <span class="text-danger">الخيار المحدد غير موجود (ID: {{ $optionId ?? 'null' }})</span>
+                                                <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            @endif
+                                        @elseif($questionTypeName === 'true_false')
+                                            @php
+                                                // Handle true/false answers - could be 'true'/'false' string or option ID
+                                                $answerValue = null;
+                                                $displayText = null;
+                                                
+                                                if (is_array($studentAnswer)) {
+                                                    $answerValue = $studentAnswer['answer'] ?? $studentAnswer['selected_option'] ?? null;
+                                                    if ($answerValue === null && !empty($studentAnswer)) {
+                                                        $answerValue = array_values($studentAnswer)[0] ?? null;
+                                                    }
+                                                } else {
+                                                    $answerValue = $studentAnswer;
+                                                }
+                                                
+                                                // Convert to display text
+                                                if (is_numeric($answerValue)) {
+                                                    // It's an option ID
+                                                    $selectedOption = $question->options->find($answerValue);
+                                                    if ($selectedOption) {
+                                                        $displayText = $selectedOption->option_text;
+                                                    }
+                                                } else {
+                                                    // It's a string 'true' or 'false'
+                                                    $answerStr = strtolower(trim((string)$answerValue));
+                                                    if ($answerStr === 'true' || $answerStr === '1' || $answerStr === 'صح') {
+                                                        $displayText = 'صحيح';
+                                                    } elseif ($answerStr === 'false' || $answerStr === '0' || $answerStr === 'خطأ') {
+                                                        $displayText = 'خطأ';
+                                                    } else {
+                                                        $displayText = $answerValue; // Fallback
+                                                    }
+                                                }
+                                            @endphp
+                                            @if($displayText)
+                                                <div class="alert alert-info mb-0">
+                                                    <i class="fas fa-{{ $displayText === 'صحيح' ? 'check' : 'times' }}-circle me-2"></i>{{ $displayText }}
+                                                </div>
+                                            @else
+                                                <span class="text-danger">الإجابة غير معروفة</span>
                                                 <pre class="mt-2 small">{{ json_encode($studentAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                             @endif
                                         @elseif($questionTypeName === 'multiple_choice_multiple')

@@ -855,20 +855,23 @@ class QuestionModuleAttemptController extends Controller
             // Calculate time spent
             $timeSpent = $attempt->started_at ? now()->diffInSeconds($attempt->started_at) : 0;
 
-            // Reload responses to ensure we have the latest data
-            $attempt->load('responses');
+            // Reload responses with question and questionType to ensure we have the latest data
+            $attempt->load(['responses.question.questionType', 'responses.question.options']);
             
             // Log all responses before grading
-            Log::info('Grading responses', [
+            Log::info('=== STARTING AUTO-GRADING ===', [
                 'attempt_id' => $attempt->id,
                 'responses_count' => $attempt->responses->count(),
                 'responses_data' => $attempt->responses->map(function($r) {
                     return [
                         'id' => $r->id,
                         'question_id' => $r->question_id,
+                        'question_type' => $r->question->questionType->name ?? 'unknown',
                         'has_answer' => !empty($r->student_answer),
                         'answer_type' => gettype($r->student_answer),
-                        'answer_value' => is_array($r->student_answer) ? json_encode($r->student_answer) : $r->student_answer,
+                        'answer_value' => is_array($r->student_answer) ? json_encode($r->student_answer, JSON_UNESCAPED_UNICODE) : $r->student_answer,
+                        'is_correct_before' => $r->is_correct,
+                        'score_obtained_before' => $r->score_obtained,
                     ];
                 })->toArray(),
             ]);
@@ -905,9 +908,21 @@ class QuestionModuleAttemptController extends Controller
                             'response_id' => $response->id,
                             'question_id' => $response->question_id,
                             'question_type' => $questionType,
-                            'student_answer' => is_array($studentAnswer) ? json_encode($studentAnswer) : $studentAnswer,
+                            'student_answer' => is_array($studentAnswer) ? json_encode($studentAnswer, JSON_UNESCAPED_UNICODE) : $studentAnswer,
                         ]);
-                        $response->gradeResponse();
+                        
+                        // Grade the response
+                        $result = $response->gradeResponse();
+                        
+                        // Refresh to get updated values
+                        $response->refresh();
+                        
+                        Log::info('Response graded', [
+                            'response_id' => $response->id,
+                            'is_correct' => $response->is_correct,
+                            'score_obtained' => $response->score_obtained,
+                            'grading_result' => $result,
+                        ]);
                     } else {
                         Log::info('Skipping manual grading question', [
                             'response_id' => $response->id,
@@ -917,7 +932,7 @@ class QuestionModuleAttemptController extends Controller
                     }
                     // For short_answer and essay, leave is_correct and score_obtained as null
                 } else {
-                    Log::warning('Response has no answer', [
+                    Log::warning('Response has no answer - skipping grading', [
                         'response_id' => $response->id,
                         'question_id' => $response->question_id,
                         'student_answer' => $studentAnswer,
@@ -925,6 +940,20 @@ class QuestionModuleAttemptController extends Controller
                     ]);
                 }
             }
+            
+            // Log final state after grading
+            Log::info('=== AUTO-GRADING COMPLETED ===', [
+                'attempt_id' => $attempt->id,
+                'responses_after_grading' => $attempt->responses->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'question_id' => $r->question_id,
+                        'question_type' => $r->question->questionType->name ?? 'unknown',
+                        'is_correct' => $r->is_correct,
+                        'score_obtained' => $r->score_obtained,
+                    ];
+                })->toArray(),
+            ]);
 
             // Mark as completed
             $attempt->markAsCompleted();

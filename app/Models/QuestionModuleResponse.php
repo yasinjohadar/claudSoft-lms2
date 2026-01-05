@@ -174,13 +174,17 @@ class QuestionModuleResponse extends Model
      */
     private function gradeTrueFalse($question, $studentAnswer)
     {
-        // Handle both formats: direct value or array with 'answer' key
+        // Handle multiple formats: direct value, array with key, or option ID
         $answer = null;
         
         if (is_array($studentAnswer)) {
-            $answer = $studentAnswer['answer'] ?? null;
+            $answer = $studentAnswer['answer'] ?? $studentAnswer['selected_option'] ?? null;
+            // If still null, try to get first value
+            if ($answer === null && !empty($studentAnswer)) {
+                $answer = array_values($studentAnswer)[0] ?? null;
+            }
         } else {
-            // Direct value (string 'true' or 'false')
+            // Direct value - could be string 'true'/'false' or option ID
             $answer = $studentAnswer;
         }
         
@@ -194,9 +198,34 @@ class QuestionModuleResponse extends Model
             return false;
         }
 
-        $correctAnswer = strtolower($correctOption->option_text) === 'صح' ? 'true' : 'false';
+        // Convert answer to 'true' or 'false' string
+        $answerValue = null;
+        
+        // If answer is numeric, it might be an option ID
+        if (is_numeric($answer)) {
+            $selectedOption = $question->options()->find($answer);
+            if ($selectedOption) {
+                // Convert option text to 'true' or 'false'
+                $optionText = strtolower(trim($selectedOption->option_text));
+                $answerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1') ? 'true' : 'false';
+            }
+        } else {
+            // Direct string value
+            $answerStr = strtolower(trim((string)$answer));
+            if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1') {
+                $answerValue = 'true';
+            } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+                $answerValue = 'false';
+            }
+        }
+        
+        if ($answerValue === null) {
+            return false;
+        }
 
-        return (string)$answer === (string)$correctAnswer;
+        $correctAnswer = strtolower(trim($correctOption->option_text)) === 'صح' ? 'true' : 'false';
+
+        return $answerValue === $correctAnswer;
     }
 
     /**
