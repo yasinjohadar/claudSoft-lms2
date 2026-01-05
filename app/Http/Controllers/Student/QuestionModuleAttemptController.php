@@ -837,10 +837,33 @@ class QuestionModuleAttemptController extends Controller
             // Calculate time spent
             $timeSpent = $attempt->started_at ? now()->diffInSeconds($attempt->started_at) : 0;
 
-            // Grade all responses
+            // Reload responses to ensure we have the latest data
+            $attempt->load('responses');
+            
+            // Log all responses before grading
+            Log::info('Grading responses', [
+                'attempt_id' => $attempt->id,
+                'responses_count' => $attempt->responses->count(),
+                'responses_data' => $attempt->responses->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'question_id' => $r->question_id,
+                        'has_answer' => !empty($r->student_answer),
+                        'answer_type' => gettype($r->student_answer),
+                        'answer_value' => is_array($r->student_answer) ? json_encode($r->student_answer) : $r->student_answer,
+                    ];
+                })->toArray(),
+            ]);
+
+            // Grade all responses that have answers
             foreach ($attempt->responses as $response) {
-                if ($response->student_answer) {
-                    $response->gradeResponse();
+                if ($response->student_answer !== null && $response->student_answer !== '') {
+                    // Check if it's an array and not empty
+                    if (is_array($response->student_answer) && !empty($response->student_answer)) {
+                        $response->gradeResponse();
+                    } elseif (!is_array($response->student_answer) && trim($response->student_answer) !== '') {
+                        $response->gradeResponse();
+                    }
                 }
             }
 
@@ -854,6 +877,12 @@ class QuestionModuleAttemptController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error in submitAttempt', [
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             throw $e;
         }
     }

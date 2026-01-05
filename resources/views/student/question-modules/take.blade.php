@@ -1160,9 +1160,9 @@
         updateProgress();
         updateQuestionNavigation();
 
-        // Send AJAX request
+        // Send AJAX request and return promise
         if (hasValidAnswer) {
-            $.ajax({
+            return $.ajax({
                 url: "{{ route('student.question-module.save-answer', $attempt->id) }}",
                 method: 'POST',
                 data: {
@@ -1181,6 +1181,7 @@
                 }
             });
         }
+        return Promise.resolve();
     }
 
     // Update progress bar
@@ -1254,19 +1255,50 @@
             clearInterval(timerInterval);
         }
 
-        const form = $('<form>', {
-            method: 'POST',
-            action: "{{ route('student.question-module.submit', $attempt->id) }}"
+        // Save all answers one final time before submitting
+        const savePromises = [];
+        $('.question-container').each(function() {
+            const questionId = parseInt($(this).data('question-id'));
+            if (questionId && answeredQuestions.has(questionId)) {
+                // Save this answer - saveAnswer now returns a promise
+                const promise = saveAnswer(questionId);
+                if (promise) {
+                    savePromises.push(promise);
+                }
+            }
         });
 
-        form.append($('<input>', {
-            type: 'hidden',
-            name: '_token',
-            value: '{{ csrf_token() }}'
-        }));
+        // Wait for all answers to be saved, then submit
+        if (savePromises.length > 0) {
+            Promise.all(savePromises).then(() => {
+                // Small delay to ensure all AJAX requests complete
+                setTimeout(() => {
+                    submitForm();
+                }, 300);
+            }).catch(() => {
+                // Even if some saves fail, proceed with submission
+                submitForm();
+            });
+        } else {
+            // No answers to save, submit immediately
+            submitForm();
+        }
+        
+        function submitForm() {
+            const form = $('<form>', {
+                method: 'POST',
+                action: "{{ route('student.question-module.submit', $attempt->id) }}"
+            });
 
-        $('body').append(form);
-        form.submit();
+            form.append($('<input>', {
+                type: 'hidden',
+                name: '_token',
+                value: '{{ csrf_token() }}'
+            }));
+
+            $('body').append(form);
+            form.submit();
+        }
     }
     
     // Prevent accidental page close - only when quiz is in progress
