@@ -371,6 +371,46 @@ class QuizAttempt extends Model
     }
 
     /**
+     * Check if a response has an answer.
+     */
+    private function responseHasAnswer($response): bool
+    {
+        // Check response_data
+        if (!empty($response->response_data)) {
+            if (is_array($response->response_data)) {
+                foreach ($response->response_data as $key => $value) {
+                    if ($value !== null && $value !== '' && $value !== []) {
+                        return true;
+                    }
+                }
+            } else {
+                return true;
+            }
+        }
+        
+        // Check selected_option_ids
+        if (!empty($response->selected_option_ids)) {
+            if (is_array($response->selected_option_ids)) {
+                if (!empty(array_filter($response->selected_option_ids))) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+        
+        // Check response_text
+        if (!empty($response->response_text)) {
+            $text = trim($response->response_text);
+            if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
      * Grade the attempt (calculate scores).
      */
     public function grade(): void
@@ -380,15 +420,39 @@ class QuizAttempt extends Model
         $percentageScore = $this->max_score > 0 ? ($totalScore / $this->max_score) * 100 : 0;
         $passed = $percentageScore >= $this->quiz->passing_grade;
 
-        // Check if all questions are graded
-        $totalResponses = $this->responses()->count();
-        $gradedResponses = $this->responses()->whereNotNull('score_obtained')->count();
+        // Get all responses with answers (exclude unanswered questions)
+        $allResponses = $this->responses()->get();
+        $responsesWithAnswers = $allResponses->filter(function($response) {
+            return $this->responseHasAnswer($response);
+        });
+        
+        // For responses without answers, set score_obtained to 0 if not already set
+        foreach ($allResponses as $response) {
+            if (!$this->responseHasAnswer($response) && $response->score_obtained === null) {
+                $response->update([
+                    'score_obtained' => 0,
+                    'is_correct' => false,
+                    'auto_graded' => true,
+                ]);
+            }
+        }
+
+        // Check if all questions with answers are graded
+        $totalResponsesWithAnswers = $responsesWithAnswers->count();
+        $gradedResponsesWithAnswers = $responsesWithAnswers->filter(function($response) {
+            return $response->score_obtained !== null;
+        })->count();
 
         $gradeStatus = 'not_graded';
-        if ($gradedResponses === $totalResponses && $totalResponses > 0) {
+        if ($totalResponsesWithAnswers > 0) {
+            if ($gradedResponsesWithAnswers === $totalResponsesWithAnswers) {
+                $gradeStatus = 'fully_graded';
+            } elseif ($gradedResponsesWithAnswers > 0) {
+                $gradeStatus = 'partially_graded';
+            }
+        } else {
+            // If no responses have answers, consider it fully graded (all unanswered = 0 score)
             $gradeStatus = 'fully_graded';
-        } elseif ($gradedResponses > 0) {
-            $gradeStatus = 'partially_graded';
         }
 
         $this->update([

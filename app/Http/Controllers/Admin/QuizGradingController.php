@@ -348,19 +348,79 @@ class QuizGradingController extends Controller
             'feedback' => 'nullable|string',
         ]);
 
-        // Check if all responses are graded
-        $ungradedCount = $attempt->responses()
-            ->whereNull('score_obtained')
-            ->count();
+        // Helper function to check if response has an answer
+        $responseHasAnswer = function($response) {
+            $hasAnswer = false;
+            
+            // Check response_data
+            if (!empty($response->response_data)) {
+                if (is_array($response->response_data)) {
+                    foreach ($response->response_data as $key => $value) {
+                        if ($value !== null && $value !== '' && $value !== []) {
+                            $hasAnswer = true;
+                            break;
+                        }
+                    }
+                } else {
+                    $hasAnswer = true;
+                }
+            }
+            
+            // Check selected_option_ids
+            if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                if (is_array($response->selected_option_ids)) {
+                    $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                } else {
+                    $hasAnswer = true;
+                }
+            }
+            
+            // Check response_text
+            if (!$hasAnswer && !empty($response->response_text)) {
+                $text = trim($response->response_text);
+                if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                    $hasAnswer = true;
+                }
+            }
+            
+            return $hasAnswer;
+        };
 
-        if ($ungradedCount > 0) {
-            return back()->withErrors(['error' => "يوجد {$ungradedCount} إجابة لم يتم تصحيحها بعد"]);
+        // Check if all responses WITH ANSWERS are graded (exclude unanswered questions)
+        $allResponses = $attempt->responses;
+        $responsesWithAnswers = $allResponses->filter($responseHasAnswer);
+        $ungradedResponsesWithAnswers = $responsesWithAnswers->filter(function($response) {
+            return $response->score_obtained === null;
+        });
+
+        if ($ungradedResponsesWithAnswers->count() > 0) {
+            return back()->withErrors(['error' => "يوجد {$ungradedResponsesWithAnswers->count()} إجابة لم يتم تصحيحها بعد"]);
         }
 
         DB::beginTransaction();
         try {
+            // Set score_obtained to 0 for responses without answers if not already set
+            foreach ($allResponses as $response) {
+                if (!$responseHasAnswer($response) && $response->score_obtained === null) {
+                    $response->update([
+                        'score_obtained' => 0,
+                        'is_correct' => false,
+                        'auto_graded' => true,
+                    ]);
+                }
+            }
+
             // Recalculate scores
             $attempt->grade();
+            $attempt->refresh();
+
+            // Ensure grade_status is fully_graded after manual completion
+            if ($attempt->grade_status !== 'fully_graded') {
+                $attempt->update([
+                    'grade_status' => 'fully_graded',
+                    'status' => 'graded',
+                ]);
+            }
 
             // Update grading info
             $attempt->update([
@@ -380,6 +440,11 @@ class QuizGradingController extends Controller
                 ->with('success', 'تم إكمال تصحيح المحاولة بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error completing grading', [
+                'attempt_id' => $attemptId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return back()->withErrors(['error' => 'حدث خطأ أثناء إكمال التصحيح: ' . $e->getMessage()]);
         }
     }
