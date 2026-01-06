@@ -80,12 +80,146 @@ class QuizGradingController extends Controller
                 ->withErrors(['error' => 'لا يمكن تصحيح محاولة لم يتم تسليمها بعد']);
         }
 
-        // Get responses that need manual grading
+        // Auto-grade all auto-gradable questions that haven't been graded yet
+        DB::beginTransaction();
+        try {
+            $regradedCount = 0;
+            
+            foreach ($attempt->responses as $response) {
+                $questionType = $response->question->questionType->name ?? '';
+                
+                // Skip essay and short_answer (require manual grading)
+                if (in_array($questionType, ['essay', 'short_answer'])) {
+                    continue;
+                }
+                
+                // Skip if already auto-graded (unless we want to force regrade)
+                if ($response->auto_graded && $response->score_obtained !== null) {
+                    continue;
+                }
+                
+                // Check if response has an answer
+                $hasAnswer = false;
+                
+                // Check response_data
+                if (!empty($response->response_data)) {
+                    if (is_array($response->response_data)) {
+                        foreach ($response->response_data as $key => $value) {
+                            if ($value !== null && $value !== '' && $value !== []) {
+                                $hasAnswer = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                // Check selected_option_ids
+                if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                    if (is_array($response->selected_option_ids)) {
+                        $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                // Check response_text
+                if (!$hasAnswer && !empty($response->response_text)) {
+                    $text = trim($response->response_text);
+                    if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                if ($hasAnswer) {
+                    try {
+                        $response->autoGrade();
+                        $response->refresh();
+                        $regradedCount++;
+                    } catch (\Exception $e) {
+                        \Log::error('Error auto-grading response in show method', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+            
+            // Recalculate attempt scores if any responses were regraded
+            if ($regradedCount > 0) {
+                $attempt->grade();
+                $attempt->refresh();
+            }
+            
+            DB::commit();
+            
+            if ($regradedCount > 0) {
+                \Log::info('Auto-graded responses on grading page load', [
+                    'attempt_id' => $attempt->id,
+                    'regraded_count' => $regradedCount,
+                ]);
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error auto-grading in show method', [
+                'attempt_id' => $attemptId,
+                'error' => $e->getMessage(),
+            ]);
+            // Continue anyway - don't block the page
+        }
+
+        // Reload responses after auto-grading
+        $attempt->load(['responses.question.questionType', 'responses.question.options']);
+
+        // Get responses that need manual grading (only essay and short_answer)
         $responsesNeedingGrading = $attempt->responses()
-            ->whereNull('score_obtained')
-            ->orWhere('auto_graded', false)
+            ->whereHas('question.questionType', function($q) {
+                $q->whereIn('name', ['essay', 'short_answer']);
+            })
+            ->where(function($query) {
+                $query->whereNull('score_obtained')
+                      ->orWhere('auto_graded', false);
+            })
             ->with('question.questionType')
-            ->get();
+            ->get()
+            ->filter(function($response) {
+                // Additional filter: check if response actually has an answer
+                $hasAnswer = false;
+                
+                if (!empty($response->response_data)) {
+                    if (is_array($response->response_data)) {
+                        foreach ($response->response_data as $key => $value) {
+                            if ($value !== null && $value !== '' && $value !== []) {
+                                $hasAnswer = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                    if (is_array($response->selected_option_ids)) {
+                        $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                if (!$hasAnswer && !empty($response->response_text)) {
+                    $text = trim($response->response_text);
+                    if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                        $hasAnswer = true;
+                    }
+                }
+                
+                return $hasAnswer;
+            })
+            ->values();
 
         return view('admin.pages.grading.show', compact('attempt', 'responsesNeedingGrading'));
     }
