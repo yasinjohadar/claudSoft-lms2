@@ -73,9 +73,9 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label">الموضوع أو الكلمة المفتاحية <span class="text-danger">*</span></label>
+                                <label class="form-label">الموضوع أو الكلمة المفتاحية</label>
                                 <input type="text" name="topic" id="topic" class="form-control" 
-                                       placeholder="مثال: الذكاء الاصطناعي في التعليم" required>
+                                       placeholder="مثال: الذكاء الاصطناعي في التعليم">
                                 <small class="text-muted">أدخل الموضوع الذي تريد إنشاء مقال عنه</small>
                             </div>
 
@@ -673,6 +673,31 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             reader.readAsDataURL(file);
         }
+    });
+
+    // إزالة الحقول الخاصة بالتوليد قبل إرسال الـ form
+    document.getElementById('aiBlogPostForm').addEventListener('submit', function(e) {
+        // الحقول التي يجب إزالتها (الحقول الخاصة بالتوليد فقط)
+        const aiGenerationFields = [
+            'topic',
+            'ai_model_id',
+            'content_length',
+            'tone',
+            'language',
+            'generate_seo',
+            'generate_og',
+            'generate_twitter',
+            'generate_schema',
+            'generate_keyword_synonyms'
+        ];
+
+        // إزالة name attribute من الحقول الخاصة بالتوليد
+        aiGenerationFields.forEach(fieldName => {
+            const field = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
+            if (field) {
+                field.removeAttribute('name');
+            }
+        });
     });
 });
 </script>

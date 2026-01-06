@@ -85,7 +85,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $recentQuizAttempts = QuizAttempt::with(['user', 'quiz'])
+        $recentQuizAttempts = QuizAttempt::with(['student', 'quiz'])
             ->latest()
             ->limit(5)
             ->get();

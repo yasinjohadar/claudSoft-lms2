@@ -132,6 +132,12 @@ class AIBlogPostController extends Controller
      */
     public function store(Request $request)
     {
+        // تجاهل الحقول الخاصة بالتوليد (إذا كانت موجودة)
+        $request->merge(array_diff_key($request->all(), array_flip([
+            'topic', 'ai_model_id', 'content_length', 'tone', 'language',
+            'generate_seo', 'generate_og', 'generate_twitter', 'generate_schema', 'generate_keyword_synonyms'
+        ])));
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', 'regex:/^[\p{Arabic}a-zA-Z0-9\s-]+$/u', 'unique:blog_posts,slug'],
