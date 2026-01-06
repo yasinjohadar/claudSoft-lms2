@@ -250,34 +250,95 @@ class QuizGradingController extends Controller
      */
     public function regradeAttempt($attemptId)
     {
-        $attempt = QuizAttempt::with('responses')->findOrFail($attemptId);
+        $attempt = QuizAttempt::with([
+            'responses.question.questionType',
+            'responses.question.options'
+        ])->findOrFail($attemptId);
 
         DB::beginTransaction();
         try {
+            $regradedCount = 0;
+            $skippedCount = 0;
+
             // Regrade all auto-gradable responses
             foreach ($attempt->responses as $response) {
-                $questionType = $response->questionType->name ?? '';
+                $questionType = $response->question->questionType->name ?? '';
 
-                // Skip essay and calculated questions (manual grading)
-                if (in_array($questionType, ['essay', 'calculated'])) {
+                // Skip essay and short_answer (require manual grading)
+                if (in_array($questionType, ['essay', 'short_answer'])) {
+                    $skippedCount++;
                     continue;
                 }
 
-                // Regrade
-                $response->autoGrade();
+                // Check if response has an answer
+                $hasAnswer = false;
+
+                // Check response_data
+                if (!empty($response->response_data)) {
+                    if (is_array($response->response_data)) {
+                        foreach ($response->response_data as $key => $value) {
+                            if ($value !== null && $value !== '' && $value !== []) {
+                                $hasAnswer = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+
+                // Check selected_option_ids
+                if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                    if (is_array($response->selected_option_ids)) {
+                        $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                    } else {
+                        $hasAnswer = true;
+                    }
+                }
+
+                // Check response_text
+                if (!$hasAnswer && !empty($response->response_text)) {
+                    $text = trim($response->response_text);
+                    if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                        $hasAnswer = true;
+                    }
+                }
+
+                if ($hasAnswer) {
+                    try {
+                        $response->autoGrade();
+                        $response->refresh();
+                        $regradedCount++;
+                    } catch (\Exception $e) {
+                        \Log::error('Error regrading response in controller', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                } else {
+                    $skippedCount++;
+                }
             }
 
             // Recalculate attempt scores
             $attempt->grade();
+            $attempt->refresh();
 
             // Update analytics
             $this->updateStudentAnalytics($attempt);
 
             DB::commit();
 
-            return back()->with('success', 'تم إعادة تصحيح المحاولة بنجاح');
+            return back()->with('success', "تم إعادة تصحيح {$regradedCount} إجابة بنجاح. تم تخطي {$skippedCount} إجابة.");
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error regrading attempt in controller', [
+                'attempt_id' => $attemptId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return back()->withErrors(['error' => 'حدث خطأ أثناء إعادة التصحيح: ' . $e->getMessage()]);
         }
     }
