@@ -234,8 +234,13 @@ class QuizGradingController extends Controller
         $validated = $request->validate([
             'score_obtained' => 'required|numeric|min:0|max:' . $response->max_score,
             'feedback' => 'nullable|string',
-            'is_correct' => 'nullable|boolean',
+            'is_correct' => 'nullable|in:0,1,true,false,"true","false","1","0"',
         ]);
+        
+        // Convert is_correct to boolean
+        if (isset($validated['is_correct'])) {
+            $validated['is_correct'] = filter_var($validated['is_correct'], FILTER_VALIDATE_BOOLEAN);
+        }
 
         DB::beginTransaction();
         try {

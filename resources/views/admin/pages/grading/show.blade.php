@@ -548,7 +548,7 @@ $(document).ready(function() {
                 _token: '{{ csrf_token() }}',
                 score_obtained: score,
                 feedback: feedback,
-                is_correct: parseFloat(score) >= parseFloat(maxScore)
+                is_correct: parseFloat(score) >= parseFloat(maxScore) ? 1 : 0
             },
             success: function(response) {
                 if (response.success) {
