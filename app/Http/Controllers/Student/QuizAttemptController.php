@@ -522,27 +522,123 @@ class QuizAttemptController extends Controller
             // Reload responses with relationships before grading
             $attempt->load(['responses.question.questionType', 'responses.question.options']);
 
+            // Log before grading
+            \Log::info('=== QUIZ AUTO-GRADING START ===', [
+                'attempt_id' => $attempt->id,
+                'quiz_id' => $attempt->quiz_id,
+                'student_id' => $studentId,
+                'responses_count' => $attempt->responses->count(),
+            ]);
+
             // Auto-grade all auto-gradable questions (only those that don't require manual grading)
             foreach ($attempt->responses as $response) {
                 $questionType = $response->question->questionType->name ?? '';
                 
                 // Only auto-grade questions that don't require manual grading
+                // short_answer and essay require manual grading
                 $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
                 
-                // Check if response has an answer
+                // Improved check if response has an answer
                 $hasAnswer = false;
-                if ($response->response_data && !empty($response->response_data)) {
-                    $hasAnswer = true;
-                } elseif ($response->selected_option_ids && !empty($response->selected_option_ids)) {
-                    $hasAnswer = true;
-                } elseif ($response->response_text && trim($response->response_text) !== '') {
-                    $hasAnswer = true;
+                $answerDetails = [];
+                
+                // Check response_data (for complex question types)
+                if (!empty($response->response_data)) {
+                    if (is_array($response->response_data)) {
+                        // Check if it's not empty array and has actual values
+                        $hasValues = false;
+                        foreach ($response->response_data as $key => $value) {
+                            if ($value !== null && $value !== '' && $value !== []) {
+                                $hasValues = true;
+                                break;
+                            }
+                        }
+                        if ($hasValues) {
+                            $hasAnswer = true;
+                            $answerDetails['source'] = 'response_data';
+                            $answerDetails['data'] = $response->response_data;
+                        }
+                    } else {
+                        $hasAnswer = true;
+                        $answerDetails['source'] = 'response_data';
+                        $answerDetails['data'] = $response->response_data;
+                    }
                 }
                 
+                // Check selected_option_ids (for multiple choice, true/false)
+                if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                    if (is_array($response->selected_option_ids)) {
+                        $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                    } else {
+                        $hasAnswer = true;
+                    }
+                    if ($hasAnswer) {
+                        $answerDetails['source'] = 'selected_option_ids';
+                        $answerDetails['data'] = $response->selected_option_ids;
+                    }
+                }
+                
+                // Check response_text (for text-based answers)
+                if (!$hasAnswer && !empty($response->response_text)) {
+                    $text = trim($response->response_text);
+                    if ($text !== '' && $text !== 'null' && $text !== '[]') {
+                        $hasAnswer = true;
+                        $answerDetails['source'] = 'response_text';
+                        $answerDetails['data'] = $text;
+                    }
+                }
+                
+                \Log::info('Response grading check', [
+                    'response_id' => $response->id,
+                    'question_id' => $response->question_id,
+                    'question_type' => $questionType,
+                    'requires_manual_grading' => $requiresManualGrading,
+                    'has_answer' => $hasAnswer,
+                    'answer_details' => $answerDetails,
+                    'is_correct_before' => $response->is_correct,
+                    'score_obtained_before' => $response->score_obtained,
+                ]);
+                
                 if (!$requiresManualGrading && $hasAnswer) {
-                    $response->autoGrade();
+                    try {
+                        $response->autoGrade();
+                        // Reload to get updated values
+                        $response->refresh();
+                        \Log::info('Response auto-graded successfully', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                            'is_correct_after' => $response->is_correct,
+                            'score_obtained_after' => $response->score_obtained,
+                            'auto_graded' => $response->auto_graded,
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Error auto-grading response', [
+                            'response_id' => $response->id,
+                            'question_id' => $response->question_id,
+                            'question_type' => $questionType,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
+                } elseif ($requiresManualGrading) {
+                    \Log::info('Response requires manual grading', [
+                        'response_id' => $response->id,
+                        'question_id' => $response->question_id,
+                        'question_type' => $questionType,
+                    ]);
+                } elseif (!$hasAnswer) {
+                    \Log::warning('Response has no answer, skipping auto-grade', [
+                        'response_id' => $response->id,
+                        'question_id' => $response->question_id,
+                        'question_type' => $questionType,
+                    ]);
                 }
             }
+            
+            \Log::info('=== QUIZ AUTO-GRADING END ===', [
+                'attempt_id' => $attempt->id,
+            ]);
 
             // Calculate final scores
             $attempt->grade();

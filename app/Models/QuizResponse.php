@@ -223,9 +223,9 @@ class QuizResponse extends Model
                 break;
 
             case 'short_answer':
-                $isCorrect = $this->gradeShortAnswer();
-                $scoreObtained = $isCorrect ? $this->max_score : 0;
-                break;
+                // Short answer questions require manual grading (similar to essay)
+                // They can have multiple correct answers and need human judgment
+                return;
 
             case 'numerical':
                 $isCorrect = $this->gradeNumerical();
@@ -249,13 +249,22 @@ class QuizResponse extends Model
                 [$isCorrect, $scoreObtained] = $this->gradeDragDrop();
                 break;
 
+            case 'calculated':
+                // Calculated questions - similar to numerical but with formula evaluation
+                $isCorrect = $this->gradeCalculated();
+                $scoreObtained = $isCorrect ? $this->max_score : 0;
+                break;
+
             case 'essay':
-                // Essay questions can be auto-graded using AI
-                $this->autoGradeEssay();
+                // Essay questions require manual grading
                 return;
 
             default:
-                // Calculated questions require manual grading
+                // Unknown question type - skip auto-grading
+                \Log::warning('Unknown question type for auto-grading', [
+                    'response_id' => $this->id,
+                    'question_type' => $questionType,
+                ]);
                 return;
         }
 
@@ -487,10 +496,6 @@ class QuizResponse extends Model
      */
     private function gradeNumerical(): bool
     {
-        if (empty($this->response_text)) {
-            return false;
-        }
-
         $metadata = $this->question->metadata ?? [];
         $correctAnswer = $metadata['correct_answer'] ?? null;
         $tolerance = $metadata['tolerance'] ?? 0;
@@ -499,10 +504,82 @@ class QuizResponse extends Model
             return false;
         }
 
-        $studentAnswer = floatval($this->response_text);
+        // Get student answer from response_text or response_data
+        $studentAnswer = null;
+        if (!empty($this->response_text)) {
+            $studentAnswer = $this->response_text;
+        } elseif (!empty($this->response_data)) {
+            if (isset($this->response_data['answer'])) {
+                $studentAnswer = $this->response_data['answer'];
+            } elseif (isset($this->response_data['numeric_value'])) {
+                $studentAnswer = $this->response_data['numeric_value'];
+            }
+        }
+
+        if ($studentAnswer === null || !is_numeric($studentAnswer)) {
+            return false;
+        }
+
+        $studentValue = floatval($studentAnswer);
         $correctValue = floatval($correctAnswer);
 
-        $difference = abs($studentAnswer - $correctValue);
+        $difference = abs($studentValue - $correctValue);
+
+        return $difference <= $tolerance;
+    }
+
+    /**
+     * Grade calculated question.
+     */
+    private function gradeCalculated(): bool
+    {
+        if (empty($this->response_data) && empty($this->response_text)) {
+            return false;
+        }
+
+        $metadata = $this->question->metadata ?? [];
+        $formula = $metadata['formula'] ?? null;
+        $correctAnswer = $metadata['correct_answer'] ?? null;
+        $tolerance = $metadata['tolerance'] ?? 0;
+
+        if ($correctAnswer === null) {
+            return false;
+        }
+
+        // Get student answer from response_data or response_text
+        $studentAnswer = null;
+        if (!empty($this->response_data)) {
+            if (isset($this->response_data['answer'])) {
+                $studentAnswer = $this->response_data['answer'];
+            } elseif (isset($this->response_data['numeric_value'])) {
+                $studentAnswer = $this->response_data['numeric_value'];
+            }
+        } elseif (!empty($this->response_text)) {
+            $studentAnswer = $this->response_text;
+        }
+
+        if ($studentAnswer === null) {
+            return false;
+        }
+
+        // Convert to numeric value
+        if (is_array($studentAnswer)) {
+            // If it's an array, try to get numeric value
+            $studentAnswer = $studentAnswer['numeric_value'] ?? $studentAnswer['answer'] ?? null;
+        }
+
+        if (!is_numeric($studentAnswer)) {
+            $studentAnswer = floatval($studentAnswer);
+        }
+
+        if (!is_numeric($studentAnswer)) {
+            return false;
+        }
+
+        $studentValue = floatval($studentAnswer);
+        $correctValue = floatval($correctAnswer);
+
+        $difference = abs($studentValue - $correctValue);
 
         return $difference <= $tolerance;
     }
@@ -582,7 +659,7 @@ class QuizResponse extends Model
     private function gradeOrdering(): bool
     {
         if (empty($this->response_data)) {
-            return [false, 0];
+            return false;
         }
 
         // Support both formats: 'sequence' (old) and 'answer' (new from QuestionModule format)
