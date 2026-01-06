@@ -120,6 +120,17 @@ Route::prefix('student')
 
         // ========== Quizzes Routes (Student) ==========
 
+        // Review & Analytics (must be before quizzes routes to avoid route conflict)
+        Route::prefix('quizzes/review')->name('student.quizzes.review.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Student\QuizReviewController::class, 'index'])->name('index'); // List all attempts
+            Route::get('/{attemptId}', [\App\Http\Controllers\Student\QuizReviewController::class, 'show'])->name('show'); // Review specific attempt
+            Route::get('/analytics/overview', [\App\Http\Controllers\Student\QuizReviewController::class, 'analytics'])->name('analytics'); // Performance analytics
+            Route::get('/quiz/{quizId}/compare', [\App\Http\Controllers\Student\QuizReviewController::class, 'compareAttempts'])->name('compare'); // Compare attempts
+            Route::get('/quiz/{quizId}/history', [\App\Http\Controllers\Student\QuizReviewController::class, 'history'])->name('history'); // Quiz history
+            Route::get('/{attemptId}/question/{questionId}', [\App\Http\Controllers\Student\QuizReviewController::class, 'getQuestionReview'])->name('question'); // Question review (AJAX)
+            Route::get('/{attemptId}/download-report', [\App\Http\Controllers\Student\QuizReviewController::class, 'downloadReport'])->name('download-report'); // Download report
+        });
+
         // Browse & Take Quizzes
         Route::prefix('quizzes')->name('student.quizzes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Student\QuizAttemptController::class, 'index'])->name('index'); // Browse available quizzes
@@ -131,17 +142,6 @@ Route::prefix('student')
             Route::post('/attempt/{attemptId}/submit', [\App\Http\Controllers\Student\QuizAttemptController::class, 'submit'])->name('submit'); // Submit quiz
             Route::post('/attempt/{attemptId}/mark-completed', [\App\Http\Controllers\Student\QuizAttemptController::class, 'markCompleted'])->name('mark-completed'); // Mark as completed "تم الإنجاز" ✅
             Route::get('/attempt/{attemptId}/progress', [\App\Http\Controllers\Student\QuizAttemptController::class, 'getProgress'])->name('progress'); // Get progress (AJAX)
-        });
-
-        // Review & Analytics
-        Route::prefix('quizzes/review')->name('student.quizzes.review.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Student\QuizReviewController::class, 'index'])->name('index'); // List all attempts
-            Route::get('/{attemptId}', [\App\Http\Controllers\Student\QuizReviewController::class, 'show'])->name('show'); // Review specific attempt
-            Route::get('/analytics/overview', [\App\Http\Controllers\Student\QuizReviewController::class, 'analytics'])->name('analytics'); // Performance analytics
-            Route::get('/quiz/{quizId}/compare', [\App\Http\Controllers\Student\QuizReviewController::class, 'compareAttempts'])->name('compare'); // Compare attempts
-            Route::get('/quiz/{quizId}/history', [\App\Http\Controllers\Student\QuizReviewController::class, 'history'])->name('history'); // Quiz history
-            Route::get('/{attemptId}/question/{questionId}', [\App\Http\Controllers\Student\QuizReviewController::class, 'getQuestionReview'])->name('question'); // Question review (AJAX)
-            Route::get('/{attemptId}/download-report', [\App\Http\Controllers\Student\QuizReviewController::class, 'downloadReport'])->name('download-report'); // Download report
         });
 
         // ========== Question Modules Routes (Student) ==========
