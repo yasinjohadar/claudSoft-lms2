@@ -378,7 +378,7 @@
                                 </div>
 
                                 <!-- Correct Answer (if allowed) -->
-                                @if($attempt->quiz->show_correct_answers && $question->questionType->name != 'essay')
+                                @if($attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay', 'short_answer']))
                                     <div class="mb-3">
                                         <p class="text-success mb-2">
                                             <strong><i class="fas fa-lightbulb me-1"></i>الإجابة الصحيحة:</strong>
@@ -452,26 +452,23 @@
                                                 @php
                                                     $correctMatching = [];
                                                     foreach ($question->options as $option) {
-                                                        if ($option->is_correct) {
-                                                            $correctMatching[$option->id] = $option->feedback ?? $option->option_text;
-                                                        }
+                                                        // For matching, the correct answer is the feedback value that matches the option
+                                                        // We need to find which option's feedback matches with which option
+                                                        $correctMatching[$option->id] = $option->feedback ?? null;
                                                     }
                                                 @endphp
-                                                @if(!empty($correctMatching))
+                                                @if(!empty(array_filter($correctMatching)))
                                                     <ul class="mb-0">
-                                                        @foreach($correctMatching as $optionId => $correctAnswer)
-                                                            @php
-                                                                $option = $question->options->find($optionId);
-                                                            @endphp
-                                                            @if($option)
+                                                        @foreach($question->options as $option)
+                                                            @if(isset($correctMatching[$option->id]) && $correctMatching[$option->id])
                                                                 <li class="mb-2">
-                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctAnswer }}
+                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctMatching[$option->id] }}
                                                                 </li>
                                                             @endif
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                    {{ 'راجع المدرس' }}
                                                 @endif
                                             @elseif($question->questionType->name == 'ordering')
                                                 @php
@@ -486,7 +483,7 @@
                                                         @endforeach
                                                     </ol>
                                                 @else
-                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                    {{ 'راجع المدرس' }}
                                                 @endif
                                             @elseif(in_array($question->questionType->name, ['numerical', 'calculated']))
                                                 @php
@@ -497,17 +494,30 @@
                                                 @else
                                                     {{ 'راجع المدرس' }}
                                                 @endif
-                                            @elseif($question->questionType->name == 'short_answer')
+                                            @elseif($question->questionType->name == 'drag_drop')
                                                 @php
-                                                    $correctShortAnswer = $question->metadata['correct_answer'] ?? $question->metadata['answer'] ?? null;
+                                                    $correctDragDrop = [];
+                                                    foreach ($question->options as $option) {
+                                                        if ($option->feedback) {
+                                                            $correctDragDrop[$option->id] = $option->feedback;
+                                                        }
+                                                    }
                                                 @endphp
-                                                @if($correctShortAnswer !== null)
-                                                    {{ $correctShortAnswer }}
+                                                @if(!empty($correctDragDrop))
+                                                    <ul class="mb-0">
+                                                        @foreach($question->options as $option)
+                                                            @if(isset($correctDragDrop[$option->id]))
+                                                                <li class="mb-2">
+                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctDragDrop[$option->id] }}
+                                                                </li>
+                                                            @endif
+                                                        @endforeach
+                                                    </ul>
                                                 @else
                                                     {{ 'راجع المدرس' }}
                                                 @endif
                                             @else
-                                                {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                {{ 'راجع المدرس' }}
                                             @endif
                                         </div>
                                     </div>

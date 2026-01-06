@@ -41,6 +41,11 @@ class QuizReviewController extends Controller
 
         $attempts = $query->paginate(15);
 
+        // Get unique quizzes for filter
+        $quizzes = \App\Models\Quiz::whereHas('attempts', function($q) use ($studentId) {
+            $q->where('student_id', $studentId);
+        })->with('course')->orderBy('title')->get(['id', 'title', 'course_id']);
+
         // Overall statistics
         $stats = [
             'total_attempts' => QuizAttempt::where('student_id', $studentId)->count(),
@@ -50,15 +55,18 @@ class QuizReviewController extends Controller
             'in_progress' => QuizAttempt::where('student_id', $studentId)
                 ->where('status', 'in_progress')
                 ->count(),
-            'passed' => QuizAttempt::where('student_id', $studentId)
+            'passed_attempts' => QuizAttempt::where('student_id', $studentId)
                 ->where('passed', true)
+                ->count(),
+            'completed_attempts' => QuizAttempt::where('student_id', $studentId)
+                ->where('is_completed', true)
                 ->count(),
             'average_score' => QuizAttempt::where('student_id', $studentId)
                 ->where('is_completed', true)
-                ->avg('percentage_score'),
+                ->avg('percentage_score') ?? 0,
         ];
 
-        return view('student.pages.quizzes.review-index', compact('attempts', 'stats'));
+        return view('student.pages.quizzes.review-index', compact('attempts', 'stats', 'quizzes'));
     }
 
     /**

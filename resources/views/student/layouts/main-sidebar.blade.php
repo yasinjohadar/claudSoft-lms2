@@ -100,6 +100,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - اختباراتي -->
+                        <li class="slide {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.quizzes.review.index') }}" class="side-menu__item {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
+                                <i class="fas fa-clipboard-check side-menu__icon"></i>
+                                <span class="side-menu__label">اختباراتي</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - تقدمي -->
                         <li class="slide">
                             <a href="{{ route('student.progress.overview') }}" class="side-menu__item">
