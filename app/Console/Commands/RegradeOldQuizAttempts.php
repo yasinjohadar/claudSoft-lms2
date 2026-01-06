@@ -40,11 +40,11 @@ class RegradeOldQuizAttempts extends Command
         $force = $this->option('force');
         $limit = (int) $this->option('limit');
 
-        // Build query
+        // Build query - include all completed attempts (not in_progress)
         $query = QuizAttempt::with([
             'responses.question.questionType',
             'responses.question.options'
-        ])->where('status', 'completed');
+        ])->where('status', '!=', 'in_progress');
 
         if ($attemptId) {
             $query->where('id', $attemptId);
