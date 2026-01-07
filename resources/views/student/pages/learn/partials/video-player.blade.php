@@ -23,8 +23,10 @@
             @if($isBunnyUrl)
                 {{-- Bunny.net Video - Full Width --}}
                 <iframe 
+                    id="bunny-video-iframe-{{ $module->id ?? 'default' }}"
+                    class="bunny-video-iframe"
                     src="{{ $videoUrl }}"
-                    style="position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; min-width: 100%; min-height: 100%; max-width: none !important; max-height: none !important; border: 0; transform: scale(1); object-fit: fill;"
+                    style="position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: none !important; max-height: none !important; border: 0 !important; margin: 0 !important; padding: 0 !important; transform: scale(1) !important;"
                     frameborder="0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                     allowfullscreen
@@ -129,3 +131,88 @@
 </div>
 @endif
 @endif
+
+@push('styles')
+<style>
+    .bunny-video-iframe {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        border: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: scale(1) !important;
+        box-sizing: border-box !important;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        function resizeBunnyIframes() {
+            $('.bunny-video-iframe').each(function() {
+                const $iframe = $(this);
+                
+                // Force iframe size
+                $iframe.css({
+                    'position': 'absolute',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'min-width': '100%',
+                    'min-height': '100%',
+                    'max-width': 'none',
+                    'max-height': 'none',
+                    'border': '0',
+                    'margin': '0',
+                    'padding': '0',
+                    'transform': 'scale(1)',
+                    'box-sizing': 'border-box'
+                });
+                
+                // Try to access iframe content (may fail due to CORS)
+                try {
+                    const iframeDoc = this.contentDocument || this.contentWindow.document;
+                    if (iframeDoc) {
+                        const iframeBody = iframeDoc.body;
+                        if (iframeBody) {
+                            iframeBody.style.margin = '0';
+                            iframeBody.style.padding = '0';
+                            iframeBody.style.overflow = 'hidden';
+                            
+                            const video = iframeDoc.querySelector('video');
+                            if (video) {
+                                video.style.width = '100%';
+                                video.style.height = '100%';
+                                video.style.objectFit = 'contain';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Cross-origin restriction, ignore
+                }
+            });
+        }
+        
+        resizeBunnyIframes();
+        
+        $('.bunny-video-iframe').on('load', function() {
+            resizeBunnyIframes();
+        });
+        
+        $(window).on('resize', function() {
+            resizeBunnyIframes();
+        });
+        
+        setInterval(resizeBunnyIframes, 1000);
+    });
+</script>
+@endpush
