@@ -726,8 +726,34 @@
                                                         <h6 class="mb-1 fw-semibold text-dark">
                                                             {{ $module->title }}
                                                             @if($module->accessRestrictions && $module->accessRestrictions->count() > 0)
-                                                                <span class="badge bg-warning text-dark ms-2" title="هذه الوحدة لها قيود وصول">
+                                                                @php
+                                                                    // أسماء المجموعات المرتبطة بقيود هذه الوحدة
+                                                                    $groupNames = $module->accessRestrictions
+                                                                        ->pluck('group.name')
+                                                                        ->filter()
+                                                                        ->unique()
+                                                                        ->values();
+                                                                    $displayGroups = $groupNames->take(3);
+                                                                    $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
+                                                                @endphp
+                                                                <span class="badge bg-warning text-dark ms-2"
+                                                                      @if($groupNames->isNotEmpty())
+                                                                          title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
+                                                                      @else
+                                                                          title="هذه الوحدة لها قيود وصول"
+                                                                      @endif
+                                                                >
                                                                     <i class="fas fa-lock me-1"></i>قيود
+                                                                    @if($displayGroups->isNotEmpty())
+                                                                        <span class="ms-1">
+                                                                            (
+                                                                            {{ $displayGroups->implode('، ') }}
+                                                                            @if($moreCount > 0)
+                                                                                ، +{{ $moreCount }} مجموعات أخرى
+                                                                            @endif
+                                                                            )
+                                                                        </span>
+                                                                    @endif
                                                                 </span>
                                                             @endif
                                                         </h6>

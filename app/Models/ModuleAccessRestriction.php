@@ -31,9 +31,6 @@ class ModuleAccessRestriction extends Model
      */
     public function group()
     {
-        if ($this->restriction_type !== 'group') {
-            return null;
-        }
         return $this->belongsTo(CourseGroup::class, 'restriction_id');
     }
 

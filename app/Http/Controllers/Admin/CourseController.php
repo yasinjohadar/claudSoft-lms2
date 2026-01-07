@@ -215,18 +215,26 @@ class CourseController extends Controller
                 });
             });
 
-            // Load access restrictions for sections and modules
+            // Load access restrictions for sections and modules (group-based, allow only) مع المجموعات المرتبطة
             $course->sections->each(function ($section) {
-                $section->load(['accessRestrictions' => function($query) {
-                    $query->where('restriction_type', 'group')
-                          ->where('access_type', 'allow');
-                }]);
-                
-                $section->modules->each(function ($module) {
-                    $module->load(['accessRestrictions' => function($query) {
+                $section->load([
+                    'accessRestrictions' => function($query) {
                         $query->where('restriction_type', 'group')
                               ->where('access_type', 'allow');
-                    }]);
+                    },
+                    // تحميل المجموعات المرتبطة بقيود القسم (إن وُجدت)
+                    'accessRestrictions.group',
+                ]);
+
+                $section->modules->each(function ($module) {
+                    $module->load([
+                        'accessRestrictions' => function($query) {
+                            $query->where('restriction_type', 'group')
+                                  ->where('access_type', 'allow');
+                        },
+                        // تحميل المجموعات المرتبطة بقيود هذه الوحدة
+                        'accessRestrictions.group',
+                    ]);
                 });
             });
 
