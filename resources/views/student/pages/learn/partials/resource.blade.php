@@ -1,5 +1,17 @@
 @php
-    $resource = $module->content; // Assuming polymorphic relationship
+    /** @var \App\Models\CourseModule $module */
+    /** @var \App\Models\Resource|null $resource */
+    $resource = $module->modulable;
+    $resourceUrl = $resource->resource_url ?? null;
+    $isUrlSource = ($resource->resource_source ?? null) === 'url' && !empty($resourceUrl);
+    $canEmbed = $isUrlSource && \Illuminate\Support\Str::contains($resourceUrl, [
+        'iframe.mediadelivery.net',
+        'bunny.net',
+        'b-cdn.net',
+        'youtube.com',
+        'youtu.be',
+        'vimeo.com',
+    ]);
 @endphp
 
 @if($resource)
@@ -70,43 +82,65 @@
         </div>
     </div>
 
-    <!-- Download/Preview Actions -->
+    <!-- Download/Preview / External Link Actions -->
     <div class="card mb-4">
         <div class="card-body text-center py-5">
-            <h5 class="mb-4">
-                <i class="fas fa-info-circle text-primary me-2"></i>
-                الملف جاهز للتحميل
-            </h5>
+            @if($isUrlSource)
+                <h5 class="mb-4">
+                    <i class="fas fa-link text-primary me-2"></i>
+                    رابط خارجي
+                </h5>
 
-            <div class="d-flex justify-content-center gap-3 flex-wrap">
-                <!-- Download Button -->
-                <a href="{{ route('student.resources.download', $resource->id) }}"
-                   class="btn btn-primary btn-lg"
-                   onclick="trackDownload()">
-                    <i class="fas fa-download me-2"></i>
-                    تحميل الملف
-                </a>
-
-                <!-- Preview Button (if applicable) -->
-                @if(in_array($resource->resource_type, ['pdf', 'image', 'document']))
-                    <a href="{{ route('student.resources.preview', $resource->id) }}"
-                       class="btn btn-outline-secondary btn-lg"
-                       target="_blank">
-                        <i class="fas fa-eye me-2"></i>
-                        معاينة
-                    </a>
-                @endif
-
-                <!-- External Link (if available) -->
-                @if($resource->external_url)
-                    <a href="{{ $resource->external_url }}"
-                       class="btn btn-outline-info btn-lg"
-                       target="_blank">
+                @if($canEmbed)
+                    <!-- Embedded external URL (video etc.) -->
+                    <div style="max-width: 100%; margin: 0 auto;">
+                        <div style="position:relative;padding-top:56.25%;background:#000;border-radius:12px;overflow:hidden;">
+                            <iframe
+                                src="{{ $resourceUrl }}"
+                                loading="lazy"
+                                style="border:0;position:absolute;top:0;height:100%;width:100%;"
+                                allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;"
+                                allowfullscreen="true">
+                            </iframe>
+                        </div>
+                    </div>
+                @else
+                    <!-- Open external link in new tab -->
+                    <a href="{{ $resourceUrl }}"
+                       class="btn btn-primary btn-lg"
+                       target="_blank" rel="noopener">
                         <i class="fas fa-external-link-alt me-2"></i>
-                        فتح الرابط الخارجي
+                        فتح الرابط
                     </a>
                 @endif
-            </div>
+            @else
+                <h5 class="mb-4">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    الملف جاهز للتحميل
+                </h5>
+
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <!-- Download Button -->
+                    @if($resource->file_path)
+                        <a href="{{ route('student.resources.download', $resource->id) }}"
+                           class="btn btn-primary btn-lg"
+                           onclick="trackDownload()">
+                            <i class="fas fa-download me-2"></i>
+                            تحميل الملف
+                        </a>
+                    @endif
+
+                    <!-- Preview Button (if applicable) -->
+                    @if($resource->file_path && in_array($resource->resource_type, ['pdf', 'image', 'document']))
+                        <a href="{{ route('student.resources.preview', $resource->id) }}"
+                           class="btn btn-outline-secondary btn-lg"
+                           target="_blank">
+                            <i class="fas fa-eye me-2"></i>
+                            معاينة
+                        </a>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 
