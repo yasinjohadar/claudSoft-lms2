@@ -62,6 +62,26 @@
                             str_contains($videoUrl, 'b-cdn.net') ||
                             str_contains($videoUrl, 'iframe.mediadelivery')
                         );
+                        
+                        // Add responsive parameter to Bunny Stream URL if not already present
+                        if ($isBunnyUrl && $videoUrl) {
+                            $parsedUrl = parse_url($videoUrl);
+                            $queryParams = [];
+                            if (isset($parsedUrl['query'])) {
+                                parse_str($parsedUrl['query'], $queryParams);
+                            }
+                            
+                            // Add responsive parameter
+                            if (!isset($queryParams['responsive'])) {
+                                $queryParams['responsive'] = '1';
+                            }
+                            
+                            // Rebuild URL
+                            $videoUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'] . $parsedUrl['path'];
+                            if (!empty($queryParams)) {
+                                $videoUrl .= '?' . http_build_query($queryParams);
+                            }
+                        }
                     @endphp
                     <div class="card">
                         <div class="card-body p-3">
@@ -925,6 +945,66 @@
         // Additional attempts after page fully loads
         setTimeout(resizeBunnyIframes, 2000);
         setTimeout(resizeBunnyIframes, 3000);
+        
+        // Try using MutationObserver to watch for iframe content changes
+        $('.bunny-video-iframe').each(function() {
+            const iframe = this;
+            
+            // Try to access iframe content with multiple attempts
+            const tryAccessIframe = function(attempts = 0) {
+                if (attempts > 10) return; // Stop after 10 attempts
+                
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                    if (iframeDoc && iframeDoc.body) {
+                        const wrapper = iframeDoc.querySelector('.wrapper');
+                        if (wrapper) {
+                            // Force width to 100%
+                            wrapper.style.setProperty('width', '100%', 'important');
+                            wrapper.style.setProperty('max-width', '100%', 'important');
+                            wrapper.style.setProperty('min-width', '100%', 'important');
+                            wrapper.style.width = '100%';
+                            wrapper.style.maxWidth = '100%';
+                            wrapper.style.minWidth = '100%';
+                            
+                            console.log('Bunny Stream: Successfully applied width: 100% to .wrapper');
+                        } else {
+                            // Retry if wrapper not found yet
+                            setTimeout(() => tryAccessIframe(attempts + 1), 500);
+                        }
+                    } else {
+                        // Retry if iframe not ready yet
+                        setTimeout(() => tryAccessIframe(attempts + 1), 500);
+                    }
+                } catch (e) {
+                    // CORS error, try postMessage approach
+                    try {
+                        iframe.contentWindow?.postMessage({
+                            type: 'setStyle',
+                            selector: '.wrapper',
+                            styles: {
+                                width: '100%',
+                                maxWidth: '100%',
+                                minWidth: '100%'
+                            }
+                        }, '*');
+                    } catch (e2) {
+                        // Ignore
+                    }
+                }
+            };
+            
+            // Start trying after iframe loads
+            $(iframe).on('load', function() {
+                setTimeout(() => tryAccessIframe(0), 100);
+                setTimeout(() => tryAccessIframe(0), 500);
+                setTimeout(() => tryAccessIframe(0), 1000);
+                setTimeout(() => tryAccessIframe(0), 2000);
+            });
+            
+            // Also try immediately
+            setTimeout(() => tryAccessIframe(0), 100);
+        });
     });
 </script>
 <style>
