@@ -205,9 +205,15 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary-transparent">
-                                                {{ $quiz->course->title }}
-                                            </span>
+                                            @if($quiz->course)
+                                                <span class="badge bg-primary-transparent">
+                                                    {{ $quiz->course->title }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary-transparent">
+                                                    بدون كورس
+                                                </span>
+                                            @endif
                                             @if($quiz->lesson)
                                                 <br>
                                                 <small class="badge bg-info-transparent mt-1">
