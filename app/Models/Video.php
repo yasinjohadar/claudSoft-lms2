@@ -293,18 +293,21 @@ class Video extends Model
             return null;
         }
         
-        // Check if it's an iframe URL
+        // Check if it's a mediadelivery.net URL
         if (str_contains($parsedUrl['host'], 'mediadelivery.net') && isset($parsedUrl['path'])) {
             // Extract library ID and video ID from path
             // Path format: /embed/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
             // or /play/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
-            $pathParts = explode('/', trim($parsedUrl['path'], '/'));
+            $pathParts = array_filter(explode('/', trim($parsedUrl['path'], '/')));
+            $pathParts = array_values($pathParts); // Re-index array
             
-            if (count($pathParts) >= 3 && ($pathParts[0] === 'embed' || $pathParts[0] === 'play')) {
+            // Check if we have at least 3 parts (embed/play, libraryId, videoId)
+            if (count($pathParts) >= 3) {
+                $action = $pathParts[0]; // 'embed' or 'play'
                 $libraryId = $pathParts[1];
                 $videoId = $pathParts[2];
                 
-                // Build embed URL with responsive parameter
+                // Build embed URL (always use /embed/ for iframe)
                 $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoId}";
                 
                 // Add query parameters if they exist

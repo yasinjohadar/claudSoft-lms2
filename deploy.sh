@@ -53,9 +53,9 @@ echo "🔍 فحص Permissions..."
 ls -la storage/ | head -5
 ls -la bootstrap/cache/ | head -5
 
-# 8. تشغيل Migrations (اختياري - قم بإلغاء التعليق إذا لزم الأمر)
-# echo "🗄️  تشغيل Migrations..."
-# php artisan migrate --force
+# 8. تشغيل Migrations
+echo "🗄️  تشغيل Migrations..."
+php artisan migrate --force
 
 # 9. فحص Routes (اختياري - لإزالة التعليق إذا لزم الأمر)
 # echo "🔍 فحص Routes..."

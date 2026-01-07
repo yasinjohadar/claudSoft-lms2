@@ -421,7 +421,9 @@
                                         @endphp
                                         @if($embedCode)
                                             {{-- Use embed code if available --}}
-                                            {!! $embedCode !!}
+                                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                                                {!! $embedCode !!}
+                                            </div>
                                         @elseif(Str::contains($video->video_url, 'bunny.net') || Str::contains($video->video_url, 'b-cdn.net'))
                                             {{-- Bunny.net Video --}}
                                             <iframe

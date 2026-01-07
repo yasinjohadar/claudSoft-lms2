@@ -175,10 +175,32 @@ class VideoController extends Controller
                 $validated['subtitles'] = json_decode($validated['subtitles'], true);
             }
 
+            // Handle embed_code - ensure it's saved even if empty string
+            if ($request->has('embed_code')) {
+                $embedCode = $request->input('embed_code');
+                $validated['embed_code'] = !empty(trim($embedCode)) ? trim($embedCode) : null;
+            } else {
+                // If embed_code field is not present in request, set to null
+                $validated['embed_code'] = null;
+            }
+
             // Set creator
             $validated['created_by'] = auth()->id();
 
+            \Log::info('Creating video with embed_code', [
+                'embed_code_present' => $request->has('embed_code'),
+                'embed_code_value' => $validated['embed_code'] ?? 'not set',
+                'embed_code_length' => isset($validated['embed_code']) ? strlen($validated['embed_code']) : 0,
+                'all_validated_keys' => array_keys($validated)
+            ]);
+
             $video = Video::create($validated);
+            
+            \Log::info('Video created', [
+                'video_id' => $video->id,
+                'embed_code_saved' => $video->embed_code ?? 'null',
+                'embed_code_length' => $video->embed_code ? strlen($video->embed_code) : 0
+            ]);
 
             // If section_id is provided, create a module automatically
             if ($request->filled('section_id') && $video) {
@@ -356,10 +378,35 @@ class VideoController extends Controller
                 $validated['subtitles'] = json_decode($validated['subtitles'], true);
             }
 
+            // Handle embed_code - ensure it's saved even if empty string
+            if ($request->has('embed_code')) {
+                $embedCode = $request->input('embed_code');
+                $validated['embed_code'] = !empty(trim($embedCode)) ? trim($embedCode) : null;
+            } else {
+                // If embed_code field is not present in request, keep existing value
+                unset($validated['embed_code']);
+            }
+
             // Set updater
             $validated['updated_by'] = auth()->id();
 
+            \Log::info('Updating video with embed_code', [
+                'video_id' => $video->id,
+                'embed_code_present' => $request->has('embed_code'),
+                'embed_code_value' => $validated['embed_code'] ?? 'not set',
+                'embed_code_length' => isset($validated['embed_code']) ? strlen($validated['embed_code']) : 0,
+                'current_embed_code' => $video->embed_code ?? 'null'
+            ]);
+
             $video->update($validated);
+            
+            $video->refresh();
+            
+            \Log::info('Video updated', [
+                'video_id' => $video->id,
+                'embed_code_saved' => $video->embed_code ?? 'null',
+                'embed_code_length' => $video->embed_code ? strlen($video->embed_code) : 0
+            ]);
 
             DB::commit();
 
