@@ -66,8 +66,16 @@
                     <div class="card">
                         <div class="card-body p-3">
                             {{-- Video Container with 16:9 Aspect Ratio --}}
-                            <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
-                                @if($isBunnyUrl)
+                            <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+                                @php
+                                    $embedCode = $video->getEmbedCode();
+                                @endphp
+                                @if($embedCode)
+                                    {{-- Use embed code if available --}}
+                                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                                        {!! $embedCode !!}
+                                    </div>
+                                @elseif($isBunnyUrl)
                                     {{-- Bunny.net Video --}}
                                     <iframe 
                                         src="{{ $videoUrl }}"
@@ -820,4 +828,15 @@
 <script>
     setTimeout(() => $('.alert').fadeOut(), 5000);
 </script>
+<style>
+    /* Ensure embed iframe takes full width */
+    .video-container iframe {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border: 0 !important;
+    }
+</style>
 @stop

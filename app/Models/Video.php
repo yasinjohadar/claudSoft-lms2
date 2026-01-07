@@ -16,6 +16,7 @@ class Video extends Model
         'video_type',
         'video_url',
         'video_path',
+        'embed_code',
         'thumbnail',
         'duration',
         'quality',
@@ -250,5 +251,80 @@ class Video extends Model
             default:
                 return $this->video_url;
         }
+    }
+
+    /**
+     * Get embed code for the video.
+     * Returns saved embed_code if exists, otherwise generates from video_url for Bunny Stream.
+     */
+    public function getEmbedCode(): ?string
+    {
+        // If embed_code exists, return it
+        if ($this->embed_code) {
+            return $this->embed_code;
+        }
+        
+        // If video_url is from Bunny Stream, generate embed code automatically
+        if ($this->video_type === 'external' && $this->video_url) {
+            if (str_contains($this->video_url, 'mediadelivery.net') || 
+                str_contains($this->video_url, 'bunny.net') || 
+                str_contains($this->video_url, 'b-cdn.net') ||
+                str_contains($this->video_url, 'iframe.mediadelivery')) {
+                
+                return $this->generateBunnyEmbedCode($this->video_url);
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Generate Bunny Stream embed code from video URL.
+     */
+    private function generateBunnyEmbedCode(string $videoUrl): ?string
+    {
+        // Try to extract video ID from various Bunny Stream URL formats
+        // Format 1: https://iframe.mediadelivery.net/embed/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
+        // Format 2: https://iframe.mediadelivery.net/play/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
+        // Format 3: https://vz-xxxxx.b-cdn.net/xxxxx/xxxxx.mp4
+        
+        $parsedUrl = parse_url($videoUrl);
+        if (!$parsedUrl || !isset($parsedUrl['host'])) {
+            return null;
+        }
+        
+        // Check if it's an iframe URL
+        if (str_contains($parsedUrl['host'], 'mediadelivery.net') && isset($parsedUrl['path'])) {
+            // Extract library ID and video ID from path
+            // Path format: /embed/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
+            // or /play/488464/79b92b75-405c-4ce7-bc99-c1eb3af092c9
+            $pathParts = explode('/', trim($parsedUrl['path'], '/'));
+            
+            if (count($pathParts) >= 3 && ($pathParts[0] === 'embed' || $pathParts[0] === 'play')) {
+                $libraryId = $pathParts[1];
+                $videoId = $pathParts[2];
+                
+                // Build embed URL with responsive parameter
+                $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoId}";
+                
+                // Add query parameters if they exist
+                $queryParams = [];
+                if (isset($parsedUrl['query'])) {
+                    parse_str($parsedUrl['query'], $queryParams);
+                }
+                
+                // Ensure responsive is true
+                $queryParams['responsive'] = 'true';
+                
+                if (!empty($queryParams)) {
+                    $embedUrl .= '?' . http_build_query($queryParams);
+                }
+                
+                // Generate full iframe embed code
+                return '<iframe src="' . htmlspecialchars($embedUrl) . '" loading="lazy" allowfullscreen></iframe>';
+            }
+        }
+        
+        return null;
     }
 }

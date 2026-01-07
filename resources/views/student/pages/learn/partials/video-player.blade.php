@@ -18,9 +18,17 @@
 
 <!-- Video Player Container - FULL WIDTH -->
 <div style="width: 100%; max-width: 100%; margin-bottom: 1.5rem;">
-    <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 12px; overflow: hidden;">
+    <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 12px; overflow: hidden;">
         @if($video)
-            @if($isBunnyUrl)
+            @php
+                $embedCode = $video->getEmbedCode();
+            @endphp
+            @if($embedCode)
+                {{-- Use embed code if available --}}
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                    {!! $embedCode !!}
+                </div>
+            @elseif($isBunnyUrl)
                 {{-- Bunny.net Video --}}
                 <iframe 
                     src="{{ $videoUrl }}"
@@ -129,3 +137,17 @@
 </div>
 @endif
 @endif
+
+@push('styles')
+<style>
+    /* Ensure embed iframe takes full width */
+    .video-container iframe {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border: 0 !important;
+    }
+</style>
+@endpush

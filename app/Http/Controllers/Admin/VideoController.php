@@ -126,6 +126,7 @@ class VideoController extends Controller
             'description' => 'nullable|string',
             'video_type' => 'required|in:upload,youtube,vimeo,external',
             'video_url' => 'required_if:video_type,youtube,vimeo,external|nullable|url',
+            'embed_code' => 'nullable|string',
             'video_file' => 'required_if:video_type,upload|nullable|file|mimes:mp4,mov,avi,wmv|max:512000',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'duration' => 'nullable|integer|min:0',

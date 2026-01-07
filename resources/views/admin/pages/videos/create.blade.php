@@ -112,6 +112,26 @@
                                         @enderror
                                     </div>
 
+                                    <!-- Embed Code (for external videos, especially Bunny Stream) -->
+                                    <div class="col-xl-12" id="embed_code_field" style="display: none;">
+                                        <label class="form-label">كود Embed <span class="text-info">(اختياري)</span></label>
+                                        <textarea name="embed_code" id="embed_code" class="form-control @error('embed_code') is-invalid @enderror" rows="4"
+                                                  placeholder='<iframe src="https://iframe.mediadelivery.net/embed/..." loading="lazy" allowfullscreen></iframe>'>{{ old('embed_code') }}</textarea>
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            يمكنك نسخ كود embed من لوحة تحكم Bunny Stream (قسم Embed) ولصقه هنا. 
+                                            إذا كان الفيديو من Bunny Stream ولم تقم بإدخال كود embed، سيتم إنشاؤه تلقائياً من رابط الفيديو.
+                                        </small>
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="generate_embed_btn" style="display: none;">
+                                                <i class="fas fa-magic me-1"></i>إنشاء كود Embed من رابط الفيديو
+                                            </button>
+                                        </div>
+                                        @error('embed_code')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
                                     <!-- Video File (for upload) -->
                                     <div class="col-xl-12" id="video_file_field" style="display: none;">
                                         <label class="form-label">ملف الفيديو <span class="text-danger">*</span></label>
@@ -171,8 +191,11 @@
             const videoTypeSelect = document.getElementById('video_type');
             const videoUrlField = document.getElementById('video_url_field');
             const videoFileField = document.getElementById('video_file_field');
+            const embedCodeField = document.getElementById('embed_code_field');
             const videoUrlInput = document.getElementById('video_url');
             const videoFileInput = document.getElementById('video_file');
+            const embedCodeInput = document.getElementById('embed_code');
+            const generateEmbedBtn = document.getElementById('generate_embed_btn');
 
             function toggleFields() {
                 const selectedType = videoTypeSelect.value;
@@ -180,17 +203,78 @@
                 // Hide all fields first
                 videoUrlField.style.display = 'none';
                 videoFileField.style.display = 'none';
+                embedCodeField.style.display = 'none';
+                if (generateEmbedBtn) generateEmbedBtn.style.display = 'none';
                 videoUrlInput.removeAttribute('required');
                 videoFileInput.removeAttribute('required');
 
                 // Show relevant field based on type
                 if (selectedType === 'youtube' || selectedType === 'vimeo' || selectedType === 'external') {
                     videoUrlField.style.display = 'block';
+                    embedCodeField.style.display = 'block';
                     videoUrlInput.setAttribute('required', 'required');
+                    
+                    // Show generate button for external videos (Bunny Stream)
+                    if (selectedType === 'external' && generateEmbedBtn) {
+                        generateEmbedBtn.style.display = 'inline-block';
+                    }
                 } else if (selectedType === 'upload') {
                     videoFileField.style.display = 'block';
                     videoFileInput.setAttribute('required', 'required');
                 }
+            }
+            
+            // Generate embed code from video URL
+            if (generateEmbedBtn) {
+                generateEmbedBtn.addEventListener('click', function() {
+                    const videoUrl = videoUrlInput.value.trim();
+                    if (!videoUrl) {
+                        alert('يرجى إدخال رابط الفيديو أولاً');
+                        return;
+                    }
+                    
+                    // Check if it's a Bunny Stream URL
+                    if (videoUrl.includes('mediadelivery.net') || videoUrl.includes('bunny.net') || videoUrl.includes('b-cdn.net')) {
+                        // Try to extract library ID and video ID
+                        try {
+                            const url = new URL(videoUrl);
+                            const pathParts = url.pathname.split('/').filter(p => p);
+                            
+                            if (pathParts.length >= 3 && (pathParts[0] === 'embed' || pathParts[0] === 'play')) {
+                                const libraryId = pathParts[1];
+                                const videoId = pathParts[2];
+                                
+                                // Build embed URL
+                                let embedUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}`;
+                                
+                                // Add query parameters
+                                const params = new URLSearchParams();
+                                params.set('responsive', 'true');
+                                
+                                // Copy existing query params
+                                url.searchParams.forEach((value, key) => {
+                                    params.set(key, value);
+                                });
+                                
+                                if (params.toString()) {
+                                    embedUrl += '?' + params.toString();
+                                }
+                                
+                                // Generate iframe code
+                                const embedCode = `<iframe src="${embedUrl}" loading="lazy" allowfullscreen></iframe>`;
+                                embedCodeInput.value = embedCode;
+                                
+                                alert('تم إنشاء كود embed بنجاح!');
+                            } else {
+                                alert('لا يمكن إنشاء كود embed تلقائياً من هذا الرابط. يرجى نسخه من لوحة تحكم Bunny Stream.');
+                            }
+                        } catch (e) {
+                            alert('خطأ في معالجة الرابط. يرجى نسخ كود embed من لوحة تحكم Bunny Stream.');
+                        }
+                    } else {
+                        alert('هذا الرابط ليس من Bunny Stream. يرجى نسخ كود embed من لوحة تحكم Bunny Stream.');
+                    }
+                });
             }
 
             // Initial check

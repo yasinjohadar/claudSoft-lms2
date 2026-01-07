@@ -416,7 +416,13 @@
                                         </video>
 
                                     @elseif($video->video_type == 'external' && $video->video_url)
-                                        @if(Str::contains($video->video_url, 'bunny.net') || Str::contains($video->video_url, 'b-cdn.net'))
+                                        @php
+                                            $embedCode = $video->getEmbedCode();
+                                        @endphp
+                                        @if($embedCode)
+                                            {{-- Use embed code if available --}}
+                                            {!! $embedCode !!}
+                                        @elseif(Str::contains($video->video_url, 'bunny.net') || Str::contains($video->video_url, 'b-cdn.net'))
                                             {{-- Bunny.net Video --}}
                                             <iframe
                                                 src="{{ $video->video_url }}"
@@ -470,6 +476,19 @@
                                         <tr>
                                             <th>رابط الفيديو</th>
                                             <td><a href="{{ $video->video_url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt me-1"></i>عرض الرابط</a></td>
+                                        </tr>
+                                        @endif
+                                        @if($video->embed_code || $video->getEmbedCode())
+                                        <tr>
+                                            <th>كود Embed</th>
+                                            <td>
+                                                <div class="mb-2">
+                                                    <textarea id="embed_code_display" class="form-control" rows="3" readonly>{{ $video->embed_code ?? $video->getEmbedCode() }}</textarea>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-primary" onclick="copyEmbedCode()">
+                                                    <i class="fas fa-copy me-1"></i>نسخ الكود
+                                                </button>
+                                            </td>
                                         </tr>
                                         @endif
                                         @if($video->duration)
@@ -688,5 +707,27 @@
     setTimeout(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
+    
+    function copyEmbedCode() {
+        const embedCodeTextarea = document.getElementById('embed_code_display');
+        if (embedCodeTextarea) {
+            embedCodeTextarea.select();
+            embedCodeTextarea.setSelectionRange(0, 99999); // For mobile devices
+            document.execCommand('copy');
+            
+            // Show success message
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>تم النسخ!';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+            }, 2000);
+        }
+    }
 </script>
 @stop
