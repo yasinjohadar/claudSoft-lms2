@@ -260,8 +260,9 @@
                                     embedUrl += '?' + params.toString();
                                 }
                                 
-                                // Generate iframe code
-                                const embedCode = `<iframe src="${embedUrl}" loading="lazy" allowfullscreen></iframe>`;
+                                // Generate iframe code with responsive wrapper (same as Bunny Stream)
+                                const iframe = `<iframe src="${embedUrl}" loading="lazy" style="border:0;position:absolute;top:0;height:100%;width:100%;" allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;" allowfullscreen="true"></iframe>`;
+                                const embedCode = `<div style="position:relative;padding-top:56.25%;">${iframe}</div>`;
                                 embedCodeInput.value = embedCode;
                                 
                                 alert('تم إنشاء كود embed بنجاح!');

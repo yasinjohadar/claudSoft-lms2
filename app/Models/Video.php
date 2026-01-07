@@ -323,8 +323,11 @@ class Video extends Model
                     $embedUrl .= '?' . http_build_query($queryParams);
                 }
                 
-                // Generate full iframe embed code
-                return '<iframe src="' . htmlspecialchars($embedUrl) . '" loading="lazy" allowfullscreen></iframe>';
+                // Generate full iframe embed code with responsive wrapper (same as Bunny Stream)
+                $escapedUrl = htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8');
+                $iframe = '<iframe src="' . $escapedUrl . '" loading="lazy" style="border:0;position:absolute;top:0;height:100%;width:100%;" allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;" allowfullscreen="true"></iframe>';
+                
+                return '<div style="position:relative;padding-top:56.25%;">' . $iframe . '</div>';
             }
         }
         
