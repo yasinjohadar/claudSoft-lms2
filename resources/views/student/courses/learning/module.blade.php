@@ -62,38 +62,16 @@
                             str_contains($videoUrl, 'b-cdn.net') ||
                             str_contains($videoUrl, 'iframe.mediadelivery')
                         );
-                        
-                        // Add responsive parameter to Bunny Stream URL if not already present
-                        if ($isBunnyUrl && $videoUrl) {
-                            $parsedUrl = parse_url($videoUrl);
-                            $queryParams = [];
-                            if (isset($parsedUrl['query'])) {
-                                parse_str($parsedUrl['query'], $queryParams);
-                            }
-                            
-                            // Add responsive parameter
-                            if (!isset($queryParams['responsive'])) {
-                                $queryParams['responsive'] = '1';
-                            }
-                            
-                            // Rebuild URL
-                            $videoUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'] . $parsedUrl['path'];
-                            if (!empty($queryParams)) {
-                                $videoUrl .= '?' . http_build_query($queryParams);
-                            }
-                        }
                     @endphp
                     <div class="card">
                         <div class="card-body p-3">
                             {{-- Video Container with 16:9 Aspect Ratio --}}
                             <div style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
                                 @if($isBunnyUrl)
-                                    {{-- Bunny.net Video - Full Width --}}
+                                    {{-- Bunny.net Video --}}
                                     <iframe 
-                                        id="bunny-video-iframe-{{ $module->id }}"
-                                        class="bunny-video-iframe"
                                         src="{{ $videoUrl }}"
-                                        style="position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: none !important; max-height: none !important; border: 0 !important; margin: 0 !important; padding: 0 !important; transform: scale(1) !important;"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
                                         frameborder="0"
                                         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                                         allowfullscreen
@@ -841,188 +819,5 @@
 @section('script')
 <script>
     setTimeout(() => $('.alert').fadeOut(), 5000);
-    
-    // Force Bunny Stream iframe to fill container
-    $(document).ready(function() {
-        function resizeBunnyIframes() {
-            $('.bunny-video-iframe').each(function() {
-                const $iframe = $(this);
-                const $container = $iframe.parent();
-                
-                // Force iframe size
-                $iframe.css({
-                    'position': 'absolute',
-                    'top': '0',
-                    'left': '0',
-                    'width': '100%',
-                    'height': '100%',
-                    'min-width': '100%',
-                    'min-height': '100%',
-                    'max-width': 'none',
-                    'max-height': 'none',
-                    'border': '0',
-                    'margin': '0',
-                    'padding': '0',
-                    'transform': 'scale(1)',
-                    'box-sizing': 'border-box'
-                });
-                
-                // Also try to access iframe content and force size (if same origin)
-                try {
-                    const iframeDoc = this.contentDocument || this.contentWindow.document;
-                    if (iframeDoc) {
-                        const iframeBody = iframeDoc.body;
-                        if (iframeBody) {
-                            iframeBody.style.margin = '0';
-                            iframeBody.style.padding = '0';
-                            iframeBody.style.overflow = 'hidden';
-                            
-                            // Find .wrapper element inside iframe and set width to 100%
-                            // Try multiple selectors to find the wrapper
-                            let wrapper = iframeDoc.querySelector('.wrapper');
-                            if (!wrapper) {
-                                wrapper = iframeDoc.querySelector('#video-wrapper .wrapper');
-                            }
-                            if (!wrapper) {
-                                wrapper = iframeDoc.querySelector('div.wrapper');
-                            }
-                            
-                            if (wrapper) {
-                                // Use setProperty with !important to override any existing styles
-                                wrapper.style.setProperty('width', '100%', 'important');
-                                wrapper.style.setProperty('max-width', '100%', 'important');
-                                wrapper.style.setProperty('min-width', '100%', 'important');
-                                wrapper.style.setProperty('margin', '0', 'important');
-                                wrapper.style.setProperty('padding', '0', 'important');
-                                wrapper.style.setProperty('box-sizing', 'border-box', 'important');
-                                
-                                // Also set directly as fallback
-                                wrapper.style.width = '100%';
-                                wrapper.style.maxWidth = '100%';
-                                wrapper.style.minWidth = '100%';
-                                wrapper.style.margin = '0';
-                                wrapper.style.padding = '0';
-                                
-                                console.log('Bunny Stream: Applied width: 100% to .wrapper');
-                            } else {
-                                console.log('Bunny Stream: .wrapper element not found');
-                            }
-                            
-                            // Find video element inside iframe
-                            const video = iframeDoc.querySelector('video');
-                            if (video) {
-                                video.style.width = '100%';
-                                video.style.height = '100%';
-                                video.style.objectFit = 'contain';
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // Cross-origin restriction, ignore
-                    console.log('Bunny Stream: Cannot access iframe content (CORS):', e.message);
-                }
-            });
-        }
-        
-        // Run on load
-        resizeBunnyIframes();
-        
-        // Run after iframe loads with delay to ensure content is ready
-        $('.bunny-video-iframe').on('load', function() {
-            setTimeout(resizeBunnyIframes, 500);
-            setTimeout(resizeBunnyIframes, 1000);
-            setTimeout(resizeBunnyIframes, 2000);
-        });
-        
-        // Run on window resize
-        $(window).on('resize', function() {
-            resizeBunnyIframes();
-        });
-        
-        // Run periodically to ensure size is maintained
-        setInterval(resizeBunnyIframes, 1000);
-        
-        // Additional attempts after page fully loads
-        setTimeout(resizeBunnyIframes, 2000);
-        setTimeout(resizeBunnyIframes, 3000);
-        
-        // Try using MutationObserver to watch for iframe content changes
-        $('.bunny-video-iframe').each(function() {
-            const iframe = this;
-            
-            // Try to access iframe content with multiple attempts
-            const tryAccessIframe = function(attempts = 0) {
-                if (attempts > 10) return; // Stop after 10 attempts
-                
-                try {
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                    if (iframeDoc && iframeDoc.body) {
-                        const wrapper = iframeDoc.querySelector('.wrapper');
-                        if (wrapper) {
-                            // Force width to 100%
-                            wrapper.style.setProperty('width', '100%', 'important');
-                            wrapper.style.setProperty('max-width', '100%', 'important');
-                            wrapper.style.setProperty('min-width', '100%', 'important');
-                            wrapper.style.width = '100%';
-                            wrapper.style.maxWidth = '100%';
-                            wrapper.style.minWidth = '100%';
-                            
-                            console.log('Bunny Stream: Successfully applied width: 100% to .wrapper');
-                        } else {
-                            // Retry if wrapper not found yet
-                            setTimeout(() => tryAccessIframe(attempts + 1), 500);
-                        }
-                    } else {
-                        // Retry if iframe not ready yet
-                        setTimeout(() => tryAccessIframe(attempts + 1), 500);
-                    }
-                } catch (e) {
-                    // CORS error, try postMessage approach
-                    try {
-                        iframe.contentWindow?.postMessage({
-                            type: 'setStyle',
-                            selector: '.wrapper',
-                            styles: {
-                                width: '100%',
-                                maxWidth: '100%',
-                                minWidth: '100%'
-                            }
-                        }, '*');
-                    } catch (e2) {
-                        // Ignore
-                    }
-                }
-            };
-            
-            // Start trying after iframe loads
-            $(iframe).on('load', function() {
-                setTimeout(() => tryAccessIframe(0), 100);
-                setTimeout(() => tryAccessIframe(0), 500);
-                setTimeout(() => tryAccessIframe(0), 1000);
-                setTimeout(() => tryAccessIframe(0), 2000);
-            });
-            
-            // Also try immediately
-            setTimeout(() => tryAccessIframe(0), 100);
-        });
-    });
 </script>
-<style>
-    .bunny-video-iframe {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        min-width: 100% !important;
-        min-height: 100% !important;
-        max-width: none !important;
-        max-height: none !important;
-        border: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        transform: scale(1) !important;
-        box-sizing: border-box !important;
-    }
-</style>
 @stop
