@@ -118,6 +118,68 @@
                     </div>
                 @endif
 
+                <!-- Resource (external link / embedded) -->
+                @if($module->module_type == 'resource' && $module->modulable)
+                    @php
+                        /** @var \App\Models\Resource $resource */
+                        $resource = $module->modulable;
+                        $resourceUrl = $resource->resource_url ?? null;
+                        $canEmbed = $resourceUrl && \Illuminate\Support\Str::contains($resourceUrl, [
+                            'iframe.mediadelivery.net',
+                            'bunny.net',
+                            'b-cdn.net',
+                            'youtube.com',
+                            'youtu.be',
+                            'vimeo.com'
+                        ]);
+                    @endphp
+
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-link me-2"></i>{{ $resource->title ?? $module->title }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if(!empty($resource->description))
+                                <p class="text-muted mb-3">{{ $resource->description }}</p>
+                            @endif
+
+                            @if($canEmbed)
+                                <!-- Embedded video/link inside page -->
+                                <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+                                    <iframe
+                                        src="{{ $resourceUrl }}"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                                        frameborder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowfullscreen>
+                                    </iframe>
+                                </div>
+                            @elseif($resourceUrl)
+                                <!-- Open external link in new tab -->
+                                <a href="{{ $resourceUrl }}" target="_blank" rel="noopener"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-external-link-alt me-2"></i>
+                                    فتح الرابط
+                                </a>
+                            @elseif($resource->file_path)
+                                <!-- Fallback: downloadable file resource -->
+                                <a href="{{ route('student.resources.download', $resource->id) }}"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-download me-2"></i>
+                                    تحميل الملف
+                                </a>
+                            @else
+                                <div class="alert alert-warning mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    لا توجد بيانات صالحة لهذا المورد حالياً.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Lesson -->
                 @if($module->module_type == 'lesson' && $module->modulable)
                     <div class="card">
@@ -507,8 +569,8 @@
                                         @foreach($questionModule->questions as $index => $question)
                                             <div class="list-group-item d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
-                                                    <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                                    <span class="text-dark">
+                                <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
+                                <span class="text-dark">
                                                         {!! Str::limit(strip_tags($question->question_text), 100) !!}
                                                     </span>
                                                 </div>
@@ -660,8 +722,8 @@
                                             @endphp
                                             <div class="list-group-item d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
-                                                    <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                                    <span class="text-dark">
+                                <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
+                                <span class="text-dark">
                                                         {!! Str::limit(strip_tags($question->question_text ?? ''), 100) !!}
                                                     </span>
                                                 </div>
@@ -750,19 +812,21 @@
                         <!-- Module Info Header -->
                         <div class="card-header" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
                             <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-white text-primary">
+                                <span class=\"badge bg-white text-primary\">
                                     @if($module->module_type == 'video')
-                                        <i class="fas fa-play me-1"></i> فيديو
+                                        <i class=\"fas fa-play me-1\"></i> فيديو
                                     @elseif($module->module_type == 'lesson')
-                                        <i class="fas fa-book me-1"></i> درس
+                                        <i class=\"fas fa-book me-1\"></i> درس
                                     @elseif($module->module_type == 'assignment')
-                                        <i class="fas fa-file-alt me-1"></i> واجب
+                                        <i class=\"fas fa-file-alt me.1\"></i> واجب
                                     @elseif($module->module_type == 'quiz')
-                                        <i class="fas fa-question-circle me-1"></i> اختبار
+                                        <i class=\"fas fa-question-circle me-1\"></i> اختبار
                                     @elseif($module->module_type == 'question_module')
-                                        <i class="fas fa-clipboard-question me-1"></i> اختبار
+                                        <i class=\"fas fa-clipboard-question me-1\"></i> اختبار
+                                    @elseif($module->module_type == 'resource')
+                                        <i class=\"fas fa-link me-1\"></i> مورد
                                     @else
-                                        <i class="fas fa-circle me-1"></i> محتوى
+                                        <i class=\"fas fa-circle me-1\"></i> محتوى
                                     @endif
                                 </span>
                                 @if($isCompleted)
