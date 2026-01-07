@@ -124,14 +124,6 @@
                         /** @var \App\Models\Resource $resource */
                         $resource = $module->modulable;
                         $resourceUrl = $resource->resource_url ?? null;
-                        $canEmbed = $resourceUrl && \Illuminate\Support\Str::contains($resourceUrl, [
-                            'iframe.mediadelivery.net',
-                            'bunny.net',
-                            'b-cdn.net',
-                            'youtube.com',
-                            'youtu.be',
-                            'vimeo.com'
-                        ]);
                     @endphp
 
                     <div class="card mb-4">
@@ -145,15 +137,16 @@
                                 <p class="text-muted mb-3">{{ $resource->description }}</p>
                             @endif
 
-                            @if($canEmbed)
-                                <!-- Embedded video/link inside page -->
+                            @if($resource->isEmbedded() && $resourceUrl)
+                                <!-- Embedded link inside page (for ANY link, not just videos) -->
                                 <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
                                     <iframe
-                                        src="{{ $resourceUrl }}"
+                                        src="{{ htmlspecialchars($resourceUrl, ENT_QUOTES, 'UTF-8') }}"
                                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
                                         frameborder="0"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen>
+                                        allowfullscreen
+                                        loading="lazy">
                                     </iframe>
                                 </div>
                             @elseif($resourceUrl)
