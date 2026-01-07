@@ -189,12 +189,34 @@
                             iframeBody.style.overflow = 'hidden';
                             
                             // Find .wrapper element inside iframe and set width to 100%
-                            const wrapper = iframeDoc.querySelector('.wrapper');
+                            // Try multiple selectors to find the wrapper
+                            let wrapper = iframeDoc.querySelector('.wrapper');
+                            if (!wrapper) {
+                                wrapper = iframeDoc.querySelector('#video-wrapper .wrapper');
+                            }
+                            if (!wrapper) {
+                                wrapper = iframeDoc.querySelector('div.wrapper');
+                            }
+                            
                             if (wrapper) {
+                                // Use setProperty with !important to override any existing styles
+                                wrapper.style.setProperty('width', '100%', 'important');
+                                wrapper.style.setProperty('max-width', '100%', 'important');
+                                wrapper.style.setProperty('min-width', '100%', 'important');
+                                wrapper.style.setProperty('margin', '0', 'important');
+                                wrapper.style.setProperty('padding', '0', 'important');
+                                wrapper.style.setProperty('box-sizing', 'border-box', 'important');
+                                
+                                // Also set directly as fallback
                                 wrapper.style.width = '100%';
                                 wrapper.style.maxWidth = '100%';
+                                wrapper.style.minWidth = '100%';
                                 wrapper.style.margin = '0';
                                 wrapper.style.padding = '0';
+                                
+                                console.log('Bunny Stream: Applied width: 100% to .wrapper');
+                            } else {
+                                console.log('Bunny Stream: .wrapper element not found');
                             }
                             
                             const video = iframeDoc.querySelector('video');
@@ -207,6 +229,7 @@
                     }
                 } catch (e) {
                     // Cross-origin restriction, ignore
+                    console.log('Bunny Stream: Cannot access iframe content (CORS):', e.message);
                 }
             });
         }
