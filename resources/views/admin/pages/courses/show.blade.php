@@ -736,6 +736,7 @@
                                                                     $displayGroups = $groupNames->take(3);
                                                                     $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
                                                                 @endphp
+                                                                {{-- شارة القيود الأساسية --}}
                                                                 <span class="badge bg-warning text-dark ms-2"
                                                                       @if($groupNames->isNotEmpty())
                                                                           title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
@@ -744,17 +745,21 @@
                                                                       @endif
                                                                 >
                                                                     <i class="fas fa-lock me-1"></i>قيود
-                                                                    @if($displayGroups->isNotEmpty())
-                                                                        <span class="ms-1">
-                                                                            (
-                                                                            {{ $displayGroups->implode('، ') }}
-                                                                            @if($moreCount > 0)
-                                                                                ، +{{ $moreCount }} مجموعات أخرى
-                                                                            @endif
-                                                                            )
-                                                                        </span>
-                                                                    @endif
                                                                 </span>
+
+                                                                {{-- بادجات منفصلة لكل مجموعة بلون مختلف --}}
+                                                                @foreach($displayGroups as $groupName)
+                                                                    <span class="badge bg-primary-transparent text-primary ms-1">
+                                                                        <i class="fas fa-users me-1"></i>{{ $groupName }}
+                                                                    </span>
+                                                                @endforeach
+
+                                                                @if($moreCount > 0)
+                                                                    <span class="badge bg-light text-muted ms-1"
+                                                                          title="مجموعات أخرى لها نفس القيود">
+                                                                        +{{ $moreCount }}
+                                                                    </span>
+                                                                @endif
                                                             @endif
                                                         </h6>
                                                         <small class="text-muted">
