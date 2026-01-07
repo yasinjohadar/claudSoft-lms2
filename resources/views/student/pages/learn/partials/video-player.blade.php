@@ -188,6 +188,15 @@
                             iframeBody.style.padding = '0';
                             iframeBody.style.overflow = 'hidden';
                             
+                            // Find .wrapper element inside iframe and set width to 100%
+                            const wrapper = iframeDoc.querySelector('.wrapper');
+                            if (wrapper) {
+                                wrapper.style.width = '100%';
+                                wrapper.style.maxWidth = '100%';
+                                wrapper.style.margin = '0';
+                                wrapper.style.padding = '0';
+                            }
+                            
                             const video = iframeDoc.querySelector('video');
                             if (video) {
                                 video.style.width = '100%';
@@ -205,7 +214,9 @@
         resizeBunnyIframes();
         
         $('.bunny-video-iframe').on('load', function() {
-            resizeBunnyIframes();
+            setTimeout(resizeBunnyIframes, 500);
+            setTimeout(resizeBunnyIframes, 1000);
+            setTimeout(resizeBunnyIframes, 2000);
         });
         
         $(window).on('resize', function() {
@@ -213,6 +224,10 @@
         });
         
         setInterval(resizeBunnyIframes, 1000);
+        
+        // Additional attempts after page fully loads
+        setTimeout(resizeBunnyIframes, 2000);
+        setTimeout(resizeBunnyIframes, 3000);
     });
 </script>
 @endpush
