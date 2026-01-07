@@ -16,6 +16,7 @@ class Resource extends Model
         'resource_type',
         'resource_source',
         'resource_url',
+        'display_mode',
         'file_path',
         'file_name',
         'file_size',
@@ -228,5 +229,21 @@ class Resource extends Model
         ];
 
         return $icons[$this->resource_type] ?? $icons['other'];
+    }
+
+    /**
+     * هل يتم عرض المورد مضمناً داخل صفحة الدرس؟
+     */
+    public function isEmbedded(): bool
+    {
+        return ($this->display_mode ?? 'external') === 'embedded';
+    }
+
+    /**
+     * هل يتم فتح المورد في تبويب خارجي؟
+     */
+    public function isExternal(): bool
+    {
+        return ($this->display_mode ?? 'external') === 'external';
     }
 }

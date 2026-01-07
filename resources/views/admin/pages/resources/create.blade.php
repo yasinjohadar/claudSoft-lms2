@@ -264,6 +264,35 @@
                                 @enderror
                                 <small class="text-muted">أدخل رابط مباشر للمورد (PDF، DOC، فيديو، إلخ)</small>
                             </div>
+
+                            <!-- Link Display Mode -->
+                            <div class="mb-3">
+                                <label class="form-label d-block">طريقة عرض الرابط</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="display_mode" id="display_mode_external"
+                                           value="external" {{ old('display_mode', 'external') === 'external' ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="display_mode_external">
+                                        فتح في تبويب جديد
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="display_mode" id="display_mode_embedded"
+                                           value="embedded" {{ old('display_mode') === 'embedded' ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="display_mode_embedded">
+                                        تضمين داخل صفحة الدرس (مناسب للفيديوهات مثل Bunny / YouTube)
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    إذا كان الرابط عبارة عن فيديو (Bunny, YouTube, Vimeo) يفضَّل اختيار 
+                                    <strong>تضمين داخل الصفحة</strong>.
+                                    أما إذا كان الرابط مقالاً أو موقعاً خارجياً، فاختر 
+                                    <strong>فتح في تبويب جديد</strong>.
+                                </small>
+                                @error('display_mode')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle me-2"></i>
                                 <strong>ملاحظة:</strong> تأكد من أن الرابط مباشر ويمكن الوصول إليه من قبل الطلاب.

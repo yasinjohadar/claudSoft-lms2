@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('resources', function (Blueprint $table) {
-            //
+            // طريقة عرض الرابط: embedded داخل الصفحة أو external في تبويب جديد
+            $table->string('display_mode', 20)
+                ->default('external')
+                ->after('resource_url')
+                ->comment('embedded, external');
         });
     }
 
@@ -22,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('resources', function (Blueprint $table) {
-            //
+            $table->dropColumn('display_mode');
         });
     }
 };

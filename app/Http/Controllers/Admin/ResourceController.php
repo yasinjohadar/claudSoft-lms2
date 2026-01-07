@@ -156,6 +156,7 @@ class ResourceController extends Controller
             'resource_source' => 'required|in:file,url,existing',
             'file' => 'required_if:resource_source,file|nullable|file|max:51200',
             'resource_url' => 'required_if:resource_source,url|nullable|url|max:500',
+            'display_mode' => 'nullable|in:embedded,external',
             'course_id' => 'nullable|exists:courses,id',
             'section_id' => 'nullable|exists:course_sections,id',
             'is_published' => 'sometimes|boolean',
@@ -210,6 +211,7 @@ class ResourceController extends Controller
                 $validated['mime_type'] = $existingResource->mime_type;
                 $validated['resource_url'] = $existingResource->resource_url;
                 $validated['resource_type'] = $existingResource->resource_type;
+                $validated['display_mode'] = $existingResource->display_mode ?? 'external';
                 // Don't create a new resource, use the existing one
                 $resource = $existingResource;
             } else {
@@ -233,6 +235,10 @@ class ResourceController extends Controller
                 // Set creator for new resource
                 $validated['created_by'] = auth()->id();
                 $validated['download_count'] = 0;
+
+                // Default display_mode إذا لم يرسل
+                $validated['display_mode'] = $validated['display_mode'] ?? 'external';
+
                 $resource = Resource::create($validated);
             }
 
@@ -374,6 +380,7 @@ class ResourceController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'available_from' => 'nullable|date',
             'available_until' => 'nullable|date|after:available_from',
+            'display_mode' => 'nullable|in:embedded,external',
         ], [
             'resource_type.required' => 'يرجى اختيار نوع المورد',
             'resource_type.in' => 'نوع المورد غير صحيح',
