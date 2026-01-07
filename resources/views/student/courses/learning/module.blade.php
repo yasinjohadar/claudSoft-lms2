@@ -71,7 +71,7 @@
                                     {{-- Bunny.net Video - Full Width --}}
                                     <iframe 
                                         src="{{ $videoUrl }}"
-                                        style="position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; border: 0; max-width: none !important;"
+                                        style="position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; min-width: 100%; min-height: 100%; max-width: none !important; max-height: none !important; border: 0; transform: scale(1); object-fit: fill;"
                                         frameborder="0"
                                         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                                         allowfullscreen
