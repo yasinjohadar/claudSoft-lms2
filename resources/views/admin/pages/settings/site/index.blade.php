@@ -50,6 +50,8 @@
                                     </h5>
                                 </div>
                                 <div class="card-body">
+                                    <!-- Hidden input to ensure value is sent even when checkbox is unchecked -->
+                                    <input type="hidden" name="registration_public_enabled" value="0">
                                     <div class="form-check form-switch mb-3">
                                         <input class="form-check-input" type="checkbox" 
                                                name="registration_public_enabled" 

@@ -23,13 +23,12 @@ class SiteSettingController extends Controller
      */
     public function update(Request $request)
     {
-        $validated = $request->validate([
-            'registration_public_enabled' => 'required|boolean',
-        ]);
+        // التحقق من وجود الحقل (checkbox غير محدد = false)
+        $registrationEnabled = $request->has('registration_public_enabled') && $request->input('registration_public_enabled') == '1';
 
         SiteSetting::setValue(
             'registration_public_enabled',
-            $validated['registration_public_enabled'],
+            $registrationEnabled,
             'تفعيل/إيقاف التسجيل العام للزوار (صفحة /register)'
         );
 
