@@ -76,6 +76,7 @@ class AIModel extends Model
         'google' => 'Google (Gemini)',
         'openrouter' => 'OpenRouter',
         'zai' => 'Z.ai (GLM)',
+        'manus' => 'Manus AI',
         'local' => 'Local LLM',
         'custom' => 'Custom API',
     ];
@@ -120,6 +121,10 @@ class AIModel extends Model
         'zai' => [
             'glm-4.7' => 'GLM-4.7',
             'glm-4' => 'GLM-4',
+        ],
+        'manus' => [
+            // Manus AI models - يمكن إضافة الموديلات المحددة حسب وثائق Manus API
+            // يمكن تركها فارغة للسماح بإدخال أي model_key
         ],
     ];
 
