@@ -513,6 +513,14 @@
                             </a>
                         </li>
 
+                        <!-- إعدادات الموقع -->
+                        <li class="slide {{ request()->routeIs('admin.settings.site.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.settings.site.index') }}" class="side-menu__item {{ request()->routeIs('admin.settings.site.*') ? 'active' : '' }}">
+                                <i class="ri-settings-3-line side-menu__icon"></i>
+                                <span class="side-menu__label">إعدادات الموقع</span>
+                            </a>
+                        </li>
+
                         <!-- التقويم -->
                         <li class="slide {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
                         <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">

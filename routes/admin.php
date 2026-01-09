@@ -51,6 +51,7 @@ use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\ContactSettingController;
 use App\Http\Controllers\Admin\GoogleSettingController;
+use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AIQuestionGenerationController;
 use App\Http\Controllers\Admin\AIQuestionSolvingController;
@@ -697,6 +698,10 @@ Route::prefix('admin')
         // ========== Google Settings Routes ==========
         Route::get('google-settings/edit', [GoogleSettingController::class, 'edit'])->name('admin.google-settings.edit');
         Route::put('google-settings', [GoogleSettingController::class, 'update'])->name('admin.google-settings.update');
+
+        // ========== Site Settings Routes ==========
+        Route::get('settings/site', [SiteSettingController::class, 'index'])->name('admin.settings.site.index');
+        Route::post('settings/site', [SiteSettingController::class, 'update'])->name('admin.settings.site.update');
 
         // ========== AI Routes ==========
         Route::prefix('ai')->name('admin.ai.')->group(function () {

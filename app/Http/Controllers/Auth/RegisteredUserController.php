@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Auth\Events\Registered;
@@ -18,8 +19,14 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(): View|RedirectResponse
     {
+        // التحقق من تفعيل التسجيل العام
+        if (!SiteSetting::isPublicRegistrationEnabled()) {
+            return redirect()->route('login')
+                ->with('error', 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة أو استخدام حساب موجود.');
+        }
+
         return view('auth.register');
     }
 
@@ -30,6 +37,12 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // التحقق من تفعيل التسجيل العام
+        if (!SiteSetting::isPublicRegistrationEnabled()) {
+            return redirect()->route('login')
+                ->with('error', 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة أو استخدام حساب موجود.');
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
