@@ -5,7 +5,9 @@ namespace App\Providers;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Event;
 use App\Models\ContactSetting;
+use App\Services\WhatsApp\WhatsAppSettingsService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,5 +37,17 @@ class AppServiceProvider extends ServiceProvider
             $contactSettings = ContactSetting::getSettings();
             $view->with('contactSettings', $contactSettings);
         });
+
+        // Initialize WhatsApp settings defaults
+        try {
+            $whatsappSettingsService = app(WhatsAppSettingsService::class);
+            $whatsappSettingsService->initializeDefaults();
+        } catch (\Exception $e) {
+            // Silently fail if table doesn't exist yet (migration not run)
+        }
+
+        // WhatsApp Event Listeners
+        Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
+
     }
 }

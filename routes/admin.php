@@ -729,6 +729,9 @@ Route::prefix('admin')
                 'store' => 'question-generations.store',
                 'show' => 'question-generations.show',
             ]);
+
+
+
             Route::post('question-generations/{generation}/process', [AIQuestionGenerationController::class, 'process'])->name('question-generations.process');
             Route::post('question-generations/{generation}/save', [AIQuestionGenerationController::class, 'save'])->name('question-generations.save');
             Route::post('question-generations/{generation}/save-selected', [AIQuestionGenerationController::class, 'saveSelected'])->name('question-generations.save-selected');
@@ -761,6 +764,22 @@ Route::prefix('admin')
             Route::put('settings/grading', [AIGradingSettingsController::class, 'update'])->name('settings.grading.update');
         });
 
+        // ========== WhatsApp Routes ==========
+        Route::prefix('whatsapp-settings')->name('admin.whatsapp-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
+        Route::prefix('whatsapp-messages')->name('admin.whatsapp-messages.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
+            Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
+            Route::get('/search-students', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'searchStudents'])->name('search-students');
+            Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
+            Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
+            Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
+            Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
+        });
 
     });
 

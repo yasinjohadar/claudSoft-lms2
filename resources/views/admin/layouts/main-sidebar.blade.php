@@ -521,6 +521,23 @@
                             </a>
                         </li>
 
+                        <!-- WhatsApp -->
+                        <li class="slide has-sub {{ request()->routeIs('admin.whatsapp-*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.whatsapp-*') ? 'active' : '' }}">
+                                <i class="ri-whatsapp-line side-menu__icon"></i>
+                                <span class="side-menu__label">WhatsApp</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.whatsapp-*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.whatsapp-*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">الإعدادات</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">الرسائل</a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <!-- التقويم -->
                         <li class="slide {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
                         <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">

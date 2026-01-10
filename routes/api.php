@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\N8nWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,4 +42,13 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
         Route::get('/handlers/{handlerType}', [N8nWebhookController::class, 'handlerDocs'])
             ->name('handler.docs');
     });
+
+    // WhatsApp webhook endpoints
+    Route::prefix('whatsapp')
+        ->name('whatsapp.')
+        ->middleware(['throttle:60,1'])
+        ->group(function () {
+            Route::get('/', [WhatsAppWebhookController::class, 'verify'])->name('verify');
+            Route::post('/', [WhatsAppWebhookController::class, 'handle'])->name('handle');
+        });
 });
