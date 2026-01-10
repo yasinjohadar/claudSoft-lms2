@@ -568,7 +568,7 @@
                                                 <br><small class="text-muted fw-normal">{{ $section->description }}</small>
                                             @endif
                                         </div>
-                                        <span class="badge bg-light text-default">
+                                        <span id="section-modules-count-badge-{{ $section->id }}" class="badge bg-light text-default">
                                             {{ $section->modules->count() }} {{ $section->modules->count() == 1 ? 'درس' : 'دروس' }}
                                         </span>
                                     </div>
@@ -707,7 +707,7 @@
 
                                     <!-- Activities List -->
                                     @forelse($section->modules()->orderBy('sort_order')->get() as $module)
-                                        <div class="mb-3 border rounded" style="transition: all 0.3s ease;">
+                                        <div id="module-container-{{ $module->id }}" class="mb-3 border rounded" style="transition: all 0.3s ease;">
                                             <div class="d-flex align-items-center justify-content-between p-3">
                                                 <div class="d-flex align-items-center flex-grow-1">
                                                     <span class="avatar avatar-md me-3
@@ -866,8 +866,11 @@
                                                     <i class="far fa-eye{{ $module->is_visible ? '' : '-slash' }} me-1"></i>
                                                     {{ $module->is_visible ? 'إخفاء' : 'إظهار' }}
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                                        onclick="if(confirm('هل أنت متأكد من حذف هذا الدرس؟')) document.getElementById('delete-form-{{ $module->id }}').submit();">
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-module-btn"
+                                                        id="delete-module-btn-{{ $module->id }}"
+                                                        data-section-id="{{ $section->id }}"
+                                                        data-module-id="{{ $module->id }}"
+                                                        data-module-title="{{ $module->title }}">
                                                     <i class="fas fa-trash me-1"></i>حذف
                                                 </button>
                                             </div>
@@ -1273,6 +1276,7 @@
 
     // Handle manage restrictions button click
     document.addEventListener('DOMContentLoaded', function() {
+        // Manage restrictions buttons
         document.querySelectorAll('.manage-restrictions-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const type = this.getAttribute('data-type');
@@ -1284,6 +1288,17 @@
                 currentRestrictions.title = title;
 
                 loadRestrictions(type, id);
+            });
+        });
+
+        // Delete module buttons
+        document.querySelectorAll('.delete-module-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const sectionId = parseInt(this.getAttribute('data-section-id'));
+                const moduleId = parseInt(this.getAttribute('data-module-id'));
+                const moduleTitle = this.getAttribute('data-module-title');
+
+                deleteModule(sectionId, moduleId, moduleTitle);
             });
         });
     });
@@ -1522,6 +1537,186 @@
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalBtnText;
         });
+    }
+
+    /**
+     * Delete a module via AJAX without page reload
+     * @param {number} sectionId - Section ID
+     * @param {number} moduleId - Module ID
+     * @param {string} moduleTitle - Module title for confirmation
+     */
+    function deleteModule(sectionId, moduleId, moduleTitle) {
+        // Show confirmation dialog
+        if (!confirm('هل أنت متأكد من حذف هذا الدرس: "' + moduleTitle + '"؟')) {
+            return;
+        }
+
+        // Get delete button
+        const deleteBtn = document.getElementById('delete-module-btn-' + moduleId);
+        if (!deleteBtn) {
+            console.error('Delete button not found for module:', moduleId);
+            return;
+        }
+
+        performDeleteModule(deleteBtn, sectionId, moduleId);
+    }
+
+    /**
+     * Perform the actual deletion
+     * @param {HTMLElement} deleteBtn - Delete button element
+     * @param {number} sectionId - Section ID
+     * @param {number} moduleId - Module ID
+     */
+    function performDeleteModule(deleteBtn, sectionId, moduleId) {
+
+        // Disable button and show loading
+        const originalBtnHtml = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري الحذف...';
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+        // Get module container for removal
+        const moduleContainer = document.getElementById('module-container-' + moduleId);
+
+        // Send DELETE request
+        fetch(`/admin/sections/${sectionId}/modules/${moduleId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Network response was not ok');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Delete response:', data);
+            if (data.success) {
+                // Show success message
+                if (data.warning) {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.warning(data.warning);
+                        toastr.success(data.message || 'تم حذف الوحدة بنجاح');
+                    } else {
+                        alert(data.warning + '\n\n' + (data.message || 'تم حذف الوحدة بنجاح'));
+                    }
+                } else {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(data.message || 'تم حذف الوحدة بنجاح');
+                    } else {
+                        alert(data.message || 'تم حذف الوحدة بنجاح');
+                    }
+                }
+
+                // Remove module from DOM with animation
+                if (moduleContainer) {
+                    // Add fade out animation
+                    moduleContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    moduleContainer.style.opacity = '0';
+                    moduleContainer.style.transform = 'translateX(-20px)';
+                    
+                    // Remove after animation
+                    setTimeout(() => {
+                        moduleContainer.remove();
+
+                        // Update lessons count in section header if needed
+                        updateSectionModulesCount(sectionId);
+                    }, 300);
+                } else {
+                    console.warn('Module container not found for removal:', 'module-container-' + moduleId);
+                    // Fallback: reload page if container not found
+                    location.reload();
+                }
+            } else {
+                throw new Error(data.message || 'فشل حذف الوحدة');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting module:', error);
+            
+            // Re-enable button
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalBtnHtml;
+
+            // Show error message
+            if (typeof toastr !== 'undefined') {
+                toastr.error('حدث خطأ أثناء حذف الوحدة: ' + error.message);
+            } else {
+                alert('حدث خطأ أثناء حذف الوحدة: ' + error.message);
+            }
+        });
+    }
+
+    /**
+     * Update the modules count in section header after deletion
+     * @param {number} sectionId - Section ID
+     */
+    function updateSectionModulesCount(sectionId) {
+        // Find the section accordion collapse element
+        const sectionAccordion = document.getElementById(`section-${sectionId}`);
+        if (!sectionAccordion) {
+            console.warn('Section accordion not found:', `section-${sectionId}`);
+            return;
+        }
+
+        // Count remaining modules (excluding empty message)
+        const moduleContainers = sectionAccordion.querySelectorAll('[id^="module-container-"]');
+        const modulesCount = moduleContainers.length;
+
+        // Update count badge in section header
+        const countBadge = document.getElementById(`section-modules-count-badge-${sectionId}`);
+        if (countBadge) {
+            const countText = modulesCount === 0 
+                ? 'لا توجد دروس'
+                : modulesCount === 1 
+                    ? '1 درس'
+                    : `${modulesCount} دروس`;
+            countBadge.textContent = countText;
+        } else {
+            console.warn('Section modules count badge not found:', `section-modules-count-badge-${sectionId}`);
+        }
+
+        // If no modules left, show empty message
+        if (modulesCount === 0) {
+            const accordionBody = sectionAccordion.querySelector('.accordion-body');
+            if (accordionBody) {
+                // Check if empty message already exists
+                let emptyMessage = accordionBody.querySelector('.text-center.text-muted');
+                if (!emptyMessage) {
+                    // Find the "Add Activity Buttons" div and insert empty message after it
+                    const addActivityDiv = accordionBody.querySelector('.mb-3.p-3.bg-light.rounded');
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'text-center text-muted py-3';
+                    emptyDiv.innerHTML = '<i class="fas fa-inbox fs-3 mb-2 opacity-25"></i><p class="mb-0">لا توجد دروس في هذا القسم</p>';
+                    
+                    // Insert after add activity buttons or at the end of accordion body
+                    if (addActivityDiv && addActivityDiv.nextSibling) {
+                        accordionBody.insertBefore(emptyDiv, addActivityDiv.nextSibling);
+                    } else {
+                        accordionBody.appendChild(emptyDiv);
+                    }
+                }
+            }
+        } else {
+            // Remove empty message if modules exist
+            const accordionBody = sectionAccordion.querySelector('.accordion-body');
+            if (accordionBody) {
+                const emptyMessage = accordionBody.querySelector('.text-center.text-muted');
+                if (emptyMessage && emptyMessage.textContent.includes('لا توجد دروس')) {
+                    emptyMessage.remove();
+                }
+            }
+        }
     }
 </script>
 

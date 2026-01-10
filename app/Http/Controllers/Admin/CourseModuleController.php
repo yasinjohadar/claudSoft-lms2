@@ -464,32 +464,54 @@ class CourseModuleController extends Controller
     /**
      * Remove the specified module from storage (soft delete).
      */
-    public function destroy($sectionId, $id)
+    public function destroy(Request $request, $sectionId, $id)
     {
         DB::beginTransaction();
         try {
             $module = CourseModule::findOrFail($id);
             
-            // Save course_id before deletion
+            // Save course_id and section_id before deletion
             $courseId = $module->course_id;
+            $moduleSectionId = $module->section_id;
 
             // Check if module has completions
             $completionsCount = $module->completions()->count();
+            $warningMessage = '';
             if ($completionsCount > 0) {
-                return redirect()
-                    ->back()
-                    ->with('warning', "تحذير: هذه الوحدة لديها {$completionsCount} سجل إتمام. سيتم حذف الوحدة ولكن سيتم الاحتفاظ بسجلات الإتمام.");
+                $warningMessage = "تحذير: هذه الوحدة لديها {$completionsCount} سجل إتمام. سيتم حذف الوحدة ولكن سيتم الاحتفاظ بسجلات الإتمام.";
             }
 
             $module->delete();
 
             DB::commit();
 
+            // Check if request is AJAX
+            if ($request->ajax() || $request->expectsJson() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حذف الوحدة بنجاح',
+                    'warning' => $warningMessage,
+                    'module_id' => $id,
+                    'section_id' => $moduleSectionId,
+                    'course_id' => $courseId,
+                    'completions_count' => $completionsCount,
+                ]);
+            }
+
             return redirect()
                 ->route('courses.show', $courseId)
-                ->with('success', 'تم حذف الوحدة بنجاح');
+                ->with('success', 'تم حذف الوحدة بنجاح')
+                ->with('warning', $warningMessage);
         } catch (\Exception $e) {
             DB::rollBack();
+
+            // Check if request is AJAX
+            if ($request->ajax() || $request->expectsJson() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء حذف الوحدة: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()
                 ->back()
