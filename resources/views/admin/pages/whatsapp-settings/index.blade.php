@@ -379,7 +379,7 @@
 
                             <!-- Action Buttons -->
                             <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-outline-primary" id="test-connection-btn" onclick="testWhatsAppConnection()">
+                                <button type="button" class="btn btn-outline-primary" id="test-connection-btn">
                                     <i class="ri-plug-line me-1"></i>اختبار الاتصال
                                 </button>
                                 <button type="submit" class="btn btn-primary btn-wave">
@@ -396,18 +396,18 @@
 <!-- End::app-content -->
 
 <!-- Test Connection Modal -->
-<div class="modal fade" id="testConnectionModal" tabindex="-1">
+<div class="modal fade" id="testConnectionModal" tabindex="-1" aria-labelledby="testConnectionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">اختبار الاتصال</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="testConnectionModalLabel">اختبار الاتصال</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <div class="modal-body">
                 <div id="test-connection-result"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <button type="button" class="btn btn-secondary" id="close-test-modal-btn">إغلاق</button>
             </div>
         </div>
     </div>
@@ -416,62 +416,6 @@
 
 @section('scripts')
 <script>
-// Global function for test connection
-function testWhatsAppConnection() {
-    console.log('testWhatsAppConnection called');
-    
-    const form = document.getElementById('whatsapp-settings-form');
-    if (!form) {
-        alert('خطأ: لم يتم العثور على النموذج');
-        return;
-    }
-    
-    const formData = new FormData(form);
-    const resultDiv = document.getElementById('test-connection-result');
-    
-    // Show loading in result div
-    if (resultDiv) {
-        resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">جاري اختبار الاتصال...</p></div>';
-    }
-    
-    // Show modal
-    const modalElement = document.getElementById('testConnectionModal');
-    if (modalElement && typeof bootstrap !== 'undefined') {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    }
-    
-    // Send request
-    fetch('{{ route("admin.whatsapp-settings.test-connection") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        console.log('Response:', response.status);
-        return response.json();
-    })
-    .then(data => {
-        console.log('Data:', data);
-        if (resultDiv) {
-            if (data.success) {
-                resultDiv.innerHTML = '<div class="alert alert-success"><i class="ri-check-line me-2"></i>' + (data.message || 'تم الاتصال بنجاح!') + '</div>';
-            } else {
-                resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>' + (data.message || 'فشل الاتصال') + '</div>';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (resultDiv) {
-            resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>خطأ: ' + error.message + '</div>';
-        }
-    });
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('whatsapp_provider');
     const metaSettings = document.getElementById('meta-settings');
@@ -482,7 +426,46 @@ document.addEventListener('DOMContentLoaded', function() {
     let testConnectionModal = null;
     const modalElement = document.getElementById('testConnectionModal');
     if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        testConnectionModal = new bootstrap.Modal(modalElement);
+        testConnectionModal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
+        // Ensure close buttons work - both btn-close and footer button
+        const closeButtons = modalElement.querySelectorAll('[data-bs-dismiss="modal"], #close-test-modal-btn');
+        closeButtons.forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (testConnectionModal) {
+                    testConnectionModal.hide();
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    // Fallback: create modal instance if not exists
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
+                }
+            });
+        });
+        
+        // Close modal when clicking outside (backdrop)
+        modalElement.addEventListener('click', function(e) {
+            if (e.target === modalElement) {
+                if (testConnectionModal) {
+                    testConnectionModal.hide();
+                }
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modalElement.classList.contains('show')) {
+                if (testConnectionModal) {
+                    testConnectionModal.hide();
+                }
+            }
+        });
     } else {
         console.error('Bootstrap Modal not available or modal element not found');
     }
@@ -552,16 +535,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Test connection
-    if (testConnectionBtn) {
+    // Test connection - prevent multiple clicks
+    let isTesting = false;
+    if (testConnectionBtn && !testConnectionBtn.hasAttribute('data-listener-added')) {
+        testConnectionBtn.setAttribute('data-listener-added', 'true');
         testConnectionBtn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            
+            // Prevent multiple simultaneous requests
+            if (isTesting) {
+                console.log('Test already in progress, ignoring click');
+                return;
+            }
+            
+            isTesting = true;
+            testConnectionBtn.disabled = true;
             console.log('Test connection button clicked');
             
             const form = document.getElementById('whatsapp-settings-form');
             if (!form) {
                 console.error('Form not found');
                 alert('خطأ: لم يتم العثور على النموذج');
+                isTesting = false;
+                testConnectionBtn.disabled = false;
                 return;
             }
             
@@ -582,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 }
             })
@@ -602,12 +599,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>' + (data.message || 'فشل الاتصال') + '</div>';
                     }
                 }
+                isTesting = false;
+                testConnectionBtn.disabled = false;
             })
             .catch(error => {
                 console.error('Fetch error:', error);
                 if (resultDiv) {
                     resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>حدث خطأ أثناء الاختبار: ' + error.message + '</div>';
                 }
+                isTesting = false;
+                testConnectionBtn.disabled = false;
             });
         });
         console.log('Test connection button event listener attached');

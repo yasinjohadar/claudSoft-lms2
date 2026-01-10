@@ -108,17 +108,28 @@ class WhatsAppSettingsController extends Controller
 
             // Get provider config
             if ($provider === 'custom_api') {
+                $customApiUrl = $request->input('custom_api_url', $settings['custom_api_url'] ?? '');
+                $customApiKey = $request->input('custom_api_key', $settings['custom_api_key'] ?? '');
+                
                 $config = [
-                    'api_url' => $request->input('custom_api_url', $settings['custom_api_url'] ?? ''),
-                    'api_key' => $request->input('custom_api_key', $settings['custom_api_key'] ?? ''),
+                    'api_url' => $customApiUrl,
+                    'api_key' => $customApiKey,
                     'api_method' => $request->input('custom_api_method', $settings['custom_api_method'] ?? 'POST'),
                     'headers' => $this->parseHeaders($request->input('custom_api_headers', $settings['custom_api_headers'] ?? [])),
                 ];
             } else {
+                $apiVersion = $request->input('api_version', $settings['api_version'] ?? 'v20.0');
+                $phoneNumberId = $request->input('phone_number_id', $settings['phone_number_id'] ?? '');
+                // If access_token is empty in request, use from settings (for password fields that remain empty)
+                $accessToken = $request->input('access_token');
+                if (empty($accessToken)) {
+                    $accessToken = $settings['access_token'] ?? '';
+                }
+                
                 $config = [
-                    'api_version' => $request->input('api_version', $settings['api_version'] ?? 'v20.0'),
-                    'phone_number_id' => $request->input('phone_number_id', $settings['phone_number_id'] ?? ''),
-                    'access_token' => $request->input('access_token', $settings['access_token'] ?? ''),
+                    'api_version' => $apiVersion,
+                    'phone_number_id' => $phoneNumberId,
+                    'access_token' => $accessToken,
                 ];
             }
 
@@ -128,7 +139,10 @@ class WhatsAppSettingsController extends Controller
 
             return response()->json($result, $result['success'] ? 200 : 500);
         } catch (\Exception $e) {
-            Log::error('Error testing WhatsApp connection: ' . $e->getMessage());
+            Log::error('Error testing WhatsApp connection: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ: ' . $e->getMessage(),

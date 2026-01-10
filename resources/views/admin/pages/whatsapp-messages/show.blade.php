@@ -23,8 +23,16 @@
         <div class="row">
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">معلومات الرسالة</h5>
+                        @if(in_array($message->status, ['queued', 'failed']))
+                            <form action="{{ route('admin.whatsapp-messages.retry', $message) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('هل تريد إعادة إرسال هذه الرسالة؟')">
+                                    <i class="ri-refresh-line me-1"></i>إعادة المحاولة
+                                </button>
+                            </form>
+                        @endif
                     </div>
                     <div class="card-body">
                         <table class="table table-bordered">
@@ -65,6 +73,8 @@
                                         <span class="badge bg-primary">مقروء</span>
                                     @elseif($message->status === 'failed')
                                         <span class="badge bg-danger">فشل</span>
+                                    @elseif($message->status === 'queued')
+                                        <span class="badge bg-warning">في الانتظار (في الـ Queue)</span>
                                     @else
                                         <span class="badge bg-warning">في الانتظار</span>
                                     @endif

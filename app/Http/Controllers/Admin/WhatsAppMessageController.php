@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppBroadcast;
+use App\Models\WhatsAppContact;
 use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Jobs\BroadcastWhatsAppMessageJob;
+use App\Jobs\SendWhatsAppMessageJob;
+use App\Services\WhatsApp\WhatsAppProviderFactory;
+use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Exceptions\WhatsAppApiException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +24,8 @@ class WhatsAppMessageController extends Controller
 {
     public function __construct(
         private SendWhatsAppMessage $sendService,
-        private BroadcastWhatsAppMessage $broadcastService
+        private BroadcastWhatsAppMessage $broadcastService,
+        private WhatsAppSettingsService $settingsService
     ) {}
 
     /**
@@ -193,23 +199,107 @@ class WhatsAppMessageController extends Controller
                 }
             }
 
+            // Find or create contact
+            $contact = WhatsAppContact::findOrCreateByWaId($phone);
+
+            // Create message record
+            $message = WhatsAppMessage::create([
+                'direction' => WhatsAppMessage::DIRECTION_OUTBOUND,
+                'contact_id' => $contact->id,
+                'type' => $validated['type'] === 'template' ? WhatsAppMessage::TYPE_TEMPLATE : WhatsAppMessage::TYPE_TEXT,
+                'body' => $validated['type'] === 'template' ? $validated['template_name'] : $messageText,
+                'status' => WhatsAppMessage::STATUS_QUEUED, // Will be updated after sending
+                'payload' => $validated['type'] === 'template' ? [
+                    'template_name' => $validated['template_name'],
+                    'language' => $validated['language'] ?? 'ar',
+                    'components' => [],
+                ] : null,
+            ]);
+
+            // Get provider settings and send message directly (synchronous)
+            $settings = $this->settingsService->getSettings();
+            $provider = $settings['whatsapp_provider'] ?? 'meta';
+            $config = $this->settingsService->getProviderConfig();
+
+            // Create provider instance
+            $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+
+            // Send message directly
             if ($validated['type'] === 'template') {
-                $message = $this->sendService->sendTemplate(
+                $response = $providerInstance->sendTemplate(
                     $phone,
                     $validated['template_name'],
                     $validated['language'] ?? 'ar',
                     []
                 );
             } else {
-                $message = $this->sendService->sendText($phone, $messageText);
+                $response = $providerInstance->sendText(
+                    $phone,
+                    $messageText,
+                    false
+                );
             }
 
+            // Update message with meta_message_id and status
+            $message->update([
+                'meta_message_id' => $response->metaMessageId,
+                'status' => WhatsAppMessage::STATUS_SENT,
+                'payload' => array_merge($message->payload ?? [], [
+                    'response' => $response->rawResponse,
+                    'sent_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            Log::channel('whatsapp')->info('WhatsApp message sent successfully (direct)', [
+                'message_id' => $message->id,
+                'meta_message_id' => $response->metaMessageId,
+                'to' => $phone,
+            ]);
+
             return redirect()->route('admin.whatsapp-messages.show', $message)
-                           ->with('success', 'تم إرسال الرسالة بنجاح.');
-        } catch (\Exception $e) {
-            Log::error('Error sending WhatsApp message: ' . $e->getMessage());
+                           ->with('success', 'تم إرسال الرسالة بنجاح!');
+        } catch (WhatsAppApiException $e) {
+            // Update message with error if message was created
+            if (isset($message) && $message->id) {
+                $message->update([
+                    'status' => WhatsAppMessage::STATUS_FAILED,
+                    'error' => [
+                        'message' => $e->getMessage(),
+                        'code' => $e->getCode(),
+                        'details' => $e->getDetails(),
+                    ],
+                ]);
+            }
+
+            Log::channel('whatsapp')->error('Failed to send WhatsApp message', [
+                'message_id' => $message->id ?? null,
+                'error' => $e->getMessage(),
+                'details' => $e->getDetails(),
+            ]);
+
             return redirect()->back()
                            ->with('error', 'فشل إرسال الرسالة: ' . $e->getMessage())
+                           ->withInput();
+        } catch (\Exception $e) {
+            // Update message with error if message was created
+            if (isset($message) && $message->id) {
+                $message->update([
+                    'status' => WhatsAppMessage::STATUS_FAILED,
+                    'error' => [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ],
+                ]);
+            }
+
+            Log::channel('whatsapp')->error('Exception sending WhatsApp message', [
+                'message_id' => $message->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $e->getMessage())
                            ->withInput();
         }
     }
@@ -312,6 +402,113 @@ class WhatsAppMessageController extends Controller
             return redirect()->back()
                 ->with('error', 'فشل إرسال الرسالة الجماعية: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Retry sending a failed or queued message (synchronous - without queue)
+     */
+    public function retry(WhatsAppMessage $message)
+    {
+        try {
+            // Only allow retry for queued or failed messages
+            if (!in_array($message->status, [WhatsAppMessage::STATUS_QUEUED, WhatsAppMessage::STATUS_FAILED])) {
+                return redirect()->back()
+                    ->with('error', 'لا يمكن إعادة إرسال هذه الرسالة. الحالة الحالية: ' . $message->status);
+            }
+
+            // Load contact relationship
+            $message->load('contact');
+            if (!$message->contact) {
+                return redirect()->back()
+                    ->with('error', 'المستقبل غير موجود.');
+            }
+
+            $to = $message->contact->wa_id;
+
+            // Get provider settings
+            $settings = $this->settingsService->getSettings();
+            $provider = $settings['whatsapp_provider'] ?? 'meta';
+            $config = $this->settingsService->getProviderConfig();
+
+            // Create provider instance
+            $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+
+            // Send message directly (synchronous)
+            if ($message->type === WhatsAppMessage::TYPE_TEMPLATE) {
+                $payload = $message->payload ?? [];
+                $response = $providerInstance->sendTemplate(
+                    $to,
+                    $payload['template_name'] ?? $message->body,
+                    $payload['language'] ?? 'ar',
+                    $payload['components'] ?? []
+                );
+            } else {
+                $response = $providerInstance->sendText(
+                    $to,
+                    $message->body ?? '',
+                    false
+                );
+            }
+
+            // Update message with meta_message_id and status
+            $message->update([
+                'meta_message_id' => $response->metaMessageId,
+                'status' => WhatsAppMessage::STATUS_SENT,
+                'error' => null,
+                'payload' => array_merge($message->payload ?? [], [
+                    'response' => $response->rawResponse,
+                    'sent_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            Log::channel('whatsapp')->info('WhatsApp message sent successfully (retry)', [
+                'message_id' => $message->id,
+                'meta_message_id' => $response->metaMessageId,
+                'to' => $to,
+            ]);
+
+            return redirect()->back()
+                ->with('success', 'تم إرسال الرسالة بنجاح!');
+        } catch (WhatsAppApiException $e) {
+            // Update message with error
+            $message->update([
+                'status' => WhatsAppMessage::STATUS_FAILED,
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'details' => $e->getDetails(),
+                    'retried_at' => now()->toIso8601String(),
+                ],
+            ]);
+
+            Log::channel('whatsapp')->error('Failed to send WhatsApp message (retry)', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+                'details' => $e->getDetails(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'فشل إرسال الرسالة: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            // Update message with error
+            $message->update([
+                'status' => WhatsAppMessage::STATUS_FAILED,
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'retried_at' => now()->toIso8601String(),
+                ],
+            ]);
+
+            Log::channel('whatsapp')->error('Exception sending WhatsApp message (retry)', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $e->getMessage());
         }
     }
 }

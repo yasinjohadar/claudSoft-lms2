@@ -108,6 +108,8 @@
                                             <span class="badge bg-primary">مقروء</span>
                                         @elseif($message->status === 'failed')
                                             <span class="badge bg-danger">فشل</span>
+                                        @elseif($message->status === 'queued')
+                                            <span class="badge bg-warning">في الانتظار (Queue)</span>
                                         @else
                                             <span class="badge bg-warning">في الانتظار</span>
                                         @endif
