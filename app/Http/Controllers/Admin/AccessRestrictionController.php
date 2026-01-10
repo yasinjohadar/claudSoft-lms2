@@ -170,23 +170,35 @@ class AccessRestrictionController extends Controller
 
                 DB::commit();
 
-                // Verify the restrictions were saved
+                // Verify the restrictions were saved and get group information
                 $savedRestrictions = SectionAccessRestriction::where('section_id', $section->id)
                     ->where('restriction_type', 'group')
                     ->where('access_type', 'allow')
+                    ->with('group')
                     ->get();
+
+                // Get group names for response
+                $savedGroupIds = $savedRestrictions->pluck('restriction_id')->toArray();
+                $groups = CourseGroup::whereIn('id', $savedGroupIds)->get(['id', 'name', 'description']);
 
                 Log::info('Restrictions saved successfully', [
                     'section_id' => $section->id,
                     'saved_count' => $savedRestrictions->count(),
-                    'saved_group_ids' => $savedRestrictions->pluck('restriction_id')->toArray(),
+                    'saved_group_ids' => $savedGroupIds,
                 ]);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'تم تحديث القيود بنجاح',
                     'restricted_count' => count($groupIds),
-                    'saved_group_ids' => $savedRestrictions->pluck('restriction_id')->toArray(),
+                    'saved_group_ids' => $savedGroupIds,
+                    'groups' => $groups->map(function($group) {
+                        return [
+                            'id' => $group->id,
+                            'name' => $group->name,
+                            'description' => $group->description,
+                        ];
+                    })->toArray(),
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -285,23 +297,35 @@ class AccessRestrictionController extends Controller
 
                 DB::commit();
 
-                // Verify the restrictions were saved
+                // Verify the restrictions were saved and get group information
                 $savedRestrictions = ModuleAccessRestriction::where('module_id', $module->id)
                     ->where('restriction_type', 'group')
                     ->where('access_type', 'allow')
+                    ->with('group')
                     ->get();
+
+                // Get group names for response
+                $savedGroupIds = $savedRestrictions->pluck('restriction_id')->toArray();
+                $groups = CourseGroup::whereIn('id', $savedGroupIds)->get(['id', 'name', 'description']);
 
                 Log::info('Restrictions saved successfully', [
                     'module_id' => $module->id,
                     'saved_count' => $savedRestrictions->count(),
-                    'saved_group_ids' => $savedRestrictions->pluck('restriction_id')->toArray(),
+                    'saved_group_ids' => $savedGroupIds,
                 ]);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'تم تحديث القيود بنجاح',
                     'restricted_count' => count($groupIds),
-                    'saved_group_ids' => $savedRestrictions->pluck('restriction_id')->toArray(),
+                    'saved_group_ids' => $savedGroupIds,
+                    'groups' => $groups->map(function($group) {
+                        return [
+                            'id' => $group->id,
+                            'name' => $group->name,
+                            'description' => $group->description,
+                        ];
+                    })->toArray(),
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();

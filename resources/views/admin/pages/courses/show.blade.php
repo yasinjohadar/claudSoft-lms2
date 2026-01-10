@@ -417,6 +417,15 @@
                                 <i class="fas fa-star me-1"></i>مميز
                             </span>
                         @endif
+                        <span id="course-visibility-badge" class="badge {{ $course->is_visible ? 'bg-info-transparent' : 'bg-secondary-transparent' }} px-3 py-2">
+                            <i class="far fa-eye{{ $course->is_visible ? '' : '-slash' }} me-1"></i>
+                            {{ $course->is_visible ? 'مرئي' : 'مخفي' }}
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="course-toggle-visibility-btn"
+                                onclick="toggleVisibility('course', {{ $course->id }})">
+                            <i class="far fa-eye{{ $course->is_visible ? '' : '-slash' }} me-1"></i>
+                            {{ $course->is_visible ? 'إخفاء' : 'إظهار' }}
+                        </button>
                         <a href="{{ route('courses.edit', $course->id) }}" class="btn btn-primary">
                             <i class="fas fa-edit me-2"></i>تعديل
                         </a>
@@ -552,11 +561,9 @@
                                         <div>
                                             <i class="fas fa-folder me-2"></i>
                                             {{ $section->title }}
-                                            @if($section->accessRestrictions && $section->accessRestrictions->count() > 0)
-                                                <span class="badge bg-warning text-dark ms-2" title="هذا القسم له قيود وصول">
-                                                    <i class="fas fa-lock me-1"></i>قيود
-                                                </span>
-                                            @endif
+                                            <span id="section-restrictions-badge-{{ $section->id }}" class="badge bg-warning text-dark ms-2" title="هذا القسم له قيود وصول" style="display: {{ $section->accessRestrictions && $section->accessRestrictions->count() > 0 ? 'inline-block' : 'none' }};">
+                                                <i class="fas fa-lock me-1"></i>قيود
+                                            </span>
                                             @if($section->description)
                                                 <br><small class="text-muted fw-normal">{{ $section->description }}</small>
                                             @endif
@@ -624,7 +631,8 @@
                                             <a href="{{ route('courses.sections.edit', [$course->id, $section->id]) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-edit me-1"></i>تحرير
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            <button type="button" class="btn btn-sm btn-outline-secondary section-visibility-btn"
+                                                    id="section-visibility-btn-{{ $section->id }}"
                                                     onclick="toggleVisibility('section', {{ $section->id }})">
                                                 <i class="far fa-eye{{ $section->is_visible ? '' : '-slash' }} me-1"></i>
                                                 {{ $section->is_visible ? 'إخفاء' : 'إظهار' }}
@@ -725,42 +733,42 @@
                                                     <div>
                                                         <h6 class="mb-1 fw-semibold text-dark">
                                                             {{ $module->title }}
-                                                            @if($module->accessRestrictions && $module->accessRestrictions->count() > 0)
-                                                                @php
-                                                                    // أسماء المجموعات المرتبطة بقيود هذه الوحدة
-                                                                    $groupNames = $module->accessRestrictions
+                                                            @php
+                                                                // أسماء المجموعات المرتبطة بقيود هذه الوحدة
+                                                                $groupNames = $module->accessRestrictions && $module->accessRestrictions->count() > 0
+                                                                    ? $module->accessRestrictions
                                                                         ->pluck('group.name')
                                                                         ->filter()
                                                                         ->unique()
-                                                                        ->values();
-                                                                    $displayGroups = $groupNames->take(3);
-                                                                    $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
-                                                                @endphp
-                                                                {{-- شارة القيود الأساسية --}}
-                                                                <span class="badge bg-warning text-dark ms-2"
-                                                                      @if($groupNames->isNotEmpty())
-                                                                          title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
-                                                                      @else
-                                                                          title="هذه الوحدة لها قيود وصول"
-                                                                      @endif
-                                                                >
-                                                                    <i class="fas fa-lock me-1"></i>قيود
-                                                                </span>
-
-                                                                {{-- بادجات منفصلة لكل مجموعة بلون مختلف --}}
-                                                                @foreach($displayGroups as $groupName)
-                                                                    <span class="badge bg-primary-transparent text-primary ms-1">
-                                                                        <i class="fas fa-users me-1"></i>{{ $groupName }}
-                                                                    </span>
-                                                                @endforeach
-
-                                                                @if($moreCount > 0)
-                                                                    <span class="badge bg-light text-muted ms-1"
-                                                                          title="مجموعات أخرى لها نفس القيود">
-                                                                        +{{ $moreCount }}
-                                                                    </span>
+                                                                        ->values()
+                                                                    : collect();
+                                                                $displayGroups = $groupNames->take(3);
+                                                                $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
+                                                                $hasRestrictions = $module->accessRestrictions && $module->accessRestrictions->count() > 0;
+                                                            @endphp
+                                                            <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark ms-2" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
+                                                                  @if($hasRestrictions && $groupNames->isNotEmpty())
+                                                                      title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
+                                                                  @elseif($hasRestrictions)
+                                                                      title="هذه الوحدة لها قيود وصول"
+                                                                  @endif
+                                                            >
+                                                                <i class="fas fa-lock me-1"></i>قيود
+                                                            </span>
+                                                            <span id="module-groups-container-{{ $module->id }}">
+                                                                @if($hasRestrictions && $displayGroups->isNotEmpty())
+                                                                    @foreach($displayGroups as $index => $groupName)
+                                                                        <span class="badge bg-primary-transparent text-primary ms-1 module-group-badge" data-module-id="{{ $module->id }}" data-group-name="{{ $groupName }}">
+                                                                            <i class="fas fa-users me-1"></i>{{ $groupName }}
+                                                                        </span>
+                                                                    @endforeach
+                                                                    @if($moreCount > 0)
+                                                                        <span class="badge bg-light text-muted ms-1" id="module-more-badge-{{ $module->id }}">
+                                                                            +{{ $moreCount }}
+                                                                        </span>
+                                                                    @endif
                                                                 @endif
-                                                            @endif
+                                                            </span>
                                                         </h6>
                                                         <small class="text-muted">
                                                             <span class="badge bg-light text-default me-1">
@@ -852,7 +860,8 @@
                                                         <i class="fas fa-edit me-1"></i>تحرير
                                                     </a>
                                                 @endif
-                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                <button type="button" class="btn btn-sm btn-outline-secondary module-visibility-btn"
+                                                        id="module-visibility-btn-{{ $module->id }}"
                                                         onclick="toggleVisibility('module', {{ $module->id }})">
                                                     <i class="far fa-eye{{ $module->is_visible ? '' : '-slash' }} me-1"></i>
                                                     {{ $module->is_visible ? 'إخفاء' : 'إظهار' }}
@@ -1079,9 +1088,17 @@
 <script>
     // Toggle Visibility
     function toggleVisibility(type, id) {
-        const url = type === 'section'
-            ? `/admin/sections/${id}/toggle-visibility`
-            : `/admin/modules/${id}/toggle-visibility`;
+        let url;
+        if (type === 'section') {
+            url = `/admin/sections/${id}/toggle-visibility`;
+        } else if (type === 'module') {
+            url = `/admin/modules/${id}/toggle-visibility`;
+        } else if (type === 'course') {
+            url = `/admin/courses/${id}/toggle-visibility`;
+        } else {
+            console.error('Unknown type:', type);
+            return;
+        }
 
         // Show loading state
         const modal = new bootstrap.Modal(document.getElementById('visibilityModal'));
@@ -1120,9 +1137,48 @@
                         ${data.message || 'تم التحديث بنجاح'}
                     </div>
                 `;
+                
+                // Update UI directly without reload
+                if (type === 'course') {
+                    // Update course visibility badge and button
+                    const badge = document.getElementById('course-visibility-badge');
+                    const button = document.getElementById('course-toggle-visibility-btn');
+                    if (badge && button) {
+                        if (data.is_visible) {
+                            badge.className = 'badge bg-info-transparent px-3 py-2';
+                            badge.innerHTML = '<i class="far fa-eye me-1"></i>مرئي';
+                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                        } else {
+                            badge.className = 'badge bg-secondary-transparent px-3 py-2';
+                            badge.innerHTML = '<i class="far fa-eye-slash me-1"></i>مخفي';
+                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                        }
+                    }
+                } else if (type === 'section') {
+                    // Update section visibility button
+                    const button = document.getElementById(`section-visibility-btn-${id}`);
+                    if (button) {
+                        if (data.is_visible) {
+                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                        } else {
+                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                        }
+                    }
+                } else if (type === 'module') {
+                    // Update module visibility button
+                    const button = document.getElementById(`module-visibility-btn-${id}`);
+                    if (button) {
+                        if (data.is_visible) {
+                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                        } else {
+                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                        }
+                    }
+                }
+                
+                // Close modal after 1 second (NO RELOAD for all types)
                 setTimeout(() => {
                     modal.hide();
-                    location.reload();
                 }, 1000);
             } else {
                 modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>حدث خطأ';
@@ -1306,6 +1362,91 @@
         });
     }
 
+    /**
+     * Update restrictions badges in the UI after saving
+     * @param {string} type - 'section' or 'module'
+     * @param {number} id - Section or module ID
+     * @param {Array} groups - Array of group objects with {id, name, description}
+     */
+    function updateRestrictionsBadges(type, id, groups) {
+        console.log('Updating badges:', { type, id, groups });
+
+        if (type === 'section') {
+            // Update section badge
+            const sectionBadge = document.getElementById(`section-restrictions-badge-${id}`);
+            if (sectionBadge) {
+                if (groups && groups.length > 0) {
+                    sectionBadge.style.display = 'inline-block';
+                    sectionBadge.title = `هذا القسم له قيود وصول (${groups.length} مجموعة)`;
+                } else {
+                    sectionBadge.style.display = 'none';
+                }
+            }
+        } else if (type === 'module') {
+            // Update module badges
+            const mainBadge = document.getElementById(`module-main-badge-${id}`);
+            const groupsContainer = document.getElementById(`module-groups-container-${id}`);
+            const moreBadge = document.getElementById(`module-more-badge-${id}`);
+
+            if (!mainBadge || !groupsContainer) {
+                console.error('Module badge elements not found:', { id, mainBadge, groupsContainer });
+                return;
+            }
+
+            if (groups && groups.length > 0) {
+                // Show main badge
+                mainBadge.style.display = 'inline-block';
+                
+                // Build group names for title
+                const groupNames = groups.map(g => g.name).join('، ');
+                mainBadge.title = `هذه الوحدة مقيدة على المجموعات: ${groupNames}`;
+
+                // Clear existing group badges
+                groupsContainer.innerHTML = '';
+
+                // Display first 3 groups
+                const displayGroups = groups.slice(0, 3);
+                const remainingCount = Math.max(groups.length - 3, 0);
+
+                displayGroups.forEach(group => {
+                    const groupBadge = document.createElement('span');
+                    groupBadge.className = 'badge bg-primary-transparent text-primary ms-1 module-group-badge';
+                    groupBadge.setAttribute('data-module-id', id);
+                    groupBadge.setAttribute('data-group-name', group.name);
+                    groupBadge.innerHTML = `<i class="fas fa-users me-1"></i>${group.name}`;
+                    groupsContainer.appendChild(groupBadge);
+                });
+
+                // Show "more" badge if there are more than 3 groups
+                if (remainingCount > 0) {
+                    if (!moreBadge) {
+                        const moreBadgeEl = document.createElement('span');
+                        moreBadgeEl.id = `module-more-badge-${id}`;
+                        moreBadgeEl.className = 'badge bg-light text-muted ms-1';
+                        moreBadgeEl.title = 'مجموعات أخرى لها نفس القيود';
+                        moreBadgeEl.textContent = `+${remainingCount}`;
+                        groupsContainer.appendChild(moreBadgeEl);
+                    } else {
+                        moreBadge.textContent = `+${remainingCount}`;
+                        moreBadge.style.display = 'inline-block';
+                    }
+                } else {
+                    // Hide "more" badge if it exists
+                    if (moreBadge) {
+                        moreBadge.style.display = 'none';
+                    }
+                }
+            } else {
+                // Hide all badges if no restrictions
+                mainBadge.style.display = 'none';
+                groupsContainer.innerHTML = '';
+                if (moreBadge) {
+                    moreBadge.style.display = 'none';
+                }
+            }
+        }
+    }
+
     // Save restrictions
     function saveRestrictions() {
         const groupsList = document.getElementById('restrictionsGroupsList');
@@ -1363,10 +1504,12 @@
                     alert(data.message || 'تم تحديث القيود بنجاح');
                 }
 
-                // Reload page to show updated restrictions
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
+                // Update badges directly without page reload
+                updateRestrictionsBadges(type, id, data.groups || []);
+
+                // Re-enable save button
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnText;
             } else {
                 alert(data.message || 'حدث خطأ في حفظ القيود');
                 saveBtn.disabled = false;
