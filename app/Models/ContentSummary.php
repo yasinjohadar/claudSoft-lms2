@@ -55,3 +55,4 @@ class ContentSummary extends Model
 }
 
 
+

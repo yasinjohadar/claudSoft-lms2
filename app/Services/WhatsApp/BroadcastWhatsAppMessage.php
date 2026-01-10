@@ -3,9 +3,9 @@
 namespace App\Services\WhatsApp;
 
 use App\Models\User;
-use App\Models\SchoolClass;
-use App\Models\Subject;
-use App\Models\Enrollment;
+use App\Models\Course;
+use App\Models\CourseGroup;
+use App\Models\CourseEnrollment;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -21,26 +21,25 @@ class BroadcastWhatsAppMessage
     /**
      * Get students by criteria
      */
-    public function getStudentsByCriteria(?int $classId = null, ?int $subjectId = null): Collection
+    public function getStudentsByCriteria(?int $courseId = null, ?int $groupId = null): Collection
     {
         $query = User::role('student')
             ->whereNotNull('phone')
             ->where('phone', '!=', '')
             ->where('is_active', true);
 
-        if ($subjectId) {
-            // Get students enrolled in the subject (active enrollments only)
-            $query->whereHas('enrollments', function ($q) use ($subjectId) {
-                $q->where('subject_id', $subjectId)
-                  ->where('status', 'active');
+        if ($groupId) {
+            // Get students in this group
+            $query->whereHas('courseGroupMemberships', function ($q) use ($groupId) {
+                $q->where('group_id', $groupId);
             });
-        } elseif ($classId) {
-            // Get students enrolled in any subject of this class
-            $query->whereHas('enrollments', function ($q) use ($classId) {
-                $q->where('status', 'active')
-                  ->whereHas('subject', function ($sq) use ($classId) {
-                      $sq->where('class_id', $classId);
-                  });
+        }
+
+        if ($courseId) {
+            // Get students enrolled in the course (active enrollments only)
+            $query->whereHas('courseEnrollments', function ($q) use ($courseId) {
+                $q->where('course_id', $courseId)
+                  ->where('enrollment_status', 'active');
             });
         }
 
@@ -56,48 +55,47 @@ class BroadcastWhatsAppMessage
     public function replacePlaceholders(
         string $template,
         User $student,
-        ?Subject $subject = null,
-        ?SchoolClass $class = null
+        ?Course $course = null,
+        ?CourseGroup $group = null
     ): string {
         $replacements = [
             '{student_name}' => $student->name,
             '{student_email}' => $student->email ?? '',
-            '{subject_name}' => '', // Default empty
-            '{class_name}' => '', // Default empty
+            '{course_name}' => '', // Default empty
+            '{group_name}' => '', // Default empty
         ];
 
-        // Get subject from student's enrollment if not provided
-        if (!$subject && $class) {
-            // If class is provided but subject is not, get first subject from student's enrollments in this class
-            $enrollment = $student->enrollments()
-                ->with('subject')
-                ->whereHas('subject', function ($q) use ($class) {
-                    $q->where('class_id', $class->id);
-                })
-                ->active()
+        // Get course from student's enrollment if not provided
+        if (!$course && !$group) {
+            // Try to get the first active enrollment's course
+            $enrollment = $student->courseEnrollments()
+                ->with('course')
+                ->where('enrollment_status', 'active')
                 ->first();
             
-            if ($enrollment && $enrollment->subject) {
-                $subject = $enrollment->subject;
-            }
-        } elseif (!$subject) {
-            // Try to get the first active enrollment's subject
-            $enrollment = $student->enrollments()->with('subject')->active()->first();
-            if ($enrollment && $enrollment->subject) {
-                $subject = $enrollment->subject;
+            if ($enrollment && $enrollment->course) {
+                $course = $enrollment->course;
             }
         }
 
-        if ($subject) {
-            $replacements['{subject_name}'] = $subject->name;
-            // Also get class from subject if not provided
-            if (!$class && $subject->schoolClass) {
-                $class = $subject->schoolClass;
+        if ($course) {
+            $replacements['{course_name}'] = $course->title;
+        }
+
+        // Get group from student's memberships if not provided
+        if (!$group) {
+            // Try to get first group membership
+            $membership = $student->courseGroupMemberships()
+                ->with('group')
+                ->first();
+            
+            if ($membership && $membership->group) {
+                $group = $membership->group;
             }
         }
 
-        if ($class) {
-            $replacements['{class_name}'] = $class->name;
+        if ($group) {
+            $replacements['{group_name}'] = $group->name;
         }
 
         return str_replace(

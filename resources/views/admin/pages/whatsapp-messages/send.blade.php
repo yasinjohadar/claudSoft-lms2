@@ -98,8 +98,8 @@
                                         <strong>متغيرات متاحة عند اختيار طالب:</strong><br>
                                         <code>{student_name}</code> - اسم الطالب<br>
                                         <code>{student_email}</code> - بريد الطالب<br>
-                                        <code>{class_name}</code> - اسم الصف<br>
-                                        <code>{subject_name}</code> - اسم المادة
+                                        <code>{course_name}</code> - اسم الكورس<br>
+                                        <code>{group_name}</code> - اسم المجموعة
                                     </small>
                                 </div>
                             </div>
@@ -107,32 +107,31 @@
                             <!-- Broadcast fields -->
                             <div id="broadcast-fields" style="display: none;">
                                 <div class="mb-3">
-                                    <label for="class_id" class="form-label">الصف الدراسي <span class="text-danger">*</span></label>
-                                    <select class="form-select @error('class_id') is-invalid @enderror" id="class_id" name="class_id">
-                                        <option value="">اختر الصف الدراسي</option>
-                                        @foreach($classes as $class)
-                                            <option value="{{ $class->id }}" {{ old('class_id') == $class->id ? 'selected' : '' }}>{{ $class->name }}</option>
+                                    <label for="course_id" class="form-label">الكورس <span class="text-danger">*</span></label>
+                                    <select class="form-select @error('course_id') is-invalid @enderror" id="course_id" name="course_id">
+                                        <option value="">اختر الكورس</option>
+                                        @foreach($courses as $course)
+                                            <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>{{ $course->title }}</option>
                                         @endforeach
                                     </select>
-                                    @error('class_id')
+                                    @error('course_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="subject_id" class="form-label">المادة الدراسية <span class="text-muted">(اختياري)</span></label>
-                                    <select class="form-select @error('subject_id') is-invalid @enderror" id="subject_id" name="subject_id">
-                                        <option value="">جميع المواد</option>
-                                        @foreach($subjects as $subject)
-                                            <option value="{{ $subject->id }}" 
-                                                    data-class-id="{{ $subject->class_id }}"
-                                                    {{ old('subject_id') == $subject->id ? 'selected' : '' }}>
-                                                {{ $subject->name }} @if($subject->schoolClass) ({{ $subject->schoolClass->name }}) @endif
+                                    <label for="group_id" class="form-label">المجموعة <span class="text-muted">(اختياري)</span></label>
+                                    <select class="form-select @error('group_id') is-invalid @enderror" id="group_id" name="group_id">
+                                        <option value="">جميع المجموعات</option>
+                                        @foreach($groups as $group)
+                                            <option value="{{ $group->id }}" 
+                                                    {{ old('group_id') == $group->id ? 'selected' : '' }}>
+                                                {{ $group->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">اختيار المادة يرسل للطلاب المسجلين في هذه المادة فقط</small>
-                                    @error('subject_id')
+                                    <small class="text-muted">اختيار المجموعة يرسل للطلاب المنتمين لهذه المجموعة فقط</small>
+                                    @error('group_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -163,8 +162,8 @@
                                         <strong>متغيرات متاحة للإرسال الجماعي:</strong><br>
                                         <code>{student_name}</code> - اسم الطالب<br>
                                         <code>{student_email}</code> - بريد الطالب<br>
-                                        <code>{class_name}</code> - اسم الصف<br>
-                                        <code>{subject_name}</code> - اسم المادة
+                                        <code>{course_name}</code> - اسم الكورس<br>
+                                        <code>{group_name}</code> - اسم المجموعة
                                     </small>
                                 </div>
                                 @error('message')
@@ -227,8 +226,8 @@ $(document).ready(function() {
     const individualPlaceholdersInfo = document.getElementById('individual-placeholders-info');
     const toInput = document.getElementById('to');
     const studentSearch = document.getElementById('student_search');
-    const classSelect = document.getElementById('class_id');
-    const subjectSelect = document.getElementById('subject_id');
+    const courseSelect = document.getElementById('course_id');
+    const groupSelect = document.getElementById('group_id');
     const studentsCountSpan = document.getElementById('students-count');
     const messageForm = document.getElementById('message-form');
     const typeSelect = document.getElementById('type');
@@ -321,7 +320,7 @@ $(document).ready(function() {
             placeholdersInfo.style.display = 'block';
             individualPlaceholdersInfo.style.display = 'none';
             toInput.removeAttribute('required');
-            classSelect.setAttribute('required', 'required');
+            courseSelect.setAttribute('required', 'required');
             updateStudentsCount();
         } else {
             individualFields.style.display = 'block';
@@ -335,7 +334,7 @@ $(document).ready(function() {
             if (!studentSearch || !studentSearch.value) {
                 toInput.setAttribute('required', 'required');
             }
-            classSelect.removeAttribute('required');
+            courseSelect.removeAttribute('required');
         }
     }
 
@@ -358,17 +357,17 @@ $(document).ready(function() {
 
     // Update students count via AJAX
     function updateStudentsCount() {
-        const classId = classSelect.value;
-        const subjectId = subjectSelect.value;
+        const courseId = courseSelect.value;
+        const groupId = groupSelect.value;
 
-        if (!classId && !subjectId) {
+        if (!courseId && !groupId) {
             studentsCountSpan.textContent = '0';
             return;
         }
 
         fetch('{{ route("admin.whatsapp-messages.broadcast.students-count") }}?' + new URLSearchParams({
-            class_id: classId || '',
-            subject_id: subjectId || ''
+            course_id: courseId || '',
+            group_id: groupId || ''
         }), {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -383,39 +382,11 @@ $(document).ready(function() {
         });
     }
 
-    // Filter subjects by class
-    function filterSubjectsByClass() {
-        const classId = classSelect.value;
-        const options = subjectSelect.querySelectorAll('option');
-        
-        options.forEach(option => {
-            if (option.value === '') {
-                option.style.display = 'block';
-            } else {
-                const optionClassId = option.getAttribute('data-class-id');
-                if (classId && optionClassId !== classId) {
-                    option.style.display = 'none';
-                    if (option.selected) {
-                        option.selected = false;
-                        subjectSelect.value = '';
-                    }
-                } else {
-                    option.style.display = 'block';
-                }
-            }
-        });
-
-        updateStudentsCount();
-    }
-
     // Event listeners
     sendTypeIndividual.addEventListener('change', toggleSendType);
     sendTypeBroadcast.addEventListener('change', toggleSendType);
-    classSelect.addEventListener('change', function() {
-        filterSubjectsByClass();
-        updateStudentsCount();
-    });
-    subjectSelect.addEventListener('change', updateStudentsCount);
+    courseSelect.addEventListener('change', updateStudentsCount);
+    groupSelect.addEventListener('change', updateStudentsCount);
     typeSelect.addEventListener('change', toggleMessageType);
 
     // Initial state
@@ -430,9 +401,9 @@ $(document).ready(function() {
             return false;
         }
 
-        if (sendTypeBroadcast.checked && !classSelect.value) {
+        if (sendTypeBroadcast.checked && !courseSelect.value) {
             e.preventDefault();
-            alert('يرجى اختيار الصف الدراسي');
+            alert('يرجى اختيار الكورس');
             return false;
         }
 

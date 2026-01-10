@@ -15,8 +15,8 @@ class WhatsAppBroadcast extends Model
     protected $fillable = [
         'message_template',
         'send_type',
-        'class_id',
-        'subject_id',
+        'course_id',
+        'group_id',
         'total_recipients',
         'sent_count',
         'failed_count',
@@ -45,19 +45,19 @@ class WhatsAppBroadcast extends Model
     public const TYPE_TEMPLATE = 'template';
 
     /**
-     * Relation to SchoolClass
+     * Relation to Course
      */
-    public function schoolClass(): BelongsTo
+    public function course(): BelongsTo
     {
-        return $this->belongsTo(SchoolClass::class, 'class_id');
+        return $this->belongsTo(Course::class, 'course_id');
     }
 
     /**
-     * Relation to Subject
+     * Relation to CourseGroup
      */
-    public function subject(): BelongsTo
+    public function group(): BelongsTo
     {
-        return $this->belongsTo(Subject::class);
+        return $this->belongsTo(CourseGroup::class, 'group_id');
     }
 
     /**

@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppBroadcast;
-use App\Models\SchoolClass;
-use App\Models\Subject;
-use App\Models\Enrollment;
+use App\Models\Course;
+use App\Models\CourseGroup;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Jobs\BroadcastWhatsAppMessageJob;
@@ -85,10 +84,10 @@ class WhatsAppMessageController extends Controller
      */
     public function create()
     {
-        $classes = SchoolClass::active()->ordered()->get();
-        $subjects = Subject::active()->with('schoolClass')->orderBy('name')->get();
+        $courses = Course::where('is_published', true)->orderBy('title')->get();
+        $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
         
-        return view('admin.pages.whatsapp-messages.send', compact('classes', 'subjects'));
+        return view('admin.pages.whatsapp-messages.send', compact('courses', 'groups'));
     }
 
     /**
@@ -221,13 +220,13 @@ class WhatsAppMessageController extends Controller
     public function getStudentsCount(Request $request)
     {
         $request->validate([
-            'class_id' => 'nullable|exists:classes,id',
-            'subject_id' => 'nullable|exists:subjects,id',
+            'course_id' => 'nullable|exists:courses,id',
+            'group_id' => 'nullable|exists:course_groups,id',
         ]);
 
         $students = $this->broadcastService->getStudentsByCriteria(
-            $request->class_id,
-            $request->subject_id
+            $request->course_id,
+            $request->group_id
         );
 
         return response()->json([
@@ -247,17 +246,17 @@ class WhatsAppMessageController extends Controller
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
             // Broadcast fields
-            'class_id' => 'required_if:send_type,broadcast|nullable|exists:classes,id',
-            'subject_id' => 'nullable|exists:subjects,id',
+            'course_id' => 'required_if:send_type,broadcast|nullable|exists:courses,id',
+            'group_id' => 'nullable|exists:course_groups,id',
             // Individual field
             'to' => 'required_if:send_type,individual|nullable|string|regex:/^\+[1-9]\d{1,14}$/',
         ], [
             'send_type.required' => 'نوع الإرسال مطلوب',
             'type.required' => 'نوع الرسالة مطلوب',
             'message.required_if' => 'نص الرسالة مطلوب',
-            'class_id.required_if' => 'الصف الدراسي مطلوب للإرسال الجماعي',
-            'class_id.exists' => 'الصف الدراسي المحدد غير موجود',
-            'subject_id.exists' => 'المادة الدراسية المحددة غير موجودة',
+            'course_id.required_if' => 'الكورس مطلوب للإرسال الجماعي',
+            'course_id.exists' => 'الكورس المحدد غير موجود',
+            'group_id.exists' => 'المجموعة المحددة غير موجودة',
             'to.required_if' => 'رقم الهاتف مطلوب للإرسال الفردي',
         ]);
 
@@ -269,8 +268,8 @@ class WhatsAppMessageController extends Controller
 
             // Broadcast logic
             $students = $this->broadcastService->getStudentsByCriteria(
-                $validated['class_id'] ?? null,
-                $validated['subject_id'] ?? null
+                $validated['course_id'] ?? null,
+                $validated['group_id'] ?? null
             );
 
             if ($students->isEmpty()) {
@@ -279,16 +278,16 @@ class WhatsAppMessageController extends Controller
                     ->withInput();
             }
 
-            // Get subject and class for placeholders
-            $subject = $validated['subject_id'] ? Subject::with('schoolClass')->find($validated['subject_id']) : null;
-            $class = $validated['class_id'] ? SchoolClass::find($validated['class_id']) : ($subject && $subject->schoolClass ? $subject->schoolClass : null);
+            // Get course and group for placeholders
+            $course = $validated['course_id'] ? Course::find($validated['course_id']) : null;
+            $group = $validated['group_id'] ? CourseGroup::find($validated['group_id']) : null;
 
             // Create broadcast record
             $broadcast = WhatsAppBroadcast::create([
                 'message_template' => $validated['message'] ?? $validated['template_name'] ?? '',
                 'send_type' => $validated['type'],
-                'class_id' => $validated['class_id'] ?? null,
-                'subject_id' => $validated['subject_id'] ?? null,
+                'course_id' => $validated['course_id'] ?? null,
+                'group_id' => $validated['group_id'] ?? null,
                 'total_recipients' => $students->count(),
                 'status' => WhatsAppBroadcast::STATUS_PENDING,
                 'created_by' => Auth::id(),
@@ -299,8 +298,8 @@ class WhatsAppMessageController extends Controller
                 $message = $this->broadcastService->replacePlaceholders(
                     $validated['message'] ?? '',
                     $student,
-                    $subject,
-                    $class
+                    $course,
+                    $group
                 );
 
                 BroadcastWhatsAppMessageJob::dispatch($broadcast, $student, $message, $validated['type']);

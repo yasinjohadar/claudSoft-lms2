@@ -79,20 +79,34 @@
 
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">المزود <span class="text-danger">*</span></label>
-                                            <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required>
-                                                <option value="meta" {{ ($settings['whatsapp_provider'] ?? 'meta') == 'meta' ? 'selected' : '' }}>Meta (WhatsApp Cloud API)</option>
-                                                <option value="custom_api" {{ ($settings['whatsapp_provider'] ?? '') == 'custom_api' ? 'selected' : '' }}>Custom API</option>
+                                            <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required onchange="handleProviderChange(this.value)">
+                                                <option value="meta" {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'meta') || (!isset($settings['whatsapp_provider'])) ? 'selected' : '' }}>Meta (WhatsApp Cloud API)</option>
+                                                <option value="custom_api" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api' ? 'selected' : '' }}>Custom API</option>
                                             </select>
                                             @error('whatsapp_provider')
                                                 <div class="text-danger small mt-1">{{ $message }}</div>
                                             @enderror
                                         </div>
+                                        <script>
+                                            function handleProviderChange(provider) {
+                                                var metaSettings = document.getElementById('meta-settings');
+                                                var customApiSettings = document.getElementById('custom-api-settings');
+                                                
+                                                if (provider === 'custom_api') {
+                                                    if (metaSettings) metaSettings.style.display = 'none';
+                                                    if (customApiSettings) customApiSettings.style.display = 'block';
+                                                } else {
+                                                    if (metaSettings) metaSettings.style.display = 'block';
+                                                    if (customApiSettings) customApiSettings.style.display = 'none';
+                                                }
+                                            }
+                                        </script>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Meta Provider Settings -->
-                            <div class="card border mb-4" id="meta-settings">
+                            <div class="card border mb-4" id="meta-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api') ? 'none' : 'block' }};">
                                 <div class="card-header bg-light">
                                     <h5 class="mb-0">
                                         <i class="ri-facebook-box-line me-2"></i>إعدادات Meta (WhatsApp Cloud API)
@@ -186,7 +200,7 @@
                             </div>
 
                             <!-- Custom API Settings -->
-                            <div class="card border mb-4" id="custom-api-settings" style="display: none;">
+                            <div class="card border mb-4" id="custom-api-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api') ? 'block' : 'none' }};">
                                 <div class="card-header bg-light">
                                     <h5 class="mb-0">
                                         <i class="ri-code-s-slash-line me-2"></i>إعدادات Custom API
@@ -365,7 +379,7 @@
 
                             <!-- Action Buttons -->
                             <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-outline-primary" id="test-connection-btn">
+                                <button type="button" class="btn btn-outline-primary" id="test-connection-btn" onclick="testWhatsAppConnection()">
                                     <i class="ri-plug-line me-1"></i>اختبار الاتصال
                                 </button>
                                 <button type="submit" class="btn btn-primary btn-wave">
@@ -400,71 +414,208 @@
 </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
 <script>
+// Global function for test connection
+function testWhatsAppConnection() {
+    console.log('testWhatsAppConnection called');
+    
+    const form = document.getElementById('whatsapp-settings-form');
+    if (!form) {
+        alert('خطأ: لم يتم العثور على النموذج');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    const resultDiv = document.getElementById('test-connection-result');
+    
+    // Show loading in result div
+    if (resultDiv) {
+        resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">جاري اختبار الاتصال...</p></div>';
+    }
+    
+    // Show modal
+    const modalElement = document.getElementById('testConnectionModal');
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+    
+    // Send request
+    fetch('{{ route("admin.whatsapp-settings.test-connection") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('Response:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Data:', data);
+        if (resultDiv) {
+            if (data.success) {
+                resultDiv.innerHTML = '<div class="alert alert-success"><i class="ri-check-line me-2"></i>' + (data.message || 'تم الاتصال بنجاح!') + '</div>';
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>' + (data.message || 'فشل الاتصال') + '</div>';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (resultDiv) {
+            resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>خطأ: ' + error.message + '</div>';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('whatsapp_provider');
     const metaSettings = document.getElementById('meta-settings');
     const customApiSettings = document.getElementById('custom-api-settings');
     const testConnectionBtn = document.getElementById('test-connection-btn');
-    const testConnectionModal = new bootstrap.Modal(document.getElementById('testConnectionModal'));
+    
+    // Safely initialize modal
+    let testConnectionModal = null;
+    const modalElement = document.getElementById('testConnectionModal');
+    if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        testConnectionModal = new bootstrap.Modal(modalElement);
+    } else {
+        console.error('Bootstrap Modal not available or modal element not found');
+    }
 
     // Toggle provider settings
     function toggleProviderSettings() {
+        if (!providerSelect) {
+            console.error('Provider select not found');
+            return;
+        }
+        
         const provider = providerSelect.value;
+        console.log('Provider changed to:', provider); // Debug log
+        
         if (provider === 'meta') {
-            metaSettings.style.display = 'block';
-            customApiSettings.style.display = 'none';
+            if (metaSettings) metaSettings.style.display = 'block';
+            if (customApiSettings) customApiSettings.style.display = 'none';
             // Make Meta fields required
-            document.getElementById('api_version').required = true;
-            document.getElementById('phone_number_id').required = true;
-            document.getElementById('verify_token').required = true;
-            document.getElementById('custom_api_url').required = false;
+            const apiVersion = document.getElementById('api_version');
+            const phoneNumberId = document.getElementById('phone_number_id');
+            const verifyToken = document.getElementById('verify_token');
+            const customApiUrl = document.getElementById('custom_api_url');
+            
+            if (apiVersion) apiVersion.required = true;
+            if (phoneNumberId) phoneNumberId.required = true;
+            if (verifyToken) verifyToken.required = true;
+            if (customApiUrl) customApiUrl.required = false;
         } else if (provider === 'custom_api') {
-            metaSettings.style.display = 'none';
-            customApiSettings.style.display = 'block';
+            if (metaSettings) metaSettings.style.display = 'none';
+            if (customApiSettings) customApiSettings.style.display = 'block';
             // Make Custom API fields required
-            document.getElementById('api_version').required = false;
-            document.getElementById('phone_number_id').required = false;
-            document.getElementById('verify_token').required = false;
-            document.getElementById('custom_api_url').required = true;
+            const apiVersion = document.getElementById('api_version');
+            const phoneNumberId = document.getElementById('phone_number_id');
+            const verifyToken = document.getElementById('verify_token');
+            const customApiUrl = document.getElementById('custom_api_url');
+            
+            if (apiVersion) apiVersion.required = false;
+            if (phoneNumberId) phoneNumberId.required = false;
+            if (verifyToken) verifyToken.required = false;
+            if (customApiUrl) customApiUrl.required = true;
+        } else {
+            // Default to meta if unknown provider
+            if (metaSettings) metaSettings.style.display = 'block';
+            if (customApiSettings) customApiSettings.style.display = 'none';
         }
     }
 
-    providerSelect.addEventListener('change', toggleProviderSettings);
-    toggleProviderSettings(); // Initial call
+    // Initial call after DOM is fully loaded
+    if (providerSelect && metaSettings && customApiSettings) {
+        // Add event listener for change
+        providerSelect.addEventListener('change', function() {
+            toggleProviderSettings();
+        });
+        
+        // Call immediately to set initial state based on selected value
+        toggleProviderSettings();
+        
+        // Also call after a small delay as backup
+        setTimeout(function() {
+            toggleProviderSettings();
+        }, 50);
+    } else {
+        console.error('Required elements not found:', {
+            providerSelect: !!providerSelect,
+            metaSettings: !!metaSettings,
+            customApiSettings: !!customApiSettings
+        });
+    }
 
     // Test connection
-    testConnectionBtn.addEventListener('click', function() {
-        const form = document.getElementById('whatsapp-settings-form');
-        const formData = new FormData(form);
-        formData.append('_token', '{{ csrf_token() }}');
-
-        // Show loading
-        document.getElementById('test-connection-result').innerHTML = 
-            '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري الاختبار...</span></div><p class="mt-2">جاري اختبار الاتصال...</p></div>';
-        testConnectionModal.show();
-
-        fetch('{{ route("admin.whatsapp-settings.test-connection") }}', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('test-connection-result').innerHTML = 
-                    '<div class="alert alert-success"><i class="ri-check-line me-2"></i>' + (data.message || 'تم الاتصال بنجاح!') + '</div>';
-            } else {
-                document.getElementById('test-connection-result').innerHTML = 
-                    '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>' + (data.message || 'فشل الاتصال') + '</div>';
+    if (testConnectionBtn) {
+        testConnectionBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Test connection button clicked');
+            
+            const form = document.getElementById('whatsapp-settings-form');
+            if (!form) {
+                console.error('Form not found');
+                alert('خطأ: لم يتم العثور على النموذج');
+                return;
             }
-        })
-        .catch(error => {
-            document.getElementById('test-connection-result').innerHTML = 
-                '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>حدث خطأ أثناء الاختبار: ' + error.message + '</div>';
+            
+            const formData = new FormData(form);
+            
+            // Show loading
+            const resultDiv = document.getElementById('test-connection-result');
+            if (resultDiv) {
+                resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري الاختبار...</span></div><p class="mt-2">جاري اختبار الاتصال...</p></div>';
+            }
+            
+            // Show modal
+            if (testConnectionModal) {
+                testConnectionModal.show();
+            }
+
+            fetch('{{ route("admin.whatsapp-settings.test-connection") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (resultDiv) {
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="alert alert-success"><i class="ri-check-line me-2"></i>' + (data.message || 'تم الاتصال بنجاح!') + '</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>' + (data.message || 'فشل الاتصال') + '</div>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                if (resultDiv) {
+                    resultDiv.innerHTML = '<div class="alert alert-danger"><i class="ri-error-warning-line me-2"></i>حدث خطأ أثناء الاختبار: ' + error.message + '</div>';
+                }
+            });
         });
-    });
+        console.log('Test connection button event listener attached');
+    } else {
+        console.error('Test connection button not found');
+    }
 });
+console.log('WhatsApp settings script loaded');
 </script>
-@endpush
+@endsection
 

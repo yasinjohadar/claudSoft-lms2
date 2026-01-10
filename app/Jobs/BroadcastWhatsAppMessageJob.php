@@ -4,8 +4,6 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Models\WhatsAppBroadcast;
-use App\Models\Subject;
-use App\Models\SchoolClass;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use Illuminate\Bus\Queueable;

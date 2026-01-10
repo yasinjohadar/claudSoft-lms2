@@ -4,17 +4,17 @@
 
 @section('content')
 <!-- Start::app-content -->
-<div class="main-content app-content">
-    <div class="container-fluid">
+    <div class="main-content app-content">
+        <div class="container-fluid">
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
+                            <div>
                 <h4 class="mb-0">
                     <i class="fas fa-clipboard-question me-2"></i>
                     {{ $attempt->quiz->title }}
                 </h4>
-            </div>
-        </div>
+                            </div>
+                            </div>
         <!-- End Page Header -->
     <div class="row">
         <!-- Sidebar - Questions Navigator -->
@@ -25,7 +25,7 @@
                         <i class="fas fa-list me-2"></i>
                         الأسئلة
                     </h5>
-                </div>
+                        </div>
                 <div class="card-body">
                     <!-- Timer -->
                     @if($remainingTime !== null)
@@ -34,9 +34,9 @@
                         <strong>الوقت المتبقي:</strong>
                         <div class="fs-3 fw-bold mt-2" id="timer">
                             <span id="timer-minutes">--</span>:<span id="timer-seconds">--</span>
-                        </div>
                     </div>
-                    @endif
+                </div>
+            @endif
 
                     <!-- Progress -->
                     <div class="mb-3">
@@ -61,14 +61,14 @@
                         </button>
                         @endforeach
                     </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
         <!-- Main Content - Questions -->
-        <div class="col-lg-9">
+                <div class="col-lg-9">
             <form id="quiz-form">
-                @csrf
+                        @csrf
                 @foreach($questions as $question)
                 @php $index = $loop->index; @endphp
                 <div class="question-container card mb-4"
@@ -76,21 +76,21 @@
                      data-question-id="{{ $question->id }}"
                      style="display: {{ $index === 0 ? 'block' : 'none' }}">
                     <div class="card-header bg-light">
-                        <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
                                 <span class="badge bg-primary me-2">السؤال {{ $index + 1 }}</span>
-                                <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
+                                                <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
                                 <span class="badge bg-success">{{ $question->pivot->question_grade }} نقطة</span>
-                            </h5>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <!-- Question Text -->
+                                            </h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Question Text -->
                         @if($question->questionType->name !== 'fill_blanks')
                         <div class="question-text mb-4">
                             {!! $question->question_text !!}
-                        </div>
-                        @endif
+                                            </div>
+                                        @endif
 
                         <!-- Question Image -->
                         @if($question->question_image)
@@ -99,7 +99,7 @@
                                  alt="Question Image"
                                  class="img-fluid rounded border"
                                  style="max-width: 500px;">
-                        </div>
+                                    </div>
                         @endif
 
                         <!-- Answer Options -->
@@ -165,86 +165,86 @@
 
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                    @foreach($question->options as $option)
+                                            @foreach($question->options as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
-                                               name="question_{{ $question->id }}"
-                                               id="option_{{ $option->id }}"
-                                               value="{{ $option->id }}"
+                                                           name="question_{{ $question->id }}"
+                                                           id="option_{{ $option->id }}"
+                                                           value="{{ $option->id }}"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer == $option->id ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100" for="option_{{ $option->id }}">
+                                                    <label class="form-check-label w-100" for="option_{{ $option->id }}">
                                             {!! $option->option_text !!}
-                                        </label>
-                                    </div>
-                                    @endforeach
+                                                    </label>
+                                                </div>
+                                            @endforeach
                                     @break
 
                                 @case('multiple_choice_multiple')
-                                    @foreach($question->options as $option)
+                                            @foreach($question->options as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="checkbox"
-                                               name="question_{{ $question->id }}[]"
-                                               id="option_{{ $option->id }}"
-                                               value="{{ $option->id }}"
+                                                           name="question_{{ $question->id }}[]"
+                                                           id="option_{{ $option->id }}"
+                                                           value="{{ $option->id }}"
                                                data-question-id="{{ $question->id }}"
                                                {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100" for="option_{{ $option->id }}">
+                                                    <label class="form-check-label w-100" for="option_{{ $option->id }}">
                                             {!! $option->option_text !!}
-                                        </label>
-                                    </div>
-                                    @endforeach
+                                                    </label>
+                                                </div>
+                                            @endforeach
                                     @break
 
                                 @case('true_false')
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
-                                               name="question_{{ $question->id }}"
-                                               id="true_{{ $question->id }}"
-                                               value="true"
+                                                       name="question_{{ $question->id }}"
+                                                       id="true_{{ $question->id }}"
+                                                       value="true"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer === 'true' ? 'checked' : '' }}>
                                         <label class="form-check-label w-100 fs-5" for="true_{{ $question->id }}">
-                                            <i class="fas fa-check-circle text-success me-2"></i>صحيح
-                                        </label>
-                                    </div>
+                                                        <i class="fas fa-check-circle text-success me-2"></i>صحيح
+                                                </label>
+                                            </div>
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
-                                               name="question_{{ $question->id }}"
-                                               id="false_{{ $question->id }}"
-                                               value="false"
+                                                       name="question_{{ $question->id }}"
+                                                       id="false_{{ $question->id }}"
+                                                       value="false"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer === 'false' ? 'checked' : '' }}>
                                         <label class="form-check-label w-100 fs-5" for="false_{{ $question->id }}">
-                                            <i class="fas fa-times-circle text-danger me-2"></i>خطأ
-                                        </label>
-                                    </div>
+                                                        <i class="fas fa-times-circle text-danger me-2"></i>خطأ
+                                                </label>
+                                            </div>
                                     @break
 
                                 @case('short_answer')
                                     <div class="mb-3">
-                                        <textarea class="form-control answer-input"
-                                                  name="question_{{ $question->id }}"
+                                            <textarea class="form-control answer-input"
+                                                      name="question_{{ $question->id }}"
                                                   id="short_answer_{{ $question->id }}"
                                                   rows="4"
-                                                  placeholder="اكتب إجابتك هنا..."
+                                                      placeholder="اكتب إجابتك هنا..."
                                                   data-question-id="{{ $question->id }}">{{ $savedAnswer }}</textarea>
                                     </div>
                                     @break
 
                                 @case('essay')
                                     <div class="mb-3">
-                                        <textarea class="form-control answer-input"
-                                                  name="question_{{ $question->id }}"
+                                            <textarea class="form-control answer-input"
+                                                      name="question_{{ $question->id }}"
                                                   id="essay_{{ $question->id }}"
-                                                  rows="8"
-                                                  placeholder="اكتب إجابتك المفصلة هنا..."
+                                                      rows="8"
+                                                      placeholder="اكتب إجابتك المفصلة هنا..."
                                                   data-question-id="{{ $question->id }}">{{ $savedAnswer }}</textarea>
-                                    </div>
+                                            </div>
                                     @break
 
                                 @case('fill_blanks')
@@ -299,9 +299,9 @@
                                                            data-question-id="{{ $question->id }}"
                                                            data-blank-index="{{ $index }}"
                                                            placeholder="...">
-                                                @endif
+                                        @endif
                                             @endforeach
-                                        </div>
+                                    </div>
                                     </div>
                                     @break
 
@@ -331,7 +331,7 @@
                                             <div class="col-6">
                                                 <select class="form-select answer-input matching-select"
                                                         name="question_{{ $question->id }}[{{ $option->id }}]"
-                                                        data-question-id="{{ $question->id }}">
+                                                   data-question-id="{{ $question->id }}">
                                                     <option value="">-- اختر الإجابة --</option>
                                                     @foreach($answers as $answer)
                                                         <option value="{{ $answer }}" {{ isset($savedAnswers[$option->id]) && $savedAnswers[$option->id] == $answer ? 'selected' : '' }}>
@@ -339,10 +339,10 @@
                                                         </option>
                                                     @endforeach
                                                 </select>
-                                            </div>
                                         </div>
-                                        @endforeach
                                     </div>
+                                        @endforeach
+                                </div>
                                     @break
 
                                 @case('drag_drop')
@@ -399,22 +399,22 @@
                                                                             {{ $savedAnswers[$option->id] }}
                                                                             <button type="button" class="btn-remove-item">
                                                                                 <i class="fas fa-times"></i>
-                                                                            </button>
+                                        </button>
                                                                         </div>
-                                                                    @else
+                                        @else
                                                                         <span class="drop-placeholder">
                                                                             <i class="fas fa-arrow-left me-1"></i>اسحب الإجابة هنا
                                                                         </span>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
                                                             <input type="hidden"
                                                                    name="question_{{ $question->id }}[{{ $option->id }}]"
                                                                    value="{{ $savedAnswers[$option->id] ?? '' }}"
                                                                    class="drop-zone-input">
-                                                        </div>
-                                                        @endforeach
-                                                    </div>
+                            </div>
+                        @endforeach
+                </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -430,7 +430,7 @@
                                         <div class="alert alert-info mb-3">
                                             <i class="fas fa-info-circle me-2"></i>
                                             اسحب العناصر لترتيبها بالشكل الصحيح
-                                        </div>
+                            </div>
                                         <div class="ordering-list" id="ordering-list-{{ $question->id }}">
                                             @php
                                                 // If saved order exists, use it; otherwise shuffle for display
@@ -453,10 +453,10 @@
                                                         </span>
                                                         <span class="ordering-number me-3">{{ $itemIndex + 1 }}</span>
                                                         <span class="ordering-text">{{ $item->option_text }}</span>
-                                                    </div>
+                        </div>
                                                 </div>
-                                            @endforeach
-                                        </div>
+                                @endforeach
+                            </div>
                                         <input type="hidden"
                                                name="question_{{ $question->id }}"
                                                id="ordering-input-{{ $question->id }}"
@@ -506,7 +506,7 @@
                                         // Ensure savedAnswer is a string for calculated input
                                         $calculatedAnswer = is_array($savedAnswer) ? (isset($savedAnswer['answer']) ? (string)$savedAnswer['answer'] : (string)($savedAnswer[0] ?? '')) : (string)($savedAnswer ?? '');
                                     @endphp
-                                    <div class="mb-3">
+                            <div class="mb-3">
                                         @if($formula)
                                             <div class="alert alert-primary mb-3">
                                                 <i class="fas fa-calculator me-2"></i>
@@ -526,12 +526,12 @@
                                             <small class="text-muted mt-2 d-block">
                                                 <i class="fas fa-info-circle me-1"></i>
                                                 هامش الخطأ المسموح: ±{{ $tolerance }}
-                                            </small>
+                                </small>
                                         @endif
                                     </div>
                                     @break
                             @endswitch
-                        </div>
+                            </div>
 
                         <!-- Navigation Buttons -->
                         <div class="d-flex justify-content-between mt-4 pt-3 border-top">
@@ -560,45 +560,45 @@
                 </div>
                 @endforeach
             </form>
+            </div>
         </div>
-    </div>
     </div>
 </div>
 <!-- End::app-content -->
 
-<!-- Submit Confirmation Modal -->
-<div class="modal fade" id="submitModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <!-- Submit Confirmation Modal -->
+    <div class="modal fade" id="submitModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">
+                    <h5 class="modal-title">
                     <i class="fas fa-exclamation-triangle me-2"></i>تأكيد الإرسال
-                </h5>
+                    </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
+                </div>
+                <div class="modal-body">
                 <p class="mb-3">هل أنت متأكد من إرسال الاختبار؟</p>
                 <div class="alert alert-info">
                     <strong>ملخص إجاباتك:</strong>
                     <ul class="mb-0 mt-2">
                         <li>عدد الأسئلة المجابة: <strong><span id="submit-answered-count">0</span></strong></li>
                         <li>عدد الأسئلة غير المجابة: <strong><span id="submit-unanswered-count">0</span></strong></li>
-                    </ul>
-                </div>
+                        </ul>
+                    </div>
                 <p class="text-danger mb-0">
                     <i class="fas fa-info-circle me-2"></i>
                     لن تتمكن من تعديل إجاباتك بعد الإرسال
                 </p>
-            </div>
-            <div class="modal-footer">
+                </div>
+                <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                 <button type="button" class="btn btn-success" onclick="submitQuiz()">
                     <i class="fas fa-check me-2"></i>إرسال الآن
-                </button>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 @endsection
 
@@ -793,10 +793,10 @@
 
 @push('scripts')
 <script>
-    const attemptId = {{ $attempt->id }};
+const attemptId = {{ $attempt->id }};
     const totalQuestions = {{ $questions->count() }};
     let currentQuestionIndex = 0;
-    let answeredQuestions = new Set();
+let answeredQuestions = new Set();
     let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
     // Ensure remainingTimeSeconds is an integer
     if (remainingTimeSeconds !== null) {
@@ -806,9 +806,9 @@
     let isSubmitting = false; // Track if quiz is being submitted
 
     // Initialize on page load
-    $(document).ready(function() {
+$(document).ready(function() {
         initializeAnswers();
-        updateProgress();
+    updateProgress();
         updateQuestionNavigation();
 
         @if($remainingTime !== null)
@@ -833,7 +833,7 @@
         let blankTimer;
         $(document).on('input', '.fill-blank-input', function() {
             clearTimeout(blankTimer);
-            const questionId = $(this).data('question-id');
+        const questionId = $(this).data('question-id');
             blankTimer = setTimeout(() => saveFillBlankAnswer(questionId), 1000);
         });
 
@@ -876,7 +876,7 @@
             $(this).removeClass('drag-over');
 
             const itemText = e.originalEvent.dataTransfer.getData('text/plain');
-            const questionId = $(this).data('question-id');
+        const questionId = $(this).data('question-id');
             const optionId = $(this).data('option-id');
 
             // Check if zone already has an item
@@ -945,7 +945,7 @@
 
             if (value) {
                 answer[optionId] = value;
-            } else {
+        } else {
                 allAnswered = false;
             }
         });
@@ -1137,22 +1137,22 @@
         updateQuestionNavigation();
 
         // Send AJAX request
-        $.ajax({
+    $.ajax({
             url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
-            method: 'POST',
-            data: {
+        method: 'POST',
+        data: {
                 _token: '{{ csrf_token() }}',
                 question_id: questionId,
                 answer: order
-            },
-            success: function(response) {
+        },
+        success: function(response) {
                 console.log('Ordering answer saved:', response);
             },
             error: function(xhr) {
                 console.error('Error saving answer:', xhr);
-            }
-        });
-    }
+        }
+    });
+}
 
     // Initialize answered questions from saved responses
     function initializeAnswers() {
@@ -1401,8 +1401,8 @@
         if (hasValidAnswer) {
             return $.ajax({
                 url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
-                method: 'POST',
-                data: {
+        method: 'POST',
+        data: {
                     _token: '{{ csrf_token() }}',
                     question_id: questionId,
                     answer: answer
@@ -1525,7 +1525,7 @@
                 // Even if some saves fail, proceed with submission
                 setTimeout(() => {
                     submitForm();
-                }, 1000);
+    }, 1000);
             });
         } else {
             // No questions found, submit immediately
