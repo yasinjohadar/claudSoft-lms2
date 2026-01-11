@@ -21,6 +21,44 @@
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 36px;
     }
+    
+    /* Select2 Dropdown Styling */
+    .select2-dropdown {
+        z-index: 9999 !important;
+        background-color: #fff !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+    }
+    
+    .select2-results__options {
+        background-color: #fff !important;
+        padding: 0 !important;
+    }
+    
+    .select2-results__option {
+        background-color: #fff !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    .select2-results__option--highlighted {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+    }
+    
+    .select2-results__option[aria-selected="true"] {
+        background-color: #e7f1ff !important;
+        color: #0d6efd !important;
+    }
+    
+    .select2-container {
+        position: relative !important;
+    }
+    
+    /* Ensure Select2 dropdown appears within the page */
+    .select2-container--default .select2-results > .select2-results__options {
+        max-height: 200px;
+        overflow-y: auto;
+    }
 </style>
 @stop
 
@@ -129,6 +167,7 @@
             placeholder: 'ابحث عن طالب...',
             allowClear: true,
             dir: 'rtl',
+            dropdownParent: $('.card-body'),
             language: {
                 noResults: function() {
                     return 'لا توجد نتائج';
