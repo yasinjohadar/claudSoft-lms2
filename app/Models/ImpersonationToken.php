@@ -47,18 +47,20 @@ class ImpersonationToken extends Model
      */
     public static function createToken(int $adminId, int $userId, int $expiresInMinutes = 60): self
     {
+        $now = Carbon::now();
+        
         // حذف Tokens القديمة للمستخدم نفسه من نفس الأدمن
         static::where('admin_id', $adminId)
             ->where('user_id', $userId)
             ->whereNull('used_at')
-            ->where('expires_at', '>', now())
+            ->where('expires_at', '>', $now)
             ->delete();
 
         return static::create([
             'admin_id' => $adminId,
             'user_id' => $userId,
             'token' => Str::random(64),
-            'expires_at' => now()->addMinutes($expiresInMinutes),
+            'expires_at' => $now->copy()->addMinutes($expiresInMinutes),
         ]);
     }
 
@@ -70,9 +72,10 @@ class ImpersonationToken extends Model
      */
     public static function findValidToken(string $token): ?self
     {
+        $now = Carbon::now()->subSecond();
         return static::where('token', $token)
             ->whereNull('used_at')
-            ->where('expires_at', '>', now())
+            ->where('expires_at', '>', $now)
             ->first();
     }
 
@@ -91,7 +94,8 @@ class ImpersonationToken extends Model
      */
     public function isValid(): bool
     {
-        return is_null($this->used_at) && $this->expires_at->isFuture();
+        $now = Carbon::now()->subSecond();
+        return is_null($this->used_at) && $this->expires_at->gt($now);
     }
 
     /**
@@ -99,8 +103,9 @@ class ImpersonationToken extends Model
      */
     public function scopeValid($query)
     {
+        $now = Carbon::now()->subSecond();
         return $query->whereNull('used_at')
-            ->where('expires_at', '>', now());
+            ->where('expires_at', '>', $now);
     }
 
     /**
@@ -108,9 +113,10 @@ class ImpersonationToken extends Model
      */
     public function scopeExpired($query)
     {
-        return $query->where(function ($q) {
+        $now = Carbon::now();
+        return $query->where(function ($q) use ($now) {
             $q->whereNotNull('used_at')
-              ->orWhere('expires_at', '<=', now());
+              ->orWhere('expires_at', '<=', $now);
         });
     }
 
