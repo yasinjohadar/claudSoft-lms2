@@ -45,6 +45,13 @@
             display: none !important;
         }
 
+        /* إخفاء قسم حذف الفاتورة */
+        .invoice-delete-section,
+        .no-print {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         /* تحسين تنسيق الطباعة */
         @page {
             margin: 1cm;
@@ -102,9 +109,9 @@
                         <i class="fas fa-print me-2"></i>طباعة
                     </button>
                     @if($invoice->student->whatsapp_number)
-                        <form action="{{ route('invoices.send-whatsapp', $invoice->id) }}" method="POST" class="d-inline">
+                        <form action="{{ route('invoices.send-whatsapp', $invoice->id) }}" method="POST" class="d-inline no-print">
                             @csrf
-                            <button type="submit" class="btn btn-success" onclick="return confirm('هل أنت متأكد من إرسال الفاتورة عبر WhatsApp للطالب {{ $invoice->student->name }}؟');">
+                            <button type="submit" class="btn btn-success no-print" onclick="return confirm('هل أنت متأكد من إرسال الفاتورة عبر WhatsApp للطالب {{ $invoice->student->name }}؟');">
                                 <i class="fab fa-whatsapp me-2"></i>إرسال عبر WhatsApp
                             </button>
                         </form>
@@ -216,7 +223,7 @@
             </div>
 
             <!-- Delete Invoice Section -->
-            <div class="row mt-4">
+            <div class="row mt-4 invoice-delete-section no-print">
                 <div class="col-xl-12">
                     <div class="card border border-danger">
                         <div class="card-body text-center">
