@@ -94,6 +94,7 @@ class CourseLearningController extends Controller
                 'course.sections' => function($q) {
                     $q->visible()->orderBy('sort_order');
                 },
+                'course.sections.course',
                 'course.sections.modules' => function($q) {
                     $q->visible()->orderBy('sort_order');
                 },
@@ -133,7 +134,13 @@ class CourseLearningController extends Controller
                 $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
             }
 
-            // Filter modules in sidebar based on access restrictions
+            // Filter sections based on access restrictions
+            $module->course->sections = $module->course->sections->filter(function ($section) use ($accessControl, $student) {
+                $access = $accessControl->canAccessSection($section, $student);
+                return $access['can_access'];
+            })->values(); // Reindex collection
+
+            // Filter modules in each section based on access restrictions
             $module->course->sections->each(function ($section) use ($accessControl, $student) {
                 $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
                     $access = $accessControl->canAccessModule($mod, $student);
