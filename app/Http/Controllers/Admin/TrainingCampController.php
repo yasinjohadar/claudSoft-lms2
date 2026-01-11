@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use Carbon\Carbon;
 
 class TrainingCampController extends Controller
@@ -1037,14 +1038,20 @@ class TrainingCampController extends Controller
                 'student_ids.min' => 'يجب اختيار طالب واحد على الأقل',
             ]);
 
-            // Get enrolled student IDs
+            // Convert student_ids to integers to ensure type consistency
+            $studentIds = array_map('intval', $validated['student_ids']);
+
+            // Get enrolled student IDs (also as integers)
             $enrolledStudentIds = CampEnrollment::where('camp_id', $campId)
-                ->whereIn('student_id', $validated['student_ids'])
+                ->whereIn('student_id', $studentIds)
                 ->pluck('student_id')
+                ->map(function($id) {
+                    return (int) $id;
+                })
                 ->toArray();
 
             // Filter out already enrolled students
-            $newStudentIds = array_diff($validated['student_ids'], $enrolledStudentIds);
+            $newStudentIds = array_diff($studentIds, $enrolledStudentIds);
 
             if (empty($newStudentIds)) {
                 return response()->json([
@@ -1060,29 +1067,44 @@ class TrainingCampController extends Controller
             $notes = $validated['notes'] ?? null;
 
             $enrollments = [];
+            $actuallyAddedCount = 0;
+
             foreach ($newStudentIds as $studentId) {
-                $enrollments[] = CampEnrollment::create([
-                    'camp_id' => $campId,
-                    'student_id' => $studentId,
-                    'status' => $status,
-                    'payment_status' => $paymentStatus,
-                    'notes' => $notes,
-                    'enrollment_date' => now(),
-                ]);
+                // Use firstOrCreate to avoid duplicate entries even if race condition occurs
+                $enrollment = CampEnrollment::firstOrCreate(
+                    [
+                        'camp_id' => $campId,
+                        'student_id' => (int) $studentId,
+                    ],
+                    [
+                        'status' => $status,
+                        'payment_status' => $paymentStatus,
+                        'notes' => $notes,
+                        'enrollment_date' => now(),
+                    ]
+                );
+
+                // Count only newly created enrollments
+                if ($enrollment->wasRecentlyCreated) {
+                    $actuallyAddedCount++;
+                    $enrollments[] = $enrollment;
+                }
             }
 
-            // Update current_participants if status is approved
-            if ($status === 'approved') {
-                $camp->increment('current_participants', count($newStudentIds));
+            // Update current_participants only for actually added students and only if status is approved
+            if ($status === 'approved' && $actuallyAddedCount > 0) {
+                $camp->increment('current_participants', $actuallyAddedCount);
             }
 
             DB::commit();
 
+            $skippedCount = count($enrolledStudentIds) + (count($newStudentIds) - $actuallyAddedCount);
+
             return response()->json([
                 'success' => true,
-                'message' => 'تم إضافة ' . count($newStudentIds) . ' طالب بنجاح',
-                'added_count' => count($newStudentIds),
-                'skipped_count' => count($enrolledStudentIds),
+                'message' => 'تم إضافة ' . $actuallyAddedCount . ' طالب بنجاح' . ($skippedCount > 0 ? ' (تم تخطي ' . $skippedCount . ' طالب مسجل مسبقاً)' : ''),
+                'added_count' => $actuallyAddedCount,
+                'skipped_count' => $skippedCount,
                 'camp' => $camp->fresh()
             ]);
 
@@ -1092,6 +1114,21 @@ class TrainingCampController extends Controller
                 'message' => 'خطأ في التحقق من البيانات',
                 'errors' => $e->errors()
             ], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            
+            // Handle duplicate entry error specifically
+            if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'بعض الطلاب المحددين مسجلين بالفعل في هذا المعسكر. يرجى تحديث الصفحة والمحاولة مرة أخرى.'
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في قاعدة البيانات: ' . $e->getMessage()
+            ], 500);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
