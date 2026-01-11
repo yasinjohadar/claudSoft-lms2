@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Models\TrainingCamp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -53,10 +54,18 @@ class InvoiceController extends Controller
             $query->overdue();
         }
 
+        // Filter by training camp
+        if ($request->filled('camp_id')) {
+            $query->whereHas('items.campEnrollment', function($q) use ($request) {
+                $q->where('camp_id', $request->camp_id);
+            });
+        }
+
         $invoices = $query->paginate(20);
         $students = User::role('student')->orderBy('name')->get();
+        $trainingCamps = TrainingCamp::orderBy('name')->get(['id', 'name']);
 
-        return view('admin.pages.invoices.index', compact('invoices', 'students'));
+        return view('admin.pages.invoices.index', compact('invoices', 'students', 'trainingCamps'));
     }
 
     /**

@@ -5,6 +5,7 @@
 @stop
 
 @section('css')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .invoice-status-badge {
         font-size: 0.75rem;
@@ -16,6 +17,9 @@
     @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
+    }
+    .select2-container {
+        width: 100% !important;
     }
 </style>
 @stop
@@ -67,10 +71,12 @@
                         <div class="card-header">
                             <form action="{{ route('invoices.index') }}" method="GET" class="row g-3">
                                 <div class="col-md-3">
+                                    <label class="form-label">بحث</label>
                                     <input type="text" name="search" class="form-control"
                                            placeholder="بحث برقم الفاتورة أو اسم الطالب..." value="{{ request('search') }}">
                                 </div>
                                 <div class="col-md-2">
+                                    <label class="form-label">الحالة</label>
                                     <select name="status" class="form-select">
                                         <option value="">جميع الحالات</option>
                                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
@@ -78,6 +84,18 @@
                                         <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>مدفوعة جزئياً</option>
                                         <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>مدفوعة</option>
                                         <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
+                                        <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">المعسكر</label>
+                                    <select name="camp_id" id="camp_id" class="form-select">
+                                        <option value="">جميع المعسكرات</option>
+                                        @foreach($trainingCamps as $camp)
+                                            <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
+                                                {{ $camp->name }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -309,9 +327,28 @@
 @stop
 
 @section('script')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    setTimeout(function() {
-        $('.alert').fadeOut('slow');
-    }, 5000);
+    $(document).ready(function() {
+        // Initialize Select2 for camp filter
+        $('#camp_id').select2({
+            placeholder: 'جميع المعسكرات',
+            allowClear: true,
+            dir: 'rtl',
+            language: {
+                noResults: function() {
+                    return 'لا توجد نتائج';
+                },
+                searching: function() {
+                    return 'جاري البحث...';
+                }
+            }
+        });
+
+        // Auto-hide alerts
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+    });
 </script>
 @stop
