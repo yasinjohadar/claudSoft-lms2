@@ -572,7 +572,17 @@
                                                                                 <i class="fas fa-eye me-1"></i>معاينة مجانية
                                                                             </span>
                                                                         @elseif($enrollment)
-                                                                            <i class="fas fa-check-circle text-success fs-5"></i>
+                                                                            @if(isset($completedModules) && in_array($module->id, $completedModules))
+                                                                                <span class="d-flex align-items-center">
+                                                                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                                                                    <small class="text-success">مكتمل</small>
+                                                                                </span>
+                                                                            @else
+                                                                                <span class="d-flex align-items-center">
+                                                                                    <i class="fas fa-circle text-muted me-1" style="font-size: 0.7rem;"></i>
+                                                                                    <small class="text-muted">غير مكتمل</small>
+                                                                                </span>
+                                                                            @endif
                                                                         @else
                                                                             <i class="fas fa-lock text-muted fs-5"></i>
                                                                         @endif

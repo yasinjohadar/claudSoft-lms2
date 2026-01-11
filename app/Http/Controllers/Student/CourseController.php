@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseEnrollment;
+use App\Models\ModuleCompletion;
 use App\Services\AccessControlService;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
@@ -185,7 +186,17 @@ class CourseController extends Controller
                 'average_rating' => 0, // TODO: Implement rating system
             ];
 
-            return view('student.pages.courses.show', compact('course', 'enrollment', 'stats'));
+            // Get completed modules for the student
+            $completedModules = [];
+            if ($enrollment) {
+                $completedModules = ModuleCompletion::where('student_id', $student->id)
+                    ->whereIn('module_id', $course->modules()->pluck('course_modules.id'))
+                    ->where('completion_status', 'completed')
+                    ->pluck('module_id')
+                    ->toArray();
+            }
+
+            return view('student.pages.courses.show', compact('course', 'enrollment', 'stats', 'completedModules'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('student.courses.index')
