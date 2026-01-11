@@ -21,6 +21,15 @@
         object-fit: cover;
         border-radius: 8px;
     }
+    .btn-xs {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        border-radius: 0.25rem;
+    }
+    .btn-xs i {
+        font-size: 0.875rem;
+    }
 </style>
 @stop
 
@@ -210,67 +219,57 @@
                         </div>
                     </div>
 
-                    <!-- قائمة المسجلين -->
+                    <!-- إدارة الأعضاء -->
                     <div class="card custom-card">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <div class="card-title">
-                                المسجلين ({{ $camp->enrollments_count }})
+                                إدارة الأعضاء (<span id="enrollments-count">{{ $camp->enrollments_count }}</span>)
                             </div>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEnrollmentModal">
+                                <i class="fas fa-plus me-1"></i>إضافة عضو جديد
+                            </button>
                         </div>
                         <div class="card-body">
-                            @if($camp->enrollments->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>الطالب</th>
-                                                <th>البريد الإلكتروني</th>
-                                                <th>تاريخ التسجيل</th>
-                                                <th>الحالة</th>
-                                                <th>حالة الدفع</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($camp->enrollments as $enrollment)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>
-                                                        <strong>{{ $enrollment->student->name }}</strong>
-                                                    </td>
-                                                    <td>{{ $enrollment->student->email }}</td>
-                                                    <td>{{ $enrollment->enrollment_date->format('Y-m-d') }}</td>
-                                                    <td>
-                                                        @if($enrollment->status == 'approved')
-                                                            <span class="badge bg-success">مقبول</span>
-                                                        @elseif($enrollment->status == 'pending')
-                                                            <span class="badge bg-warning">قيد المراجعة</span>
-                                                        @elseif($enrollment->status == 'rejected')
-                                                            <span class="badge bg-danger">مرفوض</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">ملغي</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if($enrollment->payment_status == 'paid')
-                                                            <span class="badge bg-success">مدفوع</span>
-                                                        @elseif($enrollment->payment_status == 'refunded')
-                                                            <span class="badge bg-info">مسترجع</span>
-                                                        @else
-                                                            <span class="badge bg-danger">غير مدفوع</span>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                            <!-- Filters -->
+                            <div class="mb-3">
+                                <form id="enrollments-filter-form" class="row g-2">
+                                    <div class="col-md-4">
+                                        <input type="text" name="search" id="filter-search" class="form-control form-control-sm"
+                                               placeholder="بحث بالاسم أو البريد..." value="">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select name="status" id="filter-status" class="form-select form-select-sm">
+                                            <option value="">جميع الحالات</option>
+                                            <option value="pending">قيد الانتظار</option>
+                                            <option value="approved">مقبول</option>
+                                            <option value="rejected">مرفوض</option>
+                                            <option value="cancelled">ملغي</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select name="payment_status" id="filter-payment-status" class="form-select form-select-sm">
+                                            <option value="">حالة الدفع</option>
+                                            <option value="unpaid">غير مدفوع</option>
+                                            <option value="paid">مدفوع</option>
+                                            <option value="refunded">مسترد</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="loadEnrollments()">
+                                            <i class="fas fa-search me-1"></i>بحث
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Enrollments Table -->
+                            <div id="enrollments-table-container">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">جاري التحميل...</span>
+                                    </div>
                                 </div>
-                            @else
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-user-slash fa-3x mb-3"></i>
-                                    <p>لا يوجد مسجلين حتى الآن</p>
-                                </div>
-                            @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -355,5 +354,435 @@
     setTimeout(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
+
+    const campId = {{ $camp->id }};
+    const baseUrl = '{{ route("training-camps.enrollments.index", $camp->id) }}';
+    const storeUrl = '{{ route("training-camps.enrollments.store", $camp->id) }}';
+    const showUrlTemplate = '{{ route("training-camps.enrollments.show", [$camp->id, ":id"]) }}';
+    const updateStatusUrlTemplate = '{{ route("training-camps.enrollments.update-status", [$camp->id, ":id"]) }}';
+    const destroyUrlTemplate = '{{ route("training-camps.enrollments.destroy", [$camp->id, ":id"]) }}';
+    let currentPage = 1;
+
+    // Status configuration
+    const statusConfig = {
+        'pending': { icon: 'fa-clock', label: 'قيد الانتظار', color: 'warning', badgeClass: 'bg-warning text-dark' },
+        'approved': { icon: 'fa-check-circle', label: 'مقبول', color: 'success', badgeClass: 'bg-success' },
+        'rejected': { icon: 'fa-times-circle', label: 'مرفوض', color: 'danger', badgeClass: 'bg-danger' },
+        'cancelled': { icon: 'fa-ban', label: 'ملغي', color: 'secondary', badgeClass: 'bg-secondary' }
+    };
+
+    const paymentStatusConfig = {
+        'unpaid': { label: 'غير مدفوع', badgeClass: 'bg-warning text-dark' },
+        'paid': { label: 'مدفوع', badgeClass: 'bg-success' },
+        'refunded': { label: 'مسترد', badgeClass: 'bg-secondary' }
+    };
+
+    // Load enrollments
+    function loadEnrollments(page = 1) {
+        currentPage = page;
+        const form = document.getElementById('enrollments-filter-form');
+        const formData = new FormData(form);
+        formData.append('page', page);
+
+        const url = new URL(baseUrl);
+        for (const [key, value] of formData.entries()) {
+            if (value) url.searchParams.append(key, value);
+        }
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderEnrollmentsTable(data.enrollments);
+                if (data.camp) {
+                    updateCampStats(data.camp);
+                }
+            } else {
+                toastr.error(data.message || 'حدث خطأ أثناء تحميل البيانات');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('حدث خطأ أثناء تحميل البيانات');
+        });
+    }
+
+    // Render enrollments table
+    function renderEnrollmentsTable(enrollments) {
+        const container = document.getElementById('enrollments-table-container');
+        
+        if (enrollments.data.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-user-slash fa-3x mb-3 d-block"></i>
+                    <h5>لا يوجد أعضاء</h5>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle table-nowrap mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>الطالب</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>تاريخ التسجيل</th>
+                            <th>الحالة</th>
+                            <th>حالة الدفع</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        enrollments.data.forEach((enrollment, index) => {
+            const status = statusConfig[enrollment.status] || statusConfig.pending;
+            const paymentStatus = paymentStatusConfig[enrollment.payment_status] || paymentStatusConfig.unpaid;
+            const rowNum = enrollments.from + index;
+
+            html += `
+                <tr id="enrollment-row-${enrollment.id}">
+                    <td>${rowNum}</td>
+                    <td>
+                        <div>
+                            <strong>${enrollment.student.name}</strong>
+                        </div>
+                    </td>
+                    <td>${enrollment.student.email}</td>
+                    <td><small>${new Date(enrollment.enrollment_date).toLocaleDateString('ar-SA')}</small></td>
+                    <td>
+                        <span class="badge ${status.badgeClass}">${status.label}</span>
+                    </td>
+                    <td>
+                        <span class="badge ${paymentStatus.badgeClass}">${paymentStatus.label}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-xs btn-info" onclick="viewEnrollmentDetails(${enrollment.id})" title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${Object.keys(statusConfig).filter(s => s !== enrollment.status).map(status => {
+                                const config = statusConfig[status];
+                                return `<button type="button" class="btn btn-xs btn-${config.color}" onclick="updateEnrollmentStatus(${enrollment.id}, '${status}')" title="تغيير إلى: ${config.label}">
+                                    <i class="fas ${config.icon}"></i>
+                                </button>`;
+                            }).join('')}
+                            <button type="button" class="btn btn-xs btn-danger" onclick="deleteEnrollment(${enrollment.id})" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Add pagination
+        if (enrollments.last_page > 1) {
+            html += `
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
+                            ${enrollments.current_page > 1 ? `
+                                <li class="page-item">
+                                    <a class="page-link" href="#" onclick="loadEnrollments(${enrollments.current_page - 1}); return false;">السابق</a>
+                                </li>
+                            ` : ''}
+                            ${Array.from({length: enrollments.last_page}, (_, i) => i + 1).map(pageNum => {
+                                if (pageNum === enrollments.current_page) {
+                                    return `<li class="page-item active"><span class="page-link">${pageNum}</span></li>`;
+                                } else if (pageNum === 1 || pageNum === enrollments.last_page || (pageNum >= enrollments.current_page - 2 && pageNum <= enrollments.current_page + 2)) {
+                                    return `<li class="page-item"><a class="page-link" href="#" onclick="loadEnrollments(${pageNum}); return false;">${pageNum}</a></li>`;
+                                } else if (pageNum === enrollments.current_page - 3 || pageNum === enrollments.current_page + 3) {
+                                    return `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                                }
+                                return '';
+                            }).join('')}
+                            ${enrollments.current_page < enrollments.last_page ? `
+                                <li class="page-item">
+                                    <a class="page-link" href="#" onclick="loadEnrollments(${enrollments.current_page + 1}); return false;">التالي</a>
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </nav>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    // Update camp stats
+    function updateCampStats(camp) {
+        document.getElementById('enrollments-count').textContent = camp.enrollments_count || 0;
+        // Update current participants if needed
+        const participantsCard = document.querySelector('.stat-card:has(.fa-users) h3');
+        if (participantsCard && camp.current_participants !== undefined) {
+            participantsCard.textContent = camp.current_participants;
+        }
+    }
+
+    // View enrollment details
+    function viewEnrollmentDetails(enrollmentId) {
+        fetch(showUrlTemplate.replace(':id', enrollmentId), {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const enrollment = data.enrollment;
+                const status = statusConfig[enrollment.status] || statusConfig.pending;
+                const paymentStatus = paymentStatusConfig[enrollment.payment_status] || paymentStatusConfig.unpaid;
+
+                document.getElementById('enrollment-details-name').textContent = enrollment.student.name;
+                document.getElementById('enrollment-details-email').textContent = enrollment.student.email;
+                document.getElementById('enrollment-details-status').innerHTML = `<span class="badge ${status.badgeClass}">${status.label}</span>`;
+                document.getElementById('enrollment-details-payment-status').innerHTML = `<span class="badge ${paymentStatus.badgeClass}">${paymentStatus.label}</span>`;
+                document.getElementById('enrollment-details-date').textContent = new Date(enrollment.enrollment_date).toLocaleDateString('ar-SA');
+                document.getElementById('enrollment-details-notes').textContent = enrollment.notes || '-';
+                
+                const modal = new bootstrap.Modal(document.getElementById('enrollmentDetailsModal'));
+                modal.show();
+            } else {
+                toastr.error(data.message || 'حدث خطأ');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('حدث خطأ أثناء تحميل التفاصيل');
+        });
+    }
+
+    // Update enrollment status
+    function updateEnrollmentStatus(enrollmentId, newStatus) {
+        const config = statusConfig[newStatus];
+        if (!confirm(`هل أنت متأكد من تغيير الحالة إلى: ${config.label}؟`)) {
+            return;
+        }
+
+        fetch(updateStatusUrlTemplate.replace(':id', enrollmentId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                status: newStatus
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                loadEnrollments(currentPage);
+                if (data.camp) {
+                    updateCampStats(data.camp);
+                }
+            } else {
+                toastr.error(data.message || 'حدث خطأ');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('حدث خطأ أثناء تحديث الحالة');
+        });
+    }
+
+    // Delete enrollment
+    function deleteEnrollment(enrollmentId) {
+        if (!confirm('هل أنت متأكد من حذف هذا العضو؟')) {
+            return;
+        }
+
+        fetch(destroyUrlTemplate.replace(':id', enrollmentId), {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                loadEnrollments(currentPage);
+                if (data.camp) {
+                    updateCampStats(data.camp);
+                }
+            } else {
+                toastr.error(data.message || 'حدث خطأ');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('حدث خطأ أثناء الحذف');
+        });
+    }
+
+    // Add enrollment
+    function addEnrollment() {
+        const form = document.getElementById('add-enrollment-form');
+        const formData = new FormData(form);
+
+        fetch(storeUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addEnrollmentModal'));
+                modal.hide();
+                form.reset();
+                loadEnrollments(1);
+                if (data.camp) {
+                    updateCampStats(data.camp);
+                }
+            } else {
+                if (data.errors) {
+                    Object.keys(data.errors).forEach(key => {
+                        toastr.error(data.errors[key][0]);
+                    });
+                } else {
+                    toastr.error(data.message || 'حدث خطأ');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('حدث خطأ أثناء الإضافة');
+        });
+    }
+
+    // Filter event handlers
+    document.getElementById('filter-search')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            loadEnrollments(1);
+        }
+    });
+
+    // Load enrollments on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEnrollments(1);
+    });
 </script>
+
+<!-- Add Enrollment Modal -->
+<div class="modal fade" id="addEnrollmentModal" tabindex="-1" aria-labelledby="addEnrollmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEnrollmentModalLabel">إضافة عضو جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="add-enrollment-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">الطالب <span class="text-danger">*</span></label>
+                        <select name="student_id" id="student_id" class="form-select" required>
+                            <option value="">اختر الطالب</option>
+                            @foreach($students as $student)
+                                <option value="{{ $student->id }}">{{ $student->name }} ({{ $student->email }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">الحالة</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="pending">قيد الانتظار</option>
+                            <option value="approved">مقبول</option>
+                            <option value="rejected">مرفوض</option>
+                            <option value="cancelled">ملغي</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="payment_status" class="form-label">حالة الدفع</label>
+                        <select name="payment_status" id="payment_status" class="form-select">
+                            <option value="unpaid">غير مدفوع</option>
+                            <option value="paid">مدفوع</option>
+                            <option value="refunded">مسترد</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">ملاحظات</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="addEnrollment()">إضافة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enrollment Details Modal -->
+<div class="modal fade" id="enrollmentDetailsModal" tabindex="-1" aria-labelledby="enrollmentDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enrollmentDetailsModalLabel">تفاصيل العضو</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>الاسم:</strong>
+                    <p id="enrollment-details-name">-</p>
+                </div>
+                <div class="mb-3">
+                    <strong>البريد الإلكتروني:</strong>
+                    <p id="enrollment-details-email">-</p>
+                </div>
+                <div class="mb-3">
+                    <strong>الحالة:</strong>
+                    <p id="enrollment-details-status">-</p>
+                </div>
+                <div class="mb-3">
+                    <strong>حالة الدفع:</strong>
+                    <p id="enrollment-details-payment-status">-</p>
+                </div>
+                <div class="mb-3">
+                    <strong>تاريخ التسجيل:</strong>
+                    <p id="enrollment-details-date">-</p>
+                </div>
+                <div class="mb-3">
+                    <strong>ملاحظات:</strong>
+                    <p id="enrollment-details-notes">-</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
 @stop

@@ -111,9 +111,20 @@ Route::prefix('admin')
         // Training Camps routes
         Route::resource('training-camps', TrainingCampController::class);
         Route::get('training-camps-enrollments', [TrainingCampController::class, 'enrollments'])->name('training-camps.enrollments');
-        Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('training-camps.enrollments.approve');
-        Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('training-camps.enrollments.reject');
-        Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('training-camps.enrollments.update-status');
+        Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('training-camps.enrollments.old.approve');
+        Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('training-camps.enrollments.old.reject');
+        Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('training-camps.enrollments.old.update-status');
+        
+        // Camp enrollments management routes (for camp show page)
+        Route::prefix('training-camps/{camp}/enrollments')->name('training-camps.enrollments.')->group(function () {
+            Route::get('/', [TrainingCampController::class, 'campEnrollments'])->name('index');
+            Route::post('/', [TrainingCampController::class, 'storeEnrollment'])->name('store');
+            Route::get('/{enrollment}', [TrainingCampController::class, 'showEnrollment'])->name('show');
+            Route::delete('/{enrollment}', [TrainingCampController::class, 'destroyEnrollment'])->name('destroy');
+            Route::post('/{enrollment}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('approve');
+            Route::post('/{enrollment}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('reject');
+            Route::post('/{enrollment}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('update-status');
+        });
 
         // Invoices routes
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);

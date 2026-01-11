@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TrainingCamp;
+use App\Models\CampEnrollment;
 use App\Models\CourseCategory;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -160,11 +162,16 @@ class TrainingCampController extends Controller
      */
     public function show(string $id)
     {
-        $camp = TrainingCamp::with(['category', 'enrollments.student'])
+        $camp = TrainingCamp::with('category')
             ->withCount('enrollments')
             ->findOrFail($id);
 
-        return view('admin.pages.training-camps.show', compact('camp'));
+        // Get all students for dropdown
+        $students = User::role('student')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('admin.pages.training-camps.show', compact('camp', 'students'));
     }
 
     /**
@@ -419,18 +426,48 @@ class TrainingCampController extends Controller
     /**
      * Approve enrollment.
      */
-    public function approveEnrollment(string $id)
+    public function approveEnrollment(Request $request, string $campId, string $enrollmentId)
     {
         try {
-            $enrollment = \App\Models\CampEnrollment::findOrFail($id);
+            DB::beginTransaction();
 
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+
+            $oldStatus = $enrollment->status;
             $enrollment->update(['status' => 'approved']);
+
+            // Update participants count
+            if ($oldStatus !== 'approved') {
+                $camp->increment('current_participants');
+            }
+
+            DB::commit();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تمت الموافقة على الطلب بنجاح',
+                    'enrollment' => $enrollment->fresh(['student']),
+                    'camp' => $camp->fresh()
+                ]);
+            }
 
             return redirect()
                 ->back()
                 ->with('success', 'تمت الموافقة على الطلب بنجاح');
 
         } catch (\Exception $e) {
+            DB::rollBack();
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: ' . $e->getMessage()
+                ], 500);
+            }
+
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ: ' . $e->getMessage());
@@ -440,25 +477,38 @@ class TrainingCampController extends Controller
     /**
      * Reject enrollment.
      */
-    public function rejectEnrollment(Request $request, string $id)
+    public function rejectEnrollment(Request $request, string $campId, string $enrollmentId)
     {
         try {
             DB::beginTransaction();
 
-            $enrollment = \App\Models\CampEnrollment::findOrFail($id);
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+
+            $oldStatus = $enrollment->status;
 
             // Update status and add rejection notes
             $enrollment->update([
                 'status' => 'rejected',
-                'notes' => $request->notes
+                'notes' => $request->input('notes', $enrollment->notes)
             ]);
 
-            // Decrement current participants if it was pending
-            if ($enrollment->status === 'pending') {
-                $enrollment->camp->decrement('current_participants');
+            // Decrement current participants if it was approved
+            if ($oldStatus === 'approved') {
+                $camp->decrement('current_participants');
             }
 
             DB::commit();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم رفض الطلب',
+                    'enrollment' => $enrollment->fresh(['student']),
+                    'camp' => $camp->fresh()
+                ]);
+            }
 
             return redirect()
                 ->back()
@@ -466,6 +516,13 @@ class TrainingCampController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()
                 ->back()
@@ -476,17 +533,26 @@ class TrainingCampController extends Controller
     /**
      * Update enrollment status.
      */
-    public function updateEnrollmentStatus(Request $request, string $id)
+    public function updateEnrollmentStatus(Request $request, string $campId, string $enrollmentId)
     {
         try {
             DB::beginTransaction();
 
-            $enrollment = \App\Models\CampEnrollment::findOrFail($id);
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+            
             $newStatus = $request->input('status');
 
             // Validate status
             $validStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
             if (!in_array($newStatus, $validStatuses)) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'حالة غير صحيحة'
+                    ], 422);
+                }
                 return redirect()
                     ->back()
                     ->with('error', 'حالة غير صحيحة');
@@ -503,10 +569,10 @@ class TrainingCampController extends Controller
             // Handle participants count
             if ($oldStatus === 'approved' && $newStatus !== 'approved') {
                 // If was approved and now changed, decrement
-                $enrollment->camp->decrement('current_participants');
+                $camp->decrement('current_participants');
             } elseif ($oldStatus !== 'approved' && $newStatus === 'approved') {
                 // If now approved, increment
-                $enrollment->camp->increment('current_participants');
+                $camp->increment('current_participants');
             }
 
             DB::commit();
@@ -518,15 +584,212 @@ class TrainingCampController extends Controller
                 'cancelled' => 'ملغي'
             ];
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تغيير الحالة إلى: ' . ($statusLabels[$newStatus] ?? $newStatus),
+                    'enrollment' => $enrollment->fresh(['student']),
+                    'camp' => $camp->fresh()
+                ]);
+            }
+
             return redirect()
                 ->back()
                 ->with('success', 'تم تغيير الحالة إلى: ' . ($statusLabels[$newStatus] ?? $newStatus));
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get camp enrollments with filters and pagination.
+     */
+    public function campEnrollments(Request $request, string $campId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+
+            $query = CampEnrollment::with('student')
+                ->where('camp_id', $campId)
+                ->orderBy('created_at', 'desc');
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Filter by payment status
+            if ($request->filled('payment_status')) {
+                $query->where('payment_status', $request->payment_status);
+            }
+
+            // Search by student name or email
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('student', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            $enrollments = $query->paginate(15);
+
+            return response()->json([
+                'success' => true,
+                'enrollments' => $enrollments,
+                'camp' => $camp->fresh(['category'])
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Store a new enrollment for a camp.
+     */
+    public function storeEnrollment(Request $request, string $campId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+
+            $validated = $request->validate([
+                'student_id' => 'required|exists:users,id',
+                'status' => 'nullable|in:pending,approved,rejected,cancelled',
+                'payment_status' => 'nullable|in:unpaid,paid,refunded',
+                'notes' => 'nullable|string|max:1000',
+            ], [
+                'student_id.required' => 'الطالب مطلوب',
+                'student_id.exists' => 'الطالب المحدد غير موجود',
+            ]);
+
+            // Check if student is already enrolled
+            $existingEnrollment = CampEnrollment::where('camp_id', $campId)
+                ->where('student_id', $validated['student_id'])
+                ->first();
+
+            if ($existingEnrollment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الطالب مسجل بالفعل في هذا المعسكر'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $enrollment = CampEnrollment::create([
+                'camp_id' => $campId,
+                'student_id' => $validated['student_id'],
+                'status' => $validated['status'] ?? 'pending',
+                'payment_status' => $validated['payment_status'] ?? 'unpaid',
+                'notes' => $validated['notes'] ?? null,
+                'enrollment_date' => now(),
+            ]);
+
+            // Update current_participants if status is approved
+            if ($enrollment->status === 'approved') {
+                $camp->increment('current_participants');
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إضافة العضو بنجاح',
+                'enrollment' => $enrollment->load('student'),
+                'camp' => $camp->fresh()
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في التحقق من البيانات',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Show enrollment details.
+     */
+    public function showEnrollment(string $campId, string $enrollmentId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::with(['student', 'invoiceItems.invoice'])
+                ->where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+
+            return response()->json([
+                'success' => true,
+                'enrollment' => $enrollment
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an enrollment.
+     */
+    public function destroyEnrollment(string $campId, string $enrollmentId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+
+            DB::beginTransaction();
+
+            $wasApproved = $enrollment->status === 'approved';
+
+            // Delete enrollment
+            $enrollment->delete();
+
+            // Decrement current_participants if was approved
+            if ($wasApproved) {
+                $camp->decrement('current_participants');
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف العضو بنجاح',
+                'camp' => $camp->fresh()
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
