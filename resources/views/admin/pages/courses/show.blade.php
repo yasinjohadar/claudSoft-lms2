@@ -1301,6 +1301,14 @@
                 deleteModule(sectionId, moduleId, moduleTitle);
             });
         });
+
+        // Confirm delete button
+        const confirmDeleteBtn = document.getElementById('confirmDeleteModuleBtn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function() {
+                confirmDeleteModule();
+            });
+        }
     });
 
     // Load restrictions
@@ -1539,17 +1547,53 @@
         });
     }
 
+    // Store current deletion data
+    let currentDeleteData = {
+        sectionId: null,
+        moduleId: null,
+        moduleTitle: null
+    };
+
     /**
-     * Delete a module via AJAX without page reload
+     * Show delete confirmation modal
      * @param {number} sectionId - Section ID
      * @param {number} moduleId - Module ID
      * @param {string} moduleTitle - Module title for confirmation
      */
     function deleteModule(sectionId, moduleId, moduleTitle) {
-        // Show confirmation dialog
-        if (!confirm('هل أنت متأكد من حذف هذا الدرس: "' + moduleTitle + '"؟')) {
-            return;
+        // Store deletion data
+        currentDeleteData.sectionId = sectionId;
+        currentDeleteData.moduleId = moduleId;
+        currentDeleteData.moduleTitle = moduleTitle;
+
+        // Update title display (textContent automatically escapes HTML for security)
+        const titleDisplay = document.getElementById('delete-module-title-display');
+        if (titleDisplay) {
+            titleDisplay.textContent = `"${moduleTitle}"`;
         }
+
+        // Show modal
+        const deleteModalElement = document.getElementById('deleteModuleModal');
+        if (deleteModalElement) {
+            const deleteModal = new bootstrap.Modal(deleteModalElement);
+            deleteModal.show();
+        } else {
+            console.error('Delete module modal not found');
+            // Fallback to browser confirm if modal doesn't exist
+            if (confirm('هل أنت متأكد من حذف هذا الدرس: "' + moduleTitle + '"؟')) {
+                const deleteBtn = document.getElementById('delete-module-btn-' + moduleId);
+                if (deleteBtn) {
+                    performDeleteModule(deleteBtn, sectionId, moduleId);
+                }
+            }
+        }
+    }
+
+    /**
+     * Confirm deletion and proceed
+     */
+    function confirmDeleteModule() {
+        const { sectionId, moduleId } = currentDeleteData;
 
         // Get delete button
         const deleteBtn = document.getElementById('delete-module-btn-' + moduleId);
@@ -1558,6 +1602,13 @@
             return;
         }
 
+        // Hide modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteModuleModal'));
+        if (deleteModal) {
+            deleteModal.hide();
+        }
+
+        // Perform deletion
         performDeleteModule(deleteBtn, sectionId, moduleId);
     }
 
@@ -1779,22 +1830,37 @@
     </div>
 </div>
 
-<!-- Visibility Toggle Modal -->
-<div class="modal fade" id="visibilityModal" tabindex="-1" aria-labelledby="visibilityModalLabel" aria-hidden="true">
+<!-- Delete Module Confirmation Modal -->
+<div class="modal fade" id="deleteModuleModal" tabindex="-1" aria-labelledby="deleteModuleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="visibilityModalTitle">
-                    <i class="fas fa-info-circle me-2"></i>تحديث الحالة
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModuleModalTitle">
+                    <i class="fas fa-exclamation-triangle me-2"></i>تأكيد الحذف
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="visibilityModalBody">
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">جاري التحميل...</span>
-                    </div>
+            <div class="modal-body" id="deleteModuleModalBody">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>تحذير:</strong> هل أنت متأكد من حذف هذا الدرس؟
                 </div>
+                <p class="mb-0">
+                    <strong>عنوان الدرس:</strong> <span class="text-primary" id="delete-module-title-display"></span>
+                </p>
+                <p class="text-muted mt-2 mb-0">
+                    <small>لن تتمكن من التراجع عن هذا الإجراء بعد الحذف.</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    إلغاء
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteModuleBtn">
+                    <i class="fas fa-trash me-1"></i>
+                    حذف
+                </button>
             </div>
         </div>
     </div>

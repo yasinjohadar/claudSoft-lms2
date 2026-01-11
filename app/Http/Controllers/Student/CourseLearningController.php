@@ -97,6 +97,17 @@ class CourseLearningController extends Controller
                 'course.sections.modules' => function($q) {
                     $q->visible()->orderBy('sort_order');
                 },
+                'course.sections.modules.section',
+                'course.sections.modules.accessRestrictions' => function($q) {
+                    $q->where('restriction_type', 'group')
+                      ->where('access_type', 'allow');
+                },
+                'course.sections.modules.accessRestrictions.group',
+                'course.sections.accessRestrictions' => function($q) {
+                    $q->where('restriction_type', 'group')
+                      ->where('access_type', 'allow');
+                },
+                'course.sections.accessRestrictions.group',
                 'section',
                 'modulable',
                 'completions' => function($q) use ($student) {
@@ -121,6 +132,14 @@ class CourseLearningController extends Controller
             if ($module->module_type === 'quiz' && $module->modulable) {
                 $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
             }
+
+            // Filter modules in sidebar based on access restrictions
+            $module->course->sections->each(function ($section) use ($accessControl, $student) {
+                $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
+                    $access = $accessControl->canAccessModule($mod, $student);
+                    return $access['can_access'];
+                })->values(); // Reindex collection
+            });
 
             // Get enrollment
             $enrollment = CourseEnrollment::where('course_id', $module->course_id)
