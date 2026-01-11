@@ -119,6 +119,9 @@ Route::prefix('admin')
         Route::prefix('training-camps/{camp}/enrollments')->name('training-camps.enrollments.')->group(function () {
             Route::get('/', [TrainingCampController::class, 'campEnrollments'])->name('index');
             Route::post('/', [TrainingCampController::class, 'storeEnrollment'])->name('store');
+            Route::post('/bulk', [TrainingCampController::class, 'bulkStoreEnrollments'])->name('bulk-store');
+            Route::get('/search-students', [TrainingCampController::class, 'searchStudents'])->name('search-students');
+            Route::get('/groups/{group}/students', [TrainingCampController::class, 'getGroupStudents'])->name('group-students');
             Route::get('/{enrollment}', [TrainingCampController::class, 'showEnrollment'])->name('show');
             Route::delete('/{enrollment}', [TrainingCampController::class, 'destroyEnrollment'])->name('destroy');
             Route::post('/{enrollment}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('approve');

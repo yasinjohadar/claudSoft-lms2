@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TrainingCamp;
 use App\Models\CampEnrollment;
 use App\Models\CourseCategory;
+use App\Models\CourseGroup;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -171,7 +172,12 @@ class TrainingCampController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
-        return view('admin.pages.training-camps.show', compact('camp', 'students'));
+        // Get all active course groups
+        $courseGroups = CourseGroup::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('admin.pages.training-camps.show', compact('camp', 'students', 'courseGroups'));
     }
 
     /**
@@ -904,6 +910,188 @@ class TrainingCampController extends Controller
                 'camp' => $camp->fresh()
             ]);
 
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Search students by name, email, or phone.
+     */
+    public function searchStudents(Request $request, string $campId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+            $search = $request->input('q', '');
+
+            if (strlen($search) < 2) {
+                return response()->json([
+                    'results' => []
+                ]);
+            }
+
+            // Get enrolled student IDs to exclude
+            $enrolledStudentIds = CampEnrollment::where('camp_id', $campId)
+                ->pluck('student_id')
+                ->toArray();
+
+            $query = User::role('student')
+                ->whereNotIn('id', $enrolledStudentIds)
+                ->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('full_phone', 'like', "%{$search}%");
+                })
+                ->orderBy('name')
+                ->limit(50)
+                ->get(['id', 'name', 'email', 'phone', 'full_phone']);
+
+            $results = $query->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'text' => $student->name . ' (' . $student->email . ')',
+                    'name' => $student->name,
+                    'email' => $student->email,
+                    'phone' => $student->phone ?? $student->full_phone ?? '-'
+                ];
+            });
+
+            return response()->json([
+                'results' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'results' => [],
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get students in a specific group.
+     */
+    public function getGroupStudents(Request $request, string $campId, string $groupId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+            $group = CourseGroup::findOrFail($groupId);
+
+            // Get enrolled student IDs to exclude
+            $enrolledStudentIds = CampEnrollment::where('camp_id', $campId)
+                ->pluck('student_id')
+                ->toArray();
+
+            // Get students in the group
+            $students = $group->students()
+                ->whereNotIn('users.id', $enrolledStudentIds)
+                ->orderBy('users.name')
+                ->get(['users.id', 'users.name', 'users.email', 'users.phone', 'users.full_phone']);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students->map(function($student) {
+                    return [
+                        'id' => $student->id,
+                        'name' => $student->name,
+                        'email' => $student->email,
+                        'phone' => $student->phone ?? $student->full_phone ?? '-'
+                    ];
+                }),
+                'group' => [
+                    'id' => $group->id,
+                    'name' => $group->name
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk store enrollments for multiple students.
+     */
+    public function bulkStoreEnrollments(Request $request, string $campId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+
+            $validated = $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'required|exists:users,id',
+                'status' => 'nullable|in:pending,approved,rejected,cancelled',
+                'payment_status' => 'nullable|in:unpaid,paid,refunded',
+                'notes' => 'nullable|string|max:1000',
+            ], [
+                'student_ids.required' => 'يجب اختيار طالب واحد على الأقل',
+                'student_ids.array' => 'يجب اختيار طلاب',
+                'student_ids.min' => 'يجب اختيار طالب واحد على الأقل',
+            ]);
+
+            // Get enrolled student IDs
+            $enrolledStudentIds = CampEnrollment::where('camp_id', $campId)
+                ->whereIn('student_id', $validated['student_ids'])
+                ->pluck('student_id')
+                ->toArray();
+
+            // Filter out already enrolled students
+            $newStudentIds = array_diff($validated['student_ids'], $enrolledStudentIds);
+
+            if (empty($newStudentIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جميع الطلاب المحددين مسجلين بالفعل في هذا المعسكر'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $status = $validated['status'] ?? 'pending';
+            $paymentStatus = $validated['payment_status'] ?? 'unpaid';
+            $notes = $validated['notes'] ?? null;
+
+            $enrollments = [];
+            foreach ($newStudentIds as $studentId) {
+                $enrollments[] = CampEnrollment::create([
+                    'camp_id' => $campId,
+                    'student_id' => $studentId,
+                    'status' => $status,
+                    'payment_status' => $paymentStatus,
+                    'notes' => $notes,
+                    'enrollment_date' => now(),
+                ]);
+            }
+
+            // Update current_participants if status is approved
+            if ($status === 'approved') {
+                $camp->increment('current_participants', count($newStudentIds));
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إضافة ' . count($newStudentIds) . ' طالب بنجاح',
+                'added_count' => count($newStudentIds),
+                'skipped_count' => count($enrolledStudentIds),
+                'camp' => $camp->fresh()
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في التحقق من البيانات',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
