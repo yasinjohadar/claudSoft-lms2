@@ -4,6 +4,77 @@
     إيصال الدفع {{ $payment->payment_number }}
 @stop
 
+@section('css')
+<style>
+    @media print {
+        /* إخفاء جميع عناصر لوحة التحكم */
+        .main-sidebar,
+        .app-sidebar,
+        .sidebar,
+        .main-header,
+        .app-header,
+        .header,
+        .navbar,
+        .breadcrumb,
+        .page-header-breadcrumb,
+        .btn,
+        button,
+        nav,
+        aside,
+        .main-footer,
+        .footer {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* إظهار محتوى الإيصال فقط */
+        .main-content,
+        .container-fluid,
+        .card,
+        .receipt-content {
+            visibility: visible !important;
+            display: block !important;
+        }
+
+        /* إخفاء الأزرار في محتوى الإيصال */
+        .card .btn,
+        .card button,
+        .page-header-breadcrumb {
+            display: none !important;
+        }
+
+        /* تحسين تنسيق الطباعة */
+        @page {
+            margin: 1cm;
+            size: A4;
+        }
+
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+        }
+
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        .container-fluid {
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+    }
+</style>
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
@@ -217,23 +288,86 @@
 @section('styles')
 <style>
     @media print {
+        /* إخفاء جميع عناصر لوحة التحكم */
+        .main-sidebar,
+        .app-sidebar,
+        .sidebar,
+        .main-header,
+        .app-header,
+        .header,
+        .navbar,
         .page-header-breadcrumb,
+        .breadcrumb,
         .btn,
-        .breadcrumb {
+        button,
+        nav,
+        aside,
+        .main-footer,
+        .footer,
+        #loader,
+        .switcher-wrapper,
+        .impersonation-banner {
             display: none !important;
+            visibility: hidden !important;
         }
 
-        .card {
-            border: 2px solid #000 !important;
-            box-shadow: none !important;
+        /* إخفاء الـ container padding */
+        .container-fluid {
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
+        /* إظهار محتوى الإيصال فقط */
         body {
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .page {
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         .main-content {
+            margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+        }
+
+        /* تحسين تنسيق الإيصال */
+        .card {
+            border: 2px solid #000 !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        .row {
+            margin: 0 !important;
+        }
+
+        .col-lg-8 {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+        }
+
+        /* إظهار signature area عند الطباعة */
+        .card-footer.d-print-block {
+            display: block !important;
+        }
+
+        /* تحسين @page */
+        @page {
+            margin: 1cm;
+            size: A4;
+        }
+
+        /* إخفاء الروابط */
+        a[href]:after {
+            content: "" !important;
         }
     }
 </style>
