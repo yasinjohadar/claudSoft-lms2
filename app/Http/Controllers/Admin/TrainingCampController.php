@@ -424,6 +424,32 @@ class TrainingCampController extends Controller
     }
 
     /**
+     * Approve enrollment (old route - single id parameter).
+     */
+    public function approveEnrollmentOld(string $id)
+    {
+        try {
+            $enrollment = CampEnrollment::findOrFail($id);
+            $oldStatus = $enrollment->status;
+            $enrollment->update(['status' => 'approved']);
+
+            // Update participants count
+            if ($oldStatus !== 'approved') {
+                $enrollment->camp->increment('current_participants');
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'تمت الموافقة على الطلب بنجاح');
+
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Approve enrollment.
      */
     public function approveEnrollment(Request $request, string $campId, string $enrollmentId)
@@ -467,6 +493,43 @@ class TrainingCampController extends Controller
                     'message' => 'حدث خطأ: ' . $e->getMessage()
                 ], 500);
             }
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject enrollment (old route - single id parameter).
+     */
+    public function rejectEnrollmentOld(Request $request, string $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $enrollment = CampEnrollment::findOrFail($id);
+            $oldStatus = $enrollment->status;
+
+            // Update status and add rejection notes
+            $enrollment->update([
+                'status' => 'rejected',
+                'notes' => $request->notes
+            ]);
+
+            // Decrement current participants if it was approved
+            if ($oldStatus === 'approved') {
+                $enrollment->camp->decrement('current_participants');
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم رفض الطلب');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
 
             return redirect()
                 ->back()
@@ -524,6 +587,63 @@ class TrainingCampController extends Controller
                 ], 500);
             }
 
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update enrollment status (old route - single id parameter).
+     */
+    public function updateEnrollmentStatusOld(Request $request, string $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $enrollment = CampEnrollment::findOrFail($id);
+            $newStatus = $request->input('status');
+
+            // Validate status
+            $validStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
+            if (!in_array($newStatus, $validStatuses)) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'حالة غير صحيحة');
+            }
+
+            $oldStatus = $enrollment->status;
+
+            // Update status
+            $enrollment->update([
+                'status' => $newStatus,
+                'notes' => $request->input('notes', $enrollment->notes)
+            ]);
+
+            // Handle participants count
+            if ($oldStatus === 'approved' && $newStatus !== 'approved') {
+                // If was approved and now changed, decrement
+                $enrollment->camp->decrement('current_participants');
+            } elseif ($oldStatus !== 'approved' && $newStatus === 'approved') {
+                // If now approved, increment
+                $enrollment->camp->increment('current_participants');
+            }
+
+            DB::commit();
+
+            $statusLabels = [
+                'pending' => 'قيد الانتظار',
+                'approved' => 'مقبول',
+                'rejected' => 'مرفوض',
+                'cancelled' => 'ملغي'
+            ];
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم تغيير الحالة إلى: ' . ($statusLabels[$newStatus] ?? $newStatus));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ: ' . $e->getMessage());

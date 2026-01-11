@@ -111,9 +111,9 @@ Route::prefix('admin')
         // Training Camps routes
         Route::resource('training-camps', TrainingCampController::class);
         Route::get('training-camps-enrollments', [TrainingCampController::class, 'enrollments'])->name('training-camps.enrollments');
-        Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('training-camps.enrollments.old.approve');
-        Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('training-camps.enrollments.old.reject');
-        Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('training-camps.enrollments.old.update-status');
+        Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollmentOld'])->name('training-camps.enrollments.old.approve');
+        Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollmentOld'])->name('training-camps.enrollments.old.reject');
+        Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatusOld'])->name('training-camps.enrollments.old.update-status');
         
         // Camp enrollments management routes (for camp show page)
         Route::prefix('training-camps/{camp}/enrollments')->name('training-camps.enrollments.')->group(function () {
