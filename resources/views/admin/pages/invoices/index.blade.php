@@ -154,6 +154,12 @@
                                             </label>
                                         </div>
                                     </div>
+                                    <div style="min-width: 100px;">
+                                        <label class="form-label mb-1 d-block">&nbsp;</label>
+                                        <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                            <i class="fas fa-redo me-1"></i>إعادة تعيين
+                                        </a>
+                                    </div>
                                 </div>
                             </form>
                         </div>
