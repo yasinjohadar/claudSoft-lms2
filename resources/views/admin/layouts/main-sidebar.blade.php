@@ -249,6 +249,14 @@
                             </a>
                         </li>
 
+                        <!-- تقييمات المنصة -->
+                        <li class="slide {{ request()->routeIs('admin.platform-reviews.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.platform-reviews.index') }}" class="side-menu__item {{ request()->routeIs('admin.platform-reviews.*') ? 'active' : '' }}">
+                                <i class="fas fa-star side-menu__icon"></i>
+                                <span class="side-menu__label">تقييمات المنصة</span>
+                            </a>
+                        </li>
+
                         <!-- الواجبات -->
                         <li class="slide has-sub {{ request()->routeIs('assignments.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('assignments.*') ? 'active' : '' }}">

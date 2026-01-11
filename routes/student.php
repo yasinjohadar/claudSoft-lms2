@@ -34,6 +34,7 @@ use App\Http\Controllers\Student\ReminderController as StudentReminderController
 use App\Http\Controllers\Student\CalendarController;
 use App\Http\Controllers\Student\StudentWorkController;
 use App\Http\Controllers\Student\CourseReviewController;
+use App\Http\Controllers\Student\PlatformReviewController;
 
 Route::prefix('student')
     ->middleware(['auth', 'role:student'])
@@ -380,5 +381,14 @@ Route::prefix('student')
             Route::delete('/{review}', [CourseReviewController::class, 'destroy'])->name('destroy');
         });
         Route::post('/reviews/{review}/helpful', [CourseReviewController::class, 'markHelpful'])->name('student.reviews.helpful');
+
+        // Platform Review Routes (تقييم المنصة)
+        Route::prefix('platform-review')->name('student.platform-review.')->group(function () {
+            Route::get('/', [PlatformReviewController::class, 'index'])->name('index');
+            Route::get('/create', [PlatformReviewController::class, 'create'])->name('create');
+            Route::post('/', [PlatformReviewController::class, 'store'])->name('store');
+            Route::get('/{review}/edit', [PlatformReviewController::class, 'edit'])->name('edit');
+            Route::put('/{review}', [PlatformReviewController::class, 'update'])->name('update');
+        });
 
     });

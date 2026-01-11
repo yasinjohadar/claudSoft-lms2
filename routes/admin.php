@@ -559,6 +559,16 @@ Route::prefix('admin')
             Route::delete('/{review}', [AdminCourseReviewController::class, 'destroy'])->name('destroy');
         });
 
+        // ========== Platform Reviews Routes ==========
+        Route::prefix('platform-reviews')->name('admin.platform-reviews.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'index'])->name('index');
+            Route::get('/{review}', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'show'])->name('show');
+            Route::post('/{review}/approve', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'approve'])->name('approve');
+            Route::post('/{review}/reject', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'reject'])->name('reject');
+            Route::post('/{review}/toggle-featured', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'toggleFeatured'])->name('toggle-featured');
+            Route::delete('/{review}', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'destroy'])->name('destroy');
+        });
+
         // ========== Webhooks Management Routes ==========
         Route::prefix('webhooks')->name('admin.webhooks.')->group(function () {
             Route::get('/', [WebhookManagementController::class, 'index'])->name('index');
