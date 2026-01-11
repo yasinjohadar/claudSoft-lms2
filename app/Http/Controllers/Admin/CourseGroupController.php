@@ -197,6 +197,18 @@ class CourseGroupController extends Controller
 
             $members = $membersQuery->paginate($request->get('per_page', 15));
 
+            // Load other groups for each student member
+            $members->each(function($member) use ($group) {
+                if ($member->student) {
+                    $member->student->load([
+                        'courseGroupMemberships' => function($query) use ($group) {
+                            $query->where('group_id', '!=', $group->id);
+                        },
+                        'courseGroupMemberships.group'
+                    ]);
+                }
+            });
+
             // Get available students (not in this group)
             $groupStudentIds = $group->students->pluck('id')->toArray();
             $availableStudents = User::role('student')
@@ -903,6 +915,18 @@ class CourseGroupController extends Controller
             $membersQuery->orderBy($sortBy, $sortOrder);
 
             $members = $membersQuery->paginate($request->get('per_page', 15));
+
+            // Load other groups for each student member
+            $members->each(function($member) use ($group) {
+                if ($member->student) {
+                    $member->student->load([
+                        'courseGroupMemberships' => function($query) use ($group) {
+                            $query->where('group_id', '!=', $group->id);
+                        },
+                        'courseGroupMemberships.group'
+                    ]);
+                }
+            });
 
             // Get available students (not in this group)
             $groupStudentIds = $group->students->pluck('id')->toArray();

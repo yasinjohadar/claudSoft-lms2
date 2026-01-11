@@ -301,6 +301,7 @@
                                                 <th>رقم الهاتف</th>
                                                 <th>الدور</th>
                                                 <th>تاريخ الانضمام</th>
+                                                <th>المجموعات الأخرى</th>
                                                 <th>الإجراءات</th>
                                             </tr>
                                         </thead>
@@ -344,6 +345,46 @@
                                                             @endif
                                                         </td>
                                                         <td>{{ $memberRecord->joined_at ? $memberRecord->joined_at->format('Y-m-d') : '-' }}</td>
+                                                        <td>
+                                                            @php
+                                                                $otherGroups = $memberRecord->student->courseGroupMemberships
+                                                                    ->filter(function($membership) use ($group) {
+                                                                        return $membership->group_id != $group->id && $membership->group;
+                                                                    })
+                                                                    ->pluck('group')
+                                                                    ->filter();
+                                                            @endphp
+                                                            
+                                                            @if($otherGroups->isNotEmpty())
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    @foreach($otherGroups->take(3) as $otherGroup)
+                                                                        @php
+                                                                            $otherGroupCourse = $otherGroup->courses->first();
+                                                                        @endphp
+                                                                        @if($otherGroupCourse)
+                                                                            <a href="{{ route('courses.groups.show', [$otherGroupCourse->id, $otherGroup->id]) }}" 
+                                                                               class="badge bg-primary-transparent text-primary" 
+                                                                               title="{{ $otherGroup->name }}">
+                                                                                {{ $otherGroup->name }}
+                                                                            </a>
+                                                                        @else
+                                                                            <span class="badge bg-primary-transparent text-primary" 
+                                                                                  title="{{ $otherGroup->name }}">
+                                                                                {{ $otherGroup->name }}
+                                                                            </span>
+                                                                        @endif
+                                                                    @endforeach
+                                                                    @if($otherGroups->count() > 3)
+                                                                        <span class="badge bg-secondary-transparent text-secondary" 
+                                                                              title="{{ $otherGroups->skip(3)->pluck('name')->implode(', ') }}">
+                                                                            +{{ $otherGroups->count() - 3 }}
+                                                                        </span>
+                                                                    @endif
+                                                                </div>
+                                                            @else
+                                                                <span class="text-muted">-</span>
+                                                            @endif
+                                                        </td>
                                                         <td>
                                                             <div class="btn-group" role="group">
                                                                 <button type="button" class="btn btn-sm btn-outline-primary" title="تغيير الدور">
