@@ -608,11 +608,23 @@
         });
     }
 
-    // Delete enrollment
+    let currentDeleteEnrollmentId = null;
+
+    // Delete enrollment - open modal
     function deleteEnrollment(enrollmentId) {
-        if (!confirm('هل أنت متأكد من حذف هذا العضو؟')) {
+        currentDeleteEnrollmentId = enrollmentId;
+        const modal = new bootstrap.Modal(document.getElementById('deleteEnrollmentModal'));
+        modal.show();
+    }
+
+    // Confirm delete enrollment
+    function confirmDeleteEnrollment() {
+        if (!currentDeleteEnrollmentId) {
             return;
         }
+
+        const enrollmentId = currentDeleteEnrollmentId;
+        currentDeleteEnrollmentId = null;
 
         fetch(destroyUrlTemplate.replace(':id', enrollmentId), {
             method: 'DELETE',
@@ -624,6 +636,9 @@
         })
         .then(response => response.json())
         .then(data => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteEnrollmentModal'));
+            modal.hide();
+            
             if (data.success) {
                 toastr.success(data.message);
                 loadEnrollments(currentPage);
@@ -636,6 +651,8 @@
         })
         .catch(error => {
             console.error('Error:', error);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteEnrollmentModal'));
+            modal.hide();
             toastr.error('حدث خطأ أثناء الحذف');
         });
     }
@@ -781,6 +798,38 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Enrollment Modal -->
+<div class="modal fade" id="deleteEnrollmentModal" tabindex="-1" aria-labelledby="deleteEnrollmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4 px-5">
+                <div class="mb-4">
+                    <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
+                        <i class="fas fa-exclamation-triangle fs-24 text-danger"></i>
+                    </div>
+                </div>
+                <h5 class="mb-3">حذف العضو</h5>
+                <p class="text-muted mb-4">
+                    هل أنت متأكد من حذف هذا العضو من المعسكر؟
+                    <br>
+                    <small class="text-muted">لا يمكن التراجع عن هذا الإجراء</small>
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>إلغاء
+                </button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteEnrollment()">
+                    <i class="fas fa-trash me-2"></i>حذف
+                </button>
             </div>
         </div>
     </div>
