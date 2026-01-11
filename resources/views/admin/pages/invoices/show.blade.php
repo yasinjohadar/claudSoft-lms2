@@ -4,6 +4,79 @@
     تفاصيل الفاتورة {{ $invoice->invoice_number }}
 @stop
 
+@section('styles')
+<style>
+    @media print {
+        /* إخفاء جميع عناصر لوحة التحكم */
+        .main-sidebar,
+        .app-sidebar,
+        .sidebar,
+        .main-header,
+        .app-header,
+        .header,
+        .navbar,
+        .breadcrumb,
+        .page-header-breadcrumb,
+        .btn,
+        button,
+        nav,
+        aside,
+        .main-footer,
+        .footer,
+        #loader {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* إظهار محتوى الفاتورة فقط */
+        .main-content,
+        .container-fluid,
+        .card,
+        .card-body,
+        .card-header {
+            visibility: visible !important;
+            display: block !important;
+        }
+
+        /* إخفاء الأزرار في محتوى الفاتورة */
+        .card .btn,
+        .card button,
+        .page-header-breadcrumb {
+            display: none !important;
+        }
+
+        /* تحسين تنسيق الطباعة */
+        @page {
+            margin: 1cm;
+            size: A4;
+        }
+
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+        }
+
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        .container-fluid {
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+    }
+</style>
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
@@ -28,6 +101,14 @@
                     <button onclick="window.print()" class="btn btn-primary">
                         <i class="fas fa-print me-2"></i>طباعة
                     </button>
+                    @if($invoice->student->whatsapp_number)
+                        <form action="{{ route('invoices.send-whatsapp', $invoice->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success" onclick="return confirm('هل أنت متأكد من إرسال الفاتورة عبر WhatsApp للطالب {{ $invoice->student->name }}؟');">
+                                <i class="fab fa-whatsapp me-2"></i>إرسال عبر WhatsApp
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
 

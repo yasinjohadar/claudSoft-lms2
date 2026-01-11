@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\TrainingCamp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
 {
@@ -248,6 +250,79 @@ class InvoiceController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ أثناء حذف الفاتورة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate PDF for invoice.
+     */
+    public function generatePdf(string $id)
+    {
+        $invoice = Invoice::with(['student', 'items.campEnrollment.camp', 'payments.paymentMethod'])
+            ->findOrFail($id);
+
+        $pdf = Pdf::loadView('admin.pages.invoices.pdf', compact('invoice'))
+            ->setPaper('a4', 'portrait')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', true);
+
+        return $pdf;
+    }
+
+    /**
+     * Send invoice PDF via WhatsApp.
+     */
+    public function sendPdfViaWhatsApp(string $id)
+    {
+        try {
+            $invoice = Invoice::with(['student', 'items.campEnrollment.camp'])
+                ->findOrFail($id);
+
+            // Check if student has WhatsApp number
+            if (!$invoice->student->whatsapp_number) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'الطالب لا يملك رقم WhatsApp');
+            }
+
+            // Generate PDF
+            $pdf = $this->generatePdf($id);
+            
+            // Save PDF to storage
+            $pdfPath = 'invoices/pdf/' . $invoice->invoice_number . '.pdf';
+            Storage::disk('public')->put($pdfPath, $pdf->output());
+
+            // Get full URL for the PDF (ensure HTTPS)
+            $pdfUrl = Storage::disk('public')->url($pdfPath);
+            // Ensure URL is absolute with HTTPS
+            if (!str_starts_with($pdfUrl, 'http')) {
+                $pdfUrl = url($pdfUrl);
+            }
+            // Replace http with https for WhatsApp Cloud API requirement
+            $pdfUrl = str_replace('http://', 'https://', $pdfUrl);
+
+            // Send via WhatsApp service
+            $whatsappService = app(\App\Services\WhatsApp\SendWhatsAppMessage::class);
+            $message = $whatsappService->sendDocument(
+                $invoice->student->whatsapp_number,
+                $pdfUrl,
+                'فاتورة ' . $invoice->invoice_number . '.pdf',
+                'الفاتورة رقم: ' . $invoice->invoice_number . "\nالمبلغ الإجمالي: $" . number_format($invoice->total_amount, 2)
+            );
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم إرسال الفاتورة عبر WhatsApp بنجاح');
+
+        } catch (\Exception $e) {
+            \Log::error('Error sending invoice via WhatsApp: ' . $e->getMessage(), [
+                'invoice_id' => $id,
+                'exception' => $e,
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء إرسال الفاتورة: ' . $e->getMessage());
         }
     }
 }

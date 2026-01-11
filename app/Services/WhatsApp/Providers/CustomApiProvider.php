@@ -60,6 +60,25 @@ class CustomApiProvider implements WhatsAppProviderService
     }
 
     /**
+     * Send document via Custom API
+     */
+    public function sendDocument(string $to, string $documentUrl, string $filename, ?string $caption = null): SendMessageResponseDTO
+    {
+        $payload = [
+            'to' => $to,
+            'type' => 'document',
+            'document' => $documentUrl,
+            'filename' => $filename,
+        ];
+
+        if ($caption) {
+            $payload['caption'] = $caption;
+        }
+
+        return $this->sendRequest($payload);
+    }
+
+    /**
      * Send request to Custom API
      */
     protected function sendRequest(array $payload): SendMessageResponseDTO

@@ -79,6 +79,43 @@ class SendWhatsAppMessage
 
         return $message;
     }
+
+    /**
+     * Send document message
+     */
+    public function sendDocument(
+        string $to,
+        string $documentUrl,
+        string $filename,
+        ?string $caption = null
+    ): WhatsAppMessage {
+        // Find or create contact
+        $contact = WhatsAppContact::findOrCreateByWaId($to);
+
+        // Create message record with queued status
+        $message = WhatsAppMessage::create([
+            'direction' => WhatsAppMessage::DIRECTION_OUTBOUND,
+            'contact_id' => $contact->id,
+            'type' => WhatsAppMessage::TYPE_DOCUMENT,
+            'body' => $caption ?? $filename,
+            'status' => WhatsAppMessage::STATUS_QUEUED,
+            'payload' => [
+                'document_url' => $documentUrl,
+                'filename' => $filename,
+                'caption' => $caption,
+            ],
+        ]);
+
+        // Dispatch job to send message
+        SendWhatsAppMessageJob::dispatch($message, [
+            'type' => 'document',
+            'document_url' => $documentUrl,
+            'filename' => $filename,
+            'caption' => $caption,
+        ]);
+
+        return $message;
+    }
 }
 
 

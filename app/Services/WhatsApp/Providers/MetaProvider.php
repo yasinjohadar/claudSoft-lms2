@@ -44,6 +44,14 @@ class MetaProvider implements WhatsAppProviderService
     }
 
     /**
+     * Send document via Meta WhatsApp Cloud API
+     */
+    public function sendDocument(string $to, string $documentUrl, string $filename, ?string $caption = null): SendMessageResponseDTO
+    {
+        return $this->client->sendDocument($to, $documentUrl, $filename, $caption);
+    }
+
+    /**
      * Test connection to Meta WhatsApp API
      */
     public function testConnection(): array

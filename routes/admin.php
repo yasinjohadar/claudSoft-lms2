@@ -136,6 +136,7 @@ Route::prefix('admin')
         Route::post('invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('invoices/{id}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
         Route::post('invoices/{id}/force-delete', [InvoiceController::class, 'forceDelete'])->name('invoices.force-delete');
+        Route::post('invoices/{id}/send-whatsapp', [InvoiceController::class, 'sendPdfViaWhatsApp'])->name('invoices.send-whatsapp');
 
         // Payments routes
         Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show']);

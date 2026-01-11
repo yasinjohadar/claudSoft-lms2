@@ -51,6 +51,13 @@ class SendWhatsAppMessageJob implements ShouldQueue
                     $this->messageData['language'] ?? 'ar',
                     $this->messageData['components'] ?? []
                 );
+            } elseif ($messageType === 'document') {
+                $response = $providerInstance->sendDocument(
+                    $to,
+                    $this->messageData['document_url'] ?? '',
+                    $this->messageData['filename'] ?? 'document.pdf',
+                    $this->messageData['caption'] ?? null
+                );
             } else {
                 $response = $providerInstance->sendText(
                     $to,

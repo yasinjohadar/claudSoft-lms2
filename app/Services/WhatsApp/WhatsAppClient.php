@@ -75,6 +75,28 @@ class WhatsAppClient
     }
 
     /**
+     * Send document message
+     */
+    public function sendDocument(string $to, string $documentUrl, string $filename, ?string $caption = null): SendMessageResponseDTO
+    {
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $to,
+            'type' => 'document',
+            'document' => [
+                'link' => $documentUrl,
+                'filename' => $filename,
+            ],
+        ];
+
+        if ($caption) {
+            $payload['document']['caption'] = $caption;
+        }
+
+        return $this->sendMessage($payload);
+    }
+
+    /**
      * Send message via API
      */
     protected function sendMessage(array $payload): SendMessageResponseDTO
