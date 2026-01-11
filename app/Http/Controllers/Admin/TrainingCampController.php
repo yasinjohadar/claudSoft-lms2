@@ -8,6 +8,8 @@ use App\Models\CampEnrollment;
 use App\Models\CourseCategory;
 use App\Models\CourseGroup;
 use App\Models\User;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -849,6 +851,32 @@ class TrainingCampController extends Controller
                 'enrollment_date' => now(),
             ]);
 
+            // Create invoice for the camp enrollment
+            $invoice = Invoice::create([
+                'invoice_number' => Invoice::generateInvoiceNumber(),
+                'student_id' => $validated['student_id'],
+                'total_amount' => $camp->price,
+                'paid_amount' => 0,
+                'remaining_amount' => $camp->price,
+                'tax_amount' => 0,
+                'discount_amount' => 0,
+                'status' => 'issued',
+                'issue_date' => now(),
+                'due_date' => $camp->start_date,
+                'notes' => 'فاتورة التسجيل في معسكر: ' . $camp->name,
+                'created_by' => auth()->id(),
+            ]);
+
+            // Create invoice item
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => 'رسوم التسجيل في معسكر: ' . $camp->name,
+                'quantity' => 1,
+                'unit_price' => $camp->price,
+                'total_price' => $camp->price,
+                'camp_enrollment_id' => $enrollment->id,
+            ]);
+
             // Update current_participants if status is approved
             if ($enrollment->status === 'approved') {
                 $camp->increment('current_participants');
@@ -1102,6 +1130,32 @@ class TrainingCampController extends Controller
                 if ($enrollment->wasRecentlyCreated) {
                     $actuallyAddedCount++;
                     $enrollments[] = $enrollment;
+
+                    // Create invoice for the camp enrollment
+                    $invoice = Invoice::create([
+                        'invoice_number' => Invoice::generateInvoiceNumber(),
+                        'student_id' => (int) $studentId,
+                        'total_amount' => $camp->price,
+                        'paid_amount' => 0,
+                        'remaining_amount' => $camp->price,
+                        'tax_amount' => 0,
+                        'discount_amount' => 0,
+                        'status' => 'issued',
+                        'issue_date' => now(),
+                        'due_date' => $camp->start_date,
+                        'notes' => 'فاتورة التسجيل في معسكر: ' . $camp->name,
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    // Create invoice item
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'description' => 'رسوم التسجيل في معسكر: ' . $camp->name,
+                        'quantity' => 1,
+                        'unit_price' => $camp->price,
+                        'total_price' => $camp->price,
+                        'camp_enrollment_id' => $enrollment->id,
+                    ]);
                 }
             }
 
