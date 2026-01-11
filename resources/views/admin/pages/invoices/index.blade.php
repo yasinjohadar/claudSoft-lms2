@@ -21,6 +21,18 @@
     .select2-container {
         width: 100% !important;
     }
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        padding-right: 10px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
     .table-responsive {
         width: 100%;
         overflow-x: auto;
@@ -35,6 +47,15 @@
     }
     .table tbody td {
         white-space: nowrap;
+    }
+    /* Filters styling */
+    #filters-form .form-label {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+    #filters-form .form-control,
+    #filters-form .form-select {
+        font-size: 0.875rem;
     }
 </style>
 @stop
@@ -83,53 +104,55 @@
                             <div class="card-title">قائمة الفواتير</div>
                         </div>
 
-                        <div class="card-header">
-                            <form id="filters-form" action="{{ route('invoices.index') }}" method="GET" class="row g-3 align-items-end">
-                                <div class="col-lg-2 col-md-3">
-                                    <label class="form-label">بحث</label>
-                                    <input type="text" name="search" id="search" class="form-control"
-                                           placeholder="رقم الفاتورة أو اسم الطالب..." value="{{ request('search') }}">
-                                </div>
-                                <div class="col-lg-2 col-md-3">
-                                    <label class="form-label">الحالة</label>
-                                    <select name="status" id="status" class="form-select">
-                                        <option value="">جميع الحالات</option>
-                                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
-                                        <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>صادرة</option>
-                                        <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>مدفوعة جزئياً</option>
-                                        <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>مدفوعة</option>
-                                        <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
-                                        <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
-                                    </select>
-                                </div>
-                                <div class="col-lg-2 col-md-3">
-                                    <label class="form-label">المعسكر</label>
-                                    <select name="camp_id" id="camp_id" class="form-select">
-                                        <option value="">جميع المعسكرات</option>
-                                        @foreach($trainingCamps as $camp)
-                                            <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
-                                                {{ $camp->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-lg-2 col-md-3">
-                                    <label class="form-label">من تاريخ</label>
-                                    <input type="date" name="from_date" id="from_date" class="form-control"
-                                           value="{{ request('from_date') }}">
-                                </div>
-                                <div class="col-lg-2 col-md-3">
-                                    <label class="form-label">إلى تاريخ</label>
-                                    <input type="date" name="to_date" id="to_date" class="form-control"
-                                           value="{{ request('to_date') }}">
-                                </div>
-                                <div class="col-lg-2 col-md-3">
-                                    <div class="form-check mt-2">
-                                        <input class="form-check-input" type="checkbox" name="overdue" value="1"
-                                               id="overdueCheck" {{ request('overdue') ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="overdueCheck">
-                                            متأخرة فقط
-                                        </label>
+                        <div class="card-header py-3">
+                            <form id="filters-form" action="{{ route('invoices.index') }}" method="GET">
+                                <div class="d-flex flex-wrap gap-2 align-items-end">
+                                    <div style="flex: 1; min-width: 150px;">
+                                        <label class="form-label mb-1">بحث</label>
+                                        <input type="text" name="search" id="search" class="form-control form-control-sm"
+                                               placeholder="رقم الفاتورة أو الطالب..." value="{{ request('search') }}">
+                                    </div>
+                                    <div style="flex: 1; min-width: 120px;">
+                                        <label class="form-label mb-1">الحالة</label>
+                                        <select name="status" id="status" class="form-select form-select-sm">
+                                            <option value="">الكل</option>
+                                            <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
+                                            <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>صادرة</option>
+                                            <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>جزئياً</option>
+                                            <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>مدفوعة</option>
+                                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
+                                            <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1; min-width: 140px;">
+                                        <label class="form-label mb-1">المعسكر</label>
+                                        <select name="camp_id" id="camp_id" class="form-select form-select-sm">
+                                            <option value="">الكل</option>
+                                            @foreach($trainingCamps as $camp)
+                                                <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
+                                                    {{ $camp->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1; min-width: 130px;">
+                                        <label class="form-label mb-1">من تاريخ</label>
+                                        <input type="date" name="from_date" id="from_date" class="form-control form-control-sm"
+                                               value="{{ request('from_date') }}">
+                                    </div>
+                                    <div style="flex: 1; min-width: 130px;">
+                                        <label class="form-label mb-1">إلى تاريخ</label>
+                                        <input type="date" name="to_date" id="to_date" class="form-control form-control-sm"
+                                               value="{{ request('to_date') }}">
+                                    </div>
+                                    <div style="min-width: 100px;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="overdue" value="1"
+                                                   id="overdueCheck" {{ request('overdue') ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="overdueCheck">
+                                                متأخرة
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -176,20 +199,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Initialize Select2 for camp filter
-        $('#camp_id').select2({
-            placeholder: 'جميع المعسكرات',
-            allowClear: true,
-            dir: 'rtl',
-            language: {
-                noResults: function() {
-                    return 'لا توجد نتائج';
-                },
-                searching: function() {
-                    return 'جاري البحث...';
-                }
-            }
-        });
+        // No Select2 - using native select for simplicity
 
         let filterTimeout;
         let isLoading = false;
