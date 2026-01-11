@@ -21,6 +21,21 @@
     .select2-container {
         width: 100% !important;
     }
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+    .table {
+        width: 100%;
+        min-width: 100%;
+        table-layout: auto;
+    }
+    .table thead th {
+        white-space: nowrap;
+    }
+    .table tbody td {
+        white-space: nowrap;
+    }
 </style>
 @stop
 
