@@ -474,25 +474,35 @@
                     <div class="card border-primary">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
-                                    <p class="text-muted mb-0">قم بتحديده كمكتمل للمتابعة</p>
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    <div>
+                                        <h5><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
+                                        <p class="text-muted mb-0">قم بتحديده كمكتمل للمتابعة</p>
+                                    </div>
+                                    @if($isCompleted)
+                                        <div class="d-flex align-items-center ms-4">
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                            <span class="text-success fw-semibold">مكتمل</span>
+                                        </div>
+                                    @endif
                                 </div>
-                                @if($isCompleted)
-                                    <form action="{{ route('student.learn.module.mark-incomplete', $module->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-check-circle me-2"></i>تم الإكمال
-                                        </button>
-                                    </form>
-                                @else
-                                    <form action="{{ route('student.learn.module.mark-complete', $module->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-check me-2"></i>تحديد كمكتمل
-                                        </button>
-                                    </form>
-                                @endif
+                                <div>
+                                    @if($isCompleted)
+                                        <form action="{{ route('student.learn.module.mark-incomplete', $module->id) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fas fa-times me-1"></i>إلغاء الإكمال
+                                            </button>
+                                        </form>
+                                    @else
+                                        <form action="{{ route('student.learn.module.mark-complete', $module->id) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-check me-2"></i>تحديد كمكتمل
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -847,24 +857,34 @@
                                         </div>
                                         @foreach($section->modules as $mod)
                                             <a href="{{ route('student.learn.module', $mod->id) }}"
-                                               class="d-block text-decoration-none mb-1 p-2 rounded {{ $mod->id == $module->id ? 'bg-primary text-white' : (in_array($mod->id, $completedModules) ? 'bg-success-transparent text-success' : 'bg-light text-dark') }}"
+                                               class="d-flex align-items-center justify-content-between text-decoration-none mb-1 p-2 rounded {{ $mod->id == $module->id ? 'bg-primary text-white' : (in_array($mod->id, $completedModules) ? 'bg-success-transparent text-success' : 'bg-light text-dark') }}"
                                                style="font-size: 0.8rem; border-right: 3px solid {{ $mod->id == $module->id ? '#7c3aed' : (in_array($mod->id, $completedModules) ? '#10b981' : 'transparent') }};">
-                                                @if($mod->module_type == 'video')
-                                                    <i class="fas fa-play-circle me-2"></i>
-                                                @elseif($mod->module_type == 'lesson')
-                                                    <i class="fas fa-book-open me-2"></i>
-                                                @elseif($mod->module_type == 'assignment')
-                                                    <i class="fas fa-file-alt me-2"></i>
-                                                @elseif($mod->module_type == 'quiz')
-                                                    <i class="fas fa-question-circle me-2"></i>
-                                                @elseif($mod->module_type == 'question_module')
-                                                    <i class="fas fa-clipboard-question me-2"></i>
-                                                @else
-                                                    <i class="fas fa-circle me-2"></i>
-                                                @endif
-                                                {{ $mod->title }}
+                                                <div class="d-flex align-items-center flex-grow-1">
+                                                    @if($mod->module_type == 'video')
+                                                        <i class="fas fa-play-circle me-2"></i>
+                                                    @elseif($mod->module_type == 'lesson')
+                                                        <i class="fas fa-book-open me-2"></i>
+                                                    @elseif($mod->module_type == 'assignment')
+                                                        <i class="fas fa-file-alt me-2"></i>
+                                                    @elseif($mod->module_type == 'quiz')
+                                                        <i class="fas fa-question-circle me-2"></i>
+                                                    @elseif($mod->module_type == 'question_module')
+                                                        <i class="fas fa-clipboard-question me-2"></i>
+                                                    @else
+                                                        <i class="fas fa-circle me-2"></i>
+                                                    @endif
+                                                    <span>{{ $mod->title }}</span>
+                                                </div>
                                                 @if(in_array($mod->id, $completedModules))
-                                                    <i class="fas fa-check-circle {{ $mod->id == $module->id ? 'text-white' : 'text-success' }} ms-2"></i>
+                                                    <span class="d-flex align-items-center">
+                                                        <i class="fas fa-check-circle {{ $mod->id == $module->id ? 'text-white' : 'text-success' }} me-1"></i>
+                                                        <small class="{{ $mod->id == $module->id ? 'text-white' : 'text-success' }}">مكتمل</small>
+                                                    </span>
+                                                @else
+                                                    <span class="d-flex align-items-center">
+                                                        <i class="fas fa-circle text-muted me-1" style="font-size: 0.7rem;"></i>
+                                                        <small class="text-muted">غير مكتمل</small>
+                                                    </span>
                                                 @endif
                                             </a>
                                         @endforeach
