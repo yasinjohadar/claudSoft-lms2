@@ -190,6 +190,32 @@ class CourseGroupController extends Controller
                 $membersQuery->where('role', $request->role);
             }
 
+            // Filter by other group membership
+            if ($request->filled('other_group_id')) {
+                $otherGroupId = $request->other_group_id;
+                $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($otherGroupId) {
+                    $q->where('group_id', $otherGroupId);
+                });
+            }
+
+            // Filter by number of other groups
+            if ($request->filled('groups_count')) {
+                $groupsCount = $request->groups_count;
+                if ($groupsCount === '0') {
+                    // Students with no other groups
+                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function($q) use ($group) {
+                        $q->where('group_id', '!=', $group->id);
+                    });
+                } else {
+                    // Students with specific number of other groups
+                    $operator = '>=';
+                    $count = (int)$groupsCount;
+                    $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($group) {
+                        $q->where('group_id', '!=', $group->id);
+                    }, $operator, $count);
+                }
+            }
+
             // Sort
             $sortBy = $request->get('sort', 'joined_at');
             $sortOrder = $request->get('order', 'desc');
@@ -209,13 +235,16 @@ class CourseGroupController extends Controller
                 }
             });
 
+            // Get all groups for filter dropdown (excluding current group)
+            $allGroups = CourseGroup::where('id', '!=', $group->id)->orderBy('name')->get();
+
             // Get available students (not in this group)
             $groupStudentIds = $group->students->pluck('id')->toArray();
             $availableStudents = User::role('student')
                 ->whereNotIn('id', $groupStudentIds)
                 ->get();
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
@@ -909,6 +938,32 @@ class CourseGroupController extends Controller
                 $membersQuery->where('role', $request->role);
             }
 
+            // Filter by other group membership
+            if ($request->filled('other_group_id')) {
+                $otherGroupId = $request->other_group_id;
+                $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($otherGroupId) {
+                    $q->where('group_id', $otherGroupId);
+                });
+            }
+
+            // Filter by number of other groups
+            if ($request->filled('groups_count')) {
+                $groupsCount = $request->groups_count;
+                if ($groupsCount === '0') {
+                    // Students with no other groups
+                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function($q) use ($group) {
+                        $q->where('group_id', '!=', $group->id);
+                    });
+                } else {
+                    // Students with specific number of other groups
+                    $operator = '>=';
+                    $count = (int)$groupsCount;
+                    $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($group) {
+                        $q->where('group_id', '!=', $group->id);
+                    }, $operator, $count);
+                }
+            }
+
             // Sort
             $sortBy = $request->get('sort', 'joined_at');
             $sortOrder = $request->get('order', 'desc');
@@ -928,13 +983,16 @@ class CourseGroupController extends Controller
                 }
             });
 
+            // Get all groups for filter dropdown (excluding current group)
+            $allGroups = CourseGroup::where('id', '!=', $group->id)->orderBy('name')->get();
+
             // Get available students (not in this group)
             $groupStudentIds = $group->students->pluck('id')->toArray();
             $availableStudents = User::role('student')
                 ->whereNotIn('id', $groupStudentIds)
                 ->get();
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')

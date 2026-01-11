@@ -252,13 +252,13 @@
                             <!-- Search and Filter Form -->
                             <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4">
                                 <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label class="form-label">البحث</label>
                                         <input type="text" name="search" class="form-control"
                                                placeholder="ابحث بالاسم، الإيميل أو الهاتف..."
                                                value="{{ request('search') }}">
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label">الدور</label>
                                         <select name="role" class="form-select">
                                             <option value="">جميع الأدوار</option>
@@ -267,6 +267,27 @@
                                         </select>
                                     </div>
                                     <div class="col-md-3">
+                                        <label class="form-label">المجموعة الأخرى</label>
+                                        <select name="other_group_id" class="form-select">
+                                            <option value="">جميع المجموعات</option>
+                                            @foreach($allGroups as $otherGroup)
+                                                <option value="{{ $otherGroup->id }}" {{ request('other_group_id') == $otherGroup->id ? 'selected' : '' }}>
+                                                    {{ $otherGroup->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">عدد المجموعات</label>
+                                        <select name="groups_count" class="form-select">
+                                            <option value="">جميع</option>
+                                            <option value="0" {{ request('groups_count') == '0' ? 'selected' : '' }}>لا يوجد</option>
+                                            <option value="1" {{ request('groups_count') == '1' ? 'selected' : '' }}>مجموعة واحدة</option>
+                                            <option value="2" {{ request('groups_count') == '2' ? 'selected' : '' }}>مجموعتين أو أكثر</option>
+                                            <option value="3" {{ request('groups_count') == '3' ? 'selected' : '' }}>3 مجموعات أو أكثر</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label">الترتيب</label>
                                         <select name="sort" class="form-select">
                                             <option value="joined_at" {{ request('sort', 'joined_at') == 'joined_at' ? 'selected' : '' }}>تاريخ الانضمام</option>
@@ -274,13 +295,13 @@
                                         </select>
                                         <input type="hidden" name="order" value="{{ request('order', 'desc') }}">
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-12 mt-3">
                                         <div class="d-flex gap-2">
-                                            <button type="submit" class="btn btn-primary flex-fill">
+                                            <button type="submit" class="btn btn-primary">
                                                 <i class="fas fa-search me-1"></i>بحث
                                             </button>
                                             <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين">
-                                                <i class="fas fa-redo me-1"></i>
+                                                <i class="fas fa-redo me-1"></i>إعادة تعيين
                                             </a>
                                         </div>
                                     </div>
