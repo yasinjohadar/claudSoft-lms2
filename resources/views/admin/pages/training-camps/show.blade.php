@@ -5,7 +5,6 @@
 @stop
 
 @section('css')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .info-card {
         border-left: 4px solid #0d6efd;
@@ -30,20 +29,6 @@
     }
     .btn-xs i {
         font-size: 0.875rem;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .select2-container--default .select2-selection--single {
-        height: 38px;
-        border: 1px solid #ced4da;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 38px;
-        padding-right: 20px;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px;
     }
 </style>
 @stop
@@ -240,9 +225,14 @@
                             <div class="card-title">
                                 إدارة الأعضاء (<span id="enrollments-count">{{ $camp->enrollments_count }}</span>)
                             </div>
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEnrollmentModal">
-                                <i class="fas fa-plus me-1"></i>إضافة عضو جديد
-                            </button>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('training-camps.enrollments.create-individual', $camp->id) }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-user me-1"></i>إضافة فردي
+                                </a>
+                                <a href="{{ route('training-camps.enrollments.create-bulk', $camp->id) }}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-users me-1"></i>إضافة من الكروبات
+                                </a>
+                            </div>
                         </div>
                         <div class="card-body">
                             <!-- Filters -->
@@ -365,7 +355,6 @@
 @stop
 
 @section('script')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     setTimeout(function() {
         $('.alert').fadeOut('slow');
@@ -673,46 +662,6 @@
         });
     }
 
-    // Add enrollment
-    function addEnrollment() {
-        const form = document.getElementById('add-enrollment-form');
-        const formData = new FormData(form);
-
-        fetch(storeUrl, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                toastr.success(data.message);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addEnrollmentModal'));
-                modal.hide();
-                form.reset();
-                loadEnrollments(1);
-                if (data.camp) {
-                    updateCampStats(data.camp);
-                }
-            } else {
-                if (data.errors) {
-                    Object.keys(data.errors).forEach(key => {
-                        toastr.error(data.errors[key][0]);
-                    });
-                } else {
-                    toastr.error(data.message || 'حدث خطأ');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            toastr.error('حدث خطأ أثناء الإضافة');
-        });
-    }
 
     // Filter event handlers
     document.getElementById('filter-search')?.addEventListener('keypress', function(e) {
@@ -725,382 +674,8 @@
     // Load enrollments on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadEnrollments(1);
-        setupModalSelect2();
     });
-
-    // Setup Select2 when modal opens
-    function setupModalSelect2() {
-        const modalElement = document.getElementById('addEnrollmentModal');
-        if (!modalElement) return;
-
-        // Initialize Select2 when modal is shown
-        modalElement.addEventListener('shown.bs.modal', function() {
-            initializeSelect2();
-        });
-
-        // Cleanup Select2 when modal is hidden
-        modalElement.addEventListener('hidden.bs.modal', function() {
-            cleanupSelect2();
-        });
-    }
-
-    // Initialize Select2 for student search
-    function initializeSelect2() {
-        // Wait for jQuery and Select2 to be available
-        if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
-            // Retry after a short delay
-            setTimeout(initializeSelect2, 100);
-            return;
-        }
-
-        const $ = jQuery;
-        const studentSelect = $('#student_id');
-
-        // Check if element exists
-        if (studentSelect.length === 0) {
-            console.warn('Student select element not found');
-            return;
-        }
-
-        // Destroy existing Select2 instance if any
-        if (studentSelect.hasClass('select2-hidden-accessible')) {
-            studentSelect.select2('destroy');
-        }
-
-        // Initialize Select2
-        studentSelect.select2({
-            placeholder: 'ابحث عن طالب...',
-            allowClear: true,
-            dir: 'rtl',
-            language: {
-                noResults: function() {
-                    return 'لا توجد نتائج';
-                },
-                searching: function() {
-                    return 'جاري البحث...';
-                }
-            },
-            ajax: {
-                url: `{{ route('training-camps.enrollments.search-students', $camp->id) }}`,
-                dataType: 'json',
-                delay: 300,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                },
-                data: function(params) {
-                    return {
-                        q: params.term,
-                        page: params.page || 1
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data.results || []
-                    };
-                },
-                cache: true
-            },
-            minimumInputLength: 2
-        });
-    }
-
-    // Cleanup Select2 when modal closes
-    function cleanupSelect2() {
-        if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
-            return;
-        }
-
-        const $ = jQuery;
-        const studentSelect = $('#student_id');
-
-        if (studentSelect.length > 0 && studentSelect.hasClass('select2-hidden-accessible')) {
-            studentSelect.select2('destroy');
-            studentSelect.val('').trigger('change');
-        }
-    }
-
-    // Load group students
-    function loadGroupStudents(groupId) {
-        if (!groupId) {
-            document.getElementById('group-students-container').style.display = 'none';
-            return;
-        }
-
-        const container = document.getElementById('group-students-container');
-        const table = document.getElementById('group-students-table');
-        const empty = document.getElementById('group-students-empty');
-        
-        container.style.display = 'block';
-        table.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> جاري التحميل...</td></tr>';
-        empty.style.display = 'none';
-
-        fetch(`{{ route('training-camps.enrollments.group-students', [$camp->id, ':id']) }}`.replace(':id', groupId), {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.students.length > 0) {
-                let html = '';
-                data.students.forEach(student => {
-                    html += `
-                        <tr>
-                            <td>
-                                <input type="checkbox" name="student_ids[]" value="${student.id}" class="group-student-checkbox">
-                            </td>
-                            <td>${student.name}</td>
-                            <td>${student.email}</td>
-                            <td>${student.phone}</td>
-                        </tr>
-                    `;
-                });
-                table.innerHTML = html;
-                empty.style.display = 'none';
-            } else {
-                table.innerHTML = '';
-                empty.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            table.innerHTML = '<tr><td colspan="4" class="text-center text-danger">حدث خطأ أثناء تحميل الطلاب</td></tr>';
-            toastr.error('حدث خطأ أثناء تحميل طلاب الكروب');
-        });
-    }
-
-    // Select all group students
-    function selectAllGroupStudents() {
-        document.querySelectorAll('.group-student-checkbox').forEach(checkbox => {
-            checkbox.checked = true;
-        });
-        document.getElementById('select-all-students').checked = true;
-    }
-
-    // Deselect all group students
-    function deselectAllGroupStudents() {
-        document.querySelectorAll('.group-student-checkbox').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        document.getElementById('select-all-students').checked = false;
-    }
-
-    // Toggle all students
-    function toggleAllStudents(checkbox) {
-        document.querySelectorAll('.group-student-checkbox').forEach(cb => {
-            cb.checked = checkbox.checked;
-        });
-    }
-
-    // Bulk add enrollments
-    function bulkAddEnrollments() {
-        const form = document.getElementById('bulk-enrollment-form');
-        const formData = new FormData(form);
-        
-        // Get selected student IDs
-        const selectedStudents = Array.from(document.querySelectorAll('.group-student-checkbox:checked'))
-            .map(cb => cb.value);
-
-        if (selectedStudents.length === 0) {
-            toastr.warning('يرجى اختيار طالب واحد على الأقل');
-            return;
-        }
-
-        // Add student_ids to form data
-        selectedStudents.forEach(id => {
-            formData.append('student_ids[]', id);
-        });
-
-        fetch(`{{ route('training-camps.enrollments.bulk-store', $camp->id) }}`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                let message = data.message;
-                if (data.skipped_count > 0) {
-                    message += ` (تم تخطي ${data.skipped_count} طالب مسجل مسبقاً)`;
-                }
-                toastr.success(message);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addEnrollmentModal'));
-                modal.hide();
-                form.reset();
-                document.getElementById('group-students-container').style.display = 'none';
-                document.getElementById('group_id').value = '';
-                loadEnrollments(1);
-                if (data.camp) {
-                    updateCampStats(data.camp);
-                }
-            } else {
-                if (data.errors) {
-                    Object.keys(data.errors).forEach(key => {
-                        toastr.error(data.errors[key][0]);
-                    });
-                } else {
-                    toastr.error(data.message || 'حدث خطأ');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            toastr.error('حدث خطأ أثناء الإضافة');
-        });
-    }
 </script>
-
-<!-- Add Enrollment Modal -->
-<div class="modal fade" id="addEnrollmentModal" tabindex="-1" aria-labelledby="addEnrollmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addEnrollmentModalLabel">إضافة عضو جديد</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Tabs -->
-                <ul class="nav nav-tabs mb-3" id="enrollmentTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual-pane" type="button" role="tab">
-                            <i class="fas fa-user me-1"></i>إضافة فردي
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-pane" type="button" role="tab">
-                            <i class="fas fa-users me-1"></i>إضافة من الكروبات
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="enrollmentTabContent">
-                    <!-- Individual Tab -->
-                    <div class="tab-pane fade show active" id="individual-pane" role="tabpanel">
-                        <form id="add-enrollment-form">
-                            <div class="mb-3">
-                                <label for="student_id" class="form-label">الطالب <span class="text-danger">*</span></label>
-                                <select name="student_id" id="student_id" class="form-select" required>
-                                    <option value="">ابحث عن طالب...</option>
-                                </select>
-                                <small class="text-muted">ابحث بالاسم، البريد الإلكتروني، أو الهاتف</small>
-                            </div>
-                            <div class="mb-3">
-                                <label for="status" class="form-label">الحالة</label>
-                                <select name="status" id="status" class="form-select">
-                                    <option value="pending">قيد الانتظار</option>
-                                    <option value="approved">مقبول</option>
-                                    <option value="rejected">مرفوض</option>
-                                    <option value="cancelled">ملغي</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="payment_status" class="form-label">حالة الدفع</label>
-                                <select name="payment_status" id="payment_status" class="form-select">
-                                    <option value="unpaid">غير مدفوع</option>
-                                    <option value="paid">مدفوع</option>
-                                    <option value="refunded">مسترد</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">ملاحظات</label>
-                                <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
-                            </div>
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                <button type="button" class="btn btn-primary" onclick="addEnrollment()">إضافة</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Groups Tab -->
-                    <div class="tab-pane fade" id="groups-pane" role="tabpanel">
-                        <form id="bulk-enrollment-form">
-                            <div class="mb-3">
-                                <label for="group_id" class="form-label">اختر الكروب <span class="text-danger">*</span></label>
-                                <select name="group_id" id="group_id" class="form-select" onchange="loadGroupStudents(this.value)">
-                                    <option value="">اختر الكروب</option>
-                                    @foreach($courseGroups as $group)
-                                        <option value="{{ $group->id }}">{{ $group->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div id="group-students-container" style="display: none;">
-                                <div class="mb-3 d-flex justify-content-between align-items-center">
-                                    <label class="form-label mb-0">الطلاب في الكروب</label>
-                                    <div>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllGroupStudents()">
-                                            <i class="fas fa-check-double me-1"></i>تحديد الكل
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllGroupStudents()">
-                                            <i class="fas fa-times me-1"></i>إلغاء التحديد
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                                    <table class="table table-sm table-hover">
-                                        <thead class="table-light sticky-top">
-                                            <tr>
-                                                <th width="50">
-                                                    <input type="checkbox" id="select-all-students" onchange="toggleAllStudents(this)">
-                                                </th>
-                                                <th>الاسم</th>
-                                                <th>البريد الإلكتروني</th>
-                                                <th>الهاتف</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="group-students-table">
-                                            <!-- Students will be loaded here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div id="group-students-empty" class="text-center text-muted py-4" style="display: none;">
-                                    <i class="fas fa-users-slash fa-2x mb-2"></i>
-                                    <p>لا يوجد طلاب متاحين في هذا الكروب</p>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="bulk_status" class="form-label">الحالة</label>
-                                <select name="status" id="bulk_status" class="form-select">
-                                    <option value="pending">قيد الانتظار</option>
-                                    <option value="approved">مقبول</option>
-                                    <option value="rejected">مرفوض</option>
-                                    <option value="cancelled">ملغي</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="bulk_payment_status" class="form-label">حالة الدفع</label>
-                                <select name="payment_status" id="bulk_payment_status" class="form-select">
-                                    <option value="unpaid">غير مدفوع</option>
-                                    <option value="paid">مدفوع</option>
-                                    <option value="refunded">مسترد</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="bulk_notes" class="form-label">ملاحظات</label>
-                                <textarea name="notes" id="bulk_notes" class="form-control" rows="3"></textarea>
-                            </div>
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                <button type="button" class="btn btn-primary" onclick="bulkAddEnrollments()">
-                                    <i class="fas fa-users me-1"></i>إضافة المحددين
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Enrollment Details Modal -->
 <div class="modal fade" id="enrollmentDetailsModal" tabindex="-1" aria-labelledby="enrollmentDetailsModalLabel" aria-hidden="true">

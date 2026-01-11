@@ -788,6 +788,28 @@ class TrainingCampController extends Controller
     }
 
     /**
+     * Show the form for creating a new individual enrollment.
+     */
+    public function createIndividualEnrollment(string $campId)
+    {
+        $camp = TrainingCamp::with('category')->findOrFail($campId);
+        $courseGroups = CourseGroup::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        
+        return view('admin.pages.training-camps.enrollments.create-individual', compact('camp', 'courseGroups'));
+    }
+
+    /**
+     * Show the form for creating a new bulk enrollment.
+     */
+    public function createBulkEnrollment(string $campId)
+    {
+        $camp = TrainingCamp::with('category')->findOrFail($campId);
+        $courseGroups = CourseGroup::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        
+        return view('admin.pages.training-camps.enrollments.create-bulk', compact('camp', 'courseGroups'));
+    }
+
+    /**
      * Store a new enrollment for a camp.
      */
     public function storeEnrollment(Request $request, string $campId)
@@ -811,10 +833,9 @@ class TrainingCampController extends Controller
                 ->first();
 
             if ($existingEnrollment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'الطالب مسجل بالفعل في هذا المعسكر'
-                ], 422);
+                return redirect()->route('training-camps.enrollments.create-individual', $campId)
+                    ->withErrors(['student_id' => 'الطالب مسجل بالفعل في هذا المعسكر'])
+                    ->withInput();
             }
 
             DB::beginTransaction();
@@ -835,25 +856,18 @@ class TrainingCampController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'تم إضافة العضو بنجاح',
-                'enrollment' => $enrollment->load('student'),
-                'camp' => $camp->fresh()
-            ]);
+            return redirect()->route('training-camps.show', $campId)
+                ->with('success', 'تم إضافة العضو بنجاح');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'خطأ في التحقق من البيانات',
-                'errors' => $e->errors()
-            ], 422);
+            return redirect()->route('training-camps.enrollments.create-individual', $campId)
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('training-camps.enrollments.create-individual', $campId)
+                ->withErrors(['error' => 'حدث خطأ: ' . $e->getMessage()])
+                ->withInput();
         }
     }
 
@@ -1100,41 +1114,36 @@ class TrainingCampController extends Controller
 
             $skippedCount = count($enrolledStudentIds) + (count($newStudentIds) - $actuallyAddedCount);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'تم إضافة ' . $actuallyAddedCount . ' طالب بنجاح' . ($skippedCount > 0 ? ' (تم تخطي ' . $skippedCount . ' طالب مسجل مسبقاً)' : ''),
-                'added_count' => $actuallyAddedCount,
-                'skipped_count' => $skippedCount,
-                'camp' => $camp->fresh()
-            ]);
+            $message = 'تم إضافة ' . $actuallyAddedCount . ' طالب بنجاح';
+            if ($skippedCount > 0) {
+                $message .= ' (تم تخطي ' . $skippedCount . ' طالب مسجل مسبقاً)';
+            }
+
+            return redirect()->route('training-camps.show', $campId)
+                ->with('success', $message);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'خطأ في التحقق من البيانات',
-                'errors' => $e->errors()
-            ], 422);
+            return redirect()->route('training-camps.enrollments.create-bulk', $campId)
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
             
             // Handle duplicate entry error specifically
             if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'بعض الطلاب المحددين مسجلين بالفعل في هذا المعسكر. يرجى تحديث الصفحة والمحاولة مرة أخرى.'
-                ], 422);
+                return redirect()->route('training-camps.enrollments.create-bulk', $campId)
+                    ->withErrors(['student_ids' => 'بعض الطلاب المحددين مسجلين بالفعل في هذا المعسكر. يرجى تحديث الصفحة والمحاولة مرة أخرى.'])
+                    ->withInput();
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في قاعدة البيانات: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('training-camps.enrollments.create-bulk', $campId)
+                ->withErrors(['error' => 'حدث خطأ في قاعدة البيانات: ' . $e->getMessage()])
+                ->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('training-camps.enrollments.create-bulk', $campId)
+                ->withErrors(['error' => 'حدث خطأ: ' . $e->getMessage()])
+                ->withInput();
         }
     }
 }

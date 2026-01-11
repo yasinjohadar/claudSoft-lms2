@@ -118,6 +118,8 @@ Route::prefix('admin')
         // Camp enrollments management routes (for camp show page)
         Route::prefix('training-camps/{camp}/enrollments')->name('training-camps.enrollments.')->group(function () {
             Route::get('/', [TrainingCampController::class, 'campEnrollments'])->name('index');
+            Route::get('/create-individual', [TrainingCampController::class, 'createIndividualEnrollment'])->name('create-individual');
+            Route::get('/create-bulk', [TrainingCampController::class, 'createBulkEnrollment'])->name('create-bulk');
             Route::post('/', [TrainingCampController::class, 'storeEnrollment'])->name('store');
             Route::post('/bulk', [TrainingCampController::class, 'bulkStoreEnrollments'])->name('bulk-store');
             Route::get('/search-students', [TrainingCampController::class, 'searchStudents'])->name('search-students');
