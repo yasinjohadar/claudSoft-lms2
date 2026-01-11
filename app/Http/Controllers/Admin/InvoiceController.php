@@ -65,6 +65,14 @@ class InvoiceController extends Controller
         $students = User::role('student')->orderBy('name')->get();
         $trainingCamps = TrainingCamp::orderBy('name')->get(['id', 'name']);
 
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            return response()->json([
+                'table' => view('admin.pages.invoices.partials.table', compact('invoices'))->render(),
+                'pagination' => $invoices->hasPages() ? $invoices->links()->render() : ''
+            ]);
+        }
+
         return view('admin.pages.invoices.index', compact('invoices', 'students', 'trainingCamps'));
     }
 

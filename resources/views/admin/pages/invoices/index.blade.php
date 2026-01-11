@@ -69,15 +69,15 @@
                         </div>
 
                         <div class="card-header">
-                            <form action="{{ route('invoices.index') }}" method="GET" class="row g-3">
-                                <div class="col-md-3">
+                            <form id="filters-form" action="{{ route('invoices.index') }}" method="GET" class="row g-3 align-items-end">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">بحث</label>
-                                    <input type="text" name="search" class="form-control"
-                                           placeholder="بحث برقم الفاتورة أو اسم الطالب..." value="{{ request('search') }}">
+                                    <input type="text" name="search" id="search" class="form-control"
+                                           placeholder="رقم الفاتورة أو اسم الطالب..." value="{{ request('search') }}">
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">الحالة</label>
-                                    <select name="status" class="form-select">
+                                    <select name="status" id="status" class="form-select">
                                         <option value="">جميع الحالات</option>
                                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
                                         <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>صادرة</option>
@@ -87,7 +87,7 @@
                                         <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">المعسكر</label>
                                     <select name="camp_id" id="camp_id" class="form-select">
                                         <option value="">جميع المعسكرات</option>
@@ -98,27 +98,24 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-2">
-                                    <input type="date" name="from_date" class="form-control"
-                                           placeholder="من تاريخ" value="{{ request('from_date') }}">
+                                <div class="col-lg-2 col-md-3">
+                                    <label class="form-label">من تاريخ</label>
+                                    <input type="date" name="from_date" id="from_date" class="form-control"
+                                           value="{{ request('from_date') }}">
                                 </div>
-                                <div class="col-md-2">
-                                    <input type="date" name="to_date" class="form-control"
-                                           placeholder="إلى تاريخ" value="{{ request('to_date') }}">
+                                <div class="col-lg-2 col-md-3">
+                                    <label class="form-label">إلى تاريخ</label>
+                                    <input type="date" name="to_date" id="to_date" class="form-control"
+                                           value="{{ request('to_date') }}">
                                 </div>
-                                <div class="col-md-1">
-                                    <div class="form-check">
+                                <div class="col-lg-2 col-md-3">
+                                    <div class="form-check mt-2">
                                         <input class="form-check-input" type="checkbox" name="overdue" value="1"
                                                id="overdueCheck" {{ request('overdue') ? 'checked' : '' }}>
                                         <label class="form-check-label" for="overdueCheck">
-                                            متأخرة
+                                            متأخرة فقط
                                         </label>
                                     </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-secondary w-100">
-                                        <i class="fas fa-search me-1"></i>بحث
-                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -140,183 +137,17 @@
                                             <th scope="col">العمليات</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        @forelse ($invoices as $invoice)
-                                            <tr>
-                                                <td>{{ $loop->iteration + ($invoices->currentPage() - 1) * $invoices->perPage() }}</td>
-
-                                                <td>
-                                                    <strong>{{ $invoice->invoice_number }}</strong>
-                                                </td>
-
-                                                <td>
-                                                    <div>
-                                                        <strong>{{ $invoice->student->name }}</strong>
-                                                        <br><small class="text-muted">{{ $invoice->student->email }}</small>
-                                                    </div>
-                                                </td>
-
-                                                <td>{{ $invoice->issue_date->format('Y-m-d') }}</td>
-
-                                                <td>
-                                                    {{ $invoice->due_date ? $invoice->due_date->format('Y-m-d') : '-' }}
-                                                    @if($invoice->is_overdue)
-                                                        <br><span class="badge bg-danger overdue-badge">متأخرة</span>
-                                                    @endif
-                                                </td>
-
-                                                <td><strong>${{ number_format($invoice->total_amount, 2) }}</strong></td>
-                                                <td class="text-success">${{ number_format($invoice->paid_amount, 2) }}</td>
-                                                <td class="text-danger">${{ number_format($invoice->remaining_amount, 2) }}</td>
-
-                                                <td>
-                                                    @php
-                                                        $statusColors = [
-                                                            'draft' => 'bg-secondary',
-                                                            'issued' => 'bg-info',
-                                                            'partial' => 'bg-warning text-dark',
-                                                            'paid' => 'bg-success',
-                                                            'cancelled' => 'bg-danger',
-                                                            'refunded' => 'bg-dark'
-                                                        ];
-                                                        $statusLabels = [
-                                                            'draft' => 'مسودة',
-                                                            'issued' => 'صادرة',
-                                                            'partial' => 'جزئياً',
-                                                            'paid' => 'مدفوعة',
-                                                            'cancelled' => 'ملغاة',
-                                                            'refunded' => 'مستردة'
-                                                        ];
-                                                    @endphp
-                                                    <span class="badge {{ $statusColors[$invoice->status] ?? 'bg-secondary' }} invoice-status-badge">
-                                                        {{ $statusLabels[$invoice->status] ?? $invoice->status }}
-                                                    </span>
-                                                </td>
-
-                                                <td>
-                                                    <div class="btn-group" role="group">
-                                                        <a href="{{ route('invoices.show', $invoice->id) }}"
-                                                           class="btn btn-sm btn-info" title="عرض التفاصيل">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-
-                                                        @if($invoice->status !== 'paid' && $invoice->status !== 'cancelled')
-                                                            <a href="{{ route('payments.create', ['invoice_id' => $invoice->id]) }}"
-                                                               class="btn btn-sm btn-success" title="إضافة دفعة">
-                                                                <i class="fas fa-plus"></i>
-                                                            </a>
-                                                        @endif
-
-                                                        @if($invoice->status !== 'cancelled' && $invoice->status !== 'paid')
-                                                            <button type="button" class="btn btn-sm btn-danger"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#cancelModal{{ $invoice->id }}"
-                                                                    title="إلغاء">
-                                                                <i class="fas fa-ban"></i>
-                                                            </button>
-                                                        @endif
-
-                                                        <button type="button" class="btn btn-sm btn-danger"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#forceDeleteModal{{ $invoice->id }}"
-                                                                title="حذف نهائي">
-                                                            <i class="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- Cancel Modal -->
-                                                    <div class="modal fade" id="cancelModal{{ $invoice->id }}" tabindex="-1">
-                                                        <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title">إلغاء الفاتورة</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <form action="{{ route('invoices.cancel', $invoice->id) }}" method="POST">
-                                                                    @csrf
-                                                                    <div class="modal-body">
-                                                                        <div class="mb-3">
-                                                                            <label class="form-label">سبب الإلغاء (اختياري)</label>
-                                                                            <textarea class="form-control" name="reason" rows="3"
-                                                                                      placeholder="أدخل سبب الإلغاء..."></textarea>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="modal-footer">
-                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                                                                        <button type="submit" class="btn btn-danger">إلغاء الفاتورة</button>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Force Delete Modal -->
-                                                    <div class="modal fade" id="forceDeleteModal{{ $invoice->id }}" tabindex="-1">
-                                                        <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header bg-danger text-white">
-                                                                    <h5 class="modal-title">
-                                                                        <i class="fas fa-exclamation-triangle me-2"></i>حذف نهائي
-                                                                    </h5>
-                                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    <div class="alert alert-danger">
-                                                                        <strong>تحذير!</strong> هذا الإجراء لا يمكن التراجع عنه.
-                                                                    </div>
-                                                                    <p>هل أنت متأكد من حذف الفاتورة <strong>{{ $invoice->invoice_number }}</strong> نهائياً؟</p>
-                                                                    <ul class="list-unstyled">
-                                                                        <li><strong>الطالب:</strong> {{ $invoice->student->name }}</li>
-                                                                        <li><strong>المبلغ الإجمالي:</strong> ${{ number_format($invoice->total_amount, 2) }}</li>
-                                                                        <li><strong>الحالة:</strong> 
-                                                                            @php
-                                                                                $statusLabels = [
-                                                                                    'draft' => 'مسودة',
-                                                                                    'issued' => 'صادرة',
-                                                                                    'partial' => 'مدفوعة جزئياً',
-                                                                                    'paid' => 'مدفوعة',
-                                                                                    'cancelled' => 'ملغاة',
-                                                                                    'refunded' => 'مستردة'
-                                                                                ];
-                                                                            @endphp
-                                                                            {{ $statusLabels[$invoice->status] ?? $invoice->status }}
-                                                                        </li>
-                                                                    </ul>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                                    <form action="{{ route('invoices.force-delete', $invoice->id) }}" method="POST" class="d-inline">
-                                                                        @csrf
-                                                                        @method('POST')
-                                                                        <button type="submit" class="btn btn-danger">
-                                                                            <i class="fas fa-trash-alt me-2"></i>حذف نهائياً
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="10" class="text-center py-5">
-                                                    <div class="text-muted">
-                                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                                        <h5>لا توجد فواتير</h5>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforelse
+                                    <tbody id="invoices-table-body">
+                                        @include('admin.pages.invoices.partials.table')
                                     </tbody>
                                 </table>
                             </div>
 
-                            @if($invoices->hasPages())
-                                <div class="d-flex justify-content-center mt-4">
+                            <div id="invoices-pagination" class="d-flex justify-content-center mt-4">
+                                @if($invoices->hasPages())
                                     {{ $invoices->links() }}
-                                </div>
-                            @endif
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -343,6 +174,72 @@
                     return 'جاري البحث...';
                 }
             }
+        });
+
+        let filterTimeout;
+        let isLoading = false;
+
+        // Function to load invoices via AJAX
+        function loadInvoices(page = 1) {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const tableBody = $('#invoices-table-body');
+            const pagination = $('#invoices-pagination');
+            
+            // Show loading indicator
+            tableBody.html('<tr><td colspan="10" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
+
+            const formData = {
+                search: $('#search').val(),
+                status: $('#status').val(),
+                camp_id: $('#camp_id').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                overdue: $('#overdueCheck').is(':checked') ? '1' : '',
+                page: page
+            };
+
+            $.ajax({
+                url: '{{ route("invoices.index") }}',
+                method: 'GET',
+                data: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function(response) {
+                    tableBody.html(response.table);
+                    pagination.html(response.pagination || '');
+                    isLoading = false;
+                },
+                error: function(xhr) {
+                    console.error('Error loading invoices:', xhr);
+                    tableBody.html('<tr><td colspan="10" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
+                    isLoading = false;
+                }
+            });
+        }
+
+        // Handle filter changes with debounce for search
+        $('#search').on('keyup', function() {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(function() {
+                loadInvoices(1);
+            }, 500);
+        });
+
+        // Handle other filter changes immediately
+        $('#status, #camp_id, #from_date, #to_date, #overdueCheck').on('change', function() {
+            loadInvoices(1);
+        });
+
+        // Handle pagination clicks
+        $(document).on('click', '.pagination a', function(e) {
+            e.preventDefault();
+            const url = $(this).attr('href');
+            const page = new URL(url).searchParams.get('page') || 1;
+            loadInvoices(page);
         });
 
         // Auto-hide alerts
