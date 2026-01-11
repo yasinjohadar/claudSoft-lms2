@@ -107,9 +107,9 @@ header .navbar-nav .nav-link {
                         <i class="fa-solid fa-tachometer-alt"></i>
                     </a>
                 @else
-                    <button class="navbar-toggler menu-icon" type="button" data-bs-toggle="offcanvas" href="#login" >
+                    <a href="{{ route('login') }}" class="navbar-toggler menu-icon" style="border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important;">
                         <i class="fa-solid fa-user"></i>
-                    </button>
+                    </a>
                 @endauth
               </div>
 
