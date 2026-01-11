@@ -209,4 +209,28 @@ class InvoiceController extends Controller
             ->route('invoices.index')
             ->with('success', 'تم حذف الفاتورة بنجاح');
     }
+
+    /**
+     * Force delete invoice (permanent deletion).
+     */
+    public function forceDelete(string $id)
+    {
+        try {
+            $invoice = Invoice::withTrashed()->findOrFail($id);
+            
+            // Delete related invoice items (they will be deleted automatically by cascade, but we delete them explicitly for safety)
+            $invoice->items()->delete();
+            
+            // Force delete invoice
+            $invoice->forceDelete();
+            
+            return redirect()
+                ->route('invoices.index')
+                ->with('success', 'تم حذف الفاتورة نهائياً بنجاح');
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء حذف الفاتورة: ' . $e->getMessage());
+        }
+    }
 }

@@ -197,6 +197,13 @@
                                                                 <i class="fas fa-ban"></i>
                                                             </button>
                                                         @endif
+
+                                                        <button type="button" class="btn btn-sm btn-danger"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#forceDeleteModal{{ $invoice->id }}"
+                                                                title="حذف نهائي">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
                                                     </div>
 
                                                     <!-- Cancel Modal -->
@@ -221,6 +228,53 @@
                                                                         <button type="submit" class="btn btn-danger">إلغاء الفاتورة</button>
                                                                     </div>
                                                                 </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Force Delete Modal -->
+                                                    <div class="modal fade" id="forceDeleteModal{{ $invoice->id }}" tabindex="-1">
+                                                        <div class="modal-dialog">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header bg-danger text-white">
+                                                                    <h5 class="modal-title">
+                                                                        <i class="fas fa-exclamation-triangle me-2"></i>حذف نهائي
+                                                                    </h5>
+                                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                    <div class="alert alert-danger">
+                                                                        <strong>تحذير!</strong> هذا الإجراء لا يمكن التراجع عنه.
+                                                                    </div>
+                                                                    <p>هل أنت متأكد من حذف الفاتورة <strong>{{ $invoice->invoice_number }}</strong> نهائياً؟</p>
+                                                                    <ul class="list-unstyled">
+                                                                        <li><strong>الطالب:</strong> {{ $invoice->student->name }}</li>
+                                                                        <li><strong>المبلغ الإجمالي:</strong> ${{ number_format($invoice->total_amount, 2) }}</li>
+                                                                        <li><strong>الحالة:</strong> 
+                                                                            @php
+                                                                                $statusLabels = [
+                                                                                    'draft' => 'مسودة',
+                                                                                    'issued' => 'صادرة',
+                                                                                    'partial' => 'مدفوعة جزئياً',
+                                                                                    'paid' => 'مدفوعة',
+                                                                                    'cancelled' => 'ملغاة',
+                                                                                    'refunded' => 'مستردة'
+                                                                                ];
+                                                                            @endphp
+                                                                            {{ $statusLabels[$invoice->status] ?? $invoice->status }}
+                                                                        </li>
+                                                                    </ul>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                                                    <form action="{{ route('invoices.force-delete', $invoice->id) }}" method="POST" class="d-inline">
+                                                                        @csrf
+                                                                        @method('POST')
+                                                                        <button type="submit" class="btn btn-danger">
+                                                                            <i class="fas fa-trash-alt me-2"></i>حذف نهائياً
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

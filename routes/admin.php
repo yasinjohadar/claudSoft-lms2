@@ -135,6 +135,7 @@ Route::prefix('admin')
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
         Route::post('invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('invoices/{id}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
+        Route::post('invoices/{id}/force-delete', [InvoiceController::class, 'forceDelete'])->name('invoices.force-delete');
 
         // Payments routes
         Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show']);

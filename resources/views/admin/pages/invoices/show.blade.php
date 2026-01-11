@@ -134,6 +134,71 @@
                 </div>
             </div>
 
+            <!-- Delete Invoice Section -->
+            <div class="row mt-4">
+                <div class="col-xl-12">
+                    <div class="card border border-danger">
+                        <div class="card-body text-center">
+                            <div class="avatar avatar-lg bg-danger-transparent mb-3 mx-auto">
+                                <i class="fas fa-trash fs-18"></i>
+                            </div>
+                            <h6 class="mb-2">حذف الفاتورة نهائياً</h6>
+                            <p class="text-muted mb-3 small">حذف الفاتورة نهائياً من النظام. هذا الإجراء لا يمكن التراجع عنه.</p>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#forceDeleteModal{{ $invoice->id }}">
+                                <i class="fas fa-trash-alt me-2"></i>حذف نهائياً
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Force Delete Modal -->
+            <div class="modal fade" id="forceDeleteModal{{ $invoice->id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-exclamation-triangle me-2"></i>حذف نهائي
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger">
+                                <strong>تحذير!</strong> هذا الإجراء لا يمكن التراجع عنه.
+                            </div>
+                            <p>هل أنت متأكد من حذف الفاتورة <strong>{{ $invoice->invoice_number }}</strong> نهائياً؟</p>
+                            <ul class="list-unstyled">
+                                <li><strong>الطالب:</strong> {{ $invoice->student->name }}</li>
+                                <li><strong>المبلغ الإجمالي:</strong> ${{ number_format($invoice->total_amount, 2) }}</li>
+                                <li><strong>الحالة:</strong> 
+                                    @php
+                                        $statusLabels = [
+                                            'draft' => 'مسودة',
+                                            'issued' => 'صادرة',
+                                            'partial' => 'مدفوعة جزئياً',
+                                            'paid' => 'مدفوعة',
+                                            'cancelled' => 'ملغاة',
+                                            'refunded' => 'مستردة'
+                                        ];
+                                    @endphp
+                                    {{ $statusLabels[$invoice->status] ?? $invoice->status }}
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <form action="{{ route('invoices.force-delete', $invoice->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                @method('POST')
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-trash-alt me-2"></i>حذف نهائياً
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 @stop
