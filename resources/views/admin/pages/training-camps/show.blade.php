@@ -365,6 +365,7 @@
 @stop
 
 @section('script')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     setTimeout(function() {
         $('.alert').fadeOut('slow');
@@ -724,68 +725,99 @@
     // Load enrollments on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadEnrollments(1);
-        initializeSelect2();
+        setupModalSelect2();
     });
+
+    // Setup Select2 when modal opens
+    function setupModalSelect2() {
+        const modalElement = document.getElementById('addEnrollmentModal');
+        if (!modalElement) return;
+
+        // Initialize Select2 when modal is shown
+        modalElement.addEventListener('shown.bs.modal', function() {
+            initializeSelect2();
+        });
+
+        // Cleanup Select2 when modal is hidden
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            cleanupSelect2();
+        });
+    }
 
     // Initialize Select2 for student search
     function initializeSelect2() {
-        // Wait for DOM and jQuery to be ready
-        if (typeof jQuery !== 'undefined') {
-            jQuery(document).ready(function($) {
-                // Check if Select2 is loaded, if not load it
-                if (typeof $.fn.select2 === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
-                    script.onload = function() {
-                        setupSelect2($);
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    setupSelect2($);
-                }
-            });
-        } else {
+        // Wait for jQuery and Select2 to be available
+        if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
             // Retry after a short delay
             setTimeout(initializeSelect2, 100);
+            return;
         }
+
+        const $ = jQuery;
+        const studentSelect = $('#student_id');
+
+        // Check if element exists
+        if (studentSelect.length === 0) {
+            console.warn('Student select element not found');
+            return;
+        }
+
+        // Destroy existing Select2 instance if any
+        if (studentSelect.hasClass('select2-hidden-accessible')) {
+            studentSelect.select2('destroy');
+        }
+
+        // Initialize Select2
+        studentSelect.select2({
+            placeholder: 'ابحث عن طالب...',
+            allowClear: true,
+            dir: 'rtl',
+            language: {
+                noResults: function() {
+                    return 'لا توجد نتائج';
+                },
+                searching: function() {
+                    return 'جاري البحث...';
+                }
+            },
+            ajax: {
+                url: `{{ route('training-camps.enrollments.search-students', $camp->id) }}`,
+                dataType: 'json',
+                delay: 300,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                data: function(params) {
+                    return {
+                        q: params.term,
+                        page: params.page || 1
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.results || []
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2
+        });
     }
 
-    function setupSelect2($) {
-        $('#student_id').select2({
-                placeholder: 'ابحث عن طالب...',
-                allowClear: true,
-                dir: 'rtl',
-                language: {
-                    noResults: function() {
-                        return 'لا توجد نتائج';
-                    },
-                    searching: function() {
-                        return 'جاري البحث...';
-                    }
-                },
-                ajax: {
-                    url: `{{ route('training-camps.enrollments.search-students', $camp->id) }}`,
-                    dataType: 'json',
-                    delay: 300,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    },
-                    data: function(params) {
-                        return {
-                            q: params.term,
-                            page: params.page || 1
-                        };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: data.results || []
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 2
-            });
+    // Cleanup Select2 when modal closes
+    function cleanupSelect2() {
+        if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+            return;
+        }
+
+        const $ = jQuery;
+        const studentSelect = $('#student_id');
+
+        if (studentSelect.length > 0 && studentSelect.hasClass('select2-hidden-accessible')) {
+            studentSelect.select2('destroy');
+            studentSelect.val('').trigger('change');
+        }
     }
 
     // Load group students
