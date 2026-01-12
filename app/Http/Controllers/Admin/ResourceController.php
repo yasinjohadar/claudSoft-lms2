@@ -439,6 +439,26 @@ class ResourceController extends Controller
 
             DB::commit();
 
+            // If module was created, load it with relationships and generate HTML
+            $moduleHtml = null;
+            if ($module) {
+                // Reload module with relationships
+                $module = CourseModule::with([
+                    'accessRestrictions' => function($query) {
+                        $query->where('restriction_type', 'group')
+                              ->where('access_type', 'allow');
+                    },
+                    'accessRestrictions.group',
+                    'modulable'
+                ])->find($module->id);
+                
+                // Generate HTML for the module
+                $moduleHtml = view('admin.pages.courses.partials.module-item', [
+                    'module' => $module,
+                    'section' => $section,
+                ])->render();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم إنشاء المورد بنجاح',
@@ -453,6 +473,7 @@ class ResourceController extends Controller
                     'section_id' => $module->section_id,
                     'course_id' => $module->course_id,
                 ] : null,
+                'module_html' => $moduleHtml,
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {

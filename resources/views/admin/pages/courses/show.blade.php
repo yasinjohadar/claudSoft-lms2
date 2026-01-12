@@ -2222,8 +2222,72 @@
                         // Reset form
                         resourceForm.reset();
                         
-                        // Reload page to show new module
-                        location.reload();
+                        // Add module to the list dynamically
+                        if (data.module && data.module_html) {
+                            const sectionId = data.module.section_id;
+                            const sectionElement = document.getElementById('section-' + sectionId);
+                            
+                            if (sectionElement) {
+                                // Ensure section is expanded (show the accordion)
+                                const sectionButton = document.querySelector('[data-bs-target="#section-' + sectionId + '"]');
+                                if (sectionButton && sectionButton.classList.contains('collapsed')) {
+                                    sectionButton.click(); // Expand the section
+                                }
+                                
+                                // Wait a bit for section to expand, then add module
+                                setTimeout(() => {
+                                    // Check if module already exists
+                                    const existingModule = document.getElementById('module-container-' + data.module.id);
+                                    if (existingModule) {
+                                        return; // Module already exists
+                                    }
+                                    
+                                    // Find the "Section Header with Actions" div (after "Add Activity Buttons")
+                                    const sectionHeader = sectionElement.querySelector('.border-bottom');
+                                    const addActivityButtons = sectionElement.querySelector('.bg-light.rounded');
+                                    
+                                    if (sectionHeader && addActivityButtons) {
+                                        // Insert module HTML after the section header (which comes after add activity buttons)
+                                        sectionHeader.insertAdjacentHTML('afterend', data.module_html);
+                                    } else if (addActivityButtons) {
+                                        // If no section header, insert after add activity buttons
+                                        addActivityButtons.insertAdjacentHTML('afterend', data.module_html);
+                                    } else {
+                                        // Append to accordion body
+                                        sectionElement.insertAdjacentHTML('beforeend', data.module_html);
+                                    }
+                                    
+                                    // Update modules count badge
+                                    const modulesCountBadge = document.getElementById('section-modules-count-badge-' + sectionId);
+                                    if (modulesCountBadge) {
+                                        const currentText = modulesCountBadge.textContent.trim();
+                                        const currentCount = parseInt(currentText.match(/\d+/)?.[0] || '0');
+                                        const newCount = currentCount + 1;
+                                        modulesCountBadge.textContent = newCount + ' ' + (newCount === 1 ? 'درس' : 'دروس');
+                                    }
+                                    
+                                    // Scroll to and highlight the new module
+                                    const newModuleElement = document.getElementById('module-container-' + data.module.id);
+                                    if (newModuleElement) {
+                                        // Highlight the new module
+                                        newModuleElement.style.transition = 'all 0.3s ease';
+                                        newModuleElement.style.backgroundColor = '#d4edda';
+                                        newModuleElement.style.borderColor = '#28a745';
+                                        
+                                        // Scroll into view
+                                        setTimeout(() => {
+                                            newModuleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            
+                                            // Remove highlight after 3 seconds
+                                            setTimeout(() => {
+                                                newModuleElement.style.backgroundColor = '';
+                                                newModuleElement.style.borderColor = '';
+                                            }, 3000);
+                                        }, 300);
+                                    }
+                                }, 300);
+                            }
+                        }
                     } else {
                         // Show errors
                         const errorsDiv = document.getElementById('resource-form-errors');
