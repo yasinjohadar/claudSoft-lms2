@@ -70,73 +70,136 @@ class ManusProviderService extends AIProviderService
                 'Content-Type' => 'application/json',
             ])->timeout(300)->post($fullUrl, $payload);
 
+            // تطبيق نفس منطق تنظيف encoding من Zai
+            $rawBody = $response->body();
+            
+            // التحقق من الترميز وإصلاحه إذا لزم الأمر
+            if (!mb_check_encoding($rawBody, 'UTF-8')) {
+                // محاولة تحويل الترميز
+                $body = mb_convert_encoding($rawBody, 'UTF-8', 'auto');
+                // إذا فشل التحويل، استخدم utf8_encode كحل بديل
+                if (!mb_check_encoding($body, 'UTF-8')) {
+                    $body = mb_convert_encoding($rawBody, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
+                }
+            } else {
+                $body = $rawBody;
+            }
+            
+            // تنظيف النص من الأحرف غير الصالحة في UTF-8
+            $body = mb_convert_encoding($body, 'UTF-8', 'UTF-8');
+            
             Log::info('Manus API Response', [
                 'status' => $response->status(),
                 'success' => $response->successful(),
-                'response_body' => $response->body(),
+                'body_length' => strlen($body),
+                'body_preview' => mb_substr($body, 0, 500),
+                'encoding_valid' => mb_check_encoding($body, 'UTF-8'),
             ]);
 
             if ($response->successful()) {
-                $data = $response->json();
-                
-                Log::info('Manus API chat Response Data', [
-                    'data' => $data,
-                ]);
-                
-                // Manus API يعيد task_id - نحتاج إلى استعلام عن حالة الـ task مع polling
-                if (isset($data['task_id'])) {
-                    // محاولة الحصول على النتيجة من task مع polling
-                    // القيم الافتراضية: 210 محاولة × 2 ثانية = 7 دقائق
-                    // يمكن تخصيصها من خلال options
-                    $maxAttempts = $options['polling_max_attempts'] ?? 210;
-                    $delaySeconds = $options['polling_delay_seconds'] ?? 2;
-                    $taskResult = $this->getTaskResult($data['task_id'], $apiKey, $url, $maxAttempts, $delaySeconds);
-                    if ($taskResult !== null && !empty($taskResult)) {
+                try {
+                    $data = json_decode($body, true, 512, JSON_INVALID_UTF8_IGNORE);
+                    
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        Log::error('Manus JSON decode error', [
+                            'error' => json_last_error_msg(),
+                            'error_code' => json_last_error(),
+                            'body_preview' => mb_substr($body, 0, 500),
+                        ]);
+                        $this->setLastError('خطأ في تحليل رد Manus: ' . json_last_error_msg());
                         return [
-                            'success' => true,
-                            'content' => $taskResult,
-                            'tokens_used' => $data['tokens_used'] ?? 0,
-                            'prompt_tokens' => $data['prompt_tokens'] ?? 0,
-                            'completion_tokens' => $data['completion_tokens'] ?? 0,
-                            'model_used' => $this->model->model_key,
+                            'success' => false,
+                            'error' => 'خطأ في تحليل رد Manus',
                         ];
                     }
                     
-                    // إذا لم نتمكن من الحصول على النتيجة بعد polling
-                    $this->setLastError('فشل في الحصول على نتيجة المهمة. Task ID: ' . $data['task_id']);
+                    Log::info('Manus API chat Response Data', [
+                        'data' => $data,
+                    ]);
+                    
+                    // Manus API يعيد task_id - نحتاج إلى استعلام عن حالة الـ task مع polling
+                    if (isset($data['task_id'])) {
+                        // محاولة الحصول على النتيجة من task مع polling
+                        // القيم الافتراضية: 210 محاولة × 2 ثانية = 7 دقائق
+                        // يمكن تخصيصها من خلال options
+                        $maxAttempts = $options['polling_max_attempts'] ?? 210;
+                        $delaySeconds = $options['polling_delay_seconds'] ?? 2;
+                        $taskResult = $this->getTaskResult($data['task_id'], $apiKey, $url, $maxAttempts, $delaySeconds);
+                        if ($taskResult !== null && !empty($taskResult)) {
+                            // تطبيق تنظيف encoding على taskResult
+                            if (!mb_check_encoding($taskResult, 'UTF-8')) {
+                                $taskResult = mb_convert_encoding($taskResult, 'UTF-8', 'auto');
+                            }
+                            $taskResult = mb_convert_encoding($taskResult, 'UTF-8', 'UTF-8');
+                            $taskResult = preg_replace('/^\xEF\xBB\xBF/', '', $taskResult);
+                            
+                            return [
+                                'success' => true,
+                                'content' => $taskResult,
+                                'tokens_used' => $data['tokens_used'] ?? 0,
+                                'prompt_tokens' => $data['prompt_tokens'] ?? 0,
+                                'completion_tokens' => $data['completion_tokens'] ?? 0,
+                                'model_used' => $this->model->model_key,
+                            ];
+                        }
+                        
+                        // إذا لم نتمكن من الحصول على النتيجة بعد polling
+                        $this->setLastError('فشل في الحصول على نتيجة المهمة. Task ID: ' . $data['task_id']);
+                        return [
+                            'success' => false,
+                            'error' => 'فشل في الحصول على نتيجة المهمة من Manus API. يرجى المحاولة مرة أخرى.',
+                            'task_id' => $data['task_id'],
+                        ];
+                    }
+                    
+                    // محاولة استخراج النص من response مباشرة
+                    $content = '';
+                    if (isset($data['response'])) {
+                        $content = $data['response'];
+                    } elseif (isset($data['text'])) {
+                        $content = $data['text'];
+                    } elseif (isset($data['content'])) {
+                        $content = $data['content'];
+                    } elseif (isset($data['result'])) {
+                        $content = is_string($data['result']) ? $data['result'] : json_encode($data['result'], JSON_UNESCAPED_UNICODE);
+                    } elseif (isset($data['message'])) {
+                        $content = $data['message'];
+                    } elseif (isset($data['output'])) {
+                        $content = $data['output'];
+                    } elseif (is_string($data)) {
+                        $content = $data;
+                    }
+                    
+                    // تطبيق تنظيف encoding على المحتوى المستخرج (مثل Zai)
+                    if (!empty($content)) {
+                        // التحقق من ترميز المحتوى المستخرج
+                        if (!mb_check_encoding($content, 'UTF-8')) {
+                            $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+                        }
+                        
+                        Log::info('Manus content extracted', [
+                            'content_length' => strlen($content),
+                            'content_preview' => mb_substr($content, 0, 500),
+                            'encoding_valid' => mb_check_encoding($content, 'UTF-8'),
+                        ]);
+                        
+                        return [
+                            'success' => true,
+                            'content' => $content,
+                            'tokens_used' => $data['tokens_used'] ?? $data['usage']['total_tokens'] ?? 0,
+                            'prompt_tokens' => $data['prompt_tokens'] ?? $data['usage']['prompt_tokens'] ?? 0,
+                            'completion_tokens' => $data['completion_tokens'] ?? $data['usage']['completion_tokens'] ?? 0,
+                            'model_used' => $data['model'] ?? $this->model->model_key,
+                        ];
+                    }
+                } catch (\JsonException $e) {
+                    Log::error('Manus JSON exception: ' . $e->getMessage(), [
+                        'body_preview' => mb_substr($body, 0, 500),
+                    ]);
+                    $this->setLastError('خطأ في تحليل رد Manus: ' . $e->getMessage());
                     return [
                         'success' => false,
-                        'error' => 'فشل في الحصول على نتيجة المهمة من Manus API. يرجى المحاولة مرة أخرى.',
-                        'task_id' => $data['task_id'],
-                    ];
-                }
-                
-                // محاولة استخراج النص من response مباشرة
-                $content = '';
-                if (isset($data['response'])) {
-                    $content = $data['response'];
-                } elseif (isset($data['text'])) {
-                    $content = $data['text'];
-                } elseif (isset($data['content'])) {
-                    $content = $data['content'];
-                } elseif (isset($data['result'])) {
-                    $content = is_string($data['result']) ? $data['result'] : json_encode($data['result']);
-                } elseif (isset($data['message'])) {
-                    $content = $data['message'];
-                } elseif (isset($data['output'])) {
-                    $content = $data['output'];
-                } elseif (is_string($data)) {
-                    $content = $data;
-                }
-                
-                if (!empty($content)) {
-                    return [
-                        'success' => true,
-                        'content' => $content,
-                        'tokens_used' => $data['tokens_used'] ?? $data['usage']['total_tokens'] ?? 0,
-                        'prompt_tokens' => $data['prompt_tokens'] ?? $data['usage']['prompt_tokens'] ?? 0,
-                        'completion_tokens' => $data['completion_tokens'] ?? $data['usage']['completion_tokens'] ?? 0,
-                        'model_used' => $data['model'] ?? $this->model->model_key,
+                        'error' => 'خطأ في تحليل رد Manus',
                     ];
                 }
             }
@@ -253,7 +316,36 @@ class ManusProviderService extends AIProviderService
                 ])->timeout(30)->get($taskUrl);
 
                 if ($response->successful()) {
-                    $data = $response->json();
+                    // تطبيق نفس منطق تنظيف encoding من Zai
+                    $rawBody = $response->body();
+                    
+                    // التحقق من الترميز وإصلاحه إذا لزم الأمر
+                    if (!mb_check_encoding($rawBody, 'UTF-8')) {
+                        $body = mb_convert_encoding($rawBody, 'UTF-8', 'auto');
+                        if (!mb_check_encoding($body, 'UTF-8')) {
+                            $body = mb_convert_encoding($rawBody, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
+                        }
+                    } else {
+                        $body = $rawBody;
+                    }
+                    
+                    // تنظيف النص من الأحرف غير الصالحة في UTF-8
+                    $body = mb_convert_encoding($body, 'UTF-8', 'UTF-8');
+                    
+                    try {
+                        $data = json_decode($body, true, 512, JSON_INVALID_UTF8_IGNORE);
+                        
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            Log::error('Manus Task Result JSON decode error', [
+                                'error' => json_last_error_msg(),
+                                'body_preview' => mb_substr($body, 0, 500),
+                            ]);
+                            continue;
+                        }
+                    } catch (\JsonException $e) {
+                        Log::error('Manus Task Result JSON exception: ' . $e->getMessage());
+                        continue;
+                    }
                     
                     Log::info('Manus API Task Result Attempt', [
                         'attempt' => $attempt,
@@ -262,6 +354,26 @@ class ManusProviderService extends AIProviderService
                     ]);
                     
                     $status = $data['status'] ?? 'unknown';
+                    
+                    // دالة مساعدة لتنظيف المحتوى قبل الإرجاع
+                    $cleanContent = function($content) {
+                        if (empty($content)) {
+                            return $content;
+                        }
+                        if (is_array($content)) {
+                            $content = json_encode($content, JSON_UNESCAPED_UNICODE);
+                        }
+                        if (!is_string($content)) {
+                            $content = (string)$content;
+                        }
+                        // تطبيق تنظيف encoding
+                        if (!mb_check_encoding($content, 'UTF-8')) {
+                            $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+                        }
+                        $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+                        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+                        return $content;
+                    };
                     
                     // إذا كانت المهمة مكتملة، استخرج النتيجة
                     if ($status === 'completed' || $status === 'success') {
@@ -281,40 +393,35 @@ class ManusProviderService extends AIProviderService
                                 ]);
                                 $fileContent = $this->downloadFileContent($fileUrl);
                                 if ($fileContent !== null && !empty($fileContent)) {
+                                    $cleanedContent = $cleanContent($fileContent);
                                     Log::info('Manus API File content retrieved successfully', [
-                                        'content_length' => strlen($fileContent),
-                                        'content_preview' => substr($fileContent, 0, 200),
+                                        'content_length' => strlen($cleanedContent),
+                                        'content_preview' => mb_substr($cleanedContent, 0, 200),
                                     ]);
-                                    return $fileContent;
+                                    return $cleanedContent;
                                 }
                             }
                             
                             // محاولة استخراج النص من messages
                             $textContent = $this->extractTextFromMessages($messagesArray);
                             if (!empty($textContent)) {
-                                return $textContent;
+                                return $cleanContent($textContent);
                             }
                         }
                         
                         // استخراج النص من task result (fallback)
                         if (isset($data['result'])) {
-                            $result = $data['result'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['result']);
                         } elseif (isset($data['response'])) {
-                            $result = $data['response'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['response']);
                         } elseif (isset($data['output'])) {
-                            $result = $data['output'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['output']);
                         } elseif (isset($data['text'])) {
-                            $result = $data['text'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['text']);
                         } elseif (isset($data['content'])) {
-                            $result = $data['content'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['content']);
                         } elseif (isset($data['message'])) {
-                            $result = $data['message'];
-                            return is_string($result) ? $result : (is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result);
+                            return $cleanContent($data['message']);
                         }
                     }
                     
@@ -388,6 +495,7 @@ class ManusProviderService extends AIProviderService
 
     /**
      * تحميل محتوى الملف من URL
+     * مطابق لمنطق ZaiProviderService
      */
     private function downloadFileContent(string $fileUrl): ?string
     {
@@ -399,10 +507,27 @@ class ManusProviderService extends AIProviderService
             $response = Http::timeout(30)->get($fileUrl);
             
             if ($response->successful()) {
-                $content = $response->body();
+                $rawContent = $response->body();
+                
+                // تطبيق نفس منطق تنظيف encoding من Zai
+                if (!mb_check_encoding($rawContent, 'UTF-8')) {
+                    $content = mb_convert_encoding($rawContent, 'UTF-8', 'auto');
+                    if (!mb_check_encoding($content, 'UTF-8')) {
+                        $content = mb_convert_encoding($rawContent, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
+                    }
+                } else {
+                    $content = $rawContent;
+                }
+                
+                // تنظيف النص من الأحرف غير الصالحة في UTF-8
+                $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+                // إزالة BOM إذا كان موجوداً
+                $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+                
                 Log::info('Manus API File downloaded successfully', [
                     'content_length' => strlen($content),
-                    'content_preview' => substr($content, 0, 200),
+                    'content_preview' => mb_substr($content, 0, 200),
+                    'encoding_valid' => mb_check_encoding($content, 'UTF-8'),
                 ]);
                 return $content;
             }
@@ -419,6 +544,7 @@ class ManusProviderService extends AIProviderService
 
     /**
      * استخراج النص من messages array
+     * مطابق لمنطق ZaiProviderService
      */
     private function extractTextFromMessages(array $messages): string
     {
@@ -432,7 +558,19 @@ class ManusProviderService extends AIProviderService
                 }
             }
         }
-        return trim($text);
+        
+        $text = trim($text);
+        
+        // تطبيق تنظيف encoding (مثل Zai)
+        if (!empty($text)) {
+            if (!mb_check_encoding($text, 'UTF-8')) {
+                $text = mb_convert_encoding($text, 'UTF-8', 'auto');
+            }
+            $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+            $text = preg_replace('/^\xEF\xBB\xBF/', '', $text);
+        }
+        
+        return $text;
     }
 
     /**
@@ -463,126 +601,36 @@ class ManusProviderService extends AIProviderService
 
     /**
      * توليد نص من prompt
+     * مطابق لمنطق ZaiProviderService
      */
     public function generateText(string $prompt, array $options = []): string
     {
-        // Manus يستخدم prompt مباشرة
-        $url = $this->getBaseUrl() ?? self::BASE_URL;
-        $endpoint = $this->getApiEndpoint() ?? '/tasks';
-
-        $apiKey = $this->getApiKey();
-        if (!$apiKey) {
-            $this->setLastError('API Key غير موجود');
-            return '';
-        }
-
-        $payload = [
-            'prompt' => $prompt,
+        // استخدام chat() method مثل Zai
+        $messages = [
+            ['role' => 'user', 'content' => $prompt]
         ];
 
-        if (isset($options['max_tokens']) || $this->model->max_tokens) {
-            $payload['max_tokens'] = (int) ($options['max_tokens'] ?? $this->model->max_tokens);
+        $result = $this->chat($messages, $options);
+        
+        if (!$result['success']) {
+            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص');
+            return '';
         }
-        if (isset($options['temperature']) || $this->model->temperature) {
-            $payload['temperature'] = (float) ($options['temperature'] ?? $this->model->temperature);
-        }
-
-        try {
-            $fullUrl = $url . $endpoint;
-            
-            $response = Http::withHeaders([
-                'API_KEY' => trim($apiKey),
-                'accept' => 'application/json',
-                'Content-Type' => 'application/json',
-            ])->timeout(300)->post($fullUrl, $payload);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                Log::info('Manus API generateText Response', [
-                    'data' => $data,
-                ]);
-                
-                // Manus API يعيد task_id - نحتاج إلى استعلام عن حالة الـ task مع polling
-                if (isset($data['task_id'])) {
-                    // محاولة الحصول على النتيجة من task مع polling
-                    // القيم الافتراضية: 210 محاولة × 2 ثانية = 7 دقائق
-                    // يمكن تخصيصها من خلال options
-                    $maxAttempts = $options['polling_max_attempts'] ?? 210;
-                    $delaySeconds = $options['polling_delay_seconds'] ?? 2;
-                    $taskResult = $this->getTaskResult($data['task_id'], $apiKey, $url, $maxAttempts, $delaySeconds);
-                    if ($taskResult !== null && !empty($taskResult)) {
-                        return $taskResult;
-                    }
-                    
-                    // إذا لم نتمكن من الحصول على النتيجة بعد polling
-                    $this->setLastError('فشل في الحصول على نتيجة المهمة. Task ID: ' . $data['task_id']);
-                    return '';
-                }
-                
-                // إذا كان الـ response هو messages array مباشرة (من chat method)
-                if (is_array($data) && isset($data[0]) && isset($data[0]['id'])) {
-                    // محاولة استخراج fileUrl من messages
-                    $fileUrl = $this->extractFileUrlFromMessages($data);
-                    if ($fileUrl) {
-                        Log::info('Manus API Found file URL in generateText response (direct array)', [
-                            'file_url' => $fileUrl,
-                        ]);
-                        $fileContent = $this->downloadFileContent($fileUrl);
-                        if ($fileContent !== null && !empty($fileContent)) {
-                            return $fileContent;
-                        }
-                    }
-                    
-                    // محاولة استخراج النص من messages
-                    $textContent = $this->extractTextFromMessages($data);
-                    if (!empty($textContent)) {
-                        return $textContent;
-                    }
-                }
-                
-                // محاولة استخراج النص من response مباشرة
-                if (isset($data['response'])) {
-                    return is_string($data['response']) ? $data['response'] : json_encode($data['response'], JSON_UNESCAPED_UNICODE);
-                } elseif (isset($data['text'])) {
-                    return is_string($data['text']) ? $data['text'] : json_encode($data['text'], JSON_UNESCAPED_UNICODE);
-                } elseif (isset($data['content'])) {
-                    return is_string($data['content']) ? $data['content'] : json_encode($data['content'], JSON_UNESCAPED_UNICODE);
-                } elseif (isset($data['result'])) {
-                    return is_string($data['result']) ? $data['result'] : json_encode($data['result'], JSON_UNESCAPED_UNICODE);
-                } elseif (isset($data['message'])) {
-                    return is_string($data['message']) ? $data['message'] : json_encode($data['message'], JSON_UNESCAPED_UNICODE);
-                } elseif (isset($data['output'])) {
-                    // إذا كان output هو array، حاول استخراج fileUrl منه
-                    if (is_array($data['output'])) {
-                        $fileUrl = $this->extractFileUrlFromMessages($data['output']);
-                        if ($fileUrl) {
-                            $fileContent = $this->downloadFileContent($fileUrl);
-                            if ($fileContent !== null && !empty($fileContent)) {
-                                return $fileContent;
-                            }
-                        }
-                    }
-                    return is_string($data['output']) ? $data['output'] : json_encode($data['output'], JSON_UNESCAPED_UNICODE);
-                } elseif (is_string($data)) {
-                    return $data;
-                }
+        
+        $content = $result['content'] ?? '';
+        
+        // تطبيق نفس منطق تنظيف encoding من Zai
+        if (!empty($content)) {
+            if (!mb_check_encoding($content, 'UTF-8')) {
+                $content = mb_convert_encoding($content, 'UTF-8', 'auto');
             }
-
-            $errorData = $response->json();
-            $errorMessage = $errorData['error'] ?? $errorData['message'] ?? 'فشل في توليد النص';
-            $this->setLastError($errorMessage);
-            Log::error('Manus generateText failed', [
-                'status' => $response->status(),
-                'error' => $errorMessage,
-                'response' => $errorData,
-            ]);
-            return '';
-        } catch (\Exception $e) {
-            Log::error('Manus generateText failed: ' . $e->getMessage());
-            $this->setLastError('خطأ في توليد النص: ' . $e->getMessage());
-            return '';
+            // إزالة الأحرف غير الصالحة
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+            // إزالة BOM إذا كان موجوداً
+            $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
         }
+        
+        return $content;
     }
 
     /**
