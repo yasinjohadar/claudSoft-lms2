@@ -284,6 +284,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }
                             @endphp
 
+                            {{-- Debug: Question Type Info --}}
+                            <script>
+                            console.log('DEBUG: Question type info BEFORE switch', {
+                                question_id: {{ $question->id }},
+                                question_index: {{ $index }},
+                                type_id: {{ $question->question_type_id }},
+                                type_name: '{{ $question->questionType->name }}',
+                                type_display: '{{ $question->questionType->display_name }}'
+                            });
+                            </script>
+
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
                                     {{-- #region agent log --}}
@@ -410,6 +421,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     @break
 
                                 @case('true_false')
+                                    {{-- Debug: true_false rendering --}}
+                                    <script>
+                                    console.log('DEBUG: Rendering true_false options', {
+                                        question_id: {{ $question->id }},
+                                        question_type_name: '{{ $question->questionType->name }}',
+                                        savedAnswer: '{{ $savedAnswer ?? "null" }}'
+                                    });
+                                    </script>
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
@@ -741,6 +760,22 @@ document.addEventListener('DOMContentLoaded', function() {
                                         @endif
                                     </div>
                                     @break
+
+                                @default
+                                    {{-- Debug: Unknown question type --}}
+                                    <script>
+                                    console.log('DEBUG: Unknown question type - falling into @default', {
+                                        question_id: {{ $question->id }},
+                                        type_name: '{{ $question->questionType->name }}',
+                                        type_id: {{ $question->question_type_id }}
+                                    });
+                                    </script>
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        نوع السؤال غير معروف: <strong>{{ $question->questionType->name }}</strong>
+                                        <br>
+                                        <small>الرجاء التواصل مع المدير.</small>
+                                    </div>
                             @endswitch
                             </div>
 
