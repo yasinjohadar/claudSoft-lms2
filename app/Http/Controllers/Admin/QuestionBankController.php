@@ -403,17 +403,6 @@ class QuestionBankController extends Controller
     {
         $question = QuestionBank::findOrFail($id);
 
-        // Check if question is used in any quiz
-        if ($question->quizQuestions()->count() > 0) {
-            if (request()->expectsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'لا يمكن حذف السؤال لأنه مستخدم في اختبار واحد أو أكثر'
-                ], 422);
-            }
-            return back()->withErrors(['error' => 'لا يمكن حذف السؤال لأنه مستخدم في اختبار واحد أو أكثر']);
-        }
-
         try {
             $question->delete();
 
@@ -451,20 +440,6 @@ class QuestionBankController extends Controller
         try {
             $questionIds = $validated['question_ids'];
             
-            // Check if any question is used in a quiz
-            $usedQuestions = QuestionBank::whereIn('id', $questionIds)
-                ->whereHas('quizQuestions')
-                ->pluck('id')
-                ->toArray();
-
-            if (count($usedQuestions) > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'بعض الأسئلة المحددة مستخدمة في اختبارات ولا يمكن حذفها',
-                    'used_questions' => $usedQuestions
-                ], 422);
-            }
-
             // Delete questions
             $deletedCount = QuestionBank::whereIn('id', $questionIds)->delete();
 
@@ -582,15 +557,6 @@ class QuestionBankController extends Controller
                     break;
 
                 case 'delete':
-                    // Check if any question is used in a quiz
-                    $usedQuestions = QuestionBank::whereIn('id', $validated['question_ids'])
-                        ->whereHas('quizQuestions')
-                        ->count();
-
-                    if ($usedQuestions > 0) {
-                        return back()->withErrors(['error' => 'بعض الأسئلة المحددة مستخدمة في اختبارات ولا يمكن حذفها']);
-                    }
-
                     $questions->delete();
                     $message = 'تم حذف الأسئلة المحددة بنجاح';
                     break;
