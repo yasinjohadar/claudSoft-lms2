@@ -272,6 +272,12 @@ class QuizAttemptController extends Controller
                     }
                     
                     $question = $quizQuestion->question;
+                    
+                    // تأكد من تحميل options إذا لم تكن محملة
+                    if (!$question->relationLoaded('options')) {
+                        $question->load('options');
+                    }
+                    
                     $question->setRelation('pivot', (object)[
                         'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
                     ]);
@@ -298,6 +304,12 @@ class QuizAttemptController extends Controller
 
                 // Get the question with pivot data
                 $question = $quizQuestion->question;
+                
+                // تأكد من تحميل options إذا لم تكن محملة
+                if (!$question->relationLoaded('options')) {
+                    $question->load('options');
+                }
+                
                 // Add pivot data for grade
                 $question->setRelation('pivot', (object)[
                     'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
@@ -332,6 +344,27 @@ class QuizAttemptController extends Controller
                 'has_started_at' => !empty($attempt->started_at)
             ]);
         }
+
+        // Debug: Log questions and options
+        \Log::info('Quiz Questions Loaded', [
+            'attempt_id' => $attempt->id,
+            'questions_count' => $questions->count(),
+            'questions_details' => $questions->map(function($q) {
+                return [
+                    'id' => $q->id,
+                    'text' => substr($q->question_text ?? '', 0, 50),
+                    'type' => $q->questionType->name ?? 'unknown',
+                    'options_loaded' => $q->relationLoaded('options'),
+                    'options_count' => $q->options->count(),
+                    'options_sample' => $q->options->take(2)->map(function($o) {
+                        return [
+                            'id' => $o->id,
+                            'text' => substr($o->option_text ?? '', 0, 30),
+                        ];
+                    })->toArray(),
+                ];
+            })->toArray(),
+        ]);
 
         return view('student.pages.quizzes.take', compact('attempt', 'questions', 'remainingTime'));
     }

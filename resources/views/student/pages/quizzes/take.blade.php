@@ -28,14 +28,19 @@
                         </div>
                 <div class="card-body">
                     <!-- Timer -->
-                    @if($remainingTime !== null)
+                    @if($remainingTime !== null && $remainingTime > 0)
                     <div class="alert alert-warning mb-3 text-center" id="timer-container">
                         <i class="fas fa-clock me-2"></i>
                         <strong>الوقت المتبقي:</strong>
                         <div class="fs-3 fw-bold mt-2" id="timer">
-                            <span id="timer-minutes">--</span>:<span id="timer-seconds">--</span>
+                            <span id="timer-minutes">{{ floor($remainingTime / 60) }}</span>:<span id="timer-seconds">{{ str_pad($remainingTime % 60, 2, '0', STR_PAD_LEFT) }}</span>
                     </div>
                 </div>
+            @elseif($attempt->quiz->time_limit === null)
+                    <div class="alert alert-info mb-3 text-center">
+                        <i class="fas fa-infinity me-2"></i>
+                        <strong>بدون حد زمني</strong>
+                    </div>
             @endif
 
                     <!-- Progress -->
