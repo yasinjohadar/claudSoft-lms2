@@ -8,11 +8,13 @@ use App\Models\Lesson;
 use App\Models\AIModel;
 use App\Models\ProgrammingLanguage;
 use App\Models\QuestionType;
+use App\Models\Quiz;
 use App\Services\Ai\AIQuestionCreationService;
 use App\Services\Ai\AIModelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class AIQuestionCreationController extends Controller
 {
@@ -38,6 +40,11 @@ class AIQuestionCreationController extends Controller
             'mixed' => 'مختلط',
         ];
 
+        $quiz = null;
+        if ($request->filled('quiz_id')) {
+            $quiz = Quiz::findOrFail($request->query('quiz_id'));
+        }
+
         if ($request->filled('course_id')) {
             $lessons = Lesson::whereHas('module.section', function($q) use ($request) {
                 $q->where('course_id', $request->course_id);
@@ -50,7 +57,8 @@ class AIQuestionCreationController extends Controller
             'models',
             'questionTypes',
             'programmingLanguages',
-            'difficulties'
+            'difficulties',
+            'quiz'
         ));
     }
 
@@ -70,6 +78,7 @@ class AIQuestionCreationController extends Controller
             'difficulty_level' => 'required|in:easy,medium,hard,mixed',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'course_id' => 'nullable|exists:courses,id',
+            'quiz_id' => 'nullable|exists:quizzes,id',
         ], [
             'source_type.required' => 'نوع المصدر مطلوب',
             'source_content.required_if' => 'المحتوى المصدر مطلوب',
@@ -128,6 +137,55 @@ class AIQuestionCreationController extends Controller
                         'course_id' => $validated['course_id'] ?? null,
                     ]
                 );
+            }
+
+            // ربط الأسئلة بالاختبار إذا كان quiz_id موجوداً
+            if ($request->filled('quiz_id')) {
+                $quiz = Quiz::findOrFail($validated['quiz_id']);
+                
+                DB::beginTransaction();
+                try {
+                    $maxOrder = DB::table('quiz_questions')
+                        ->where('quiz_id', $quiz->id)
+                        ->max('question_order') ?? 0;
+                    
+                    $addedCount = 0;
+                    foreach ($questions as $question) {
+                        // التحقق من أن السؤال غير موجود مسبقاً في الاختبار
+                        $exists = DB::table('quiz_questions')
+                            ->where('quiz_id', $quiz->id)
+                            ->where('question_id', $question->id)
+                            ->exists();
+                        
+                        if (!$exists) {
+                            $maxOrder++;
+                            $quiz->questions()->attach($question->id, [
+                                'question_order' => $maxOrder,
+                                'question_grade' => $question->default_grade,
+                                'is_required' => false,
+                            ]);
+                            $addedCount++;
+                        }
+                    }
+                    
+                    // تحديث max_score
+                    $maxScore = $quiz->calculateMaxScore();
+                    $quiz->update(['max_score' => $maxScore]);
+                    
+                    DB::commit();
+                    
+                    $message = $addedCount > 0 
+                        ? 'تم إنشاء ' . $questions->count() . ' سؤال بنجاح وربط ' . $addedCount . ' سؤال بالاختبار "' . $quiz->title . '".'
+                        : 'تم إنشاء ' . $questions->count() . ' سؤال بنجاح. جميع الأسئلة موجودة مسبقاً في الاختبار.';
+                    
+                    return redirect()->route('quizzes.manage-questions', $quiz->id)
+                                   ->with('success', $message);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error linking questions to quiz: ' . $e->getMessage());
+                    return redirect()->route('quizzes.manage-questions', $quiz->id)
+                                   ->with('error', 'تم إنشاء الأسئلة بنجاح ولكن حدث خطأ أثناء ربطها بالاختبار: ' . $e->getMessage());
+                }
             }
 
             return redirect()->route('question-bank.index')

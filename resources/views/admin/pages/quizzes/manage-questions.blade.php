@@ -69,6 +69,9 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <div class="card-title">الأسئلة المرتبطة بالاختبار ({{ $quiz->questions->count() }})</div>
                             <div>
+                                <a href="{{ route('admin.ai.question-creation.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-info btn-sm me-2">
+                                    <i class="fas fa-magic me-1"></i>إنشاء أسئلة بالذكاء الاصطناعي
+                                </a>
                                 <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
                                     <i class="fas fa-plus-circle me-1"></i>إنشاء سؤال جديد
                                 </button>

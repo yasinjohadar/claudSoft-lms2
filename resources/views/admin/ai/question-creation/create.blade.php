@@ -29,12 +29,29 @@
             </div>
         @endif
 
+        @if(isset($quiz))
+            <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div>
+                        <strong>الأسئلة ستُربط بالاختبار:</strong> {{ $quiz->title }}
+                        <br>
+                        <small class="text-muted">سيتم إنشاء الأسئلة في بنك الأسئلة وربطها تلقائياً بهذا الاختبار.</small>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="row">
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
                         <form action="{{ route('admin.ai.question-creation.store') }}" method="POST" id="questionCreationForm">
                             @csrf
+
+                            @if(isset($quiz))
+                                <input type="hidden" name="quiz_id" value="{{ $quiz->id }}">
+                            @endif
 
                             <div class="mb-3">
                                 <label for="source_type" class="form-label">نوع المصدر <span class="text-danger">*</span></label>
