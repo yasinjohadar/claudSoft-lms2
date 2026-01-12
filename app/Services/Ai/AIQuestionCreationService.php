@@ -140,14 +140,47 @@ class AIQuestionCreationService
         );
 
         // استخدام نفس منطق AIQuestionGenerationService
+        Log::info('Starting question generation API call', [
+            'model_id' => $model->id,
+            'model_name' => $model->name,
+            'provider' => $model->provider,
+            'prompt_length' => strlen($prompt),
+            'number_of_questions' => $numberOfQuestions,
+        ]);
+
         $provider = AIProviderFactory::create($model);
         $response = $provider->generateText($prompt, [
             'max_tokens' => $model->max_tokens ?? 4000,
             'temperature' => $model->temperature ?? 0.7,
         ]);
 
+        Log::info('Question generation API response received', [
+            'response_length' => strlen($response ?? ''),
+            'response_empty' => empty($response),
+            'last_error' => $provider->getLastError(),
+        ]);
+
+        if (!$response || empty($response)) {
+            $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
+            Log::error('Question generation failed - empty response', [
+                'last_error' => $lastError,
+            ]);
+            throw new \Exception($lastError);
+        }
+
+        // حفظ الرد الكامل في logs للتصحيح
+        Log::info('Full AI response received', [
+            'response_length' => strlen($response),
+            'response_preview' => substr($response, 0, 1000),
+            'response_full' => $response, // حفظ الرد الكامل
+        ]);
+
         // تحليل الاستجابة
         $questions = $this->parseGeneratedQuestions($response);
+
+        Log::info('Questions parsed successfully', [
+            'questions_count' => count($questions),
+        ]);
 
         return $questions;
     }
@@ -221,7 +254,19 @@ class AIQuestionCreationService
 
         DB::beginTransaction();
         try {
-            foreach ($generatedQuestions as $questionData) {
+            Log::info('Starting to save questions to bank', [
+                'total_questions' => count($generatedQuestions),
+            ]);
+
+            foreach ($generatedQuestions as $index => $questionData) {
+                Log::info('Processing question', [
+                    'index' => $index + 1,
+                    'type' => $questionData['type'] ?? 'unknown',
+                    'has_options' => isset($questionData['options']) && is_array($questionData['options']),
+                    'options_count' => isset($questionData['options']) ? count($questionData['options']) : 0,
+                    'has_correct_answer' => isset($questionData['correct_answer']),
+                ]);
+
                 // تحديد نوع السؤال
                 $typeName = $questionData['type'] ?? 'single_choice';
                 
@@ -235,6 +280,11 @@ class AIQuestionCreationService
                     ]);
                     continue;
                 }
+
+                Log::info('Creating question', [
+                    'question_type_id' => $questionTypeId,
+                    'question_text_length' => strlen($questionData['question'] ?? ''),
+                ]);
 
                 // إنشاء السؤال
                 $question = QuestionBank::create([
@@ -260,12 +310,37 @@ class AIQuestionCreationService
                 // إضافة الخيارات إذا كانت موجودة
                 if (isset($questionData['options']) && is_array($questionData['options']) && !empty($questionData['options'])) {
                     $correctAnswer = $questionData['correct_answer'] ?? '';
+                    
+                    Log::info('Creating options for question', [
+                        'question_id' => $question->id,
+                        'options_count' => count($questionData['options']),
+                        'correct_answer' => is_array($correctAnswer) ? json_encode($correctAnswer) : $correctAnswer,
+                    ]);
+
                     foreach ($questionData['options'] as $index => $optionText) {
-                        $isCorrect = $this->isOptionCorrect($optionText, $correctAnswer);
+                        // استخدام منطق GLM البسيط
+                        $isCorrect = false;
+                        if (is_array($correctAnswer)) {
+                            $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer));
+                        } else {
+                            $isCorrect = trim($optionText) === trim($correctAnswer);
+                        }
+                        
+                        // إذا لم يطابق، جرب true/false variants للأسئلة من نوع true_false
+                        if (!$isCorrect && $questionTypeId) {
+                            $isCorrect = $this->isOptionCorrect($optionText, $correctAnswer, $questionTypeId);
+                        }
+
+                        Log::info('Creating option', [
+                            'question_id' => $question->id,
+                            'option_index' => $index + 1,
+                            'option_text' => trim($optionText),
+                            'is_correct' => $isCorrect,
+                        ]);
 
                         QuestionOption::create([
                             'question_id' => $question->id,
-                            'option_text' => $optionText,
+                            'option_text' => trim($optionText),
                             'is_correct' => $isCorrect,
                             'option_order' => $index + 1,
                             'grade_percentage' => $isCorrect ? 100 : 0,
@@ -275,24 +350,49 @@ class AIQuestionCreationService
                     // إذا كان السؤال من نوع true_false ولم تكن هناك خيارات، أنشئ خيارين افتراضيين
                     $correctAnswer = $questionData['correct_answer'] ?? '';
                     
+                    Log::info('Creating default true/false options', [
+                        'question_id' => $question->id,
+                        'correct_answer' => $correctAnswer,
+                    ]);
+                    
+                    $trueIsCorrect = $this->isOptionCorrect('صح', $correctAnswer, $questionTypeId);
+                    $falseIsCorrect = $this->isOptionCorrect('خطأ', $correctAnswer, $questionTypeId);
+                    
+                    Log::info('True/False options correctness', [
+                        'question_id' => $question->id,
+                        'true_is_correct' => $trueIsCorrect,
+                        'false_is_correct' => $falseIsCorrect,
+                    ]);
+                    
                     QuestionOption::create([
                         'question_id' => $question->id,
                         'option_text' => 'صح',
-                        'is_correct' => $this->isOptionCorrect('صح', $correctAnswer),
+                        'is_correct' => $trueIsCorrect,
                         'option_order' => 1,
-                        'grade_percentage' => 0,
+                        'grade_percentage' => $trueIsCorrect ? 100 : 0,
                     ]);
                     
                     QuestionOption::create([
                         'question_id' => $question->id,
                         'option_text' => 'خطأ',
-                        'is_correct' => $this->isOptionCorrect('خطأ', $correctAnswer),
+                        'is_correct' => $falseIsCorrect,
                         'option_order' => 2,
-                        'grade_percentage' => 0,
+                        'grade_percentage' => $falseIsCorrect ? 100 : 0,
                     ]);
                 }
 
                 $savedQuestions->push($question);
+                
+                // التحقق من حفظ الخيارات بشكل صحيح
+                $optionsCount = $question->options()->count();
+                $correctOptionsCount = $question->options()->where('is_correct', true)->count();
+                
+                Log::info('Question saved with options', [
+                    'question_id' => $question->id,
+                    'options_count' => $optionsCount,
+                    'correct_options_count' => $correctOptionsCount,
+                    'question_type' => $typeName,
+                ]);
             }
 
             DB::commit();
@@ -301,6 +401,23 @@ class AIQuestionCreationService
                 'saved_count' => $savedQuestions->count(),
                 'programming_language' => $programmingLanguage->name,
             ]);
+            
+            // التحقق النهائي من جميع الأسئلة المحفوظة
+            foreach ($savedQuestions as $savedQuestion) {
+                $options = $savedQuestion->options()->get();
+                Log::info('Final verification - Question options', [
+                    'question_id' => $savedQuestion->id,
+                    'question_type' => $savedQuestion->questionType->name ?? 'unknown',
+                    'options' => $options->map(function($opt) {
+                        return [
+                            'id' => $opt->id,
+                            'text' => $opt->option_text,
+                            'is_correct' => $opt->is_correct,
+                            'order' => $opt->option_order,
+                        ];
+                    })->toArray(),
+                ]);
+            }
             
             return $savedQuestions;
         } catch (\Exception $e) {
@@ -344,31 +461,43 @@ class AIQuestionCreationService
 
     /**
      * التحقق من صحة الخيار
+     * مطابق لمنطق AIQuestionGenerationService (GLM) مع دعم true/false variants
      */
-    private function isOptionCorrect(string $optionText, $correctAnswer): bool
+    private function isOptionCorrect(string $optionText, $correctAnswer, ?int $questionTypeId = null): bool
     {
+        // معالجة المصفوفات (مثل multiple_choice_multiple)
         if (is_array($correctAnswer)) {
             return in_array(trim($optionText), array_map('trim', $correctAnswer));
         }
         
-        $optionTextNormalized = strtolower(trim($optionText));
-        $correctAnswerNormalized = strtolower(trim($correctAnswer));
+        // منطق بسيط مثل GLM
+        $isCorrect = trim($optionText) === trim($correctAnswer);
         
-        // دعم أشكال مختلفة لـ true/false
-        $trueVariants = ['صح', 'true', '1', 'صحيح', 'نعم', 'yes'];
-        $falseVariants = ['خطأ', 'false', '0', 'خاطئ', 'لا', 'no'];
-        
-        if (in_array($optionTextNormalized, $trueVariants)) {
-            return in_array($correctAnswerNormalized, $trueVariants);
-        } elseif (in_array($optionTextNormalized, $falseVariants)) {
-            return in_array($correctAnswerNormalized, $falseVariants);
+        // دعم true/false variants فقط للأسئلة من نوع true_false
+        if (!$isCorrect && $questionTypeId) {
+            $trueFalseTypeId = QuestionType::where('name', 'true_false')->first()?->id;
+            if ($questionTypeId === $trueFalseTypeId) {
+                $optionTextNormalized = strtolower(trim($optionText));
+                $correctAnswerNormalized = strtolower(trim($correctAnswer));
+                
+                // دعم أشكال مختلفة لـ true/false
+                $trueVariants = ['صح', 'true', '1', 'صحيح', 'نعم', 'yes'];
+                $falseVariants = ['خطأ', 'false', '0', 'خاطئ', 'لا', 'no'];
+                
+                if (in_array($optionTextNormalized, $trueVariants)) {
+                    return in_array($correctAnswerNormalized, $trueVariants);
+                } elseif (in_array($optionTextNormalized, $falseVariants)) {
+                    return in_array($correctAnswerNormalized, $falseVariants);
+                }
+            }
         }
         
-        return trim($optionText) === trim($correctAnswer);
+        return $isCorrect;
     }
 
     /**
      * تحليل JSON للأسئلة المولدة
+     * مطابق لمنطق AIQuestionGenerationService (GLM)
      */
     private function parseGeneratedQuestions(string $response): array
     {
@@ -377,36 +506,117 @@ class AIQuestionCreationService
             'response_preview' => substr($response, 0, 500),
         ]);
 
-        // محاولة استخراج JSON من الاستجابة
-        $jsonStart = strpos($response, '[');
-        $jsonEnd = strrpos($response, ']');
+        // محاولة إصلاح encoding issues
+        if (!mb_check_encoding($response, 'UTF-8')) {
+            $response = mb_convert_encoding($response, 'UTF-8', 'auto');
+            Log::info('Fixed encoding issues in response');
+        }
         
-        if ($jsonStart !== false && $jsonEnd !== false) {
-            $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
-        } else {
-            // محاولة استخراج JSON من code blocks
-            if (preg_match('/```(?:json)?\s*(\[.*?\])\s*```/s', $response, $matches)) {
-                $jsonString = $matches[1];
-            } else {
-                $jsonString = $response;
+        // تنظيف الرد من markdown code blocks
+        $cleanedResponse = $response;
+        
+        // إزالة ```json و ``` من البداية والنهاية
+        $cleanedResponse = preg_replace('/^```(?:json)?\s*/i', '', trim($cleanedResponse));
+        $cleanedResponse = preg_replace('/\s*```$/i', '', $cleanedResponse);
+        
+        // إزالة أي BOM أو characters غريبة
+        $cleanedResponse = preg_replace('/^\xEF\xBB\xBF/', '', $cleanedResponse);
+        $cleanedResponse = trim($cleanedResponse);
+        
+        // محاولة 1: تحليل JSON مباشرة
+        $decoded = json_decode($cleanedResponse, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            Log::info('JSON parsed successfully (direct)', ['count' => count($decoded)]);
+            return $this->validateGeneratedQuestions($decoded);
+        }
+
+        // محاولة 2: استخراج JSON array من النص
+        if (preg_match('/\[\s*\{.*?\}\s*\]/s', $cleanedResponse, $matches)) {
+            $jsonString = $matches[0];
+            $decoded = json_decode($jsonString, true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::info('JSON parsed successfully (regex array)', ['count' => count($decoded)]);
+                return $this->validateGeneratedQuestions($decoded);
             }
         }
 
-        $decoded = json_decode($jsonString, true);
+        // محاولة 3: البحث عن [ و ] يدوياً
+        $jsonStart = strpos($cleanedResponse, '[');
+        $jsonEnd = strrpos($cleanedResponse, ']');
+
+        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
+            $jsonString = substr($cleanedResponse, $jsonStart, $jsonEnd - $jsonStart + 1);
+            $decoded = json_decode($jsonString, true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::info('JSON parsed successfully (manual extraction)', ['count' => count($decoded)]);
+                return $this->validateGeneratedQuestions($decoded);
+            }
+        }
+
+        // محاولة 4: البحث عن JSON object واحد
+        if (preg_match('/\{[^{}]*"question"[^{}]*\}/s', $cleanedResponse, $matches)) {
+            $decoded = json_decode('[' . $matches[0] . ']', true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::info('JSON parsed successfully (single object)', ['count' => count($decoded)]);
+                return $this->validateGeneratedQuestions($decoded);
+            }
+        }
+
+        // محاولة 5: تحليل نص غير JSON (fallback)
+        $questions = $this->parseTextBasedQuestions($cleanedResponse);
+        if (!empty($questions)) {
+            Log::info('Questions parsed from text format', ['count' => count($questions)]);
+            return $this->validateGeneratedQuestions($questions);
+        }
+
+        Log::error('Failed to parse questions from response', [
+            'json_error' => json_last_error_msg(),
+            'response' => substr($cleanedResponse, 0, 1000),
+        ]);
+
+        throw new \Exception('فشل في تحليل استجابة AI: ' . json_last_error_msg());
+    }
+
+    /**
+     * محاولة تحليل الأسئلة من نص غير JSON
+     */
+    private function parseTextBasedQuestions(string $text): array
+    {
+        $questions = [];
         
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('JSON decode error', [
-                'error' => json_last_error_msg(),
-                'json_string' => substr($jsonString, 0, 1000),
-            ]);
-            throw new \Exception('فشل في تحليل استجابة AI: ' . json_last_error_msg());
+        // البحث عن أنماط مثل "1. سؤال" أو "السؤال 1:"
+        $patterns = [
+            '/(?:سؤال|السؤال|Question)\s*(\d+)[:\.\)]\s*(.+?)(?=(?:سؤال|السؤال|Question)\s*\d+|$)/is',
+            '/(\d+)[:\.\)]\s*(.+?)(?=\d+[:\.\)]|$)/s',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $questionText = trim($match[2] ?? $match[1] ?? '');
+                    if (strlen($questionText) > 10) {
+                        $questions[] = [
+                            'type' => 'short_answer',
+                            'question' => $questionText,
+                            'options' => [],
+                            'correct_answer' => '',
+                            'explanation' => '',
+                            'difficulty' => 'medium',
+                            'points' => 10,
+                        ];
+                    }
+                }
+                
+                if (!empty($questions)) {
+                    break;
+                }
+            }
         }
 
-        if (!is_array($decoded)) {
-            throw new \Exception('الاستجابة ليست مصفوفة من الأسئلة');
-        }
-
-        return $this->validateGeneratedQuestions($decoded);
+        return $questions;
     }
 
     /**
