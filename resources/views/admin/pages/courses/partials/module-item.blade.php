@@ -65,15 +65,13 @@
                     <i class="fas fa-file"></i>
                 @endif
             </span>
-            <div class="flex-grow-1">
-                <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center justify-content-between">
+            <div>
+                <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center gap-2 flex-wrap">
                     <span>{{ $module->title }}</span>
-                    <span class="d-flex align-items-center gap-2">
-                        @if($isResourceUrl)
-                            <i class="fas fa-link text-info" title="رابط خارجي"></i>
-                        @endif
-                        <span class="badge bg-secondary-transparent text-secondary">#{{ $orderNumber }}</span>
-                    </span>
+                    <span class="badge bg-secondary-transparent text-secondary">#{{ $orderNumber }}</span>
+                    @if($isResourceUrl)
+                        <i class="fas fa-link text-info" title="رابط خارجي"></i>
+                    @endif
                 </h6>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
