@@ -387,6 +387,28 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 $(document).ready(function() {
+    // Cleanup modals on hide
+    $('#deleteQuestionModal').on('hidden.bs.modal', function() {
+        // Remove backdrop if it exists
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+        $('body').css('padding-right', '');
+        
+        // Reset variables
+        currentDeleteQuestionId = null;
+        currentDeleteQuestionRow = null;
+    });
+
+    $('#deleteMultipleQuestionsModal').on('hidden.bs.modal', function() {
+        // Remove backdrop if it exists
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+        $('body').css('padding-right', '');
+        
+        // Reset variables
+        window.selectedQuestionsForDeletion = null;
+    });
+
     // Make table sortable
     const el = document.getElementById('questions-sortable');
     if (el) {
@@ -594,9 +616,19 @@ $(document).ready(function() {
         const questionId = currentDeleteQuestionId;
         const row = currentDeleteQuestionRow;
 
-        // Hide modal
-        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteQuestionModal'));
+        // Get modal instance and hide it properly
+        const modalElement = document.getElementById('deleteQuestionModal');
+        const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        
+        // Hide modal and remove backdrop
         deleteModal.hide();
+        
+        // Force remove backdrop if it exists
+        setTimeout(function() {
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+            $('body').css('padding-right', '');
+        }, 100);
 
         // Disable button
         const btn = row.find('.remove-question');
@@ -634,6 +666,11 @@ $(document).ready(function() {
             complete: function() {
                 currentDeleteQuestionId = null;
                 currentDeleteQuestionRow = null;
+                
+                // Ensure backdrop is removed
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
+                $('body').css('padding-right', '');
             }
         });
     });
@@ -716,9 +753,19 @@ $(document).ready(function() {
             return;
         }
 
-        // Hide modal
-        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteMultipleQuestionsModal'));
+        // Get modal instance and hide it properly
+        const modalElement = document.getElementById('deleteMultipleQuestionsModal');
+        const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        
+        // Hide modal and remove backdrop
         deleteModal.hide();
+        
+        // Force remove backdrop if it exists
+        setTimeout(function() {
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+            $('body').css('padding-right', '');
+        }, 100);
 
         // Disable button
         const btn = $('#delete-selected-questions');
@@ -770,6 +817,11 @@ $(document).ready(function() {
             },
             complete: function() {
                 window.selectedQuestionsForDeletion = null;
+                
+                // Ensure backdrop is removed
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
+                $('body').css('padding-right', '');
             }
         });
     });
