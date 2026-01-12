@@ -459,11 +459,50 @@
                                                 @endif
                                             @elseif($question->questionType->name == 'multiple_choice_multiple')
                                                 @php
-                                                    // For multiple choice multiple, get all options where is_correct is true
-                                                    $correctOptions = $question->options->filter(function($option) {
-                                                        return $option->is_correct === true || $option->is_correct === 1;
-                                                    });
+                                                    // Logging للتشخيص
+                                                    \Log::info('DEBUG: Displaying correct answer for multiple_choice_multiple', [
+                                                        'question_id' => $question->id,
+                                                        'options_loaded' => $question->relationLoaded('options'),
+                                                        'options_count' => $question->options ? $question->options->count() : 0,
+                                                        'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
+                                                    ]);
+                                                    
+                                                    // تحسين البحث عن الخيارات الصحيحة
+                                                    // استخدام where() بدلاً من filter() للبحث المباشر
+                                                    $correctOptions = collect();
+                                                    
+                                                    if ($question->options && $question->options->count() > 0) {
+                                                        // البحث عن الخيارات الصحيحة بطرق متعددة
+                                                        $correctOptions = $question->options->where('is_correct', true);
+                                                        
+                                                        // إذا لم يُوجد، جرب البحث بـ 1 (لأن is_correct قد يكون محفوظ كـ 1 بدلاً من true)
+                                                        if ($correctOptions->isEmpty()) {
+                                                            $correctOptions = $question->options->filter(function($option) {
+                                                                return $option->is_correct === 1 || $option->is_correct === '1';
+                                                            });
+                                                        }
+                                                        
+                                                        // إذا لم يُوجد، جرب البحث بـ true كـ string
+                                                        if ($correctOptions->isEmpty()) {
+                                                            $correctOptions = $question->options->filter(function($option) {
+                                                                return $option->is_correct === 'true' || $option->is_correct === true;
+                                                            });
+                                                        }
+                                                        
+                                                        \Log::info('DEBUG: Correct options found', [
+                                                            'question_id' => $question->id,
+                                                            'correct_options_count' => $correctOptions->count(),
+                                                            'correct_options_ids' => $correctOptions->pluck('id')->toArray(),
+                                                            'correct_options_texts' => $correctOptions->pluck('option_text')->toArray(),
+                                                        ]);
+                                                    } else {
+                                                        \Log::warning('DEBUG: No options found for question', [
+                                                            'question_id' => $question->id,
+                                                            'options_relation_loaded' => $question->relationLoaded('options'),
+                                                        ]);
+                                                    }
                                                 @endphp
+                                                
                                                 @if($correctOptions->isNotEmpty())
                                                     <ul class="mb-0">
                                                         @foreach($correctOptions as $option)
@@ -471,7 +510,18 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    {{-- إذا لم تُوجد خيارات صحيحة، عرض رسالة توضيحية بدلاً من "راجع المدرس" --}}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <strong>ملاحظة:</strong> لا توجد خيارات صحيحة محددة لهذا السؤال في قاعدة البيانات.
+                                                        @if($question->options && $question->options->count() > 0)
+                                                            <br>
+                                                            <small class="text-muted">عدد الخيارات المتاحة: {{ $question->options->count() }}</small>
+                                                        @else
+                                                            <br>
+                                                            <small class="text-muted">لا توجد خيارات متاحة لهذا السؤال.</small>
+                                                        @endif
+                                                    </div>
                                                 @endif
                                             @elseif($question->questionType->name == 'true_false')
                                                 @php
