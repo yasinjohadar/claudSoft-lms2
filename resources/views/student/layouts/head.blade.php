@@ -39,3 +39,6 @@
 <!-- Page Specific Styles -->
 @yield('styles')
 @stack('styles')
+
+<!-- Page Specific Head Scripts -->
+@stack('head-scripts')

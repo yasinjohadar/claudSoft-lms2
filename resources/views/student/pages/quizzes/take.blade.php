@@ -2,7 +2,7 @@
 
 @section('page-title', 'حل الاختبار - ' . $attempt->quiz->title)
 
-@push('styles')
+@push('head-scripts')
 <script>
 // Global variables - will be set when DOM loads
 var attemptId, totalQuestions, currentQuestionIndex = 0, answeredQuestions, remainingTimeSeconds, timerInterval, isSubmitting = false;
@@ -15,14 +15,11 @@ function goToQuestion(index) {
         return;
     }
     
-    if (typeof $ !== 'undefined') {
-        $('.question-container').hide();
-        $(`.question-container[data-question-index="${index}"]`).show();
-    } else {
-        document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
-        const target = document.querySelector(`.question-container[data-question-index="${index}"]`);
-        if (target) target.style.display = 'block';
-    }
+    // Use vanilla JS since jQuery may not be loaded yet
+    document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+    const target = document.querySelector(`.question-container[data-question-index="${index}"]`);
+    if (target) target.style.display = 'block';
+    
     currentQuestionIndex = index;
     if (typeof updateQuestionNavigation === 'function') {
         updateQuestionNavigation();
