@@ -340,9 +340,69 @@
                                             @else
                                                 <span class="text-muted">لم يتم الإجابة</span>
                                             @endif
-                                        @elseif($response->response_text)
+                                        @elseif($question->questionType->name == 'multiple_choice_single')
+                                            @php
+                                                $selectedOptionId = null;
+                                                $selectedOption = null;
+                                                
+                                                // البحث عن option_id من selected_option_ids أولاً
+                                                if ($response->selected_option_ids && !empty($response->selected_option_ids)) {
+                                                    $selectedOptionId = is_array($response->selected_option_ids) 
+                                                        ? $response->selected_option_ids[0] 
+                                                        : $response->selected_option_ids;
+                                                    $selectedOption = $question->options->find($selectedOptionId);
+                                                }
+                                                
+                                                // إذا لم يُوجد، البحث من response_data
+                                                if (!$selectedOption && $response->response_data) {
+                                                    $responseData = is_array($response->response_data) 
+                                                        ? $response->response_data 
+                                                        : json_decode($response->response_data, true);
+                                                    
+                                                    if (isset($responseData['answer'])) {
+                                                        $answer = $responseData['answer'];
+                                                        if (is_array($answer) && !empty($answer)) {
+                                                            $answer = $answer[0];
+                                                        }
+                                                        if (is_numeric($answer)) {
+                                                            $selectedOptionId = (int)$answer;
+                                                            $selectedOption = $question->options->find($selectedOptionId);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // إذا لم يُوجد، البحث من response_text (إذا كان رقم)
+                                                if (!$selectedOption && $response->response_text && is_numeric($response->response_text)) {
+                                                    $selectedOptionId = (int)$response->response_text;
+                                                    $selectedOption = $question->options->find($selectedOptionId);
+                                                }
+                                            @endphp
+                                            
+                                            @if($selectedOption)
+                                                {{-- عرض نص الخيار إذا وُجد --}}
+                                                <span class="badge {{ $selectedOption->is_correct ? 'bg-success' : 'bg-danger' }} text-white fs-14 px-3 py-2">
+                                                    {{ $selectedOption->option_text }}
+                                                    @if($selectedOption->is_correct)
+                                                        <i class="fas fa-check-circle ms-2"></i>
+                                                    @else
+                                                        <i class="fas fa-times-circle ms-2"></i>
+                                                    @endif
+                                                </span>
+                                            @elseif($selectedOptionId)
+                                                {{-- إذا وُجد option_id لكن الخيار غير موجود في قاعدة البيانات --}}
+                                                <div class="alert alert-warning mb-0">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    <strong>إجابتك:</strong> تم اختيار الخيار رقم {{ $selectedOptionId }}، لكن نص الخيار غير متوفر في قاعدة البيانات.
+                                                    <br>
+                                                    <small class="text-muted">يرجى التواصل مع المدير لإصلاح هذه المشكلة.</small>
+                                                </div>
+                                            @else
+                                                {{-- إذا لم تكن هناك إجابة --}}
+                                                <span class="text-muted">لم يتم الإجابة</span>
+                                            @endif
+                                        @elseif($response->response_text && $question->questionType->name != 'multiple_choice_single')
                                             {{ $response->response_text }}
-                                        @elseif($response->selected_option_ids)
+                                        @elseif($response->selected_option_ids && $question->questionType->name != 'multiple_choice_single')
                                             <ul class="mb-0">
                                                 @foreach($question->options as $option)
                                                     @if(in_array($option->id, $response->selected_option_ids))
