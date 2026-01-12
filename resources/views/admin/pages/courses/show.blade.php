@@ -12,12 +12,13 @@
 
     /* Group selection items in restrictions modal */
     .group-item-selectable {
-        padding: 1rem;
-        margin-bottom: 0;
+        padding: 0.75rem 1rem;
+        margin: 0;
         border-bottom: 1px solid #e9ecef;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background-color 0.2s ease;
         width: 100%;
+        display: block;
     }
 
     .group-item-selectable:last-child {
@@ -32,12 +33,21 @@
         background-color: #e9ecef;
     }
 
+    .group-item-selectable .d-flex {
+        width: 100%;
+        align-items: center;
+    }
+
     .group-item-selectable .form-check-input {
-        margin-top: 0.25rem;
+        margin-top: 0;
+        cursor: pointer;
+        flex-shrink: 0;
     }
 
     .group-item-selectable .form-check-label {
         user-select: none;
+        cursor: pointer;
+        flex-grow: 1;
     }
     
     /* Course Header Card */
@@ -1399,28 +1409,44 @@
                         const groupItem = document.createElement('div');
                         groupItem.className = 'group-item-selectable';
                         groupItem.setAttribute('data-group-id', groupId);
-                        groupItem.innerHTML = `
-                            <div class="d-flex align-items-center w-100">
-                                <input class="form-check-input me-3" type="checkbox" 
-                                       value="${groupId}" id="group_${groupId}" 
-                                       ${isChecked ? 'checked' : ''}
-                                       style="flex-shrink: 0;">
-                                <label class="form-check-label flex-grow-1 mb-0" for="group_${groupId}" style="cursor: pointer;">
-                                    <strong>${group.name}</strong>
-                                    ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
-                                </label>
-                            </div>
+                        
+                        const checkboxId = `group_${groupId}`;
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'form-check-input me-3';
+                        checkbox.value = groupId;
+                        checkbox.id = checkboxId;
+                        checkbox.checked = isChecked;
+                        checkbox.style.flexShrink = '0';
+                        
+                        const label = document.createElement('label');
+                        label.className = 'form-check-label flex-grow-1 mb-0';
+                        label.setAttribute('for', checkboxId);
+                        label.style.cursor = 'pointer';
+                        label.innerHTML = `
+                            <strong>${group.name}</strong>
+                            ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
                         `;
                         
-                        // Make entire item clickable
+                        const flexContainer = document.createElement('div');
+                        flexContainer.className = 'd-flex align-items-center w-100';
+                        flexContainer.appendChild(checkbox);
+                        flexContainer.appendChild(label);
+                        
+                        groupItem.appendChild(flexContainer);
+                        
+                        // Make entire item clickable (except checkbox itself)
                         groupItem.addEventListener('click', function(e) {
                             // Don't toggle if clicking directly on checkbox
-                            if (e.target.type !== 'checkbox') {
-                                const checkbox = this.querySelector('input[type="checkbox"]');
-                                if (checkbox) {
-                                    checkbox.checked = !checkbox.checked;
-                                    checkbox.dispatchEvent(new Event('change'));
-                                }
+                            // Label click is handled by browser automatically
+                            if (e.target === checkbox) {
+                                return; // Let browser handle checkbox click
+                            }
+                            // If clicking on the item (not checkbox or label), toggle checkbox
+                            if (e.target === groupItem || e.target === flexContainer) {
+                                e.preventDefault();
+                                checkbox.checked = !checkbox.checked;
+                                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
                             }
                         });
                         
