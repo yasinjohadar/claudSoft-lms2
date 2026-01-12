@@ -273,10 +273,23 @@ class QuizAttemptController extends Controller
                     
                     $question = $quizQuestion->question;
                     
-                    // تأكد من تحميل options إذا لم تكن محملة
+                    // تأكد من تحميل options بشكل صريح مع الترتيب
                     if (!$question->relationLoaded('options')) {
-                        $question->load('options');
+                        $question->load(['options' => function($query) {
+                            $query->orderBy('option_order', 'asc');
+                        }]);
+                    } else {
+                        // إذا كانت محملة، تأكد من الترتيب
+                        $question->setRelation('options', $question->options->sortBy('option_order')->values());
                     }
+                    
+                    // Logging للتشخيص
+                    \Log::debug('Question options loaded (fallback)', [
+                        'question_id' => $question->id,
+                        'question_type' => $question->questionType->name ?? 'unknown',
+                        'options_count' => $question->options->count(),
+                        'options_ids' => $question->options->pluck('id')->toArray(),
+                    ]);
                     
                     $question->setRelation('pivot', (object)[
                         'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
@@ -305,10 +318,23 @@ class QuizAttemptController extends Controller
                 // Get the question with pivot data
                 $question = $quizQuestion->question;
                 
-                // تأكد من تحميل options إذا لم تكن محملة
+                // تأكد من تحميل options بشكل صريح مع الترتيب
                 if (!$question->relationLoaded('options')) {
-                    $question->load('options');
+                    $question->load(['options' => function($query) {
+                        $query->orderBy('option_order', 'asc');
+                    }]);
+                } else {
+                    // إذا كانت محملة، تأكد من الترتيب
+                    $question->setRelation('options', $question->options->sortBy('option_order')->values());
                 }
+                
+                // Logging للتشخيص
+                \Log::debug('Question options loaded', [
+                    'question_id' => $question->id,
+                    'question_type' => $question->questionType->name ?? 'unknown',
+                    'options_count' => $question->options->count(),
+                    'options_ids' => $question->options->pluck('id')->toArray(),
+                ]);
                 
                 // Add pivot data for grade
                 $question->setRelation('pivot', (object)[

@@ -274,37 +274,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                            @foreach($question->options as $option)
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
-                                               type="radio"
-                                                           name="question_{{ $question->id }}"
-                                                           id="option_{{ $option->id }}"
-                                                           value="{{ $option->id }}"
-                                               data-question-id="{{ $question->id }}"
-                                               {{ $savedAnswer == $option->id ? 'checked' : '' }}>
-                                                    <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {!! $option->option_text !!}
-                                                    </label>
-                                                </div>
-                                            @endforeach
+                                    @if($question->options && $question->options->count() > 0)
+                                        @foreach($question->options as $option)
+                                            <div class="form-check mb-3 p-3 border rounded hover-shadow">
+                                                <input class="form-check-input answer-input"
+                                                       type="radio"
+                                                       name="question_{{ $question->id }}"
+                                                       id="option_{{ $option->id }}"
+                                                       value="{{ $option->id }}"
+                                                       data-question-id="{{ $question->id }}"
+                                                       {{ $savedAnswer == $option->id ? 'checked' : '' }}>
+                                                <label class="form-check-label w-100" for="option_{{ $option->id }}">
+                                                    {!! $option->option_text !!}
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
+                                        </div>
+                                    @endif
                                     @break
 
                                 @case('multiple_choice_multiple')
-                                            @foreach($question->options as $option)
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
-                                               type="checkbox"
-                                                           name="question_{{ $question->id }}[]"
-                                                           id="option_{{ $option->id }}"
-                                                           value="{{ $option->id }}"
-                                               data-question-id="{{ $question->id }}"
-                                               {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
-                                                    <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {!! $option->option_text !!}
-                                                    </label>
-                                                </div>
-                                            @endforeach
+                                    @if($question->options && $question->options->count() > 0)
+                                        @foreach($question->options as $option)
+                                            <div class="form-check mb-3 p-3 border rounded hover-shadow">
+                                                <input class="form-check-input answer-input"
+                                                       type="checkbox"
+                                                       name="question_{{ $question->id }}[]"
+                                                       id="option_{{ $option->id }}"
+                                                       value="{{ $option->id }}"
+                                                       data-question-id="{{ $question->id }}"
+                                                       {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
+                                                <label class="form-check-label w-100" for="option_{{ $option->id }}">
+                                                    {!! $option->option_text !!}
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
+                                        </div>
+                                    @endif
                                     @break
 
                                 @case('true_false')
@@ -647,21 +661,24 @@ document.addEventListener('DOMContentLoaded', function() {
                             <button type="button"
                                     class="btn btn-outline-secondary"
                                     onclick="previousQuestion()"
-                                    {{ $index === 0 ? 'disabled' : '' }}>
+                                    {{ $index === 0 ? 'disabled' : '' }}
+                                    style="display: block !important;">
                                 <i class="fas fa-arrow-right me-2"></i>السابق
                             </button>
 
-                            @if($loop->last)
+                            @if(!$loop->last)
                                 <button type="button"
-                                        class="btn btn-success btn-lg"
-                                        onclick="showSubmitConfirmation()">
-                                    <i class="fas fa-check me-2"></i>إرسال الاختبار
+                                        class="btn btn-primary"
+                                        onclick="nextQuestion()"
+                                        style="display: block !important;">
+                                    التالي<i class="fas fa-arrow-left ms-2"></i>
                                 </button>
                             @else
                                 <button type="button"
-                                        class="btn btn-primary"
-                                        onclick="nextQuestion()">
-                                    التالي<i class="fas fa-arrow-left ms-2"></i>
+                                        class="btn btn-success btn-lg"
+                                        onclick="showSubmitConfirmation()"
+                                        style="display: block !important;">
+                                    <i class="fas fa-check me-2"></i>إرسال الاختبار
                                 </button>
                             @endif
                         </div>
