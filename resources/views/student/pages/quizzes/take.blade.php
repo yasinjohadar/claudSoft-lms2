@@ -13,6 +13,11 @@ var remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
 var timerInterval = null;
 var isSubmitting = false;
 
+// Ensure remainingTimeSeconds is an integer
+if (remainingTimeSeconds !== null) {
+    remainingTimeSeconds = Math.floor(remainingTimeSeconds);
+}
+
 // Navigation functions - defined globally for onclick handlers
 function goToQuestion(index) {
     console.log('goToQuestion called with index:', index);
@@ -57,6 +62,47 @@ function showSubmitConfirmation() {
     const submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
     submitModal.show();
 }
+
+// Start timer when DOM is ready - using vanilla JS
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOMContentLoaded (head-scripts) ===');
+    console.log('remainingTimeSeconds:', remainingTimeSeconds);
+    
+    if (remainingTimeSeconds !== null && remainingTimeSeconds > 0 && !timerInterval) {
+        console.log('Starting timer from head-scripts...');
+        
+        // Simple timer using vanilla JS
+        function updateTimerDisplaySimple() {
+            var minutes = Math.floor(remainingTimeSeconds / 60);
+            var seconds = Math.floor(remainingTimeSeconds % 60);
+            var timerMinutesEl = document.getElementById('timer-minutes');
+            var timerSecondsEl = document.getElementById('timer-seconds');
+            
+            if (timerMinutesEl && timerSecondsEl) {
+                timerMinutesEl.textContent = String(minutes).padStart(2, '0');
+                timerSecondsEl.textContent = String(seconds).padStart(2, '0');
+            }
+        }
+        
+        updateTimerDisplaySimple();
+        
+        timerInterval = setInterval(function() {
+            remainingTimeSeconds--;
+            updateTimerDisplaySimple();
+            
+            if (remainingTimeSeconds <= 0) {
+                clearInterval(timerInterval);
+                console.log('Time is up!');
+                // Submit quiz automatically
+                if (typeof submitQuiz === 'function') {
+                    submitQuiz(true);
+                }
+            }
+        }, 1000);
+        
+        console.log('Timer started successfully from head-scripts');
+    }
+});
 </script>
 @endpush
 
