@@ -2,6 +2,61 @@
 
 @section('page-title', 'حل الاختبار - ' . $attempt->quiz->title)
 
+@push('styles')
+<script>
+// Global variables - will be set when DOM loads
+var attemptId, totalQuestions, currentQuestionIndex = 0, answeredQuestions, remainingTimeSeconds, timerInterval, isSubmitting = false;
+
+// Navigation functions - defined globally for onclick handlers
+function goToQuestion(index) {
+    console.log('goToQuestion called with index:', index);
+    if (typeof totalQuestions === 'undefined' || index < 0 || index >= totalQuestions) {
+        console.error('Invalid question index or totalQuestions not set:', index, totalQuestions);
+        return;
+    }
+    
+    if (typeof $ !== 'undefined') {
+        $('.question-container').hide();
+        $(`.question-container[data-question-index="${index}"]`).show();
+    } else {
+        document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+        const target = document.querySelector(`.question-container[data-question-index="${index}"]`);
+        if (target) target.style.display = 'block';
+    }
+    currentQuestionIndex = index;
+    if (typeof updateQuestionNavigation === 'function') {
+        updateQuestionNavigation();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextQuestion() {
+    console.log('nextQuestion called, current:', currentQuestionIndex, 'total:', totalQuestions);
+    if (currentQuestionIndex < totalQuestions - 1) {
+        goToQuestion(currentQuestionIndex + 1);
+    }
+}
+
+function previousQuestion() {
+    console.log('previousQuestion called, current:', currentQuestionIndex);
+    if (currentQuestionIndex > 0) {
+        goToQuestion(currentQuestionIndex - 1);
+    }
+}
+
+function showSubmitConfirmation() {
+    if (typeof answeredQuestions !== 'undefined' && answeredQuestions) {
+        const answeredCount = answeredQuestions.size;
+        const unansweredCount = totalQuestions - answeredCount;
+        document.getElementById('submit-answered-count').textContent = answeredCount;
+        document.getElementById('submit-unanswered-count').textContent = unansweredCount;
+    }
+    const submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
+    submitModal.show();
+}
+</script>
+@endpush
+
 @section('content')
 <!-- Start::app-content -->
     <div class="main-content app-content">
@@ -798,117 +853,70 @@
 
 @push('scripts')
 <script>
-const attemptId = {{ $attempt->id }};
-    const totalQuestions = {{ $questions->count() }};
-    let currentQuestionIndex = 0;
-let answeredQuestions = new Set();
-    let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
-    
-    // Debug logging
-    console.log('=== Quiz Page Initialization ===');
-    console.log('Attempt ID:', attemptId);
-    console.log('Total Questions:', totalQuestions);
-    console.log('Remaining Time (seconds):', remainingTimeSeconds);
-    console.log('Questions Count:', {{ $questions->count() }});
-    
-    // Ensure remainingTimeSeconds is an integer
-    if (remainingTimeSeconds !== null) {
-        remainingTimeSeconds = Math.floor(remainingTimeSeconds);
-        console.log('Remaining Time (formatted):', remainingTimeSeconds, 'seconds');
-    } else {
-        console.warn('Remaining time is null - timer will not start');
-    }
-    
-    let timerInterval = null;
-    let isSubmitting = false; // Track if quiz is being submitted
+// Initialize global variables with actual values
+attemptId = {{ $attempt->id }};
+totalQuestions = {{ $questions->count() }};
+currentQuestionIndex = 0;
+answeredQuestions = new Set();
+remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
 
-    // Navigation functions - Define in global scope for onclick handlers
-    function goToQuestion(index) {
-        console.log('goToQuestion called with index:', index);
-        console.log('Total questions:', totalQuestions);
-        console.log('Current index:', currentQuestionIndex);
-        
-        if (index < 0 || index >= totalQuestions) {
-            console.error('Invalid question index:', index);
+// Debug logging
+console.log('=== Quiz Page Initialization ===');
+console.log('Attempt ID:', attemptId);
+console.log('Total Questions:', totalQuestions);
+console.log('Remaining Time (seconds):', remainingTimeSeconds);
+
+// Ensure remainingTimeSeconds is an integer
+if (remainingTimeSeconds !== null) {
+    remainingTimeSeconds = Math.floor(remainingTimeSeconds);
+    console.log('Remaining Time (formatted):', remainingTimeSeconds, 'seconds');
+} else {
+    console.warn('Remaining time is null - timer will not start');
+}
+
+// Initialize on page load
+$(document).ready(function() {
+    console.log('=== Document Ready ===');
+    console.log('jQuery version:', $.fn.jquery);
+    console.log('totalQuestions:', totalQuestions);
+    console.log('remainingTimeSeconds:', remainingTimeSeconds);
+    console.log('currentQuestionIndex:', currentQuestionIndex);
+    
+    try {
+        // Check if questions exist
+        if ($('.question-container').length === 0) {
+            console.error('No question containers found!');
             return;
         }
         
-        try {
-            $('.question-container').hide();
-            const targetQuestion = $(`.question-container[data-question-index="${index}"]`);
-            
-            if (targetQuestion.length === 0) {
-                console.error('Question container not found for index:', index);
-                return;
-            }
-            
-            targetQuestion.show();
-            currentQuestionIndex = index;
-            updateQuestionNavigation();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            console.log('Successfully navigated to question', index + 1);
-        } catch (error) {
-            console.error('Error in goToQuestion:', error);
-        }
-    }
-
-    function nextQuestion() {
-        console.log('nextQuestion called, current index:', currentQuestionIndex);
-        if (currentQuestionIndex < totalQuestions - 1) {
-            goToQuestion(currentQuestionIndex + 1);
-        } else {
-            console.warn('Already at last question');
-        }
-    }
-
-    function previousQuestion() {
-        console.log('previousQuestion called, current index:', currentQuestionIndex);
-        if (currentQuestionIndex > 0) {
-            goToQuestion(currentQuestionIndex - 1);
-        } else {
-            console.warn('Already at first question');
-        }
-    }
-
-    // Expose functions to window object for global access
-    window.goToQuestion = goToQuestion;
-    window.nextQuestion = nextQuestion;
-    window.previousQuestion = previousQuestion;
-
-    // Initialize on page load
-$(document).ready(function() {
-        console.log('Document ready - initializing quiz...');
+        console.log('Question containers found:', $('.question-container').length);
         
-        try {
-            // Check if questions exist
-            if ($('.question-container').length === 0) {
-                console.error('No question containers found!');
-                return;
-            }
-            
-            console.log('Question containers found:', $('.question-container').length);
-            
-            // Check if timer container exists
-            if ($('#timer-container').length > 0) {
-                console.log('Timer container found');
-            } else {
-                console.warn('Timer container not found in DOM');
-            }
-            
-            initializeAnswers();
-            updateProgress();
-            updateQuestionNavigation();
-            
-            if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
-                console.log('Starting timer with', remainingTimeSeconds, 'seconds');
-                startTimer();
-            } else {
-                console.warn('Timer not started - remainingTimeSeconds is', remainingTimeSeconds);
-            }
-        } catch (error) {
-            console.error('Error initializing quiz:', error);
+        // Check if timer container exists
+        if ($('#timer-container').length > 0) {
+            console.log('Timer container found');
+        } else {
+            console.warn('Timer container not found in DOM');
         }
+        
+        console.log('Calling initializeAnswers...');
+        initializeAnswers();
+        console.log('Calling updateProgress...');
+        updateProgress();
+        console.log('Calling updateQuestionNavigation...');
+        updateQuestionNavigation();
+        
+        if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
+            console.log('Starting timer with', remainingTimeSeconds, 'seconds');
+            startTimer();
+        } else {
+            console.warn('Timer not started - remainingTimeSeconds is', remainingTimeSeconds);
+        }
+        
+        console.log('=== Initialization Complete ===');
+    } catch (error) {
+        console.error('Error initializing quiz:', error);
+        console.error('Error stack:', error.stack);
+    }
 
         // Auto-save answers
         $('.answer-input').on('change', function() {
