@@ -259,6 +259,95 @@ $(document).ready(function() {
 
     if (!showOptions) {
         $('#options-section').hide();
+    } else {
+        // إذا كان السؤال من نوع true_false وليس لديه خيارات، أضف خيارين تلقائياً
+        if (selectedType.includes('صح وخطأ') && $('#options-container .option-item').length === 0) {
+            // إضافة خيار "صح"
+            optionCount++;
+            const trueOptionHtml = `
+                <div class="option-item mb-3 p-3 border rounded">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">نص الخيار 1</label>
+                            <input type="text" name="options[${optionCount}][option_text]"
+                                   class="form-control" placeholder="أدخل نص الخيار..." value="صح" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الترتيب</label>
+                            <input type="number" name="options[${optionCount}][option_order]"
+                                   class="form-control" value="1" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الوزن</label>
+                            <input type="number" name="options[${optionCount}][score_weight]"
+                                   class="form-control" value="1" min="0" max="1" step="0.1">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">ملاحظات (اختياري)</label>
+                            <input type="text" name="options[${optionCount}][feedback]"
+                                   class="form-control" placeholder="ملاحظات عند اختيار هذا الخيار...">
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox"
+                                       name="options[${optionCount}][is_correct]"
+                                       id="correct_${optionCount}" value="1">
+                                <label class="form-check-label" for="correct_${optionCount}">
+                                    <i class="fas fa-check-circle text-success me-1"></i>إجابة صحيحة
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger remove-option-btn mt-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#options-container').append(trueOptionHtml);
+            
+            // إضافة خيار "خطأ"
+            optionCount++;
+            const falseOptionHtml = `
+                <div class="option-item mb-3 p-3 border rounded">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">نص الخيار 2</label>
+                            <input type="text" name="options[${optionCount}][option_text]"
+                                   class="form-control" placeholder="أدخل نص الخيار..." value="خطأ" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الترتيب</label>
+                            <input type="number" name="options[${optionCount}][option_order]"
+                                   class="form-control" value="2" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الوزن</label>
+                            <input type="number" name="options[${optionCount}][score_weight]"
+                                   class="form-control" value="0" min="0" max="1" step="0.1">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">ملاحظات (اختياري)</label>
+                            <input type="text" name="options[${optionCount}][feedback]"
+                                   class="form-control" placeholder="ملاحظات عند اختيار هذا الخيار...">
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox"
+                                       name="options[${optionCount}][is_correct]"
+                                       id="correct_${optionCount}" value="1">
+                                <label class="form-check-label" for="correct_${optionCount}">
+                                    <i class="fas fa-check-circle text-success me-1"></i>إجابة صحيحة
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger remove-option-btn mt-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#options-container').append(falseOptionHtml);
+        }
     }
 
     // Show/hide options based on question type
@@ -276,8 +365,96 @@ $(document).ready(function() {
         if (showOptions) {
             $('#options-section').show();
             if ($('#options-container .option-item').length === 0) {
-                addOption(); // Add first option
-                addOption(); // Add second option
+                if (selectedType.includes('صح وخطأ')) {
+                    // إضافة خيارين تلقائياً لـ true_false
+                    optionCount++;
+                    const trueOptionHtml = `
+                        <div class="option-item mb-3 p-3 border rounded">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">نص الخيار 1</label>
+                                    <input type="text" name="options[${optionCount}][option_text]"
+                                           class="form-control" placeholder="أدخل نص الخيار..." value="صح" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">الترتيب</label>
+                                    <input type="number" name="options[${optionCount}][option_order]"
+                                           class="form-control" value="1" min="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">الوزن</label>
+                                    <input type="number" name="options[${optionCount}][score_weight]"
+                                           class="form-control" value="1" min="0" max="1" step="0.1">
+                                </div>
+                                <div class="col-md-9">
+                                    <label class="form-label">ملاحظات (اختياري)</label>
+                                    <input type="text" name="options[${optionCount}][feedback]"
+                                           class="form-control" placeholder="ملاحظات عند اختيار هذا الخيار...">
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="options[${optionCount}][is_correct]"
+                                               id="correct_${optionCount}" value="1">
+                                        <label class="form-check-label" for="correct_${optionCount}">
+                                            <i class="fas fa-check-circle text-success me-1"></i>إجابة صحيحة
+                                        </label>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-danger remove-option-btn mt-2">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#options-container').append(trueOptionHtml);
+                    
+                    // إضافة خيار "خطأ"
+                    optionCount++;
+                    const falseOptionHtml = `
+                        <div class="option-item mb-3 p-3 border rounded">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">نص الخيار 2</label>
+                                    <input type="text" name="options[${optionCount}][option_text]"
+                                           class="form-control" placeholder="أدخل نص الخيار..." value="خطأ" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">الترتيب</label>
+                                    <input type="number" name="options[${optionCount}][option_order]"
+                                           class="form-control" value="2" min="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">الوزن</label>
+                                    <input type="number" name="options[${optionCount}][score_weight]"
+                                           class="form-control" value="0" min="0" max="1" step="0.1">
+                                </div>
+                                <div class="col-md-9">
+                                    <label class="form-label">ملاحظات (اختياري)</label>
+                                    <input type="text" name="options[${optionCount}][feedback]"
+                                           class="form-control" placeholder="ملاحظات عند اختيار هذا الخيار...">
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="options[${optionCount}][is_correct]"
+                                               id="correct_${optionCount}" value="1">
+                                        <label class="form-check-label" for="correct_${optionCount}">
+                                            <i class="fas fa-check-circle text-success me-1"></i>إجابة صحيحة
+                                        </label>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-danger remove-option-btn mt-2">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#options-container').append(falseOptionHtml);
+                } else {
+                    addOption(); // Add first option
+                    addOption(); // Add second option
+                }
             }
         } else {
             $('#options-section').hide();

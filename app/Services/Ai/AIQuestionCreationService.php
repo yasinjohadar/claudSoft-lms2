@@ -258,7 +258,7 @@ class AIQuestionCreationService
                 $question->programmingLanguages()->attach($programmingLanguage->id);
 
                 // إضافة الخيارات إذا كانت موجودة
-                if (isset($questionData['options']) && is_array($questionData['options'])) {
+                if (isset($questionData['options']) && is_array($questionData['options']) && !empty($questionData['options'])) {
                     $correctAnswer = $questionData['correct_answer'] ?? '';
                     foreach ($questionData['options'] as $index => $optionText) {
                         $isCorrect = $this->isOptionCorrect($optionText, $correctAnswer);
@@ -271,6 +271,25 @@ class AIQuestionCreationService
                             'grade_percentage' => $isCorrect ? 100 : 0,
                         ]);
                     }
+                } elseif ($questionTypeId && $questionTypeId == QuestionType::where('name', 'true_false')->first()?->id) {
+                    // إذا كان السؤال من نوع true_false ولم تكن هناك خيارات، أنشئ خيارين افتراضيين
+                    $correctAnswer = $questionData['correct_answer'] ?? '';
+                    
+                    QuestionOption::create([
+                        'question_id' => $question->id,
+                        'option_text' => 'صح',
+                        'is_correct' => $this->isOptionCorrect('صح', $correctAnswer),
+                        'option_order' => 1,
+                        'grade_percentage' => 0,
+                    ]);
+                    
+                    QuestionOption::create([
+                        'question_id' => $question->id,
+                        'option_text' => 'خطأ',
+                        'is_correct' => $this->isOptionCorrect('خطأ', $correctAnswer),
+                        'option_order' => 2,
+                        'grade_percentage' => 0,
+                    ]);
                 }
 
                 $savedQuestions->push($question);
@@ -331,6 +350,20 @@ class AIQuestionCreationService
         if (is_array($correctAnswer)) {
             return in_array(trim($optionText), array_map('trim', $correctAnswer));
         }
+        
+        $optionTextNormalized = strtolower(trim($optionText));
+        $correctAnswerNormalized = strtolower(trim($correctAnswer));
+        
+        // دعم أشكال مختلفة لـ true/false
+        $trueVariants = ['صح', 'true', '1', 'صحيح', 'نعم', 'yes'];
+        $falseVariants = ['خطأ', 'false', '0', 'خاطئ', 'لا', 'no'];
+        
+        if (in_array($optionTextNormalized, $trueVariants)) {
+            return in_array($correctAnswerNormalized, $trueVariants);
+        } elseif (in_array($optionTextNormalized, $falseVariants)) {
+            return in_array($correctAnswerNormalized, $falseVariants);
+        }
+        
         return trim($optionText) === trim($correctAnswer);
     }
 
