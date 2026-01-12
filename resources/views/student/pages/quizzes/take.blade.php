@@ -321,6 +321,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </script>
                                         {{-- #endregion --}}
                                         @foreach($question->options as $option)
+                                            {{-- #region agent log --}}
+                                            <script>
+                                            console.log('DEBUG: Rendering option', {
+                                                question_id: {{ $question->id }},
+                                                option_id: {{ $option->id }},
+                                                option_text: '{{ addslashes($option->option_text ?? '') }}',
+                                                option_text_length: {{ strlen($option->option_text ?? '') }},
+                                                option_text_empty: {{ empty($option->option_text) ? 'true' : 'false' }},
+                                                hypothesisId: 'B'
+                                            });
+                                            </script>
+                                            {{-- #endregion --}}
                                             <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                                 <input class="form-check-input answer-input"
                                                        type="checkbox"
@@ -330,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        data-question-id="{{ $question->id }}"
                                                        {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
                                                 <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                                    {!! $option->option_text !!}
+                                                    {!! $option->option_text ?? '<span class="text-muted">(نص الخيار غير متوفر)</span>' !!}
                                                 </label>
                                             </div>
                                         @endforeach

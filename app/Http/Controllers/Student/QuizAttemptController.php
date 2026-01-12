@@ -273,6 +273,16 @@ class QuizAttemptController extends Controller
                     
                     $question = $quizQuestion->question;
                     
+                    // #region agent log
+                    \Log::info('DEBUG: Before loading options (fallback)', [
+                        'question_id' => $question->id,
+                        'question_type' => $question->questionType->name ?? 'unknown',
+                        'options_relation_loaded' => $question->relationLoaded('options'),
+                        'options_count_before' => $question->options ? $question->options->count() : 0,
+                        'hypothesisId' => 'A'
+                    ]);
+                    // #endregion
+                    
                     // تأكد من تحميل options بشكل صريح مع الترتيب
                     if (!$question->relationLoaded('options')) {
                         $question->load(['options' => function($query) {
@@ -283,13 +293,16 @@ class QuizAttemptController extends Controller
                         $question->setRelation('options', $question->options->sortBy('option_order')->values());
                     }
                     
-                    // Logging للتشخيص
-                    \Log::debug('Question options loaded (fallback)', [
+                    // #region agent log
+                    \Log::info('DEBUG: After loading options (fallback)', [
                         'question_id' => $question->id,
-                        'question_type' => $question->questionType->name ?? 'unknown',
-                        'options_count' => $question->options->count(),
-                        'options_ids' => $question->options->pluck('id')->toArray(),
+                        'options_relation_loaded' => $question->relationLoaded('options'),
+                        'options_count_after' => $question->options ? $question->options->count() : 0,
+                        'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
+                        'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
+                        'hypothesisId' => 'A'
                     ]);
+                    // #endregion
                     
                     $question->setRelation('pivot', (object)[
                         'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
