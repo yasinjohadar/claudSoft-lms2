@@ -821,30 +821,35 @@ let answeredQuestions = new Set();
 $(document).ready(function() {
         console.log('Document ready - initializing quiz...');
         
-        // Check if timer container exists
-        if ($('#timer-container').length > 0) {
-            console.log('Timer container found');
-        } else {
-            console.warn('Timer container not found in DOM');
-        }
-        
-        // Check if questions exist
-        if ($('.question-container').length > 0) {
+        try {
+            // Check if questions exist
+            if ($('.question-container').length === 0) {
+                console.error('No question containers found!');
+                return;
+            }
+            
             console.log('Question containers found:', $('.question-container').length);
-        } else {
-            console.error('No question containers found in DOM!');
+            
+            // Check if timer container exists
+            if ($('#timer-container').length > 0) {
+                console.log('Timer container found');
+            } else {
+                console.warn('Timer container not found in DOM');
+            }
+            
+            initializeAnswers();
+            updateProgress();
+            updateQuestionNavigation();
+            
+            if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
+                console.log('Starting timer with', remainingTimeSeconds, 'seconds');
+                startTimer();
+            } else {
+                console.warn('Timer not started - remainingTimeSeconds is', remainingTimeSeconds);
+            }
+        } catch (error) {
+            console.error('Error initializing quiz:', error);
         }
-        
-        initializeAnswers();
-    updateProgress();
-        updateQuestionNavigation();
-
-        @if($remainingTime !== null)
-            console.log('Starting timer...');
-            startTimer();
-        @else
-            console.warn('Timer not started - remainingTime is null');
-        @endif
 
         // Auto-save answers
         $('.answer-input').on('change', function() {
@@ -1288,19 +1293,25 @@ $(document).ready(function() {
         console.log('startTimer() called');
         console.log('remainingTimeSeconds:', remainingTimeSeconds);
         
-        if (remainingTimeSeconds === null || remainingTimeSeconds === undefined) {
-            console.error('Cannot start timer - remainingTimeSeconds is null/undefined');
+        if (remainingTimeSeconds === null || remainingTimeSeconds === undefined || remainingTimeSeconds <= 0) {
+            console.error('Cannot start timer - remainingTimeSeconds is invalid:', remainingTimeSeconds);
             return;
         }
         
         // Check if timer elements exist
-        if ($('#timer-container').length === 0) {
+        const timerContainer = $('#timer-container');
+        const timerMinutes = $('#timer-minutes');
+        const timerSeconds = $('#timer-seconds');
+        
+        if (timerContainer.length === 0) {
             console.error('Timer container not found in DOM');
             return;
         }
         
-        if ($('#timer-minutes').length === 0 || $('#timer-seconds').length === 0) {
+        if (timerMinutes.length === 0 || timerSeconds.length === 0) {
             console.error('Timer display elements not found in DOM');
+            console.log('timerMinutes found:', timerMinutes.length);
+            console.log('timerSeconds found:', timerSeconds.length);
             return;
         }
 
@@ -1493,29 +1504,61 @@ $(document).ready(function() {
 
     // Update question navigation buttons
     function updateQuestionNavigation() {
-        $('.question-nav-btn').each(function() {
-            const questionId = parseInt($(this).data('question-id'));
-            const questionIndex = $(this).data('question-index');
+        try {
+            console.log('updateQuestionNavigation called');
+            console.log('Current question index:', currentQuestionIndex);
+            console.log('Answered questions:', Array.from(answeredQuestions));
+            
+            $('.question-nav-btn').each(function() {
+                const questionId = parseInt($(this).data('question-id'));
+                const questionIndex = $(this).data('question-index');
 
-            $(this).removeClass('answered active');
+                $(this).removeClass('answered active');
 
-            if (answeredQuestions.has(questionId)) {
-                $(this).addClass('answered');
-            }
+                if (answeredQuestions.has(questionId)) {
+                    $(this).addClass('answered');
+                }
 
-            if (questionIndex === currentQuestionIndex) {
-                $(this).addClass('active');
-            }
-        });
+                if (questionIndex === currentQuestionIndex) {
+                    $(this).addClass('active');
+                }
+            });
+            
+            console.log('Question navigation updated successfully');
+        } catch (error) {
+            console.error('Error in updateQuestionNavigation:', error);
+        }
     }
 
     // Navigation functions
     function goToQuestion(index) {
-        $('.question-container').hide();
-        $(`.question-container[data-question-index="${index}"]`).show();
-        currentQuestionIndex = index;
-        updateQuestionNavigation();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        console.log('goToQuestion called with index:', index);
+        console.log('Total questions:', totalQuestions);
+        console.log('Current index:', currentQuestionIndex);
+        
+        if (index < 0 || index >= totalQuestions) {
+            console.error('Invalid question index:', index);
+            return;
+        }
+        
+        try {
+            $('.question-container').hide();
+            const targetQuestion = $(`.question-container[data-question-index="${index}"]`);
+            
+            if (targetQuestion.length === 0) {
+                console.error('Question container not found for index:', index);
+                return;
+            }
+            
+            targetQuestion.show();
+            currentQuestionIndex = index;
+            updateQuestionNavigation();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            console.log('Successfully navigated to question', index + 1);
+        } catch (error) {
+            console.error('Error in goToQuestion:', error);
+        }
     }
 
     function nextQuestion() {
