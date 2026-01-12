@@ -438,7 +438,7 @@
                                 </div>
 
                                 <!-- Correct Answer (if allowed) -->
-                                @if($attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay', 'short_answer']))
+                                @if($attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay']))
                                     <div class="mb-3">
                                         <p class="text-success mb-2">
                                             <strong><i class="fas fa-lightbulb me-1"></i>الإجابة الصحيحة:</strong>
@@ -446,8 +446,20 @@
                                         <div class="p-3 bg-success-transparent rounded border border-success">
                                             @if($question->questionType->name == 'multiple_choice_single')
                                                 @php
-                                                    $correctOptions = $question->options->where('is_correct', true);
+                                                    $correctOptions = collect();
+                                                    
+                                                    if ($question->options && $question->options->count() > 0) {
+                                                        // البحث بطرق متعددة
+                                                        $correctOptions = $question->options->where('is_correct', true);
+                                                        
+                                                        if ($correctOptions->isEmpty()) {
+                                                            $correctOptions = $question->options->filter(function($option) {
+                                                                return $option->is_correct === 1 || $option->is_correct === '1';
+                                                            });
+                                                        }
+                                                    }
                                                 @endphp
+                                                
                                                 @if($correctOptions->isNotEmpty())
                                                     <ul class="mb-0">
                                                         @foreach($correctOptions as $option)
@@ -455,7 +467,10 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا توجد خيارات صحيحة محددة لهذا السؤال.</small>
+                                                    </div>
                                                 @endif
                                             @elseif($question->questionType->name == 'multiple_choice_multiple')
                                                 @php
@@ -540,33 +555,54 @@
                                             @elseif($question->questionType->name == 'fill_blanks')
                                                 @php
                                                     $correctAnswers = $question->metadata['correct_answers'] ?? [];
+                                                    
+                                                    // محاولة بديلة: البحث من options
+                                                    if (empty($correctAnswers) && $question->options && $question->options->count() > 0) {
+                                                        $correctOptions = $question->options->where('is_correct', true);
+                                                        if ($correctOptions->isNotEmpty()) {
+                                                            $correctAnswers = $correctOptions->pluck('option_text')->toArray();
+                                                        }
+                                                    }
+                                                    
                                                     $questionText = $question->question_text;
                                                     $normalizedText = preg_replace('/_{3,}/', '[[blank]]', $questionText);
                                                     $parts = preg_split('/\[\[blank\]\]/', $normalizedText);
                                                 @endphp
+                                                
                                                 @if(!empty($correctAnswers))
                                                     <div class="p-3 bg-white rounded border">
                                                         @foreach($parts as $index => $part)
                                                             <span>{!! $part !!}</span>
                                                             @if($index < count($parts) - 1)
                                                                 <span class="badge bg-success text-white px-3 py-2 ms-1">
-                                                                    {{ $correctAnswers[$index] ?? '___' }}
+                                                                    {{ is_array($correctAnswers) ? ($correctAnswers[$index] ?? '___') : $correctAnswers }}
                                                                 </span>
                                                             @endif
                                                         @endforeach
                                                     </div>
                                                 @else
-                                                    {{ $question->metadata['answer'] ?? 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا توجد إجابات صحيحة محددة لهذا السؤال.</small>
+                                                    </div>
                                                 @endif
                                             @elseif($question->questionType->name == 'matching')
                                                 @php
                                                     $correctMatching = [];
+                                                    
+                                                    // البحث من feedback
                                                     foreach ($question->options as $option) {
-                                                        // For matching, the correct answer is the feedback value that matches the option
-                                                        // We need to find which option's feedback matches with which option
-                                                        $correctMatching[$option->id] = $option->feedback ?? null;
+                                                        if ($option->feedback) {
+                                                            $correctMatching[$option->id] = $option->feedback;
+                                                        }
+                                                    }
+                                                    
+                                                    // محاولة بديلة: البحث من metadata
+                                                    if (empty($correctMatching) && isset($question->metadata['correct_matching'])) {
+                                                        $correctMatching = $question->metadata['correct_matching'];
                                                     }
                                                 @endphp
+                                                
                                                 @if(!empty(array_filter($correctMatching)))
                                                     <ul class="mb-0">
                                                         @foreach($question->options as $option)
@@ -578,14 +614,31 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا توجد مطابقات صحيحة محددة لهذا السؤال.</small>
+                                                    </div>
                                                 @endif
                                             @elseif($question->questionType->name == 'ordering')
                                                 @php
-                                                    // For ordering questions, the correct order is always based on option_order
-                                                    // All options should be sorted by option_order to get the correct sequence
-                                                    $correctOrder = $question->options->sortBy('option_order')->values();
+                                                    $correctOrder = collect();
+                                                    
+                                                    if ($question->options && $question->options->count() > 0) {
+                                                        // الترتيب الصحيح حسب option_order
+                                                        $correctOrder = $question->options->sortBy('option_order')->values();
+                                                    }
+                                                    
+                                                    // محاولة بديلة: من metadata
+                                                    if ($correctOrder->isEmpty() && isset($question->metadata['correct_order'])) {
+                                                        $orderIds = $question->metadata['correct_order'];
+                                                        if (is_array($orderIds)) {
+                                                            $correctOrder = collect($orderIds)->map(function($id) use ($question) {
+                                                                return $question->options->find($id);
+                                                            })->filter();
+                                                        }
+                                                    }
                                                 @endphp
+                                                
                                                 @if($correctOrder->isNotEmpty())
                                                     <ol class="mb-0">
                                                         @foreach($correctOrder as $option)
@@ -593,26 +646,58 @@
                                                         @endforeach
                                                     </ol>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا يوجد ترتيب صحيح محدد لهذا السؤال.</small>
+                                                    </div>
                                                 @endif
                                             @elseif(in_array($question->questionType->name, ['numerical', 'calculated']))
                                                 @php
-                                                    $correctNumerical = $question->metadata['correct_answer'] ?? $question->metadata['answer'] ?? null;
+                                                    $correctNumerical = null;
+                                                    
+                                                    // البحث من metadata
+                                                    if (isset($question->metadata['correct_answer'])) {
+                                                        $correctNumerical = $question->metadata['correct_answer'];
+                                                    } elseif (isset($question->metadata['answer'])) {
+                                                        $correctNumerical = $question->metadata['answer'];
+                                                    } elseif (isset($question->metadata['expected_value'])) {
+                                                        $correctNumerical = $question->metadata['expected_value'];
+                                                    }
+                                                    
+                                                    // محاولة بديلة: من options
+                                                    if (!$correctNumerical && $question->options && $question->options->count() > 0) {
+                                                        $correctOptions = $question->options->where('is_correct', true);
+                                                        if ($correctOptions->isNotEmpty()) {
+                                                            $correctNumerical = $correctOptions->first()->option_text;
+                                                        }
+                                                    }
                                                 @endphp
+                                                
                                                 @if($correctNumerical !== null)
                                                     <span class="badge bg-success text-white fs-14 px-3 py-2">{{ $correctNumerical }}</span>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا توجد إجابة رقمية صحيحة محددة لهذا السؤال.</small>
+                                                    </div>
                                                 @endif
                                             @elseif($question->questionType->name == 'drag_drop')
                                                 @php
                                                     $correctDragDrop = [];
+                                                    
+                                                    // البحث من feedback
                                                     foreach ($question->options as $option) {
                                                         if ($option->feedback) {
                                                             $correctDragDrop[$option->id] = $option->feedback;
                                                         }
                                                     }
+                                                    
+                                                    // محاولة بديلة: من metadata
+                                                    if (empty($correctDragDrop) && isset($question->metadata['correct_drag_drop'])) {
+                                                        $correctDragDrop = $question->metadata['correct_drag_drop'];
+                                                    }
                                                 @endphp
+                                                
                                                 @if(!empty($correctDragDrop))
                                                     <ul class="mb-0">
                                                         @foreach($question->options as $option)
@@ -624,10 +709,55 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    {{ 'راجع المدرس' }}
+                                                    <div class="alert alert-warning mb-0">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <small>لا توجد إجابات صحيحة محددة لهذا السؤال.</small>
+                                                    </div>
+                                                @endif
+                                            @elseif($question->questionType->name == 'short_answer')
+                                                @php
+                                                    // البحث عن الإجابة الصحيحة من metadata أو options
+                                                    $correctAnswer = null;
+                                                    
+                                                    // محاولة 1: من metadata
+                                                    if (isset($question->metadata['correct_answer'])) {
+                                                        $correctAnswer = $question->metadata['correct_answer'];
+                                                    } elseif (isset($question->metadata['answer'])) {
+                                                        $correctAnswer = $question->metadata['answer'];
+                                                    } elseif (isset($question->metadata['keywords'])) {
+                                                        // إذا كانت هناك كلمات مفتاحية، عرضها
+                                                        $keywords = is_array($question->metadata['keywords']) 
+                                                            ? $question->metadata['keywords'] 
+                                                            : [$question->metadata['keywords']];
+                                                        $correctAnswer = 'الكلمات المفتاحية: ' . implode(', ', array_filter($keywords));
+                                                    }
+                                                    
+                                                    // محاولة 2: من options (إذا كانت هناك خيارات صحيحة)
+                                                    if (!$correctAnswer && $question->options && $question->options->count() > 0) {
+                                                        $correctOptions = $question->options->where('is_correct', true);
+                                                        if ($correctOptions->isNotEmpty()) {
+                                                            $correctAnswer = $correctOptions->pluck('option_text')->implode(' أو ');
+                                                        }
+                                                    }
+                                                @endphp
+                                                
+                                                @if($correctAnswer)
+                                                    <div class="p-3 bg-white rounded border">
+                                                        <strong>الإجابة الصحيحة:</strong> {{ $correctAnswer }}
+                                                    </div>
+                                                @else
+                                                    <div class="alert alert-info mb-0">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        <small>لا توجد إجابة صحيحة محددة لهذا السؤال. يرجى مراجعة المدير.</small>
+                                                    </div>
                                                 @endif
                                             @else
-                                                {{ 'راجع المدرس' }}
+                                                <div class="alert alert-info mb-0">
+                                                    <i class="fas fa-info-circle me-2"></i>
+                                                    <small>نوع السؤال: {{ $question->questionType->display_name ?? 'غير معروف' }}</small>
+                                                    <br>
+                                                    <small class="text-muted">لا توجد طريقة محددة لعرض الإجابة الصحيحة لهذا النوع من الأسئلة.</small>
+                                                </div>
                                             @endif
                                         </div>
                                     </div>
