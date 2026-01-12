@@ -209,6 +209,7 @@ Route::prefix('admin')
         Route::post('resources/{id}/toggle-visibility', [AdminResourceController::class, 'toggleVisibility'])->name('resources.toggle-visibility');
         Route::get('resources/{id}/download', [AdminResourceController::class, 'download'])->name('resources.download');
         Route::get('resources/{id}/preview', [AdminResourceController::class, 'preview'])->name('resources.preview');
+        Route::post('resources/store-ajax', [AdminResourceController::class, 'storeAjax'])->name('resources.store-ajax');
 
         // Course Enrollments routes
         Route::get('courses/{courseId}/enrollments', [CourseEnrollmentController::class, 'index'])->name('courses.enrollments.index');

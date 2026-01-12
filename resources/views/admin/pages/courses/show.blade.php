@@ -381,6 +381,36 @@
         background: #f8f9fa;
         border-color: #adb5bd;
     }
+
+    /* Resource Modal Styles */
+    .resource-source-option {
+        position: relative;
+        cursor: pointer;
+        display: block;
+    }
+    
+    .resource-source-option .form-check-input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .resource-source-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .resource-source-card:hover {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+    }
+    
+    .resource-source-option input:checked ~ .resource-source-card {
+        border-color: #0d6efd !important;
+        background-color: rgba(13, 110, 253, 0.05);
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
 </style>
 @stop
 
@@ -609,6 +639,9 @@
                                             <a href="{{ route('resources.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-secondary">
                                                 <i class="fas fa-file me-1"></i>مورد
                                             </a>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addResourceModal" data-section-id="{{ $section->id }}" data-course-id="{{ $section->course_id }}">
+                                                <i class="fas fa-file-plus me-1"></i>مورد (مودال)
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1878,5 +1911,456 @@
     </div>
 </div>
 
+<!-- Add Resource Modal -->
+<div class="modal fade" id="addResourceModal" tabindex="-1" aria-labelledby="addResourceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addResourceModalLabel">
+                    <i class="fas fa-file-plus me-2"></i>إضافة مورد جديد
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-resource-form" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="section_id" id="modal-section-id">
+                    <input type="hidden" name="course_id" id="modal-course-id">
+
+                    <!-- Error Messages Container -->
+                    <div id="resource-form-errors" class="alert alert-danger" style="display: none;">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>هناك أخطاء في النموذج:</strong>
+                        <ul id="resource-errors-list" class="mb-0 mt-2"></ul>
+                    </div>
+
+                    <!-- Basic Information -->
+                    <div class="card custom-card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>المعلومات الأساسية
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">عنوان المورد <span class="text-danger">*</span></label>
+                                    <input type="text" name="title" class="form-control" placeholder="مثال: كتاب مقدمة في البرمجة" required>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">نوع المورد <span class="text-danger">*</span></label>
+                                    <select name="resource_type" class="form-select" required>
+                                        <option value="">اختر النوع</option>
+                                        <option value="pdf" selected>PDF</option>
+                                        <option value="doc">DOC/DOCX</option>
+                                        <option value="ppt">PPT/PPTX</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="image">صورة</option>
+                                        <option value="audio">صوت</option>
+                                        <option value="archive">أرشيف</option>
+                                        <option value="other">أخرى</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">الكورس</label>
+                                    <select name="course_id" class="form-select" id="modal-course-select" disabled>
+                                        <option value="">اختر الكورس</option>
+                                        @foreach($allCourses ?? [] as $courseOption)
+                                            <option value="{{ $courseOption->id }}">{{ $courseOption->title }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">الوصف</label>
+                                    <textarea name="description" class="form-control" rows="3" placeholder="اكتب وصفاً للمورد التعليمي..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resource Source Selection -->
+                    <div class="card custom-card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-link me-2"></i>مصدر المورد <span class="text-danger">*</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label mb-3">اختر نوع المصدر</label>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="resource-source-option" for="modalSourceFile">
+                                            <input class="form-check-input" type="radio" name="resource_source" id="modalSourceFile" value="file" onchange="toggleResourceSourceModal()">
+                                            <div class="card border h-100 resource-source-card">
+                                                <div class="card-body text-center p-4">
+                                                    <i class="fas fa-cloud-upload-alt fs-24 text-primary mb-3"></i>
+                                                    <h6 class="mb-0 fw-semibold">رفع ملف</h6>
+                                                    <small class="text-muted d-block mt-2">رفع ملف من جهازك</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="resource-source-option" for="modalSourceUrl">
+                                            <input class="form-check-input" type="radio" name="resource_source" id="modalSourceUrl" value="url" checked onchange="toggleResourceSourceModal()">
+                                            <div class="card border h-100 resource-source-card">
+                                                <div class="card-body text-center p-4">
+                                                    <i class="fas fa-link fs-24 text-success mb-3"></i>
+                                                    <h6 class="mb-0 fw-semibold">رابط خارجي</h6>
+                                                    <small class="text-muted d-block mt-2">إدخال رابط مباشر</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="resource-source-option" for="modalSourceExisting">
+                                            <input class="form-check-input" type="radio" name="resource_source" id="modalSourceExisting" value="existing" onchange="toggleResourceSourceModal()">
+                                            <div class="card border h-100 resource-source-card">
+                                                <div class="card-body text-center p-4">
+                                                    <i class="fas fa-list fs-24 text-info mb-3"></i>
+                                                    <h6 class="mb-0 fw-semibold">اختر مورد موجود</h6>
+                                                    <small class="text-muted d-block mt-2">اختر من الموارد المضافة مسبقاً</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- File Upload Section -->
+                            <div id="modalFileUploadSection" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">اختر الملف</label>
+                                    <input type="file" id="modalFileInput" name="file" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar,.txt">
+                                    <small class="text-muted">الحد الأقصى لحجم الملف: 50 MB</small>
+                                </div>
+
+                                <!-- File Preview -->
+                                <div id="modalFilePreview" class="alert alert-info" style="display: none;">
+                                    <h6 class="mb-2"><i class="fas fa-file me-2"></i>معاينة الملف</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>اسم الملف:</strong>
+                                            <span id="modalFileName" class="d-block text-muted"></span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>نوع الملف:</strong>
+                                            <span id="modalFileType" class="d-block text-muted"></span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>حجم الملف:</strong>
+                                            <span id="modalFileSize" class="d-block text-muted"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- URL Input Section -->
+                            <div id="modalUrlInputSection">
+                                <div class="mb-3">
+                                    <label class="form-label">رابط المورد <span class="text-danger">*</span></label>
+                                    <input type="url" id="modalResourceUrlInput" name="resource_url" class="form-control" placeholder="https://example.com/resource.pdf">
+                                    <small class="text-muted">أدخل رابط مباشر للمورد (PDF، DOC، فيديو، إلخ)</small>
+                                </div>
+
+                                <!-- Link Display Mode -->
+                                <div class="mb-3">
+                                    <label class="form-label d-block">طريقة عرض الرابط</label>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="display_mode" id="modalDisplayModeExternal" value="external">
+                                        <label class="form-check-label" for="modalDisplayModeExternal">فتح في تبويب جديد</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="display_mode" id="modalDisplayModeEmbedded" value="embedded" checked>
+                                        <label class="form-check-label" for="modalDisplayModeEmbedded">تضمين داخل صفحة الدرس</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Existing Resource Selection Section -->
+                            <div id="modalExistingResourceSection" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">اختر مورد موجود <span class="text-danger">*</span></label>
+                                    <select name="existing_resource_id" id="modalExistingResourceSelect" class="form-select">
+                                        <option value="">اختر مورد...</option>
+                                        @foreach($existingResources ?? [] as $existingResource)
+                                            <option value="{{ $existingResource->id }}" data-title="{{ $existingResource->title }}" data-type="{{ $existingResource->resource_type }}">
+                                                {{ $existingResource->title }} ({{ $existingResource->resource_type }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="card custom-card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-cog me-2"></i>الإعدادات
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_published" id="modalIsPublished" checked>
+                                        <label class="form-check-label" for="modalIsPublished">منشور</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_visible" id="modalIsVisible" checked>
+                                        <label class="form-check-label" for="modalIsVisible">مرئي للطلاب</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="allow_download" id="modalAllowDownload" checked>
+                                        <label class="form-check-label" for="modalAllowDownload">السماح بالتحميل</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>إلغاء
+                </button>
+                <button type="button" class="btn btn-primary" id="submit-resource-form">
+                    <i class="fas fa-save me-1"></i>حفظ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section('scripts')
+<script>
+    // Resource Modal JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        const addResourceModal = document.getElementById('addResourceModal');
+        const submitResourceForm = document.getElementById('submit-resource-form');
+        const resourceForm = document.getElementById('add-resource-form');
+        const modalSectionId = document.getElementById('modal-section-id');
+        const modalCourseId = document.getElementById('modal-course-id');
+        const modalCourseSelect = document.getElementById('modal-course-select');
+
+        // Handle modal open - set section_id and course_id
+        if (addResourceModal) {
+            addResourceModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const sectionId = button.getAttribute('data-section-id');
+                const courseId = button.getAttribute('data-course-id');
+                
+                modalSectionId.value = sectionId || '';
+                modalCourseId.value = courseId || '';
+                
+                // Set course select value
+                if (courseId && modalCourseSelect) {
+                    modalCourseSelect.value = courseId;
+                }
+                
+                // Reset form
+                resourceForm.reset();
+                document.getElementById('resource-form-errors').style.display = 'none';
+                document.getElementById('resource-errors-list').innerHTML = '';
+                
+                // Reset to default values
+                document.getElementById('modalSourceUrl').checked = true;
+                toggleResourceSourceModal();
+            });
+        }
+
+        // Handle form submission
+        if (submitResourceForm) {
+            submitResourceForm.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(resourceForm);
+                const submitBtn = this;
+                const originalBtnHtml = submitBtn.innerHTML;
+                
+                // Disable button and show loading
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري الحفظ...';
+                
+                // Hide previous errors
+                document.getElementById('resource-form-errors').style.display = 'none';
+                document.getElementById('resource-errors-list').innerHTML = '';
+
+                fetch('{{ route("resources.store-ajax") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success(data.message || 'تم إنشاء المورد بنجاح');
+                        } else {
+                            alert(data.message || 'تم إنشاء المورد بنجاح');
+                        }
+                        
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(addResourceModal);
+                        if (modal) {
+                            modal.hide();
+                        }
+                        
+                        // Reset form
+                        resourceForm.reset();
+                        
+                        // Reload page to show new module
+                        location.reload();
+                    } else {
+                        // Show errors
+                        const errorsDiv = document.getElementById('resource-form-errors');
+                        const errorsList = document.getElementById('resource-errors-list');
+                        
+                        if (data.errors) {
+                            errorsList.innerHTML = '';
+                            Object.keys(data.errors).forEach(function(key) {
+                                data.errors[key].forEach(function(error) {
+                                    const li = document.createElement('li');
+                                    li.textContent = error;
+                                    errorsList.appendChild(li);
+                                });
+                            });
+                            errorsDiv.style.display = 'block';
+                        } else {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.error(data.message || 'حدث خطأ');
+                            } else {
+                                alert(data.message || 'حدث خطأ');
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('حدث خطأ في الاتصال');
+                    } else {
+                        alert('حدث خطأ في الاتصال');
+                    }
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                });
+            });
+        }
+
+        // Initialize resource source toggle on modal open
+        if (addResourceModal) {
+            addResourceModal.addEventListener('shown.bs.modal', function() {
+                toggleResourceSourceModal();
+            });
+        }
+    });
+
+    // Toggle resource source sections in modal
+    function toggleResourceSourceModal() {
+        const sourceFile = document.getElementById('modalSourceFile');
+        const sourceUrl = document.getElementById('modalSourceUrl');
+        const sourceExisting = document.getElementById('modalSourceExisting');
+        const fileUploadSection = document.getElementById('modalFileUploadSection');
+        const urlInputSection = document.getElementById('modalUrlInputSection');
+        const existingResourceSection = document.getElementById('modalExistingResourceSection');
+        const modalFileInput = document.getElementById('modalFileInput');
+        const modalResourceUrlInput = document.getElementById('modalResourceUrlInput');
+        const modalExistingResourceSelect = document.getElementById('modalExistingResourceSelect');
+
+        // Hide all sections first
+        if (fileUploadSection) fileUploadSection.style.display = 'none';
+        if (urlInputSection) urlInputSection.style.display = 'none';
+        if (existingResourceSection) existingResourceSection.style.display = 'none';
+
+        // Remove required from all inputs
+        if (modalFileInput) modalFileInput.removeAttribute('required');
+        if (modalResourceUrlInput) modalResourceUrlInput.removeAttribute('required');
+        if (modalExistingResourceSelect) modalExistingResourceSelect.removeAttribute('required');
+
+        if (sourceFile && sourceFile.checked) {
+            if (fileUploadSection) fileUploadSection.style.display = 'block';
+            if (modalFileInput) modalFileInput.setAttribute('required', 'required');
+        } else if (sourceUrl && sourceUrl.checked) {
+            if (urlInputSection) urlInputSection.style.display = 'block';
+            if (modalResourceUrlInput) modalResourceUrlInput.setAttribute('required', 'required');
+        } else if (sourceExisting && sourceExisting.checked) {
+            if (existingResourceSection) existingResourceSection.style.display = 'block';
+            if (modalExistingResourceSelect) modalExistingResourceSelect.setAttribute('required', 'required');
+        }
+    }
+
+    // File input change handler for modal
+    const modalFileInput = document.getElementById('modalFileInput');
+    if (modalFileInput) {
+        modalFileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            const filePreview = document.getElementById('modalFilePreview');
+            
+            if (!file) {
+                if (filePreview) filePreview.style.display = 'none';
+                return;
+            }
+
+            // Validate file size (50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                alert('حجم الملف كبير جداً. الحد الأقصى 50MB');
+                this.value = '';
+                if (filePreview) filePreview.style.display = 'none';
+                return;
+            }
+
+            // Display file info
+            const fileName = document.getElementById('modalFileName');
+            const fileType = document.getElementById('modalFileType');
+            const fileSize = document.getElementById('modalFileSize');
+            
+            if (fileName) fileName.textContent = file.name;
+            if (fileType) fileType.textContent = file.type || 'غير معروف';
+            if (fileSize) fileSize.textContent = formatFileSize(file.size);
+            if (filePreview) filePreview.style.display = 'block';
+        });
+    }
+
+    // Format File Size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Auto-fill title when existing resource is selected in modal
+    const modalExistingResourceSelect = document.getElementById('modalExistingResourceSelect');
+    const modalTitleInput = document.querySelector('#add-resource-form input[name="title"]');
+    
+    if (modalExistingResourceSelect && modalTitleInput) {
+        modalExistingResourceSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const title = selectedOption.getAttribute('data-title');
+                if (title && !modalTitleInput.value) {
+                    modalTitleInput.value = title;
+                }
+            }
+        });
+    }
+</script>
 @stop
 

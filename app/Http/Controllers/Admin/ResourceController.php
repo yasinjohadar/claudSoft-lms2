@@ -307,6 +307,193 @@ class ResourceController extends Controller
     }
 
     /**
+     * Store a newly created resource via AJAX.
+     */
+    public function storeAjax(Request $request)
+    {
+        // Convert checkbox values to boolean before validation
+        $request->merge([
+            'is_published' => $request->has('is_published'),
+            'is_visible' => $request->has('is_visible'),
+            'allow_download' => $request->has('allow_download'),
+            'preview_available' => $request->has('preview_available'),
+        ]);
+
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'resource_type' => 'required|in:pdf,doc,ppt,excel,image,audio,archive,other',
+                'resource_source' => 'required|in:file,url,existing',
+                'file' => 'required_if:resource_source,file|nullable|file|max:51200',
+                'resource_url' => 'required_if:resource_source,url|nullable|url|max:500',
+                'display_mode' => 'nullable|in:embedded,external',
+                'course_id' => 'nullable|exists:courses,id',
+                'section_id' => 'nullable|exists:course_sections,id',
+                'is_published' => 'sometimes|boolean',
+                'is_visible' => 'sometimes|boolean',
+                'allow_download' => 'sometimes|boolean',
+                'preview_available' => 'sometimes|boolean',
+                'sort_order' => 'nullable|integer|min:0',
+                'available_from' => 'nullable|date',
+                'available_until' => 'nullable|date|after:available_from',
+            ], [
+                'resource_type.required' => 'يرجى اختيار نوع المورد',
+                'resource_type.in' => 'نوع المورد غير صحيح',
+                'resource_source.required' => 'يرجى اختيار مصدر المورد',
+                'resource_source.in' => 'مصدر المورد غير صحيح',
+                'file.required_if' => 'يرجى اختيار ملف للرفع',
+                'resource_url.required_if' => 'يرجى إدخال رابط المورد',
+                'resource_url.url' => 'الرابط المدخل غير صحيح',
+                'existing_resource_id.required_if' => 'يرجى اختيار مورد موجود',
+                'existing_resource_id.exists' => 'المورد المحدد غير موجود',
+            ]);
+
+            DB::beginTransaction();
+
+            $validated['resource_source'] = $request->resource_source ?? 'file';
+
+            // Handle file upload, URL, or existing resource
+            if ($request->resource_source === 'file') {
+                if (!$request->hasFile('file')) {
+                    throw new \Exception('لم يتم اختيار ملف للرفع');
+                }
+                $file = $request->file('file');
+                $validated['file_path'] = $file->store('resources', 'public');
+                $validated['file_name'] = $file->getClientOriginalName();
+                $validated['file_size'] = $file->getSize();
+                $validated['mime_type'] = $file->getMimeType();
+                $validated['resource_url'] = null;
+            } elseif ($request->resource_source === 'url') {
+                if (empty($request->resource_url)) {
+                    throw new \Exception('لم يتم إدخال رابط المورد');
+                }
+                $validated['resource_url'] = $request->resource_url;
+                $validated['file_path'] = null;
+                $validated['file_name'] = null;
+                $validated['file_size'] = null;
+                $validated['mime_type'] = null;
+            } elseif ($request->resource_source === 'existing') {
+                // Use existing resource - get the resource and use its data
+                $existingResource = Resource::findOrFail($request->existing_resource_id);
+                $validated['file_path'] = $existingResource->file_path;
+                $validated['file_name'] = $existingResource->file_name;
+                $validated['file_size'] = $existingResource->file_size;
+                $validated['mime_type'] = $existingResource->mime_type;
+                $validated['resource_url'] = $existingResource->resource_url;
+                $validated['resource_type'] = $existingResource->resource_type;
+                $validated['display_mode'] = $existingResource->display_mode ?? 'external';
+                // Don't create a new resource, use the existing one
+                $resource = $existingResource;
+            } else {
+                throw new \Exception('مصدر المورد غير صحيح');
+            }
+
+            // If using existing resource, don't create a new one
+            if ($request->resource_source === 'existing') {
+                // Resource is already set in the if-else block above
+                // Just update title and description if provided
+                if ($request->filled('title')) {
+                    $resource->title = $request->title;
+                }
+                if ($request->filled('description')) {
+                    $resource->description = $request->description;
+                }
+                $resource->save();
+            } else {
+                // Set creator for new resource
+                $validated['created_by'] = auth()->id();
+                $validated['download_count'] = 0;
+
+                // Default display_mode إذا لم يرسل
+                $validated['display_mode'] = $validated['display_mode'] ?? 'external';
+
+                $resource = Resource::create($validated);
+            }
+
+            $module = null;
+
+            // If section_id is provided, create a module automatically
+            if ($request->filled('section_id')) {
+                $section = CourseSection::findOrFail($request->section_id);
+                
+                // Get next sort_order
+                $maxOrder = CourseModule::where('section_id', $section->id)->max('sort_order') ?? 0;
+                
+                // Create module
+                $module = CourseModule::create([
+                    'course_id' => $section->course_id,
+                    'section_id' => $section->id,
+                    'module_type' => 'resource',
+                    'modulable_id' => $resource->id,
+                    'modulable_type' => Resource::class,
+                    'title' => $resource->title,
+                    'description' => $resource->description,
+                    'sort_order' => $maxOrder + 1,
+                    'is_visible' => true,
+                    'is_required' => false,
+                    'is_graded' => false,
+                    'completion_type' => 'auto',
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إنشاء المورد بنجاح',
+                'resource' => [
+                    'id' => $resource->id,
+                    'title' => $resource->title,
+                    'resource_type' => $resource->resource_type,
+                ],
+                'module' => $module ? [
+                    'id' => $module->id,
+                    'title' => $module->title,
+                    'section_id' => $module->section_id,
+                    'course_id' => $module->course_id,
+                ] : null,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            
+            // Delete uploaded file if exists
+            if ($request->hasFile('file')) {
+                Storage::disk('public')->delete($request->file('file')->store('resources', 'public'));
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في التحقق من البيانات',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Delete uploaded file if exists
+            if ($request->hasFile('file')) {
+                try {
+                    Storage::disk('public')->delete($request->file('file')->store('resources', 'public'));
+                } catch (\Exception $deleteException) {
+                    // Ignore deletion errors
+                }
+            }
+
+            \Log::error('Resource creation error (AJAX): ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->except(['file']),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إنشاء المورد: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show($id)

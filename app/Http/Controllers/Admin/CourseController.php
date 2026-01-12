@@ -248,7 +248,14 @@ class CourseController extends Controller
                 'average_completion' => $course->enrollments()->avg('completion_percentage') ?? 0,
             ];
 
-            return view('admin.pages.courses.show', compact('course', 'stats'));
+            // Get data for resource modal
+            $existingResources = \App\Models\Resource::select('id', 'title', 'resource_type', 'resource_source')
+                ->where('is_published', true)
+                ->orderBy('title')
+                ->get();
+            $allCourses = Course::select('id', 'title')->get();
+
+            return view('admin.pages.courses.show', compact('course', 'stats', 'existingResources', 'allCourses'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.index')
