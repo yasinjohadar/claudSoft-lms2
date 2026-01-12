@@ -318,6 +318,24 @@ class QuizAttemptController extends Controller
                 // Get the question with pivot data
                 $question = $quizQuestion->question;
                 
+                // #region agent log
+                file_put_contents('d:\all\.cursor\debug.log', json_encode([
+                    'id' => 'log_' . time() . '_' . uniqid(),
+                    'timestamp' => time() * 1000,
+                    'location' => 'QuizAttemptController.php:319',
+                    'message' => 'Before loading options',
+                    'data' => [
+                        'question_id' => $question->id,
+                        'question_type' => $question->questionType->name ?? 'unknown',
+                        'options_relation_loaded' => $question->relationLoaded('options'),
+                        'options_count_before' => $question->options ? $question->options->count() : 0,
+                    ],
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'A'
+                ]) . "\n", FILE_APPEND);
+                // #endregion
+                
                 // تأكد من تحميل options بشكل صريح مع الترتيب
                 if (!$question->relationLoaded('options')) {
                     $question->load(['options' => function($query) {
@@ -327,6 +345,25 @@ class QuizAttemptController extends Controller
                     // إذا كانت محملة، تأكد من الترتيب
                     $question->setRelation('options', $question->options->sortBy('option_order')->values());
                 }
+                
+                // #region agent log
+                file_put_contents('d:\all\.cursor\debug.log', json_encode([
+                    'id' => 'log_' . time() . '_' . uniqid(),
+                    'timestamp' => time() * 1000,
+                    'location' => 'QuizAttemptController.php:336',
+                    'message' => 'After loading options',
+                    'data' => [
+                        'question_id' => $question->id,
+                        'options_relation_loaded' => $question->relationLoaded('options'),
+                        'options_count_after' => $question->options ? $question->options->count() : 0,
+                        'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
+                        'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
+                    ],
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'A'
+                ]) . "\n", FILE_APPEND);
+                // #endregion
                 
                 // Logging للتشخيص
                 \Log::debug('Question options loaded', [

@@ -298,7 +298,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     @break
 
                                 @case('multiple_choice_multiple')
+                                    {{-- #region agent log --}}
+                                    <script>
+                                    fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:300',message:'Checking options for multiple_choice_multiple',data:{question_id:{{ $question->id }},question_type:'{{ $question->questionType->name ?? "unknown" }}',has_options:{{ $question->options ? 'true' : 'false' }},options_count:{{ $question->options ? $question->options->count() : 0 }},options_is_collection:{{ $question->options instanceof \Illuminate\Database\Eloquent\Collection ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                    </script>
+                                    {{-- #endregion --}}
                                     @if($question->options && $question->options->count() > 0)
+                                        {{-- #region agent log --}}
+                                        <script>
+                                        fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:302',message:'Options condition passed, entering foreach',data:{question_id:{{ $question->id }},options_count:{{ $question->options->count() }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                        </script>
+                                        {{-- #endregion --}}
                                         @foreach($question->options as $option)
                                             <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                                 <input class="form-check-input answer-input"
@@ -314,6 +324,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                             </div>
                                         @endforeach
                                     @else
+                                        {{-- #region agent log --}}
+                                        <script>
+                                        fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:316',message:'Options condition failed, showing warning',data:{question_id:{{ $question->id }},has_options:{{ $question->options ? 'true' : 'false' }},options_count:{{ $question->options ? $question->options->count() : 0 }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                        </script>
+                                        {{-- #endregion --}}
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
                                             لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
@@ -658,6 +673,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         <!-- Navigation Buttons -->
                         <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                            {{-- #region agent log --}}
+                            <script>
+                            fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:660',message:'Navigation buttons section',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }},loop_index:{{ $loop->index }},total_questions:{{ $questions->count() }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                            </script>
+                            {{-- #endregion --}}
                             <button type="button"
                                     class="btn btn-outline-secondary"
                                     onclick="previousQuestion()"
@@ -667,6 +687,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             </button>
 
                             @if(!$loop->last)
+                                {{-- #region agent log --}}
+                                <script>
+                                fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:669',message:'Showing next button',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                                </script>
+                                {{-- #endregion --}}
                                 <button type="button"
                                         class="btn btn-primary"
                                         onclick="nextQuestion()"
@@ -674,6 +699,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     التالي<i class="fas fa-arrow-left ms-2"></i>
                                 </button>
                             @else
+                                {{-- #region agent log --}}
+                                <script>
+                                fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:676',message:'Showing submit button (last question)',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                                </script>
+                                {{-- #endregion --}}
                                 <button type="button"
                                         class="btn btn-success btn-lg"
                                         onclick="showSubmitConfirmation()"
