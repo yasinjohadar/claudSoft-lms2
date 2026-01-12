@@ -247,8 +247,10 @@ let optionCount = {{ $question->options->count() }};
 
 $(document).ready(function() {
     // Check if options section should be shown on load
-    const selectedType = $('#question_type_id option:selected').text();
-    const needsOptions = ['اختيار من متعدد', 'صح وخطأ', 'مطابقة', 'ترتيب'];
+    const selectedOption = $('#question_type_id option:selected');
+    const selectedType = selectedOption.text();
+    const selectedTypeName = selectedOption.data('type-name') || '';
+    const needsOptions = ['اختيار من متعدد', 'صح / خطأ', 'صح وخطأ', 'مطابقة', 'ترتيب'];
     let showOptions = false;
 
     needsOptions.forEach(type => {
@@ -261,7 +263,18 @@ $(document).ready(function() {
         $('#options-section').hide();
     } else {
         // إذا كان السؤال من نوع true_false وليس لديه خيارات، أضف خيارين تلقائياً
-        if (selectedType.includes('صح وخطأ') && $('#options-container .option-item').length === 0) {
+        const isTrueFalse = selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ');
+        const hasNoOptions = $('#options-container .option-item').length === 0;
+        
+        console.log('DEBUG: Checking true_false options', {
+            selectedType: selectedType,
+            selectedTypeName: selectedTypeName,
+            isTrueFalse: isTrueFalse,
+            hasNoOptions: hasNoOptions,
+            optionsCount: $('#options-container .option-item').length
+        });
+        
+        if (isTrueFalse && hasNoOptions) {
             // إضافة خيار "صح"
             optionCount++;
             const trueOptionHtml = `
@@ -352,8 +365,10 @@ $(document).ready(function() {
 
     // Show/hide options based on question type
     $('#question_type_id').change(function() {
-        const selectedType = $(this).find('option:selected').text();
-        const needsOptions = ['اختيار من متعدد', 'صح وخطأ', 'مطابقة', 'ترتيب'];
+        const selectedOption = $(this).find('option:selected');
+        const selectedType = selectedOption.text();
+        const selectedTypeName = selectedOption.data('type-name') || '';
+        const needsOptions = ['اختيار من متعدد', 'صح / خطأ', 'صح وخطأ', 'مطابقة', 'ترتيب'];
 
         let showOptions = false;
         needsOptions.forEach(type => {
@@ -365,7 +380,7 @@ $(document).ready(function() {
         if (showOptions) {
             $('#options-section').show();
             if ($('#options-container .option-item').length === 0) {
-                if (selectedType.includes('صح وخطأ')) {
+                if (selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ')) {
                     // إضافة خيارين تلقائياً لـ true_false
                     optionCount++;
                     const trueOptionHtml = `
