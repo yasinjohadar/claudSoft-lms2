@@ -10,45 +10,6 @@
         background: rgba(220, 53, 69, 0.1) !important;
     }
 
-    /* Group selection items in restrictions modal */
-    .group-item-selectable {
-        padding: 0.75rem 1rem;
-        margin: 0;
-        border-bottom: 1px solid #e9ecef;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        width: 100%;
-        display: block;
-    }
-
-    .group-item-selectable:last-child {
-        border-bottom: none;
-    }
-
-    .group-item-selectable:hover {
-        background-color: #f8f9fa;
-    }
-
-    .group-item-selectable:active {
-        background-color: #e9ecef;
-    }
-
-    .group-item-selectable .d-flex {
-        width: 100%;
-        align-items: center;
-    }
-
-    .group-item-selectable .form-check-input {
-        margin-top: 0;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-
-    .group-item-selectable .form-check-label {
-        user-select: none;
-        cursor: pointer;
-        flex-grow: 1;
-    }
     
     /* Course Header Card */
     .course-header-card {
@@ -1407,49 +1368,16 @@
                         const isChecked = restrictedIds.includes(groupId);
                         
                         const groupItem = document.createElement('div');
-                        groupItem.className = 'group-item-selectable';
-                        groupItem.setAttribute('data-group-id', groupId);
-                        
-                        const checkboxId = `group_${groupId}`;
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'form-check-input me-3';
-                        checkbox.value = groupId;
-                        checkbox.id = checkboxId;
-                        checkbox.checked = isChecked;
-                        checkbox.style.flexShrink = '0';
-                        
-                        const label = document.createElement('label');
-                        label.className = 'form-check-label flex-grow-1 mb-0';
-                        label.setAttribute('for', checkboxId);
-                        label.style.cursor = 'pointer';
-                        label.innerHTML = `
-                            <strong>${group.name}</strong>
-                            ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
+                        groupItem.className = 'form-check mb-3';
+                        groupItem.innerHTML = `
+                            <input class="form-check-input" type="checkbox" 
+                                   value="${groupId}" id="group_${groupId}" 
+                                   ${isChecked ? 'checked' : ''}>
+                            <label class="form-check-label" for="group_${groupId}">
+                                <strong>${group.name}</strong>
+                                ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
+                            </label>
                         `;
-                        
-                        const flexContainer = document.createElement('div');
-                        flexContainer.className = 'd-flex align-items-center w-100';
-                        flexContainer.appendChild(checkbox);
-                        flexContainer.appendChild(label);
-                        
-                        groupItem.appendChild(flexContainer);
-                        
-                        // Make entire item clickable (except checkbox itself)
-                        groupItem.addEventListener('click', function(e) {
-                            // Don't toggle if clicking directly on checkbox
-                            // Label click is handled by browser automatically
-                            if (e.target === checkbox) {
-                                return; // Let browser handle checkbox click
-                            }
-                            // If clicking on the item (not checkbox or label), toggle checkbox
-                            if (e.target === groupItem || e.target === flexContainer) {
-                                e.preventDefault();
-                                checkbox.checked = !checkbox.checked;
-                                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        });
-                        
                         groupsList.appendChild(groupItem);
                     });
                 } else {
