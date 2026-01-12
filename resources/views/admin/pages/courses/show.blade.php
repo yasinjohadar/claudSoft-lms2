@@ -9,6 +9,36 @@
     .bg-danger-transparent {
         background: rgba(220, 53, 69, 0.1) !important;
     }
+
+    /* Group selection items in restrictions modal */
+    .group-item-selectable {
+        padding: 1rem;
+        margin-bottom: 0;
+        border-bottom: 1px solid #e9ecef;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+
+    .group-item-selectable:last-child {
+        border-bottom: none;
+    }
+
+    .group-item-selectable:hover {
+        background-color: #f8f9fa;
+    }
+
+    .group-item-selectable:active {
+        background-color: #e9ecef;
+    }
+
+    .group-item-selectable .form-check-input {
+        margin-top: 0.25rem;
+    }
+
+    .group-item-selectable .form-check-label {
+        user-select: none;
+    }
     
     /* Course Header Card */
     .course-header-card {
@@ -1367,16 +1397,33 @@
                         const isChecked = restrictedIds.includes(groupId);
                         
                         const groupItem = document.createElement('div');
-                        groupItem.className = 'form-check mb-3';
+                        groupItem.className = 'group-item-selectable';
+                        groupItem.setAttribute('data-group-id', groupId);
                         groupItem.innerHTML = `
-                            <input class="form-check-input" type="checkbox" 
-                                   value="${groupId}" id="group_${groupId}" 
-                                   ${isChecked ? 'checked' : ''}>
-                            <label class="form-check-label" for="group_${groupId}">
-                                <strong>${group.name}</strong>
-                                ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
-                            </label>
+                            <div class="d-flex align-items-center w-100">
+                                <input class="form-check-input me-3" type="checkbox" 
+                                       value="${groupId}" id="group_${groupId}" 
+                                       ${isChecked ? 'checked' : ''}
+                                       style="flex-shrink: 0;">
+                                <label class="form-check-label flex-grow-1 mb-0" for="group_${groupId}" style="cursor: pointer;">
+                                    <strong>${group.name}</strong>
+                                    ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
+                                </label>
+                            </div>
                         `;
+                        
+                        // Make entire item clickable
+                        groupItem.addEventListener('click', function(e) {
+                            // Don't toggle if clicking directly on checkbox
+                            if (e.target.type !== 'checkbox') {
+                                const checkbox = this.querySelector('input[type="checkbox"]');
+                                if (checkbox) {
+                                    checkbox.checked = !checkbox.checked;
+                                    checkbox.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        });
+                        
                         groupsList.appendChild(groupItem);
                     });
                 } else {
