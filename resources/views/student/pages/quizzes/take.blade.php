@@ -286,8 +286,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                    @if($question->options && $question->options->count() > 0)
+                                    {{-- #region agent log --}}
+                                    <script>
+                                    console.log('DEBUG: Checking options for multiple_choice_single', {
+                                        question_id: {{ $question->id }},
+                                        question_type: '{{ $question->questionType->name ?? "unknown" }}',
+                                        has_options: {{ $question->options ? 'true' : 'false' }},
+                                        options_count: {{ $question->options ? $question->options->count() : 0 }},
+                                        options_type: '{{ get_class($question->options ?? new stdClass()) }}',
+                                        hypothesisId: 'B'
+                                    });
+                                    </script>
+                                    {{-- #endregion --}}
+                                    @php
+                                        $optionsCollection = $question->options ?? collect();
+                                        $optionsCount = $optionsCollection->count();
+                                    @endphp
+                                    @if($optionsCount > 0)
                                         @foreach($question->options as $option)
+                                            {{-- #region agent log --}}
+                                            <script>
+                                            console.log('DEBUG: Rendering option (single)', {
+                                                question_id: {{ $question->id }},
+                                                option_id: {{ $option->id }},
+                                                option_text: '{{ addslashes($option->option_text ?? '') }}',
+                                                option_text_length: {{ strlen($option->option_text ?? '') }},
+                                                option_text_empty: {{ empty($option->option_text) ? 'true' : 'false' }},
+                                                hypothesisId: 'B'
+                                            });
+                                            </script>
+                                            {{-- #endregion --}}
                                             <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                                 <input class="form-check-input answer-input"
                                                        type="radio"
@@ -297,11 +325,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        data-question-id="{{ $question->id }}"
                                                        {{ $savedAnswer == $option->id ? 'checked' : '' }}>
                                                 <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                                    {!! $option->option_text !!}
+                                                    {!! $option->option_text ?? '<span class="text-muted">(نص الخيار غير متوفر)</span>' !!}
                                                 </label>
                                             </div>
                                         @endforeach
                                     @else
+                                        {{-- #region agent log --}}
+                                        <script>
+                                        console.log('DEBUG: Options condition failed (single), showing warning', {
+                                            question_id: {{ $question->id }},
+                                            has_options: {{ $question->options ? 'true' : 'false' }},
+                                            options_count: {{ $optionsCount }},
+                                            hypothesisId: 'B'
+                                        });
+                                        </script>
+                                        {{-- #endregion --}}
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
                                             لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
