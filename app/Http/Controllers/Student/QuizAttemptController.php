@@ -256,36 +256,81 @@ class QuizAttemptController extends Controller
         }
 
         // Get questions in the order specified for this attempt
-        $questions = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
-            $quizQuestion = $attempt->quiz->quizQuestions()
-                ->where('question_id', $questionId)
-                ->with('question.questionType', 'question.options')
-                ->first();
-
-            if (!$quizQuestion) {
-                return null;
-            }
-
-            $response = $attempt->responses()
-                ->where('question_id', $questionId)
-                ->first();
-
-            // Get the question with pivot data
-            $question = $quizQuestion->question;
-            // Add pivot data for grade
-            $question->setRelation('pivot', (object)[
-                'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
+        if (empty($attempt->questions_order)) {
+            // Fallback: get questions directly from quiz
+            \Log::warning('Quiz attempt has empty questions_order', [
+                'attempt_id' => $attempt->id,
+                'quiz_id' => $attempt->quiz_id
             ]);
+            
+            $questions = $attempt->quiz->quizQuestions()
+                ->with('question.questionType', 'question.options')
+                ->get()
+                ->map(function($quizQuestion) use ($attempt) {
+                    if (!$quizQuestion->question) {
+                        return null;
+                    }
+                    
+                    $question = $quizQuestion->question;
+                    $question->setRelation('pivot', (object)[
+                        'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
+                    ]);
+                    return $question;
+                })->filter();
+        } else {
+            $questions = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
+                $quizQuestion = $attempt->quiz->quizQuestions()
+                    ->where('question_id', $questionId)
+                    ->with('question.questionType', 'question.options')
+                    ->first();
 
-            return $question;
-        })->filter();
+                if (!$quizQuestion) {
+                    \Log::warning('Quiz question not found in questions_order', [
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $questionId
+                    ]);
+                    return null;
+                }
+
+                $response = $attempt->responses()
+                    ->where('question_id', $questionId)
+                    ->first();
+
+                // Get the question with pivot data
+                $question = $quizQuestion->question;
+                // Add pivot data for grade
+                $question->setRelation('pivot', (object)[
+                    'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
+                ]);
+
+                return $question;
+            })->filter();
+        }
 
         // Calculate remaining time
         $remainingTime = null;
-        if ($attempt->quiz->time_limit) {
+        if ($attempt->quiz->time_limit && $attempt->started_at) {
             $elapsedSeconds = $attempt->started_at->diffInSeconds(now());
             $totalSeconds = $attempt->quiz->time_limit * 60;
             $remainingTime = max(0, $totalSeconds - $elapsedSeconds);
+            
+            // Log for debugging
+            \Log::info('Quiz Timer Calculation', [
+                'attempt_id' => $attempt->id,
+                'quiz_id' => $attempt->quiz_id,
+                'time_limit' => $attempt->quiz->time_limit,
+                'started_at' => $attempt->started_at->toDateTimeString(),
+                'now' => now()->toDateTimeString(),
+                'elapsed_seconds' => $elapsedSeconds,
+                'total_seconds' => $totalSeconds,
+                'remaining_seconds' => $remainingTime
+            ]);
+        } else {
+            \Log::warning('Quiz timer not calculated', [
+                'attempt_id' => $attempt->id,
+                'has_time_limit' => !empty($attempt->quiz->time_limit),
+                'has_started_at' => !empty($attempt->started_at)
+            ]);
         }
 
         return view('student.pages.quizzes.take', compact('attempt', 'questions', 'remainingTime'));

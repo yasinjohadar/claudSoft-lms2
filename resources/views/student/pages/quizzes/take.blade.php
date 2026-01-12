@@ -798,21 +798,52 @@ const attemptId = {{ $attempt->id }};
     let currentQuestionIndex = 0;
 let answeredQuestions = new Set();
     let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
+    
+    // Debug logging
+    console.log('=== Quiz Page Initialization ===');
+    console.log('Attempt ID:', attemptId);
+    console.log('Total Questions:', totalQuestions);
+    console.log('Remaining Time (seconds):', remainingTimeSeconds);
+    console.log('Questions Count:', {{ $questions->count() }});
+    
     // Ensure remainingTimeSeconds is an integer
     if (remainingTimeSeconds !== null) {
         remainingTimeSeconds = Math.floor(remainingTimeSeconds);
+        console.log('Remaining Time (formatted):', remainingTimeSeconds, 'seconds');
+    } else {
+        console.warn('Remaining time is null - timer will not start');
     }
+    
     let timerInterval = null;
     let isSubmitting = false; // Track if quiz is being submitted
 
     // Initialize on page load
 $(document).ready(function() {
+        console.log('Document ready - initializing quiz...');
+        
+        // Check if timer container exists
+        if ($('#timer-container').length > 0) {
+            console.log('Timer container found');
+        } else {
+            console.warn('Timer container not found in DOM');
+        }
+        
+        // Check if questions exist
+        if ($('.question-container').length > 0) {
+            console.log('Question containers found:', $('.question-container').length);
+        } else {
+            console.error('No question containers found in DOM!');
+        }
+        
         initializeAnswers();
     updateProgress();
         updateQuestionNavigation();
 
         @if($remainingTime !== null)
+            console.log('Starting timer...');
             startTimer();
+        @else
+            console.warn('Timer not started - remainingTime is null');
         @endif
 
         // Auto-save answers
@@ -1254,10 +1285,29 @@ $(document).ready(function() {
 
     // Timer functionality
     function startTimer() {
-        if (remainingTimeSeconds === null) return;
+        console.log('startTimer() called');
+        console.log('remainingTimeSeconds:', remainingTimeSeconds);
+        
+        if (remainingTimeSeconds === null || remainingTimeSeconds === undefined) {
+            console.error('Cannot start timer - remainingTimeSeconds is null/undefined');
+            return;
+        }
+        
+        // Check if timer elements exist
+        if ($('#timer-container').length === 0) {
+            console.error('Timer container not found in DOM');
+            return;
+        }
+        
+        if ($('#timer-minutes').length === 0 || $('#timer-seconds').length === 0) {
+            console.error('Timer display elements not found in DOM');
+            return;
+        }
 
+        console.log('Initializing timer display...');
         updateTimerDisplay();
 
+        console.log('Starting timer interval...');
         timerInterval = setInterval(function() {
             remainingTimeSeconds--;
             updateTimerDisplay();
@@ -1270,10 +1320,13 @@ $(document).ready(function() {
 
             // Time up
             if (remainingTimeSeconds <= 0) {
+                console.log('Time is up!');
                 clearInterval(timerInterval);
                 timeUp();
             }
         }, 1000);
+        
+        console.log('Timer started successfully');
     }
 
     function updateTimerDisplay() {
@@ -1281,8 +1334,17 @@ $(document).ready(function() {
         remainingTimeSeconds = Math.floor(remainingTimeSeconds);
         const minutes = Math.floor(remainingTimeSeconds / 60);
         const seconds = Math.floor(remainingTimeSeconds % 60);
-        $('#timer-minutes').text(String(minutes).padStart(2, '0'));
-        $('#timer-seconds').text(String(seconds).padStart(2, '0'));
+        
+        const minutesStr = String(minutes).padStart(2, '0');
+        const secondsStr = String(seconds).padStart(2, '0');
+        
+        $('#timer-minutes').text(minutesStr);
+        $('#timer-seconds').text(secondsStr);
+        
+        // Debug log every 10 seconds
+        if (remainingTimeSeconds % 10 === 0) {
+            console.log('Timer update:', minutesStr + ':' + secondsStr, '(' + remainingTimeSeconds + ' seconds remaining)');
+        }
     }
 
     function timeUp() {
