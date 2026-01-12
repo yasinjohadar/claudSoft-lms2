@@ -4,8 +4,14 @@
 
 @push('head-scripts')
 <script>
-// Global variables - will be set when DOM loads
-var attemptId, totalQuestions, currentQuestionIndex = 0, answeredQuestions, remainingTimeSeconds, timerInterval, isSubmitting = false;
+// Global variables - initialize early with Blade values
+var attemptId = {{ $attempt->id }};
+var totalQuestions = {{ $questions->count() }};
+var currentQuestionIndex = 0;
+var answeredQuestions = new Set();
+var remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
+var timerInterval = null;
+var isSubmitting = false;
 
 // Navigation functions - defined globally for onclick handlers
 function goToQuestion(index) {
