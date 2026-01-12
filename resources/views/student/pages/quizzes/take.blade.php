@@ -300,13 +300,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                 @case('multiple_choice_multiple')
                                     {{-- #region agent log --}}
                                     <script>
-                                    fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:300',message:'Checking options for multiple_choice_multiple',data:{question_id:{{ $question->id }},question_type:'{{ $question->questionType->name ?? "unknown" }}',has_options:{{ $question->options ? 'true' : 'false' }},options_count:{{ $question->options ? $question->options->count() : 0 }},options_is_collection:{{ $question->options instanceof \Illuminate\Database\Eloquent\Collection ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                    console.log('DEBUG: Checking options for multiple_choice_multiple', {
+                                        question_id: {{ $question->id }},
+                                        question_type: '{{ $question->questionType->name ?? "unknown" }}',
+                                        has_options: {{ $question->options ? 'true' : 'false' }},
+                                        options_count: {{ $question->options ? $question->options->count() : 0 }},
+                                        options_type: '{{ get_class($question->options ?? new stdClass()) }}',
+                                        hypothesisId: 'B'
+                                    });
                                     </script>
                                     {{-- #endregion --}}
                                     @if($question->options && $question->options->count() > 0)
                                         {{-- #region agent log --}}
                                         <script>
-                                        fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:302',message:'Options condition passed, entering foreach',data:{question_id:{{ $question->id }},options_count:{{ $question->options->count() }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                        console.log('DEBUG: Options condition passed, entering foreach', {
+                                            question_id: {{ $question->id }},
+                                            options_count: {{ $question->options->count() }},
+                                            hypothesisId: 'B'
+                                        });
                                         </script>
                                         {{-- #endregion --}}
                                         @foreach($question->options as $option)
@@ -326,7 +337,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     @else
                                         {{-- #region agent log --}}
                                         <script>
-                                        fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:316',message:'Options condition failed, showing warning',data:{question_id:{{ $question->id }},has_options:{{ $question->options ? 'true' : 'false' }},options_count:{{ $question->options ? $question->options->count() : 0 }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                                        console.log('DEBUG: Options condition failed, showing warning', {
+                                            question_id: {{ $question->id }},
+                                            has_options: {{ $question->options ? 'true' : 'false' }},
+                                            options_count: {{ $question->options ? $question->options->count() : 0 }},
+                                            hypothesisId: 'B'
+                                        });
                                         </script>
                                         {{-- #endregion --}}
                                         <div class="alert alert-warning">
@@ -675,7 +691,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                             {{-- #region agent log --}}
                             <script>
-                            fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:660',message:'Navigation buttons section',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }},loop_index:{{ $loop->index }},total_questions:{{ $questions->count() }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                            console.log('DEBUG: Navigation buttons section', {
+                                question_index: {{ $index }},
+                                loop_last: {{ $loop->last ? 'true' : 'false' }},
+                                loop_index: {{ $loop->index }},
+                                total_questions: {{ $questions->count() }},
+                                hypothesisId: 'D'
+                            });
                             </script>
                             {{-- #endregion --}}
                             <button type="button"
@@ -689,7 +711,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             @if(!$loop->last)
                                 {{-- #region agent log --}}
                                 <script>
-                                fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:669',message:'Showing next button',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                                console.log('DEBUG: Showing next button', {
+                                    question_index: {{ $index }},
+                                    loop_last: {{ $loop->last ? 'true' : 'false' }},
+                                    hypothesisId: 'D'
+                                });
                                 </script>
                                 {{-- #endregion --}}
                                 <button type="button"
@@ -701,7 +727,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             @else
                                 {{-- #region agent log --}}
                                 <script>
-                                fetch('http://127.0.0.1:7243/ingest/bc53407a-2033-484d-9f9d-970678d73271',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'take.blade.php:676',message:'Showing submit button (last question)',data:{question_index:{{ $index }},loop_last:{{ $loop->last ? 'true' : 'false' }}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                                console.log('DEBUG: Showing submit button (last question)', {
+                                    question_index: {{ $index }},
+                                    loop_last: {{ $loop->last ? 'true' : 'false' }},
+                                    hypothesisId: 'D'
+                                });
                                 </script>
                                 {{-- #endregion --}}
                                 <button type="button"
