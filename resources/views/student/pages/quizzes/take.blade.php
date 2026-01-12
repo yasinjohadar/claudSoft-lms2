@@ -761,21 +761,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                     @break
 
-                                @default
-                                    {{-- Debug: Unknown question type --}}
-                                    <script>
-                                    console.log('DEBUG: Unknown question type - falling into @default', {
-                                        question_id: {{ $question->id }},
-                                        type_name: '{{ $question->questionType->name }}',
-                                        type_id: {{ $question->question_type_id }}
-                                    });
-                                    </script>
-                                    <div class="alert alert-danger">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        نوع السؤال غير معروف: <strong>{{ $question->questionType->name }}</strong>
-                                        <br>
-                                        <small>الرجاء التواصل مع المدير.</small>
-                                    </div>
+                            @default
+                                {{-- Debug: Unknown question type --}}
+                                <script>
+                                console.log('DEBUG: Unknown question type - falling into @default', {
+                                    question_id: {{ $question->id }},
+                                    type_name: '{{ $question->questionType->name }}',
+                                    type_id: {{ $question->question_type_id }}
+                                });
+                                </script>
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    نوع السؤال غير معروف: <strong>{{ $question->questionType->name }}</strong>
+                                    <br>
+                                    <small>الرجاء التواصل مع المدير.</small>
+                                </div>
                             @endswitch
                             </div>
 
