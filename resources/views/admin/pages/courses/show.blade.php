@@ -789,9 +789,9 @@
                                                                     </span>
                                                                 @endif
                                                             @endif
-                                                            @if(!$module->is_visible)
-                                                                <span class="badge bg-secondary badge-sm ms-1">مخفي</span>
-                                                            @endif
+                                                            <span id="module-visibility-badge-{{ $module->id }}" class="badge badge-sm ms-1 {{ $module->is_visible ? 'bg-success text-white' : 'bg-secondary' }}">
+                                                                {{ $module->is_visible ? 'ظاهر' : 'مخفي' }}
+                                                            </span>
                                                             @if($module->is_required)
                                                                 <i class="fas fa-asterisk text-danger ms-1" style="font-size: 8px;" title="مطلوب"></i>
                                                             @endif
@@ -1175,6 +1175,17 @@
                             button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
                         } else {
                             button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                        }
+                    }
+                    // Update module visibility badge
+                    const badge = document.getElementById(`module-visibility-badge-${id}`);
+                    if (badge) {
+                        if (data.is_visible) {
+                            badge.className = 'badge badge-sm ms-1 bg-success text-white';
+                            badge.textContent = 'ظاهر';
+                        } else {
+                            badge.className = 'badge badge-sm ms-1 bg-secondary';
+                            badge.textContent = 'مخفي';
                         }
                     }
                 }
