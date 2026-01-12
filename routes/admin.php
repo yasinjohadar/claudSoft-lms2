@@ -279,6 +279,7 @@ Route::prefix('admin')
         Route::get('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
         Route::post('quizzes/{id}/add-question', [\App\Http\Controllers\Admin\QuizController::class, 'addQuestion'])->name('quizzes.add-question');
         Route::delete('quizzes/{id}/remove-question/{questionId}', [\App\Http\Controllers\Admin\QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
+        Route::post('quizzes/{id}/remove-multiple-questions', [\App\Http\Controllers\Admin\QuizController::class, 'removeMultipleQuestions'])->name('quizzes.remove-multiple-questions');
         Route::post('quizzes/{id}/reorder-questions', [\App\Http\Controllers\Admin\QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
 
         // Question Bank Management

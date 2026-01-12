@@ -662,6 +662,47 @@ class QuizController extends Controller
     }
 
     /**
+     * Remove multiple questions from the quiz (AJAX).
+     */
+    public function removeMultipleQuestions(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'question_ids' => 'required|array',
+                'question_ids.*' => 'required|integer|exists:question_bank,id',
+            ]);
+
+            $quiz = Quiz::findOrFail($id);
+            $questionIds = $request->input('question_ids');
+            $count = count($questionIds);
+
+            // Detach all questions at once
+            $quiz->questions()->detach($questionIds);
+
+            // Recalculate max_score
+            $maxScore = $quiz->calculateMaxScore();
+            $quiz->update(['max_score' => $maxScore]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "تم حذف {$count} سؤال بنجاح",
+                'deleted_count' => $count,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في التحقق من البيانات',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حذف الأسئلة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Reorder questions in the quiz (AJAX).
      */
     public function reorderQuestions(Request $request, $id)

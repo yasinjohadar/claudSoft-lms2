@@ -67,8 +67,13 @@
                 <div class="col-xl-12">
                     <div class="card custom-card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <div class="card-title">الأسئلة المرتبطة بالاختبار ({{ $quiz->questions->count() }})</div>
+                            <div class="card-title">
+                                <span id="questions-count">{{ $quiz->questions->count() }}</span> أسئلة مرتبطة بالاختبار
+                            </div>
                             <div>
+                                <button type="button" class="btn btn-danger btn-sm me-2" id="delete-selected-questions" disabled>
+                                    <i class="fas fa-trash me-1"></i>حذف المحدد
+                                </button>
                                 <a href="{{ route('admin.ai.question-creation.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-info btn-sm me-2">
                                     <i class="fas fa-magic me-1"></i>إنشاء أسئلة بالذكاء الاصطناعي
                                 </a>
@@ -86,6 +91,9 @@
                                     <table class="table text-nowrap table-hover">
                                         <thead>
                                             <tr>
+                                                <th width="50">
+                                                    <input type="checkbox" id="select-all-questions-table">
+                                                </th>
                                                 <th width="50">#</th>
                                                 <th>السؤال</th>
                                                 <th>النوع</th>
@@ -96,7 +104,10 @@
                                         </thead>
                                         <tbody id="questions-sortable">
                                             @foreach($quiz->questions as $question)
-                                                <tr data-id="{{ $question->id }}">
+                                                <tr id="question-row-{{ $question->id }}" data-id="{{ $question->id }}">
+                                                    <td>
+                                                        <input type="checkbox" class="question-row-checkbox" value="{{ $question->id }}">
+                                                    </td>
                                                     <td><i class="fas fa-grip-vertical handle" style="cursor: move;"></i></td>
                                                     <td>
                                                         <div class="d-flex align-items-start">
@@ -276,6 +287,100 @@
             </div>
         </div>
     </div>
+
+    <!-- Delete Single Question Modal -->
+    <div class="modal fade" id="deleteQuestionModal" tabindex="-1" aria-labelledby="deleteQuestionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body p-5">
+                    <!-- Icon -->
+                    <div class="text-center mb-4">
+                        <span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            <i class="fas fa-question-circle fa-3x"></i>
+                        </span>
+                    </div>
+
+                    <!-- Title -->
+                    <h5 class="modal-title text-center mb-4 fw-bold" id="deleteQuestionModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+                        حذف السؤال
+                    </h5>
+
+                    <!-- Message -->
+                    <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2 fs-5 mt-1"></i>
+                        <div>
+                            <strong>هل أنت متأكد من إزالة هذا السؤال من الاختبار؟</strong>
+                            <div class="mt-2">
+                                <span class="badge bg-primary fs-6" id="deleteQuestionText">السؤال</span>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                سيتم إزالة السؤال من هذا الاختبار فقط ولن يتم حذفه من بنك الأسئلة
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>إلغاء
+                        </button>
+                        <button type="button" class="btn btn-danger px-4" id="confirmDeleteQuestion">
+                            <i class="fas fa-trash me-2"></i>حذف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Multiple Questions Modal -->
+    <div class="modal fade" id="deleteMultipleQuestionsModal" tabindex="-1" aria-labelledby="deleteMultipleQuestionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body p-5">
+                    <!-- Icon -->
+                    <div class="text-center mb-4">
+                        <span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            <i class="fas fa-question-circle fa-3x"></i>
+                        </span>
+                    </div>
+
+                    <!-- Title -->
+                    <h5 class="modal-title text-center mb-4 fw-bold" id="deleteMultipleQuestionsModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+                        حذف أسئلة متعددة
+                    </h5>
+
+                    <!-- Message -->
+                    <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2 fs-5 mt-1"></i>
+                        <div>
+                            <strong>هل أنت متأكد من إزالة الأسئلة المحددة من الاختبار؟</strong>
+                            <div class="mt-2">
+                                <span class="badge bg-primary fs-6" id="deleteMultipleQuestionsCount">0</span> سؤال محدد
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                سيتم إزالة الأسئلة من هذا الاختبار فقط ولن يتم حذفها من بنك الأسئلة
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>إلغاء
+                        </button>
+                        <button type="button" class="btn btn-danger px-4" id="confirmDeleteMultipleQuestions">
+                            <i class="fas fa-trash me-2"></i>حذف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('scripts')
@@ -315,9 +420,35 @@ $(document).ready(function() {
         });
     }
 
-    // Select all questions
+    // Select all questions in import modal
     $('#select-all-questions').on('change', function() {
         $('.question-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Select all questions in table
+    $('#select-all-questions-table').on('change', function() {
+        $('.question-row-checkbox').prop('checked', $(this).prop('checked'));
+        updateDeleteButtonState();
+    });
+
+    // Update delete button state based on selected checkboxes
+    function updateDeleteButtonState() {
+        const selectedCount = $('.question-row-checkbox:checked').length;
+        $('#delete-selected-questions').prop('disabled', selectedCount === 0);
+        if (selectedCount > 0) {
+            $('#delete-selected-questions').html(`<i class="fas fa-trash me-1"></i>حذف المحدد (${selectedCount})`);
+        } else {
+            $('#delete-selected-questions').html('<i class="fas fa-trash me-1"></i>حذف المحدد');
+        }
+        
+        // Update select all checkbox
+        const totalCheckboxes = $('.question-row-checkbox').length;
+        $('#select-all-questions-table').prop('checked', selectedCount === totalCheckboxes && totalCheckboxes > 0);
+    }
+
+    // Update delete button when individual checkbox changes
+    $(document).on('change', '.question-row-checkbox', function() {
+        updateDeleteButtonState();
     });
 
     // Filter questions
@@ -433,12 +564,42 @@ $(document).ready(function() {
         importNext(0);
     });
 
-    // Remove question
-    $(document).on('click', '.remove-question', function() {
-        if (!confirm('هل أنت متأكد من إزالة هذا السؤال من الاختبار؟')) return;
+    // Remove question - Single delete
+    let currentDeleteQuestionId = null;
+    let currentDeleteQuestionRow = null;
 
+    $(document).on('click', '.remove-question', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const questionId = $(this).data('question-id');
-        const btn = $(this);
+        const row = $(this).closest('tr');
+        const questionText = row.find('td:eq(2) a').text().trim() || 'هذا السؤال';
+        
+        currentDeleteQuestionId = questionId;
+        currentDeleteQuestionRow = row;
+        
+        // Update modal content
+        $('#deleteQuestionText').text(questionText.length > 50 ? questionText.substring(0, 50) + '...' : questionText);
+        
+        // Show modal
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteQuestionModal'));
+        deleteModal.show();
+    });
+
+    // Confirm single delete
+    $('#confirmDeleteQuestion').on('click', function() {
+        if (!currentDeleteQuestionId || !currentDeleteQuestionRow) return;
+
+        const questionId = currentDeleteQuestionId;
+        const row = currentDeleteQuestionRow;
+
+        // Hide modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteQuestionModal'));
+        deleteModal.hide();
+
+        // Disable button
+        const btn = row.find('.remove-question');
         btn.prop('disabled', true);
 
         $.ajax({
@@ -450,12 +611,29 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     toastr.success(response.message || 'تم إزالة السؤال بنجاح');
-                    setTimeout(() => location.reload(), 500);
+                    
+                    // Remove row with animation
+                    row.fadeOut(300, function() {
+                        $(this).remove();
+                        
+                        // Update questions count
+                        const remainingCount = $('#questions-sortable tr').length;
+                        $('#questions-count').text(remainingCount);
+                        
+                        // Update card title if no questions left
+                        if (remainingCount === 0) {
+                            $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#importQuestionModal"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</button></td></tr>');
+                        }
+                    });
                 }
             },
             error: function(xhr) {
                 toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء إزالة السؤال');
                 btn.prop('disabled', false);
+            },
+            complete: function() {
+                currentDeleteQuestionId = null;
+                currentDeleteQuestionRow = null;
             }
         });
     });
@@ -502,6 +680,96 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء تحديث الحالة');
+            }
+        });
+    });
+
+    // Delete multiple questions
+    $('#delete-selected-questions').on('click', function() {
+        const selectedQuestions = [];
+        $('.question-row-checkbox:checked').each(function() {
+            selectedQuestions.push($(this).val());
+        });
+
+        if (selectedQuestions.length === 0) {
+            toastr.warning('يرجى اختيار سؤال واحد على الأقل');
+            return;
+        }
+
+        // Update modal content
+        $('#deleteMultipleQuestionsCount').text(selectedQuestions.length);
+
+        // Show modal
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteMultipleQuestionsModal'));
+        deleteModal.show();
+
+        // Store selected questions for deletion
+        window.selectedQuestionsForDeletion = selectedQuestions;
+    });
+
+    // Confirm multiple delete
+    $('#confirmDeleteMultipleQuestions').on('click', function() {
+        const selectedQuestions = window.selectedQuestionsForDeletion || [];
+        
+        if (selectedQuestions.length === 0) {
+            toastr.warning('لم يتم تحديد أي أسئلة');
+            return;
+        }
+
+        // Hide modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteMultipleQuestionsModal'));
+        deleteModal.hide();
+
+        // Disable button
+        const btn = $('#delete-selected-questions');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الحذف...');
+
+        $.ajax({
+            url: '{{ route('quizzes.remove-multiple-questions', $quiz->id) }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                question_ids: selectedQuestions
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success(response.message || `تم حذف ${selectedQuestions.length} سؤال بنجاح`);
+                    
+                    // Remove rows with animation
+                    let removedCount = 0;
+                    selectedQuestions.forEach(function(questionId) {
+                        const row = $(`#question-row-${questionId}`);
+                        if (row.length) {
+                            row.fadeOut(300, function() {
+                                $(this).remove();
+                                removedCount++;
+                                
+                                // Update count when all rows are removed
+                                if (removedCount === selectedQuestions.length) {
+                                    const remainingCount = $('#questions-sortable tr').length;
+                                    $('#questions-count').text(remainingCount);
+                                    
+                                    // Update card title if no questions left
+                                    if (remainingCount === 0) {
+                                        $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#importQuestionModal"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</button></td></tr>');
+                                    }
+                                    
+                                    // Reset checkboxes
+                                    $('#select-all-questions-table').prop('checked', false);
+                                    updateDeleteButtonState();
+                                }
+                            });
+                        }
+                    });
+                }
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف الأسئلة');
+                btn.prop('disabled', false);
+                updateDeleteButtonState();
+            },
+            complete: function() {
+                window.selectedQuestionsForDeletion = null;
             }
         });
     });
