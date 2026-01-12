@@ -32,9 +32,21 @@ function goToQuestion(index) {
     if (target) target.style.display = 'block';
     
     currentQuestionIndex = index;
-    if (typeof updateQuestionNavigation === 'function') {
+    
+    // Update navigation buttons using vanilla JS (jQuery may not be loaded yet)
+    document.querySelectorAll('.question-nav-btn').forEach(function(btn) {
+        btn.classList.remove('answered', 'active');
+        const btnIndex = parseInt(btn.getAttribute('data-question-index'));
+        if (btnIndex === index) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Also call updateQuestionNavigation if jQuery is available
+    if (typeof $ !== 'undefined' && typeof updateQuestionNavigation === 'function') {
         updateQuestionNavigation();
     }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -310,16 +322,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     });
                                     </script>
                                     {{-- #endregion --}}
-                                    @if($question->options && $question->options->count() > 0)
-                                        {{-- #region agent log --}}
-                                        <script>
-                                        console.log('DEBUG: Options condition passed, entering foreach', {
-                                            question_id: {{ $question->id }},
-                                            options_count: {{ $question->options->count() }},
-                                            hypothesisId: 'B'
-                                        });
-                                        </script>
-                                        {{-- #endregion --}}
+                                    @php
+                                        $optionsCollection = $question->options ?? collect();
+                                        $optionsCount = $optionsCollection->count();
+                                    @endphp
+                                    @if($optionsCount > 0)
                                         @foreach($question->options as $option)
                                             {{-- #region agent log --}}
                                             <script>
@@ -352,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         console.log('DEBUG: Options condition failed, showing warning', {
                                             question_id: {{ $question->id }},
                                             has_options: {{ $question->options ? 'true' : 'false' }},
-                                            options_count: {{ $question->options ? $question->options->count() : 0 }},
+                                            options_count: {{ $optionsCount }},
                                             hypothesisId: 'B'
                                         });
                                         </script>
@@ -726,14 +733,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                 console.log('DEBUG: Showing next button', {
                                     question_index: {{ $index }},
                                     loop_last: {{ $loop->last ? 'true' : 'false' }},
+                                    total_questions: {{ $questions->count() }},
+                                    is_last: {{ $loop->last ? 'true' : 'false' }},
                                     hypothesisId: 'D'
                                 });
                                 </script>
                                 {{-- #endregion --}}
                                 <button type="button"
+                                        id="next-btn-{{ $index }}"
                                         class="btn btn-primary"
                                         onclick="nextQuestion()"
-                                        style="display: block !important;">
+                                        style="display: block !important; visibility: visible !important; opacity: 1 !important;">
                                     التالي<i class="fas fa-arrow-left ms-2"></i>
                                 </button>
                             @else
@@ -1714,20 +1724,39 @@ $(document).ready(function() {
             console.log('Current question index:', currentQuestionIndex);
             console.log('Answered questions:', Array.from(answeredQuestions));
             
-            $('.question-nav-btn').each(function() {
-                const questionId = parseInt($(this).data('question-id'));
-                const questionIndex = $(this).data('question-index');
+            // Use both jQuery and vanilla JS for compatibility
+            if (typeof $ !== 'undefined') {
+                $('.question-nav-btn').each(function() {
+                    const questionId = parseInt($(this).data('question-id'));
+                    const questionIndex = parseInt($(this).data('question-index'));
 
-                $(this).removeClass('answered active');
+                    $(this).removeClass('answered active');
 
-                if (answeredQuestions.has(questionId)) {
-                    $(this).addClass('answered');
-                }
+                    if (answeredQuestions && answeredQuestions.has(questionId)) {
+                        $(this).addClass('answered');
+                    }
 
-                if (questionIndex === currentQuestionIndex) {
-                    $(this).addClass('active');
-                }
-            });
+                    if (questionIndex === currentQuestionIndex) {
+                        $(this).addClass('active');
+                    }
+                });
+            } else {
+                // Fallback to vanilla JS
+                document.querySelectorAll('.question-nav-btn').forEach(function(btn) {
+                    const questionId = parseInt(btn.getAttribute('data-question-id'));
+                    const questionIndex = parseInt(btn.getAttribute('data-question-index'));
+                    
+                    btn.classList.remove('answered', 'active');
+                    
+                    if (answeredQuestions && answeredQuestions.has(questionId)) {
+                        btn.classList.add('answered');
+                    }
+                    
+                    if (questionIndex === currentQuestionIndex) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             console.log('Question navigation updated successfully');
         } catch (error) {
