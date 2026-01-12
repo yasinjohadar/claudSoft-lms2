@@ -1,6 +1,7 @@
 @php
     $module = $module ?? null;
     $section = $section ?? null;
+    $orderNumber = $orderNumber ?? 1;
     if (!$module || !$section) {
         return;
     }
@@ -16,6 +17,11 @@
         ]);
     }
     
+    // Load modulable if not loaded (for resource check)
+    if (!$module->relationLoaded('modulable') && $module->module_type == 'resource') {
+        $module->load('modulable');
+    }
+    
     // أسماء المجموعات المرتبطة بقيود هذه الوحدة
     $groupNames = $module->accessRestrictions && $module->accessRestrictions->count() > 0
         ? $module->accessRestrictions
@@ -27,6 +33,12 @@
     $displayGroups = $groupNames->take(3);
     $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
     $hasRestrictions = $module->accessRestrictions && $module->accessRestrictions->count() > 0;
+    
+    // التحقق من أن المورد هو رابط
+    $isResourceUrl = false;
+    if ($module->module_type == 'resource' && $module->modulable) {
+        $isResourceUrl = $module->modulable->resource_source == 'url';
+    }
 @endphp
 
 <div id="module-container-{{ $module->id }}" class="mb-3 border rounded" style="transition: all 0.3s ease;">
@@ -56,6 +68,10 @@
             <div>
                 <h6 class="mb-1 fw-semibold text-dark">
                     {{ $module->title }}
+                    <span class="badge bg-secondary-transparent text-secondary ms-2">#{{ $orderNumber }}</span>
+                    @if($isResourceUrl)
+                        <i class="fas fa-link text-info ms-2" title="رابط خارجي"></i>
+                    @endif
                     <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark ms-2" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
                           @if($hasRestrictions && $groupNames->isNotEmpty())
                               title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"

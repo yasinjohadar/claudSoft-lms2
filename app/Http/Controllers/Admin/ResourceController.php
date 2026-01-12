@@ -452,10 +452,16 @@ class ResourceController extends Controller
                     'modulable'
                 ])->find($module->id);
                 
+                // Calculate order number (count of modules in section)
+                $orderNumber = CourseModule::where('section_id', $section->id)
+                    ->orderBy('sort_order')
+                    ->count();
+                
                 // Generate HTML for the module
                 $moduleHtml = view('admin.pages.courses.partials.module-item', [
                     'module' => $module,
                     'section' => $section,
+                    'orderNumber' => $orderNumber,
                 ])->render();
             }
 

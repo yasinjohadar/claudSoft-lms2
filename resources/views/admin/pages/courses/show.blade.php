@@ -767,6 +767,7 @@
                                                     <div>
                                                         <h6 class="mb-1 fw-semibold text-dark">
                                                             {{ $module->title }}
+                                                            <span class="badge bg-secondary-transparent text-secondary ms-2">#{{ $loop->iteration }}</span>
                                                             @php
                                                                 // أسماء المجموعات المرتبطة بقيود هذه الوحدة
                                                                 $groupNames = $module->accessRestrictions && $module->accessRestrictions->count() > 0
@@ -779,7 +780,16 @@
                                                                 $displayGroups = $groupNames->take(3);
                                                                 $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
                                                                 $hasRestrictions = $module->accessRestrictions && $module->accessRestrictions->count() > 0;
+                                                                
+                                                                // التحقق من أن المورد هو رابط
+                                                                $isResourceUrl = false;
+                                                                if ($module->module_type == 'resource' && $module->modulable) {
+                                                                    $isResourceUrl = $module->modulable->resource_source == 'url';
+                                                                }
                                                             @endphp
+                                                            @if($isResourceUrl)
+                                                                <i class="fas fa-link text-info ms-2" title="رابط خارجي"></i>
+                                                            @endif
                                                             <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark ms-2" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
                                                                   @if($hasRestrictions && $groupNames->isNotEmpty())
                                                                       title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
