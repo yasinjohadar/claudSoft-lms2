@@ -817,6 +817,60 @@ let answeredQuestions = new Set();
     let timerInterval = null;
     let isSubmitting = false; // Track if quiz is being submitted
 
+    // Navigation functions - Define in global scope for onclick handlers
+    function goToQuestion(index) {
+        console.log('goToQuestion called with index:', index);
+        console.log('Total questions:', totalQuestions);
+        console.log('Current index:', currentQuestionIndex);
+        
+        if (index < 0 || index >= totalQuestions) {
+            console.error('Invalid question index:', index);
+            return;
+        }
+        
+        try {
+            $('.question-container').hide();
+            const targetQuestion = $(`.question-container[data-question-index="${index}"]`);
+            
+            if (targetQuestion.length === 0) {
+                console.error('Question container not found for index:', index);
+                return;
+            }
+            
+            targetQuestion.show();
+            currentQuestionIndex = index;
+            updateQuestionNavigation();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            console.log('Successfully navigated to question', index + 1);
+        } catch (error) {
+            console.error('Error in goToQuestion:', error);
+        }
+    }
+
+    function nextQuestion() {
+        console.log('nextQuestion called, current index:', currentQuestionIndex);
+        if (currentQuestionIndex < totalQuestions - 1) {
+            goToQuestion(currentQuestionIndex + 1);
+        } else {
+            console.warn('Already at last question');
+        }
+    }
+
+    function previousQuestion() {
+        console.log('previousQuestion called, current index:', currentQuestionIndex);
+        if (currentQuestionIndex > 0) {
+            goToQuestion(currentQuestionIndex - 1);
+        } else {
+            console.warn('Already at first question');
+        }
+    }
+
+    // Expose functions to window object for global access
+    window.goToQuestion = goToQuestion;
+    window.nextQuestion = nextQuestion;
+    window.previousQuestion = previousQuestion;
+
     // Initialize on page load
 $(document).ready(function() {
         console.log('Document ready - initializing quiz...');
@@ -1530,48 +1584,8 @@ $(document).ready(function() {
         }
     }
 
-    // Navigation functions
-    function goToQuestion(index) {
-        console.log('goToQuestion called with index:', index);
-        console.log('Total questions:', totalQuestions);
-        console.log('Current index:', currentQuestionIndex);
-        
-        if (index < 0 || index >= totalQuestions) {
-            console.error('Invalid question index:', index);
-            return;
-        }
-        
-        try {
-            $('.question-container').hide();
-            const targetQuestion = $(`.question-container[data-question-index="${index}"]`);
-            
-            if (targetQuestion.length === 0) {
-                console.error('Question container not found for index:', index);
-                return;
-            }
-            
-            targetQuestion.show();
-            currentQuestionIndex = index;
-            updateQuestionNavigation();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            console.log('Successfully navigated to question', index + 1);
-        } catch (error) {
-            console.error('Error in goToQuestion:', error);
-        }
-    }
-
-    function nextQuestion() {
-        if (currentQuestionIndex < totalQuestions - 1) {
-            goToQuestion(currentQuestionIndex + 1);
-        }
-    }
-
-    function previousQuestion() {
-        if (currentQuestionIndex > 0) {
-            goToQuestion(currentQuestionIndex - 1);
-        }
-    }
+    // Navigation functions are now defined in global scope above (before document.ready)
+    // These duplicate definitions are removed to avoid conflicts
 
     // Submit confirmation
     function showSubmitConfirmation() {
