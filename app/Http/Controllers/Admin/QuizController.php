@@ -565,8 +565,8 @@ class QuizController extends Controller
             $grade = $validated['question_grade'] ?? 1.0;
             $isRequired = $validated['is_required'] ?? false;
 
-            // If _method is PUT, update existing question settings
-            if ($request->input('_method') === 'PUT') {
+            // If update_existing is true, update existing question settings
+            if ($request->input('update_existing') === true || $request->input('update_existing') === 'true') {
                 // Check if question exists in quiz using pivot table
                 if (!DB::table('quiz_questions')
                     ->where('quiz_id', $quiz->id)

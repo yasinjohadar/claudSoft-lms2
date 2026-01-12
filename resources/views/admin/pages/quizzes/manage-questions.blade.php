@@ -472,7 +472,7 @@ $(document).ready(function() {
                 _token: '{{ csrf_token() }}',
                 question_id: questionId,
                 question_grade: grade,
-                _method: 'PUT'
+                update_existing: true
             },
             success: function(response) {
                 toastr.success('تم تحديث درجة السؤال بنجاح');
@@ -495,7 +495,7 @@ $(document).ready(function() {
                 _token: '{{ csrf_token() }}',
                 question_id: questionId,
                 is_required: isRequired ? 1 : 0,
-                _method: 'PUT'
+                update_existing: true
             },
             success: function(response) {
                 toastr.success('تم تحديث حالة السؤال بنجاح');
