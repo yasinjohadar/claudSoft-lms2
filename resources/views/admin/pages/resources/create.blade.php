@@ -95,7 +95,7 @@
                                 <label class="form-label">نوع المورد <span class="text-danger">*</span></label>
                                 <select name="resource_type" class="form-select @error('resource_type') is-invalid @enderror" required>
                                     <option value="">اختر النوع</option>
-                                    <option value="pdf" {{ old('resource_type') == 'pdf' ? 'selected' : '' }}>PDF</option>
+                                    <option value="pdf" {{ old('resource_type', 'pdf') == 'pdf' ? 'selected' : '' }}>PDF</option>
                                     <option value="doc" {{ old('resource_type') == 'doc' ? 'selected' : '' }}>DOC/DOCX</option>
                                     <option value="ppt" {{ old('resource_type') == 'ppt' ? 'selected' : '' }}>PPT/PPTX</option>
                                     <option value="excel" {{ old('resource_type') == 'excel' ? 'selected' : '' }}>Excel</option>
@@ -156,7 +156,7 @@
                                     <label class="resource-source-option" for="sourceFile">
                                         <input class="form-check-input" type="radio" name="resource_source" 
                                                id="sourceFile" value="file" 
-                                               {{ old('resource_source', 'file') === 'file' ? 'checked' : '' }}
+                                               {{ old('resource_source', 'url') === 'file' ? 'checked' : '' }}
                                                onchange="toggleResourceSource()">
                                         <div class="card border h-100 resource-source-card">
                                             <div class="card-body text-center p-4">
@@ -171,7 +171,7 @@
                                     <label class="resource-source-option" for="sourceUrl">
                                         <input class="form-check-input" type="radio" name="resource_source" 
                                                id="sourceUrl" value="url"
-                                               {{ old('resource_source') === 'url' ? 'checked' : '' }}
+                                               {{ old('resource_source', 'url') === 'url' ? 'checked' : '' }}
                                                onchange="toggleResourceSource()">
                                         <div class="card border h-100 resource-source-card">
                                             <div class="card-body text-center p-4">
@@ -269,15 +269,15 @@
                             <div class="mb-3">
                                 <label class="form-label d-block">طريقة عرض الرابط</label>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="display_mode" id="display_mode_external"
-                                           value="external" {{ old('display_mode', 'external') === 'external' ? 'checked' : '' }}>
+                                        <input class="form-check-input" type="radio" name="display_mode" id="display_mode_external"
+                                           value="external" {{ old('display_mode', 'embedded') === 'external' ? 'checked' : '' }}>
                                     <label class="form-check-label" for="display_mode_external">
                                         فتح في تبويب جديد
                                     </label>
                                 </div>
                                 <div class="form-check form-check-inline">
                                     <input class="form-check-input" type="radio" name="display_mode" id="display_mode_embedded"
-                                           value="embedded" {{ old('display_mode') === 'embedded' ? 'checked' : '' }}>
+                                           value="embedded" {{ old('display_mode', 'embedded') === 'embedded' ? 'checked' : '' }}>
                                     <label class="form-check-label" for="display_mode_embedded">
                                         تضمين داخل صفحة الدرس (مناسب للفيديوهات مثل Bunny / YouTube)
                                     </label>
@@ -456,6 +456,11 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         toggleResourceSource();
+        // Ensure URL section is shown by default if URL source is selected
+        const sourceUrl = document.getElementById('sourceUrl');
+        if (sourceUrl && sourceUrl.checked && urlInputSection) {
+            urlInputSection.style.display = 'block';
+        }
     });
 
     // File Input Change
