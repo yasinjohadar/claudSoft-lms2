@@ -65,14 +65,18 @@
                     <i class="fas fa-file"></i>
                 @endif
             </span>
-            <div>
-                <h6 class="mb-1 fw-semibold text-dark">
-                    {{ $module->title }}
-                    <span class="badge bg-secondary-transparent text-secondary ms-2">#{{ $orderNumber }}</span>
-                    @if($isResourceUrl)
-                        <i class="fas fa-link text-info ms-2" title="رابط خارجي"></i>
-                    @endif
-                    <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark ms-2" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
+            <div class="flex-grow-1">
+                <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center justify-content-between">
+                    <span>{{ $module->title }}</span>
+                    <span class="d-flex align-items-center gap-2">
+                        @if($isResourceUrl)
+                            <i class="fas fa-link text-info" title="رابط خارجي"></i>
+                        @endif
+                        <span class="badge bg-secondary-transparent text-secondary">#{{ $orderNumber }}</span>
+                    </span>
+                </h6>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
                           @if($hasRestrictions && $groupNames->isNotEmpty())
                               title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
                           @elseif($hasRestrictions)
@@ -84,18 +88,18 @@
                     <span id="module-groups-container-{{ $module->id }}">
                         @if($hasRestrictions && $displayGroups->isNotEmpty())
                             @foreach($displayGroups as $index => $groupName)
-                                <span class="badge bg-primary-transparent text-primary ms-1 module-group-badge" data-module-id="{{ $module->id }}" data-group-name="{{ $groupName }}">
+                                <span class="badge bg-primary-transparent text-primary module-group-badge" data-module-id="{{ $module->id }}" data-group-name="{{ $groupName }}">
                                     <i class="fas fa-users me-1"></i>{{ $groupName }}
                                 </span>
                             @endforeach
                             @if($moreCount > 0)
-                                <span class="badge bg-light text-muted ms-1" id="module-more-badge-{{ $module->id }}">
+                                <span class="badge bg-light text-muted" id="module-more-badge-{{ $module->id }}">
                                     +{{ $moreCount }}
                                 </span>
                             @endif
                         @endif
                     </span>
-                </h6>
+                </div>
                 <small class="text-muted">
                     <span class="badge bg-light text-default me-1">
                         @if($module->module_type == 'lesson') درس
