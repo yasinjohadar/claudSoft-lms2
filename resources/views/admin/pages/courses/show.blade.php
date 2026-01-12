@@ -784,12 +784,12 @@
                                                                 $isResourceUrl = $module->modulable->resource_source == 'url';
                                                             }
                                                         @endphp
-                                                        <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center gap-2 flex-wrap">
+                                                        <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center gap-2 flex-wrap flex-row-reverse justify-content-end">
                                                             <span>{{ $module->title }}</span>
-                                                            <span class="badge bg-secondary-transparent text-secondary">#{{ $loop->iteration }}</span>
                                                             @if($isResourceUrl)
                                                                 <i class="fas fa-link text-info" title="رابط خارجي"></i>
                                                             @endif
+                                                            <span class="badge bg-secondary-transparent text-secondary">#{{ $loop->iteration }}</span>
                                                         </h6>
                                                         <div class="d-flex align-items-center gap-2 flex-wrap">
                                                             <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
