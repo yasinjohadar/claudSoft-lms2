@@ -290,6 +290,7 @@ Route::prefix('admin')
         Route::get('question-bank/course/{courseId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByCourse'])->name('question-bank.by-course');
         Route::get('question-bank/type/{typeId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByType'])->name('question-bank.by-type');
         Route::post('question-bank/bulk-action', [\App\Http\Controllers\Admin\QuestionBankController::class, 'bulkAction'])->name('question-bank.bulk-action');
+        Route::post('question-bank/delete-multiple', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyMultiple'])->name('question-bank.delete-multiple');
         
         // Excel Import/Export
         Route::get('question-bank/import/excel', [\App\Http\Controllers\Admin\QuestionBankController::class, 'showImportForm'])->name('question-bank.import.excel');

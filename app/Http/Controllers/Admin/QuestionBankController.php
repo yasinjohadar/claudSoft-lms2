@@ -405,16 +405,80 @@ class QuestionBankController extends Controller
 
         // Check if question is used in any quiz
         if ($question->quizQuestions()->count() > 0) {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يمكن حذف السؤال لأنه مستخدم في اختبار واحد أو أكثر'
+                ], 422);
+            }
             return back()->withErrors(['error' => 'لا يمكن حذف السؤال لأنه مستخدم في اختبار واحد أو أكثر']);
         }
 
         try {
             $question->delete();
 
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حذف السؤال بنجاح',
+                    'question_id' => $id
+                ]);
+            }
+
             return redirect()->route('question-bank.index')
                 ->with('success', 'تم حذف السؤال بنجاح');
         } catch (\Exception $e) {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء حذف السؤال: ' . $e->getMessage()
+                ], 500);
+            }
             return back()->withErrors(['error' => 'حدث خطأ أثناء حذف السؤال: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove multiple questions.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'question_ids' => 'required|array',
+            'question_ids.*' => 'exists:question_bank,id',
+        ]);
+
+        try {
+            $questionIds = $validated['question_ids'];
+            
+            // Check if any question is used in a quiz
+            $usedQuestions = QuestionBank::whereIn('id', $questionIds)
+                ->whereHas('quizQuestions')
+                ->pluck('id')
+                ->toArray();
+
+            if (count($usedQuestions) > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'بعض الأسئلة المحددة مستخدمة في اختبارات ولا يمكن حذفها',
+                    'used_questions' => $usedQuestions
+                ], 422);
+            }
+
+            // Delete questions
+            $deletedCount = QuestionBank::whereIn('id', $questionIds)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "تم حذف {$deletedCount} سؤال بنجاح",
+                'deleted_count' => $deletedCount,
+                'question_ids' => $questionIds
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حذف الأسئلة: ' . $e->getMessage()
+            ], 500);
         }
     }
 
