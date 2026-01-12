@@ -214,24 +214,134 @@ class AIQuestionCreationService
 - عدد الأسئلة: {$numberOfQuestions}
 - مستوى الصعوبة: {$difficultyText}
 
-يرجى إنشاء الأسئلة بالصيغة JSON التالية:
-[
-  {
-    \"type\": \"نوع السؤال (single_choice, multiple_choice, true_false, short_answer)\",
-    \"question\": \"نص السؤال\",
-    \"options\": [\"الخيار 1\", \"الخيار 2\", ...],
-    \"correct_answer\": \"الإجابة الصحيحة\",
-    \"explanation\": \"شرح الإجابة\",
-    \"difficulty\": \"easy|medium|hard\",
-    \"points\": 10
-  }
-]
+يرجى إنشاء الأسئلة بالصيغة JSON التالية. يجب أن تكون الأسئلة متنوعة وتغطي الأنواع المطلوبة:
 
-ملاحظات:
-- تأكد من أن الأسئلة متنوعة في الأنواع المطلوبة
+أنواع الأسئلة المتاحة:
+
+1. **single_choice** (اختيار من متعدد - إجابة واحدة):
+{
+  \"type\": \"single_choice\",
+  \"question\": \"نص السؤال\",
+  \"options\": [\"الخيار 1\", \"الخيار 2\", \"الخيار 3\", \"الخيار 4\"],
+  \"correct_answer\": \"الخيار الصحيح (نص الخيار)\",
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+2. **multiple_choice** (اختيار من متعدد - إجابات متعددة):
+{
+  \"type\": \"multiple_choice\",
+  \"question\": \"نص السؤال\",
+  \"options\": [\"الخيار 1\", \"الخيار 2\", \"الخيار 3\", \"الخيار 4\"],
+  \"correct_answer\": [\"الخيار الصحيح 1\", \"الخيار الصحيح 2\"],
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+3. **true_false** (صح / خطأ):
+{
+  \"type\": \"true_false\",
+  \"question\": \"نص السؤال\",
+  \"options\": [\"صح\", \"خطأ\"],
+  \"correct_answer\": \"صح\" أو \"خطأ\",
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+4. **short_answer** (إجابة قصيرة):
+{
+  \"type\": \"short_answer\",
+  \"question\": \"نص السؤال\",
+  \"correct_answer\": \"الإجابة الصحيحة\",
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+5. **essay** (مقالي - إجابة طويلة):
+{
+  \"type\": \"essay\",
+  \"question\": \"نص السؤال\",
+  \"explanation\": \"نموذج إجابة أو نقاط مهمة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+6. **matching** (مطابقة):
+{
+  \"type\": \"matching\",
+  \"question\": \"وصف المهمة (مثل: قم بمطابقة العناصر)\",
+  \"pairs\": [
+    {\"question\": \"العنصر 1\", \"answer\": \"المطابق 1\"},
+    {\"question\": \"العنصر 2\", \"answer\": \"المطابق 2\"},
+    {\"question\": \"العنصر 3\", \"answer\": \"المطابق 3\"}
+  ],
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+7. **ordering** (ترتيب):
+{
+  \"type\": \"ordering\",
+  \"question\": \"نص السؤال\",
+  \"items\": [\"العنصر الأول\", \"العنصر الثاني\", \"العنصر الثالث\", \"العنصر الرابع\"],
+  \"correct_order\": [\"العنصر الأول\", \"العنصر الثاني\", \"العنصر الثالث\", \"العنصر الرابع\"],
+  \"explanation\": \"شرح الترتيب الصحيح\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+8. **fill_blanks** (ملء الفراغات):
+{
+  \"type\": \"fill_blanks\",
+  \"question\": \"نص السؤال مع [___] للفراغات\",
+  \"correct_answers\": [\"الإجابة 1\", \"الإجابة 2\", \"الإجابة 3\"],
+  \"explanation\": \"شرح الإجابات\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+9. **numerical** (إجابة رقمية):
+{
+  \"type\": \"numerical\",
+  \"question\": \"نص السؤال\",
+  \"expected_value\": 42.5,
+  \"tolerance\": 0.1,
+  \"explanation\": \"شرح الإجابة\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+10. **calculated** (محسوب - معادلات):
+{
+  \"type\": \"calculated\",
+  \"question\": \"نص السؤال مع متغيرات\",
+  \"formula\": \"{a} * {b} + {c}\",
+  \"variables\": [
+    {\"name\": \"a\", \"min\": 1, \"max\": 10},
+    {\"name\": \"b\", \"min\": 1, \"max\": 10},
+    {\"name\": \"c\", \"min\": 1, \"max\": 10}
+  ],
+  \"explanation\": \"شرح الحل\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"points\": 10
+}
+
+ملاحظات مهمة:
+- تأكد من إنشاء الأسئلة بالأنواع المطلوبة فقط: {$questionTypes}
+- إذا كان النوع المطلوب \"مطابقة\"، استخدم type: \"matching\" مع pairs
+- إذا كان النوع المطلوب \"ترتيب\"، استخدم type: \"ordering\" مع items و correct_order
+- إذا كان النوع المطلوب \"ملء الفراغات\"، استخدم type: \"fill_blanks\" مع correct_answers
+- إذا كان النوع المطلوب \"إجابة رقمية\"، استخدم type: \"numerical\" مع expected_value
+- إذا كان النوع المطلوب \"محسوب\"، استخدم type: \"calculated\" مع formula و variables
 - الإجابات الصحيحة يجب أن تكون دقيقة
 - الشرح يجب أن يكون واضحاً ومفيداً
-- استخدم مصطلحات متعلقة بـ {$languageName}";
+- استخدم مصطلحات متعلقة بـ {$languageName}
+- أنشئ عدد الأسئلة المطلوب ({$numberOfQuestions}) مع التنويع في الأنواع المحددة";
     }
 
     /**
@@ -307,8 +417,92 @@ class AIQuestionCreationService
                 // ربط السؤال باللغة
                 $question->programmingLanguages()->attach($programmingLanguage->id);
 
-                // إضافة الخيارات إذا كانت موجودة
-                if (isset($questionData['options']) && is_array($questionData['options']) && !empty($questionData['options'])) {
+                // معالجة خاصة لكل نوع من أنواع الأسئلة
+                $questionTypeName = QuestionType::find($questionTypeId)->name ?? '';
+                
+                // Matching questions
+                if ($questionTypeName === 'matching' && isset($questionData['pairs']) && is_array($questionData['pairs'])) {
+                    $pairOrder = 1;
+                    foreach ($questionData['pairs'] as $pair) {
+                        if (isset($pair['question']) && isset($pair['answer'])) {
+                            QuestionOption::create([
+                                'question_id' => $question->id,
+                                'option_text' => $pair['question'],
+                                'is_correct' => true,
+                                'option_order' => $pairOrder,
+                                'match_pair_id' => $pairOrder,
+                                'feedback' => $pair['answer'], // Store matching answer in feedback
+                                'grade_percentage' => 100,
+                            ]);
+                            $pairOrder++;
+                        }
+                    }
+                }
+                // Ordering questions
+                elseif ($questionTypeName === 'ordering' && isset($questionData['items']) && is_array($questionData['items'])) {
+                    $correctOrder = $questionData['correct_order'] ?? $questionData['items'];
+                    foreach ($questionData['items'] as $index => $item) {
+                        $correctIndex = array_search($item, $correctOrder);
+                        QuestionOption::create([
+                            'question_id' => $question->id,
+                            'option_text' => $item,
+                            'is_correct' => true,
+                            'option_order' => ($correctIndex !== false ? $correctIndex + 1 : $index + 1),
+                            'grade_percentage' => 100,
+                        ]);
+                    }
+                    // Store correct order in metadata
+                    $metadata = $question->metadata ?? [];
+                    $metadata['correct_order'] = $correctOrder;
+                    $question->update(['metadata' => $metadata]);
+                }
+                // Fill blanks questions
+                elseif ($questionTypeName === 'fill_blanks' && isset($questionData['correct_answers']) && is_array($questionData['correct_answers'])) {
+                    foreach ($questionData['correct_answers'] as $index => $answer) {
+                        QuestionOption::create([
+                            'question_id' => $question->id,
+                            'option_text' => $answer,
+                            'is_correct' => true,
+                            'option_order' => $index + 1,
+                            'grade_percentage' => 100,
+                        ]);
+                    }
+                }
+                // Numerical questions
+                elseif ($questionTypeName === 'numerical') {
+                    $expectedValue = $questionData['expected_value'] ?? null;
+                    $tolerance = $questionData['tolerance'] ?? 0.1;
+                    if ($expectedValue !== null) {
+                        QuestionOption::create([
+                            'question_id' => $question->id,
+                            'option_text' => (string)$expectedValue,
+                            'is_correct' => true,
+                            'option_order' => 1,
+                            'grade_percentage' => 100,
+                        ]);
+                        // Store tolerance in metadata
+                        $metadata = $question->metadata ?? [];
+                        $metadata['expected_value'] = $expectedValue;
+                        $metadata['tolerance'] = $tolerance;
+                        $question->update(['metadata' => $metadata]);
+                    }
+                }
+                // Calculated questions
+                elseif ($questionTypeName === 'calculated') {
+                    $formula = $questionData['formula'] ?? '';
+                    $variables = $questionData['variables'] ?? [];
+                    // Store formula and variables in metadata
+                    $metadata = $question->metadata ?? [];
+                    $metadata['formula'] = $formula;
+                    $metadata['variables'] = $variables;
+                    $question->update(['metadata' => $metadata]);
+                }
+                // Essay questions - no options needed
+                elseif ($questionTypeName === 'essay') {
+                    // Essay questions don't need options
+                }
+                // Regular questions with options (multiple choice, true/false, short answer)
+                elseif (isset($questionData['options']) && is_array($questionData['options']) && !empty($questionData['options'])) {
                     $correctAnswer = $questionData['correct_answer'] ?? '';
                     
                     Log::info('Creating options for question', [
@@ -443,15 +637,29 @@ class AIQuestionCreationService
         $typeMapping = [
             'single_choice' => 'multiple_choice_single',
             'multiple_choice' => 'multiple_choice_multiple',
+            'multiple_choice_single' => 'multiple_choice_single',
+            'multiple_choice_multiple' => 'multiple_choice_multiple',
             'true_false' => 'true_false',
             'short_answer' => 'short_answer',
             'essay' => 'essay',
+            'matching' => 'matching',
+            'ordering' => 'ordering',
+            'fill_blanks' => 'fill_blanks',
+            'fill_blank' => 'fill_blanks',
+            'numerical' => 'numerical',
+            'calculated' => 'calculated',
         ];
 
         $mappedName = $typeMapping[$typeName] ?? $typeName;
         
         // البحث في قاعدة البيانات
         $questionType = QuestionType::where('name', $mappedName)->first();
+        if ($questionType) {
+            return $questionType->id;
+        }
+
+        // محاولة البحث بالاسم مباشرة
+        $questionType = QuestionType::where('name', $typeName)->first();
         if ($questionType) {
             return $questionType->id;
         }
@@ -631,8 +839,9 @@ class AIQuestionCreationService
                 continue;
             }
 
-            $validated[] = [
-                'type' => $question['type'] ?? 'single_choice',
+            $type = $question['type'] ?? 'single_choice';
+            $validatedQuestion = [
+                'type' => $type,
                 'question' => $question['question'],
                 'options' => $question['options'] ?? [],
                 'correct_answer' => $question['correct_answer'] ?? '',
@@ -640,6 +849,44 @@ class AIQuestionCreationService
                 'difficulty' => $question['difficulty'] ?? 'medium',
                 'points' => $question['points'] ?? 10,
             ];
+
+            // إضافة الحقول الخاصة لكل نوع
+            if ($type === 'matching' && isset($question['pairs'])) {
+                $validatedQuestion['pairs'] = $question['pairs'];
+            }
+            
+            if ($type === 'ordering') {
+                if (isset($question['items'])) {
+                    $validatedQuestion['items'] = $question['items'];
+                }
+                if (isset($question['correct_order'])) {
+                    $validatedQuestion['correct_order'] = $question['correct_order'];
+                }
+            }
+            
+            if ($type === 'fill_blanks' && isset($question['correct_answers'])) {
+                $validatedQuestion['correct_answers'] = $question['correct_answers'];
+            }
+            
+            if ($type === 'numerical') {
+                if (isset($question['expected_value'])) {
+                    $validatedQuestion['expected_value'] = $question['expected_value'];
+                }
+                if (isset($question['tolerance'])) {
+                    $validatedQuestion['tolerance'] = $question['tolerance'];
+                }
+            }
+            
+            if ($type === 'calculated') {
+                if (isset($question['formula'])) {
+                    $validatedQuestion['formula'] = $question['formula'];
+                }
+                if (isset($question['variables'])) {
+                    $validatedQuestion['variables'] = $question['variables'];
+                }
+            }
+
+            $validated[] = $validatedQuestion;
         }
 
         return $validated;
