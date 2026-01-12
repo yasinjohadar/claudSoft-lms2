@@ -715,7 +715,7 @@
                             </div>
 
                             <!-- Questions Preview -->
-                            @if($quiz->quizQuestions->count() > 0)
+                            @if($inProgressAttempt && $quiz->quizQuestions->count() > 0)
                                 <div class="mb-4">
                                     <h6 class="fw-semibold mb-3"><i class="fas fa-list me-2"></i>الأسئلة ({{ $quiz->quizQuestions->count() }})</h6>
                                     <div class="list-group">
