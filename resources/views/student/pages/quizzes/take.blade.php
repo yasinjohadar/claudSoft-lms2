@@ -760,11 +760,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                         @endif
                                     </div>
                                     @break
+                            @endswitch
 
-                            @default
+                            {{-- Fallback for unknown question types --}}
+                            @if(!in_array($question->questionType->name, ['multiple_choice_single', 'multiple_choice_multiple', 'true_false', 'short_answer', 'essay', 'fill_blanks', 'matching', 'drag_drop', 'ordering', 'numerical', 'calculated']))
                                 {{-- Debug: Unknown question type --}}
                                 <script>
-                                console.log('DEBUG: Unknown question type - falling into @default', {
+                                console.log('DEBUG: Unknown question type - fallback check', {
                                     question_id: {{ $question->id }},
                                     type_name: '{{ $question->questionType->name }}',
                                     type_id: {{ $question->question_type_id }}
@@ -776,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <br>
                                     <small>الرجاء التواصل مع المدير.</small>
                                 </div>
-                            @endswitch
+                            @endif
                             </div>
 
                         <!-- Navigation Buttons -->
