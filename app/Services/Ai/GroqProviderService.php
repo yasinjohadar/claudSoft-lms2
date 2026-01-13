@@ -48,80 +48,192 @@ class GroqProviderService extends AIProviderService
 
             Log::info('Groq API Request', [
                 'url' => $fullUrl,
+                'base_url' => $baseUrl,
+                'endpoint' => $endpoint,
                 'model' => $modelKey,
                 'max_tokens' => $payload['max_tokens'],
+                'payload' => $payload,
             ]);
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . trim($apiKey),
                 'Content-Type' => 'application/json',
-            ])->withoutVerifying()->timeout(180)->post($fullUrl, $payload);
+            ])->withoutVerifying()->timeout(500)->post($fullUrl, $payload);
 
+            // تحويل الـ response body إلى UTF-8 بشكل صحيح
             $rawBody = $response->body();
-
-            // التأكد من أن الاستجابة UTF-8
+            
+            // التحقق من الترميز وإصلاحه إذا لزم الأمر
             if (!mb_check_encoding($rawBody, 'UTF-8')) {
+                // محاولة تحويل الترميز
                 $body = mb_convert_encoding($rawBody, 'UTF-8', 'auto');
+                // إذا فشل التحويل، استخدم utf8_encode كحل بديل
                 if (!mb_check_encoding($body, 'UTF-8')) {
                     $body = mb_convert_encoding($rawBody, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
                 }
             } else {
                 $body = $rawBody;
             }
-
+            
+            // تنظيف النص من الأحرف غير الصالحة في UTF-8
             $body = mb_convert_encoding($body, 'UTF-8', 'UTF-8');
-
-            $data = json_decode($body, true, 512, JSON_INVALID_UTF8_IGNORE);
+            
+            Log::info('Groq API Response', [
+                'status' => $response->status(),
+                'success' => $response->successful(),
+                'body_length' => strlen($body),
+                'body_preview' => mb_substr($body, 0, 500),
+                'encoding_valid' => mb_check_encoding($body, 'UTF-8'),
+            ]);
 
             if ($response->successful()) {
-                $content = $data['choices'][0]['message']['content'] ?? '';
-
-                Log::info('Groq API Success', [
-                    'model' => $data['model'] ?? $modelKey,
-                    'tokens' => $data['usage']['total_tokens'] ?? null,
-                ]);
-
-                return [
-                    'success' => true,
-                    'content' => $content,
-                    'tokens_used' => $data['usage']['total_tokens'] ?? 0,
-                    'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
-                    'completion_tokens' => $data['usage']['completion_tokens'] ?? 0,
-                    'model_used' => $data['model'] ?? $modelKey,
-                ];
+                try {
+                    $data = json_decode($body, true, 512, JSON_INVALID_UTF8_IGNORE);
+                    
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        Log::error('Groq JSON decode error', [
+                            'error' => json_last_error_msg(),
+                            'error_code' => json_last_error(),
+                            'body_preview' => mb_substr($body, 0, 500),
+                        ]);
+                        $this->setLastError('خطأ في تحليل رد Groq: ' . json_last_error_msg());
+                        return [
+                            'success' => false,
+                            'error' => 'خطأ في تحليل رد Groq',
+                        ];
+                    }
+                    
+                    $content = $data['choices'][0]['message']['content'] ?? '';
+                    
+                    // التحقق من ترميز المحتوى المستخرج
+                    if (!empty($content) && !mb_check_encoding($content, 'UTF-8')) {
+                        $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+                    }
+                    
+                    Log::info('Groq content extracted', [
+                        'content_length' => strlen($content),
+                        'content_preview' => mb_substr($content, 0, 500),
+                        'encoding_valid' => mb_check_encoding($content, 'UTF-8'),
+                    ]);
+                    
+                    return [
+                        'success' => true,
+                        'content' => $content,
+                        'tokens_used' => $data['usage']['total_tokens'] ?? 0,
+                        'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
+                        'completion_tokens' => $data['usage']['completion_tokens'] ?? 0,
+                        'model_used' => $data['model'] ?? $this->model->model_key,
+                    ];
+                } catch (\JsonException $e) {
+                    Log::error('Groq JSON exception: ' . $e->getMessage(), [
+                        'body_preview' => mb_substr($body, 0, 500),
+                    ]);
+                    $this->setLastError('خطأ في تحليل رد Groq: ' . $e->getMessage());
+                    return [
+                        'success' => false,
+                        'error' => 'خطأ في تحليل رد Groq',
+                    ];
+                }
             }
 
-            $errorMessage = $data['error']['message'] ?? 'Unknown Groq error';
-            $errorCode = $data['error']['type'] ?? $response->status();
-
+            // معالجة الأخطاء
+            $errorData = $response->json();
+            
+            // Groq قد يعيد أخطاء بصيغ مختلفة
+            if (isset($errorData['error'])) {
+                $errorMessage = $errorData['error']['message'] ?? ($errorData['error']['msg'] ?? 'خطأ غير معروف');
+                $errorType = $errorData['error']['type'] ?? null;
+                $errorCode = $errorData['error']['code'] ?? null;
+            } elseif (isset($errorData['msg'])) {
+                $errorMessage = $errorData['msg'];
+                $errorType = null;
+                $errorCode = $errorData['code'] ?? null;
+            } elseif (isset($errorData['message'])) {
+                $errorMessage = $errorData['message'];
+                $errorType = null;
+                $errorCode = null;
+            } else {
+                $errorMessage = $response->body() ?? 'خطأ غير معروف';
+                $errorType = null;
+                $errorCode = null;
+            }
+            
             Log::error('Groq API Error', [
                 'status' => $response->status(),
                 'error' => $errorMessage,
+                'type' => $errorType,
                 'code' => $errorCode,
-                'response' => $data,
+                'response_body' => $response->body(),
+                'error_data' => $errorData,
             ]);
 
-            $this->setLastError($errorMessage);
+            // رسائل خطأ واضحة بالعربية
+            $friendlyMessage = $this->getFriendlyErrorMessage($response->status(), $errorMessage, $errorType);
+
+            $this->setLastError($friendlyMessage);
 
             return [
                 'success' => false,
-                'error' => $errorMessage,
-                'code' => $errorCode,
+                'error' => $friendlyMessage,
+                'status_code' => $response->status(),
+                'raw_error' => $errorMessage,
             ];
-        } catch (\Throwable $e) {
-            Log::error('Groq API Exception', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Groq API Connection Exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
             ]);
-
-            $this->setLastError($e->getMessage());
-
+            
+            $error = 'خطأ في الاتصال بخادم Groq. يرجى التحقق من الاتصال بالإنترنت والمحاولة مرة أخرى.';
+            $this->setLastError($error);
+            
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $error,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Groq API Exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            $error = 'خطأ في الاتصال: ' . $e->getMessage();
+            $this->setLastError($error);
+            
+            return [
+                'success' => false,
+                'error' => $error,
             ];
         }
+    }
+
+    /**
+     * الحصول على رسالة خطأ واضحة
+     */
+    private function getFriendlyErrorMessage(int $statusCode, string $errorMessage, ?string $errorType = null): string
+    {
+        // تنظيف رسالة الخطأ من النقاط الزائدة في البداية
+        $errorMessage = ltrim($errorMessage, '. ');
+        
+        if ($statusCode === 401) {
+            return 'API Key غير صحيح أو منتهي الصلاحية. يرجى التحقق من API Key من Groq Console.';
+        } elseif ($statusCode === 404) {
+            return 'Model Key غير صحيح أو غير متاح. تأكد من أن Model Key صحيح.';
+        } elseif ($statusCode === 429) {
+            return 'تم تجاوز حد الاستخدام. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى، أو التحقق من خطة Groq الخاصة بك.';
+        } elseif ($statusCode === 500 || $statusCode === 502 || $statusCode === 503) {
+            return 'خطأ في خادم Groq. يرجى المحاولة مرة أخرى لاحقاً.';
+        } elseif ($errorType === 'insufficient_quota' || stripos($errorMessage, 'quota') !== false) {
+            return 'رصيد Groq غير كافٍ. يرجى إضافة رصيد إلى حسابك من Groq Console.';
+        } elseif ($errorType === 'invalid_request_error' || stripos($errorMessage, 'invalid') !== false || stripos($errorMessage, 'payload') !== false) {
+            $message = 'طلب غير صحيح: ' . $errorMessage;
+            $message .= "\n\n💡 نصائح:";
+            $message .= "\n- تأكد من أن Model Key صحيح (مثل: llama-3.3-70b-versatile, qwen/qwen3-32b)";
+            $message .= "\n- تأكد من أن API Key صحيح من: https://console.groq.com/keys";
+            $message .= "\n- تأكد من أن Base URL صحيح: https://api.groq.com/openai/v1";
+            $message .= "\n- تأكد من أن API Endpoint صحيح: /chat/completions";
+            return $message;
+        }
+
+        return 'خطأ من Groq: ' . $errorMessage;
     }
 
     /**
@@ -130,30 +242,30 @@ class GroqProviderService extends AIProviderService
     public function generateText(string $prompt, array $options = []): string
     {
         $messages = [
-            ['role' => 'user', 'content' => $prompt],
+            ['role' => 'user', 'content' => $prompt]
         ];
 
         $result = $this->chat($messages, $options);
-
+        
         if (!$result['success']) {
-            // التأكد من أن الخطأ محفوظ (chat() يستدعي setLastError بالفعل)
-            $this->setLastError($result['error'] ?? $this->getLastError() ?? 'خطأ غير معروف في توليد النص');
+            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص');
             return '';
         }
-
+        
         $content = $result['content'] ?? '';
-
+        
         // تنظيف المحتوى من الأحرف غير الصالحة في UTF-8
         if (!empty($content)) {
             if (!mb_check_encoding($content, 'UTF-8')) {
                 $content = mb_convert_encoding($content, 'UTF-8', 'auto');
             }
-            // إزالة BOM وأحرف غير صالحة
+            // إزالة الأحرف غير الصالحة
             $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
-            $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
+            // إزالة BOM إذا كان موجوداً
+            $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
         }
-
-        return (string) $content;
+        
+        return $content;
     }
 
     /**
