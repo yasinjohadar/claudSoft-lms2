@@ -237,7 +237,7 @@
 
                     <!-- Question Text -->
                     <div class="question-text mb-3 p-3 bg-light rounded">
-                        {!! $question->question_text !!}
+                        {{ $question->question_text }}
                     </div>
 
                     <!-- Question Image -->

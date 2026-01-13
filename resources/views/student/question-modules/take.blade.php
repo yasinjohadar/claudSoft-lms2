@@ -88,7 +88,7 @@
                         <!-- Question Text -->
                         @if($question->questionType->name !== 'fill_blanks')
                         <div class="question-text mb-4">
-                            {!! $question->question_text !!}
+                            {{ $question->question_text }}
                         </div>
                         @endif
 
