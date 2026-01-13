@@ -62,6 +62,9 @@
                                         <input type="text" class="form-control" id="model_key_input" name="model_key" value="{{ old('model_key') }}" required placeholder="اختر المزود أولاً">
                                         <small class="text-muted" id="model_key_hint">اختر المزود أولاً لعرض الموديلات المتاحة</small>
                                     </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2 d-none" id="fetchGroqModelsBtn">
+                                        <i class="fas fa-database me-1"></i> جلب الموديلات من Groq
+                                    </button>
                                 </div>
                             </div>
 
@@ -183,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('provider');
     const modelKeyContainer = document.getElementById('model_key_container');
     const providerHint = document.getElementById('provider_hint');
+    const fetchGroqBtn = document.getElementById('fetchGroqModelsBtn');
     
     const hints = {
         'openrouter': '🆓 الموديلات المجانية متاحة فوراً! | <a href="https://openrouter.ai/keys" target="_blank">الحصول على API Key مجاني</a>',
@@ -190,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'openai': '📌 يحتاج API Key من <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>',
         'anthropic': '📌 يحتاج API Key من <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>',
         'zai': '🚀 يحتاج API Key من <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> | GLM-4.7 (358B parameters)',
+        'groq': '⚡ يحتاج API Key من <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> | يدعم موديلات متعددة (Qwen, Llama, OpenAI, وغيرها)',
         'local': '🏠 للموديلات المحلية (Ollama, LM Studio) - لا يحتاج API Key'
     };
     
@@ -221,6 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (apiEndpointInput && !apiEndpointInput.value) {
                 apiEndpointInput.value = '/chat/completions';
             }
+        } else if (provider === 'groq') {
+            if (baseUrlInput && !baseUrlInput.value) {
+                baseUrlInput.value = 'https://api.groq.com/openai/v1';
+            }
+            if (apiEndpointInput && !apiEndpointInput.value) {
+                apiEndpointInput.value = '/chat/completions';
+            }
         } else if (provider === 'local') {
             if (baseUrlInput && !baseUrlInput.value) {
                 baseUrlInput.value = 'http://localhost:11434';
@@ -232,6 +244,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // تحديث hint المزود
         providerHint.innerHTML = hints[provider] || '💡 <strong>OpenRouter (موصى به)</strong>: يوفر موديلات مجانية متعددة';
+
+        // إظهار / إخفاء زر جلب موديلات Groq
+        if (fetchGroqBtn) {
+            if (provider === 'groq') {
+                fetchGroqBtn.classList.remove('d-none');
+            } else {
+                fetchGroqBtn.classList.add('d-none');
+            }
+        }
         
         if (Object.keys(models).length > 0) {
             // إنشاء قائمة منسدلة
@@ -301,6 +322,8 @@ document.addEventListener('DOMContentLoaded', function() {
             hint = '<strong>📍 للحصول على API Key مجاني:</strong> اذهب إلى <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> → Create Key<br><span class="text-success">✅ لا يحتاج بطاقة ائتمان | ✅ الموديلات المجانية متاحة فوراً</span>';
         } else if (provider === 'zai') {
             hint = '<strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> → Subscribe → Get API Key<br><span class="text-info">🚀 GLM-4.7: 358B parameters | متوافق مع OpenAI API</span>';
+        } else if (provider === 'groq') {
+            hint = '<strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> → API Keys → Create Key<br><span class="text-info">⚡ Groq يدعم موديلات متعددة من مزودين مختلفين</span>';
         } else {
             hint = 'أدخل مفتاح API الخاص بالمزود';
         }
@@ -320,6 +343,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 apiKeyInput.placeholder = 'sk-or-... (من OpenRouter)';
             } else if (provider === 'zai') {
                 apiKeyInput.placeholder = 'zai-... (من Z.ai Platform)';
+            } else if (provider === 'groq') {
+                apiKeyInput.placeholder = 'gsk_... (من Groq Console)';
             } else {
                 apiKeyInput.placeholder = 'أدخل مفتاح API';
             }
@@ -444,6 +469,135 @@ window.testApiKey = function() {
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         `;
+    });
+};
+
+// جلب موديلات Groq ديناميكياً
+window.fetchGroqModels = function() {
+    const btn = document.getElementById('fetchGroqModelsBtn');
+    const apiKeyInput = document.getElementById('api_key');
+    const provider = document.getElementById('provider').value;
+
+    if (provider !== 'groq') {
+        alert('يرجى اختيار المزود Groq أولاً');
+        return;
+    }
+
+    if (!apiKeyInput.value || apiKeyInput.value.trim() === '') {
+        alert('يرجى إدخال Groq API Key أولاً');
+        return;
+    }
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الجلب...';
+
+    fetch('{{ route('admin.ai.models.fetch-groq-models') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+            api_key: apiKeyInput.value,
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        const container = document.getElementById('model_key_container');
+
+        if (!data.success) {
+            if (data.static_models) {
+                let html = `<select class="form-select" id="model_key_select" name="model_key" required>
+                    <option value="">-- اختر موديل من Groq --</option>`;
+
+                Object.entries(data.static_models).forEach(([providerName, models]) => {
+                    html += `<optgroup label="${providerName}">`;
+                    Object.entries(models).forEach(([id, name]) => {
+                        html += `<option value="${id}">${name} (${id})</option>`;
+                    });
+                    html += `</optgroup>`;
+                });
+
+                html += `<option value="__custom__">✏️ موديل مخصص</option></select>`;
+                html += `<input type="text" class="form-control mt-2" id="model_key_custom_input" 
+                        placeholder="أدخل معرف الموديل المخصص" style="display: none;">`;
+                html += `<small class="text-muted d-block mt-1">تعذر جلب الموديلات من Groq عبر API، تم استخدام قائمة ثابتة كمثال.</small>`;
+
+                container.innerHTML = html;
+
+                const select = document.getElementById('model_key_select');
+                const customInput = document.getElementById('model_key_custom_input');
+                select.addEventListener('change', function () {
+                    if (this.value === '__custom__') {
+                        customInput.style.display = 'block';
+                        customInput.required = true;
+                        customInput.name = 'model_key';
+                        this.name = '';
+                    } else {
+                        customInput.style.display = 'none';
+                        customInput.required = false;
+                        customInput.name = '';
+                        this.name = 'model_key';
+                    }
+                });
+            }
+
+            if (data.error) {
+                alert('تعذر جلب الموديلات من Groq: ' + data.error + '\nتم استخدام قائمة ثابتة بدلاً من ذلك.');
+            }
+
+            return;
+        }
+
+        const models = data.models || [];
+        if (models.length === 0) {
+            alert('لم يتم العثور على موديلات من Groq.');
+            return;
+        }
+
+        let html = `<select class="form-select" id="model_key_select" name="model_key" required>
+            <option value="">-- اختر موديل من Groq --</option>`;
+
+        models.forEach(model => {
+            const id = model.id;
+            const desc = model.description || '';
+            html += `<option value="${id}">${id}${desc ? ' - ' + desc : ''}</option>`;
+        });
+
+        html += `<option value="__custom__">✏️ موديل مخصص</option></select>`;
+        html += `<input type="text" class="form-control mt-2" id="model_key_custom_input" 
+                placeholder="أدخل معرف الموديل المخصص" style="display: none;">`;
+        html += `<small class="text-muted d-block mt-1">الموديلات تم جلبها مباشرة من Groq API.</small>`;
+
+        container.innerHTML = html;
+
+        const select = document.getElementById('model_key_select');
+        const customInput = document.getElementById('model_key_custom_input');
+        select.addEventListener('change', function () {
+            if (this.value === '__custom__') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+                customInput.name = 'model_key';
+                this.name = '';
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.name = '';
+                this.name = 'model_key';
+            }
+        });
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        console.error('Groq models fetch error:', error);
+        alert('حدث خطأ أثناء جلب الموديلات من Groq: ' + error.message);
     });
 };
 </script>

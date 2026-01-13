@@ -77,6 +77,7 @@ class AIModel extends Model
         'openrouter' => 'OpenRouter',
         'zai' => 'Z.ai (GLM)',
         'manus' => 'Manus AI',
+        'groq' => 'Groq',
         'local' => 'Local LLM',
         'custom' => 'Custom API',
     ];
@@ -125,6 +126,10 @@ class AIModel extends Model
         'manus' => [
             // Manus AI models - يمكن إضافة الموديلات المحددة حسب وثائق Manus API
             // يمكن تركها فارغة للسماح بإدخال أي model_key
+        ],
+        'groq' => [
+            // Groq models سيتم جلبها ديناميكياً من Groq API أو من GroqModelService
+            // يمكن تركها فارغة للسماح باختيار أي model_key مدعوم من Groq
         ],
     ];
 

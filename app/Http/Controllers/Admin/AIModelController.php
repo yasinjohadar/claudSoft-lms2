@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AIModel;
 use App\Services\Ai\AIModelService;
+use App\Services\Ai\GroqModelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,8 @@ use Illuminate\Support\Facades\Log;
 class AIModelController extends Controller
 {
     public function __construct(
-        private AIModelService $modelService
+        private AIModelService $modelService,
+        private GroqModelService $groqModelService
     ) {}
 
     /**
@@ -228,6 +230,36 @@ class AIModelController extends Controller
             return redirect()->back()
                            ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * جلب موديلات Groq ديناميكياً عبر AJAX
+     */
+    public function fetchGroqModels(Request $request)
+    {
+        $validated = $request->validate([
+            'api_key' => 'required|string',
+        ], [
+            'api_key.required' => 'مفتاح Groq API مطلوب لجلب الموديلات',
+        ]);
+
+        $result = $this->groqModelService->fetchAvailableModels($validated['api_key']);
+
+        // إذا فشل الجلب من API، استخدم القائمة الثابتة
+        if (!$result['success']) {
+            $static = $this->groqModelService->getStaticModelsByProvider();
+
+            return response()->json([
+                'success' => false,
+                'error' => $result['error'] ?? 'فشل في جلب الموديلات من Groq',
+                'static_models' => $static,
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => true,
+            'models' => $result['models'],
+        ]);
     }
 
     /**
