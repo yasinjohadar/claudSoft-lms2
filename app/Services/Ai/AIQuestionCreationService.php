@@ -738,37 +738,58 @@ class AIQuestionCreationService
             return $this->validateGeneratedQuestions($decoded);
         }
 
-        // محاولة 2: استخراج JSON array من النص
-        if (preg_match('/\[\s*\{.*?\}\s*\]/s', $cleanedResponse, $matches)) {
-            $jsonString = $matches[0];
-            $decoded = json_decode($jsonString, true);
+        // محاولة 2: استخراج JSON array باستخدام balanced bracket matching
+        $extractedArray = $this->extractJsonArray($cleanedResponse);
+        if ($extractedArray !== null) {
+            $decoded = json_decode($extractedArray, true);
             
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('JSON parsed successfully (regex array)', ['count' => count($decoded)]);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
+                Log::info('JSON parsed successfully (balanced bracket extraction)', ['count' => count($decoded)]);
                 return $this->validateGeneratedQuestions($decoded);
             }
         }
 
-        // محاولة 3: البحث عن [ و ] يدوياً
+        // محاولة 3: البحث عن [ و ] يدوياً مع validation محسّن
         $jsonStart = strpos($cleanedResponse, '[');
         $jsonEnd = strrpos($cleanedResponse, ']');
 
         if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
             $jsonString = substr($cleanedResponse, $jsonStart, $jsonEnd - $jsonStart + 1);
+            
+            // محاولة تحليل JSON
             $decoded = json_decode($jsonString, true);
             
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
                 Log::info('JSON parsed successfully (manual extraction)', ['count' => count($decoded)]);
                 return $this->validateGeneratedQuestions($decoded);
             }
+            
+            // إذا فشل، حاول استخدام balanced bracket matching على الجزء المستخرج
+            $extractedArray = $this->extractJsonArray($jsonString);
+            if ($extractedArray !== null) {
+                $decoded = json_decode($extractedArray, true);
+                
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
+                    Log::info('JSON parsed successfully (manual + balanced bracket)', ['count' => count($decoded)]);
+                    return $this->validateGeneratedQuestions($decoded);
+                }
+            }
         }
 
-        // محاولة 4: البحث عن JSON object واحد
+        // محاولة 4: البحث عن جميع JSON objects باستخدام balanced bracket matching (fallback)
+        // هذه المحاولة تبحث عن جميع الـ objects التي تحتوي على "question"
+        $objects = $this->extractAllJsonObjects($cleanedResponse);
+        if (!empty($objects)) {
+            Log::info('JSON parsed successfully (multiple objects)', ['count' => count($objects)]);
+            return $this->validateGeneratedQuestions($objects);
+        }
+        
+        // محاولة 4.5: البحث عن JSON object واحد (fallback أخير)
         if (preg_match('/\{[^{}]*"question"[^{}]*\}/s', $cleanedResponse, $matches)) {
             $decoded = json_decode('[' . $matches[0] . ']', true);
             
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('JSON parsed successfully (single object)', ['count' => count($decoded)]);
+                Log::info('JSON parsed successfully (single object fallback)', ['count' => count($decoded)]);
                 return $this->validateGeneratedQuestions($decoded);
             }
         }
@@ -786,6 +807,132 @@ class AIQuestionCreationService
         ]);
 
         throw new \Exception('فشل في تحليل استجابة AI: ' . json_last_error_msg());
+    }
+
+    /**
+     * استخراج JSON array من نص باستخدام balanced bracket matching
+     * 
+     * @param string $text النص الذي يحتوي على JSON array
+     * @return string|null JSON array string أو null إذا لم يتم العثور عليه
+     */
+    private function extractJsonArray(string $text): ?string
+    {
+        $startPos = strpos($text, '[');
+        if ($startPos === false) {
+            return null;
+        }
+
+        $depth = 0;
+        $inString = false;
+        $escapeNext = false;
+        $length = strlen($text);
+
+        for ($i = $startPos; $i < $length; $i++) {
+            $char = $text[$i];
+
+            if ($escapeNext) {
+                $escapeNext = false;
+                continue;
+            }
+
+            if ($char === '\\') {
+                $escapeNext = true;
+                continue;
+            }
+
+            if ($char === '"' && !$escapeNext) {
+                $inString = !$inString;
+                continue;
+            }
+
+            if ($inString) {
+                continue;
+            }
+
+            if ($char === '[') {
+                $depth++;
+            } elseif ($char === ']') {
+                $depth--;
+                if ($depth === 0) {
+                    // وجدنا الـ ] المقابل
+                    return substr($text, $startPos, $i - $startPos + 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * استخراج جميع JSON objects من نص باستخدام balanced bracket matching
+     * 
+     * @param string $text النص الذي يحتوي على JSON objects
+     * @return array قائمة من JSON objects
+     */
+    private function extractAllJsonObjects(string $text): array
+    {
+        $objects = [];
+        $pos = 0;
+        $length = strlen($text);
+
+        while ($pos < $length) {
+            $startPos = strpos($text, '{', $pos);
+            if ($startPos === false) {
+                break;
+            }
+
+            $depth = 0;
+            $inString = false;
+            $escapeNext = false;
+
+            for ($i = $startPos; $i < $length; $i++) {
+                $char = $text[$i];
+
+                if ($escapeNext) {
+                    $escapeNext = false;
+                    continue;
+                }
+
+                if ($char === '\\') {
+                    $escapeNext = true;
+                    continue;
+                }
+
+                if ($char === '"' && !$escapeNext) {
+                    $inString = !$inString;
+                    continue;
+                }
+
+                if ($inString) {
+                    continue;
+                }
+
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}') {
+                    $depth--;
+                    if ($depth === 0) {
+                        // وجدنا الـ } المقابل
+                        $jsonString = substr($text, $startPos, $i - $startPos + 1);
+                        $obj = json_decode($jsonString, true);
+                        
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($obj) && isset($obj['question'])) {
+                            $objects[] = $obj;
+                        }
+                        
+                        $pos = $i + 1;
+                        break;
+                    }
+                }
+            }
+
+            if ($depth !== 0) {
+                // لم نجد الـ } المقابل، انتقل إلى الموضع التالي
+                $pos = $startPos + 1;
+            }
+        }
+
+        return $objects;
     }
 
     /**
