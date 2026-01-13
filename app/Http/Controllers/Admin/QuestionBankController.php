@@ -11,6 +11,7 @@ use App\Models\CourseSection;
 use App\Models\ProgrammingLanguage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -887,20 +888,51 @@ class QuestionBankController extends Controller
      */
     public function processImport(Request $request)
     {
+        // Logging: Start of processImport
+        Log::info('Question Import: Starting processImport', [
+            'user_id' => auth()->id(),
+            'has_excel_file' => $request->hasFile('excel_file'),
+            'has_questions_data' => $request->has('questions_data'),
+            'headers' => [
+                'X-Requested-With' => $request->header('X-Requested-With'),
+                'Accept' => $request->header('Accept'),
+                'Content-Type' => $request->header('Content-Type'),
+            ],
+            'request_method' => $request->method(),
+        ]);
+
         // Check if request expects JSON (AJAX)
-        $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax();
+        $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest';
+        
+        Log::info('Question Import: expectsJson check', [
+            'expectsJson' => $expectsJson,
+            'expectsJson_method' => $request->expectsJson(),
+            'wantsJson_method' => $request->wantsJson(),
+            'ajax_method' => $request->ajax(),
+            'X-Requested-With_header' => $request->header('X-Requested-With'),
+        ]);
         
         $validator = Validator::make($request->all(), [
-            'excel_file' => 'required|mimes:xlsx,xls|max:10240',
+            'excel_file' => 'nullable|mimes:xlsx,xls|max:10240',
             'questions_data' => 'required|json',
             'default_programming_language_id' => 'nullable|exists:programming_languages,id',
         ], [
-            'excel_file.required' => 'يرجى اختيار ملف Excel',
+            'excel_file.mimes' => 'ملف Excel يجب أن يكون بصيغة .xlsx أو .xls',
             'questions_data.required' => 'بيانات الأسئلة مطلوبة',
+            'questions_data.json' => 'بيانات الأسئلة يجب أن تكون بصيغة JSON',
             'default_programming_language_id.exists' => 'اللغة البرمجية المحددة غير موجودة',
         ]);
 
+        Log::info('Question Import: Validation check', [
+            'validation_passed' => !$validator->fails(),
+            'validation_errors' => $validator->fails() ? $validator->errors()->toArray() : null,
+        ]);
+
         if ($validator->fails()) {
+            Log::warning('Question Import: Validation failed', [
+                'errors' => $validator->errors()->toArray(),
+            ]);
+            
             if ($expectsJson) {
                 return response()->json([
                     'success' => false,
@@ -912,13 +944,28 @@ class QuestionBankController extends Controller
         }
 
         try {
+            Log::info('Question Import: Decoding questions_data', [
+                'questions_data_length' => strlen($request->questions_data ?? ''),
+            ]);
+            
             $questionsData = json_decode($request->questions_data, true);
             
+            Log::info('Question Import: After json_decode', [
+                'is_array' => is_array($questionsData),
+                'questions_count' => is_array($questionsData) ? count($questionsData) : 0,
+                'json_error' => json_last_error_msg(),
+            ]);
+            
             if (!is_array($questionsData)) {
+                Log::error('Question Import: questions_data is not an array', [
+                    'questions_data_type' => gettype($questionsData),
+                    'json_error' => json_last_error_msg(),
+                ]);
+                
                 if ($expectsJson) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'بيانات غير صحيحة'
+                        'message' => 'بيانات غير صحيحة: ' . json_last_error_msg()
                     ], 422);
                 }
                 return back()->withErrors(['error' => 'بيانات غير صحيحة'])->withInput();
@@ -951,7 +998,17 @@ class QuestionBankController extends Controller
                 $defaultLanguageId = $request->input('default_programming_language_id');
             }
 
+            Log::info('Question Import: Before transaction', [
+                'questions_count' => count($questionsData),
+                'default_language_id' => $defaultLanguageId,
+                'type_mapping_count' => count($typeMapping),
+                'course_mapping_count' => count($courseMapping),
+                'language_mapping_count' => count($languageMapping),
+            ]);
+
             DB::beginTransaction();
+            
+            Log::info('Question Import: Transaction started');
 
             $imported = 0;
             $skipped = 0;
@@ -959,11 +1016,22 @@ class QuestionBankController extends Controller
 
             foreach ($questionsData as $index => $questionData) {
                 try {
+                    Log::debug('Question Import: Processing question', [
+                        'index' => $index,
+                        'row_number' => $questionData['row_number'] ?? null,
+                        'question_type' => $questionData['question_type'] ?? null,
+                        'question_text_preview' => substr($questionData['question_text'] ?? '', 0, 50),
+                    ]);
+                    
                     // Get question type
                     $questionTypeName = $questionData['question_type'] ?? '';
                     $questionType = $typeMapping[$questionTypeName] ?? null;
                     
                     if (!$questionType) {
+                        Log::warning('Question Import: Question type not found', [
+                            'index' => $index,
+                            'question_type_name' => $questionTypeName,
+                        ]);
                         $skipped++;
                         $errors[] = "السطر " . ($index + 1) . ": نوع السؤال غير صحيح";
                         continue;
@@ -984,6 +1052,12 @@ class QuestionBankController extends Controller
                     }
 
                     // Create question
+                    Log::debug('Question Import: Creating question', [
+                        'index' => $index,
+                        'course_id' => $courseId,
+                        'question_type_id' => $questionType->id,
+                    ]);
+                    
                     $question = QuestionBank::create([
                         'course_id' => $courseId,
                         'question_type_id' => $questionType->id,
@@ -994,6 +1068,11 @@ class QuestionBankController extends Controller
                         'tags' => !empty($questionData['tags']) ? explode(',', $questionData['tags']) : null,
                         'is_active' => true,
                         'created_by' => auth()->id(),
+                    ]);
+                    
+                    Log::debug('Question Import: Question created', [
+                        'question_id' => $question->id,
+                        'index' => $index,
                     ]);
 
                     // Create options
@@ -1032,17 +1111,39 @@ class QuestionBankController extends Controller
                     }
 
                     if ($languageId) {
+                        Log::debug('Question Import: Attaching programming language', [
+                            'question_id' => $question->id,
+                            'language_id' => $languageId,
+                        ]);
                         $question->programmingLanguages()->attach($languageId);
                     }
 
                     $imported++;
+                    Log::debug('Question Import: Question imported successfully', [
+                        'question_id' => $question->id,
+                        'imported_count' => $imported,
+                    ]);
                 } catch (\Exception $e) {
+                    Log::error('Question Import: Error processing question', [
+                        'index' => $index,
+                        'row_number' => $questionData['row_number'] ?? null,
+                        'error_message' => $e->getMessage(),
+                        'error_trace' => $e->getTraceAsString(),
+                    ]);
                     $skipped++;
                     $errors[] = "السطر " . ($index + 1) . ": " . $e->getMessage();
                 }
             }
 
+            Log::info('Question Import: Before commit', [
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'errors_count' => count($errors),
+            ]);
+
             DB::commit();
+            
+            Log::info('Question Import: Transaction committed successfully');
 
             $message = "تم استيراد {$imported} سؤال بنجاح";
             if ($skipped > 0) {
@@ -1052,21 +1153,44 @@ class QuestionBankController extends Controller
             // Check if request expects JSON (AJAX)
             $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest';
             
+            Log::info('Question Import: Preparing response', [
+                'expectsJson' => $expectsJson,
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'message' => $message,
+            ]);
+            
             if ($expectsJson) {
-                return response()->json([
+                $response = [
                     'success' => true,
                     'message' => $message,
                     'imported' => $imported,
                     'skipped' => $skipped,
                     'errors' => $errors
-                ]);
+                ];
+                Log::info('Question Import: Returning JSON response', $response);
+                return response()->json($response);
             }
 
+            Log::info('Question Import: Redirecting to index');
             return redirect()->route('question-bank.index')
                 ->with('success', $message)
                 ->with('import_errors', $errors);
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            Log::error('Question Import: Exception caught', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'error_trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'request_data' => [
+                    'has_excel_file' => $request->hasFile('excel_file'),
+                    'has_questions_data' => $request->has('questions_data'),
+                    'questions_data_length' => strlen($request->questions_data ?? ''),
+                ],
+            ]);
             
             // Check if request expects JSON (AJAX)
             $expectsJson = $request->expectsJson() || $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest';
@@ -1074,7 +1198,11 @@ class QuestionBankController extends Controller
             if ($expectsJson) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء الاستيراد: ' . $e->getMessage()
+                    'message' => 'حدث خطأ أثناء الاستيراد: ' . $e->getMessage(),
+                    'error_details' => config('app.debug') ? [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ] : null
                 ], 500);
             }
             

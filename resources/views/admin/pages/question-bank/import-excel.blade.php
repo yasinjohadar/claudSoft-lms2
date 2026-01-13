@@ -321,12 +321,25 @@ function resetForm() {
 }
 
 async function processImport() {
+    console.log('Question Import: Starting processImport function');
+    
     if (!excelFile || previewData.length === 0) {
+        console.warn('Question Import: Missing excelFile or previewData', {
+            hasExcelFile: !!excelFile,
+            previewDataLength: previewData.length
+        });
         alert('لا توجد بيانات للاستيراد');
         return;
     }
 
+    console.log('Question Import: Data check passed', {
+        excelFileName: excelFile.name,
+        excelFileSize: excelFile.size,
+        previewDataCount: previewData.length
+    });
+
     if (!confirm('هل أنت متأكد من استيراد البيانات؟')) {
+        console.log('Question Import: User cancelled');
         return;
     }
 
@@ -344,9 +357,26 @@ async function processImport() {
     const defaultLanguageSelect = document.getElementById('default_programming_language_id');
     if (defaultLanguageSelect && defaultLanguageSelect.value) {
         formData.append('default_programming_language_id', defaultLanguageSelect.value);
+        console.log('Question Import: Default language added', {
+            languageId: defaultLanguageSelect.value
+        });
     }
 
+    // Log FormData contents (without file)
+    console.log('Question Import: FormData prepared', {
+        hasExcelFile: formData.has('excel_file'),
+        hasQuestionsData: formData.has('questions_data'),
+        hasToken: formData.has('_token'),
+        hasDefaultLanguage: formData.has('default_programming_language_id'),
+        questionsDataLength: JSON.stringify(previewData).length
+    });
+
     try {
+        console.log('Question Import: Sending fetch request', {
+            url: '{{ route("question-bank.import.process") }}',
+            method: 'POST'
+        });
+
         const response = await fetch('{{ route("question-bank.import.process") }}', {
             method: 'POST',
             body: formData,
@@ -356,30 +386,64 @@ async function processImport() {
             }
         });
 
+        console.log('Question Import: Response received', {
+            status: response.status,
+            statusText: response.statusText,
+            contentType: response.headers.get('content-type'),
+            headers: Object.fromEntries(response.headers.entries())
+        });
+
         // Check if response is JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Non-JSON response:', text);
-            throw new Error('الخادم لم يرجع بيانات JSON. قد يكون هناك خطأ في الخادم.');
+            console.error('Question Import: Non-JSON response', {
+                status: response.status,
+                contentType: contentType,
+                responseText: text.substring(0, 500) // First 500 chars
+            });
+            throw new Error('الخادم لم يرجع بيانات JSON. قد يكون هناك خطأ في الخادم. Status: ' + response.status);
         }
 
         const result = await response.json();
+        console.log('Question Import: JSON parsed', {
+            success: result.success,
+            message: result.message,
+            imported: result.imported,
+            skipped: result.skipped,
+            errorsCount: result.errors ? result.errors.length : 0
+        });
 
         if (result.success) {
+            console.log('Question Import: Success, redirecting...', {
+                imported: result.imported,
+                skipped: result.skipped
+            });
             // Redirect to index page
             window.location.href = '{{ route("question-bank.index") }}';
         } else {
             let errorMsg = result.message || 'خطأ غير معروف';
             if (result.errors) {
-                errorMsg += ': ' + Object.values(result.errors).flat().join(', ');
+                const errorsArray = Object.values(result.errors).flat();
+                errorMsg += ': ' + errorsArray.join(', ');
+                console.error('Question Import: Validation errors', {
+                    errors: errorsArray
+                });
             }
+            console.error('Question Import: Import failed', {
+                message: errorMsg,
+                result: result
+            });
             alert('حدث خطأ: ' + errorMsg);
             document.getElementById('import-btn').disabled = false;
             document.getElementById('import-btn').innerHTML = '<i class="fas fa-upload me-2"></i>استيراد البيانات';
         }
     } catch (error) {
-        console.error('Import error:', error);
+        console.error('Question Import: Exception caught', {
+            errorName: error.name,
+            errorMessage: error.message,
+            errorStack: error.stack
+        });
         alert('حدث خطأ أثناء الاستيراد: ' + error.message);
         document.getElementById('import-btn').disabled = false;
         document.getElementById('import-btn').innerHTML = '<i class="fas fa-upload me-2"></i>استيراد البيانات';
