@@ -15,6 +15,36 @@
     <meta name="keywords" content="منصة تعليمية, كورسات, دورات تدريبية, تعلم إلكتروني, شهادات معتمدة, لوحة التحكم">
 
     @include('admin.layouts.head')
+    
+    <!-- Inline Critical CSS to prevent FOUC -->
+    <style>
+        /* Hide page until CSS loads */
+        html:not(.loaded) .page {
+            opacity: 0;
+            visibility: hidden;
+        }
+        html.loaded .page {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Ensure loader is visible initially */
+        #loader {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 9999;
+        }
+        html.loaded #loader {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>

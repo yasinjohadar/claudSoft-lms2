@@ -4,6 +4,21 @@
     بنك الأسئلة
 @stop
 
+@section('styles')
+<style>
+    .main-content {
+        padding-bottom: 1rem !important;
+    }
+    .container-fluid {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    .card.custom-card:last-child {
+        margin-bottom: 1rem !important;
+    }
+</style>
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
