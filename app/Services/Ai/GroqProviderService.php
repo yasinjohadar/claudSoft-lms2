@@ -136,10 +136,24 @@ class GroqProviderService extends AIProviderService
         $result = $this->chat($messages, $options);
 
         if (!$result['success']) {
+            // التأكد من أن الخطأ محفوظ (chat() يستدعي setLastError بالفعل)
+            $this->setLastError($result['error'] ?? $this->getLastError() ?? 'خطأ غير معروف في توليد النص');
             return '';
         }
 
-        return (string) ($result['content'] ?? '');
+        $content = $result['content'] ?? '';
+
+        // تنظيف المحتوى من الأحرف غير الصالحة في UTF-8
+        if (!empty($content)) {
+            if (!mb_check_encoding($content, 'UTF-8')) {
+                $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+            }
+            // إزالة BOM وأحرف غير صالحة
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+            $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
+        }
+
+        return (string) $content;
     }
 
     /**
