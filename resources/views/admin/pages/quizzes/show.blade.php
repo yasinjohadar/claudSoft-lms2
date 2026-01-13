@@ -239,24 +239,39 @@
                                         </thead>
                                         <tbody>
                                             @foreach($quiz->quizQuestions as $quizQuestion)
+                                                @php
+                                                    $question = $quizQuestion->question;
+                                                @endphp
                                                 <tr>
                                                     <td>{{ $loop->iteration }}</td>
                                                     <td>
                                                         <div class="text-truncate" style="max-width: 400px;">
-                                                            {{ $quizQuestion->question->question_text }}
+                                                            @if($question)
+                                                                {{ $question->question_text }}
+                                                            @else
+                                                                <span class="text-danger">
+                                                                    هذا السؤال محذوف من بنك الأسئلة
+                                                                </span>
+                                                            @endif
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span class="badge bg-info-transparent">
-                                                            {{ $quizQuestion->question->questionType->display_name }}
-                                                        </span>
+                                                        @if($question && $question->questionType)
+                                                            <span class="badge bg-info-transparent">
+                                                                {{ $question->questionType->display_name }}
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-danger-transparent">
+                                                                نوع غير متوفر
+                                                            </span>
+                                                        @endif
                                                     </td>
                                                     <td>
                                                         <span class="badge bg-success">{{ $quizQuestion->max_score }}</span>
                                                     </td>
                                                     <td>{{ $quizQuestion->question_order }}</td>
                                                     <td>
-                                                        <button type="button" class="btn btn-sm btn-info" title="معاينة">
+                                                        <button type="button" class="btn btn-sm btn-info" title="معاينة" @if(!$question) disabled @endif>
                                                             <i class="fas fa-eye"></i>
                                                         </button>
                                                     </td>
