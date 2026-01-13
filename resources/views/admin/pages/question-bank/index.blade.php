@@ -424,37 +424,68 @@
 @section('scripts')
 <script>
 (function() {
-    // Wait for jQuery to be available
+    console.log('Question Bank Script: Starting initialization...');
+    
+    // Wait for jQuery and Bootstrap to be available
     function initQuestionBankDelete() {
+        // Check for jQuery
         if (typeof jQuery === 'undefined') {
+            console.log('Question Bank Script: jQuery not loaded, retrying...');
+            setTimeout(initQuestionBankDelete, 100);
+            return;
+        }
+
+        // Check for Bootstrap
+        if (typeof bootstrap === 'undefined') {
+            console.log('Question Bank Script: Bootstrap not loaded, retrying...');
             setTimeout(initQuestionBankDelete, 100);
             return;
         }
 
         var $ = jQuery;
+        console.log('Question Bank Script: jQuery and Bootstrap loaded, initializing...');
 
-        $(document).ready(function() {
-            console.log('Question Bank Delete Script Loaded');
-
-            // Cleanup modals on hide
-            $('#deleteQuestionModal').on('hidden.bs.modal', function() {
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
-                $('body').css('padding-right', '');
-                window.currentDeleteQuestionId = null;
-                window.currentDeleteQuestionRow = null;
-            });
-
-            $('#deleteMultipleQuestionsModal').on('hidden.bs.modal', function() {
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
-                $('body').css('padding-right', '');
-                window.selectedQuestionsForDeletion = null;
+        // Use both document.ready and window.load as fallback
+        function initializeHandlers() {
+            console.log('Question Bank Script: Initializing event handlers...');
+            
+            // Check if required elements exist
+            const selectAllCheckbox = document.getElementById('select-all-questions-table');
+            const deleteSelectedBtn = document.getElementById('delete-selected-questions-btn');
+            const questionCheckboxes = document.querySelectorAll('.question-row-checkbox');
+            
+            console.log('Question Bank Script: Elements check:', {
+                selectAllCheckbox: !!selectAllCheckbox,
+                deleteSelectedBtn: !!deleteSelectedBtn,
+                questionCheckboxes: questionCheckboxes.length
             });
 
             // Variables for single delete
             window.currentDeleteQuestionId = null;
             window.currentDeleteQuestionRow = null;
+            window.selectedQuestionsForDeletion = null;
+
+            // Cleanup modals on hide
+            const deleteQuestionModal = document.getElementById('deleteQuestionModal');
+            if (deleteQuestionModal) {
+                $(deleteQuestionModal).on('hidden.bs.modal', function() {
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open');
+                    $('body').css('padding-right', '');
+                    window.currentDeleteQuestionId = null;
+                    window.currentDeleteQuestionRow = null;
+                });
+            }
+
+            const deleteMultipleQuestionsModal = document.getElementById('deleteMultipleQuestionsModal');
+            if (deleteMultipleQuestionsModal) {
+                $(deleteMultipleQuestionsModal).on('hidden.bs.modal', function() {
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open');
+                    $('body').css('padding-right', '');
+                    window.selectedQuestionsForDeletion = null;
+                });
+            }
 
             // Toggle bulk delete button
             function toggleBulkDeleteButton() {
@@ -476,27 +507,36 @@
                 }
             }
 
-            // Select all checkbox
-            $('#select-all-questions-table').on('change', function() {
-                const isChecked = $(this).is(':checked');
-                console.log('Select all changed:', isChecked);
-                $('.question-row-checkbox').prop('checked', isChecked);
-                toggleBulkDeleteButton();
-            });
+            // Select all checkbox - use direct binding if element exists
+            if (selectAllCheckbox) {
+                $(selectAllCheckbox).off('change').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    console.log('Question Bank Script: Select all changed:', isChecked);
+                    $('.question-row-checkbox').prop('checked', isChecked);
+                    toggleBulkDeleteButton();
+                });
+                console.log('Question Bank Script: Select all checkbox handler attached');
+            } else {
+                console.warn('Question Bank Script: Select all checkbox not found!');
+            }
 
-            // Individual checkbox change
-            $(document).on('change', '.question-row-checkbox', function() {
+            // Individual checkbox change - use event delegation
+            $(document).off('change', '.question-row-checkbox').on('change', '.question-row-checkbox', function() {
                 const totalCheckboxes = $('.question-row-checkbox').length;
                 const checkedCheckboxes = $('.question-row-checkbox:checked').length;
                 
-                console.log('Individual checkbox changed. Total:', totalCheckboxes, 'Checked:', checkedCheckboxes);
+                console.log('Question Bank Script: Individual checkbox changed. Total:', totalCheckboxes, 'Checked:', checkedCheckboxes);
                 
-                $('#select-all-questions-table').prop('checked', totalCheckboxes === checkedCheckboxes);
+                if (selectAllCheckbox) {
+                    $(selectAllCheckbox).prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
+                }
                 toggleBulkDeleteButton();
             });
+            console.log('Question Bank Script: Individual checkbox handlers attached');
 
             // Initialize toggle button state
             toggleBulkDeleteButton();
+            console.log('Question Bank Script: Initial toggle button state set');
 
             // Single delete - open modal
             $(document).on('click', '.remove-question', function(e) {
@@ -528,7 +568,9 @@
             });
 
             // Confirm single delete
-            $('#confirmDeleteQuestion').on('click', function() {
+            const confirmDeleteQuestionBtn = document.getElementById('confirmDeleteQuestion');
+            if (confirmDeleteQuestionBtn) {
+                $(confirmDeleteQuestionBtn).off('click').on('click', function() {
                 if (!window.currentDeleteQuestionId || !window.currentDeleteQuestionRow) {
                     console.error('No question selected for deletion');
                     return;
@@ -600,10 +642,18 @@
                 $('body').css('padding-right', '');
             }
         });
-    });
+                });
+                console.log('Question Bank Script: Confirm delete question handler attached');
+            } else {
+                console.warn('Question Bank Script: Confirm delete question button not found!');
+            }
 
-            // Bulk delete - open modal
-            $('#delete-selected-questions-btn').on('click', function() {
+            // Confirm multiple delete
+            const confirmDeleteMultipleBtn = document.getElementById('confirmDeleteMultipleQuestions');
+            if (confirmDeleteMultipleBtn) {
+                $(confirmDeleteMultipleBtn).off('click').on('click', function() {
+            if (deleteSelectedBtn) {
+                $(deleteSelectedBtn).off('click').on('click', function() {
                 const selectedQuestions = $('.question-row-checkbox:checked').map(function() {
                     return parseInt($(this).val());
                 }).get();
@@ -627,10 +677,12 @@
 
                 // Store selected questions for deletion
                 window.selectedQuestionsForDeletion = selectedQuestions;
-            });
+                });
+                console.log('Question Bank Script: Bulk delete button handler attached');
+            } else {
+                console.warn('Question Bank Script: Delete selected button not found!');
+            }
 
-            // Confirm multiple delete
-            $('#confirmDeleteMultipleQuestions').on('click', function() {
                 const selectedQuestions = window.selectedQuestionsForDeletion || [];
                 
                 if (selectedQuestions.length === 0) {
@@ -682,7 +734,9 @@
                                             $('#questions-count').text(remainingCount);
                                             
                                             // Reset checkboxes
-                                            $('#select-all-questions-table').prop('checked', false);
+                                            if (selectAllCheckbox) {
+                                                $(selectAllCheckbox).prop('checked', false);
+                                            }
                                             toggleBulkDeleteButton();
                                             
                                             // Check if table is empty
@@ -709,16 +763,54 @@
                         $('body').css('padding-right', '');
                     }
                 });
-            });
+                });
+                console.log('Question Bank Script: Confirm delete multiple handler attached');
+            } else {
+                console.warn('Question Bank Script: Confirm delete multiple button not found!');
+            }
+            
+            console.log('Question Bank Script: All handlers initialized successfully');
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeHandlers);
+        } else {
+            initializeHandlers();
+        }
+
+        // Also initialize on window load as fallback (for deferred scripts)
+        window.addEventListener('load', function() {
+            console.log('Question Bank Script: Window loaded, re-initializing handlers...');
+            setTimeout(initializeHandlers, 100);
         });
     }
 
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initQuestionBankDelete);
-    } else {
+    // Start initialization
+    let initAttempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait time
+    
+    function tryInit() {
+        initAttempts++;
+        if (initAttempts > maxAttempts) {
+            console.error('Question Bank Script: Failed to load jQuery/Bootstrap after', maxAttempts * 100, 'ms');
+            return;
+        }
         initQuestionBankDelete();
     }
+
+    // Try to initialize immediately
+    tryInit();
+    
+    // Also try on DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInit);
+    }
+    
+    // And on window load as final fallback
+    window.addEventListener('load', function() {
+        setTimeout(tryInit, 200);
+    });
 })();
 </script>
 @stop
