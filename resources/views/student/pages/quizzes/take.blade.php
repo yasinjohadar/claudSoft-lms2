@@ -319,11 +319,35 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </script>
                                     {{-- #endregion --}}
                                     @php
-                                        $optionsCollection = $question->options ?? collect();
-                                        $optionsCount = $optionsCollection->count();
+                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
+                                        $optionsCollection = null;
+                                        if ($question->options instanceof \Illuminate\Support\Collection) {
+                                            $optionsCollection = $question->options;
+                                        } elseif ($question->options) {
+                                            // إذا كانت options موجودة لكن ليست collection، حاول تحويلها
+                                            $optionsCollection = collect($question->options);
+                                        } else {
+                                            $optionsCollection = collect();
+                                        }
+                                        
+                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
+                                        $validOptions = $optionsCollection->filter(function($item) {
+                                            return is_object($item) && isset($item->id) && isset($item->option_text);
+                                        });
+                                        
+                                        $optionsCount = $validOptions->count();
+                                        
+                                        // Logging للتشخيص
+                                        \Log::debug('Rendering question options (single)', [
+                                            'question_id' => $question->id,
+                                            'options_count' => $optionsCount,
+                                            'options_type' => get_class($question->options ?? new stdClass()),
+                                            'is_collection' => $question->options instanceof \Illuminate\Support\Collection,
+                                            'tags' => $question->tags ?? null,
+                                        ]);
                                     @endphp
                                     @if($optionsCount > 0)
-                                        @foreach($question->options as $option)
+                                        @foreach($validOptions as $option)
                                             {{-- #region agent log --}}
                                             <script>
                                             console.log('DEBUG: Rendering option (single)', {
@@ -381,11 +405,35 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </script>
                                     {{-- #endregion --}}
                                     @php
-                                        $optionsCollection = $question->options ?? collect();
-                                        $optionsCount = $optionsCollection->count();
+                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
+                                        $optionsCollection = null;
+                                        if ($question->options instanceof \Illuminate\Support\Collection) {
+                                            $optionsCollection = $question->options;
+                                        } elseif ($question->options) {
+                                            // إذا كانت options موجودة لكن ليست collection، حاول تحويلها
+                                            $optionsCollection = collect($question->options);
+                                        } else {
+                                            $optionsCollection = collect();
+                                        }
+                                        
+                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
+                                        $validOptions = $optionsCollection->filter(function($item) {
+                                            return is_object($item) && isset($item->id) && isset($item->option_text);
+                                        });
+                                        
+                                        $optionsCount = $validOptions->count();
+                                        
+                                        // Logging للتشخيص
+                                        \Log::debug('Rendering question options (multiple)', [
+                                            'question_id' => $question->id,
+                                            'options_count' => $optionsCount,
+                                            'options_type' => get_class($question->options ?? new stdClass()),
+                                            'is_collection' => $question->options instanceof \Illuminate\Support\Collection,
+                                            'tags' => $question->tags ?? null,
+                                        ]);
                                     @endphp
                                     @if($optionsCount > 0)
-                                        @foreach($question->options as $option)
+                                        @foreach($validOptions as $option)
                                             {{-- #region agent log --}}
                                             <script>
                                             console.log('DEBUG: Rendering option', {

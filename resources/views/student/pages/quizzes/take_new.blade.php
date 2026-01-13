@@ -137,7 +137,23 @@
 
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                    @foreach($question->options as $option)
+                                    @php
+                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
+                                        $optionsCollection = null;
+                                        if ($question->options instanceof \Illuminate\Support\Collection) {
+                                            $optionsCollection = $question->options;
+                                        } elseif ($question->options) {
+                                            $optionsCollection = collect($question->options);
+                                        } else {
+                                            $optionsCollection = collect();
+                                        }
+                                        
+                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
+                                        $validOptions = $optionsCollection->filter(function($item) {
+                                            return is_object($item) && isset($item->id) && isset($item->option_text);
+                                        });
+                                    @endphp
+                                    @foreach($validOptions as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
@@ -154,7 +170,23 @@
                                     @break
 
                                 @case('multiple_choice_multiple')
-                                    @foreach($question->options as $option)
+                                    @php
+                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
+                                        $optionsCollection = null;
+                                        if ($question->options instanceof \Illuminate\Support\Collection) {
+                                            $optionsCollection = $question->options;
+                                        } elseif ($question->options) {
+                                            $optionsCollection = collect($question->options);
+                                        } else {
+                                            $optionsCollection = collect();
+                                        }
+                                        
+                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
+                                        $validOptions = $optionsCollection->filter(function($item) {
+                                            return is_object($item) && isset($item->id) && isset($item->option_text);
+                                        });
+                                    @endphp
+                                    @foreach($validOptions as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="checkbox"
