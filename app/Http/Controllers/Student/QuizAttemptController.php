@@ -290,14 +290,7 @@ class QuizAttemptController extends Controller
                     }]);
                 } else {
                     // إذا كانت محملة، تأكد من الترتيب
-                    if ($question->options && $question->options->count() > 0) {
-                        $question->setRelation('options', $question->options->sortBy('option_order')->values());
-                    }
-                }
-                
-                // التأكد من أن options هي collection وليست null
-                if (!$question->options) {
-                    $question->setRelation('options', collect());
+                    $question->setRelation('options', $question->options->sortBy('option_order')->values());
                 }
                 
                 // #region agent log
@@ -307,8 +300,6 @@ class QuizAttemptController extends Controller
                     'options_count_after' => $question->options ? $question->options->count() : 0,
                     'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
                     'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
-                    'options_type' => get_class($question->options ?? new \stdClass()),
-                    'tags' => $question->tags ?? null,
                     'hypothesisId' => 'A'
                 ]);
                 // #endregion
@@ -368,14 +359,7 @@ class QuizAttemptController extends Controller
                     }]);
                 } else {
                     // إذا كانت محملة، تأكد من الترتيب
-                    if ($question->options && $question->options->count() > 0) {
-                        $question->setRelation('options', $question->options->sortBy('option_order')->values());
-                    }
-                }
-                
-                // التأكد من أن options هي collection وليست null
-                if (!$question->options) {
-                    $question->setRelation('options', collect());
+                    $question->setRelation('options', $question->options->sortBy('option_order')->values());
                 }
                 
                 // #region agent log
@@ -385,8 +369,6 @@ class QuizAttemptController extends Controller
                     'options_count_after' => $question->options ? $question->options->count() : 0,
                     'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
                     'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
-                    'options_type' => get_class($question->options ?? new \stdClass()),
-                    'tags' => $question->tags ?? null,
                     'hypothesisId' => 'A'
                 ]);
                 // #endregion
@@ -395,10 +377,8 @@ class QuizAttemptController extends Controller
                 \Log::debug('Question options loaded', [
                     'question_id' => $question->id,
                     'question_type' => $question->questionType->name ?? 'unknown',
-                    'options_count' => $question->options ? $question->options->count() : 0,
-                    'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
-                    'options_type' => get_class($question->options ?? new \stdClass()),
-                    'is_collection' => $question->options instanceof \Illuminate\Support\Collection,
+                    'options_count' => $question->options->count(),
+                    'options_ids' => $question->options->pluck('id')->toArray(),
                 ]);
                 
                 // Add pivot data for grade

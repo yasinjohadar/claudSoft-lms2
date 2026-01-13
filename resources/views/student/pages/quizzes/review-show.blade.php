@@ -165,14 +165,6 @@
                                         <img src="{{ $question->media_url }}" alt="صورة السؤال" class="img-fluid rounded mt-2" style="max-width: 400px;">
                                     @endif
                                     
-                                    <!-- Question Tags -->
-                                    @if($question->tags && is_array($question->tags) && count($question->tags) > 0)
-                                        <div class="question-tags mt-2 mb-2">
-                                            @foreach($question->tags as $tag)
-                                                <code class="badge bg-secondary-transparent text-secondary me-1">{{ $tag }}</code>
-                                            @endforeach
-                                        </div>
-                                    @endif
                                 </div>
 
                                 <!-- Student Answer -->

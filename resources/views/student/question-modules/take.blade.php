@@ -92,14 +92,6 @@
                         </div>
                         @endif
 
-                        <!-- Question Tags -->
-                        @if($question->tags && is_array($question->tags) && count($question->tags) > 0)
-                            <div class="question-tags mt-3 mb-3">
-                                @foreach($question->tags as $tag)
-                                    <code class="badge bg-secondary-transparent text-secondary me-1">{{ $tag }}</code>
-                                @endforeach
-                            </div>
-                        @endif
 
                         <!-- Question Image -->
                         @if($question->question_image)
@@ -120,23 +112,7 @@
 
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                    @php
-                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
-                                        $optionsCollection = null;
-                                        if ($question->options instanceof \Illuminate\Support\Collection) {
-                                            $optionsCollection = $question->options;
-                                        } elseif ($question->options) {
-                                            $optionsCollection = collect($question->options);
-                                        } else {
-                                            $optionsCollection = collect();
-                                        }
-                                        
-                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
-                                        $validOptions = $optionsCollection->filter(function($item) {
-                                            return is_object($item) && isset($item->id) && isset($item->option_text);
-                                        });
-                                    @endphp
-                                    @foreach($validOptions as $option)
+                                    @foreach($question->options as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="radio"
@@ -153,23 +129,7 @@
                                     @break
 
                                 @case('multiple_choice_multiple')
-                                    @php
-                                        // التأكد من أن options هي collection وليست tags أو شيء آخر
-                                        $optionsCollection = null;
-                                        if ($question->options instanceof \Illuminate\Support\Collection) {
-                                            $optionsCollection = $question->options;
-                                        } elseif ($question->options) {
-                                            $optionsCollection = collect($question->options);
-                                        } else {
-                                            $optionsCollection = collect();
-                                        }
-                                        
-                                        // التأكد من أن كل عنصر في collection هو QuestionOption وليس tag
-                                        $validOptions = $optionsCollection->filter(function($item) {
-                                            return is_object($item) && isset($item->id) && isset($item->option_text);
-                                        });
-                                    @endphp
-                                    @foreach($validOptions as $option)
+                                    @foreach($question->options as $option)
                                     <div class="form-check mb-3 p-3 border rounded hover-shadow">
                                         <input class="form-check-input answer-input"
                                                type="checkbox"
