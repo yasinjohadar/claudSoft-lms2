@@ -143,15 +143,15 @@
                                                     </div>
                                                 </div>
                                                 <div class="flex-grow-1">
-                                                    <strong class="d-block">{{ $attempt->quiz->title ?? 'غير محدد' }}</strong>
-                                                    @if($attempt->quiz->description)
+                                                    <strong class="d-block">{{ $attempt->quiz?->title ?? 'غير محدد' }}</strong>
+                                                    @if($attempt->quiz && $attempt->quiz->description)
                                                         <small class="text-muted">{{ Str::limit($attempt->quiz->description, 50) }}</small>
                                                     @endif
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            @if($attempt->quiz->course)
+                                            @if($attempt->quiz && $attempt->quiz->course)
                                                 <span class="badge bg-info-transparent">
                                                     <i class="fas fa-book me-1"></i>{{ $attempt->quiz->course->title }}
                                                 </span>

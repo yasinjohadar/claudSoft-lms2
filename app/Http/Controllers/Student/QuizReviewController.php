@@ -18,6 +18,7 @@ class QuizReviewController extends Controller
 
         $query = QuizAttempt::with(['quiz.course'])
             ->where('student_id', $studentId)
+            ->whereHas('quiz') // استبعاد المحاولات التي لا تحتوي على quiz
             ->orderBy('started_at', 'desc');
 
         // Filter by quiz
