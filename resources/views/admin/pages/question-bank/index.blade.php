@@ -648,121 +648,122 @@
                 console.warn('Question Bank Script: Confirm delete question button not found!');
             }
 
-            // Confirm multiple delete
-            const confirmDeleteMultipleBtn = document.getElementById('confirmDeleteMultipleQuestions');
-            if (confirmDeleteMultipleBtn) {
-                $(confirmDeleteMultipleBtn).off('click').on('click', function() {
+            // Bulk delete button handler - opens modal
             if (deleteSelectedBtn) {
                 $(deleteSelectedBtn).off('click').on('click', function() {
-                const selectedQuestions = $('.question-row-checkbox:checked').map(function() {
-                    return parseInt($(this).val());
-                }).get();
-                
-                if (selectedQuestions.length === 0) {
-                    toastr.warning('يرجى اختيار سؤال واحد على الأقل');
-                    return;
-                }
+                    const selectedQuestions = $('.question-row-checkbox:checked').map(function() {
+                        return parseInt($(this).val());
+                    }).get();
+                    
+                    if (selectedQuestions.length === 0) {
+                        toastr.warning('يرجى اختيار سؤال واحد على الأقل');
+                        return;
+                    }
 
-                // Update modal content
-                $('#deleteMultipleQuestionsCount').text(selectedQuestions.length);
+                    // Update modal content
+                    $('#deleteMultipleQuestionsCount').text(selectedQuestions.length);
 
-                // Show modal
-                const modalElement = document.getElementById('deleteMultipleQuestionsModal');
-                if (modalElement) {
-                    const deleteModal = new bootstrap.Modal(modalElement);
-                    deleteModal.show();
-                } else {
-                    console.error('Delete multiple modal not found');
-                }
+                    // Show modal
+                    const modalElement = document.getElementById('deleteMultipleQuestionsModal');
+                    if (modalElement) {
+                        const deleteModal = new bootstrap.Modal(modalElement);
+                        deleteModal.show();
+                    } else {
+                        console.error('Delete multiple modal not found');
+                    }
 
-                // Store selected questions for deletion
-                window.selectedQuestionsForDeletion = selectedQuestions;
+                    // Store selected questions for deletion
+                    window.selectedQuestionsForDeletion = selectedQuestions;
                 });
                 console.log('Question Bank Script: Bulk delete button handler attached');
             } else {
                 console.warn('Question Bank Script: Delete selected button not found!');
             }
 
-                const selectedQuestions = window.selectedQuestionsForDeletion || [];
-                
-                if (selectedQuestions.length === 0) {
-                    toastr.warning('لم يتم تحديد أي أسئلة');
-                    return;
-                }
+            // Confirm multiple delete - executes deletion
+            const confirmDeleteMultipleBtn = document.getElementById('confirmDeleteMultipleQuestions');
+            if (confirmDeleteMultipleBtn) {
+                $(confirmDeleteMultipleBtn).off('click').on('click', function() {
+                    const selectedQuestions = window.selectedQuestionsForDeletion || [];
+                    
+                    if (selectedQuestions.length === 0) {
+                        toastr.warning('لم يتم تحديد أي أسئلة');
+                        return;
+                    }
 
-                // Get modal instance and hide it properly
-                const modalElement = document.getElementById('deleteMultipleQuestionsModal');
-                const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-                
-                // Hide modal and remove backdrop
-                deleteModal.hide();
-                
-                // Force remove backdrop if it exists
-                setTimeout(function() {
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open');
-                    $('body').css('padding-right', '');
-                }, 100);
-
-                // Disable button
-                const btn = $('#delete-selected-questions-btn');
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الحذف...');
-
-                $.ajax({
-                    url: '{{ route('question-bank.delete-multiple') }}',
-                    method: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        question_ids: selectedQuestions
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            toastr.success(response.message || `تم حذف ${selectedQuestions.length} سؤال بنجاح`);
-                            
-                            // Remove rows with animation
-                            let removedCount = 0;
-                            selectedQuestions.forEach(function(questionId) {
-                                const row = $(`#question-row-${questionId}`);
-                                if (row.length) {
-                                    row.fadeOut(300, function() {
-                                        $(this).remove();
-                                        removedCount++;
-                                        
-                                        // Update count when all rows are removed
-                                        if (removedCount === selectedQuestions.length) {
-                                            const remainingCount = $('.question-row-checkbox').length;
-                                            $('#questions-count').text(remainingCount);
-                                            
-                                            // Reset checkboxes
-                                            if (selectAllCheckbox) {
-                                                $(selectAllCheckbox).prop('checked', false);
-                                            }
-                                            toggleBulkDeleteButton();
-                                            
-                                            // Check if table is empty
-                                            if (remainingCount === 0) {
-                                                $('tbody').html('<tr><td colspan="10" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
-                                            }
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    },
-                    error: function(xhr) {
-                        toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف الأسئلة');
-                        btn.prop('disabled', false);
-                        toggleBulkDeleteButton();
-                    },
-                    complete: function() {
-                        window.selectedQuestionsForDeletion = null;
-                        
-                        // Ensure backdrop is removed
+                    // Get modal instance and hide it properly
+                    const modalElement = document.getElementById('deleteMultipleQuestionsModal');
+                    const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                    
+                    // Hide modal and remove backdrop
+                    deleteModal.hide();
+                    
+                    // Force remove backdrop if it exists
+                    setTimeout(function() {
                         $('.modal-backdrop').remove();
                         $('body').removeClass('modal-open');
                         $('body').css('padding-right', '');
-                    }
-                });
+                    }, 100);
+
+                    // Disable button
+                    const btn = $('#delete-selected-questions-btn');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الحذف...');
+
+                    $.ajax({
+                        url: '{{ route('question-bank.delete-multiple') }}',
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            question_ids: selectedQuestions
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                toastr.success(response.message || `تم حذف ${selectedQuestions.length} سؤال بنجاح`);
+                                
+                                // Remove rows with animation
+                                let removedCount = 0;
+                                selectedQuestions.forEach(function(questionId) {
+                                    const row = $(`#question-row-${questionId}`);
+                                    if (row.length) {
+                                        row.fadeOut(300, function() {
+                                            $(this).remove();
+                                            removedCount++;
+                                            
+                                            // Update count when all rows are removed
+                                            if (removedCount === selectedQuestions.length) {
+                                                const remainingCount = $('.question-row-checkbox').length;
+                                                $('#questions-count').text(remainingCount);
+                                                
+                                                // Reset checkboxes
+                                                if (selectAllCheckbox) {
+                                                    $(selectAllCheckbox).prop('checked', false);
+                                                }
+                                                toggleBulkDeleteButton();
+                                                
+                                                // Check if table is empty
+                                                if (remainingCount === 0) {
+                                                    $('tbody').html('<tr><td colspan="10" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف الأسئلة');
+                            btn.prop('disabled', false);
+                            toggleBulkDeleteButton();
+                        },
+                        complete: function() {
+                            window.selectedQuestionsForDeletion = null;
+                            
+                            // Ensure backdrop is removed
+                            $('.modal-backdrop').remove();
+                            $('body').removeClass('modal-open');
+                            $('body').css('padding-right', '');
+                        }
+                    });
                 });
                 console.log('Question Bank Script: Confirm delete multiple handler attached');
             } else {
