@@ -28,8 +28,21 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
         public WhatsAppBroadcast $broadcast,
         public User $student,
         public string $message,
-        public string $type = 'text'
-    ) {}
+        public string $type = 'text',
+        public ?int $delaySeconds = null,
+        public int $messageIndex = 0
+    ) {
+        // Calculate delay if not provided
+        if ($this->delaySeconds === null) {
+            $settingsService = app(\App\Services\WhatsApp\WhatsAppSettingsService::class);
+            $this->delaySeconds = $settingsService->calculateDelay();
+        }
+        
+        // Add delay to job if not first message
+        if ($this->messageIndex > 0) {
+            $this->delay($this->delaySeconds);
+        }
+    }
 
     /**
      * Execute the job.

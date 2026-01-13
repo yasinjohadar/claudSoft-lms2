@@ -383,7 +383,12 @@ class WhatsAppMessageController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
-            // Dispatch jobs for each student
+            // Get delay settings
+            $delaySettings = $this->settingsService->getDelaySettings();
+            $baseDelay = $delaySettings['delay_between_messages'];
+            
+            // Dispatch jobs for each student with delay
+            $index = 0;
             foreach ($students as $student) {
                 $message = $this->broadcastService->replacePlaceholders(
                     $validated['message'] ?? '',
@@ -392,7 +397,19 @@ class WhatsAppMessageController extends Controller
                     $group
                 );
 
-                BroadcastWhatsAppMessageJob::dispatch($broadcast, $student, $message, $validated['type']);
+                // Calculate delay for this message (with random variation if enabled)
+                $delay = $this->settingsService->calculateDelay($baseDelay);
+                
+                BroadcastWhatsAppMessageJob::dispatch(
+                    $broadcast, 
+                    $student, 
+                    $message, 
+                    $validated['type'],
+                    $delay,
+                    $index
+                );
+                
+                $index++;
             }
 
             return redirect()->route('admin.whatsapp-messages.index')

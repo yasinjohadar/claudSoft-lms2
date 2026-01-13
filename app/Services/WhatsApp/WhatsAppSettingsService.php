@@ -42,6 +42,16 @@ class WhatsAppSettingsService
             'custom_api_key' => $this->decryptIfEncrypted($settings['custom_api_key'] ?? ''),
             'custom_api_method' => $settings['custom_api_method'] ?? 'POST',
             'custom_api_headers' => $this->parseHeaders($settings['custom_api_headers'] ?? '{}'),
+            // WhatsApp Web settings
+            'whatsapp_web_service_url' => $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000',
+            'whatsapp_web_api_token' => $this->decryptIfEncrypted($settings['whatsapp_web_api_token'] ?? ''),
+            // Delay settings
+            'delay_between_messages' => (int) ($settings['delay_between_messages'] ?? 3),
+            'delay_between_broadcasts' => (int) ($settings['delay_between_broadcasts'] ?? 5),
+            'max_messages_per_minute' => (int) ($settings['max_messages_per_minute'] ?? 20),
+            'random_delay_enabled' => filter_var($settings['random_delay_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            'min_delay' => (int) ($settings['min_delay'] ?? 2),
+            'max_delay' => (int) ($settings['max_delay'] ?? 5),
         ];
     }
 
@@ -52,7 +62,7 @@ class WhatsAppSettingsService
     {
         foreach ($newSettings as $key => $value) {
             // Encrypt sensitive fields
-            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key']) && !empty($value)) {
+            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token']) && !empty($value)) {
                 $value = Crypt::encryptString($value);
             }
 
@@ -107,6 +117,16 @@ class WhatsAppSettingsService
             'custom_api_key' => '',
             'custom_api_method' => 'POST',
             'custom_api_headers' => '{}',
+            // WhatsApp Web settings
+            'whatsapp_web_service_url' => 'http://localhost:3000',
+            'whatsapp_web_api_token' => '',
+            // Delay settings
+            'delay_between_messages' => '3',
+            'delay_between_broadcasts' => '5',
+            'max_messages_per_minute' => '20',
+            'random_delay_enabled' => 'true',
+            'min_delay' => '2',
+            'max_delay' => '5',
         ];
 
         foreach ($defaults as $key => $value) {
@@ -133,6 +153,13 @@ class WhatsAppSettingsService
             ];
         }
 
+        if ($provider === 'whatsapp_web') {
+            return [
+                'nodejs_service_url' => $settings['whatsapp_web_service_url'],
+                'api_token' => $settings['whatsapp_web_api_token'],
+            ];
+        }
+
         // Default to Meta
         return [
             'api_version' => $settings['api_version'],
@@ -140,6 +167,42 @@ class WhatsAppSettingsService
             'access_token' => $settings['access_token'],
             'timeout' => $settings['timeout'] ?? 30,
         ];
+    }
+
+    /**
+     * Get delay settings for message sending
+     */
+    public function getDelaySettings(): array
+    {
+        $settings = $this->getSettings();
+        
+        return [
+            'delay_between_messages' => $settings['delay_between_messages'],
+            'delay_between_broadcasts' => $settings['delay_between_broadcasts'],
+            'max_messages_per_minute' => $settings['max_messages_per_minute'],
+            'random_delay_enabled' => $settings['random_delay_enabled'],
+            'min_delay' => $settings['min_delay'],
+            'max_delay' => $settings['max_delay'],
+        ];
+    }
+
+    /**
+     * Calculate delay for message sending (with random variation if enabled)
+     */
+    public function calculateDelay(?int $customDelay = null): int
+    {
+        $delaySettings = $this->getDelaySettings();
+        $baseDelay = $customDelay ?? $delaySettings['delay_between_messages'];
+        
+        if ($delaySettings['random_delay_enabled']) {
+            $min = $delaySettings['min_delay'];
+            $max = $delaySettings['max_delay'];
+            // Add random variation between min and max
+            $randomVariation = rand($min, $max);
+            return $baseDelay + $randomVariation;
+        }
+        
+        return $baseDelay;
     }
 
     /**

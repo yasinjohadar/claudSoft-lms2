@@ -33,7 +33,7 @@ class WhatsAppSettingsController extends Controller
     {
         $validated = $request->validate([
             'whatsapp_enabled' => 'nullable',
-            'whatsapp_provider' => 'required|string|in:meta,custom_api',
+            'whatsapp_provider' => 'required|string|in:meta,custom_api,whatsapp_web',
             'api_version' => 'required_if:whatsapp_provider,meta|nullable|string|max:10',
             'phone_number_id' => 'required_if:whatsapp_provider,meta|nullable|string|max:255',
             'waba_id' => 'nullable|string|max:255',
@@ -48,6 +48,14 @@ class WhatsAppSettingsController extends Controller
             'timeout' => 'nullable|integer|min:1|max:300',
             'custom_api_url' => 'required_if:whatsapp_provider,custom_api|nullable|string|url|max:500',
             'custom_api_key' => 'nullable|string|max:500',
+            'whatsapp_web_service_url' => 'required_if:whatsapp_provider,whatsapp_web|nullable|string|url|max:500',
+            'whatsapp_web_api_token' => 'nullable|string|max:500',
+            'delay_between_messages' => 'nullable|integer|min:1|max:60',
+            'delay_between_broadcasts' => 'nullable|integer|min:1|max:60',
+            'max_messages_per_minute' => 'nullable|integer|min:1|max:100',
+            'random_delay_enabled' => 'nullable',
+            'min_delay' => 'nullable|integer|min:1|max:10',
+            'max_delay' => 'nullable|integer|min:1|max:10',
             'custom_api_method' => 'nullable|string|in:GET,POST',
             'custom_api_headers' => 'nullable|string|max:1000',
         ], [
@@ -68,8 +76,9 @@ class WhatsAppSettingsController extends Controller
             $validated['whatsapp_enabled'] = $request->has('whatsapp_enabled') ? '1' : '0';
             $validated['strict_signature'] = $request->has('strict_signature') ? '1' : '0';
             $validated['auto_reply'] = $request->has('auto_reply') ? '1' : '0';
+            $validated['random_delay_enabled'] = $request->has('random_delay_enabled') ? '1' : '0';
 
-            // If access_token, app_secret, or custom_api_key is empty, keep existing values
+            // If access_token, app_secret, custom_api_key, or whatsapp_web_api_token is empty, keep existing values
             if (empty($validated['access_token'])) {
                 $existingSettings = $this->settingsService->getSettings();
                 $validated['access_token'] = $existingSettings['access_token'] ?? '';
@@ -83,6 +92,11 @@ class WhatsAppSettingsController extends Controller
             if (empty($validated['custom_api_key'])) {
                 $existingSettings = $this->settingsService->getSettings();
                 $validated['custom_api_key'] = $existingSettings['custom_api_key'] ?? '';
+            }
+
+            if (empty($validated['whatsapp_web_api_token'])) {
+                $existingSettings = $this->settingsService->getSettings();
+                $validated['whatsapp_web_api_token'] = $existingSettings['whatsapp_web_api_token'] ?? '';
             }
 
             $this->settingsService->updateSettings($validated);
@@ -116,6 +130,14 @@ class WhatsAppSettingsController extends Controller
                     'api_key' => $customApiKey,
                     'api_method' => $request->input('custom_api_method', $settings['custom_api_method'] ?? 'POST'),
                     'headers' => $this->parseHeaders($request->input('custom_api_headers', $settings['custom_api_headers'] ?? [])),
+                ];
+            } elseif ($provider === 'whatsapp_web') {
+                $nodejsUrl = $request->input('whatsapp_web_service_url', $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
+                $apiToken = $request->input('whatsapp_web_api_token', $settings['whatsapp_web_api_token'] ?? '');
+                
+                $config = [
+                    'nodejs_service_url' => $nodejsUrl,
+                    'api_token' => $apiToken,
                 ];
             } else {
                 $apiVersion = $request->input('api_version', $settings['api_version'] ?? 'v20.0');

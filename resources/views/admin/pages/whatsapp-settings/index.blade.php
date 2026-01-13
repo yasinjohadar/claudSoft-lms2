@@ -82,22 +82,42 @@
                                             <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required onchange="handleProviderChange(this.value)">
                                                 <option value="meta" {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'meta') || (!isset($settings['whatsapp_provider'])) ? 'selected' : '' }}>Meta (WhatsApp Cloud API)</option>
                                                 <option value="custom_api" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api' ? 'selected' : '' }}>Custom API</option>
+                                                <option value="whatsapp_web" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web' ? 'selected' : '' }}>WhatsApp Web (QR Code)</option>
                                             </select>
                                             @error('whatsapp_provider')
                                                 <div class="text-danger small mt-1">{{ $message }}</div>
                                             @enderror
                                         </div>
+                                        <div class="col-md-6 mb-3">
+                                            @if(isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web')
+                                                <div class="d-flex gap-2">
+                                                    <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-primary">
+                                                        <i class="ri-settings-3-line me-2"></i>إعدادات WhatsApp Web
+                                                    </a>
+                                                    <a href="{{ route('admin.whatsapp-web.connect') }}" class="btn btn-outline-primary">
+                                                        <i class="ri-qr-code-line me-2"></i>ربط WhatsApp Web
+                                                    </a>
+                                                </div>
+                                            @endif
+                                        </div>
                                         <script>
                                             function handleProviderChange(provider) {
                                                 var metaSettings = document.getElementById('meta-settings');
                                                 var customApiSettings = document.getElementById('custom-api-settings');
+                                                var whatsappWebSettings = document.getElementById('whatsapp-web-settings');
                                                 
+                                                // Hide all settings
+                                                if (metaSettings) metaSettings.style.display = 'none';
+                                                if (customApiSettings) customApiSettings.style.display = 'none';
+                                                if (whatsappWebSettings) whatsappWebSettings.style.display = 'none';
+                                                
+                                                // Show relevant settings
                                                 if (provider === 'custom_api') {
-                                                    if (metaSettings) metaSettings.style.display = 'none';
                                                     if (customApiSettings) customApiSettings.style.display = 'block';
+                                                } else if (provider === 'whatsapp_web') {
+                                                    if (whatsappWebSettings) whatsappWebSettings.style.display = 'block';
                                                 } else {
                                                     if (metaSettings) metaSettings.style.display = 'block';
-                                                    if (customApiSettings) customApiSettings.style.display = 'none';
                                                 }
                                             }
                                         </script>
@@ -349,6 +369,30 @@
                                 </div>
                             </div>
 
+                            <!-- WhatsApp Web Info -->
+                            <div class="card border mb-4" id="whatsapp-web-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web') ? 'block' : 'none' }};">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="ri-qr-code-line me-2"></i>WhatsApp Web
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info">
+                                        <i class="ri-information-line me-2"></i>
+                                        <strong>ملاحظة:</strong> لإعداد WhatsApp Web، يرجى الانتقال إلى صفحة الإعدادات المخصصة.
+                                        <div class="mt-2">
+                                            <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-sm btn-primary">
+                                                <i class="ri-settings-3-line me-1"></i>فتح إعدادات WhatsApp Web
+                                            </a>
+                                            <a href="{{ route('admin.whatsapp-web.connect') }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="ri-qr-code-line me-1"></i>ربط WhatsApp Web
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- Advanced Settings -->
                             <div class="card border mb-4">
                                 <div class="card-header bg-light">
@@ -420,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('whatsapp_provider');
     const metaSettings = document.getElementById('meta-settings');
     const customApiSettings = document.getElementById('custom-api-settings');
+    const whatsappWebSettings = document.getElementById('whatsapp-web-settings');
     const testConnectionBtn = document.getElementById('test-connection-btn');
     
     // Safely initialize modal
@@ -514,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initial call after DOM is fully loaded
-    if (providerSelect && metaSettings && customApiSettings) {
+    if (providerSelect && metaSettings && customApiSettings && whatsappWebSettings) {
         // Add event listener for change
         providerSelect.addEventListener('change', function() {
             toggleProviderSettings();
@@ -531,7 +576,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Required elements not found:', {
             providerSelect: !!providerSelect,
             metaSettings: !!metaSettings,
-            customApiSettings: !!customApiSettings
+            customApiSettings: !!customApiSettings,
+            whatsappWebSettings: !!whatsappWebSettings
         });
     }
 

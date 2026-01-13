@@ -815,6 +815,22 @@ Route::prefix('admin')
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
 
+        // WhatsApp Web Routes
+        Route::prefix('whatsapp-web')->name('admin.whatsapp-web.')->group(function () {
+            Route::get('/connect', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'connect'])->name('connect');
+            Route::post('/start-connection', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'startConnection'])->name('start-connection');
+            Route::get('/qr/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'getQrCode'])->name('qr');
+            Route::get('/status/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'getStatus'])->name('status');
+            Route::post('/disconnect/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'disconnect'])->name('disconnect');
+        });
+
+        // WhatsApp Web Settings Routes
+        Route::prefix('whatsapp-web-settings')->name('admin.whatsapp-web-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
     });
 
 

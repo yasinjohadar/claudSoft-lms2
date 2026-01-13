@@ -538,7 +538,10 @@
                             </a>
                             <ul class="slide-menu child1 {{ request()->routeIs('admin.whatsapp-*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.whatsapp-*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.whatsapp-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">الإعدادات</a>
+                                    <a href="{{ route('admin.whatsapp-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">الإعدادات العامة</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">WhatsApp Web</a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">الرسائل</a>
