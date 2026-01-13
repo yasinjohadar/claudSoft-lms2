@@ -452,13 +452,13 @@ function addSection() {
 
     container.insertAdjacentHTML('beforeend', sectionHtml);
     sectionIndex++;
-    updateSectionNumbers();
+    renumberSections();
 }
 
 function removeSection(btn) {
     if (confirm('هل أنت متأكد من حذف هذا المحور وجميع دروسه؟')) {
         btn.closest('.section-item').remove();
-        updateSectionNumbers();
+        renumberSections();
 
         // Show empty state if no sections
         const container = document.getElementById('sections-container');
@@ -523,13 +523,13 @@ function addLesson(btn) {
     `;
 
     lessonsContainer.insertAdjacentHTML('beforeend', lessonHtml);
-    updateLessonNumbers(sectionItem);
+    renumberSections();
 }
 
 function removeLesson(btn) {
     const sectionItem = btn.closest('.section-item');
     btn.closest('.lesson-item').remove();
-    updateLessonNumbers(sectionItem);
+    renumberSections();
 }
 
 function updateSectionNumbers() {
@@ -542,6 +542,60 @@ function updateLessonNumbers(sectionItem) {
     sectionItem.querySelectorAll('.lesson-item').forEach((lesson, index) => {
         lesson.querySelector('.lesson-number').textContent = index + 1;
     });
+}
+
+// إعادة ترقيم جميع الأقسام والدروس لضمان تسلسل الـ indices
+function renumberSections() {
+    const sections = document.querySelectorAll('.section-item');
+    
+    sections.forEach((section, sectionIndex) => {
+        // تحديث data-section-index
+        section.setAttribute('data-section-index', sectionIndex);
+        
+        // تحديث جميع الـ inputs والـ selects في القسم
+        section.querySelectorAll('input, select, textarea').forEach(input => {
+            const name = input.getAttribute('name');
+            if (name && name.startsWith('sections[')) {
+                // تحديث اسم القسم نفسه
+                const newName = name.replace(/^sections\[\d+\]/, `sections[${sectionIndex}]`);
+                input.setAttribute('name', newName);
+            }
+        });
+        
+        // تحديث رقم القسم المعروض
+        const sectionNumber = section.querySelector('.section-number');
+        if (sectionNumber) {
+            sectionNumber.textContent = sectionIndex + 1;
+        }
+        
+        // إعادة ترقيم الدروس داخل هذا القسم
+        const lessons = section.querySelectorAll('.lesson-item');
+        lessons.forEach((lesson, lessonIndex) => {
+            // تحديث جميع الـ inputs والـ selects في الدرس
+            lesson.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name && name.includes('[lessons][')) {
+                    // تحديث اسم الدرس
+                    const newName = name.replace(
+                        /sections\[\d+\]\[lessons\]\[\d+\]/,
+                        `sections[${sectionIndex}][lessons][${lessonIndex}]`
+                    );
+                    input.setAttribute('name', newName);
+                }
+            });
+            
+            // تحديث رقم الدرس المعروض
+            const lessonNumber = lesson.querySelector('.lesson-number');
+            if (lessonNumber) {
+                lessonNumber.textContent = lessonIndex + 1;
+            }
+        });
+    });
+    
+    // تحديث sectionIndex للمقاطع الجديدة
+    sectionIndex = sections.length;
+    
+    console.log('✅ Sections and lessons renumbered successfully');
 }
 
 function previewThumbnail(input) {
@@ -562,4 +616,20 @@ function previewThumbnail(input) {
         preview.classList.add('d-none');
     }
 }
+
+// إعادة ترقيم الأقسام والدروس عند تحميل الصفحة وقبل إرسال النموذج
+document.addEventListener('DOMContentLoaded', function() {
+    // إعادة ترقيم عند تحميل الصفحة لضمان صحة الـ indices
+    renumberSections();
+    
+    // إعادة ترقيم قبل إرسال النموذج
+    const form = document.querySelector('form[action*="frontend-courses"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('🔄 Form submit - renumbering sections and lessons...');
+            renumberSections();
+            // السماح بإرسال النموذج بعد إعادة الترقييم
+        });
+    }
+});
 </script>
