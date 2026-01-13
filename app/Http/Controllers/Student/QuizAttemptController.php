@@ -330,6 +330,17 @@ class QuizAttemptController extends Controller
 
                 // Get the question with pivot data
                 $question = $quizQuestion->question;
+
+                // إذا كان السؤال نفسه محذوفاً من بنك الأسئلة
+                if (!$question) {
+                    \Log::warning('QuizAttempt: question is null for quizQuestion in questions_order', [
+                        'attempt_id' => $attempt->id,
+                        'quiz_id' => $attempt->quiz_id,
+                        'question_id_from_order' => $questionId,
+                        'quiz_question_id' => $quizQuestion->id ?? null,
+                    ]);
+                    return null;
+                }
                 
                 // #region agent log
                 \Log::info('DEBUG: Before loading options', [
