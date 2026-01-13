@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        data-question-id="{{ $question->id }}"
                                                        {{ $savedAnswer == $option->id ? 'checked' : '' }}>
                                                 <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                                    {!! $option->option_text ?? '<span class="text-muted">(نص الخيار غير متوفر)</span>' !!}
+                                                    {{ $option->option_text ?? '(نص الخيار غير متوفر)' }}
                                                 </label>
                                             </div>
                                         @endforeach
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        data-question-id="{{ $question->id }}"
                                                        {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
                                                 <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                                    {!! $option->option_text ?? '<span class="text-muted">(نص الخيار غير متوفر)</span>' !!}
+                                                    {{ $option->option_text ?? '(نص الخيار غير متوفر)' }}
                                                 </label>
                                             </div>
                                         @endforeach

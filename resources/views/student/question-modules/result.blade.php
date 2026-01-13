@@ -314,7 +314,7 @@
                                                 @endif
                                             </div>
                                             <div class="flex-grow-1">
-                                                {!! $option->option_text !!}
+                                                {{ $option->option_text }}
                                                 @if($isStudentAnswer)
                                                     <span class="badge {{ $isCorrectOption ? 'bg-success' : 'bg-danger' }} ms-2">
                                                         <i class="fas fa-user me-1"></i>إجابتك

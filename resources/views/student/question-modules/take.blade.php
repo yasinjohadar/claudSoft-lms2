@@ -122,7 +122,7 @@
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer == $option->id ? 'checked' : '' }}>
                                         <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {!! $option->option_text !!}
+                                            {{ $option->option_text }}
                                         </label>
                                     </div>
                                     @endforeach
@@ -139,7 +139,7 @@
                                                data-question-id="{{ $question->id }}"
                                                {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
                                         <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {!! $option->option_text !!}
+                                            {{ $option->option_text }}
                                         </label>
                                     </div>
                                     @endforeach
