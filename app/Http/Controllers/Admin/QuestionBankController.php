@@ -1047,7 +1047,14 @@ class QuestionBankController extends Controller
                     $courseId = $courseMapping[$questionData['course']] ?? null;
                     if (!$courseId) {
                         $skipped++;
-                        $errors[] = "السطر " . ($index + 1) . ": الكورس '" . $questionData['course'] . "' غير موجود في النظام";
+                        $courseName = $questionData['course'] ?? 'غير محدد';
+                        $availableCourses = implode(', ', array_slice(array_keys($courseMapping), 0, 5));
+                        $errors[] = "السطر " . ($index + 1) . ": الكورس '" . $courseName . "' غير موجود في النظام. الكورسات المتاحة: " . ($availableCourses ?: 'لا توجد كورسات متاحة');
+                        Log::warning('Question Import: Course not found', [
+                            'index' => $index,
+                            'course_name' => $courseName,
+                            'available_courses' => array_keys($courseMapping),
+                        ]);
                         continue;
                     }
 

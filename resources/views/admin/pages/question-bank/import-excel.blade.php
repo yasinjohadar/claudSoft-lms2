@@ -415,10 +415,45 @@ async function processImport() {
         });
 
         if (result.success) {
-            console.log('Question Import: Success, redirecting...', {
+            console.log('Question Import: Success response received', {
                 imported: result.imported,
-                skipped: result.skipped
+                skipped: result.skipped,
+                errorsCount: result.errors ? result.errors.length : 0
             });
+            
+            // Check if any questions were actually imported
+            if (result.imported === 0) {
+                let errorMsg = result.message || 'لم يتم استيراد أي سؤال';
+                if (result.errors && result.errors.length > 0) {
+                    // Show first few errors
+                    const errorPreview = result.errors.slice(0, 5).join('\n');
+                    const moreErrors = result.errors.length > 5 ? `\n... و ${result.errors.length - 5} أخطاء أخرى` : '';
+                    errorMsg = 'لم يتم استيراد أي سؤال:\n\n' + errorPreview + moreErrors;
+                    
+                    // Also log all errors
+                    console.error('Question Import: All errors', result.errors);
+                }
+                
+                alert(errorMsg);
+                document.getElementById('import-btn').disabled = false;
+                document.getElementById('import-btn').innerHTML = '<i class="fas fa-upload me-2"></i>استيراد البيانات';
+                return;
+            }
+            
+            // If some questions were skipped, show a warning
+            if (result.skipped > 0 && result.errors && result.errors.length > 0) {
+                const errorPreview = result.errors.slice(0, 3).join('\n');
+                const moreErrors = result.errors.length > 3 ? `\n... و ${result.errors.length - 3} أخطاء أخرى` : '';
+                const warningMsg = result.message + '\n\nتم تخطي بعض الأسئلة:\n' + errorPreview + moreErrors;
+                
+                if (!confirm(warningMsg + '\n\nهل تريد المتابعة إلى صفحة الأسئلة؟')) {
+                    document.getElementById('import-btn').disabled = false;
+                    document.getElementById('import-btn').innerHTML = '<i class="fas fa-upload me-2"></i>استيراد البيانات';
+                    return;
+                }
+            }
+            
+            console.log('Question Import: Redirecting to index...');
             // Redirect to index page
             window.location.href = '{{ route("question-bank.index") }}';
         } else {
