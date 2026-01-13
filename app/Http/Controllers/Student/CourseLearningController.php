@@ -289,7 +289,7 @@ class CourseLearningController extends Controller
             ModuleCompletion::where('module_id', $moduleId)
                 ->where('student_id', $student->id)
                 ->update([
-                    'completion_status' => 'incomplete',
+                    'completion_status' => 'in_progress',
                     'completed_at' => null,
                 ]);
 
