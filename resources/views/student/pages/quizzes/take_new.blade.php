@@ -93,10 +93,10 @@
                         @endif
 
                         <!-- Question Tags -->
-                        @if($question->tags && count($question->tags) > 0)
+                        @if($question->tags && is_array($question->tags) && count($question->tags) > 0)
                             <div class="question-tags mt-3 mb-3">
                                 @foreach($question->tags as $tag)
-                                    <span class="badge bg-secondary-transparent text-secondary me-1">{{ $tag }}</span>
+                                    <code class="badge bg-secondary-transparent text-secondary me-1">{{ $tag }}</code>
                                 @endforeach
                             </div>
                         @endif
