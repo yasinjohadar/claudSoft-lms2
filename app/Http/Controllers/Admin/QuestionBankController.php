@@ -754,8 +754,9 @@ class QuestionBankController extends Controller
     {
         $courses = Course::where('is_published', true)->get();
         $questionTypes = QuestionType::where('is_active', true)->get();
+        $programmingLanguages = ProgrammingLanguage::active()->orderBy('sort_order')->get();
         
-        return view('admin.pages.question-bank.import-excel', compact('courses', 'questionTypes'));
+        return view('admin.pages.question-bank.import-excel', compact('courses', 'questionTypes', 'programmingLanguages'));
     }
 
     /**
@@ -812,6 +813,7 @@ class QuestionBankController extends Controller
                     'course' => trim($row[9] ?? ''),
                     'explanation' => trim($row[10] ?? ''),
                     'tags' => trim($row[11] ?? ''),
+                    'language' => trim($row[12] ?? ''),
                 ];
 
                 // Validate required fields
@@ -854,12 +856,21 @@ class QuestionBankController extends Controller
                 $courseMapping[$course->title] = $course->id;
             }
 
+            // Get programming languages mapping
+            $programmingLanguages = ProgrammingLanguage::active()->get();
+            $languageMapping = [];
+            foreach ($programmingLanguages as $lang) {
+                $languageMapping[$lang->name] = $lang->id;
+                $languageMapping[$lang->display_name] = $lang->id;
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => $parsedData,
                 'errors' => $errors,
                 'type_mapping' => $typeMapping,
                 'course_mapping' => $courseMapping,
+                'language_mapping' => $languageMapping,
                 'total_rows' => count($parsedData),
                 'valid_rows' => count($parsedData) - count($errors),
             ]);
@@ -882,9 +893,11 @@ class QuestionBankController extends Controller
         $validator = Validator::make($request->all(), [
             'excel_file' => 'required|mimes:xlsx,xls|max:10240',
             'questions_data' => 'required|json',
+            'default_programming_language_id' => 'nullable|exists:programming_languages,id',
         ], [
             'excel_file.required' => 'يرجى اختيار ملف Excel',
             'questions_data.required' => 'بيانات الأسئلة مطلوبة',
+            'default_programming_language_id.exists' => 'اللغة البرمجية المحددة غير موجودة',
         ]);
 
         if ($validator->fails()) {
@@ -922,6 +935,20 @@ class QuestionBankController extends Controller
             $courseMapping = [];
             foreach ($courses as $course) {
                 $courseMapping[$course->title] = $course->id;
+            }
+
+            // Get programming languages mapping
+            $programmingLanguages = ProgrammingLanguage::active()->get();
+            $languageMapping = [];
+            foreach ($programmingLanguages as $lang) {
+                $languageMapping[$lang->name] = $lang->id;
+                $languageMapping[$lang->display_name] = $lang->id;
+            }
+
+            // Get default programming language from request (if provided)
+            $defaultLanguageId = null;
+            if ($request->filled('default_programming_language_id')) {
+                $defaultLanguageId = $request->input('default_programming_language_id');
             }
 
             DB::beginTransaction();
@@ -992,6 +1019,22 @@ class QuestionBankController extends Controller
                         ]);
                     }
 
+                    // Attach programming language
+                    $languageId = null;
+                    if (!empty($questionData['language'])) {
+                        $languageName = trim($questionData['language']);
+                        $languageId = $languageMapping[$languageName] ?? null;
+                    }
+                    
+                    // Use default language if not specified in Excel
+                    if (!$languageId && $defaultLanguageId) {
+                        $languageId = $defaultLanguageId;
+                    }
+
+                    if ($languageId) {
+                        $question->programmingLanguages()->attach($languageId);
+                    }
+
                     $imported++;
                 } catch (\Exception $e) {
                     $skipped++;
@@ -1051,7 +1094,7 @@ class QuestionBankController extends Controller
         $headers = [
             'نوع السؤال', 'نص السؤال', 'الخيار 1', 'الخيار 2', 
             'الخيار 3', 'الخيار 4', 'الإجابة الصحيحة', 
-            'الدرجة', 'الصعوبة', 'الكورس', 'الشرح', 'العلامات'
+            'الدرجة', 'الصعوبة', 'الكورس', 'الشرح', 'العلامات', 'اللغة البرمجية'
         ];
 
         $sheet->fromArray($headers, null, 'A1');
@@ -1069,19 +1112,20 @@ class QuestionBankController extends Controller
             'easy',
             'اسم الكورس هنا', // Required - يجب أن يطابق اسم كورس موجود في النظام
             'الرياض هي عاصمة المملكة العربية السعودية',
-            'جغرافيا,عواصم'
+            'جغرافيا,عواصم',
+            'JavaScript' // مثال للغة البرمجية - يجب أن يطابق اسم لغة موجودة في النظام
         ];
         $sheet->fromArray($exampleRow, null, 'A2');
 
         // Style header row
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:L1')->getFill()
+        $sheet->getStyle('A1:M1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:M1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF4472C4');
-        $sheet->getStyle('A1:L1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:M1')->getFont()->getColor()->setARGB('FFFFFFFF');
 
         // Auto-size columns
-        foreach (range('A', 'L') as $col) {
+        foreach (range('A', 'M') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

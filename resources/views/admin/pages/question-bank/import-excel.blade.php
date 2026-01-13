@@ -50,6 +50,8 @@
                                     <li>حجم الملف يجب أن يكون أقل من 10 ميجابايت</li>
                                     <li><strong class="text-danger">اسم الكورس مطلوب</strong> - يجب كتابة اسم الكورس في عمود "الكورس"</li>
                                     <li>اسم الكورس يجب أن يطابق اسم كورس موجود في النظام</li>
+                                    <li>اللغة البرمجية اختيارية - يمكن تحديدها في عمود "اللغة البرمجية" أو اختيار لغة افتراضية أدناه</li>
+                                    <li>اسم اللغة البرمجية يجب أن يطابق اسم لغة موجودة في النظام</li>
                                     <li>سيتم عرض معاينة للبيانات قبل الاستيراد</li>
                                     <li>يمكنك تحميل ملف قالب Excel كمرجع</li>
                                 </ul>
@@ -67,6 +69,19 @@
                                     <label for="excel_file" class="form-label">اختر ملف Excel <span class="text-danger">*</span></label>
                                     <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
                                     <div class="form-text">الصيغ المدعومة: .xlsx, .xls</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="default_programming_language_id" class="form-label">اللغة البرمجية الافتراضية</label>
+                                    <select class="form-select" id="default_programming_language_id" name="default_programming_language_id">
+                                        <option value="">اختر اللغة البرمجية (اختياري)</option>
+                                        @if(isset($programmingLanguages))
+                                            @foreach($programmingLanguages as $lang)
+                                                <option value="{{ $lang->id }}">{{ $lang->display_name ?? $lang->name }}</option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                    <div class="form-text">سيتم استخدام هذه اللغة للأسئلة التي لا تحتوي على لغة برمجية في ملف Excel</div>
                                 </div>
 
                                 <div class="d-flex justify-content-end gap-2">
@@ -107,6 +122,7 @@
                                             <th>الدرجة</th>
                                             <th>الصعوبة</th>
                                             <th>الكورس</th>
+                                            <th>اللغة البرمجية</th>
                                             <th width="100">الحالة</th>
                                         </tr>
                                     </thead>
@@ -279,6 +295,7 @@ function displayPreview(result) {
             <td>${row.points || '1'}</td>
             <td>${row.difficulty || 'medium'}</td>
             <td>${row.course ? row.course : '<span class="text-danger">مطلوب</span>'}</td>
+            <td>${row.language ? row.language : '<span class="text-muted">-</span>'}</td>
             <td>
                 ${hasError ? 
                     '<span class="badge bg-danger status-badge">خطأ</span>' : 
@@ -322,6 +339,12 @@ async function processImport() {
     formData.append('excel_file', excelFile);
     formData.append('questions_data', JSON.stringify(previewData));
     formData.append('_token', '{{ csrf_token() }}');
+    
+    // Add default programming language if selected
+    const defaultLanguageSelect = document.getElementById('default_programming_language_id');
+    if (defaultLanguageSelect && defaultLanguageSelect.value) {
+        formData.append('default_programming_language_id', defaultLanguageSelect.value);
+    }
 
     try {
         const response = await fetch('{{ route("question-bank.import.process") }}', {
