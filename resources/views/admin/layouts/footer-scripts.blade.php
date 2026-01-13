@@ -5,6 +5,9 @@
 <div id="responsive-overlay"></div>
 <!-- Scroll To Top -->
 
+<!-- jQuery (مطلوب لبعض صفحات لوحة التحكم مثل بنك الأسئلة) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
 <!-- Popper JS -->
 <script src="{{ asset('assets/libs/@popperjs/core/umd/popper.min.js') }}" defer></script>
 {{-- <script src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script> --}}
