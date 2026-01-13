@@ -6,15 +6,45 @@
 
 @section('styles')
 <style>
-    .main-content {
-        padding-bottom: 1rem !important;
+    /* Fix excessive spacing before footer - Override theme CSS */
+    body .page {
+        min-height: auto !important;
+        justify-content: flex-start !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
-    .container-fluid {
+    
+    body .main-content.app-content {
+        padding-bottom: 1rem !important;
+        min-height: auto !important;
+        margin-block-end: 0 !important;
+        flex: 0 0 auto !important;
+    }
+    
+    body .container-fluid {
         padding-bottom: 0 !important;
         margin-bottom: 0 !important;
     }
-    .card.custom-card:last-child {
+    
+    body .card.custom-card:last-child {
         margin-bottom: 1rem !important;
+    }
+    
+    /* Ensure footer doesn't create extra space */
+    body .footer {
+        margin-top: 0 !important;
+        flex: 0 0 auto !important;
+    }
+    
+    /* Remove any extra padding/margin from app-content */
+    body .app-content > .container-fluid {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Fix for empty state causing extra space */
+    body .table-responsive {
+        margin-bottom: 0 !important;
     }
 </style>
 @stop

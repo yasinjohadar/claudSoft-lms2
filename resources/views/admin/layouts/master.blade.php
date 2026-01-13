@@ -44,6 +44,23 @@
         html.loaded #loader {
             display: none;
         }
+        
+        /* Fix excessive spacing before footer - Global fix */
+        .page {
+            min-height: auto !important;
+            justify-content: flex-start !important;
+        }
+        .app-content {
+            min-height: auto !important;
+            margin-block-end: 0 !important;
+        }
+        .app-content > .container-fluid {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        .footer {
+            margin-top: 0 !important;
+        }
     </style>
 </head>
 
