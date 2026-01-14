@@ -49,6 +49,7 @@ use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\UserSessionController;
+use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\ContactSettingController;
 use App\Http\Controllers\Admin\GoogleSettingController;
@@ -839,6 +840,18 @@ Route::prefix('admin')
             Route::get('/statistics', [\App\Http\Controllers\Admin\UserSessionController::class, 'statistics'])->name('statistics');
             Route::get('/user/{userId}', [\App\Http\Controllers\Admin\UserSessionController::class, 'userSessions'])->name('user');
             Route::get('/{id}', [\App\Http\Controllers\Admin\UserSessionController::class, 'show'])->name('show');
+        });
+
+        // ========== User Devices Routes ==========
+        Route::prefix('user-devices')->name('admin.user-devices.')->group(function () {
+            Route::get('/', [UserDeviceController::class, 'index'])->name('index');
+            Route::get('/user/{userId}', [UserDeviceController::class, 'userDevices'])->name('user');
+            Route::get('/{id}', [UserDeviceController::class, 'show'])->name('show');
+            Route::post('/{id}/block', [UserDeviceController::class, 'block'])->name('block');
+            Route::post('/{id}/unblock', [UserDeviceController::class, 'unblock'])->name('unblock');
+            Route::post('/{id}/trust', [UserDeviceController::class, 'trust'])->name('trust');
+            Route::post('/{id}/untrust', [UserDeviceController::class, 'untrust'])->name('untrust');
+            Route::put('/{id}/device-name', [UserDeviceController::class, 'updateDeviceName'])->name('update-name');
         });
 
     });

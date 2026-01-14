@@ -104,6 +104,22 @@ class UserDevice extends Model
     }
 
     /**
+     * Scope a query to filter by user.
+     */
+    public function scopeByUser($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Scope a query to filter by device type.
+     */
+    public function scopeByDeviceType($query, string $type)
+    {
+        return $query->where('device_type', $type);
+    }
+
+    /**
      * Increment the total logins count.
      */
     public function incrementLogins(): void
@@ -153,5 +169,98 @@ class UserDevice extends Model
     public function unblock(): bool
     {
         return $this->update(['is_blocked' => false]);
+    }
+
+    // ========== Accessors ==========
+
+    /**
+     * Get device info as formatted string.
+     */
+    public function getDeviceInfoAttribute(): string
+    {
+        $parts = [];
+        
+        if ($this->device_name) {
+            $parts[] = $this->device_name;
+        }
+        
+        if ($this->device_type) {
+            $deviceTypeNames = [
+                'mobile' => 'جوال',
+                'tablet' => 'تابلت',
+                'desktop' => 'سطح مكتب',
+            ];
+            $parts[] = $deviceTypeNames[$this->device_type] ?? ucfirst($this->device_type);
+        }
+        
+        if ($this->browser) {
+            $browserInfo = $this->browser;
+            if ($this->browser_version) {
+                $browserInfo .= ' ' . $this->browser_version;
+            }
+            $parts[] = $browserInfo;
+        }
+        
+        if ($this->platform) {
+            $platformInfo = $this->platform;
+            if ($this->platform_version) {
+                $platformInfo .= ' ' . $this->platform_version;
+            }
+            $parts[] = $platformInfo;
+        }
+
+        return implode(' • ', $parts) ?: 'غير محدد';
+    }
+
+    /**
+     * Get status badge information.
+     */
+    public function getStatusBadgeAttribute(): array
+    {
+        if ($this->is_blocked) {
+            return [
+                'text' => 'محظور',
+                'class' => 'badge bg-danger',
+                'icon' => 'fa-ban',
+            ];
+        }
+        
+        if ($this->is_trusted) {
+            return [
+                'text' => 'موثوق',
+                'class' => 'badge bg-success',
+                'icon' => 'fa-shield-check',
+            ];
+        }
+        
+        return [
+            'text' => 'عادي',
+            'class' => 'badge bg-secondary',
+            'icon' => 'fa-circle',
+        ];
+    }
+
+    /**
+     * Get time since last used in human readable format.
+     */
+    public function getLastUsedHumanAttribute(): string
+    {
+        if (!$this->last_used_at) {
+            return 'لم يُستخدم';
+        }
+        
+        return $this->last_used_at->diffForHumans();
+    }
+
+    /**
+     * Get time since first used in human readable format.
+     */
+    public function getFirstUsedHumanAttribute(): string
+    {
+        if (!$this->first_used_at) {
+            return 'غير محدد';
+        }
+        
+        return $this->first_used_at->format('Y-m-d H:i');
     }
 }
