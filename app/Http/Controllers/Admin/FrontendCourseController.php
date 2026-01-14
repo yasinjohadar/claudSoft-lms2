@@ -223,7 +223,7 @@ class FrontendCourseController extends Controller
             $frontendCourse->update($validated);
 
             // Handle sections and lessons
-            if ($request->has('sections')) {
+            if ($request->filled('sections') && is_array($request->sections) && count($request->sections) > 0) {
                 $this->updateSectionsAndLessons($frontendCourse, $request->sections);
             }
 
@@ -300,6 +300,11 @@ class FrontendCourseController extends Controller
      */
     protected function updateSectionsAndLessons(FrontendCourse $course, array $sections)
     {
+        // Safety check: if sections array is empty, don't process anything
+        if (empty($sections)) {
+            return;
+        }
+
         $existingSectionIds = [];
 
         foreach ($sections as $sectionIndex => $sectionData) {
