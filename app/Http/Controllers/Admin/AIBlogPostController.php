@@ -267,7 +267,7 @@ class AIBlogPostController extends Controller
 
             DB::commit();
 
-            return redirect()->route('admin.blog.posts.show', $post->id)
+            return redirect()->route('admin.blog.posts.edit', $post->id)
                             ->with('success', 'تم إنشاء المقال بنجاح باستخدام الذكاء الاصطناعي!');
 
         } catch (\Exception $e) {
