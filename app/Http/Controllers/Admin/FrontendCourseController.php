@@ -311,7 +311,7 @@ class FrontendCourseController extends Controller
             if (isset($sectionData['id']) && $sectionData['id']) {
                 // Update existing section
                 $section = FrontendCourseSection::find($sectionData['id']);
-                if ($section && $section->course_id === $course->id) {
+                if ($section && (int)$section->course_id === (int)$course->id) {
                     $section->update([
                         'title' => $sectionData['title'],
                         'description' => $sectionData['description'] ?? null,
@@ -338,7 +338,7 @@ class FrontendCourseController extends Controller
                     if (isset($lessonData['id']) && $lessonData['id']) {
                         // Update existing lesson
                         $lesson = FrontendCourseLesson::find($lessonData['id']);
-                        if ($lesson && $lesson->section_id === $section->id) {
+                        if ($lesson && (int)$lesson->section_id === (int)$section->id) {
                             $lesson->update([
                                 'title' => $lessonData['title'],
                                 'description' => $lessonData['description'] ?? null,
