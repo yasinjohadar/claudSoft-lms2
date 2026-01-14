@@ -33,6 +33,7 @@ use App\Listeners\CourseNotificationListener;
 use App\Listeners\AssessmentNotificationListener;
 use App\Listeners\PaymentNotificationListener;
 use App\Listeners\Gamification\SendNotificationListener;
+use App\Listeners\Gamification\CheckBadgesListener;
 use App\Listeners\N8nWebhookListener;
 use App\Listeners\IssueCertificateOnCompletion;
 
@@ -48,14 +49,17 @@ class EventServiceProvider extends ServiceProvider
         CourseCompleted::class => [
             CourseNotificationListener::class . '@handleCourseCompleted',
             IssueCertificateOnCompletion::class,
+            CheckBadgesListener::class,
         ],
         LessonCompleted::class => [
             CourseNotificationListener::class . '@handleLessonCompleted',
+            CheckBadgesListener::class,
         ],
 
         // Assessment Events
         QuizCompleted::class => [
             AssessmentNotificationListener::class . '@handleQuizCompleted',
+            CheckBadgesListener::class,
         ],
         AssignmentSubmitted::class => [
             AssessmentNotificationListener::class . '@handleAssignmentSubmitted',

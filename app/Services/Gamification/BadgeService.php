@@ -5,6 +5,7 @@ namespace App\Services\Gamification;
 use App\Models\User;
 use App\Models\Badge;
 use App\Models\UserBadge;
+use App\Events\Gamification\BadgeEarned;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -81,7 +82,7 @@ class BadgeService
                 ]);
 
                 // إطلاق حدث منح الشارة
-                // event(new BadgeEarned($user, $badge));
+                event(new BadgeEarned($user, $badge));
 
                 return $userBadge;
             });
