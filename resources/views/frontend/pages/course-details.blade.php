@@ -392,11 +392,24 @@
                                 @endif
                             </div>
                         @endif
-
+                        
                         <button class="btn btn-enroll w-100 mb-3">
                             <i class="fa-solid fa-graduation-cap"></i>
                             سجل الآن
                         </button>
+
+                        @auth
+                            @php
+                                $user = auth()->user();
+                            @endphp
+                            @if(method_exists($user, 'hasRole') && $user->hasRole('admin'))
+                                <a href="{{ route('admin.frontend-courses.edit', $course->id) }}" 
+                                   class="btn btn-outline-warning w-100 mb-3">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>
+                                    تعديل الكورس (لوحة التحكم)
+                                </a>
+                            @endif
+                        @endauth
 
                         <div class="course-includes">
                             <h5 class="mb-3">يتضمن هذا الكورس:</h5>
