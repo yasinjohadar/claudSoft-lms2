@@ -74,7 +74,7 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label">الموضوع أو الكلمة المفتاحية</label>
-                                <input type="text" name="topic" id="topic" class="form-control" 
+                                <input type="text" id="topic" class="form-control" 
                                        placeholder="مثال: الذكاء الاصطناعي في التعليم">
                                 <small class="text-muted">أدخل الموضوع الذي تريد إنشاء مقال عنه</small>
                             </div>
@@ -82,7 +82,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">موديل AI</label>
-                                    <select name="ai_model_id" id="ai_model_id" class="form-select">
+                                    <select id="ai_model_id" class="form-select">
                                         <option value="">استخدام الموديل الافتراضي</option>
                                         @foreach($models as $model)
                                         <option value="{{ $model->id }}">{{ $model->name }}</option>
@@ -92,7 +92,7 @@
 
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">طول المحتوى</label>
-                                    <select name="content_length" id="content_length" class="form-select">
+                                    <select id="content_length" class="form-select">
                                         <option value="short">قصير (500-800 كلمة)</option>
                                         <option value="medium" selected>متوسط (1000-1500 كلمة)</option>
                                         <option value="long">طويل (2000-3000 كلمة)</option>
@@ -103,7 +103,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">الأسلوب</label>
-                                    <select name="tone" id="tone" class="form-select">
+                                    <select id="tone" class="form-select">
                                         <option value="professional" selected>احترافي</option>
                                         <option value="friendly">ودود</option>
                                         <option value="technical">تقني</option>
@@ -114,7 +114,7 @@
 
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">اللغة</label>
-                                    <select name="language" id="language" class="form-select">
+                                    <select id="language" class="form-select">
                                         <option value="ar" selected>العربية</option>
                                         <option value="en">English</option>
                                     </select>
@@ -125,31 +125,31 @@
                                 <label class="form-label">خيارات SEO</label>
                                 <div class="border rounded p-3">
                                     <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" name="generate_seo" id="generate_seo" value="1" checked>
+                                        <input class="form-check-input" type="checkbox" id="generate_seo" value="1" checked>
                                         <label class="form-check-label" for="generate_seo">
                                             توليد حقول SEO الأساسية (Meta Title, Description, Keywords)
                                         </label>
                                     </div>
                                     <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" name="generate_og" id="generate_og" value="1" checked>
+                                        <input class="form-check-input" type="checkbox" id="generate_og" value="1" checked>
                                         <label class="form-check-label" for="generate_og">
                                             توليد Open Graph Tags
                                         </label>
                                     </div>
                                     <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" name="generate_twitter" id="generate_twitter" value="1" checked>
+                                        <input class="form-check-input" type="checkbox" id="generate_twitter" value="1" checked>
                                         <label class="form-check-label" for="generate_twitter">
                                             توليد Twitter Card Tags
                                         </label>
                                     </div>
                                     <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" name="generate_schema" id="generate_schema" value="1" checked>
+                                        <input class="form-check-input" type="checkbox" id="generate_schema" value="1" checked>
                                         <label class="form-check-label" for="generate_schema">
                                             توليد Schema.org Markup
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="generate_keyword_synonyms" id="generate_keyword_synonyms" value="1" checked>
+                                        <input class="form-check-input" type="checkbox" id="generate_keyword_synonyms" value="1" checked>
                                         <label class="form-check-label" for="generate_keyword_synonyms">
                                             توليد مرادفات الكلمة المفتاحية
                                         </label>
@@ -675,30 +675,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // إزالة الحقول الخاصة بالتوليد قبل إرسال الـ form
-    document.getElementById('aiBlogPostForm').addEventListener('submit', function(e) {
-        // الحقول التي يجب إزالتها (الحقول الخاصة بالتوليد فقط)
-        const aiGenerationFields = [
-            'topic',
-            'ai_model_id',
-            'content_length',
-            'tone',
-            'language',
-            'generate_seo',
-            'generate_og',
-            'generate_twitter',
-            'generate_schema',
-            'generate_keyword_synonyms'
-        ];
-
-        // إزالة name attribute من الحقول الخاصة بالتوليد
-        aiGenerationFields.forEach(fieldName => {
-            const field = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
-            if (field) {
-                field.removeAttribute('name');
-            }
-        });
-    });
 });
 </script>
 @endsection
