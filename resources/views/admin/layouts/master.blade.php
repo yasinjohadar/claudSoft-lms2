@@ -61,6 +61,16 @@
         .footer {
             margin-top: 0 !important;
         }
+        
+        /* Code blocks should be LTR for proper display */
+        pre {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        code {
+            direction: ltr !important;
+            text-align: left !important;
+        }
     </style>
 </head>
 
