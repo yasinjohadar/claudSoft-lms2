@@ -288,6 +288,14 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
+                                        <label class="form-label">حالة الاتصال</label>
+                                        <select name="online_status" class="form-select">
+                                            <option value="">الكل</option>
+                                            <option value="online" {{ request('online_status') == 'online' ? 'selected' : '' }}>المتصلون فقط</option>
+                                            <option value="offline" {{ request('online_status') == 'offline' ? 'selected' : '' }}>غير المتصلين فقط</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label">الترتيب</label>
                                         <select name="sort" class="form-select">
                                             <option value="joined_at" {{ request('sort', 'joined_at') == 'joined_at' ? 'selected' : '' }}>تاريخ الانضمام</option>
@@ -322,6 +330,8 @@
                                                 <th>رقم الهاتف</th>
                                                 <th>الدور</th>
                                                 <th>تاريخ الانضمام</th>
+                                                <th>آخر دخول</th>
+                                                <th>الحالة</th>
                                                 <th>المجموعات الأخرى</th>
                                                 <th>الإجراءات</th>
                                             </tr>
@@ -366,6 +376,31 @@
                                                             @endif
                                                         </td>
                                                         <td>{{ $memberRecord->joined_at ? $memberRecord->joined_at->format('Y-m-d') : '-' }}</td>
+                                                        <td>
+                                                            @php
+                                                                $studentId = $memberRecord->student_id;
+                                                                $lastActivity = $lastActivityByUserId[$studentId] ?? null;
+                                                                $isOnline = in_array($studentId, $onlineUserIds ?? []);
+                                                            @endphp
+                                                            @if($lastActivity)
+                                                                <span title="{{ $lastActivity->format('Y-m-d H:i:s') }}">
+                                                                    {{ $lastActivity->format('Y-m-d H:i') }}
+                                                                </span>
+                                                            @else
+                                                                <span class="text-muted">-</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if($isOnline)
+                                                                <span class="badge bg-success" title="متصل الآن - آخر نشاط: {{ $lastActivity ? $lastActivity->format('Y-m-d H:i:s') : 'الآن' }}">
+                                                                    <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>متصل
+                                                                </span>
+                                                            @else
+                                                                <span class="badge bg-secondary" title="غير متصل{{ $lastActivity ? ' - آخر نشاط: ' . $lastActivity->format('Y-m-d H:i:s') : '' }}">
+                                                                    <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>غير متصل
+                                                                </span>
+                                                            @endif
+                                                        </td>
                                                         <td>
                                                             @php
                                                                 $otherGroups = $memberRecord->student->courseGroupMemberships

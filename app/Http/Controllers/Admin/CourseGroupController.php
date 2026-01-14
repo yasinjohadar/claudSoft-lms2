@@ -172,6 +172,36 @@ class CourseGroupController extends Controller
                 'regular_members_count' => $group->members()->where('role', 'member')->count(),
             ];
 
+            // Get all member student IDs first (for sessions query)
+            $memberStudentIds = $group->members()->pluck('student_id')->toArray();
+
+            // Get last activity from sessions table for group members only
+            $sessions = DB::table('sessions')
+                ->whereNotNull('user_id')
+                ->whereIn('user_id', $memberStudentIds)
+                ->orderByDesc('last_activity')
+                ->get()
+                ->groupBy('user_id');
+
+            // Build arrays for last activity and online status
+            $lastActivityByUserId = [];
+            $onlineUserIds = [];
+            $fiveMinutesAgo = now()->subMinutes(5)->timestamp;
+
+            foreach ($sessions as $userId => $userSessions) {
+                // Get the most recent session
+                $latestSession = $userSessions->first();
+                if ($latestSession && $latestSession->last_activity) {
+                    $lastActivityTimestamp = $latestSession->last_activity;
+                    $lastActivityByUserId[$userId] = \Carbon\Carbon::createFromTimestamp($lastActivityTimestamp);
+                    
+                    // Check if user is online (last activity within 5 minutes)
+                    if ($lastActivityTimestamp >= $fiveMinutesAgo) {
+                        $onlineUserIds[] = $userId;
+                    }
+                }
+            }
+
             // Get paginated members with search and filters
             $membersQuery = $group->members()->with('student');
 
@@ -216,6 +246,25 @@ class CourseGroupController extends Controller
                 }
             }
 
+            // Filter by online status
+            if ($request->filled('online_status')) {
+                if ($request->online_status === 'online') {
+                    // Only show online members
+                    if (!empty($onlineUserIds)) {
+                        $membersQuery->whereIn('student_id', $onlineUserIds);
+                    } else {
+                        // No online users, return empty result
+                        $membersQuery->whereRaw('1 = 0');
+                    }
+                } elseif ($request->online_status === 'offline') {
+                    // Only show offline members
+                    if (!empty($onlineUserIds)) {
+                        $membersQuery->whereNotIn('student_id', $onlineUserIds);
+                    }
+                    // If no online users, all members are offline, so no filter needed
+                }
+            }
+
             // Sort
             $sortBy = $request->get('sort', 'joined_at');
             $sortOrder = $request->get('order', 'desc');
@@ -244,7 +293,7 @@ class CourseGroupController extends Controller
                 ->whereNotIn('id', $groupStudentIds)
                 ->get();
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
