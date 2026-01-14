@@ -236,6 +236,33 @@ public function index(Request $request)
             ->orderByDesc('joined_at')
             ->get();
 
+        // User Sessions
+        $userSessions = \App\Models\UserSession::where('user_id', $id)
+            ->withCount('activities')
+            ->orderByDesc('started_at')
+            ->limit(20)
+            ->get();
+
+        $sessionStats = [
+            'total' => \App\Models\UserSession::where('user_id', $id)->count(),
+            'active' => \App\Models\UserSession::where('user_id', $id)->where('status', 'active')->count(),
+            'completed' => \App\Models\UserSession::where('user_id', $id)->where('status', 'completed')->count(),
+            'avg_duration' => \App\Models\UserSession::where('user_id', $id)
+                ->whereNotNull('duration_seconds')
+                ->avg('duration_seconds'),
+        ];
+
+        // User Devices
+        $userDevices = \App\Models\UserDevice::where('user_id', $id)
+            ->orderByDesc('last_used_at')
+            ->get();
+
+        $deviceStats = [
+            'total' => $userDevices->count(),
+            'trusted' => $userDevices->where('is_trusted', true)->count(),
+            'blocked' => $userDevices->where('is_blocked', true)->count(),
+        ];
+
         return view('admin.pages.users.profile', compact(
             'user',
             'enrollments',
@@ -246,7 +273,11 @@ public function index(Request $request)
             'payments',
             'billingStats',
             'certificates',
-            'groups'
+            'groups',
+            'userSessions',
+            'sessionStats',
+            'userDevices',
+            'deviceStats'
         ));
     }
 

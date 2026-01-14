@@ -208,6 +208,16 @@
                                     <i class="fas fa-users me-1"></i> المجموعات
                                 </a>
 										</li>
+                            <li class="nav-item">
+                                <a href="#tab-sessions" class="nav-link" data-bs-toggle="tab">
+                                    <i class="fas fa-history me-1"></i> الجلسات
+                                </a>
+										</li>
+                            <li class="nav-item">
+                                <a href="#tab-devices" class="nav-link" data-bs-toggle="tab">
+                                    <i class="fas fa-mobile-alt me-1"></i> الأجهزة
+                                </a>
+										</li>
 									</ul>
 
 								<div class="tab-content border border-top-0 p-4 br-dark">
@@ -445,6 +455,230 @@
 												</div>
                                 @endif
 									</div>
+
+                            <!-- Sessions -->
+                            <div class="tab-pane" id="tab-sessions">
+                                <!-- Statistics -->
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">إجمالي الجلسات</small>
+                                            <strong>{{ number_format($sessionStats['total']) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">الجلسات النشطة</small>
+                                            <strong class="text-success">{{ number_format($sessionStats['active']) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">الجلسات المكتملة</small>
+                                            <strong class="text-info">{{ number_format($sessionStats['completed']) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">متوسط المدة</small>
+                                            <strong>
+                                                @if($sessionStats['avg_duration'])
+                                                    {{ gmdate('H:i:s', (int)$sessionStats['avg_duration']) }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if($userSessions->isEmpty())
+                                    <p class="text-muted mb-0">لا توجد جلسات مسجلة لهذا المستخدم.</p>
+                                @else
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead class="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>تاريخ البدء</th>
+                                                <th>تاريخ الانتهاء</th>
+                                                <th>المدة</th>
+                                                <th>الجهاز</th>
+                                                <th>الحالة</th>
+                                                <th>الأنشطة</th>
+                                                <th>الإجراءات</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach($userSessions as $session)
+                                                <tr>
+                                                    <td>{{ $loop->iteration }}</td>
+                                                    <td>{{ $session->started_at->format('Y-m-d H:i') }}</td>
+                                                    <td>
+                                                        {{ $session->ended_at ? $session->ended_at->format('Y-m-d H:i') : '-' }}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info-transparent text-info">
+                                                            {{ $session->duration_formatted }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ $session->device_info }}</small>
+                                                        @if($session->ip_address)
+                                                            <br>
+                                                            <small class="text-muted">{{ $session->ip_address }}</small>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if($session->status == 'active')
+                                                            <span class="badge bg-success">نشطة</span>
+                                                        @elseif($session->status == 'completed')
+                                                            <span class="badge bg-info">مكتملة</span>
+                                                        @elseif($session->status == 'disconnected')
+                                                            <span class="badge bg-warning">منفصلة</span>
+                                                        @else
+                                                            <span class="badge bg-secondary">انتهت</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary-transparent text-primary">
+                                                            {{ $session->activities_count }} نشاط
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <a href="{{ route('admin.user-sessions.show', $session->id) }}" 
+                                                           class="btn btn-sm btn-outline-primary" 
+                                                           title="عرض التفاصيل">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ route('admin.user-sessions.user', $user->id) }}" class="btn btn-outline-primary">
+                                            <i class="fas fa-list me-1"></i>عرض جميع الجلسات
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Devices -->
+                            <div class="tab-pane" id="tab-devices">
+                                <!-- Statistics -->
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">إجمالي الأجهزة</small>
+                                            <strong>{{ number_format($deviceStats['total']) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">الأجهزة الموثوقة</small>
+                                            <strong class="text-success">{{ number_format($deviceStats['trusted']) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 text-center">
+                                            <small class="text-muted d-block">الأجهزة المحظورة</small>
+                                            <strong class="text-danger">{{ number_format($deviceStats['blocked']) }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if($userDevices->isEmpty())
+                                    <p class="text-muted mb-0">لا توجد أجهزة مسجلة لهذا المستخدم.</p>
+                                @else
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead class="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>معلومات الجهاز</th>
+                                                <th>عدد مرات الدخول</th>
+                                                <th>أول استخدام</th>
+                                                <th>آخر استخدام</th>
+                                                <th>آخر IP</th>
+                                                <th>الحالة</th>
+                                                <th>الإجراءات</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach($userDevices as $device)
+                                                <tr>
+                                                    <td>{{ $loop->iteration }}</td>
+                                                    <td>
+                                                        <small>{{ $device->device_info }}</small>
+                                                        @if($device->device_name)
+                                                            <br>
+                                                            <strong class="text-primary">{{ $device->device_name }}</strong>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info-transparent text-info">
+                                                            {{ number_format($device->total_logins) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ $device->first_used_human }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ $device->last_used_human }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ $device->last_ip_address ?? '-' }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="{{ $device->status_badge['class'] }}">
+                                                            <i class="fas {{ $device->status_badge['icon'] }} me-1"></i>
+                                                            {{ $device->status_badge['text'] }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group" role="group">
+                                                            <a href="{{ route('admin.user-devices.show', $device->id) }}" 
+                                                               class="btn btn-sm btn-outline-primary" 
+                                                               title="عرض التفاصيل">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                            @if($device->is_blocked)
+                                                                <form action="{{ route('admin.user-devices.unblock', $device->id) }}" 
+                                                                      method="POST" 
+                                                                      class="d-inline"
+                                                                      onsubmit="return confirm('هل أنت متأكد من إلغاء حظر هذا الجهاز؟');">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="إلغاء الحظر">
+                                                                        <i class="fas fa-unlock"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @else
+                                                                <form action="{{ route('admin.user-devices.block', $device->id) }}" 
+                                                                      method="POST" 
+                                                                      class="d-inline"
+                                                                      onsubmit="return confirm('هل أنت متأكد من حظر هذا الجهاز؟');">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حظر">
+                                                                        <i class="fas fa-ban"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ route('admin.user-devices.user', $user->id) }}" class="btn btn-outline-primary">
+                                            <i class="fas fa-list me-1"></i>عرض جميع الأجهزة
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
 								</div>
 							</div>
 						</div>
