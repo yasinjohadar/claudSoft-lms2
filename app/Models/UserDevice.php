@@ -266,10 +266,31 @@ class UserDevice extends Model
 
     /**
      * Get location information from meta.
+     * If location is not in meta but IP exists, try to fetch it.
      */
     public function getLocationAttribute(): ?array
     {
-        return $this->meta['location'] ?? null;
+        $location = $this->meta['location'] ?? null;
+        
+        // If no location but we have IP, try to fetch it (lazy loading)
+        if (!$location && ($this->ip_address || $this->last_ip_address)) {
+            try {
+                $ipToUse = $this->last_ip_address ?? $this->ip_address;
+                $geoService = app(\App\Services\GeoLocationService::class);
+                $location = $geoService->getLocationFromIp($ipToUse);
+                
+                // Update meta if location was found
+                if ($location) {
+                    $meta = $this->meta ?? [];
+                    $meta['location'] = $location;
+                    $this->update(['meta' => $meta]);
+                }
+            } catch (\Exception $e) {
+                // Silently fail
+            }
+        }
+        
+        return $location;
     }
 
     /**

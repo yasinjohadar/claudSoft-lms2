@@ -38,11 +38,14 @@ class GeoLocationService
         }
 
         try {
-            // Use ip-api.com free API
+            // Use ip-api.com free API (supports both http and https)
             // Format: http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,city,region,regionName,timezone,isp
-            $response = Http::timeout(3)->get("http://ip-api.com/json/{$ipAddress}", [
-                'fields' => 'status,message,country,countryCode,city,region,regionName,timezone,isp,lat,lon'
-            ]);
+            $url = "http://ip-api.com/json/{$ipAddress}";
+            $response = Http::timeout(5)
+                ->withoutVerifying() // Allow self-signed certificates if needed
+                ->get($url, [
+                    'fields' => 'status,message,country,countryCode,city,region,regionName,timezone,isp,lat,lon'
+                ]);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -67,18 +70,21 @@ class GeoLocationService
                     Log::warning('GeoLocation API returned error', [
                         'ip' => $ipAddress,
                         'message' => $data['message'] ?? 'Unknown error',
+                        'response' => $data,
                     ]);
                 }
             } else {
                 Log::warning('GeoLocation API request failed', [
                     'ip' => $ipAddress,
                     'status' => $response->status(),
+                    'body' => $response->body(),
                 ]);
             }
         } catch (\Exception $e) {
             Log::error('Failed to get geolocation', [
                 'ip' => $ipAddress,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
