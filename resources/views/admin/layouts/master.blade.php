@@ -14,6 +14,23 @@
     <meta name="Author" content="claudSoft">
     <meta name="keywords" content="منصة تعليمية, كورسات, دورات تدريبية, تعلم إلكتروني, شهادات معتمدة, لوحة التحكم">
 
+    <!-- Apply dark mode immediately to prevent flash of white -->
+    <script>
+        (function() {
+            // Apply dark mode from localStorage immediately
+            if (localStorage.getItem("valexdarktheme")) {
+                document.documentElement.setAttribute("data-theme-mode", "dark");
+                document.documentElement.setAttribute("data-menu-styles", "dark");
+                document.documentElement.setAttribute("data-header-styles", "dark");
+            }
+            // Set loader background color based on theme
+            const isDark = localStorage.getItem("valexdarktheme");
+            document.documentElement.style.setProperty('--loader-bg', isDark ? '#0d0d0d' : '#fff');
+            // Mark theme as applied
+            document.body.setAttribute("data-theme-applied", "true");
+        })();
+    </script>
+
     @include('admin.layouts.head')
     
     <!-- Code blocks LTR styling (after all CSS files) -->
@@ -63,7 +80,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: #fff;
+            background: var(--loader-bg, #fff);
             z-index: 9999;
         }
         html.loaded #loader {
@@ -85,6 +102,14 @@
         }
         .footer {
             margin-top: 0 !important;
+        }
+        
+        /* Hide body until theme is applied */
+        body:not([data-theme-applied]) {
+            visibility: hidden;
+        }
+        body[data-theme-applied] {
+            visibility: visible;
         }
     </style>
 </head>
