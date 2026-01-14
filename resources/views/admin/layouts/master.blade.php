@@ -16,6 +16,31 @@
 
     @include('admin.layouts.head')
     
+    <!-- Code blocks LTR styling (after all CSS files) -->
+    <style>
+        /* Code blocks should be LTR for proper display */
+        pre,
+        pre code,
+        code,
+        .code-block,
+        .code-block pre,
+        .code-block code,
+        [class*="language-"],
+        [class*="language-"] code {
+            direction: ltr !important;
+            text-align: left !important;
+            unicode-bidi: embed !important;
+        }
+        
+        /* Ensure code inside pre is also LTR */
+        pre > code,
+        pre code {
+            direction: ltr !important;
+            text-align: left !important;
+            display: block !important;
+        }
+    </style>
+    
     <!-- Inline Critical CSS to prevent FOUC -->
     <style>
         /* Hide page until CSS loads */
@@ -60,16 +85,6 @@
         }
         .footer {
             margin-top: 0 !important;
-        }
-        
-        /* Code blocks should be LTR for proper display */
-        pre {
-            direction: ltr !important;
-            text-align: left !important;
-        }
-        code {
-            direction: ltr !important;
-            text-align: left !important;
         }
     </style>
 </head>
