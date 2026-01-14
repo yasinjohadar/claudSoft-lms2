@@ -372,7 +372,23 @@
         // نسخ الرابط تلقائياً
         copyToClipboard(url).then(function() {
             // إظهار الـ Modal
-            const modal = new bootstrap.Modal(document.getElementById('impersonateModal'));
+            const modalElement = document.getElementById('impersonateModal');
+            const modal = new bootstrap.Modal(modalElement);
+            
+            // إضافة event listener لإزالة backdrop عند الإغلاق
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                // إزالة backdrop إذا بقي
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(function(backdrop) {
+                    backdrop.remove();
+                });
+                
+                // إزالة modal-open class من body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }, { once: true });
+            
             modal.show();
         });
     }
@@ -466,6 +482,23 @@
                         copyBtn.innerHTML = originalHTML;
                     }, 2000);
                 });
+            });
+        }
+        
+        // إضافة event listener عام للمودال لإزالة backdrop عند الإغلاق
+        const modalElement = document.getElementById('impersonateModal');
+        if (modalElement) {
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                // إزالة backdrop إذا بقي
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(function(backdrop) {
+                    backdrop.remove();
+                });
+                
+                // إزالة modal-open class من body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
             });
         }
     }

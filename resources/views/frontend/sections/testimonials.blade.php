@@ -13,7 +13,11 @@
         </div>
         <div class="inner-testimonials row row-cols-2 row-cols-sm-2 row-cols-md-3 gap-3 text-center">
             @forelse($reviews as $review)
-            <div class="col testimonial">
+            <div class="col testimonial review-card"
+                 data-name="{{ $review->student_name }}"
+                 data-position="{{ $review->student_position ?? 'طالب' }}"
+                 data-rating="{{ $review->rating }}"
+                 data-text="{{ $review->review_text }}">
                 <div class="testimonial-info">
                     @if($review->student_image)
                         <img src="{{ asset('storage/' . $review->student_image) }}" alt="{{ $review->student_name }}">
@@ -98,4 +102,86 @@
 .testimonial-info .name {
     text-align: right;
 }
+
+/* Modal RTL Support (Review Modal Header Only) */
+#homepageReviewModal .modal-header {
+    display: flex;
+    flex-direction: row-reverse; /* زر الإغلاق يسار، العنوان يمين */
+    align-items: center;
+}
+
+#homepageReviewModal .modal-header .modal-title {
+    margin-left: auto; /* يدفع العنوان لليمين */
+}
+
+#homepageReviewModal .modal-header .btn-close {
+    margin: 0;
+}
 </style>
+
+<!-- Review Modal (Homepage Testimonials) -->
+<div class="modal fade" id="homepageReviewModal" tabindex="-1" aria-labelledby="homepageReviewModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="homepageReviewModalLabel">رأي الطالب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-row-reverse align-items-start gap-3 mb-3">
+                    <div class="review-modal-avatar avatar-placeholder flex-shrink-0"></div>
+                    <div class="text-end flex-grow-1">
+                        <h5 class="review-modal-name mb-1"></h5>
+                        <p class="review-modal-position text-muted mb-2"></p>
+                        <div class="review-modal-stars text-warning mb-2"></div>
+                    </div>
+                </div>
+                <p class="review-modal-text mb-0" style="line-height: 1.8;"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('homepageReviewModal');
+    if (!modalElement || typeof bootstrap === 'undefined') return;
+
+    const modal = new bootstrap.Modal(modalElement);
+    const nameEl = modalElement.querySelector('.review-modal-name');
+    const positionEl = modalElement.querySelector('.review-modal-position');
+    const starsEl = modalElement.querySelector('.review-modal-stars');
+    const textEl = modalElement.querySelector('.review-modal-text');
+    const avatarEl = modalElement.querySelector('.review-modal-avatar');
+
+    document.querySelectorAll('.review-card').forEach(function (card) {
+        card.style.cursor = 'pointer';
+        card.setAttribute('title', 'اضغط لقراءة كامل الرأي');
+        card.addEventListener('click', function () {
+            const name = this.dataset.name || '';
+            const position = this.dataset.position || '';
+            const rating = parseInt(this.dataset.rating || '0', 10);
+            const text = this.dataset.text || '';
+
+            if (nameEl) nameEl.textContent = name;
+            if (positionEl) positionEl.textContent = position;
+            if (textEl) textEl.textContent = text;
+
+            if (avatarEl) {
+                avatarEl.textContent = name ? name.trim().charAt(0).toUpperCase() : '';
+            }
+
+            if (starsEl) {
+                starsEl.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const icon = document.createElement('i');
+                    icon.className = i <= rating ? 'fa-solid fa-star' : 'fa-regular fa-star';
+                    starsEl.appendChild(icon);
+                }
+            }
+
+            modal.show();
+        });
+    });
+});
+</script>

@@ -270,20 +270,28 @@ class CourseGroup extends Model
     }
 
     /**
-     * Enroll student in all courses associated with this group.
+     * Enroll student in courses associated with this group.
+     * If specific course IDs are provided, enroll only in those; otherwise enroll in all group courses.
      * If student is already enrolled, update the enrollment status to active.
      *
-     * @param User $student
-     * @param int|null $enrolledBy User ID who is enrolling the student (defaults to group creator or auth user)
+     * @param User      $student
+     * @param int|null  $enrolledBy  User ID who is enrolling the student (defaults to group creator or auth user)
+     * @param array<int,int>|null $courseIds Optional list of course IDs to limit enrollment to
      * @return array Returns array with 'enrolled' count and 'updated' count
      */
-    public function enrollStudentInGroupCourses(User $student, ?int $enrolledBy = null): array
+    public function enrollStudentInGroupCourses(User $student, ?int $enrolledBy = null, ?array $courseIds = null): array
     {
         $enrolledCount = 0;
         $updatedCount = 0;
 
-        // Get all courses associated with this group
-        $courses = $this->courses;
+        // Always query fresh courses from the database to avoid stale relations after sync/attach
+        $coursesQuery = $this->courses();
+
+        if (!empty($courseIds)) {
+            $coursesQuery->whereIn('courses.id', $courseIds);
+        }
+
+        $courses = $coursesQuery->get();
 
         if ($courses->isEmpty()) {
             return [
@@ -327,8 +335,8 @@ class CourseGroup extends Model
 
         return [
             'enrolled' => $enrolledCount,
-            'updated' => $updatedCount,
-            'total' => $courses->count()
+                'updated' => $updatedCount,
+                'total' => $courses->count()
         ];
     }
 
@@ -355,7 +363,8 @@ class CourseGroup extends Model
         $updatedCount = 0;
 
         foreach ($members as $member) {
-            $result = $this->enrollStudentInGroupCourses($member->student);
+            // Enroll this member only in the newly attached courses to avoid unnecessary updates
+            $result = $this->enrollStudentInGroupCourses($member->student, null, $courseIds);
             $enrolledCount += $result['enrolled'];
             $updatedCount += $result['updated'];
         }
