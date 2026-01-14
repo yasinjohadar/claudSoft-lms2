@@ -33,6 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ImpersonateMiddleware::class,
         ]);
         
+        // Add session tracking middleware to track user sessions and activities
+        $middleware->web(append: [
+            \App\Http\Middleware\SessionTrackingMiddleware::class,
+        ]);
+        
         // Add debug middleware for question modules (only in debug mode and not in production)
         // Disabled by default to avoid potential issues - enable manually if needed for debugging
         // if (config('app.debug') && config('app.env') !== 'production') {

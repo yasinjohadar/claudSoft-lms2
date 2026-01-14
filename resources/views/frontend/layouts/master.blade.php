@@ -210,5 +210,171 @@
             });
         })();
     </script>
+
+    @auth
+    <!-- Session Tracking Script -->
+    <script>
+        (function() {
+            'use strict';
+            
+            let sessionId = null;
+            let heartbeatInterval = null;
+            let idleTimer = null;
+            let isIdle = false;
+            let lastActivity = Date.now();
+            const IDLE_THRESHOLD = 300000; // 5 minutes
+            const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            // Track activity function
+            function trackActivity(activityType, data = {}) {
+                if (!csrfToken) return;
+                
+                const payload = {
+                    activity_type: activityType,
+                    page_url: window.location.href,
+                    activity_details: {
+                        ...data,
+                        screen_width: window.screen.width,
+                        screen_height: window.screen.height,
+                        viewport_width: window.innerWidth,
+                        viewport_height: window.innerHeight,
+                        user_agent: navigator.userAgent,
+                        timestamp: new Date().toISOString(),
+                    }
+                };
+                
+                fetch('{{ route("session.track") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                    credentials: 'same-origin'
+                }).catch(err => {
+                    console.error('Failed to track activity:', err);
+                });
+            }
+            
+            // Heartbeat function
+            function sendHeartbeat() {
+                if (!csrfToken) return;
+                
+                fetch('{{ route("session.heartbeat") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                }).catch(err => {
+                    console.error('Failed to send heartbeat:', err);
+                });
+            }
+            
+            // Update last activity
+            function updateActivity() {
+                lastActivity = Date.now();
+                
+                if (isIdle) {
+                    isIdle = false;
+                    trackActivity('idle_end');
+                }
+                
+                // Reset idle timer
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    if (!isIdle) {
+                        isIdle = true;
+                        trackActivity('idle_start');
+                    }
+                }, IDLE_THRESHOLD);
+            }
+            
+            // Track page view on load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    trackActivity('page_view', {
+                        referrer: document.referrer,
+                    });
+                });
+            } else {
+                trackActivity('page_view', {
+                    referrer: document.referrer,
+                });
+            }
+            
+            // Track visibility changes (focus/blur)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    trackActivity('focus_lost');
+                } else {
+                    trackActivity('focus_gained');
+                    updateActivity();
+                }
+            });
+            
+            // Track window focus/blur
+            window.addEventListener('blur', () => {
+                trackActivity('focus_lost');
+            });
+            
+            window.addEventListener('focus', () => {
+                trackActivity('focus_gained');
+                updateActivity();
+            });
+            
+            // Track user activity
+            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, updateActivity, { passive: true });
+            });
+            
+            // Track page unload
+            window.addEventListener('beforeunload', () => {
+                trackActivity('session_end', {
+                    duration: Date.now() - lastActivity,
+                });
+                
+                // Send synchronously
+                if (navigator.sendBeacon && csrfToken) {
+                    const formData = new FormData();
+                    formData.append('activity_type', 'session_end');
+                    formData.append('_token', csrfToken);
+                    navigator.sendBeacon('{{ route("session.track") }}', formData);
+                }
+            });
+            
+            // Track history changes (SPA navigation)
+            let lastUrl = location.href;
+            new MutationObserver(() => {
+                const url = location.href;
+                if (url !== lastUrl) {
+                    lastUrl = url;
+                    trackActivity('page_view', {
+                        referrer: document.referrer,
+                    });
+                }
+            }).observe(document, { subtree: true, childList: true });
+            
+            // Track popstate (browser back/forward)
+            window.addEventListener('popstate', () => {
+                trackActivity('page_view', {
+                    referrer: document.referrer,
+                });
+            });
+            
+            // Start heartbeat
+            heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+            
+            // Initialize idle timer
+            updateActivity();
+        })();
+    </script>
+    @endauth
 </body>
 </html>

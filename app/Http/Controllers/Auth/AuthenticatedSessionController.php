@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\DeviceTrackingService;
+use App\Services\SessionTrackingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +13,16 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
+    protected DeviceTrackingService $deviceTrackingService;
+    protected SessionTrackingService $sessionTrackingService;
+
+    public function __construct(
+        DeviceTrackingService $deviceTrackingService,
+        SessionTrackingService $sessionTrackingService
+    ) {
+        $this->deviceTrackingService = $deviceTrackingService;
+        $this->sessionTrackingService = $sessionTrackingService;
+    }
     /**
      * Display the login view.
      */
@@ -72,6 +84,21 @@ class AuthenticatedSessionController extends Controller
             // Ignore if columns don't exist
         }
 
+        // Track device and start session
+        try {
+            // Track device
+            $this->deviceTrackingService->trackDeviceOnLogin($user, $request);
+            
+            // Start new session
+            $this->sessionTrackingService->startSession($user, $request);
+        } catch (\Exception $e) {
+            // Log error but don't prevent login
+            \Log::error('Failed to track device/session on login', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $request->session()->regenerate();
 
         // التوجيه حسب الدور عبر spatie
@@ -103,6 +130,15 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // End current session tracking
+        try {
+            $this->sessionTrackingService->endSession(null, $request);
+        } catch (\Exception $e) {
+            \Log::error('Failed to end session on logout', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

@@ -129,6 +129,12 @@ Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
     ]);
 })->where('filename', '[a-zA-Z0-9._-]+')->name('course.thumbnail');
 
+// Session tracking routes
+Route::middleware('auth')->group(function () {
+    Route::post('/api/session/track', [\App\Http\Controllers\SessionActivityController::class, 'track'])->name('session.track');
+    Route::post('/api/session/heartbeat', [\App\Http\Controllers\SessionActivityController::class, 'heartbeat'])->name('session.heartbeat');
+});
+
 require __DIR__.'/auth.php';
 require __DIR__.'/student.php';
 require __DIR__.'/admin.php';
