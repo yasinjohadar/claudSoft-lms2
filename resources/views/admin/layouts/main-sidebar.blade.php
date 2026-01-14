@@ -46,13 +46,13 @@
                         </li>
 
                         <!-- المستخدمون -->
-                        <li class="slide has-sub {{ request()->routeIs('users.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') ? 'active' : '' }}">
                                 <i class="fas fa-users side-menu__icon"></i>
                                 <span class="side-menu__label">المستخدمون</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('users.*') ? 'active' : '' }}" style="{{ request()->routeIs('users.*') ? 'display: block;' : '' }}">
+                            <ul class="slide-menu child1 {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') ? 'active' : '' }}" style="{{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('users.index') && !request()->routeIs('users.bulk-import.*') ? 'active' : '' }}">
                                     <a href="{{ route('users.index') }}" class="side-menu__item {{ request()->routeIs('users.index') && !request()->routeIs('users.bulk-import.*') ? 'active' : '' }}">جميع المستخدمين</a>
                                 </li>
@@ -61,6 +61,11 @@
                                 </li>
                                 <li class="slide {{ request()->routeIs('users.bulk-import.reports') ? 'active' : '' }}">
                                     <a href="{{ route('users.bulk-import.reports') }}" class="side-menu__item {{ request()->routeIs('users.bulk-import.reports') ? 'active' : '' }}">تقارير الرفع</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.user-sessions.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.user-sessions.index') }}" class="side-menu__item {{ request()->routeIs('admin.user-sessions.*') ? 'active' : '' }}">
+                                        <i class="fas fa-clock me-2"></i>جلسات المستخدمين
+                                    </a>
                                 </li>
                             </ul>
                         </li>

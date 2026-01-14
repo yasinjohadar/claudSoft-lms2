@@ -48,6 +48,7 @@ use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogTagController;
+use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\ContactSettingController;
 use App\Http\Controllers\Admin\GoogleSettingController;
@@ -829,6 +830,15 @@ Route::prefix('admin')
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'index'])->name('index');
             Route::post('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'update'])->name('update');
             Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
+        // ========== User Sessions Routes ==========
+        Route::prefix('user-sessions')->name('admin.user-sessions.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\UserSessionController::class, 'index'])->name('index');
+            Route::get('/active', [\App\Http\Controllers\Admin\UserSessionController::class, 'activeSessions'])->name('active');
+            Route::get('/statistics', [\App\Http\Controllers\Admin\UserSessionController::class, 'statistics'])->name('statistics');
+            Route::get('/user/{userId}', [\App\Http\Controllers\Admin\UserSessionController::class, 'userSessions'])->name('user');
+            Route::get('/{id}', [\App\Http\Controllers\Admin\UserSessionController::class, 'show'])->name('show');
         });
 
     });
