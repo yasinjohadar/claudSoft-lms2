@@ -3,6 +3,33 @@
 <head>
 
     @include("frontend.layouts.head")
+    
+    <!-- Code blocks LTR styling (after all CSS files) -->
+    <style>
+        /* Code blocks should be LTR for proper display */
+        pre,
+        pre code,
+        code,
+        .code-block,
+        .code-block pre,
+        .code-block code,
+        .article-content pre,
+        .article-content pre code,
+        [class*="language-"],
+        [class*="language-"] code {
+            direction: ltr !important;
+            text-align: left !important;
+            unicode-bidi: embed !important;
+        }
+        
+        /* Ensure code inside pre is also LTR */
+        pre > code,
+        pre code {
+            direction: ltr !important;
+            text-align: left !important;
+            display: block !important;
+        }
+    </style>
 </head>
 <body data-bs-theme="LIGHT">
     @php

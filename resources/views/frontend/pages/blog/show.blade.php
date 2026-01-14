@@ -506,6 +506,9 @@
     margin: 30px 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border: 1px solid #1e1e1e;
+    direction: ltr !important;
+    text-align: left !important;
+    unicode-bidi: embed !important;
 }
 
 .article-content pre code {
@@ -515,6 +518,9 @@
     font-size: 0.9rem;
     line-height: 1.6;
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    direction: ltr !important;
+    text-align: left !important;
+    display: block !important;
 }
 
 /* Code Block Header with Language Name and Copy Button */
