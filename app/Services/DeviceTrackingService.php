@@ -9,6 +9,12 @@ use Illuminate\Support\Str;
 
 class DeviceTrackingService
 {
+    protected GeoLocationService $geoLocationService;
+
+    public function __construct(GeoLocationService $geoLocationService)
+    {
+        $this->geoLocationService = $geoLocationService;
+    }
     /**
      * Track or update device information when user logs in.
      */
@@ -23,10 +29,19 @@ class DeviceTrackingService
             ->where('device_fingerprint', $fingerprint)
             ->first();
 
+        // Get geolocation
+        $location = $this->geoLocationService->getLocationFromIp($ipAddress);
+        
         if ($device) {
             // Update existing device
             $device->incrementLogins();
             $device->updateLastUsed($ipAddress);
+            
+            // Prepare meta data
+            $meta = $device->meta ?? [];
+            if ($location) {
+                $meta['location'] = $location;
+            }
             
             // Update device info if changed
             $device->update([
@@ -36,8 +51,15 @@ class DeviceTrackingService
                 'platform_version' => $deviceInfo['platform_version'],
                 'ip_address' => $ipAddress,
                 'user_agent' => $request->userAgent(),
+                'meta' => $meta,
             ]);
         } else {
+            // Prepare meta data
+            $meta = [];
+            if ($location) {
+                $meta['location'] = $location;
+            }
+            
             // Create new device
             $device = UserDevice::create([
                 'user_id' => $user->id,
@@ -56,6 +78,7 @@ class DeviceTrackingService
                 'last_used_at' => now(),
                 'is_trusted' => false,
                 'is_blocked' => false,
+                'meta' => $meta,
             ]);
         }
 

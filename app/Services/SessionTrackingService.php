@@ -13,10 +13,14 @@ use Illuminate\Support\Str;
 class SessionTrackingService
 {
     protected DeviceTrackingService $deviceTrackingService;
+    protected GeoLocationService $geoLocationService;
 
-    public function __construct(DeviceTrackingService $deviceTrackingService)
-    {
+    public function __construct(
+        DeviceTrackingService $deviceTrackingService,
+        GeoLocationService $geoLocationService
+    ) {
         $this->deviceTrackingService = $deviceTrackingService;
+        $this->geoLocationService = $geoLocationService;
     }
 
     /**
@@ -31,6 +35,21 @@ class SessionTrackingService
             // Get device info
             $deviceInfo = $this->deviceTrackingService->detectDeviceInfo($request);
             
+            // Get geolocation
+            $ipAddress = $request->ip();
+            $location = $this->geoLocationService->getLocationFromIp($ipAddress);
+            
+            // Prepare meta data
+            $meta = [
+                'device_id' => $device->id,
+                'device_fingerprint' => $device->device_fingerprint,
+            ];
+            
+            // Add location to meta if available
+            if ($location) {
+                $meta['location'] = $location;
+            }
+            
             // Create new session
             $session = UserSession::create([
                 'user_id' => $user->id,
@@ -38,7 +57,7 @@ class SessionTrackingService
                 'session_name' => 'جلسة ' . now()->format('Y-m-d H:i'),
                 'started_at' => now(),
                 'status' => 'active',
-                'ip_address' => $request->ip(),
+                'ip_address' => $ipAddress,
                 'user_agent' => $request->userAgent(),
                 'device_type' => $deviceInfo['device_type'],
                 'browser' => $deviceInfo['browser'],
@@ -47,10 +66,7 @@ class SessionTrackingService
                 'platform_version' => $deviceInfo['platform_version'],
                 'screen_resolution' => $this->getScreenResolution($request),
                 'connection_type' => $this->detectConnectionType($request),
-                'meta' => [
-                    'device_id' => $device->id,
-                    'device_fingerprint' => $device->device_fingerprint,
-                ],
+                'meta' => $meta,
             ]);
 
             // Track session_start activity

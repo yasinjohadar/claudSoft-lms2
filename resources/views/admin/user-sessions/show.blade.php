@@ -145,6 +145,21 @@
                                 <p class="mb-0 mt-1"><code>{{ $session->ip_address ?? '-' }}</code></p>
                             </div>
                             <div class="col-md-6 mb-3">
+                                <strong>الموقع الجغرافي:</strong>
+                                <p class="mb-0 mt-1">
+                                    @if($session->location)
+                                        <i class="fas fa-map-marker-alt me-1 text-primary"></i>
+                                        {{ $session->location_formatted }}
+                                        @if($session->location['region'])
+                                            <br>
+                                            <small class="text-muted">{{ $session->location['region'] }}</small>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <strong>نوع الجهاز:</strong>
                                 <p class="mb-0 mt-1">{{ ucfirst($session->device_type ?? '-') }}</p>
                             </div>

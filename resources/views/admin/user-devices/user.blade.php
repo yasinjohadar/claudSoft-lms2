@@ -196,7 +196,7 @@
                                     <th>عدد مرات الدخول</th>
                                     <th>أول استخدام</th>
                                     <th>آخر استخدام</th>
-                                    <th>آخر IP</th>
+                                    <th>الموقع</th>
                                     <th>الحالة</th>
                                     <th>الإجراءات</th>
                                 </tr>
@@ -224,7 +224,11 @@
                                             <small>{{ $device->last_used_human }}</small>
                                         </td>
                                         <td>
-                                            <small class="text-muted">{{ $device->last_ip_address ?? '-' }}</small>
+                                            <small>{{ $device->location_formatted }}</small>
+                                            @if($device->last_ip_address)
+                                                <br>
+                                                <small class="text-muted">{{ $device->last_ip_address }}</small>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="{{ $device->status_badge['class'] }}">

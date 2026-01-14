@@ -180,6 +180,56 @@ class UserSession extends Model
         return $this->activities()->count();
     }
 
+    /**
+     * Get location information from meta.
+     */
+    public function getLocationAttribute(): ?array
+    {
+        return $this->meta['location'] ?? null;
+    }
+
+    /**
+     * Get formatted location string (City, Country).
+     */
+    public function getLocationFormattedAttribute(): string
+    {
+        $location = $this->location;
+        
+        if (!$location) {
+            return '-';
+        }
+
+        $parts = [];
+        
+        if (!empty($location['city'])) {
+            $parts[] = $location['city'];
+        }
+        
+        if (!empty($location['country_name'])) {
+            $parts[] = $location['country_name'];
+        } elseif (!empty($location['country'])) {
+            $parts[] = $location['country'];
+        }
+
+        return !empty($parts) ? implode(', ', $parts) : '-';
+    }
+
+    /**
+     * Get country name.
+     */
+    public function getCountryAttribute(): ?string
+    {
+        return $this->location['country_name'] ?? $this->location['country'] ?? null;
+    }
+
+    /**
+     * Get city name.
+     */
+    public function getCityAttribute(): ?string
+    {
+        return $this->location['city'] ?? null;
+    }
+
     // ========== Helper Methods ==========
 
     /**

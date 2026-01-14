@@ -202,6 +202,7 @@
                                     <th>تاريخ الانتهاء</th>
                                     <th>المدة</th>
                                     <th>الجهاز</th>
+                                    <th>الموقع</th>
                                     <th>الحالة</th>
                                     <th>الأنشطة</th>
                                     <th>الإجراءات</th>
@@ -250,6 +251,9 @@
                                                 <br>
                                                 <small class="text-muted">{{ $session->ip_address }}</small>
                                             @endif
+                                        </td>
+                                        <td>
+                                            <small>{{ $session->location_formatted }}</small>
                                         </td>
                                         <td>
                                             @if($session->status == 'active')

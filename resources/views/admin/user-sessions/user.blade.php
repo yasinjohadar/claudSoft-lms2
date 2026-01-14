@@ -186,6 +186,7 @@
                                     <th>تاريخ الانتهاء</th>
                                     <th>المدة</th>
                                     <th>الجهاز</th>
+                                    <th>الموقع</th>
                                     <th>الحالة</th>
                                     <th>الأنشطة</th>
                                     <th>الإجراءات</th>
@@ -206,6 +207,9 @@
                                         </td>
                                         <td>
                                             <small>{{ $session->device_info }}</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ $session->location_formatted }}</small>
                                         </td>
                                         <td>
                                             @if($session->status == 'active')

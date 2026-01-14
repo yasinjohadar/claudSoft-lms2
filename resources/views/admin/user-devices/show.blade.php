@@ -157,6 +157,31 @@
                             </div>
                         </div>
 
+                        @if($device->location)
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>الموقع الجغرافي:</strong>
+                                <p class="mb-0 mt-2">
+                                    <i class="fas fa-map-marker-alt me-1 text-primary"></i>
+                                    {{ $device->location_formatted }}
+                                    @if($device->location['region'])
+                                        <br>
+                                        <small class="text-muted">{{ $device->location['region'] }}</small>
+                                    @endif
+                                </p>
+                            </div>
+                            @if($device->location['timezone'])
+                            <div class="col-md-6">
+                                <strong>المنطقة الزمنية:</strong>
+                                <p class="mb-0 mt-2">
+                                    <i class="fas fa-clock me-1 text-muted"></i>
+                                    {{ $device->location['timezone'] }}
+                                </p>
+                            </div>
+                            @endif
+                        </div>
+                        @endif
+
                         @if($device->user_agent)
                             <div class="row mb-3">
                                 <div class="col-12">
