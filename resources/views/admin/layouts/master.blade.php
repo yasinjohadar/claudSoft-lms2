@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" dir="rtl" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
-    data-menu-styles="light" data-toggled="close">
+<html lang="en" dir="rtl" data-nav-layout="vertical" data-theme-mode="" data-header-styles=""
+    data-menu-styles="" data-toggled="close">
 
 <head>
 

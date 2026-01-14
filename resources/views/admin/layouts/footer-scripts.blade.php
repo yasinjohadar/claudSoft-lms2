@@ -44,6 +44,9 @@
 <!-- Chartjs Chart JS (Dashboard Only) -->
 @stack('dashboard-scripts')
 
+<!-- Main JS (Theme initialization - must load first) -->
+<script src="{{ asset('assets/js/main.js') }}"></script>
+
 <!-- Custom-Switcher JS -->
 <script src="{{ asset('assets/js/custom-switcher.min.js') }}" defer></script>
 
