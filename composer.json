@@ -13,7 +13,9 @@
         "laravel/tinker": "^2.10.1",
         "phpoffice/phpspreadsheet": "^5.3",
         "simplesoftwareio/simple-qrcode": "^4.2",
-        "spatie/laravel-permission": "^6.19"
+        "spatie/laravel-permission": "^6.19",
+        "yaza/laravel-google-drive-storage": "^4.1",
+        "platformcommunity/flysystem-bunnycdn": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

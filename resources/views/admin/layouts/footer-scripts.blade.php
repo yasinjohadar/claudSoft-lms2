@@ -69,6 +69,7 @@
 <!-- Page Specific Scripts -->
 @yield('script')
 @yield('scripts')
+@stack('scripts')
 
 <script>
     // حفظ موضع السكرول في السايدبار واسترجاعه
@@ -88,4 +89,3 @@
         });
     })();
 </script>
-@yield('scripts')

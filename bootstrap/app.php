@@ -49,6 +49,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withEvents(discover: [
         __DIR__.'/../app/Listeners',
     ])
+    ->withProviders([
+        App\Providers\StorageServiceProvider::class,
+    ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

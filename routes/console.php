@@ -31,3 +31,21 @@ Schedule::command('gamification:weekly-summary')
     ->weeklyOn(0, '09:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Backup System Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+
+// تشغيل النسخ الاحتياطية المجدولة - كل دقيقة
+Schedule::command('backup:run-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// تنظيف النسخ المنتهية الصلاحية - يومياً
+Schedule::command('backup:cleanup-expired')
+    ->daily()
+    ->withoutOverlapping()
+    ->runInBackground();

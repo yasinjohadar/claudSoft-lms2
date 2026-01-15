@@ -854,6 +854,70 @@ Route::prefix('admin')
             Route::put('/{id}/device-name', [UserDeviceController::class, 'updateDeviceName'])->name('update-name');
         });
 
+        // ===============================================
+        // نظام النسخ الاحتياطي
+        // ===============================================
+        Route::prefix('backups')->name('backups.')->group(function() {
+            Route::get('/', [\App\Http\Controllers\Admin\BackupController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\BackupController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\BackupController::class, 'store'])->name('store');
+            Route::get('/{backup}', [\App\Http\Controllers\Admin\BackupController::class, 'show'])->name('show');
+            Route::get('/{backup}/status', [\App\Http\Controllers\Admin\BackupController::class, 'status'])->name('status');
+            Route::post('/{backup}/run', [\App\Http\Controllers\Admin\BackupController::class, 'run'])->name('run');
+            Route::post('/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('restore');
+            Route::get('/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('download');
+            Route::delete('/{backup}', [\App\Http\Controllers\Admin\BackupController::class, 'destroy'])->name('destroy');
+            Route::get('/stats/overview', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('stats');
+        });
+
+        Route::prefix('backup-schedules')->name('backup-schedules.')->group(function() {
+            Route::get('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'store'])->name('store');
+            Route::get('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'show'])->name('show');
+            Route::get('/{schedule}/edit', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'edit'])->name('edit');
+            Route::put('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'update'])->name('update');
+            Route::delete('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'destroy'])->name('destroy');
+            Route::post('/{schedule}/execute', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'execute'])->name('execute');
+            Route::post('/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('toggle-active');
+        });
+
+        Route::prefix('backup-storage')->name('backup-storage.')->group(function() {
+            Route::get('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\BackupStorageController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'store'])->name('store');
+            Route::get('/{config}/edit', [\App\Http\Controllers\Admin\BackupStorageController::class, 'edit'])->name('edit');
+            Route::put('/{config}', [\App\Http\Controllers\Admin\BackupStorageController::class, 'update'])->name('update');
+            Route::delete('/{config}', [\App\Http\Controllers\Admin\BackupStorageController::class, 'destroy'])->name('destroy');
+            Route::post('/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('test');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\BackupStorageController::class, 'testConnection'])->name('test-connection');
+            Route::get('/analytics', [\App\Http\Controllers\Admin\BackupStorageAnalyticsController::class, 'index'])->name('analytics');
+        });
+
+        // App Storage
+        Route::prefix('app-storage')->name('app-storage.')->group(function() {
+            Route::get('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'index'])->name('configs.index');
+            Route::get('/configs/create', [\App\Http\Controllers\Admin\AppStorageController::class, 'create'])->name('configs.create');
+            Route::post('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'store'])->name('configs.store');
+            Route::get('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'show'])->name('configs.show');
+            Route::get('/configs/{config}/edit', [\App\Http\Controllers\Admin\AppStorageController::class, 'edit'])->name('configs.edit');
+            Route::put('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'update'])->name('configs.update');
+            Route::delete('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'destroy'])->name('configs.destroy');
+            Route::post('/configs/test-connection', [\App\Http\Controllers\Admin\AppStorageController::class, 'testConnection'])->name('configs.test-connection');
+            Route::post('/configs/{config}/test', [\App\Http\Controllers\Admin\AppStorageController::class, 'test'])->name('configs.test');
+            Route::get('/analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
+        });
+
+        Route::prefix('storage-disk-mappings')->name('storage-disk-mappings.')->group(function() {
+            Route::get('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'store'])->name('store');
+            Route::get('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'show'])->name('show');
+            Route::get('/{mapping}/edit', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'edit'])->name('edit');
+            Route::put('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'update'])->name('update');
+            Route::delete('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'destroy'])->name('destroy');
+        });
+
     });
 
 

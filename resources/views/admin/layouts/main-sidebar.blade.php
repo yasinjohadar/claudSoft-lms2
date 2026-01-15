@@ -648,6 +648,56 @@
                             </ul>
                         </li>
 
+                        <!-- النسخ الاحتياطية -->
+                        <li class="slide has-sub {{ request()->routeIs('backups.*') || request()->routeIs('backup-*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('backups.*') || request()->routeIs('backup-*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a1 1 0 0 0-1 1v11a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a1 1 0 0 0-1-1zM10 6a2 2 0 0 1 4 0v1h-4V6zm8 13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9h2v1a1 1 0 0 0 2 0V9h4v1a1 1 0 0 0 2 0V9h2v10z"/>
+                                </svg>
+                                <span class="side-menu__label">النسخ الاحتياطية</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('backups.*') || request()->routeIs('backup-*') ? 'active' : '' }}" style="{{ request()->routeIs('backups.*') || request()->routeIs('backup-*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('backups.index') ? 'active' : '' }}">
+                                    <a href="{{ route('backups.index') }}" class="side-menu__item {{ request()->routeIs('backups.index') ? 'active' : '' }}">قائمة النسخ</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('backups.create') ? 'active' : '' }}">
+                                    <a href="{{ route('backups.create') }}" class="side-menu__item {{ request()->routeIs('backups.create') ? 'active' : '' }}">نسخة جديدة</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('backup-schedules.*') ? 'active' : '' }}">
+                                    <a href="{{ route('backup-schedules.index') }}" class="side-menu__item {{ request()->routeIs('backup-schedules.*') ? 'active' : '' }}">الجدولة</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">
+                                    <a href="{{ route('app-storage.configs.index') }}" class="side-menu__item {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">إعدادات التخزين</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">
+                                    <a href="{{ route('app-storage.analytics') }}" class="side-menu__item {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">إحصائيات التخزين</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- التخزين السحابي -->
+                        <li class="slide has-sub {{ request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                                </svg>
+                                <span class="side-menu__label">التخزين السحابي</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}" style="{{ request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">
+                                    <a href="{{ route('app-storage.configs.index') }}" class="side-menu__item {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">إعدادات التخزين</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">
+                                    <a href="{{ route('app-storage.analytics') }}" class="side-menu__item {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">الإحصائيات</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">
+                                    <a href="{{ route('storage-disk-mappings.index') }}" class="side-menu__item {{ request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">ربط الأقراص</a>
+                                </li>
+                            </ul>
+                        </li>
+
                     </ul>
                     <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z"></path> </svg></div>
                 </nav>
