@@ -266,6 +266,34 @@ class AppStorageController extends Controller
             $driver = $request->input('driver');
             $configData = $request->input('config');
 
+            // تنظيف وtrim للـ credentials (خاصة لـ Bunny Storage)
+            if ($driver === 'bunny') {
+                if (isset($configData['storage_zone'])) {
+                    $configData['storage_zone'] = trim($configData['storage_zone']);
+                }
+                if (isset($configData['api_key'])) {
+                    $configData['api_key'] = trim($configData['api_key']);
+                }
+                if (isset($configData['pull_zone'])) {
+                    $configData['pull_zone'] = trim($configData['pull_zone']);
+                }
+                
+                // التحقق من أن الـ credentials غير فارغة
+                if (empty($configData['storage_zone'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Storage Zone Name مطلوب ولا يمكن أن يكون فارغاً',
+                    ], 422);
+                }
+                
+                if (empty($configData['api_key'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'API Key (FTP Password) مطلوب ولا يمكن أن يكون فارغاً',
+                    ], 422);
+                }
+            }
+
             // التحقق من الإعدادات المطلوبة حسب نوع التخزين
             $validationErrors = $this->validateStorageConfig($driver, $configData);
             if (!empty($validationErrors)) {
@@ -306,10 +334,10 @@ class AppStorageController extends Controller
                 ],
                 'bunny' => [
                     'driver' => 'bunnycdn',
-                    'storage_zone' => $configData['storage_zone'] ?? '',
+                    'storage_zone' => trim($configData['storage_zone'] ?? ''),
                     'api_key' => $configData['api_key'] ?? '',
                     'region' => $configData['region'] ?? 'de',
-                    'pull_zone' => $configData['pull_zone'] ?? null,
+                    'pull_zone' => $configData['pull_zone'] ?? '',
                     'throw' => true,
                 ],
                 default => throw new \Exception("نوع التخزين غير مدعوم: {$driver}"),
@@ -355,13 +383,23 @@ class AppStorageController extends Controller
                 $errorMessage = $e->getMessage();
                 
                 // تحسين رسائل الخطأ الشائعة
-                if (str_contains($errorMessage, 'authentication') || str_contains($errorMessage, 'unauthorized')) {
-                    $errorMessage = 'فشل المصادقة: يرجى التحقق من Client ID و Client Secret و Refresh Token';
-                } elseif (str_contains($errorMessage, 'permission') || str_contains($errorMessage, 'access')) {
-                    $errorMessage = 'فشل الوصول: يرجى التحقق من الأذونات (Permissions) في Google Drive';
-                } elseif (str_contains($errorMessage, 'quota') || str_contains($errorMessage, 'storage')) {
-                    $errorMessage = 'فشل التخزين: تم تجاوز المساحة المتاحة في Google Drive';
-                } elseif (str_contains($errorMessage, 'network') || str_contains($errorMessage, 'timeout')) {
+                if (str_contains(strtolower($errorMessage), 'unauthorized') || str_contains(strtolower($errorMessage), '401')) {
+                    if ($driver === 'bunny') {
+                        $errorMessage = 'فشل المصادقة (401 Unauthorized): يرجى التحقق من: 1) Storage Zone Name صحيح (بدون مسافات في البداية أو النهاية) 2) API Key (FTP Password) صحيح ومفعل 3) Region يطابق Storage Zone في BunnyCDN Dashboard';
+                    } else {
+                        $errorMessage = 'فشل المصادقة: يرجى التحقق من Client ID و Client Secret و Refresh Token';
+                    }
+                } elseif (str_contains(strtolower($errorMessage), 'authentication')) {
+                    if ($driver === 'bunny') {
+                        $errorMessage = 'فشل المصادقة: يرجى التحقق من Storage Zone Name و API Key';
+                    } else {
+                        $errorMessage = 'فشل المصادقة: يرجى التحقق من Client ID و Client Secret و Refresh Token';
+                    }
+                } elseif (str_contains(strtolower($errorMessage), 'permission') || str_contains(strtolower($errorMessage), 'access')) {
+                    $errorMessage = 'فشل الوصول: يرجى التحقق من الأذونات (Permissions)';
+                } elseif (str_contains(strtolower($errorMessage), 'quota') || str_contains(strtolower($errorMessage), 'storage')) {
+                    $errorMessage = 'فشل التخزين: تم تجاوز المساحة المتاحة';
+                } elseif (str_contains(strtolower($errorMessage), 'network') || str_contains(strtolower($errorMessage), 'timeout')) {
                     $errorMessage = 'فشل الاتصال: مشكلة في الشبكة أو انتهت مهلة الاتصال';
                 }
                 

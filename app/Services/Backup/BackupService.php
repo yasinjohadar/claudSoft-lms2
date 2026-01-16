@@ -90,6 +90,9 @@ class BackupService
 
             $this->log($backup, 'info', 'تم إنشاء ملف النسخة بنجاح: ' . $filePath);
 
+            // حفظ مسار الملف الأصلي قبل الضغط (لحذفه لاحقاً بعد الرفع)
+            $originalFilePath = $filePath;
+
             // تحديث file_path قبل الضغط
             $backup->update(['file_path' => $filePath]);
 
@@ -102,6 +105,10 @@ class BackupService
             $this->log($backup, 'info', 'بدء رفع ملف النسخة إلى التخزين...');
             $this->storageManager->storeWithFailover($backup, $compressedPath);
             $this->log($backup, 'info', 'تم رفع ملف النسخة إلى التخزين بنجاح');
+            
+            // تحديث backup model من قاعدة البيانات لضمان تحديث storageConfig relationship
+            $backup->refresh();
+            $backup->load('storageConfig');
             
             // تخزين في أماكن متعددة إذا كان مفعلاً
             // التحقق من وجود AppStorageConfig مع redundancy = true قبل الاستدعاء
@@ -163,23 +170,199 @@ class BackupService
                 'metadata' => $metadata,
             ]);
 
+            // تحديث backup model مرة أخرى بعد update
+            $backup->refresh();
+            $backup->load('storageConfig');
+
             // حذف الملف المحلي المؤقت بعد الرفع الناجح إلى التخزين السحابي
             // يتم الحذف فقط إذا كان التخزين الأساسي ليس محلياً
-            if ($backup->storageConfig && $backup->storageConfig->driver !== 'local') {
-                if ($compressedPath && file_exists($compressedPath)) {
+            // استخدام storage_driver مباشرة بدلاً من storageConfig->driver
+            $storageDriver = $backup->storage_driver;
+            $shouldDeleteLocal = false;
+            $deleteReason = '';
+            
+            Log::info("Checking if local file should be deleted", [
+                'backup_id' => $backup->id,
+                'storage_driver' => $storageDriver,
+                'compressed_path' => $compressedPath,
+            ]);
+            
+            if ($storageDriver === 'local' || empty($storageDriver)) {
+                $deleteReason = $storageDriver === 'local' ? 'التخزين محلي' : 'storage_driver فارغ';
+                $this->log($backup, 'info', 'التخزين محلي، تم الاحتفاظ بالملف المحلي');
+                Log::info("Keeping local file: {$deleteReason}", [
+                    'backup_id' => $backup->id,
+                    'compressed_path' => $compressedPath,
+                ]);
+            } else {
+                $shouldDeleteLocal = true;
+                Log::info("Local file should be deleted (storage_driver: {$storageDriver})", [
+                    'backup_id' => $backup->id,
+                    'storage_driver' => $storageDriver,
+                ]);
+            }
+            
+            if ($shouldDeleteLocal && $compressedPath) {
+                // تنظيف file system cache
+                clearstatcache(true, $compressedPath);
+                
+                if (file_exists($compressedPath)) {
+                    Log::info("Attempting to delete local file", [
+                        'backup_id' => $backup->id,
+                        'compressed_path' => $compressedPath,
+                        'file_exists' => true,
+                        'is_readable' => is_readable($compressedPath),
+                        'is_writable' => is_writable($compressedPath),
+                        'file_permissions' => substr(sprintf('%o', fileperms($compressedPath)), -4),
+                    ]);
+                    
                     try {
-                        @unlink($compressedPath);
-                        $this->log($backup, 'info', 'تم حذف الملف المحلي المؤقت بعد الرفع الناجح');
-                        Log::info("Deleted local temporary file after successful upload: {$compressedPath}");
+                        // التحقق من أن الملف قابل للكتابة قبل الحذف
+                        if (is_writable($compressedPath) || is_writable(dirname($compressedPath))) {
+                            $deleted = unlink($compressedPath);
+                            
+                            if ($deleted) {
+                                $this->log($backup, 'info', 'تم حذف الملف المحلي المؤقت بعد الرفع الناجح إلى السحابة');
+                                Log::info("Successfully deleted local temporary file after upload", [
+                                    'backup_id' => $backup->id,
+                                    'storage_driver' => $storageDriver,
+                                    'compressed_path' => $compressedPath,
+                                    'storage_config_id' => $backup->storage_config_id,
+                                ]);
+                                
+                                // التحقق مرة أخرى للتأكد من الحذف
+                                clearstatcache(true, $compressedPath);
+                                if (file_exists($compressedPath)) {
+                                    Log::warning("File still exists after unlink()", [
+                                        'backup_id' => $backup->id,
+                                        'compressed_path' => $compressedPath,
+                                    ]);
+                                } else {
+                                    Log::info("File confirmed deleted", [
+                                        'backup_id' => $backup->id,
+                                        'compressed_path' => $compressedPath,
+                                    ]);
+                                }
+                            } else {
+                                $errorMsg = 'unlink() returned false';
+                                $this->log($backup, 'warning', 'فشل حذف الملف المحلي المؤقت: ' . $errorMsg);
+                                Log::error("Failed to delete local file: unlink() returned false", [
+                                    'backup_id' => $backup->id,
+                                    'compressed_path' => $compressedPath,
+                                    'storage_driver' => $storageDriver,
+                                ]);
+                            }
+                        } else {
+                            $errorMsg = 'الملف أو المجلد غير قابل للكتابة';
+                            $this->log($backup, 'warning', 'فشل حذف الملف المحلي المؤقت: ' . $errorMsg);
+                            Log::error("Cannot delete local file: file or directory is not writable", [
+                                'backup_id' => $backup->id,
+                                'compressed_path' => $compressedPath,
+                                'file_writable' => is_writable($compressedPath),
+                                'dir_writable' => is_writable(dirname($compressedPath)),
+                            ]);
+                        }
                     } catch (\Exception $e) {
                         $this->log($backup, 'warning', 'فشل حذف الملف المحلي المؤقت: ' . $e->getMessage());
-                        Log::warning("Failed to delete local temporary file: {$compressedPath} - {$e->getMessage()}");
+                        Log::error("Exception while deleting local file", [
+                            'backup_id' => $backup->id,
+                            'compressed_path' => $compressedPath,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
                         // لا نعتبر هذا خطأ فادحاً، الملف موجود في التخزين السحابي
                     }
+                } else {
+                    Log::info("Local file does not exist (already deleted or never created)", [
+                        'backup_id' => $backup->id,
+                        'compressed_path' => $compressedPath,
+                    ]);
                 }
-            } else {
-                // إذا كان التخزين محلياً، نحتفظ بالملف
-                $this->log($backup, 'info', 'التخزين محلي، تم الاحتفاظ بالملف المحلي');
+            }
+
+            // حذف الملف الأصلي (قبل الضغط) بعد الرفع الناجح إلى السحابة
+            // يتم الحذف فقط إذا كان التخزين ليس محلياً والملف الأصلي مختلف عن المضغوط
+            if ($shouldDeleteLocal && isset($originalFilePath) && $originalFilePath && $originalFilePath !== $compressedPath) {
+                clearstatcache(true, $originalFilePath);
+                
+                if (file_exists($originalFilePath)) {
+                    Log::info("Attempting to delete original file (before compression)", [
+                        'backup_id' => $backup->id,
+                        'original_file_path' => $originalFilePath,
+                        'compressed_path' => $compressedPath,
+                        'file_exists' => true,
+                        'is_readable' => is_readable($originalFilePath),
+                        'is_writable' => is_writable($originalFilePath),
+                    ]);
+                    
+                    try {
+                        // التحقق من أن الملف قابل للكتابة قبل الحذف
+                        if (is_writable($originalFilePath) || is_writable(dirname($originalFilePath))) {
+                            $deleted = unlink($originalFilePath);
+                            
+                            if ($deleted) {
+                                $this->log($backup, 'info', 'تم حذف الملف الأصلي بعد الضغط والرفع الناجح');
+                                Log::info("Successfully deleted original file after compression and upload", [
+                                    'backup_id' => $backup->id,
+                                    'storage_driver' => $storageDriver,
+                                    'original_file_path' => $originalFilePath,
+                                    'compressed_path' => $compressedPath,
+                                ]);
+                                
+                                // التحقق مرة أخرى للتأكد من الحذف
+                                clearstatcache(true, $originalFilePath);
+                                if (file_exists($originalFilePath)) {
+                                    Log::warning("Original file still exists after unlink()", [
+                                        'backup_id' => $backup->id,
+                                        'original_file_path' => $originalFilePath,
+                                    ]);
+                                } else {
+                                    Log::info("Original file confirmed deleted", [
+                                        'backup_id' => $backup->id,
+                                        'original_file_path' => $originalFilePath,
+                                    ]);
+                                }
+                            } else {
+                                $errorMsg = 'unlink() returned false for original file';
+                                $this->log($backup, 'warning', 'فشل حذف الملف الأصلي: ' . $errorMsg);
+                                Log::error("Failed to delete original file: unlink() returned false", [
+                                    'backup_id' => $backup->id,
+                                    'original_file_path' => $originalFilePath,
+                                    'storage_driver' => $storageDriver,
+                                ]);
+                            }
+                        } else {
+                            $errorMsg = 'الملف الأصلي أو المجلد غير قابل للكتابة';
+                            $this->log($backup, 'warning', 'فشل حذف الملف الأصلي: ' . $errorMsg);
+                            Log::error("Cannot delete original file: file or directory is not writable", [
+                                'backup_id' => $backup->id,
+                                'original_file_path' => $originalFilePath,
+                                'file_writable' => is_writable($originalFilePath),
+                                'dir_writable' => is_writable(dirname($originalFilePath)),
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        $this->log($backup, 'warning', 'فشل حذف الملف الأصلي: ' . $e->getMessage());
+                        Log::error("Exception while deleting original file", [
+                            'backup_id' => $backup->id,
+                            'original_file_path' => $originalFilePath,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                        // لا نعتبر هذا خطأ فادحاً، الملف موجود في التخزين السحابي
+                    }
+                } else {
+                    Log::info("Original file does not exist (already deleted or never created)", [
+                        'backup_id' => $backup->id,
+                        'original_file_path' => $originalFilePath,
+                    ]);
+                }
+            } elseif (isset($originalFilePath) && $originalFilePath && $originalFilePath !== $compressedPath) {
+                Log::info("Keeping original file (storage is local or should not delete)", [
+                    'backup_id' => $backup->id,
+                    'original_file_path' => $originalFilePath,
+                    'storage_driver' => $storageDriver,
+                ]);
             }
 
             $this->log($backup, 'info', 'اكتملت عملية النسخ الاحتياطي بنجاح');
@@ -417,6 +600,30 @@ class BackupService
             $this->log($backup, 'info', 'بدء حذف النسخة من التخزين الأساسي...');
             $this->storageManager->delete($backup);
             $this->log($backup, 'info', 'تم حذف النسخة من التخزين الأساسي');
+            
+            // حذف المجلد في السحابة بعد حذف الملف
+            if ($backup->storageConfig && $backup->storageConfig->driver !== 'local' && $backup->storage_path) {
+                try {
+                    $folderPath = dirname($backup->storage_path); // backups/{backup_id}
+                    if ($folderPath && $folderPath !== '.') {
+                        $driver = \App\Services\Backup\StorageFactory::create($backup->storageConfig);
+                        // محاولة حذف المجلد باستخدام Laravel Storage
+                        $disk = \App\Services\Storage\AppStorageFactory::create($backup->storageConfig);
+                        if ($disk->exists($folderPath)) {
+                            // التحقق من أن المجلد فارغ قبل الحذف
+                            $files = $disk->files($folderPath);
+                            if (empty($files)) {
+                                $disk->deleteDirectory($folderPath);
+                                $this->log($backup, 'info', 'تم حذف المجلد الفارغ من التخزين السحابي');
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $this->log($backup, 'warning', 'فشل حذف المجلد من التخزين السحابي: ' . $e->getMessage());
+                    Log::warning("Failed to delete backup folder from cloud storage: {$e->getMessage()}");
+                    // لا نعتبر هذا خطأ فادحاً
+                }
+            }
 
             // حذف الملف من أماكن Redundancy
             $metadata = $backup->metadata ?? [];
@@ -437,6 +644,24 @@ class BackupService
                                 
                                 if ($driver->delete($storagePath)) {
                                     $this->log($backup, 'info', "تم حذف النسخة من: {$storageConfig->name}");
+                                    
+                                    // حذف المجلد الفارغ بعد حذف الملف
+                                    try {
+                                        $folderPath = dirname($storagePath);
+                                        if ($folderPath && $folderPath !== '.' && $storageConfig->driver !== 'local') {
+                                            $disk = \App\Services\Storage\AppStorageFactory::create($storageConfig);
+                                            if ($disk->exists($folderPath)) {
+                                                $files = $disk->files($folderPath);
+                                                if (empty($files)) {
+                                                    $disk->deleteDirectory($folderPath);
+                                                    $this->log($backup, 'info', "تم حذف المجلد الفارغ من: {$storageConfig->name}");
+                                                }
+                                            }
+                                        }
+                                    } catch (\Exception $folderException) {
+                                        Log::warning("Failed to delete redundancy folder: {$folderException->getMessage()}");
+                                        // لا نعتبر هذا خطأ فادحاً
+                                    }
                                 } else {
                                     $this->log($backup, 'warning', "فشل حذف النسخة من: {$storageConfig->name}");
                                 }
@@ -459,9 +684,15 @@ class BackupService
                 $this->log($backup, 'info', 'اكتمل حذف النسخة من أماكن Redundancy');
             }
 
-            // حذف الملف المحلي - file_path هو مسار كامل (absolute path)
+            // حذف الملف المحلي المضغوط - file_path هو مسار كامل (absolute path)
             if ($backup->file_path && file_exists($backup->file_path)) {
-                @unlink($backup->file_path);
+                try {
+                    @unlink($backup->file_path);
+                    $this->log($backup, 'info', 'تم حذف الملف المحلي المضغوط');
+                } catch (\Exception $e) {
+                    $this->log($backup, 'warning', 'فشل حذف الملف المحلي المضغوط: ' . $e->getMessage());
+                    Log::warning("Failed to delete local compressed file: {$backup->file_path} - {$e->getMessage()}");
+                }
             }
 
             $backup->delete();

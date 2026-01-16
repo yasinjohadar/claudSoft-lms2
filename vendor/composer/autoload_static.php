@@ -15,8 +15,8 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'b6b991a57620e2fb6b2f66f03fe9ddc2' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
         '7b11c4dc42b3b3023073cb14e519683c' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
         '662a729f963d39afe703c9d9b7ab4a8c' => __DIR__ . '/..' . '/symfony/polyfill-php83/bootstrap.php',
-        'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
         'ec07570ca5a812141189b1fa81503674' => __DIR__ . '/..' . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
@@ -132,6 +132,8 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
             'Psr\\Container\\' => 14,
             'Psr\\Clock\\' => 10,
             'Psr\\Cache\\' => 10,
+            'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\' => 43,
+            'PlatformCommunity\\Flysystem\\BunnyCDN\\' => 37,
             'PhpParser\\' => 10,
             'PhpOption\\' => 10,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
@@ -461,6 +463,14 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'Psr\\Cache\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/cache/src',
+        ),
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests',
+        ),
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src',
         ),
         'PhpParser\\' => 
         array (
@@ -1089,6 +1099,7 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'App\\Providers\\GamificationServiceProvider' => __DIR__ . '/../..' . '/app/Providers/GamificationServiceProvider.php',
         'App\\Providers\\MailConfigServiceProvider' => __DIR__ . '/../..' . '/app/Providers/MailConfigServiceProvider.php',
         'App\\Providers\\PermissionServiceProvider' => __DIR__ . '/../..' . '/app/Providers/PermissionServiceProvider.php',
+        'App\\Providers\\StorageHelperServiceProvider' => __DIR__ . '/../..' . '/app/Providers/StorageHelperServiceProvider.php',
         'App\\Providers\\StorageServiceProvider' => __DIR__ . '/../..' . '/app/Providers/StorageServiceProvider.php',
         'App\\Services\\AccessControlService' => __DIR__ . '/../..' . '/app/Services/AccessControlService.php',
         'App\\Services\\Ai\\AIBlogPostService' => __DIR__ . '/../..' . '/app/Services/Ai/AIBlogPostService.php',
@@ -1121,6 +1132,7 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'App\\Services\\Backup\\StorageAnalyticsService' => __DIR__ . '/../..' . '/app/Services/Backup/StorageAnalyticsService.php',
         'App\\Services\\Backup\\StorageDrivers\\AzureStorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/AzureStorageDriver.php',
         'App\\Services\\Backup\\StorageDrivers\\BackblazeStorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/BackblazeStorageDriver.php',
+        'App\\Services\\Backup\\StorageDrivers\\BunnyStorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/BunnyStorageDriver.php',
         'App\\Services\\Backup\\StorageDrivers\\CloudflareR2StorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/CloudflareR2StorageDriver.php',
         'App\\Services\\Backup\\StorageDrivers\\DigitalOceanStorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/DigitalOceanStorageDriver.php',
         'App\\Services\\Backup\\StorageDrivers\\DropboxStorageDriver' => __DIR__ . '/../..' . '/app/Services/Backup/StorageDrivers/DropboxStorageDriver.php',
@@ -1159,6 +1171,7 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'App\\Services\\Storage\\AppStorageAnalyticsService' => __DIR__ . '/../..' . '/app/Services/Storage/AppStorageAnalyticsService.php',
         'App\\Services\\Storage\\AppStorageFactory' => __DIR__ . '/../..' . '/app/Services/Storage/AppStorageFactory.php',
         'App\\Services\\Storage\\AppStorageManager' => __DIR__ . '/../..' . '/app/Services/Storage/AppStorageManager.php',
+        'App\\Services\\Storage\\StorageHelperService' => __DIR__ . '/../..' . '/app/Services/Storage/StorageHelperService.php',
         'App\\Services\\WhatsApp\\BroadcastWhatsAppMessage' => __DIR__ . '/../..' . '/app/Services/WhatsApp/BroadcastWhatsAppMessage.php',
         'App\\Services\\WhatsApp\\Providers\\CustomApiProvider' => __DIR__ . '/../..' . '/app/Services/WhatsApp/Providers/CustomApiProvider.php',
         'App\\Services\\WhatsApp\\Providers\\MetaProvider' => __DIR__ . '/../..' . '/app/Services/WhatsApp/Providers/MetaProvider.php',
@@ -39375,6 +39388,18 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'PhpParser\\PrettyPrinter\\Standard' => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser/PrettyPrinter/Standard.php',
         'PhpParser\\Token' => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser/Token.php',
         'PhpToken' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/PhpToken.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\BunnyCDNAdapter' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/BunnyCDNAdapter.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\BunnyCDNClient' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/BunnyCDNClient.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\BunnyCDNRegion' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/BunnyCDNRegion.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Exceptions\\BunnyCDNException' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/Exceptions/BunnyCDNException.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Exceptions\\NotFoundException' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/Exceptions/NotFoundException.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\ClientTest' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests/ClientTest.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\FlysystemAdapterTest' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests/FlysystemAdapterTest.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\MockClient' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests/MockClient.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\PrefixTest' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests/PrefixTest.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Tests\\UtilityClassTest' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/tests/UtilityClassTest.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\Util' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/Util.php',
+        'PlatformCommunity\\Flysystem\\BunnyCDN\\WriteBatchFile' => __DIR__ . '/..' . '/platformcommunity/flysystem-bunnycdn/src/WriteBatchFile.php',
         'Psr\\Cache\\CacheException' => __DIR__ . '/..' . '/psr/cache/src/CacheException.php',
         'Psr\\Cache\\CacheItemInterface' => __DIR__ . '/..' . '/psr/cache/src/CacheItemInterface.php',
         'Psr\\Cache\\CacheItemPoolInterface' => __DIR__ . '/..' . '/psr/cache/src/CacheItemPoolInterface.php',

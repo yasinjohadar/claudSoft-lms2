@@ -11,10 +11,18 @@ use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Storage\StorageHelperService;
 use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
+    protected StorageHelperService $storageHelper;
+
+    public function __construct(StorageHelperService $storageHelper)
+    {
+        $this->storageHelper = $storageHelper;
+    }
+
     /**
      * Display a listing of the courses.
      */
@@ -181,7 +189,7 @@ class CourseController extends Controller
 
             // Delete uploaded image if exists
             if (isset($validated['image'])) {
-                Storage::disk('public')->delete($validated['image']);
+                $this->storageHelper->deleteFile('public', $validated['image']);
             }
 
             return redirect()
@@ -340,9 +348,9 @@ class CourseController extends Controller
             if ($request->hasFile('image')) {
                 // Delete old image if exists
                 if ($course->image) {
-                    Storage::disk('public')->delete($course->image);
+                    $this->storageHelper->deleteFile('public', $course->image);
                 }
-                $validated['image'] = $request->file('image')->store('courses/images', 'public');
+                $validated['image'] = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
             }
 
             // Set updated_by

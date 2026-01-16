@@ -39,17 +39,25 @@ class StorageDiskMappingController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'disk_name' => 'required|string|max:255|unique:storage_disk_mappings,disk_name',
-            'label' => 'required|string|max:255',
-            'primary_storage_id' => 'required|exists:app_storage_configs,id',
-            'fallback_storage_ids' => 'nullable|array',
-            'fallback_storage_ids.*' => 'exists:app_storage_configs,id',
-            'file_types' => 'nullable|array',
+        Log::info('StorageDiskMappingController: store method called', [
+            'request_data' => $request->except(['_token']),
         ]);
 
         try {
-            StorageDiskMapping::create([
+            $validated = $request->validate([
+                'disk_name' => 'required|string|max:255|unique:storage_disk_mappings,disk_name',
+                'label' => 'required|string|max:255',
+                'primary_storage_id' => 'required|exists:app_storage_configs,id',
+                'fallback_storage_ids' => 'nullable|array',
+                'fallback_storage_ids.*' => 'exists:app_storage_configs,id',
+                'file_types' => 'nullable|array',
+            ]);
+
+            Log::info('StorageDiskMappingController: Validation passed', [
+                'validated_data' => $validated,
+            ]);
+
+            $mapping = StorageDiskMapping::create([
                 'disk_name' => $validated['disk_name'],
                 'label' => $validated['label'],
                 'primary_storage_id' => $validated['primary_storage_id'],
@@ -58,10 +66,27 @@ class StorageDiskMappingController extends Controller
                 'is_active' => $request->has('is_active'),
             ]);
 
-            return redirect()->route('admin.storage-disk-mappings.index')
+            Log::info('StorageDiskMappingController: Mapping created successfully', [
+                'mapping_id' => $mapping->id,
+                'disk_name' => $mapping->disk_name,
+            ]);
+
+            return redirect()->route('storage-disk-mappings.index')
                            ->with('success', 'تم إنشاء Disk Mapping بنجاح.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('StorageDiskMappingController: Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['_token']),
+            ]);
+            return redirect()->back()
+                           ->withErrors($e->errors())
+                           ->withInput();
         } catch (\Exception $e) {
-            Log::error('Error creating disk mapping: ' . $e->getMessage());
+            Log::error('StorageDiskMappingController: Error creating disk mapping', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['_token']),
+            ]);
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء إنشاء Disk Mapping: ' . $e->getMessage())
                            ->withInput();
@@ -85,16 +110,25 @@ class StorageDiskMappingController extends Controller
      */
     public function update(Request $request, StorageDiskMapping $mapping)
     {
-        $validated = $request->validate([
-            'disk_name' => 'required|string|max:255|unique:storage_disk_mappings,disk_name,' . $mapping->id,
-            'label' => 'required|string|max:255',
-            'primary_storage_id' => 'required|exists:app_storage_configs,id',
-            'fallback_storage_ids' => 'nullable|array',
-            'fallback_storage_ids.*' => 'exists:app_storage_configs,id',
-            'file_types' => 'nullable|array',
+        Log::info('StorageDiskMappingController: update method called', [
+            'mapping_id' => $mapping->id,
+            'request_data' => $request->except(['_token', '_method']),
         ]);
 
         try {
+            $validated = $request->validate([
+                'disk_name' => 'required|string|max:255|unique:storage_disk_mappings,disk_name,' . $mapping->id,
+                'label' => 'required|string|max:255',
+                'primary_storage_id' => 'required|exists:app_storage_configs,id',
+                'fallback_storage_ids' => 'nullable|array',
+                'fallback_storage_ids.*' => 'exists:app_storage_configs,id',
+                'file_types' => 'nullable|array',
+            ]);
+
+            Log::info('StorageDiskMappingController: Validation passed', [
+                'validated_data' => $validated,
+            ]);
+
             $mapping->update([
                 'disk_name' => $validated['disk_name'],
                 'label' => $validated['label'],
@@ -104,10 +138,27 @@ class StorageDiskMappingController extends Controller
                 'is_active' => $request->has('is_active'),
             ]);
 
-            return redirect()->route('admin.storage-disk-mappings.index')
+            Log::info('StorageDiskMappingController: Mapping updated successfully', [
+                'mapping_id' => $mapping->id,
+                'disk_name' => $mapping->disk_name,
+            ]);
+
+            return redirect()->route('storage-disk-mappings.index')
                            ->with('success', 'تم تحديث Disk Mapping بنجاح.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('StorageDiskMappingController: Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['_token', '_method']),
+            ]);
+            return redirect()->back()
+                           ->withErrors($e->errors())
+                           ->withInput();
         } catch (\Exception $e) {
-            Log::error('Error updating disk mapping: ' . $e->getMessage());
+            Log::error('StorageDiskMappingController: Error updating disk mapping', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['_token', '_method']),
+            ]);
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء تحديث Disk Mapping: ' . $e->getMessage())
                            ->withInput();
@@ -122,7 +173,7 @@ class StorageDiskMappingController extends Controller
         try {
             $mapping->delete();
 
-            return redirect()->route('admin.storage-disk-mappings.index')
+            return redirect()->route('storage-disk-mappings.index')
                            ->with('success', 'تم حذف Disk Mapping بنجاح.');
         } catch (\Exception $e) {
             Log::error('Error deleting disk mapping: ' . $e->getMessage());

@@ -230,7 +230,7 @@ class AppStorageFactory
             'storage_zone' => $config['storage_zone'] ?? '',
             'api_key' => $config['api_key'] ?? '',
             'region' => $config['region'] ?? 'de',
-            'pull_zone' => $config['pull_zone'] ?? null, // للوصول العام عبر CDN
+            'pull_zone' => $config['pull_zone'] ?? '', // للوصول العام عبر CDN
             'throw' => true, // إجبار رمي exceptions لإظهار رسالة الخطأ الفعلية
         ];
     }

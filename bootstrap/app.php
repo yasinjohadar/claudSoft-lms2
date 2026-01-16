@@ -51,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withProviders([
         App\Providers\StorageServiceProvider::class,
+        App\Providers\StorageHelperServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //

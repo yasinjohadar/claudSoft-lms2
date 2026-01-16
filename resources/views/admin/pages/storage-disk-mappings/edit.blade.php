@@ -20,6 +20,35 @@
 
         <div class="row">
             <div class="col-lg-8">
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>يرجى تصحيح الأخطاء التالية:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
                         <form action="{{ route('storage-disk-mappings.update', $mapping->id) }}" method="POST">
@@ -28,23 +57,32 @@
 
                             <div class="mb-3">
                                 <label for="disk_name" class="form-label">Disk Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="disk_name" name="disk_name" value="{{ old('disk_name', $mapping->disk_name) }}" required>
+                                <input type="text" class="form-control @error('disk_name') is-invalid @enderror" id="disk_name" name="disk_name" value="{{ old('disk_name', $mapping->disk_name) }}" required>
+                                @error('disk_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
                                 <label for="label" class="form-label">التسمية <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="label" name="label" value="{{ old('label', $mapping->label) }}" required>
+                                <input type="text" class="form-control @error('label') is-invalid @enderror" id="label" name="label" value="{{ old('label', $mapping->label) }}" required>
+                                @error('label')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
                                 <label for="primary_storage_id" class="form-label">التخزين الأساسي <span class="text-danger">*</span></label>
-                                <select class="form-select" id="primary_storage_id" name="primary_storage_id" required>
+                                <select class="form-select @error('primary_storage_id') is-invalid @enderror" id="primary_storage_id" name="primary_storage_id" required>
                                     @foreach($storages as $storage)
                                         <option value="{{ $storage->id }}" {{ old('primary_storage_id', $mapping->primary_storage_id) == $storage->id ? 'selected' : '' }}>
                                             {{ $storage->name }} ({{ App\Models\AppStorageConfig::DRIVERS[$storage->driver] ?? $storage->driver }})
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('primary_storage_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">

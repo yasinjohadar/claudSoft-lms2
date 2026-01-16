@@ -141,8 +141,12 @@
                             <h5><i class="fa fa-image me-2"></i>الصورة الشخصية</h5>
                         </div>
                         <div class="card-body text-center">
-                            @if($student->photo)
-                                <img src="{{ asset('storage/' . $student->photo) }}" class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
+                            @php
+                                $photoPath = $student->photo ?? null;
+                                $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+                            @endphp
+                            @if($photoUrl)
+                                <img src="{{ $photoUrl }}" class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
                             @else
                                 <div class="bg-light rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 150px; height: 150px;">
                                     <i class="fa fa-camera fa-3x text-muted"></i>

@@ -147,8 +147,16 @@
             <div class="profile-header">
                 <div class="row align-items-center">
                     <div class="col-auto">
-                        @if($student->photo)
-                            <img src="{{ asset('storage/' . $student->photo) }}" alt="{{ $student->name }}" class="profile-avatar">
+                        @php
+                            $photoPath = $student->photo ?? null;
+                            $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+                        @endphp
+                        @if($photoUrl)
+                            <img src="{{ $photoUrl }}" alt="{{ $student->name }}" class="profile-avatar" 
+                                 onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="avatar-placeholder" style="display: none;">
+                                {{ substr($student->name, 0, 1) }}
+                            </div>
                         @else
                             <div class="avatar-placeholder">
                                 {{ substr($student->name, 0, 1) }}
@@ -349,9 +357,17 @@
                         </div>
                         <div class="card-body">
                             <div class="text-center mb-4">
-                                @if($student->photo)
-                                    <img src="{{ asset('storage/' . $student->photo) }}" alt="{{ $student->name }}"
-                                         class="profile-avatar mx-auto">
+                                @php
+                                    $photoPath = $student->photo ?? null;
+                                    $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+                                @endphp
+                                @if($photoUrl)
+                                    <img src="{{ $photoUrl }}" alt="{{ $student->name }}"
+                                         class="profile-avatar mx-auto"
+                                         onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="avatar-placeholder mx-auto" style="display: none;">
+                                        {{ substr($student->name, 0, 1) }}
+                                    </div>
                                 @else
                                     <div class="avatar-placeholder mx-auto">
                                         {{ substr($student->name, 0, 1) }}
@@ -362,7 +378,7 @@
                                 <a href="{{ route('student.profile.edit') }}#photo-section" class="btn btn-primary">
                                     <i class="fa fa-edit me-2"></i>تعديل الصورة
                                 </a>
-                                @if($student->photo)
+                                @if($photoPath)
                                     <form action="{{ route('student.profile.delete-photo') }}" method="POST" class="delete-photo-form">
                                         @csrf
                                         @method('DELETE')

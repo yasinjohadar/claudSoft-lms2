@@ -12,9 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Storage\StorageHelperService;
 
 class BlogPostController extends Controller
 {
+    protected StorageHelperService $storageHelper;
+
+    public function __construct(StorageHelperService $storageHelper)
+    {
+        $this->storageHelper = $storageHelper;
+    }
     /**
      * Display a listing of blog posts.
      */
@@ -324,10 +331,10 @@ class BlogPostController extends Controller
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
                 // Delete old image
-                if ($post->featured_image && Storage::disk('public')->exists($post->featured_image)) {
-                    Storage::disk('public')->delete($post->featured_image);
+                if ($post->featured_image && $this->storageHelper->fileExists('public', $post->featured_image)) {
+                    $this->storageHelper->deleteFile('public', $post->featured_image);
                 }
-                $validated['featured_image'] = $request->file('featured_image')->store('blog/images', 'public');
+                $validated['featured_image'] = $this->storageHelper->storeUploadedFile('public', 'blog/images', $request->file('featured_image'), 'image');
             }
 
             // Set published_at if status changed to published
@@ -411,8 +418,8 @@ class BlogPostController extends Controller
             $tagIds = $post->tags->pluck('id')->toArray();
 
             // Delete featured image
-            if ($post->featured_image && Storage::disk('public')->exists($post->featured_image)) {
-                Storage::disk('public')->delete($post->featured_image);
+            if ($post->featured_image && $this->storageHelper->fileExists('public', $post->featured_image)) {
+                $this->storageHelper->deleteFile('public', $post->featured_image);
             }
 
             // Delete post (will auto-detach tags due to cascade)
@@ -485,8 +492,8 @@ class BlogPostController extends Controller
      */
     public function deleteFeaturedImage(Request $request, BlogPost $post)
     {
-        if ($post->featured_image && Storage::disk('public')->exists($post->featured_image)) {
-            Storage::disk('public')->delete($post->featured_image);
+        if ($post->featured_image && $this->storageHelper->fileExists('public', $post->featured_image)) {
+            $this->storageHelper->deleteFile('public', $post->featured_image);
             $post->featured_image = null;
             $post->featured_image_alt = null;
             $post->save();

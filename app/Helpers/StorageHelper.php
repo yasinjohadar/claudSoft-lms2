@@ -46,9 +46,10 @@ if (!function_exists('blog_image_url')) {
             // Continue to next method
         }
         
-        // Method 2: Try Storage facade
+        // Method 2: Try StorageHelperService (dynamic storage)
         try {
-            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($imagePath);
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $url = $storageHelper->getFileUrl('public', $imagePath);
             if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
                 return $url;
             }
@@ -91,9 +92,10 @@ if (!function_exists('course_image_url')) {
             // Continue to next method
         }
         
-        // Method 2: Try Storage facade
+        // Method 2: Try StorageHelperService (dynamic storage)
         try {
-            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($imagePath);
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $url = $storageHelper->getFileUrl('public', $imagePath);
             if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
                 return $url;
             }
@@ -106,3 +108,27 @@ if (!function_exists('course_image_url')) {
     }
 }
 
+if (!function_exists('storage_disk_url')) {
+    /**
+     * Get the URL for a file stored in a specific disk (dynamic storage)
+     * 
+     * @param string $disk The disk name (e.g., 'public', 'images')
+     * @param string $path The file path
+     * @return string The full URL to the file
+     */
+    function storage_disk_url(string $disk, string $path): string
+    {
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $url = $storageHelper->getFileUrl($disk, $path);
+            if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                return $url;
+            }
+        } catch (\Exception $e) {
+            // Fallback to default storage URL
+        }
+        
+        // Fallback to asset if dynamic storage fails
+        return asset('storage/' . ltrim($path, '/'));
+    }
+}

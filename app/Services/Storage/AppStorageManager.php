@@ -6,7 +6,6 @@ use App\Models\AppStorageConfig;
 use App\Models\StorageDiskMapping;
 use App\Services\Storage\AppStorageFactory;
 use App\Services\Storage\AppStorageAnalyticsService;
-use App\Services\AuditLogService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -14,12 +13,20 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 class AppStorageManager
 {
     protected AppStorageAnalyticsService $analyticsService;
-    protected AuditLogService $auditLogService;
+    protected $auditLogService = null;
 
-    public function __construct(AppStorageAnalyticsService $analyticsService, AuditLogService $auditLogService)
+    public function __construct(AppStorageAnalyticsService $analyticsService)
     {
         $this->analyticsService = $analyticsService;
-        $this->auditLogService = $auditLogService;
+        
+        // محاولة تحميل AuditLogService إذا كان موجوداً
+        if (class_exists(\App\Services\AuditLogService::class)) {
+            try {
+                $this->auditLogService = app(\App\Services\AuditLogService::class);
+            } catch (\Exception $e) {
+                Log::debug('AuditLogService not available: ' . $e->getMessage());
+            }
+        }
     }
 
     /**
@@ -87,17 +94,23 @@ class AppStorageManager
         } catch (\Exception $e) {
             Log::warning("Primary storage failed for disk {$disk}: " . $e->getMessage());
 
-            // تسجيل فشل التخزين الأساسي في سجل التدقيق
-            $this->auditLogService->log(
-                null,
-                'storage_primary_failed',
-                'فشل التخزين الأساسي',
-                [
-                    'disk' => $disk,
-                    'storage' => $mapping->primaryStorage?->name,
-                    'error' => $e->getMessage(),
-                ]
-            );
+            // تسجيل فشل التخزين الأساسي في سجل التدقيق (إذا كان متاحاً)
+            if ($this->auditLogService) {
+                try {
+                    $this->auditLogService->log(
+                        null,
+                        'storage_primary_failed',
+                        'فشل التخزين الأساسي',
+                        [
+                            'disk' => $disk,
+                            'storage' => $mapping->primaryStorage?->name,
+                            'error' => $e->getMessage(),
+                        ]
+                    );
+                } catch (\Exception $auditException) {
+                    Log::debug('Failed to log to AuditLogService: ' . $auditException->getMessage());
+                }
+            }
         }
 
         // محاولة Fallback storages
@@ -109,16 +122,22 @@ class AppStorageManager
                     $this->trackStorage($disk, $path, $content, $fileType, 'upload', $fallbackStorage);
                     Log::info("Used fallback storage for disk {$disk}: {$fallbackStorage->name}");
 
-                    // تنبيه في AuditLog عند استخدام تخزين احتياطي
-                    $this->auditLogService->log(
-                        null,
-                        'storage_failover_used',
-                        'استخدام تخزين احتياطي',
-                        [
-                            'disk' => $disk,
-                            'fallback_storage' => $fallbackStorage->name,
-                        ]
-                    );
+                    // تنبيه في AuditLog عند استخدام تخزين احتياطي (إذا كان متاحاً)
+                    if ($this->auditLogService) {
+                        try {
+                            $this->auditLogService->log(
+                                null,
+                                'storage_failover_used',
+                                'استخدام تخزين احتياطي',
+                                [
+                                    'disk' => $disk,
+                                    'fallback_storage' => $fallbackStorage->name,
+                                ]
+                            );
+                        } catch (\Exception $auditException) {
+                            Log::debug('Failed to log to AuditLogService: ' . $auditException->getMessage());
+                        }
+                    }
 
                     return true;
                 }
@@ -213,10 +232,63 @@ class AppStorageManager
     {
         try {
             $storage = $this->getDisk($disk);
-            return $storage->url($path);
+            $url = $storage->url($path);
+            
+            // إذا كان URL فارغاً أو غير صالح، حاول الحصول من CDN URL
+            if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+                $mapping = StorageDiskMapping::where('disk_name', $disk)->first();
+                if ($mapping && $mapping->primaryStorage && $mapping->primaryStorage->cdn_url) {
+                    $cdnUrl = rtrim($mapping->primaryStorage->cdn_url, '/');
+                    $url = $cdnUrl . '/' . ltrim($path, '/');
+                }
+            }
+            
+            return $url;
         } catch (\Exception $e) {
             Log::error("Storage URL failed for disk {$disk}: " . $e->getMessage());
             return '';
+        }
+    }
+
+    /**
+     * التحقق من وجود الملف
+     */
+    public function exists(string $disk, string $path): bool
+    {
+        try {
+            $storage = $this->getDisk($disk);
+            return $storage->exists($path);
+        } catch (\Exception $e) {
+            Log::error("Storage exists check failed for disk {$disk}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * نسخ ملف
+     */
+    public function copy(string $disk, string $fromPath, string $toPath): bool
+    {
+        try {
+            $storage = $this->getDisk($disk);
+            return $storage->copy($fromPath, $toPath);
+        } catch (\Exception $e) {
+            Log::error("Storage copy failed for disk {$disk}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * نقل ملف
+     */
+    public function move(string $disk, string $fromPath, string $toPath): bool
+    {
+        try {
+            $storage = $this->getDisk($disk);
+            return $storage->move($fromPath, $toPath);
+        } catch (\Exception $e) {
+            Log::error("Storage move failed for disk {$disk}: " . $e->getMessage());
+            return false;
         }
     }
 

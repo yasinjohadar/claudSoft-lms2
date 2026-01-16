@@ -11,38 +11,25 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use App\Services\Storage\StorageHelperService;
 
 class UserController extends Controller
 {
-    // public function __construct()
-    // {
-    //     // يمكنه فقط رؤية قائمة المستخدمين (index)
-    //     $this->middleware(['permission:user-list'])->only('index');
+    protected StorageHelperService $storageHelper;
 
-    //     // يمكنه فقط إنشاء مستخدم جديد (create + store)
-    //     $this->middleware(['permission:user-create'])->only(['create', 'store']);
+    public function __construct(StorageHelperService $storageHelper)
+    {
+        $this->storageHelper = $storageHelper;
+        
+        // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
+        $this->middleware('auth');
 
-    //     // يمكنه فقط تعديل المستخدم (edit + update)
-    //     $this->middleware(['permission:user-edit'])->only(['edit', 'update']);
-
-    //     // يمكنه فقط حذف المستخدم (destroy)
-    //     $this->middleware(['permission:user-delete'])->only('destroy');
-
-    //     // يمكنه فقط رؤية ملف المستخدم (show)
-    //     $this->middleware(['permission:user-show'])->only('show');
-    // }
-
-    public function __construct()
-{
-    // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
-    $this->middleware('auth');
-
-    $this->middleware('permission:user-list')->only('index');
-    $this->middleware('permission:user-create')->only(['create', 'store']);
-    $this->middleware('permission:user-edit')->only(['edit', 'update']);
-    $this->middleware('permission:user-delete')->only('destroy');
-    $this->middleware('permission:user-show')->only('show');
-}
+        $this->middleware('permission:user-list')->only('index');
+        $this->middleware('permission:user-create')->only(['create', 'store']);
+        $this->middleware('permission:user-edit')->only(['edit', 'update']);
+        $this->middleware('permission:user-delete')->only('destroy');
+        $this->middleware('permission:user-show')->only('show');
+    }
 
     /**
      * Display a listing of the resource.
@@ -129,12 +116,16 @@ public function index(Request $request)
             'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
         ]);
 
-        // معالجة الصورة
+        // معالجة الصورة باستخدام النظام الديناميكي
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $photoName = time() . '_' . $photo->getClientOriginalName();
-            $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            $photoPath = $this->storageHelper->storeUploadedFile('public', 'users/photos', $request->file('photo'), 'image');
+            if (!$photoPath) {
+                // Fallback to direct storage if dynamic storage fails
+                $photo = $request->file('photo');
+                $photoName = time() . '_' . $photo->getClientOriginalName();
+                $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            }
         }
 
         // إنشاء المستخدم
@@ -150,6 +141,7 @@ public function index(Request $request)
             'password' => Hash::make($request->password),
             'is_active' => $request->boolean('is_active', true),
             'avatar' => $photoPath,
+            'photo' => $photoPath, // حفظ في كلا الحقلين للتوافق
         ]);
 
         // تعيين الأدوار
@@ -334,17 +326,26 @@ public function index(Request $request)
             'is_active' => $request->boolean('is_active'),
         ];
 
-        // معالجة الصورة
+        // معالجة الصورة باستخدام النظام الديناميكي
         if ($request->hasFile('photo')) {
             // حذف الصورة القديمة إذا كانت موجودة
             if ($user->avatar) {
-                \Storage::disk('public')->delete($user->avatar);
+                $this->storageHelper->deleteFile('public', $user->avatar);
+            }
+            if ($user->photo && $user->photo !== $user->avatar) {
+                $this->storageHelper->deleteFile('public', $user->photo);
             }
 
-            $photo = $request->file('photo');
-            $photoName = time() . '_' . $photo->getClientOriginalName();
-            $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            $photoPath = $this->storageHelper->storeUploadedFile('public', 'users/photos', $request->file('photo'), 'image');
+            if (!$photoPath) {
+                // Fallback to direct storage if dynamic storage fails
+                $photo = $request->file('photo');
+                $photoName = time() . '_' . $photo->getClientOriginalName();
+                $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            }
+            
             $updateData['avatar'] = $photoPath;
+            $updateData['photo'] = $photoPath; // حفظ في كلا الحقلين للتوافق
         }
 
         // تحديث المستخدم
