@@ -56,6 +56,18 @@ class Invoice extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::deleting(function ($invoice) {
+            $invoice->revertCampEnrollmentPaymentStatus();
+        });
+    }
+
     // Scopes
     public function scopeByStatus($query, $status)
     {
@@ -191,6 +203,26 @@ class Invoice extends Model
                         // You can change this logic if needed
                         $enrollment->payment_status = 'unpaid';
                     }
+                    $enrollment->save();
+                }
+            }
+        }
+    }
+
+    /**
+     * Revert payment status of related camp enrollments to unpaid when invoice is deleted
+     */
+    public function revertCampEnrollmentPaymentStatus()
+    {
+        // Get all invoice items with camp_enrollment_id
+        $invoiceItems = $this->items()->whereNotNull('camp_enrollment_id')->get();
+        
+        foreach ($invoiceItems as $item) {
+            if ($item->camp_enrollment_id) {
+                $enrollment = CampEnrollment::find($item->camp_enrollment_id);
+                if ($enrollment) {
+                    // Revert to unpaid when invoice is deleted
+                    $enrollment->payment_status = 'unpaid';
                     $enrollment->save();
                 }
             }

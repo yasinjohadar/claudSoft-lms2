@@ -222,6 +222,9 @@ class InvoiceController extends Controller
                 ->with('error', 'لا يمكن حذف فاتورة تحتوي على مدفوعات');
         }
 
+        // Revert camp enrollment payment status before deletion
+        $invoice->revertCampEnrollmentPaymentStatus();
+        
         $invoice->delete();
 
         return redirect()
@@ -236,6 +239,9 @@ class InvoiceController extends Controller
     {
         try {
             $invoice = Invoice::withTrashed()->findOrFail($id);
+            
+            // Revert camp enrollment payment status before deletion
+            $invoice->revertCampEnrollmentPaymentStatus();
             
             // Delete related invoice items (they will be deleted automatically by cascade, but we delete them explicitly for safety)
             $invoice->items()->delete();
