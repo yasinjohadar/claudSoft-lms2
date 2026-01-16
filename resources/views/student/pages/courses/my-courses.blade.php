@@ -175,7 +175,7 @@
                             <div class="card custom-card">
                                 <div class="position-relative">
                                     @if($course && $course->thumbnail)
-                                        <img src="{{ asset('storage/' . $course->thumbnail) }}"
+                                        <img src="{{ course_image_url($course->thumbnail) }}"
                                              alt="{{ $course->title }}"
                                              class="card-img-top"
                                              style="height: 200px; object-fit: cover;">

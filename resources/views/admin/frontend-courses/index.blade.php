@@ -124,7 +124,7 @@
                                 <td>
                                     <div class="d-flex align-items-center">
                                         @if($course->thumbnail)
-                                        <img src="{{ asset('storage/' . $course->thumbnail) }}"
+                                        <img src="{{ course_image_url($course->thumbnail) }}"
                                              alt="{{ $course->title }}"
                                              class="rounded me-2"
                                              style="width: 50px; height: 50px; object-fit: cover;">

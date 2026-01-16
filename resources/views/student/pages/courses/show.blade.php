@@ -363,7 +363,7 @@
 
                         @if($course->thumbnail)
                             <div class="col-lg-4 text-center">
-                                <img src="{{ asset('storage/' . $course->thumbnail) }}"
+                                <img src="{{ course_image_url($course->thumbnail) }}"
                                      alt="{{ $course->title }}"
                                      class="img-fluid rounded"
                                      style="max-height: 200px; object-fit: cover; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
