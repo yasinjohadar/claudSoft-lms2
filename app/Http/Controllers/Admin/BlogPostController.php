@@ -146,7 +146,7 @@ class BlogPostController extends Controller
 
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
-                $validated['featured_image'] = $request->file('featured_image')->store('blog/images', 'public');
+                $validated['featured_image'] = $this->storageHelper->storeUploadedFile('public', 'blog/images', $request->file('featured_image'), 'image');
             }
 
             // Set published_at if status is published and not set
