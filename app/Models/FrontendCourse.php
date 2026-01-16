@@ -245,6 +245,7 @@ class FrontendCourse extends Model
 
     /**
      * Get the thumbnail URL - handles both local and server environments
+     * Uses dynamic storage (Bunny CDN, S3, etc.) with fallback to local
      */
     public function getThumbnailUrlAttribute()
     {
@@ -257,12 +258,8 @@ class FrontendCourse extends Model
             return $this->thumbnail;
         }
 
-        // Use url() helper which automatically uses current domain
-        // This ensures it works on both local and production
-        $url = url('storage/' . ltrim($this->thumbnail, '/'));
-        
-        // Fix double slashes in URL (e.g., https://domain.com//storage/...)
-        return str_replace('://', '://', preg_replace('#([^:])//+#', '$1/', $url));
+        // Use course_image_url() helper for dynamic storage support
+        return course_image_url($this->thumbnail);
     }
 
     public function getTwitterTitleAttribute($value)
