@@ -231,12 +231,34 @@ class AppStorageManager
     public function url(string $disk, string $path): string
     {
         try {
+            $mapping = StorageDiskMapping::where('disk_name', $disk)
+                ->where('is_active', true)
+                ->first();
+
+            if ($mapping && $mapping->primaryStorage) {
+                $storageConfig = $mapping->primaryStorage;
+                
+                // معالجة خاصة لـ Bunny Storage - استخدام CDN URL مباشرة
+                if ($storageConfig->driver === 'bunny') {
+                    $bunnyUrl = $this->getBunnyUrl($storageConfig, $path);
+                    if (!empty($bunnyUrl)) {
+                        return $bunnyUrl;
+                    }
+                }
+                
+                // للمحركات الأخرى - استخدام cdn_url إذا موجود
+                if (!empty($storageConfig->cdn_url)) {
+                    $cdnUrl = rtrim($storageConfig->cdn_url, '/');
+                    return $cdnUrl . '/' . ltrim($path, '/');
+                }
+            }
+
+            // Fallback إلى storage url
             $storage = $this->getDisk($disk);
             $url = $storage->url($path);
             
-            // إذا كان URL فارغاً أو غير صالح، حاول الحصول من CDN URL
+            // إذا كان URL فارغاً أو غير صالح، حاول مرة أخرى من CDN URL
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-                $mapping = StorageDiskMapping::where('disk_name', $disk)->first();
                 if ($mapping && $mapping->primaryStorage && $mapping->primaryStorage->cdn_url) {
                     $cdnUrl = rtrim($mapping->primaryStorage->cdn_url, '/');
                     $url = $cdnUrl . '/' . ltrim($path, '/');
@@ -248,6 +270,36 @@ class AppStorageManager
             Log::error("Storage URL failed for disk {$disk}: " . $e->getMessage());
             return '';
         }
+    }
+
+    /**
+     * بناء URL لـ Bunny Storage
+     */
+    private function getBunnyUrl(AppStorageConfig $config, string $path): string
+    {
+        // الأولوية 1: cdn_url من AppStorageConfig
+        if (!empty($config->cdn_url)) {
+            return rtrim($config->cdn_url, '/') . '/' . ltrim($path, '/');
+        }
+        
+        // الأولوية 2: pull_zone من config المشفر
+        $decryptedConfig = $config->getDecryptedConfig();
+        if (!empty($decryptedConfig['pull_zone'])) {
+            $pullZone = trim($decryptedConfig['pull_zone']);
+            // إذا كان pull_zone URL كامل
+            if (str_starts_with($pullZone, 'http')) {
+                return rtrim($pullZone, '/') . '/' . ltrim($path, '/');
+            }
+            // إذا كان اسم zone فقط
+            return 'https://' . $pullZone . '.b-cdn.net/' . ltrim($path, '/');
+        }
+        
+        // الأولوية 3: بناء URL من storage_zone
+        if (!empty($decryptedConfig['storage_zone'])) {
+            return 'https://' . trim($decryptedConfig['storage_zone']) . '.b-cdn.net/' . ltrim($path, '/');
+        }
+        
+        return '';
     }
 
     /**
