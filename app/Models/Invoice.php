@@ -112,6 +112,9 @@ class Invoice extends Model
 
         $this->save();
 
+        // Update related camp enrollments
+        $this->updateRelatedCampEnrollments();
+
         // Create payment record
         $payment = $this->payments()->create(array_merge([
             'payment_number' => Payment::generatePaymentNumber(),
@@ -130,6 +133,9 @@ class Invoice extends Model
         $this->paid_amount = $this->total_amount;
         $this->remaining_amount = 0;
         $this->save();
+
+        // Update related camp enrollments
+        $this->updateRelatedCampEnrollments();
 
         return $this;
     }
@@ -161,6 +167,34 @@ class Invoice extends Model
         $this->save();
 
         return $this;
+    }
+
+    /**
+     * Update payment status of related camp enrollments based on invoice status
+     */
+    public function updateRelatedCampEnrollments()
+    {
+        // Get all invoice items with camp_enrollment_id
+        $invoiceItems = $this->items()->whereNotNull('camp_enrollment_id')->get();
+        
+        foreach ($invoiceItems as $item) {
+            if ($item->camp_enrollment_id) {
+                $enrollment = CampEnrollment::find($item->camp_enrollment_id);
+                if ($enrollment) {
+                    // Update payment status based on invoice status
+                    if ($this->status === 'paid' && $this->remaining_amount <= 0) {
+                        $enrollment->payment_status = 'paid';
+                    } elseif ($this->status === 'issued' && $this->paid_amount == 0) {
+                        $enrollment->payment_status = 'unpaid';
+                    } elseif ($this->status === 'partial') {
+                        // For partial payments, keep as unpaid
+                        // You can change this logic if needed
+                        $enrollment->payment_status = 'unpaid';
+                    }
+                    $enrollment->save();
+                }
+            }
+        }
     }
 
     // Attributes

@@ -136,6 +136,9 @@ class Payment extends Model
             }
 
             $this->invoice->save();
+            
+            // Update related camp enrollments
+            $this->invoice->updateRelatedCampEnrollments();
         }
 
         return $this;
@@ -161,6 +164,9 @@ class Payment extends Model
             }
 
             $this->invoice->save();
+            
+            // Update related camp enrollments
+            $this->invoice->updateRelatedCampEnrollments();
         }
 
         return $this;
