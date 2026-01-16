@@ -236,10 +236,11 @@ class AppStorageManager
                 ->first();
 
             if ($mapping && $mapping->primaryStorage) {
-                $storageConfig = $mapping->primaryStorage;
+                // استخدام fresh() لضمان قراءة القيمة الجديدة من قاعدة البيانات
+                $storageConfig = $mapping->primaryStorage->fresh();
                 
                 // معالجة خاصة لـ Bunny Storage - استخدام CDN URL مباشرة
-                if ($storageConfig->driver === 'bunny') {
+                if ($storageConfig && $storageConfig->driver === 'bunny') {
                     $bunnyUrl = $this->getBunnyUrl($storageConfig, $path);
                     if (!empty($bunnyUrl)) {
                         return $bunnyUrl;
@@ -247,7 +248,7 @@ class AppStorageManager
                 }
                 
                 // للمحركات الأخرى - استخدام cdn_url إذا موجود
-                if (!empty($storageConfig->cdn_url)) {
+                if ($storageConfig && !empty($storageConfig->cdn_url)) {
                     $cdnUrl = rtrim($storageConfig->cdn_url, '/');
                     return $cdnUrl . '/' . ltrim($path, '/');
                 }
@@ -259,9 +260,12 @@ class AppStorageManager
             
             // إذا كان URL فارغاً أو غير صالح، حاول مرة أخرى من CDN URL
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-                if ($mapping && $mapping->primaryStorage && $mapping->primaryStorage->cdn_url) {
-                    $cdnUrl = rtrim($mapping->primaryStorage->cdn_url, '/');
-                    $url = $cdnUrl . '/' . ltrim($path, '/');
+                if ($mapping && $mapping->primaryStorage) {
+                    $freshStorage = $mapping->primaryStorage->fresh();
+                    if ($freshStorage && $freshStorage->cdn_url) {
+                        $cdnUrl = rtrim($freshStorage->cdn_url, '/');
+                        $url = $cdnUrl . '/' . ltrim($path, '/');
+                    }
                 }
             }
             
