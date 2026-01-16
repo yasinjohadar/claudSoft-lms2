@@ -193,7 +193,7 @@
                         @if($submission->course)
                             <div class="mb-3">
                                 @if($submission->course->image)
-                                    <img src="{{ asset('storage/' . $submission->course->image) }}"
+                                    <img src="{{ course_image_url($submission->course->image) }}"
                                          class="img-fluid rounded mb-3"
                                          alt="{{ $submission->course->title }}">
                                 @endif

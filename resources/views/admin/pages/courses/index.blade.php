@@ -199,15 +199,8 @@
                                                 <div class="d-flex align-items-center">
                                                     @if($course->image)
                                                         @php
-                                                            // Handle image path - check if it's a full URL or relative path
-                                                            $imagePath = $course->image;
-                                                            if (strpos($imagePath, 'http') === 0) {
-                                                                // External URL
-                                                                $imageUrl = $imagePath;
-                                                            } else {
-                                                                // Local file - use Storage URL helper which works with/without public in URL
-                                                                $imageUrl = \Storage::disk('public')->url($imagePath);
-                                                            }
+                                                            // Use course_image_url() helper for dynamic storage support
+                                                            $imageUrl = course_image_url($course->image);
                                                         @endphp
                                                         <img src="{{ $imageUrl }}"
                                                              alt="{{ $course->title }}"

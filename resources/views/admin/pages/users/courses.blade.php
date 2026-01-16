@@ -233,12 +233,8 @@
                                                     <div class="d-flex align-items-center">
                                                         @if($enrollment->course->image)
                                                             @php
-                                                                $imagePath = $enrollment->course->image;
-                                                                if (strpos($imagePath, 'http') === 0) {
-                                                                    $imageUrl = $imagePath;
-                                                                } else {
-                                                                    $imageUrl = \Storage::disk('public')->url($imagePath);
-                                                                }
+                                                                // Use course_image_url() helper for dynamic storage support
+                                                                $imageUrl = course_image_url($enrollment->course->image);
                                                             @endphp
                                                             <img src="{{ $imageUrl }}"
                                                                  alt="{{ $enrollment->course->title }}"

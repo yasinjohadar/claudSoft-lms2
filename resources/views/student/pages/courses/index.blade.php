@@ -278,7 +278,7 @@
                                 <div class="card custom-card course-card">
                                     <div class="position-relative">
                                         @if($course->thumbnail)
-                                            <img src="{{ asset('storage/' . $course->thumbnail) }}"
+                                            <img src="{{ course_image_url($course->thumbnail) }}"
                                                  alt="{{ $course->title }}"
                                                  class="course-image">
                                         @else

@@ -485,15 +485,8 @@
                             <div class="thumbnail-preview mt-3" id="thumbnailPreview" onclick="document.getElementById('thumbnailInput').click()">
                                 @if($course->image)
                                     @php
-                                        $imagePath = $course->image;
-                                        // Check if image path starts with 'http' (external URL)
-                                        if (strpos($imagePath, 'http') === 0) {
-                                            $imageUrl = $imagePath;
-                                        } 
-                                        // Use Storage::url() which works correctly with/without public in URL
-                                        else {
-                                            $imageUrl = \Storage::disk('public')->url($imagePath);
-                                        }
+                                        // Use course_image_url() helper for dynamic storage support
+                                        $imageUrl = course_image_url($course->image);
                                     @endphp
                                     <img src="{{ $imageUrl }}" alt="{{ $course->title }}" id="currentThumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width: 100%; height: 100%; object-fit: cover;">
                                     <div class="thumbnail-placeholder" style="display: none;">
