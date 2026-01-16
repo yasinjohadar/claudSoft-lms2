@@ -269,12 +269,7 @@
     </div>
     <!-- End::app-content -->
 
-
-
-@stop
-
-@section('scripts')
-<!-- Modal للدخول كطالب -->
+    <!-- Modal للدخول كطالب -->
 <div class="modal fade" id="impersonateModal" tabindex="-1" aria-labelledby="impersonateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -335,6 +330,9 @@
     </div>
 </div>
 
+@stop
+
+@section('scripts')
 <script>
 (function() {
     'use strict';
@@ -365,35 +363,103 @@
     }
     
     function showImpersonateModal(url, userName) {
-        currentImpersonateUrl = url;
-        document.getElementById('impersonateUrl').value = url;
-        document.getElementById('impersonateUserName').textContent = userName;
-        
-        // نسخ الرابط تلقائياً
-        copyToClipboard(url).then(function() {
-            // إظهار الـ Modal
+        console.log('showImpersonateModal called with:', { url, userName });
+        try {
             const modalElement = document.getElementById('impersonateModal');
-            const modal = new bootstrap.Modal(modalElement);
+            console.log('Modal element:', modalElement);
+            if (!modalElement) {
+                console.error('Modal element not found');
+                alert('خطأ: لم يتم العثور على المودال');
+                return;
+            }
             
-            // إضافة event listener لإزالة backdrop عند الإغلاق
-            modalElement.addEventListener('hidden.bs.modal', function() {
-                // إزالة backdrop إذا بقي
-                const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach(function(backdrop) {
-                    backdrop.remove();
-                });
+            // التحقق من وجود Bootstrap
+            console.log('Bootstrap type:', typeof bootstrap);
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap is not loaded');
+                alert('خطأ: Bootstrap غير محمل');
+                return;
+            }
+            
+            currentImpersonateUrl = url;
+            const urlInput = document.getElementById('impersonateUrl');
+            const userNameSpan = document.getElementById('impersonateUserName');
+            
+            console.log('URL input:', urlInput);
+            console.log('User name span:', userNameSpan);
+            
+            if (urlInput) {
+                urlInput.value = url;
+            }
+            if (userNameSpan) {
+                userNameSpan.textContent = userName;
+            }
+            
+            // نسخ الرابط تلقائياً
+            copyToClipboard(url).then(function() {
+                console.log('Clipboard copy successful, showing modal...');
+            }).catch(function(err) {
+                console.error('Error copying to clipboard:', err);
+            });
+            
+            // إظهار الـ Modal بعد نسخ الرابط (أو حتى لو فشل النسخ)
+            setTimeout(function() {
+                // إزالة أي modal instances قديمة
+                const existingModal = bootstrap.Modal.getInstance(modalElement);
+                if (existingModal) {
+                    existingModal.dispose();
+                }
                 
-                // إزالة modal-open class من body
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-            }, { once: true });
-            
-            modal.show();
-        });
+                // إنشاء modal جديد
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: true,
+                    keyboard: true,
+                    focus: true
+                });
+                console.log('Bootstrap Modal instance created:', modal);
+                
+                // إضافة event listener لإزالة backdrop عند الإغلاق
+                modalElement.addEventListener('hidden.bs.modal', function() {
+                    // إزالة backdrop إذا بقي
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(function(backdrop) {
+                        backdrop.remove();
+                    });
+                    
+                    // إزالة modal-open class من body
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }, { once: true });
+                
+                console.log('Calling modal.show()...');
+                modal.show();
+                console.log('modal.show() called');
+                
+                // التأكد من أن المودال مرئي
+                setTimeout(function() {
+                    if (modalElement.classList.contains('show')) {
+                        console.log('Modal is visible');
+                    } else {
+                        console.error('Modal is not visible after show()');
+                        // محاولة إظهاره يدوياً
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        const backdrop = document.createElement('div');
+                        backdrop.className = 'modal-backdrop fade show';
+                        document.body.appendChild(backdrop);
+                    }
+                }, 100);
+            }, 50);
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            alert('حدث خطأ أثناء فتح المودال: ' + error.message);
+        }
     }
     
     function handleImpersonateClick(e) {
+        console.log('Impersonate button clicked');
         e.preventDefault();
         e.stopPropagation();
         
@@ -422,6 +488,8 @@
             return;
         }
         
+        console.log('Sending fetch request for userId:', userId);
+        
         // إرسال طلب لإنشاء token
         fetch('{{ url("/admin/impersonate") }}/' + userId, {
             method: 'POST',
@@ -434,24 +502,31 @@
             credentials: 'same-origin'
         })
         .then(response => {
+            console.log('Response received:', response.status, response.statusText);
             if (!response.ok) {
-                return response.json().then(err => Promise.reject(err));
+                return response.json().then(err => {
+                    console.error('Response error:', err);
+                    return Promise.reject(err);
+                });
             }
             return response.json();
         })
         .then(data => {
+            console.log('Response data:', data);
             btn.innerHTML = originalHTML;
             btn.disabled = false;
             
             if (data.success && data.url) {
+                console.log('Calling showImpersonateModal with URL:', data.url);
                 // إظهار Modal مع الرابط
                 showImpersonateModal(data.url, userName);
             } else {
+                console.error('Invalid response data:', data);
                 alert('حدث خطأ: ' + (data.message || 'فشل في إنشاء رابط الدخول'));
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Fetch Error:', error);
             
             let errorMessage = 'حدث خطأ أثناء إنشاء رابط الدخول';
             
@@ -466,9 +541,16 @@
     }
     
     function initImpersonateButtons() {
+        console.log('Initializing impersonate buttons...');
+        const buttons = document.querySelectorAll('.impersonate-btn');
+        console.log('Found buttons:', buttons.length);
+        
         // أزرار الدخول كطالب
-        document.querySelectorAll('.impersonate-btn').forEach(function(btn) {
+        buttons.forEach(function(btn) {
+            // إزالة event listeners القديمة لتجنب التكرار
+            btn.removeEventListener('click', handleImpersonateClick);
             btn.addEventListener('click', handleImpersonateClick);
+            console.log('Added event listener to button:', btn);
         });
         
         // زر نسخ الرابط

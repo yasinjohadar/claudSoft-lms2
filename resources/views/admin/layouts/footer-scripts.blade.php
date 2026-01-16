@@ -31,6 +31,9 @@
 <!-- Color Picker JS -->
 <script src="{{ asset('assets/libs/@simonwep/pickr/pickr.es5.min.js') }}" defer></script>
 
+<!-- Choices JS -->
+<script src="{{ asset('assets/libs/choices.js/public/assets/scripts/choices.min.js') }}"></script>
+
 <!-- Apex Charts JS -->
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}" defer></script>
 
