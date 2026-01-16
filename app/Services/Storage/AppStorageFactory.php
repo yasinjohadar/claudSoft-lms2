@@ -14,10 +14,13 @@ class AppStorageFactory
      */
     public static function create(AppStorageConfig $config): \Illuminate\Contracts\Filesystem\Filesystem
     {
-        $driverConfig = $config->getDecryptedConfig();
-        $diskName = 'app_storage_' . $config->id . '_' . md5(json_encode($driverConfig));
+        // استخدام fresh() لضمان قراءة القيمة المحدثة من قاعدة البيانات
+        $freshConfig = $config->fresh();
         
-        $diskConfig = match($config->driver) {
+        $driverConfig = $freshConfig->getDecryptedConfig();
+        $diskName = 'app_storage_' . $freshConfig->id . '_' . md5(json_encode($driverConfig));
+        
+        $diskConfig = match($freshConfig->driver) {
             'local' => self::getLocalConfig($driverConfig),
             's3' => self::getS3Config($driverConfig),
             'google_drive' => self::getGoogleDriveConfig($driverConfig),
@@ -29,12 +32,12 @@ class AppStorageFactory
             'backblaze' => self::getBackblazeConfig($driverConfig),
             'cloudflare_r2' => self::getCloudflareR2Config($driverConfig),
             'bunny' => self::getBunnyConfig($driverConfig),
-            default => throw new \Exception("نوع التخزين غير مدعوم: {$config->driver}"),
+            default => throw new \Exception("نوع التخزين غير مدعوم: {$freshConfig->driver}"),
         };
 
         // إضافة CDN URL إذا كان موجوداً
-        if ($config->cdn_url) {
-            $diskConfig['url'] = rtrim($config->cdn_url, '/');
+        if ($freshConfig->cdn_url) {
+            $diskConfig['url'] = rtrim($freshConfig->cdn_url, '/');
         }
 
         // تسجيل الـ disk ديناميكياً

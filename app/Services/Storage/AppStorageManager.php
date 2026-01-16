@@ -44,7 +44,9 @@ class AppStorageManager
         }
 
         try {
-            return AppStorageFactory::create($mapping->primaryStorage);
+            // استخدام fresh() لضمان قراءة القيمة المحدثة من قاعدة البيانات
+            $freshStorage = $mapping->primaryStorage->fresh();
+            return AppStorageFactory::create($freshStorage);
         } catch (\Exception $e) {
             Log::error("Failed to create disk {$diskName}: " . $e->getMessage());
             return Storage::disk('public');
