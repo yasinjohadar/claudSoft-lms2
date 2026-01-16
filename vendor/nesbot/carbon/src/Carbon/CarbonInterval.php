@@ -533,7 +533,7 @@ class CarbonInterval extends DateInterval implements CarbonConverterInterface
                         ($totalDays - $this->d).' days '.
                         ($hours - $this->h).' hours '.
                         ($minutes - $this->i).' minutes '.
-                        ($intervalSeconds - $this->s).' seconds '.
+                        number_format($intervalSeconds - $this->s, 6, '.', '').' seconds '.
                         ($microseconds - $intervalMicroseconds).' microseconds ',
                     ));
                 }
@@ -1082,7 +1082,7 @@ class CarbonInterval extends DateInterval implements CarbonConverterInterface
 
                 default:
                     throw new InvalidIntervalException(
-                        \sprintf('Invalid part %s in definition %s', $part, $intervalDefinition),
+                        "Invalid part $part in definition $intervalDefinition",
                     );
             }
         }

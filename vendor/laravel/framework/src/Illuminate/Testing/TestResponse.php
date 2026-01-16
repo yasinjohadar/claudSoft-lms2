@@ -246,6 +246,37 @@ class TestResponse implements ArrayAccess
     }
 
     /**
+     * Assert whether the response is redirecting back to the previous location with the given errors in the session.
+     *
+     * @param  string|array  $keys
+     * @param  mixed  $format
+     * @param  string  $errorBag
+     * @return $this
+     */
+    public function assertRedirectBackWithErrors($keys = [], $format = null, $errorBag = 'default')
+    {
+        $this->assertRedirectBack();
+
+        $this->assertSessionHasErrors($keys, $format, $errorBag);
+
+        return $this;
+    }
+
+    /**
+     * Assert whether the response is redirecting back to the previous location with no errors in the session.
+     *
+     * @return $this
+     */
+    public function assertRedirectBackWithoutErrors()
+    {
+        $this->assertRedirectBack();
+
+        $this->assertSessionHasNoErrors();
+
+        return $this;
+    }
+
+    /**
      * Assert whether the response is redirecting to a given route.
      *
      * @param  \BackedEnum|string  $name
@@ -347,6 +378,29 @@ class TestResponse implements ArrayAccess
                 "Header [{$headerName}] was found, but value [{$actual}] does not match [{$value}]."
             );
         }
+
+        return $this;
+    }
+
+    /**
+     * Asserts that the response contains the given header and that its value contains the given string.
+     *
+     * @param  string  $headerName
+     * @param  string  $value
+     * @return $this
+     */
+    public function assertHeaderContains($headerName, $value)
+    {
+        PHPUnit::withResponse($this)->assertTrue(
+            $this->headers->has($headerName), "Header [{$headerName}] not present on response."
+        );
+
+        $actual = $this->headers->get($headerName, '');
+
+        PHPUnit::withResponse($this)->assertTrue(
+            Str::contains($actual, $value),
+            "Header [{$headerName}] was found, but [{$actual}] does not contain [{$value}]."
+        );
 
         return $this;
     }
@@ -1680,9 +1734,9 @@ class TestResponse implements ArrayAccess
                 "Session has unexpected key [{$key}]."
             );
         } elseif ($value instanceof Closure) {
-            PHPUnit::withResponse($this)->assertTrue($value($this->session()->get($key)));
+            PHPUnit::withResponse($this)->assertFalse($value($this->session()->get($key)));
         } else {
-            PHPUnit::withResponse($this)->assertEquals($value, $this->session()->get($key));
+            PHPUnit::withResponse($this)->assertNotEquals($value, $this->session()->get($key));
         }
 
         return $this;
@@ -1726,7 +1780,7 @@ class TestResponse implements ArrayAccess
     {
         $content = $this->content();
 
-        if (function_exists('json_validate') && json_validate($content)) {
+        if (json_validate($content)) {
             $this->ddJson($key);
         }
 
@@ -1737,6 +1791,7 @@ class TestResponse implements ArrayAccess
      * Dump the JSON payload from the response and end the script.
      *
      * @param  string|null  $key
+     * @return never
      */
     public function ddJson($key = null)
     {
