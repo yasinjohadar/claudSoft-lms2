@@ -26,6 +26,9 @@ class StorageServiceProvider extends ServiceProvider
     {
         // تسجيل Bunny Storage Driver
         $this->registerBunnyDriver();
+        
+        // تسجيل Google Drive Driver
+        $this->registerGoogleDriveDriver();
 
         // تسجيل الـ disks ديناميكياً من قاعدة البيانات
         try {
@@ -65,6 +68,46 @@ class StorageServiceProvider extends ServiceProvider
         } catch (\Exception $e) {
             // في حالة عدم تثبيت package بعد
             Log::debug('StorageServiceProvider: Could not register bunnycdn driver - ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * تسجيل Google Drive Driver
+     */
+    private function registerGoogleDriveDriver(): void
+    {
+        try {
+            // التحقق من وجود package
+            if (!class_exists(\Google\Client::class)) {
+                Log::debug('StorageServiceProvider: Google Drive package not installed (Google\Client not found)');
+                return;
+            }
+
+            Storage::extend('google', function ($app, $config) {
+                $options = [];
+
+                if (!empty($config['teamDriveId'] ?? null)) {
+                    $options['teamDriveId'] = $config['teamDriveId'];
+                }
+
+                $client = new \Google\Client;
+                $client->setClientId($config['clientId']);
+                $client->setClientSecret($config['clientSecret']);
+                $client->refreshToken($config['refreshToken']);
+
+                if (isset($config['accessToken'])) {
+                    $client->setAccessToken($config['accessToken']);
+                }
+
+                $service = new \Google\Service\Drive($client);
+                $adapter = new \Masbug\Flysystem\GoogleDriveAdapter($service, $config['folder'] ?? '/', $options);
+                $driver = new \League\Flysystem\Filesystem($adapter);
+
+                return new \Illuminate\Filesystem\FilesystemAdapter($driver, $adapter);
+            });
+        } catch (\Exception $e) {
+            // في حالة عدم تثبيت package بعد
+            Log::debug('StorageServiceProvider: Could not register google driver - ' . $e->getMessage());
         }
     }
 
