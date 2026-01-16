@@ -80,7 +80,18 @@ if (!function_exists('course_image_url')) {
         $imagePath = ltrim($imagePath, '/');
         $filename = basename($imagePath);
         
-        // Method 1: Try route (works even if storage link doesn't work on server)
+        // Method 1: Try StorageHelperService (dynamic storage) - FIRST
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $url = $storageHelper->getFileUrl('public', $imagePath);
+            if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                return $url;
+            }
+        } catch (\Exception $e) {
+            // Continue to next method
+        }
+        
+        // Method 2: Try route (local storage fallback) - SECOND
         try {
             if (strpos($imagePath, 'courses/images/') !== false) {
                 return route('course.image', ['filename' => $filename]);
@@ -92,18 +103,7 @@ if (!function_exists('course_image_url')) {
             // Continue to next method
         }
         
-        // Method 2: Try StorageHelperService (dynamic storage)
-        try {
-            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
-            $url = $storageHelper->getFileUrl('public', $imagePath);
-            if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-                return $url;
-            }
-        } catch (\Exception $e) {
-            // Continue to next method
-        }
-        
-        // Method 3: Fallback to asset (requires storage link)
+        // Method 3: Fallback to asset (requires storage link) - LAST
         return asset('storage/' . $imagePath);
     }
 }

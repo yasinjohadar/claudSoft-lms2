@@ -167,7 +167,7 @@ class CourseController extends Controller
 
             // Handle image upload
             if ($request->hasFile('image')) {
-                $validated['image'] = $request->file('image')->store('courses/images', 'public');
+                $validated['image'] = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
             }
 
             // Set created_by
