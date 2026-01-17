@@ -77,7 +77,7 @@ a {
 .hero-section {
     height: 70vh;
     background-color: antiquewhite;
-    background-image: url("../../../assets/images/hero.webp");
+    background-image: url("https://claudsoft.b-cdn.net/FrontEnd/hero.webp");
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
