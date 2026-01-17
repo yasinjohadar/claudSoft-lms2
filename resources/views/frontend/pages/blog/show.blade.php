@@ -272,6 +272,20 @@
                                 </div>
                                 <h4 class="author-name">{{ $post->author->name }}</h4>
                                 <p class="author-role">كاتب المقال</p>
+                                
+                                @auth
+                                    @php
+                                        $user = auth()->user();
+                                    @endphp
+                                    @if(method_exists($user, 'hasRole') && $user->hasRole('admin'))
+                                        <a href="{{ route('admin.blog.posts.edit', $post->id) }}" 
+                                           class="btn btn-outline-warning w-100 mt-3 mb-3">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i>
+                                            تعديل المقال (لوحة التحكم)
+                                        </a>
+                                    @endif
+                                @endauth
+                                
                                 @if($post->author->bio)
                                 <p class="author-bio">{{ $post->author->bio }}</p>
                                 @endif
