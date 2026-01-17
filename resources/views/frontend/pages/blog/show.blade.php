@@ -274,10 +274,7 @@
                                 <p class="author-role">كاتب المقال</p>
                                 
                                 @auth
-                                    @php
-                                        $user = auth()->user();
-                                    @endphp
-                                    @if(method_exists($user, 'hasRole') && $user->hasRole('admin'))
+                                    @if(method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin'))
                                         <a href="{{ route('admin.blog.posts.edit', $post->id) }}" 
                                            class="btn btn-outline-warning w-100 mt-3 mb-3">
                                             <i class="fa-solid fa-pen-to-square me-1"></i>
