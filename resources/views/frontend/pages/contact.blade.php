@@ -37,17 +37,17 @@
     {{-- Breadcrumb Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "الرئيسية",
                 "item": "{{ route('frontend.home') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "اتصل بنا",
                 "item": "{{ $canonicalUrl }}"
@@ -59,13 +59,13 @@
     {{-- ContactPage Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "ContactPage",
+        "@@context": "https://schema.org",
+        "@@type": "ContactPage",
         "name": "{{ $pageTitle }}",
         "description": "{{ $pageDescription }}",
         "url": "{{ $canonicalUrl }}",
         "mainEntity": {
-            "@type": "Organization",
+            "@@type": "Organization",
             "name": "{{ config('app.name') }}",
             "url": "{{ route('frontend.home') }}"
         }

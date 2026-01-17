@@ -71,10 +71,10 @@
 @if($course->reviews_count > 0 && $course->rating > 0)
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "AggregateRating",
+  "@@context": "https://schema.org",
+  "@@type": "AggregateRating",
   "itemReviewed": {
-    "@type": "Course",
+    "@@type": "Course",
     "name": "{{ $course->title }}"
   },
   "ratingValue": "{{ number_format($course->rating, 1) }}",
@@ -88,29 +88,29 @@
 {{-- Breadcrumb Schema --}}
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
+  "@@context": "https://schema.org",
+  "@@type": "BreadcrumbList",
   "itemListElement": [
     {
-      "@type": "ListItem",
+      "@@type": "ListItem",
       "position": 1,
       "name": "الرئيسية",
       "item": "{{ route('frontend.home') }}"
     },
     {
-      "@type": "ListItem",
+      "@@type": "ListItem",
       "position": 2,
       "name": "الكورسات",
       "item": "{{ route('frontend.courses.index') }}"
     },
     {
-      "@type": "ListItem",
+      "@@type": "ListItem",
       "position": 3,
       "name": "{{ $course->category->name ?? 'التصنيف' }}",
       "item": "{{ route('frontend.courses.index', ['category' => $course->category_id]) }}"
     },
     {
-      "@type": "ListItem",
+      "@@type": "ListItem",
       "position": 4,
       "name": "{{ $course->title }}",
       "item": "{{ $courseUrl }}"

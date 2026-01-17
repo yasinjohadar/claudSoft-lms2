@@ -37,50 +37,50 @@
     {{-- Schema.org JSON-LD --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Blog",
+        "@@context": "https://schema.org",
+        "@@type": "Blog",
         "name": "{{ config('app.name') }} - المدونة",
         "description": "{{ $pageDescription }}",
         "url": "{{ $canonicalUrl }}",
         "publisher": {
-            "@type": "Organization",
+            "@@type": "Organization",
             "name": "{{ config('app.name') }}",
             "logo": {
-                "@type": "ImageObject",
+                "@@type": "ImageObject",
                 "url": "{{ asset('frontend/assets/images/logo.png') }}"
             }
         },
         "blogPost": [
             @foreach($posts as $index => $post)
             {
-                "@type": "BlogPosting",
+                "@@type": "BlogPosting",
                 "headline": "{{ $post->title }}",
                 "description": "{{ Str::limit(strip_tags($post->excerpt ?? ''), 150) }}",
                 "url": "{{ $post->url }}",
                 "datePublished": "{{ $post->published_at->toIso8601String() }}",
                 "dateModified": "{{ $post->updated_at->toIso8601String() }}",
                 "author": {
-                    "@type": "Person",
+                    "@@type": "Person",
                     "name": "{{ $post->author->name ?? 'المدير' }}"
                 },
                 "publisher": {
-                    "@type": "Organization",
+                    "@@type": "Organization",
                     "name": "{{ config('app.name') }}"
                 }
             }{{ !$loop->last ? ',' : '' }}
             @endforeach
         ],
         "breadcrumb": {
-            "@type": "BreadcrumbList",
+            "@@type": "BreadcrumbList",
             "itemListElement": [
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": 1,
                     "name": "الرئيسية",
                     "item": "{{ route('frontend.home') }}"
                 },
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": 2,
                     "name": "المدونة",
                     "item": "{{ route('frontend.blog.index') }}"

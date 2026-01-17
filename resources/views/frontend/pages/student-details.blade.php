@@ -39,23 +39,23 @@
     {{-- Breadcrumb Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "الرئيسية",
                 "item": "{{ route('frontend.home') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "الطلاب",
                 "item": "{{ route('frontend.students.index') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 3,
                 "name": "{{ $student->name }}",
                 "item": "{{ $canonicalUrl }}"
@@ -67,8 +67,8 @@
     {{-- Person Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Person",
+        "@@context": "https://schema.org",
+        "@@type": "Person",
         "name": "{{ $student->name }}",
         "url": "{{ $canonicalUrl }}",
         @if($student->avatar)
@@ -78,7 +78,7 @@
         "description": "{{ Str::limit(strip_tags($student->bio), 200) }}",
         @endif
         "memberOf": {
-            "@type": "EducationalOrganization",
+            "@@type": "EducationalOrganization",
             "name": "{{ config('app.name') }}"
         }
     }

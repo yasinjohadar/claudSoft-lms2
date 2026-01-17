@@ -37,26 +37,26 @@
     {{-- Schema.org JSON-LD --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
+        "@@context": "https://schema.org",
+        "@@type": "CollectionPage",
         "name": "{{ $pageTitle }}",
         "description": "{{ $pageDescription }}",
         "url": "{{ $canonicalUrl }}",
         "mainEntity": {
-            "@type": "ItemList",
+            "@@type": "ItemList",
             "numberOfItems": {{ $courses->total() }},
             "itemListElement": [
                 @foreach($courses as $index => $course)
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": {{ ($courses->currentPage() - 1) * $courses->perPage() + $index + 1 }},
                     "item": {
-                        "@type": "Course",
+                        "@@type": "Course",
                         "name": "{{ $course->title }}",
                         "description": "{{ Str::limit(strip_tags($course->description ?? ''), 150) }}",
                         "url": "{{ route('frontend.courses.show', $course->slug) }}",
                         "provider": {
-                            "@type": "Organization",
+                            "@@type": "Organization",
                             "name": "{{ config('app.name') }}"
                         }
                     }
@@ -65,16 +65,16 @@
             ]
         },
         "breadcrumb": {
-            "@type": "BreadcrumbList",
+            "@@type": "BreadcrumbList",
             "itemListElement": [
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": 1,
                     "name": "الرئيسية",
                     "item": "{{ route('frontend.home') }}"
                 },
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": 2,
                     "name": "الكورسات",
                     "item": "{{ route('frontend.courses.index') }}"

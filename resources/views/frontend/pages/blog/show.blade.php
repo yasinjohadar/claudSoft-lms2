@@ -49,15 +49,15 @@
     {{-- Schema.org JSON-LD - Enhanced Article Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Article",
+        "@@context": "https://schema.org",
+        "@@type": "Article",
         "headline": "{{ $seoTags['title'] }}",
         "description": "{{ $seoTags['description'] }}",
         "image": "{{ $seoTags['og:image'] ? asset('storage/' . $seoTags['og:image']) : asset('frontend/assets/img/default-blog.jpg') }}",
         "datePublished": "{{ $post->published_at->toIso8601String() }}",
         "dateModified": "{{ $post->updated_at->toIso8601String() }}",
         "author": {
-            "@type": "Person",
+            "@@type": "Person",
             "name": "{{ $post->author->name ?? 'المدير' }}",
             @if($post->author && $post->author->avatar)
             "image": "{{ asset('storage/' . $post->author->avatar) }}",
@@ -65,16 +65,16 @@
             "url": "{{ $post->author ? route('frontend.students.show', $post->author->id) : '#' }}"
         },
         "publisher": {
-            "@type": "Organization",
+            "@@type": "Organization",
             "name": "{{ config('app.name') }}",
             "logo": {
-                "@type": "ImageObject",
+                "@@type": "ImageObject",
                 "url": "{{ asset('frontend/assets/images/logo.png') }}"
             }
         },
         "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "{{ $post->url }}"
+            "@@type": "WebPage",
+            "@@id": "{{ $post->url }}"
         },
         @if($post->category)
         "articleSection": "{{ $post->category->name }}",
@@ -94,31 +94,31 @@
     {{-- Breadcrumb Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "الرئيسية",
                 "item": "{{ route('frontend.home') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "المدونة",
                 "item": "{{ route('frontend.blog.index') }}"
             },
             @if($post->category)
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 3,
                 "name": "{{ $post->category->name }}",
                 "item": "{{ $post->category->url }}"
             },
             @endif
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": {{ $post->category ? 4 : 3 }},
                 "name": "{{ $post->title }}"
             }

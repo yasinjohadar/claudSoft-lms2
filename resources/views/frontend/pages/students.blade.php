@@ -37,17 +37,17 @@
     {{-- Breadcrumb Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "الرئيسية",
                 "item": "{{ route('frontend.home') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "الطلاب",
                 "item": "{{ $canonicalUrl }}"
@@ -59,8 +59,8 @@
     {{-- CollectionPage Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
+        "@@context": "https://schema.org",
+        "@@type": "CollectionPage",
         "name": "{{ $pageTitle }}",
         "description": "{{ $pageDescription }}",
         "url": "{{ $canonicalUrl }}"

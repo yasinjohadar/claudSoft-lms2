@@ -38,14 +38,14 @@
     {{-- Organization Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Organization",
+        "@@context": "https://schema.org",
+        "@@type": "Organization",
         "name": "{{ config('app.name') }}",
         "url": "{{ route('frontend.home') }}",
         "logo": "{{ asset('frontend/assets/images/logo.png') }}",
         "description": "{{ $pageDescription }}",
         "address": {
-            "@type": "PostalAddress",
+            "@@type": "PostalAddress",
             "addressCountry": "SA"
         },
         "sameAs": []
@@ -55,14 +55,14 @@
     {{-- WebSite Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
+        "@@context": "https://schema.org",
+        "@@type": "WebSite",
         "name": "{{ config('app.name') }}",
         "url": "{{ route('frontend.home') }}",
         "potentialAction": {
-            "@type": "SearchAction",
+            "@@type": "SearchAction",
             "target": {
-                "@type": "EntryPoint",
+                "@@type": "EntryPoint",
                 "urlTemplate": "{{ route('frontend.blog.search') }}?q={search_term_string}"
             },
             "query-input": "required name=search_term_string"
@@ -74,15 +74,15 @@
     {{-- FAQPage Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
+        "@@context": "https://schema.org",
+        "@@type": "FAQPage",
         "mainEntity": [
             @foreach($faqs as $index => $faq)
             {
-                "@type": "Question",
+                "@@type": "Question",
                 "name": "{{ addslashes($faq->question) }}",
                 "acceptedAnswer": {
-                    "@type": "Answer",
+                    "@@type": "Answer",
                     "text": "{{ addslashes(strip_tags($faq->answer)) }}"
                 }
             }{{ !$loop->last ? ',' : '' }}
@@ -100,4 +100,4 @@
     @include("frontend.sections.blog")
     @include("frontend.sections.testimonials")
     @include("frontend.sections.faqs")
-@stop
+@endsection

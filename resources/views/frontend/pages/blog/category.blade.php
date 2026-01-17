@@ -37,23 +37,23 @@
     {{-- Breadcrumb Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "الرئيسية",
                 "item": "{{ route('frontend.home') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "المدونة",
                 "item": "{{ route('frontend.blog.index') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 3,
                 "name": "{{ $category->name }}",
                 "item": "{{ $canonicalUrl }}"
@@ -65,22 +65,22 @@
     {{-- CollectionPage Schema --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
+        "@@context": "https://schema.org",
+        "@@type": "CollectionPage",
         "name": "{{ $category->name }}",
         "description": "{{ $pageDescription }}",
         "url": "{{ $canonicalUrl }}",
         "mainEntity": {
-            "@type": "ItemList",
+            "@@type": "ItemList",
             "numberOfItems": {{ $posts->total() ?? 0 }},
             "itemListElement": [
                 @if(isset($posts) && $posts->count() > 0)
                 @foreach($posts->take(10) as $index => $post)
                 {
-                    "@type": "ListItem",
+                    "@@type": "ListItem",
                     "position": {{ $index + 1 }},
                     "item": {
-                        "@type": "Article",
+                        "@@type": "Article",
                         "name": "{{ $post->title }}",
                         "url": "{{ $post->url }}"
                     }

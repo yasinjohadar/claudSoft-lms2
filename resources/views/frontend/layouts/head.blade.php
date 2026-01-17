@@ -14,12 +14,12 @@
     {{-- For better Google Search Results icon, ensure favicon.ico exists in public root --}}
 
     {{-- Basic Meta Tags --}}
-    @hasSection('meta_description')
-    <meta name="description" content="@yield('meta_description')">
+    @if(View::hasSection('meta_description'))
+        <meta name="description" content="@yield('meta_description')">
     @endif
     
-    @hasSection('meta_keywords')
-    <meta name="keywords" content="@yield('meta_keywords')">
+    @if(View::hasSection('meta_keywords'))
+        <meta name="keywords" content="@yield('meta_keywords')">
     @endif
 
     {{-- Additional SEO Meta Tags (for course pages) --}}
@@ -71,14 +71,14 @@
     {{-- Organization Schema (for all pages) --}}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Organization",
+        "@@context": "https://schema.org",
+        "@@type": "Organization",
         "name": "{{ config('app.name') }}",
         "url": "{{ url('/') }}",
         "logo": "{{ asset('frontend/assets/images/logo.png') }}",
         "description": "{{ config('app.description', 'منصة تعليمية متخصصة في تقديم الدورات التدريبية والكورسات التعليمية') }}",
         "address": {
-            "@type": "PostalAddress",
+            "@@type": "PostalAddress",
             "addressCountry": "SA",
             "addressLocality": "Riyadh"
         },
