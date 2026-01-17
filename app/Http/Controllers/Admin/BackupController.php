@@ -178,6 +178,14 @@ class BackupController extends Controller
             'duration' => $backup->duration,
             'logs_count' => $backup->logs->count(),
             'latest_log' => $backup->logs->last()?->message,
+            'logs' => $backup->logs->map(function($log) {
+                return [
+                    'id' => $log->id,
+                    'level' => $log->level,
+                    'message' => $log->message,
+                    'created_at' => $log->created_at->format('H:i:s'),
+                ];
+            })->values(),
         ]);
     }
 
@@ -243,17 +251,99 @@ class BackupController extends Controller
      */
     public function restore(Request $request, Backup $backup)
     {
-        $validated = $request->validate([
-            'confirm' => 'required|accepted',
-        ]);
+        // قبول confirm كـ true أو 1 في JSON request
+        if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            // التحقق من وجود confirm
+            if (!$request->has('confirm')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب تأكيد عملية الاستعادة',
+                ], 422);
+            }
+            
+            // التحقق من أن confirm هو true أو 1
+            $confirm = $request->input('confirm');
+            if (!$request->boolean('confirm') && $confirm !== '1' && $confirm !== 1 && $confirm !== 'true') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب تأكيد عملية الاستعادة',
+                ], 422);
+            }
+        } else {
+            // للـ form submission العادي
+            $validated = $request->validate([
+                'confirm' => 'required|accepted',
+            ]);
+        }
 
+        // إذا كان AJAX request، تنفيذ مباشر بدلاً من Job
+        if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            try {
+                Log::info('Starting backup restore', [
+                    'backup_id' => $backup->id,
+                    'backup_name' => $backup->name,
+                    'user_id' => Auth::id(),
+                ]);
+                
+                // تنفيذ مباشر بدلاً من Job لضمان التنفيذ الفوري
+                $result = $this->backupService->restoreBackup($backup, $request->all());
+                
+                if ($result) {
+                    Log::info('Backup restore completed successfully', [
+                        'backup_id' => $backup->id,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم استعادة النسخة الاحتياطية بنجاح.',
+                        'backup_id' => $backup->id,
+                    ]);
+                } else {
+                    throw new \Exception('فشلت عملية الاستعادة بدون خطأ محدد');
+                }
+            } catch (\Exception $e) {
+                Log::error('Error restoring backup: ' . $e->getMessage(), [
+                    'backup_id' => $backup->id,
+                    'backup_name' => $backup->name,
+                    'user_id' => Auth::id(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء استعادة النسخة: ' . $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        // Fallback للـ form submission العادي
         try {
-            $this->backupService->restoreBackup($backup, $request->all());
-
-            return redirect()->route('backups.index')
-                           ->with('success', 'تم استعادة النسخة الاحتياطية بنجاح.');
+            Log::info('Starting backup restore (form submission)', [
+                'backup_id' => $backup->id,
+                'backup_name' => $backup->name,
+                'user_id' => Auth::id(),
+            ]);
+            
+            $result = $this->backupService->restoreBackup($backup, $request->all());
+            
+            if ($result) {
+                Log::info('Backup restore completed successfully (form submission)', [
+                    'backup_id' => $backup->id,
+                ]);
+                
+                return redirect()->route('backups.index')
+                               ->with('success', 'تم استعادة النسخة الاحتياطية بنجاح.');
+            } else {
+                throw new \Exception('فشلت عملية الاستعادة بدون خطأ محدد');
+            }
         } catch (\Exception $e) {
-            Log::error('Error restoring backup: ' . $e->getMessage());
+            Log::error('Error restoring backup (form submission): ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+                'backup_name' => $backup->name,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء استعادة النسخة: ' . $e->getMessage());
         }

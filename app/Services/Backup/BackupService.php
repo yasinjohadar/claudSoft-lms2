@@ -51,20 +51,20 @@ class BackupService
         
         // إنشاء نسخة جديدة إذا لم يتم تمرير backup_id
         if (!$backup) {
-            $backup = Backup::create([
-                'name' => $options['name'] ?? 'backup_' . now()->format('Y-m-d_H-i-s'),
-                'type' => $options['type'] ?? 'manual',
-                'backup_type' => $options['backup_type'] ?? 'full',
+        $backup = Backup::create([
+            'name' => $options['name'] ?? 'backup_' . now()->format('Y-m-d_H-i-s'),
+            'type' => $options['type'] ?? 'manual',
+            'backup_type' => $options['backup_type'] ?? 'full',
                 'storage_driver' => $storageDriver,
                 'storage_config_id' => $storageConfigId, // إضافة ربط مع AppStorageConfig
-                'storage_path' => null, // سيتم تعيينه بعد الرفع
-                'file_path' => null, // سيتم تعيينه بعد الإنشاء
-                'compression_type' => $options['compression_type'] ?? 'zip',
-                'status' => 'pending',
-                'retention_days' => $options['retention_days'] ?? 30,
-                'created_by' => $options['created_by'] ?? auth()->id(),
-                'schedule_id' => $options['schedule_id'] ?? null,
-            ]);
+            'storage_path' => null, // سيتم تعيينه بعد الرفع
+            'file_path' => null, // سيتم تعيينه بعد الإنشاء
+            'compression_type' => $options['compression_type'] ?? 'zip',
+            'status' => 'pending',
+            'retention_days' => $options['retention_days'] ?? 30,
+            'created_by' => $options['created_by'] ?? auth()->id(),
+            'schedule_id' => $options['schedule_id'] ?? null,
+        ]);
         }
 
         // تحديث حالة النسخة إلى running
@@ -687,7 +687,7 @@ class BackupService
             // حذف الملف المحلي المضغوط - file_path هو مسار كامل (absolute path)
             if ($backup->file_path && file_exists($backup->file_path)) {
                 try {
-                    @unlink($backup->file_path);
+                @unlink($backup->file_path);
                     $this->log($backup, 'info', 'تم حذف الملف المحلي المضغوط');
                 } catch (\Exception $e) {
                     $this->log($backup, 'warning', 'فشل حذف الملف المحلي المضغوط: ' . $e->getMessage());
@@ -751,20 +751,59 @@ class BackupService
                 $preRestoreConfigPath = $preRestoreBackup['config'] ?? null;
             }
 
+            $this->log($backup, 'info', 'تحميل النسخة الاحتياطية من التخزين...');
             $fileContent = $this->storageManager->retrieve($backup);
+            
+            // التحقق من أن الملف تم تحميله فعلياً
+            if (empty($fileContent)) {
+                throw new \Exception('فشل تحميل النسخة: الملف فارغ');
+            }
+            
+            $this->log($backup, 'info', 'تم تحميل النسخة من التخزين: ' . strlen($fileContent) . ' bytes');
+            
             $tempFilePath = storage_path('app/temp/restore_' . $backup->id . '_' . time() . '.zip');
             
             if (!is_dir(dirname($tempFilePath))) {
                 mkdir(dirname($tempFilePath), 0755, true);
             }
             
-            file_put_contents($tempFilePath, $fileContent);
+            $this->log($backup, 'info', 'حفظ النسخة في ملف مؤقت...');
+            $bytesWritten = file_put_contents($tempFilePath, $fileContent);
+            
+            // التحقق من أن الملف تم حفظه فعلياً
+            if ($bytesWritten === false || !file_exists($tempFilePath) || filesize($tempFilePath) === 0) {
+                throw new \Exception('فشل حفظ النسخة في الملف المؤقت');
+            }
+            
+            $this->log($backup, 'info', 'تم حفظ النسخة في الملف المؤقت: ' . filesize($tempFilePath) . ' bytes');
             $filePath = $tempFilePath;
 
             // فك الضغط
+            $this->log($backup, 'info', 'بدء فك ضغط النسخة...');
             $extractedPath = $this->compressionService->decompress($filePath, storage_path('app/backups/restore_' . $backup->id));
+            $this->log($backup, 'info', 'تم فك ضغط النسخة بنجاح');
+
+            // حفظ مسار المجلد الأصلي للتنظيف لاحقاً
+            $extractedDirectory = is_dir($extractedPath) ? $extractedPath : dirname($extractedPath);
+
+            // البحث عن ملف SQL في المجلد المستخرج (لـ database backup)
+            if ($backup->backup_type === 'database') {
+                $sqlFile = $this->findSqlFile($extractedPath);
+                if (!$sqlFile) {
+                    throw new \Exception('لم يتم العثور على ملف SQL في النسخة المستخرجة. المسار: ' . $extractedPath);
+                }
+                
+                // التحقق من أن ملف SQL موجود
+                if (!file_exists($sqlFile)) {
+                    throw new \Exception('ملف SQL غير موجود: ' . $sqlFile);
+                }
+                
+                $this->log($backup, 'info', 'تم العثور على ملف SQL: ' . basename($sqlFile) . ' (' . filesize($sqlFile) . ' bytes)');
+                $extractedPath = $sqlFile; // استخدام ملف SQL مباشرة
+            }
 
             // استعادة حسب النوع
+            $this->log($backup, 'info', 'بدء استعادة ' . $backup->backup_type . '...');
             match($backup->backup_type) {
                 'database' => $this->restoreDatabase($extractedPath),
                 'files' => $this->restoreFiles($extractedPath),
@@ -772,9 +811,10 @@ class BackupService
                 'full' => $this->restoreFull($extractedPath),
                 default => throw new \Exception('نوع النسخ غير معروف'),
             };
+            $this->log($backup, 'info', 'تم استعادة ' . $backup->backup_type . ' بنجاح');
 
-            // تنظيف الملفات المؤقتة
-            $this->cleanupRestoreTempFiles($tempFilePath, $extractedPath);
+            // تنظيف الملفات المؤقتة - استخدام المجلد الأصلي
+            $this->cleanupRestoreTempFiles($backup, $tempFilePath, $extractedDirectory ?? $extractedPath);
 
             $this->log($backup, 'info', 'اكتملت عملية الاستعادة بنجاح');
 
@@ -917,20 +957,30 @@ class BackupService
     /**
      * تنظيف الملفات المؤقتة بعد الاستعادة
      */
-    private function cleanupRestoreTempFiles(string $tempFilePath, string $extractedPath): void
+    private function cleanupRestoreTempFiles(Backup $backup, string $tempFilePath, string $extractedPath): void
     {
         try {
-            // حذف الملف المضغوط المؤقت
-            if (file_exists($tempFilePath)) {
+            // حذف الملف المضغوط المؤقت فقط (ليس المجلد إذا كان ملف SQL)
+            if (file_exists($tempFilePath) && is_file($tempFilePath)) {
                 @unlink($tempFilePath);
+                $this->log($backup, 'info', 'تم حذف الملف المضغوط المؤقت');
             }
 
-            // حذف المجلد المستخرج
+            // حذف المجلد المستخرج فقط إذا كان مجلداً وليس ملفاً
             if (is_dir($extractedPath)) {
                 $this->deleteDirectory($extractedPath);
+                $this->log($backup, 'info', 'تم حذف المجلد المستخرج');
+            } elseif (is_file($extractedPath)) {
+                // إذا كان ملف SQL مباشرة، احذف المجلد الأصلي (parent directory)
+                $parentDir = dirname($extractedPath);
+                if (is_dir($parentDir) && strpos($parentDir, 'restore_') !== false) {
+                    $this->deleteDirectory($parentDir);
+                    $this->log($backup, 'info', 'تم حذف المجلد المستخرج (من ملف SQL)');
+                }
             }
         } catch (\Exception $e) {
             Log::warning('Failed to cleanup restore temp files: ' . $e->getMessage());
+            $this->log($backup, 'warning', 'فشل حذف الملفات المؤقتة: ' . $e->getMessage());
         }
     }
 
@@ -1029,6 +1079,24 @@ class BackupService
             throw new \Exception("ملف قاعدة البيانات غير موجود: {$filePath}");
         }
 
+        // التحقق من أن المسار هو ملف وليس مجلد
+        if (is_dir($filePath)) {
+            throw new \Exception("المسار المحدد هو مجلد وليس ملف: {$filePath}. يجب تحديد مسار ملف SQL مباشرة.");
+        }
+
+        if (!is_file($filePath)) {
+            throw new \Exception("المسار المحدد ليس ملفاً صالحاً: {$filePath}");
+        }
+
+        // التحقق من أن الملف هو ملف SQL
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if ($extension !== 'sql') {
+            Log::warning("تحذير: الملف ليس بامتداد .sql: {$filePath}");
+        }
+
+        $fileSize = filesize($filePath);
+        Log::info("Starting database restore from: {$filePath} ({$fileSize} bytes)");
+
         // بناء الأمر
         $command = sprintf(
             '%s --user=%s --password=%s --host=%s --port=%s %s',
@@ -1040,51 +1108,39 @@ class BackupService
             escapeshellarg($database)
         );
 
-        // قراءة محتوى الملف
-        $sqlContent = file_get_contents($filePath);
-        if ($sqlContent === false) {
-            throw new \Exception("فشل في قراءة ملف قاعدة البيانات: {$filePath}");
-        }
-
-        // على Windows، نستخدم pipe بدلاً من redirect
+        // على Windows، نستخدم الملف مباشرة في الأمر بدلاً من pipe لتجنب Broken pipe
+        // نستخدم --source option إذا كان متاحاً
         if ($isWindows) {
-            $process = proc_open(
-                $command,
-                [
-                    0 => ['pipe', 'r'], // stdin
-                    1 => ['pipe', 'w'], // stdout
-                    2 => ['pipe', 'w'], // stderr
-                ],
-                $pipes
-            );
-
-            if (!is_resource($process)) {
-                throw new \Exception('فشل في بدء عملية MySQL');
-            }
-
-            // كتابة محتوى SQL إلى stdin
-            fwrite($pipes[0], $sqlContent);
-            fclose($pipes[0]);
-
-            // قراءة stderr للأخطاء
-            $errorOutput = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-
-            $returnVar = proc_close($process);
-
+            // استخدام --source option (أفضل وأكثر استقراراً)
+            $commandWithFile = $command . ' --source=' . escapeshellarg($filePath);
+            
+            Log::info("Executing MySQL restore command on Windows using --source option...");
+            exec($commandWithFile . ' 2>&1', $output, $returnVar);
+            
+            Log::info("MySQL process completed with return code: {$returnVar}");
+            
             if ($returnVar !== 0) {
-                throw new \Exception('فشل في استعادة قاعدة البيانات: ' . ($errorOutput ?: 'خطأ غير معروف'));
+                $errorMessage = implode("\n", $output) ?: 'خطأ غير معروف';
+                Log::error("Database restore failed. Return code: {$returnVar}. Error: {$errorMessage}");
+                throw new \Exception('فشل في استعادة قاعدة البيانات: ' . $errorMessage);
             }
+            
+            Log::info("Database restore completed successfully!");
         } else {
             // على Linux/Unix، نستخدم shell redirect
+            Log::info("Executing MySQL restore command on Linux/Unix...");
             $command .= ' < ' . escapeshellarg($filePath);
             exec($command . ' 2>&1', $output, $returnVar);
 
+            Log::info("MySQL process completed with return code: {$returnVar}");
+
             if ($returnVar !== 0) {
-                $errorMessage = implode("\n", $output);
-                throw new \Exception('فشل في استعادة قاعدة البيانات: ' . ($errorMessage ?: 'خطأ غير معروف'));
+                $errorMessage = implode("\n", $output) ?: 'خطأ غير معروف';
+                Log::error("Database restore failed. Return code: {$returnVar}. Error: {$errorMessage}");
+                throw new \Exception('فشل في استعادة قاعدة البيانات: ' . $errorMessage);
             }
+
+            Log::info("Database restore completed successfully!");
         }
     }
 
@@ -1116,7 +1172,7 @@ class BackupService
         $files = glob($filePath . '/*');
         foreach ($files as $file) {
             if (is_file($file)) {
-                $destPath = base_path('config/' . basename($file));
+            $destPath = base_path('config/' . basename($file));
                 
                 // التأكد من وجود المجلد الهدف
                 $destDir = dirname($destPath);
@@ -1124,7 +1180,7 @@ class BackupService
                     mkdir($destDir, 0755, true);
                 }
                 
-                copy($file, $destPath);
+            copy($file, $destPath);
             }
         }
     }
@@ -1163,6 +1219,46 @@ class BackupService
                 copy($item, $destPath);
             }
         }
+    }
+
+    /**
+     * البحث عن ملف SQL في المجلد المستخرج
+     */
+    private function findSqlFile(string $directory): ?string
+    {
+        // التحقق من أن المسار موجود
+        if (!is_dir($directory) && !is_file($directory)) {
+            return null;
+        }
+
+        // إذا كان ملف SQL مباشرة
+        if (is_file($directory) && pathinfo($directory, PATHINFO_EXTENSION) === 'sql') {
+            return $directory;
+        }
+
+        // البحث عن ملف .sql في المجلد
+        $files = glob($directory . '/*.sql');
+        if (!empty($files)) {
+            return $files[0];
+        }
+        
+        // البحث في المجلدات الفرعية
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+            
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'sql') {
+                    return $file->getPathname();
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error searching for SQL file: ' . $e->getMessage());
+        }
+        
+        return null;
     }
 
     /**

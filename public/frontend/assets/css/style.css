@@ -77,7 +77,7 @@ a {
 .hero-section {
     height: 70vh;
     background-color: antiquewhite;
-    background-image: url("https://narwal.ai/wp-content/uploads/2024/05/businessman-using-ai-artificial-intelligence-planning-business-growth-future-ai-business-concept-1-scaled.jpg");
+    background-image: url("../../../assets/images/hero.webp");
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
