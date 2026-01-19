@@ -137,6 +137,12 @@
 
                                                     <td>
                                                         @if ($user->email)
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-outline-secondary copy-email-btn me-1" 
+                                                                    data-email="{{ $user->email }}"
+                                                                    title="نسخ البريد">
+                                                                <i class="fas fa-copy"></i>
+                                                            </button>
                                                             <a href="mailto:{{ $user->email }}"
                                                                 class="text-primary text-decoration-none"
                                                                 title="إرسال بريد إلكتروني">
@@ -590,6 +596,29 @@
         document.addEventListener('DOMContentLoaded', initImpersonateButtons);
     } else {
         initImpersonateButtons();
+    }
+    
+    // نسخ الإيميل
+    function initCopyEmailButtons() {
+        document.querySelectorAll('.copy-email-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const email = btn.getAttribute('data-email');
+                copyToClipboard(email).then(function() {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(function() {
+                        btn.innerHTML = originalHTML;
+                    }, 1500);
+                });
+            });
+        });
+    }
+    
+    // تهيئة أزرار النسخ عند تحميل الصفحة
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCopyEmailButtons);
+    } else {
+        initCopyEmailButtons();
     }
 })();
 </script>
