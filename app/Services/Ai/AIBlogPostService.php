@@ -208,18 +208,24 @@ class AIBlogPostService
         AIModel $model,
         string $language
     ): array {
-        $prompt = "أنت خبير SEO. قم بإنشاء حقول SEO محسنة للمقال التالي:
+        $prompt = "أنت خبير SEO محترف. قم بإنشاء حقول SEO محسنة بدقة للمقال التالي:
 
 العنوان: {$title}
 الموضوع: {$topic}
 
-يرجى إنشاء:
-1. Meta Title (50-60 حرف، جذاب ويحتوي على الكلمة المفتاحية)
-2. Meta Description (150-160 حرف، وصف جذاب للمقال)
-3. Meta Keywords (5-10 كلمات مفتاحية مفصولة بفواصل)
-4. Focus Keyword (الكلمة المفتاحية الرئيسية)
+المتطلبات:
+1. Meta Title: 50-60 حرف بالضبط، جذاب ويحتوي على الكلمة المفتاحية الرئيسية، بدون رموز غريبة
+2. Meta Description: 150-160 حرف بالضبط، وصف جذاب ومشوق للمقال، بدون رموز غريبة
+3. Meta Keywords: 8-12 كلمة مفتاحية ذات صلة قوية بالموضوع، مفصولة بفواصل فقط، بدون أرقام أو رموز، كل كلمة كاملة وصحيحة
+4. Focus Keyword: كلمة مفتاحية رئيسية واحدة أو عبارة قصيرة (2-4 كلمات)، بدون رموز أو علامات
 
-يرجى إرجاع النتيجة بصيغة JSON:
+مهم جداً:
+- استخدم فقط الكلمات العربية والإنجليزية الصحيحة والكاملة
+- لا تستخدم أي رموز غريبة مثل ? أو * أو [ أو ]
+- لا تستخدم كلمات مكسورة أو غير مكتملة
+- تأكد من أن جميع الكلمات واضحة ومفهومة
+
+يرجى إرجاع النتيجة بصيغة JSON فقط بدون أي نص إضافي:
 {
     \"meta_title\": \"عنوان SEO\",
     \"meta_description\": \"وصف SEO\",
@@ -236,21 +242,35 @@ class AIBlogPostService
 
             $data = $this->parseJSONResponse($response);
 
+            // تنظيف البيانات قبل الإرجاع
+            $metaKeywords = $data['meta_keywords'] ?? $this->extractKeywords($content);
+            $focusKeyword = $data['focus_keyword'] ?? $this->extractMainKeyword($topic, $content);
+            
+            // تنظيف الكلمات المفتاحية
+            $metaKeywords = $this->cleanKeywords($metaKeywords);
+            $focusKeyword = trim(preg_replace('/[^\p{Arabic}\p{L}\p{N}\s-]/u', '', $focusKeyword));
+            $focusKeyword = preg_replace('/\s+/u', ' ', $focusKeyword);
+            
             // Fallbacks مع تحسين
             return [
-                'meta_title' => $data['meta_title'] ?? Str::limit($title, 60),
-                'meta_description' => $data['meta_description'] ?? Str::limit(strip_tags($content), 160),
-                'meta_keywords' => $data['meta_keywords'] ?? $this->extractKeywords($content),
-                'focus_keyword' => $data['focus_keyword'] ?? $this->extractMainKeyword($topic, $content),
+                'meta_title' => $this->cleanText($data['meta_title'] ?? Str::limit($title, 60)),
+                'meta_description' => $this->cleanText($data['meta_description'] ?? Str::limit(strip_tags($content), 160)),
+                'meta_keywords' => $metaKeywords,
+                'focus_keyword' => $focusKeyword,
             ];
         } catch (\Exception $e) {
             Log::warning('Error generating SEO fields, using fallbacks: ' . $e->getMessage());
-            // استخدام fallbacks عند فشل توليد SEO
+            // استخدام fallbacks عند فشل توليد SEO مع تنظيف
+            $metaKeywords = $this->cleanKeywords($this->extractKeywords($content));
+            $focusKeyword = $this->extractMainKeyword($topic, $content);
+            $focusKeyword = trim(preg_replace('/[^\p{Arabic}\p{L}\p{N}\s-]/u', '', $focusKeyword));
+            $focusKeyword = preg_replace('/\s+/u', ' ', $focusKeyword);
+            
             return [
-                'meta_title' => Str::limit($title, 60),
-                'meta_description' => Str::limit(strip_tags($content), 160),
-                'meta_keywords' => $this->extractKeywords($content),
-                'focus_keyword' => $this->extractMainKeyword($topic, $content),
+                'meta_title' => $this->cleanText(Str::limit($title, 60)),
+                'meta_description' => $this->cleanText(Str::limit(strip_tags($content), 160)),
+                'meta_keywords' => $metaKeywords,
+                'focus_keyword' => $focusKeyword,
             ];
         }
     }
@@ -315,11 +335,18 @@ class AIBlogPostService
         AIModel $model,
         string $language
     ): string {
-        $prompt = "أعطني 5-10 مرادفات أو كلمات مشابهة للكلمة المفتاحية التالية باللغة العربية:
+        $prompt = "أنت خبير في اللغة العربية. أعطني 8-12 مرادفاً أو كلمة مشابهة للكلمة المفتاحية التالية باللغة العربية:
 
 الكلمة المفتاحية: {$keyword}
 
-يرجى إرجاع النتيجة كقائمة مفصولة بفواصل فقط، بدون أرقام أو نقاط.";
+المتطلبات:
+- استخدم فقط كلمات عربية صحيحة وكاملة
+- لا تستخدم أي رموز غريبة مثل ? أو * أو [ أو ]
+- لا تستخدم كلمات مكسورة أو غير مكتملة
+- كل كلمة يجب أن تكون واضحة ومفهومة
+- الكلمات يجب أن تكون ذات صلة قوية بالكلمة المفتاحية
+
+يرجى إرجاع النتيجة كقائمة مفصولة بفواصل فقط، بدون أرقام أو نقاط أو رموز.";
 
         try {
             $provider = AIProviderFactory::create($model);
@@ -328,10 +355,8 @@ class AIBlogPostService
                 'temperature' => 0.6,
             ]);
 
-            // Clean response
-            $synonyms = trim($response);
-            $synonyms = preg_replace('/^[0-9.\-]+/', '', $synonyms); // Remove numbers
-            $synonyms = preg_replace('/\n+/', ', ', $synonyms); // Replace newlines with commas
+            // تنظيف الاستجابة باستخدام cleanKeywords
+            $synonyms = $this->cleanKeywords($response);
             
             return $synonyms;
         } catch (\Exception $e) {
@@ -362,25 +387,99 @@ class AIBlogPostService
     }
 
     /**
+     * تنظيف النص من الرموز الغريبة
+     */
+    private function cleanText(string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // التحقق من ترميز UTF-8
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            $text = mb_convert_encoding($text, 'UTF-8', 'auto');
+        }
+
+        // إزالة BOM
+        $text = preg_replace('/^\xEF\xBB\xBF/', '', $text);
+        
+        // إزالة الأحرف غير الصالحة (الحفاظ على العربية والإنجليزية والأرقام والمسافات وعلامات الترقيم الأساسية)
+        $text = preg_replace('/[^\p{Arabic}\p{L}\p{N}\s.,!?;:()\-\'"]/u', '', $text);
+        
+        // تنظيف المسافات المتعددة
+        $text = preg_replace('/\s+/u', ' ', $text);
+        
+        return trim($text);
+    }
+
+    /**
      * استخراج كلمات مفتاحية من المحتوى
      */
     private function extractKeywords(string $content, int $count = 10): string
     {
         $text = strip_tags($content);
-        $words = str_word_count($text, 1, 'أبتثجحخدذرزسشصضطظعغفقكلمنهوي');
+        
+        // تنظيف النص أولاً
+        $text = $this->cleanText($text);
+        
+        // استخراج الكلمات (العربية والإنجليزية)
+        $words = preg_split('/[\s\p{P}]+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
         
         // Remove common Arabic stop words
-        $stopWords = ['في', 'من', 'إلى', 'على', 'هذا', 'هذه', 'التي', 'الذي', 'كان', 'كانت', 'يكون', 'يكون', 'أن', 'إن', 'ما', 'لا', 'لم', 'لن', 'لكن', 'أو', 'و', 'مع', 'عن', 'عند', 'بين', 'خلال', 'حول', 'بعد', 'قبل', 'أثناء', 'لأن', 'لكي', 'حتى', 'إذا', 'إذ', 'إذن', 'إلا', 'إما', 'إما', 'إلى', 'على', 'في', 'من', 'عن', 'مع', 'بين', 'خلال', 'حول', 'بعد', 'قبل', 'أثناء', 'لأن', 'لكي', 'حتى', 'إذا', 'إذ', 'إذن', 'إلا', 'إما', 'إما'];
+        $stopWords = [
+            'في', 'من', 'إلى', 'على', 'هذا', 'هذه', 'التي', 'الذي', 'كان', 'كانت', 
+            'يكون', 'تكون', 'أن', 'إن', 'ما', 'لا', 'لم', 'لن', 'لكن', 'أو', 'و', 
+            'مع', 'عن', 'عند', 'بين', 'خلال', 'حول', 'بعد', 'قبل', 'أثناء', 
+            'لأن', 'لكي', 'حتى', 'إذا', 'إذ', 'إذن', 'إلا', 'إما', 'هو', 'هي', 
+            'هم', 'هن', 'أنت', 'أنتم', 'أنتن', 'أنا', 'نحن', 'ذلك', 'تلك', 
+            'هؤلاء', 'هناك', 'هنا', 'الآن', 'قد', 'قد', 'كل', 'بعض', 'أكثر', 'أقل'
+        ];
         
-        $words = array_filter($words, function($word) use ($stopWords) {
-            return mb_strlen($word) > 3 && !in_array($word, $stopWords);
-        });
+        // تصفية الكلمات
+        $filteredWords = [];
+        foreach ($words as $word) {
+            $word = trim($word);
+            
+            // تجاهل الكلمات القصيرة جداً (أقل من 3 أحرف)
+            if (mb_strlen($word) < 3) {
+                continue;
+            }
+            
+            // تجاهل كلمات التوقف
+            if (in_array($word, $stopWords, true)) {
+                continue;
+            }
+            
+            // تجاهل الكلمات التي تحتوي على أرقام فقط
+            if (preg_match('/^\d+$/', $word)) {
+                continue;
+            }
+            
+            // تجاهل الكلمات التي تحتوي على رموز غريبة
+            if (preg_match('/[?؟*+^$<>{}[\]()\\\]/u', $word)) {
+                continue;
+            }
+            
+            $filteredWords[] = $word;
+        }
         
-        $wordFreq = array_count_values($words);
+        // حساب تكرار الكلمات
+        $wordFreq = array_count_values($filteredWords);
         arsort($wordFreq);
         
+        // أخذ أكثر الكلمات تكراراً
         $keywords = array_slice(array_keys($wordFreq), 0, $count);
-        return implode(', ', $keywords);
+        
+        // تنظيف الكلمات المفتاحية
+        $cleanedKeywords = [];
+        foreach ($keywords as $keyword) {
+            $keyword = trim($keyword);
+            if (mb_strlen($keyword) >= 2) {
+                $cleanedKeywords[] = $keyword;
+            }
+        }
+        
+        return implode(', ', $cleanedKeywords);
     }
 
     /**
@@ -445,6 +544,67 @@ class AIBlogPostService
         
         // If JSON parsing fails, try to extract data from text
         return [];
+    }
+
+    /**
+     * تنظيف الكلمات المفتاحية من الرموز الغريبة والكلمات المكسورة
+     */
+    private function cleanKeywords(string $keywords): string
+    {
+        if (empty($keywords)) {
+            return '';
+        }
+
+        // التحقق من ترميز UTF-8
+        if (!mb_check_encoding($keywords, 'UTF-8')) {
+            $keywords = mb_convert_encoding($keywords, 'UTF-8', 'auto');
+        }
+
+        // إزالة BOM إذا كان موجوداً
+        $keywords = preg_replace('/^\xEF\xBB\xBF/', '', $keywords);
+
+        // تقسيم الكلمات المفتاحية
+        $keywordArray = preg_split('/[,،\n\r\t|]/u', $keywords);
+
+        $cleanedKeywords = [];
+        foreach ($keywordArray as $keyword) {
+            // تنظيف كل كلمة
+            $keyword = trim($keyword);
+            
+            // إزالة الأحرف غير الصالحة (الحفاظ على العربية والإنجليزية والأرقام والمسافات)
+            $keyword = preg_replace('/[^\p{Arabic}\p{L}\p{N}\s-]/u', '', $keyword);
+            
+            // إزالة المسافات المتعددة
+            $keyword = preg_replace('/\s+/u', ' ', $keyword);
+            $keyword = trim($keyword);
+
+            // تجاهل الكلمات القصيرة جداً (أقل من 2 حرف) والكلمات الفارغة
+            if (mb_strlen($keyword) < 2 || empty($keyword)) {
+                continue;
+            }
+
+            // تجاهل الكلمات التي تحتوي على رموز مشبوهة
+            if (preg_match('/[?؟*+^$<>{}[\]()\\\]/u', $keyword)) {
+                continue;
+            }
+
+            // تجاهل الكلمات التي تبدأ أو تنتهي برموز غريبة
+            if (preg_match('/^[^\p{Arabic}\p{L}\p{N}]|[^\p{Arabic}\p{L}\p{N}]$/u', $keyword)) {
+                $keyword = preg_replace('/^[^\p{Arabic}\p{L}\p{N}]+|[^\p{Arabic}\p{L}\p{N}]+$/u', '', $keyword);
+                $keyword = trim($keyword);
+                if (mb_strlen($keyword) < 2) {
+                    continue;
+                }
+            }
+
+            // إضافة الكلمة المطهرة فقط إذا لم تكن موجودة بالفعل
+            if (!empty($keyword) && !in_array($keyword, $cleanedKeywords)) {
+                $cleanedKeywords[] = $keyword;
+            }
+        }
+
+        // إرجاع الكلمات المفتاحية مفصولة بفواصل
+        return implode(', ', $cleanedKeywords);
     }
 }
 
