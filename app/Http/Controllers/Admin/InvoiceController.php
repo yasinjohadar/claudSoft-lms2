@@ -94,7 +94,7 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        $students = User::role('student')->orderBy('name')->get();
+        $students = User::role('student')->orderBy('name')->get(['id', 'name', 'name_ar', 'email', 'phone']);
         return view('admin.pages.invoices.create', compact('students'));
     }
 

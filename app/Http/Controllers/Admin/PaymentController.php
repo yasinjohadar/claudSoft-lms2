@@ -39,6 +39,23 @@ class PaymentController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter by payment status (invoice payment status)
+        if ($request->filled('payment_status')) {
+            if ($request->payment_status == 'fully_paid') {
+                $query->whereHas('invoice', function($q) {
+                    $q->where('status', 'paid');
+                });
+            } elseif ($request->payment_status == 'partially_paid') {
+                $query->whereHas('invoice', function($q) {
+                    $q->where('status', 'partial');
+                });
+            } elseif ($request->payment_status == 'unpaid') {
+                $query->whereHas('invoice', function($q) {
+                    $q->whereIn('status', ['issued', 'draft']);
+                });
+            }
+        }
+
         // Filter by payment method
         if ($request->filled('payment_method_id')) {
             $query->where('payment_method_id', $request->payment_method_id);

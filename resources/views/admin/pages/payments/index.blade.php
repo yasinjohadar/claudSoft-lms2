@@ -134,6 +134,15 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label">حالة السداد</label>
+                                <select name="payment_status" class="form-select">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="fully_paid" {{ request('payment_status') == 'fully_paid' ? 'selected' : '' }}>كامل</option>
+                                    <option value="partially_paid" {{ request('payment_status') == 'partially_paid' ? 'selected' : '' }}>جزئي</option>
+                                    <option value="unpaid" {{ request('payment_status') == 'unpaid' ? 'selected' : '' }}>غير مسدد</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">من تاريخ</label>
                                 <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                             </div>
@@ -169,6 +178,7 @@
                                         <th>رقم الفاتورة</th>
                                         <th>الطالب</th>
                                         <th>المبلغ</th>
+                                        <th>المبلغ المتبقي</th>
                                         <th>طريقة الدفع</th>
                                         <th>تاريخ الدفع</th>
                                         <th>الحالة</th>
@@ -200,6 +210,15 @@
                                                 @endif
                                             </td>
                                             <td class="fw-bold">${{ number_format($payment->amount, 2) }}</td>
+                                            <td>
+                                                @if($payment->invoice && $payment->invoice->remaining_amount > 0)
+                                                    <span class="text-danger fw-bold">${{ number_format($payment->invoice->remaining_amount, 2) }}</span>
+                                                @elseif($payment->invoice)
+                                                    <span class="text-success">$0.00</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
                                             <td>
                                                 @if($payment->paymentMethod)
                                                     <i class="bi bi-credit-card me-1"></i>{{ $payment->paymentMethod->name }}

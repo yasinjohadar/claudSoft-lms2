@@ -4,6 +4,59 @@
     إنشاء فاتورة جديدة
 @stop
 
+@section('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    /* Select2 RTL Support */
+    .select2-container {
+        direction: rtl;
+        width: 100% !important;
+    }
+    .select2-container .select2-selection--single {
+        height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+    }
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        padding-right: 12px;
+        padding-left: 30px;
+    }
+    .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+        left: 5px;
+        right: auto;
+    }
+    .select2-container .select2-selection--single .select2-selection__clear {
+        margin-left: 0;
+        margin-right: 5px;
+    }
+    .select2-dropdown {
+        direction: rtl;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        z-index: 9999;
+    }
+    .select2-search--dropdown .select2-search__field {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+    }
+    .select2-results__option {
+        padding: 8px 12px;
+        text-align: right;
+    }
+    .select2-results__option--highlighted[aria-selected] {
+        background-color: #0d6efd;
+        color: white;
+    }
+    .select2-container--open .select2-dropdown--below {
+        border-top: 1px solid #ced4da;
+    }
+</style>
+@endsection
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
@@ -34,11 +87,16 @@
                                 <div class="row mb-3">
                                     <div class="col-md-6">
                                         <label class="form-label">الطالب <span class="text-danger">*</span></label>
-                                        <select name="student_id" class="form-select @error('student_id') is-invalid @enderror" required>
+                                        <select name="student_id" id="studentSelect" class="form-select @error('student_id') is-invalid @enderror" required>
                                             <option value="">اختر الطالب</option>
                                             @foreach($students as $student)
-                                                <option value="{{ $student->id }}" {{ old('student_id') == $student->id ? 'selected' : '' }}>
-                                                    {{ $student->name }} ({{ $student->email }})
+                                                <option value="{{ $student->id }}" 
+                                                        data-name="{{ $student->name }}"
+                                                        data-name-ar="{{ $student->name_ar ?? '' }}"
+                                                        data-email="{{ $student->email }}"
+                                                        data-phone="{{ $student->phone ?? '' }}"
+                                                        {{ old('student_id') == $student->id ? 'selected' : '' }}>
+                                                    {{ $student->name }}@if($student->name_ar) ({{ $student->name_ar }})@endif - {{ $student->email }}@if($student->phone) - {{ $student->phone }}@endif
                                                 </option>
                                             @endforeach
                                         </select>
@@ -285,5 +343,105 @@
     // Initialize
     updateRemoveButtons();
     calculateTotals();
+
+    // Load Select2 JS and initialize
+    function loadSelect2Script(callback) {
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
+
+    function initSelect2() {
+        // Custom matcher function to search in all fields
+        function customMatcher(params, data) {
+            // If no search term, return all
+            if (!params.term || $.trim(params.term) === '') {
+                return data;
+            }
+
+            // If no text, skip
+            if (typeof data.text === 'undefined') {
+                return null;
+            }
+
+            var searchTerm = params.term.toLowerCase();
+            var $option = $(data.element);
+            
+            // Get all searchable fields
+            var name = ($option.attr('data-name') || '').toLowerCase();
+            var nameAr = ($option.attr('data-name-ar') || '').toLowerCase();
+            var email = ($option.attr('data-email') || '').toLowerCase();
+            var phone = ($option.attr('data-phone') || '').toLowerCase();
+            var label = data.text.toLowerCase();
+
+            // Check if search term matches any field
+            if (name.indexOf(searchTerm) > -1 ||
+                nameAr.indexOf(searchTerm) > -1 ||
+                email.indexOf(searchTerm) > -1 ||
+                phone.indexOf(searchTerm) > -1 ||
+                label.indexOf(searchTerm) > -1) {
+                return data;
+            }
+
+            // Return null if no match
+            return null;
+        }
+
+        // Initialize Select2
+        var $select = $('#studentSelect');
+        
+        // Remove required temporarily to avoid Select2 issues
+        var wasRequired = $select.prop('required');
+        $select.prop('required', false);
+        
+        $select.select2({
+            dropdownParent: $select.parent(),
+            dir: 'rtl',
+            language: {
+                noResults: function() {
+                    return 'لا توجد نتائج';
+                },
+                searching: function() {
+                    return 'جاري البحث...';
+                }
+            },
+            placeholder: 'اختر الطالب - ابحث بالإيميل، الاسم، رقم الهاتف، أو الاسم العربي',
+            allowClear: true,
+            width: '100%',
+            matcher: customMatcher
+        });
+
+        // Restore required attribute on form validation
+        if (wasRequired) {
+            $select.on('select2:close', function() {
+                $(this).valid();
+            });
+            
+            // Add custom validation
+            $('#invoiceForm').on('submit', function(e) {
+                if (!$select.val()) {
+                    e.preventDefault();
+                    alert('يرجى اختيار الطالب');
+                    $select.select2('open');
+                    return false;
+                }
+            });
+        }
+
+        console.log('Select2 initialized successfully');
+    }
+
+    // Initialize when DOM is ready
+    $(function() {
+        if (typeof $.fn.select2 === 'undefined') {
+            loadSelect2Script(function() {
+                console.log('Select2 script loaded');
+                initSelect2();
+            });
+        } else {
+            initSelect2();
+        }
+    });
 </script>
 @stop
