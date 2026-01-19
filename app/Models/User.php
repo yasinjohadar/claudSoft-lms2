@@ -36,7 +36,6 @@ class User extends Authenticatable
         'is_profile_public',
         'is_connected',
         'avatar',
-        'photo', // الصورة الشخصية
         'student_id',
         'last_login_at',
         'last_login_ip',

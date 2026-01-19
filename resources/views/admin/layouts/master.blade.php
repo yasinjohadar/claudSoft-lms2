@@ -27,7 +27,15 @@
             const isDark = localStorage.getItem("valexdarktheme");
             document.documentElement.style.setProperty('--loader-bg', isDark ? '#0d0d0d' : '#fff');
             // Mark theme as applied
-            document.body.setAttribute("data-theme-applied", "true");
+            if (document.body) {
+                document.body.setAttribute("data-theme-applied", "true");
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    if (document.body) {
+                        document.body.setAttribute("data-theme-applied", "true");
+                    }
+                });
+            }
         })();
     </script>
 

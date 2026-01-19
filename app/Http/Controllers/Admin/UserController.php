@@ -141,7 +141,6 @@ public function index(Request $request)
             'password' => Hash::make($request->password),
             'is_active' => $request->boolean('is_active', true),
             'avatar' => $photoPath,
-            'photo' => $photoPath, // حفظ في كلا الحقلين للتوافق
         ]);
 
         // تعيين الأدوار
@@ -332,9 +331,6 @@ public function index(Request $request)
             if ($user->avatar) {
                 $this->storageHelper->deleteFile('public', $user->avatar);
             }
-            if ($user->photo && $user->photo !== $user->avatar) {
-                $this->storageHelper->deleteFile('public', $user->photo);
-            }
 
             $photoPath = $this->storageHelper->storeUploadedFile('public', 'users/photos', $request->file('photo'), 'image');
             if (!$photoPath) {
@@ -345,7 +341,6 @@ public function index(Request $request)
             }
             
             $updateData['avatar'] = $photoPath;
-            $updateData['photo'] = $photoPath; // حفظ في كلا الحقلين للتوافق
         }
 
         // تحديث المستخدم
