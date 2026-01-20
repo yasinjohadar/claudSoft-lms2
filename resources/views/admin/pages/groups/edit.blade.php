@@ -168,8 +168,18 @@
 
                         <!-- Visibility Requirements -->
                         <div class="mb-4">
-                            <label class="form-label">المجموعات المطلوبة للظهور (اختياري)</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">المجموعات المطلوبة للظهور (اختياري)</label>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-secondary" 
+                                        id="clearVisibilityRequirements"
+                                        title="إلغاء التحديد">
+                                    <i class="fas fa-times me-1"></i>
+                                    إلغاء التحديد
+                                </button>
+                            </div>
                             <select name="visibility_required_groups[]" 
+                                    id="visibility_required_groups"
                                     class="form-select @error('visibility_required_groups') is-invalid @enderror" 
                                     multiple
                                     size="5">
@@ -186,6 +196,9 @@
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
                                 <strong>مطلوب:</strong> حدد المجموعات التي يجب أن يكون الطالب عضواً فيها لرؤية هذه المجموعة. إذا لم تحدد أي مجموعة، لن تظهر المجموعة لأي طالب.
+                                <br>
+                                <i class="fas fa-mouse me-1"></i>
+                                <strong>ملاحظة:</strong> استخدم Ctrl+Click (أو Cmd+Click على Mac) لتحديد/إلغاء تحديد عدة مجموعات.
                             </small>
                             @error('visibility_required_groups')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -234,6 +247,26 @@
 
 @section('script')
 <script>
+    // Clear visibility requirements selection
+    document.addEventListener('DOMContentLoaded', function() {
+        const clearBtn = document.getElementById('clearVisibilityRequirements');
+        const selectElement = document.getElementById('visibility_required_groups');
+        
+        if (clearBtn && selectElement) {
+            clearBtn.addEventListener('click', function() {
+                // Deselect all options
+                Array.from(selectElement.options).forEach(option => {
+                    option.selected = false;
+                });
+                
+                // Show confirmation
+                if (selectElement.options.length > 0) {
+                    alert('تم إلغاء تحديد جميع المجموعات. المجموعة لن تظهر لأي طالب إذا قمت بحفظ التعديلات.');
+                }
+            });
+        }
+    });
+
     function toggleCourseVisibility(courseId) {
         const checkbox = document.getElementById('course_' + courseId);
         const formCheck = checkbox.closest('.form-check');

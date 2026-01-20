@@ -374,25 +374,27 @@ class CourseGroupController extends Controller
             $group->handleCoursesSynced($oldCourseIds, $courseIds);
 
             // Sync visibility requirements
+            // Always delete existing requirements first
+            $group->visibilityRequirements()->delete();
+            
+            // If visibility_required_groups is provided and not empty, create new requirements
             if ($request->has('visibility_required_groups')) {
                 $requiredGroupIds = $request->input('visibility_required_groups', []);
                 
-                // Delete existing requirements
-                $group->visibilityRequirements()->delete();
+                // Filter out empty values and self-reference
+                $requiredGroupIds = array_filter($requiredGroupIds, function($id) use ($group) {
+                    return !empty($id) && $id != $group->id;
+                });
                 
                 // Create new requirements
                 foreach ($requiredGroupIds as $requiredGroupId) {
-                    if ($requiredGroupId != $group->id) { // Prevent self-reference
-                        \App\Models\CourseGroupVisibilityRequirement::create([
-                            'group_id' => $group->id,
-                            'required_group_id' => $requiredGroupId,
-                        ]);
-                    }
+                    \App\Models\CourseGroupVisibilityRequirement::create([
+                        'group_id' => $group->id,
+                        'required_group_id' => $requiredGroupId,
+                    ]);
                 }
-            } else {
-                // If no requirements provided, delete all existing
-                $group->visibilityRequirements()->delete();
             }
+            // If not provided or empty array, requirements remain deleted (group hidden)
 
             DB::commit();
 
