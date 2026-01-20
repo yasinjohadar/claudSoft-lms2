@@ -116,12 +116,14 @@ class GroupMembershipRequestController extends Controller
         $validated = $request->validate([
             'terms_accepted' => 'required|boolean|accepted',
             'payment_date' => 'nullable|date|after_or_equal:today',
-            'message' => 'nullable|string|max:1000',
+            'message' => 'required|string|min:10|max:1000',
         ], [
             'terms_accepted.required' => 'يجب الموافقة على شروط المعسكر',
             'terms_accepted.accepted' => 'يجب الموافقة على شروط المعسكر',
             'payment_date.date' => 'تاريخ تسديد الرسوم غير صحيح',
             'payment_date.after_or_equal' => 'تاريخ تسديد الرسوم يجب أن يكون اليوم أو بعده',
+            'message.required' => 'يجب كتابة وسيلة الدفع وأي ملاحظات إضافية للإدارة.',
+            'message.min' => 'يرجى كتابة رسالة أكثر تفصيلاً تتضمن وسيلة الدفع والملاحظات.',
             'message.max' => 'الرسالة يجب أن تكون أقل من 1000 حرف',
         ]);
 
@@ -149,7 +151,7 @@ class GroupMembershipRequestController extends Controller
             'status' => 'pending',
             'terms_accepted' => true,
             'payment_date' => $validated['payment_date'] ?? null,
-            'message' => $validated['message'] ?? null,
+            'message' => $validated['message'],
         ]);
 
         return redirect()->route('student.groups.show', $group->id)

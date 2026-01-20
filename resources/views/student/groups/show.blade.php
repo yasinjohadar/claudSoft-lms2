@@ -183,18 +183,28 @@
                                         @error('payment_date')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        <small class="text-muted">تاريخ اختياري</small>
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            تاريخ تقديري تقريبي (اختياري)
+                                        </small>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label class="form-label">رسالة (اختياري)</label>
+                                        <label class="form-label">رسالة للإدارة <span class="text-danger">*</span></label>
                                         <textarea name="message" 
                                                   class="form-control @error('message') is-invalid @enderror" 
-                                                  rows="3"
-                                                  placeholder="أضف أي ملاحظات أو معلومات إضافية..."></textarea>
+                                                  rows="5"
+                                                  placeholder="يرجى كتابة:
+- وسيلة الدفع التي تفضل استخدامها
+- أي ملاحظات أو معلومات إضافية للإدارة"
+                                                  required></textarea>
                                         @error('message')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            يرجى كتابة وسيلة الدفع المفضلة لديك وأي ملاحظات إضافية للإدارة. التاريخ المحدد أعلاه هو تقديري تقريبي.
+                                        </small>
                                     </div>
 
                                     <button type="submit" class="btn btn-success w-100">
