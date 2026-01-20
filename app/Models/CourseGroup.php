@@ -284,9 +284,10 @@ class CourseGroup extends Model
             ? $this->visibilityRequirements 
             : $this->visibilityRequirements()->with('requiredGroup')->get();
 
-        // If no visibility requirements, group is visible to all students
+        // If no visibility requirements, group is hidden (requirements are mandatory)
+        // Admin must specify at least one required group for the group to be visible
         if ($visibilityRequirements->isEmpty()) {
-            return true;
+            return false;
         }
 
         // Check if student is a member of at least one required group

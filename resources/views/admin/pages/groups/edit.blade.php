@@ -185,7 +185,7 @@
                             </select>
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                حدد المجموعات التي يجب أن يكون الطالب عضواً فيها لرؤية هذه المجموعة. اتركه فارغاً لإظهار المجموعة لجميع الطلاب (إذا كانت مفعلة أعلاه).
+                                <strong>مطلوب:</strong> حدد المجموعات التي يجب أن يكون الطالب عضواً فيها لرؤية هذه المجموعة. إذا لم تحدد أي مجموعة، لن تظهر المجموعة لأي طالب.
                             </small>
                             @error('visibility_required_groups')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>

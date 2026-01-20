@@ -273,6 +273,17 @@
                         </div>
                     </div>
                 </div>
+            @elseif($group->allow_membership_requests && $group->is_visible_for_students)
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>تنبيه:</strong> لم يتم تحديد أي مجموعات مطلوبة للظهور. هذه المجموعة <strong>مخفية عن جميع الطلاب</strong> حالياً.
+                            <br>
+                            <small>قم بتعديل المجموعة وحدد "المجموعات المطلوبة للظهور" لإظهارها للطلاب المنتمين لتلك المجموعات.</small>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             <div class="row">
