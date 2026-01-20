@@ -35,6 +35,7 @@ use App\Http\Controllers\Student\CalendarController;
 use App\Http\Controllers\Student\StudentWorkController;
 use App\Http\Controllers\Student\CourseReviewController;
 use App\Http\Controllers\Student\PlatformReviewController;
+use App\Http\Controllers\Student\GroupMembershipRequestController;
 
 Route::prefix('student')
     ->middleware(['auth', 'role:student'])
@@ -389,6 +390,14 @@ Route::prefix('student')
             Route::post('/', [PlatformReviewController::class, 'store'])->name('store');
             Route::get('/{review}/edit', [PlatformReviewController::class, 'edit'])->name('edit');
             Route::put('/{review}', [PlatformReviewController::class, 'update'])->name('update');
+        });
+
+        // Group Membership Request Routes (طلب الانضمام للمجموعات)
+        Route::prefix('groups')->name('student.groups.')->group(function () {
+            Route::get('/', [GroupMembershipRequestController::class, 'index'])->name('index');
+            Route::get('/{id}', [GroupMembershipRequestController::class, 'show'])->name('show');
+            Route::post('/{id}/request', [GroupMembershipRequestController::class, 'store'])->name('request');
+            Route::get('/requests/my-requests', [GroupMembershipRequestController::class, 'myRequests'])->name('my-requests');
         });
 
     });

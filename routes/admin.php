@@ -251,6 +251,11 @@ Route::prefix('admin')
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');
         Route::post('groups/{groupId}/toggle-visibility', [CourseGroupController::class, 'toggleVisibility'])->name('groups.toggle-visibility');
         Route::post('groups/{groupId}/toggle-active', [CourseGroupController::class, 'toggleActive'])->name('groups.toggle-active');
+        
+        // Group Membership Requests routes
+        Route::get('courses/{courseId}/groups/{groupId}/membership-requests', [CourseGroupController::class, 'membershipRequests'])->name('courses.groups.membership-requests');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/approve', [CourseGroupController::class, 'approveRequest'])->name('courses.groups.membership-requests.approve');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/reject', [CourseGroupController::class, 'rejectRequest'])->name('courses.groups.membership-requests.reject');
 
         // General management routes (all courses)
         Route::get('all-enrollments', [CourseEnrollmentController::class, 'allEnrollments'])->name('enrollments.all');

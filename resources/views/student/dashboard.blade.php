@@ -417,6 +417,14 @@
                                 </a>
                             </div>
                             <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+                                <a href="{{ route('student.groups.index') }}" class="quick-link-card d-block">
+                                    <div class="icon-wrapper bg-info-transparent">
+                                        <i class="bi bi-people text-info fs-4"></i>
+                                    </div>
+                                    <p class="link-title">المجموعات</p>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
                                 <a href="{{ route('student.invoices.index') }}" class="quick-link-card d-block">
                                     <div class="icon-wrapper bg-danger-transparent">
                                         <i class="bi bi-receipt-cutoff text-danger fs-4"></i>

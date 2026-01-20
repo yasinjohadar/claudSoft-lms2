@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseGroup;
+use App\Models\GroupMembershipRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,6 +94,7 @@ class CourseGroupController extends Controller
             // Convert boolean fields (checkboxes send "on" when checked, nothing when unchecked)
             $validated['is_visible'] = $request->has('is_visible');
             $validated['is_active'] = $request->has('is_active');
+            $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
 
             // Set creator
             $validated['created_by'] = auth()->id();
@@ -342,6 +344,8 @@ class CourseGroupController extends Controller
             // Convert boolean fields
             $validated['is_visible'] = $request->has('is_visible');
             $validated['is_active'] = $request->has('is_active');
+            $validated['allow_membership_requests'] = $request->has('allow_membership_requests');
+            $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
 
             // Remove course_ids from validated data
             $courseIds = $validated['course_ids'];
@@ -368,6 +372,27 @@ class CourseGroupController extends Controller
 
             // Handle enrollment changes for added/removed courses
             $group->handleCoursesSynced($oldCourseIds, $courseIds);
+
+            // Sync visibility requirements
+            if ($request->has('visibility_required_groups')) {
+                $requiredGroupIds = $request->input('visibility_required_groups', []);
+                
+                // Delete existing requirements
+                $group->visibilityRequirements()->delete();
+                
+                // Create new requirements
+                foreach ($requiredGroupIds as $requiredGroupId) {
+                    if ($requiredGroupId != $group->id) { // Prevent self-reference
+                        \App\Models\CourseGroupVisibilityRequirement::create([
+                            'group_id' => $group->id,
+                            'required_group_id' => $requiredGroupId,
+                        ]);
+                    }
+                }
+            } else {
+                // If no requirements provided, delete all existing
+                $group->visibilityRequirements()->delete();
+            }
 
             DB::commit();
 
@@ -1068,6 +1093,136 @@ class CourseGroupController extends Controller
             return redirect()
                 ->route('groups.all')
                 ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display membership requests for a group.
+     */
+    public function membershipRequests($courseId, $groupId, Request $request)
+    {
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::with(['courses', 'creator'])
+                ->whereHas('courses', function($q) use ($courseId) {
+                    $q->where('courses.id', $courseId);
+                })
+                ->findOrFail($groupId);
+
+            $query = GroupMembershipRequest::with(['student', 'approver', 'rejecter'])
+                ->where('group_id', $groupId);
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('student', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+
+            // Sort
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            $query->orderBy($sortBy, $sortOrder);
+
+            $requests = $query->paginate($request->get('per_page', 15));
+
+            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests'));
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Approve a membership request.
+     */
+    public function approveRequest($courseId, $groupId, $requestId, Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+            $membershipRequest = GroupMembershipRequest::findOrFail($requestId);
+
+            // Verify request belongs to group
+            if ($membershipRequest->group_id != $groupId) {
+                return redirect()->back()
+                    ->with('error', 'طلب الانضمام غير مرتبط بهذه المجموعة');
+            }
+
+            // Check if request is already processed
+            if (!$membershipRequest->isPending()) {
+                return redirect()->back()
+                    ->with('error', 'تم معالجة هذا الطلب مسبقاً');
+            }
+
+            // Check if group is full
+            if ($group->isFull()) {
+                return redirect()->back()
+                    ->with('error', 'المجموعة ممتلئة ولا يمكن إضافة المزيد من الأعضاء');
+            }
+
+            // Approve request (this will automatically add student to group)
+            $membershipRequest->approve(auth()->id());
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'تم قبول طلب الانضمام وإضافة الطالب للمجموعة بنجاح');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول طلب الانضمام: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a membership request.
+     */
+    public function rejectRequest($courseId, $groupId, $requestId, Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+            $membershipRequest = GroupMembershipRequest::findOrFail($requestId);
+
+            // Verify request belongs to group
+            if ($membershipRequest->group_id != $groupId) {
+                return redirect()->back()
+                    ->with('error', 'طلب الانضمام غير مرتبط بهذه المجموعة');
+            }
+
+            // Check if request is already processed
+            if (!$membershipRequest->isPending()) {
+                return redirect()->back()
+                    ->with('error', 'تم معالجة هذا الطلب مسبقاً');
+            }
+
+            // Validate admin notes
+            $validated = $request->validate([
+                'admin_notes' => 'nullable|string|max:1000',
+            ]);
+
+            // Reject request
+            $membershipRequest->reject(auth()->id(), $validated['admin_notes'] ?? null);
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'تم رفض طلب الانضمام بنجاح');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفض طلب الانضمام: ' . $e->getMessage());
         }
     }
 }

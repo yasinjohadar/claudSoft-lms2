@@ -124,10 +124,33 @@
                     </div>
                     <div class="col-md-4 text-end">
                         @if($course)
+                            <a href="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}" class="btn btn-info me-2">
+                                <i class="fas fa-user-plus me-2"></i>طلبات الانضمام
+                                @php
+                                    $pendingCount = $group->pendingRequests()->count();
+                                @endphp
+                                @if($pendingCount > 0)
+                                    <span class="badge bg-danger">{{ $pendingCount }}</span>
+                                @endif
+                            </a>
                             <a href="{{ route('courses.groups.edit', [$course->id, $group->id]) }}" class="btn btn-light me-2">
                                 <i class="fas fa-edit me-2"></i>تعديل
                             </a>
                         @else
+                            @php
+                                $firstCourse = $group->courses->first();
+                            @endphp
+                            @if($firstCourse)
+                                <a href="{{ route('courses.groups.membership-requests', [$firstCourse->id, $group->id]) }}" class="btn btn-info me-2">
+                                    <i class="fas fa-user-plus me-2"></i>طلبات الانضمام
+                                    @php
+                                        $pendingCount = $group->pendingRequests()->count();
+                                    @endphp
+                                    @if($pendingCount > 0)
+                                        <span class="badge bg-danger">{{ $pendingCount }}</span>
+                                    @endif
+                                </a>
+                            @endif
                             <a href="{{ route('groups.edit', $group->id) }}" class="btn btn-light me-2">
                                 <i class="fas fa-edit me-2"></i>تعديل
                             </a>
@@ -201,6 +224,10 @@
                                     <span class="badge {{ $group->is_visible ? 'bg-info' : 'bg-secondary' }} fs-6">
                                         {{ $group->is_visible ? 'مرئية' : 'مخفية' }}
                                     </span>
+                                    <br>
+                                    <span class="badge {{ $group->is_visible_for_students ?? true ? 'bg-success' : 'bg-warning' }} fs-6 mt-1">
+                                        {{ ($group->is_visible_for_students ?? true) ? 'ظاهرة للطلاب' : 'مخفية عن الطلاب' }}
+                                    </span>
                                 </div>
                                 <div class="avatar avatar-lg bg-warning-transparent">
                                     <i class="fas fa-eye fs-3"></i>
@@ -210,6 +237,43 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Visibility Requirements Info -->
+            @php
+                $visibilityRequirements = $group->visibilityRequirements()->with('requiredGroup')->get();
+            @endphp
+            @if($visibilityRequirements->isNotEmpty())
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card custom-card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-eye me-2"></i>
+                                    شروط الظهور للطلاب
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2">
+                                    <strong>هذه المجموعة تظهر فقط لأعضاء المجموعات التالية:</strong>
+                                </p>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach($visibilityRequirements as $requirement)
+                                        @if($requirement->requiredGroup)
+                                            <span class="badge bg-primary fs-6">
+                                                {{ $requirement->requiredGroup->name }}
+                                            </span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    الطلاب الذين ليسوا أعضاءً في أي من هذه المجموعات لن يتمكنوا من رؤية هذه المجموعة.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="row">
                 <!-- Members List -->

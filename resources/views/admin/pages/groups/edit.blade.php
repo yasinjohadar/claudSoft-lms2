@@ -134,6 +134,64 @@
                             </div>
                         </div>
 
+                        <!-- Allow Membership Requests -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="allow_membership_requests" id="allow_membership_requests"
+                                       {{ old('allow_membership_requests', $group->allow_membership_requests ?? false) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="allow_membership_requests">
+                                    <i class="fas fa-user-plus me-2"></i>
+                                    <strong>تفعيل طلب الانضمام</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                عند تفعيل هذه الخيار، يمكن للطلاب طلب الانضمام لهذه المجموعة. يجب أن تكون المجموعة نشطة وظاهرة حتى يعمل هذا الخيار.
+                            </small>
+                        </div>
+
+                        <!-- Visible for Students -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_visible_for_students" id="is_visible_for_students"
+                                       {{ old('is_visible_for_students', $group->is_visible_for_students ?? true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="is_visible_for_students">
+                                    <i class="fas fa-eye me-2"></i>
+                                    <strong>إظهار المجموعة للطلاب</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                عند تفعيل هذا الخيار، ستكون المجموعة ظاهرة للطلاب. يمكن تحديد شروط إضافية أدناه.
+                            </small>
+                        </div>
+
+                        <!-- Visibility Requirements -->
+                        <div class="mb-4">
+                            <label class="form-label">المجموعات المطلوبة للظهور (اختياري)</label>
+                            <select name="visibility_required_groups[]" 
+                                    class="form-select @error('visibility_required_groups') is-invalid @enderror" 
+                                    multiple
+                                    size="5">
+                                @php
+                                    $selectedRequiredGroups = old('visibility_required_groups', $group->visibilityRequirements->pluck('required_group_id')->toArray());
+                                @endphp
+                                @foreach(\App\Models\CourseGroup::where('id', '!=', $group->id)->get() as $otherGroup)
+                                    <option value="{{ $otherGroup->id }}" 
+                                            {{ in_array($otherGroup->id, $selectedRequiredGroups) ? 'selected' : '' }}>
+                                        {{ $otherGroup->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                حدد المجموعات التي يجب أن يكون الطالب عضواً فيها لرؤية هذه المجموعة. اتركه فارغاً لإظهار المجموعة لجميع الطلاب (إذا كانت مفعلة أعلاه).
+                            </small>
+                            @error('visibility_required_groups')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <!-- Max Members -->
                         <div class="mb-4">
                             <label class="form-label">الحد الأقصى للأعضاء (اختياري)</label>

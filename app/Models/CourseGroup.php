@@ -17,12 +17,16 @@ class CourseGroup extends Model
         'max_members',
         'is_visible',
         'is_active',
+        'allow_membership_requests',
+        'is_visible_for_students',
         'created_by',
     ];
 
     protected $casts = [
         'is_visible' => 'boolean',
         'is_active' => 'boolean',
+        'allow_membership_requests' => 'boolean',
+        'is_visible_for_students' => 'boolean',
     ];
 
     // Relationships
@@ -89,6 +93,41 @@ class CourseGroup extends Model
     public function groupEnrollments()
     {
         return $this->hasMany(GroupCourseEnrollment::class, 'group_id');
+    }
+
+    /**
+     * Get all membership requests for this group.
+     */
+    public function membershipRequests()
+    {
+        return $this->hasMany(GroupMembershipRequest::class, 'group_id');
+    }
+
+    /**
+     * Get pending membership requests for this group.
+     */
+    public function pendingRequests()
+    {
+        return $this->hasMany(GroupMembershipRequest::class, 'group_id')
+                    ->where('status', 'pending');
+    }
+
+    /**
+     * Get the groups required for visibility of this group.
+     * (Students must be members of these groups to see this group)
+     */
+    public function visibilityRequirements()
+    {
+        return $this->hasMany(CourseGroupVisibilityRequirement::class, 'group_id');
+    }
+
+    /**
+     * Get the groups that require this group for visibility.
+     * (Groups that show only to members of this group)
+     */
+    public function visibleForGroups()
+    {
+        return $this->hasMany(CourseGroupVisibilityRequirement::class, 'required_group_id');
     }
 
     // Scopes
@@ -168,6 +207,109 @@ class CourseGroup extends Model
                     ->where('student_id', $user->id)
                     ->where('role', 'leader')
                     ->exists();
+    }
+
+    /**
+     * Check if membership requests are enabled for this group.
+     */
+    public function isMembershipRequestsEnabled(): bool
+    {
+        return $this->allow_membership_requests && $this->is_active;
+    }
+
+    /**
+     * Check if a user can request membership.
+     */
+    public function canRequestMembership(?User $user = null): bool
+    {
+        if (!$user) {
+            $user = auth()->user();
+        }
+
+        if (!$user) {
+            return false;
+        }
+
+        // Check if membership requests are enabled
+        if (!$this->isMembershipRequestsEnabled()) {
+            return false;
+        }
+
+        // Check if user is already a member
+        if ($this->hasMember($user)) {
+            return false;
+        }
+
+        // Check if user already has a pending request
+        $hasPendingRequest = $this->membershipRequests()
+            ->where('student_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingRequest) {
+            return false;
+        }
+
+        // Check if group is full
+        if ($this->isFull()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a group is visible for a student.
+     * 
+     * @param User|null $student The student to check visibility for
+     * @return bool
+     */
+    public function isVisibleForStudent(?User $student = null): bool
+    {
+        if (!$student) {
+            $student = auth()->user();
+        }
+
+        if (!$student) {
+            return false;
+        }
+
+        // If group is not visible for students, hide it
+        if (!$this->is_visible_for_students) {
+            return false;
+        }
+
+        // Get visibility requirements (use already loaded if available, otherwise load fresh)
+        $visibilityRequirements = $this->relationLoaded('visibilityRequirements') 
+            ? $this->visibilityRequirements 
+            : $this->visibilityRequirements()->with('requiredGroup')->get();
+
+        // If no visibility requirements, group is visible to all students
+        if ($visibilityRequirements->isEmpty()) {
+            return true;
+        }
+
+        // Check if student is a member of at least one required group
+        foreach ($visibilityRequirements as $requirement) {
+            if (!$requirement->requiredGroup) {
+                continue;
+            }
+
+            $requiredGroup = $requirement->requiredGroup;
+            
+            // Check if student is a member of the required group
+            // Use direct database query for reliability
+            $isMember = \App\Models\CourseGroupMember::where('group_id', $requiredGroup->id)
+                ->where('student_id', $student->id)
+                ->exists();
+            
+            if ($isMember) {
+                return true;
+            }
+        }
+
+        // Student is not a member of any required group
+        return false;
     }
 
     /**
