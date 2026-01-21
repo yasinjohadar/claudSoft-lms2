@@ -18,6 +18,16 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                     </div>
                     <ul class="main-menu">
+                        <!-- Start::slide - الواجهة الأمامية -->
+                        <li class="slide">
+                            <a href="{{ route('frontend.home') }}" target="_blank" rel="noopener noreferrer" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                <span class="side-menu__label">الواجهة الأمامية</span>
+                                <i class="fe fe-external-link side-menu__angle" style="font-size: 14px; margin-right: auto;"></i>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - الصفحة الرئيسية -->
                         <li class="slide">
                             <a href="{{ route('student.dashboard') }}" class="side-menu__item">
