@@ -1135,8 +1135,13 @@ class CourseGroupController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             $requests = $query->paginate($request->get('per_page', 15));
+            
+            // Get count of pending requests for "Approve All" button
+            $pendingCount = GroupMembershipRequest::where('group_id', $groupId)
+                ->where('status', 'pending')
+                ->count();
 
-            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests'));
+            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount'));
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: ' . $e->getMessage());
@@ -1160,10 +1165,11 @@ class CourseGroupController extends Controller
                     ->with('error', 'طلب الانضمام غير مرتبط بهذه المجموعة');
             }
 
-            // Check if request is already processed
-            if (!$membershipRequest->isPending()) {
+            // السماح بقبول الطلبات المرفوضة مرة أخرى
+            // فقط منع قبول الطلبات المقبولة مسبقاً
+            if ($membershipRequest->isApproved()) {
                 return redirect()->back()
-                    ->with('error', 'تم معالجة هذا الطلب مسبقاً');
+                    ->with('error', 'تم قبول هذا الطلب مسبقاً');
             }
 
             // Check if group is full
@@ -1225,6 +1231,196 @@ class CourseGroupController extends Controller
             DB::rollBack();
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء رفض طلب الانضمام: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete a membership request permanently.
+     */
+    public function deleteRequest($courseId, $groupId, $requestId, Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+            $membershipRequest = GroupMembershipRequest::findOrFail($requestId);
+
+            // Verify request belongs to group
+            if ($membershipRequest->group_id != $groupId) {
+                return redirect()->back()
+                    ->with('error', 'طلب الانضمام غير مرتبط بهذه المجموعة');
+            }
+
+            // حذف GroupRegistration المرتبط إن وجد
+            if ($membershipRequest->student_id) {
+                $registration = \App\Models\GroupRegistration::where('group_id', $groupId)
+                    ->where('user_id', $membershipRequest->student_id)
+                    ->where('email', $membershipRequest->student->email ?? null)
+                    ->first();
+                
+                if ($registration) {
+                    $registration->delete();
+                }
+            }
+
+            // حذف طلب الانضمام نهائياً
+            $membershipRequest->forceDelete();
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', 'تم حذف طلب الانضمام والتسجيل المرتبط نهائياً');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete membership request', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء حذف طلب الانضمام: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Approve multiple membership requests.
+     */
+    public function approveMultipleRequests($courseId, $groupId, Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+
+            // Validate request IDs
+            $validated = $request->validate([
+                'request_ids' => 'required|array|min:1',
+                'request_ids.*' => 'required|integer|exists:group_membership_requests,id',
+            ], [], [
+                'request_ids' => 'معرفات الطلبات',
+            ]);
+
+            $requestIds = $validated['request_ids'];
+            $successCount = 0;
+            $failedCount = 0;
+            $errors = [];
+
+            foreach ($requestIds as $requestId) {
+                try {
+                    $membershipRequest = GroupMembershipRequest::findOrFail($requestId);
+
+                    // Verify request belongs to group
+                    if ($membershipRequest->group_id != $groupId) {
+                        $failedCount++;
+                        $errors[] = "طلب #{$requestId} غير مرتبط بهذه المجموعة";
+                        continue;
+                    }
+
+                    // Check if request is already processed
+                    if (!$membershipRequest->isPending()) {
+                        $failedCount++;
+                        $errors[] = "طلب #{$requestId} تم معالجته مسبقاً";
+                        continue;
+                    }
+
+                    // Check if group is full
+                    if ($group->isFull()) {
+                        $failedCount++;
+                        $errors[] = "المجموعة ممتلئة - لا يمكن قبول المزيد من الطلبات";
+                        break; // Stop processing if group is full
+                    }
+
+                    // Approve request
+                    $membershipRequest->approve(auth()->id());
+                    $successCount++;
+                } catch (\Exception $e) {
+                    $failedCount++;
+                    $errors[] = "خطأ في طلب #{$requestId}: " . $e->getMessage();
+                    Log::error('Failed to approve membership request', [
+                        'request_id' => $requestId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $message = "تم قبول {$successCount} طلب بنجاح";
+            if ($failedCount > 0) {
+                $message .= "، فشل {$failedCount} طلب";
+            }
+
+            return redirect()->back()
+                ->with('success', $message)
+                ->with('errors', $errors);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول الطلبات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Approve all pending membership requests for the group.
+     */
+    public function approveAllPendingRequests($courseId, $groupId, Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+
+            // Get all pending requests for this group
+            $pendingRequests = GroupMembershipRequest::where('group_id', $groupId)
+                ->where('status', 'pending')
+                ->get();
+
+            if ($pendingRequests->isEmpty()) {
+                return redirect()->back()
+                    ->with('warning', 'لا توجد طلبات معلقة للموافقة عليها');
+            }
+
+            $successCount = 0;
+            $failedCount = 0;
+            $errors = [];
+
+            foreach ($pendingRequests as $membershipRequest) {
+                try {
+                    // Check if group is full
+                    if ($group->isFull()) {
+                        $failedCount = $pendingRequests->count() - $successCount;
+                        $errors[] = "المجموعة ممتلئة - تم قبول {$successCount} طلب فقط";
+                        break; // Stop processing if group is full
+                    }
+
+                    // Approve request
+                    $membershipRequest->approve(auth()->id());
+                    $successCount++;
+                } catch (\Exception $e) {
+                    $failedCount++;
+                    $errors[] = "خطأ في طلب #{$membershipRequest->id}: " . $e->getMessage();
+                    Log::error('Failed to approve membership request', [
+                        'request_id' => $membershipRequest->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $message = "تم قبول {$successCount} طلب بنجاح";
+            if ($failedCount > 0) {
+                $message .= "، فشل {$failedCount} طلب";
+            }
+
+            return redirect()->back()
+                ->with('success', $message)
+                ->with('errors', $errors);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول جميع الطلبات: ' . $e->getMessage());
         }
     }
 }

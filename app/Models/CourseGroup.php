@@ -96,6 +96,22 @@ class CourseGroup extends Model
     }
 
     /**
+     * Get all registrations for this group.
+     */
+    public function registrations()
+    {
+        return $this->hasMany(GroupRegistration::class, 'group_id');
+    }
+
+    /**
+     * Get registration settings for this group.
+     */
+    public function registrationSettings()
+    {
+        return $this->hasOne(GroupRegistrationSetting::class, 'group_id');
+    }
+
+    /**
      * Get all membership requests for this group.
      */
     public function membershipRequests()
@@ -428,7 +444,8 @@ class CourseGroup extends Model
         $updatedCount = 0;
 
         // Always query fresh courses from the database to avoid stale relations after sync/attach
-        $coursesQuery = $this->courses();
+        // Only enroll in visible courses (is_visible = true in pivot table)
+        $coursesQuery = $this->courses()->wherePivot('is_visible', true);
 
         if (!empty($courseIds)) {
             $coursesQuery->whereIn('courses.id', $courseIds);

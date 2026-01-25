@@ -231,6 +231,22 @@
                             </a>
                         </li>
 
+                        <!-- تسجيلات المجموعات -->
+                        <li class="slide has-sub {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}">
+                                <i class="fas fa-users side-menu__icon"></i>
+                                <span class="side-menu__label">تسجيلات المجموعات</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('admin.group-registrations.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.group-registrations.index') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.*') ? 'active' : '' }}">
+                                        <i class="fas fa-list me-2"></i>جميع التسجيلات
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <!-- الشهادات -->
                         <li class="slide has-sub {{ request()->routeIs('admin.certificates.*') || request()->routeIs('admin.certificate-templates.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.certificates.*') || request()->routeIs('admin.certificate-templates.*') ? 'active' : '' }}">
@@ -499,18 +515,23 @@
                         </li>
 
                         <!-- إعدادات البريد -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.settings.email.*') ? 'open active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <i class="ri-mail-settings-line side-menu__icon"></i>
                                 <span class="side-menu__label">إعدادات البريد</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1">
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('admin.settings.email.index') ? 'active' : '' }}">
                                     <a href="{{ route('admin.settings.email.index') }}" class="side-menu__item {{ request()->routeIs('admin.settings.email.index') ? 'active' : '' }}">جميع الإعدادات</a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.settings.email.create') ? 'active' : '' }}">
                                     <a href="{{ route('admin.settings.email.create') }}" class="side-menu__item {{ request()->routeIs('admin.settings.email.create') ? 'active' : '' }}">إضافة إعدادات</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.email-templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.email-templates.*') ? 'active' : '' }}">
+                                        <i class="fas fa-envelope me-2"></i>قوالب البريد الإلكتروني
+                                    </a>
                                 </li>
                             </ul>
                         </li>

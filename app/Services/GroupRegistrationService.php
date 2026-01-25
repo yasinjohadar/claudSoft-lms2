@@ -1,0 +1,290 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\GroupRegistration;
+use App\Models\User;
+use App\Models\CourseGroup;
+use App\Models\GroupRegistrationSetting;
+use App\Models\GroupMembershipRequest;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class GroupRegistrationService
+{
+    /**
+     * إنشاء تسجيل جديد للمجموعة
+     */
+    public function createRegistration(array $data, ?int $createdBy = null): GroupRegistration
+    {
+        // حساب full_phone تلقائياً
+        if (isset($data['country_code']) && isset($data['phone'])) {
+            $data['full_phone'] = $this->formatFullPhone($data['country_code'], $data['phone']);
+        }
+
+        // الحصول على إعدادات المجموعة
+        $group = CourseGroup::findOrFail($data['group_id']);
+        $settings = GroupRegistrationSetting::firstOrCreate(
+            ['group_id' => $group->id],
+            $this->getDefaultSettings()
+        );
+
+        if ($createdBy) {
+            $data['created_by'] = $createdBy;
+        }
+
+        $registration = GroupRegistration::create($data);
+
+        // معالجة التسجيل مباشرة (بدون Queue) لضمان التنفيذ الفوري
+        // يمكن تغيير هذا لاستخدام Queue إذا كان مفعلاً
+        try {
+            $this->processRegistration($registration);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to process registration immediately: ' . $e->getMessage());
+            // في حالة الفشل، نرسل Job للمحاولة لاحقاً
+            \App\Jobs\ProcessGroupRegistrationJob::dispatch($registration);
+        }
+
+        return $registration;
+    }
+
+    /**
+     * معالجة التسجيل (إنشاء حساب + انضمام للمجموعة)
+     */
+    public function processRegistration(GroupRegistration $registration): void
+    {
+        DB::beginTransaction();
+        try {
+            $registration->markAsProcessing();
+
+            $group = $registration->group;
+            $settings = GroupRegistrationSetting::where('group_id', $group->id)->first();
+
+            if (!$settings) {
+                $settings = GroupRegistrationSetting::create([
+                    'group_id' => $group->id,
+                    ...$this->getDefaultSettings(),
+                ]);
+            }
+
+            // 1. التحقق أولاً من وجود المستخدم مسبقاً (من خلال الإيميل)
+            $existingUser = User::where('email', $registration->email)->first();
+            $user = null;
+            $isExistingUser = false;
+
+            if ($existingUser) {
+                // المستخدم موجود مسبقاً
+                $user = $existingUser;
+                $isExistingUser = true;
+                $registration->update(['user_id' => $user->id]);
+                // لا يتم إنشاء مستخدم جديد
+            } else {
+                // المستخدم غير موجود - إنشاء حساب جديد إذا كان auto_create_user = true
+                if ($settings->auto_create_user) {
+                    $user = $this->createUser($registration);
+                    $registration->update([
+                        'user_id' => $user->id,
+                        'user_created' => true,
+                    ]);
+                }
+            }
+
+            // 2. إضافة المستخدم للمجموعة أو إنشاء طلب انضمام
+            if ($user && $group) {
+                if ($settings->shouldAutoApproveMembership()) {
+                    // إضافة مباشرة للمجموعة
+                    $this->addUserToGroup($user, $group);
+                } else {
+                    // إنشاء طلب انضمام بحالة pending
+                    $this->createMembershipRequest($user, $group, $registration);
+                }
+            }
+
+            $registration->markAsCompleted();
+
+            DB::commit();
+
+            // 3. إرسال البريد الإلكتروني (إجبارية من الإدارة)
+            if ($settings->send_welcome_email) {
+                try {
+                    // محاولة إرسال فوري أولاً
+                    $emailService = app(\App\Services\RegistrationEmailService::class);
+                    $sent = $emailService->sendWelcomeEmailForGroup($registration);
+                    
+                    if (!$sent) {
+                        // إذا فشل الإرسال الفوري، أرسل Job للمحاولة لاحقاً
+                        \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to send welcome email', [
+                        'registration_id' => $registration->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // محاولة إرسال Job كبديل
+                    try {
+                        \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
+                    } catch (\Exception $jobException) {
+                        Log::error('Failed to dispatch email job', [
+                            'registration_id' => $registration->id,
+                            'error' => $jobException->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            // 4. إرسال واتساب (إجبارية من الإدارة)
+            if ($settings->send_welcome_whatsapp) {
+                try {
+                    // محاولة إرسال فوري أولاً
+                    $whatsAppService = app(\App\Services\RegistrationWhatsAppService::class);
+                    $sent = $whatsAppService->sendWelcomeWhatsAppForGroup($registration);
+                    
+                    if (!$sent) {
+                        // إذا فشل الإرسال الفوري، أرسل Job للمحاولة لاحقاً
+                        \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to send WhatsApp message', [
+                        'registration_id' => $registration->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // محاولة إرسال Job كبديل
+                    try {
+                        \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
+                    } catch (\Exception $jobException) {
+                        Log::error('Failed to dispatch WhatsApp job', [
+                            'registration_id' => $registration->id,
+                            'error' => $jobException->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to process group registration', [
+                'registration_id' => $registration->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $registration->markAsFailed($e->getMessage());
+        }
+    }
+
+    /**
+     * إنشاء حساب مستخدم من التسجيل
+     */
+    public function createUser(GroupRegistration $registration): User
+    {
+        // التحقق من عدم وجود مستخدم بنفس البريد
+        $existingUser = User::where('email', $registration->email)->first();
+        if ($existingUser) {
+            return $existingUser;
+        }
+
+        $userData = [
+            'name' => $registration->name,
+            'name_ar' => $registration->name_ar,
+            'email' => $registration->email,
+            'phone' => $registration->phone,
+            'country_code' => $registration->country_code,
+            'full_phone' => $registration->full_phone,
+            'nationality_id' => $registration->nationality_id,
+            'date_of_birth' => $registration->date_of_birth,
+            'gender' => $registration->gender,
+            'address' => $registration->address,
+            // 'city' => $registration->city, // عمود city غير موجود في جدول users
+            'password' => Hash::make(Str::random(16)), // كلمة مرور عشوائية
+            'is_active' => true,
+        ];
+
+        $user = User::create($userData);
+        $user->assignRole('student');
+
+        return $user;
+    }
+
+    /**
+     * إضافة مستخدم لمجموعة
+     */
+    private function addUserToGroup(User $user, CourseGroup $group): void
+    {
+        // التحقق من عدم وجود المستخدم في المجموعة
+        if (!$group->hasMember($user)) {
+            // استخدام CourseGroupMember model
+            \App\Models\CourseGroupMember::firstOrCreate(
+                [
+                    'student_id' => $user->id,
+                    'group_id' => $group->id,
+                ],
+                [
+                    'role' => 'member',
+                    'joined_at' => now(),
+                ]
+            );
+        }
+    }
+
+    /**
+     * تنسيق رقم الهاتف الكامل
+     */
+    private function formatFullPhone(?string $countryCode, ?string $phone): ?string
+    {
+        if (!$countryCode || !$phone) {
+            return null;
+        }
+
+        // إزالة أي رموز أو مسافات
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        $countryCode = preg_replace('/[^0-9+]/', '', $countryCode);
+
+        // إزالة + من country_code إذا كان موجوداً
+        $countryCode = ltrim($countryCode, '+');
+
+        return $countryCode . $phone;
+    }
+
+    /**
+     * إنشاء طلب انضمام للمجموعة
+     */
+    private function createMembershipRequest(User $user, CourseGroup $group, GroupRegistration $registration): void
+    {
+        // التحقق من عدم وجود طلب pending مسبقاً
+        $existingRequest = GroupMembershipRequest::where('group_id', $group->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingRequest) {
+            // طلب موجود مسبقاً، لا ننشئ طلب جديد
+            return;
+        }
+
+        // إنشاء طلب انضمام جديد
+        GroupMembershipRequest::create([
+            'group_id' => $group->id,
+            'student_id' => $user->id,
+            'status' => 'pending',
+            'message' => $registration->notes ?? 'طلب انضمام من خلال فورم التسجيل',
+            'request_date' => now(),
+        ]);
+    }
+
+    /**
+     * الحصول على الإعدادات الافتراضية
+     */
+    private function getDefaultSettings(): array
+    {
+        return [
+            'is_registration_enabled' => true,
+            'auto_create_user' => true,
+            'auto_approve_membership' => false, // افتراضياً: طلب انضمام يحتاج موافقة
+            'send_welcome_email' => true,
+            'send_welcome_whatsapp' => false,
+            'require_email_verification' => false,
+        ];
+    }
+}

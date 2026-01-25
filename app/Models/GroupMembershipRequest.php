@@ -140,11 +140,20 @@ class GroupMembershipRequest extends Model
     {
         $approvedById = $approvedBy ?? auth()->id();
 
-        $result = $this->update([
+        // إعادة تعيين حقول الرفض إذا كان الطلب مرفوض مسبقاً
+        $updateData = [
             'status' => 'approved',
             'approved_at' => now(),
             'approved_by' => $approvedById,
-        ]);
+        ];
+
+        // إذا كان الطلب مرفوض مسبقاً، نعيد تعيين حقول الرفض
+        if ($this->isRejected()) {
+            $updateData['rejected_at'] = null;
+            $updateData['rejected_by'] = null;
+        }
+
+        $result = $this->update($updateData);
 
         // Add student to group if approval is successful
         if ($result) {

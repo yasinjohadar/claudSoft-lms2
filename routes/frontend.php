@@ -6,12 +6,20 @@ use App\Http\Controllers\Frontend\CourseController;
 use App\Http\Controllers\Frontend\ReviewController;
 use App\Http\Controllers\Frontend\StudentController;
 use App\Http\Controllers\Frontend\BlogController;
+use App\Http\Controllers\Frontend\GroupRegistrationController;
 
 
 
 Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 Route::get('/courses', [CourseController::class, 'index'])->name('frontend.courses.index');
 Route::get('/courses/{slug}', [CourseController::class, 'show'])->name('frontend.courses.show');
+
+// Group Registration Routes
+Route::prefix('group-registration')->name('frontend.group-registration.')->group(function () {
+    Route::get('/{group}/create', [GroupRegistrationController::class, 'create'])->name('create');
+    Route::post('/{group}/store', [GroupRegistrationController::class, 'store'])->name('store');
+    Route::get('/{registration}/success', [GroupRegistrationController::class, 'success'])->name('success');
+});
 Route::get('/reviews', [ReviewController::class, 'index'])->name('frontend.reviews.index');
 Route::get('/reviews/create', [ReviewController::class, 'create'])->name('frontend.reviews.create')->middleware('auth');
 Route::post('/reviews', [ReviewController::class, 'store'])->name('frontend.reviews.store')->middleware('auth');

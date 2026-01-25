@@ -62,6 +62,9 @@ use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AISettingsController;
 use App\Http\Controllers\Admin\AIGradingSettingsController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\GroupRegistrationController;
+use App\Http\Controllers\Admin\GroupRegistrationSettingController;
+use App\Http\Controllers\Admin\EmailTemplateController;
 
 Route::prefix('admin')
     ->middleware('auth')
@@ -256,11 +259,31 @@ Route::prefix('admin')
         Route::get('courses/{courseId}/groups/{groupId}/membership-requests', [CourseGroupController::class, 'membershipRequests'])->name('courses.groups.membership-requests');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/approve', [CourseGroupController::class, 'approveRequest'])->name('courses.groups.membership-requests.approve');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/reject', [CourseGroupController::class, 'rejectRequest'])->name('courses.groups.membership-requests.reject');
+        Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/delete', [CourseGroupController::class, 'deleteRequest'])->name('courses.groups.membership-requests.delete');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-multiple', [CourseGroupController::class, 'approveMultipleRequests'])->name('courses.groups.membership-requests.approve-multiple');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-all', [CourseGroupController::class, 'approveAllPendingRequests'])->name('courses.groups.membership-requests.approve-all');
 
         // General management routes (all courses)
         Route::get('all-enrollments', [CourseEnrollmentController::class, 'allEnrollments'])->name('enrollments.all');
         Route::post('enrollments/{enrollmentId}/approve', [CourseEnrollmentController::class, 'approve'])->name('enrollments.approve');
         Route::post('enrollments/{enrollmentId}/reject', [CourseEnrollmentController::class, 'reject'])->name('enrollments.reject');
+
+        // Group Registration Routes
+        Route::prefix('group-registrations')->name('admin.group-registrations.')->group(function () {
+            Route::get('/', [GroupRegistrationController::class, 'index'])->name('index');
+            Route::get('/{registration}', [GroupRegistrationController::class, 'show'])->name('show');
+            Route::post('/{registration}/reprocess', [GroupRegistrationController::class, 'reprocess'])->name('reprocess');
+            Route::post('/{registration}/resend-email', [GroupRegistrationController::class, 'resendEmail'])->name('resend-email');
+            Route::post('/{registration}/resend-whatsapp', [GroupRegistrationController::class, 'resendWhatsApp'])->name('resend-whatsapp');
+            Route::delete('/{registration}', [GroupRegistrationController::class, 'destroy'])->name('destroy');
+        });
+
+
+        // Group Registration Settings Routes
+        Route::prefix('groups/{group}/registration-settings')->name('admin.group-registration-settings.')->group(function () {
+            Route::get('/', [GroupRegistrationSettingController::class, 'index'])->name('index');
+            Route::put('/', [GroupRegistrationSettingController::class, 'update'])->name('update');
+        });
         Route::get('all-groups', [CourseGroupController::class, 'allGroups'])->name('groups.all');
         Route::delete('groups/{id}/delete', [CourseGroupController::class, 'deleteGroup'])->name('groups.delete');
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
@@ -544,6 +567,20 @@ Route::prefix('admin')
             Route::post('/{emailSetting}/test', [\App\Http\Controllers\Admin\EmailSettingController::class, 'test'])->name('test');
             Route::get('/provider/{provider}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'getProviderPreset'])->name('provider.preset');
         });
+
+        // ========== Email Templates Routes ==========
+        Route::resource('email-templates', EmailTemplateController::class)->names([
+            'index' => 'admin.email-templates.index',
+            'create' => 'admin.email-templates.create',
+            'store' => 'admin.email-templates.store',
+            'show' => 'admin.email-templates.show',
+            'edit' => 'admin.email-templates.edit',
+            'update' => 'admin.email-templates.update',
+            'destroy' => 'admin.email-templates.destroy',
+        ]);
+        Route::get('email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('admin.email-templates.preview');
+        Route::post('email-templates/{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('admin.email-templates.duplicate');
+        Route::post('email-templates/{emailTemplate}/send-test', [EmailTemplateController::class, 'sendTest'])->name('admin.email-templates.send-test');
 
         // ========== Reminders Routes ==========
         Route::prefix('reminders')->name('admin.reminders.')->group(function () {

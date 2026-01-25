@@ -112,17 +112,38 @@
 
             <!-- Requests Table -->
             <div class="card shadow-sm border-0">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">
                         <i class="bi bi-list-ul me-2"></i>
                         طلبات الانضمام ({{ $requests->total() }})
                     </h6>
+                    <div class="d-flex gap-2">
+                        <div id="approve-selected-container" style="display: none;">
+                        <form id="approve-selected-form" action="{{ route('courses.groups.membership-requests.approve-multiple', [$course->id, $group->id]) }}" method="POST" class="d-inline">
+                            @csrf
+                            <div id="selected-request-ids-container"></div>
+                            <button type="button" class="btn btn-sm btn-success" id="approve-selected-btn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
+                                <i class="bi bi-check-circle me-1"></i>
+                                قبول المحدد
+                            </button>
+                        </form>
+                        </div>
+                        @if(isset($pendingCount) && $pendingCount > 0)
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#approveAllModal">
+                                <i class="bi bi-check-all me-1"></i>
+                                قبول الكل ({{ $pendingCount }})
+                            </button>
+                        @endif
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>
+                                        <input type="checkbox" id="select-all-checkbox" title="تحديد الكل">
+                                    </th>
                                     <th>#</th>
                                     <th>اسم الطالب</th>
                                     <th>البريد الإلكتروني</th>
@@ -137,6 +158,13 @@
                             <tbody>
                                 @forelse($requests as $request)
                                     <tr>
+                                        <td>
+                                            @if($request->status === 'pending')
+                                                <input type="checkbox" class="request-checkbox" name="request_ids[]" value="{{ $request->id }}">
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $request->id }}</td>
                                         <td>
                                             <strong>{{ $request->student->name }}</strong>
@@ -216,6 +244,36 @@
                                                         <i class="bi bi-x-circle"></i>
                                                     </button>
                                                 </div>
+                                            @elseif($request->status === 'rejected')
+                                                <div class="btn-group" role="group">
+                                                    <form action="{{ route('courses.groups.membership-requests.approve', [$course->id, $group->id, $request->id]) }}" 
+                                                          method="POST" 
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('هل أنت متأكد من قبول طلب الانضمام المرفوض؟');">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-success" title="قبول">
+                                                            <i class="bi bi-check-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}" 
+                                                          method="POST" 
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('هل أنت متأكد من حذف طلب الانضمام نهائياً؟ سيتم حذف التسجيل المرتبط أيضاً.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-danger" title="حذف نهائي">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            @elseif($request->status === 'approved')
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-danger" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#rejectModal{{ $request->id }}"
+                                                        title="رفض">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
@@ -269,7 +327,7 @@
                                     </div>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center py-5">
+                                        <td colspan="10" class="text-center py-5">
                                             <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
                                             <h5 class="text-muted">لا توجد طلبات</h5>
                                             <p class="text-muted">لا توجد طلبات انضمام لهذه المجموعة</p>
@@ -290,4 +348,154 @@
             </div>
         </div>
     </div>
+
+    <!-- Approve Selected Modal -->
+    <div class="modal fade" id="approveSelectedModal" tabindex="-1" aria-labelledby="approveSelectedModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveSelectedModalLabel">
+                        <i class="bi bi-check-circle me-2"></i>
+                        قبول الطلبات المحددة
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من قبول <strong id="selected-count">0</strong> طلب انضمام محدد؟</p>
+                    <p class="text-muted small mb-0">سيتم إضافة الطلاب للمجموعة تلقائياً بعد الموافقة.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-success" id="confirm-approve-selected">
+                        <i class="bi bi-check-circle me-1"></i>
+                        نعم، قبول المحدد
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve All Modal -->
+    @if(isset($pendingCount) && $pendingCount > 0)
+    <div class="modal fade" id="approveAllModal" tabindex="-1" aria-labelledby="approveAllModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveAllModalLabel">
+                        <i class="bi bi-check-all me-2"></i>
+                        قبول جميع الطلبات المعلقة
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من قبول جميع الطلبات المعلقة (<strong>{{ $pendingCount }}</strong>)؟</p>
+                    <p class="text-muted small mb-0">سيتم إضافة جميع الطلاب للمجموعة تلقائياً بعد الموافقة.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <form id="approve-all-form" action="{{ route('courses.groups.membership-requests.approve-all', [$course->id, $group->id]) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-all me-1"></i>
+                            نعم، قبول الكل
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+@stop
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const requestCheckboxes = document.querySelectorAll('.request-checkbox');
+    const approveSelectedContainer = document.getElementById('approve-selected-container');
+    const approveSelectedForm = document.getElementById('approve-selected-form');
+    const selectedRequestIdsContainer = document.getElementById('selected-request-ids-container');
+
+    // Select/Deselect All
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            requestCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActions();
+        });
+    }
+
+    // Update bulk actions visibility
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+        if (checkedBoxes.length > 0 && approveSelectedContainer) {
+            approveSelectedContainer.style.display = 'inline-block';
+        } else if (approveSelectedContainer) {
+            approveSelectedContainer.style.display = 'none';
+        }
+    }
+
+    // Update select all checkbox state
+    function updateSelectAll() {
+        if (selectAllCheckbox && requestCheckboxes.length > 0) {
+            const allChecked = Array.from(requestCheckboxes).every(cb => cb.checked);
+            const someChecked = Array.from(requestCheckboxes).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        }
+    }
+
+    // Listen to individual checkbox changes
+    requestCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateBulkActions();
+            updateSelectAll();
+        });
+    });
+
+    // Update selected count in modal when opening
+    const approveSelectedBtn = document.getElementById('approve-selected-btn');
+    const approveSelectedModal = document.getElementById('approveSelectedModal');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const confirmApproveSelectedBtn = document.getElementById('confirm-approve-selected');
+
+    if (approveSelectedModal && selectedCountSpan && confirmApproveSelectedBtn) {
+        approveSelectedModal.addEventListener('show.bs.modal', function() {
+            const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+            selectedCountSpan.textContent = checkedBoxes.length;
+        });
+
+        // Handle confirm button click
+        confirmApproveSelectedBtn.addEventListener('click', function() {
+            const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('يرجى تحديد طلب واحد على الأقل');
+                return;
+            }
+
+            // Clear existing hidden inputs
+            selectedRequestIdsContainer.innerHTML = '';
+            
+            // Create hidden inputs for each selected ID
+            checkedBoxes.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'request_ids[]';
+                input.value = checkbox.value;
+                selectedRequestIdsContainer.appendChild(input);
+            });
+
+            // Submit the form
+            if (approveSelectedForm) {
+                approveSelectedForm.submit();
+            }
+        });
+    }
+
+    // Initial update
+    updateBulkActions();
+    updateSelectAll();
+});
+</script>
 @stop

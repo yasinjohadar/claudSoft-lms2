@@ -133,6 +133,17 @@
                                     <span class="badge bg-danger">{{ $pendingCount }}</span>
                                 @endif
                             </a>
+                            @php
+                                $registrationSettings = \App\Models\GroupRegistrationSetting::where('group_id', $group->id)->first();
+                            @endphp
+                            @if($registrationSettings && $registrationSettings->is_registration_enabled)
+                                <a href="{{ route('frontend.group-registration.create', $group->id) }}" target="_blank" class="btn btn-success me-2">
+                                    <i class="fas fa-link me-2"></i>رابط التسجيل
+                                </a>
+                            @endif
+                            <a href="{{ route('admin.group-registration-settings.index', $group->id) }}" class="btn btn-warning me-2">
+                                <i class="fas fa-cog me-2"></i>إعدادات التسجيل
+                            </a>
                             <a href="{{ route('courses.groups.edit', [$course->id, $group->id]) }}" class="btn btn-light me-2">
                                 <i class="fas fa-edit me-2"></i>تعديل
                             </a>

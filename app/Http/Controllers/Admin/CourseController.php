@@ -263,7 +263,11 @@ class CourseController extends Controller
                 ->get();
             $allCourses = Course::select('id', 'title')->get();
 
-            return view('admin.pages.courses.show', compact('course', 'stats', 'existingResources', 'allCourses'));
+            // Check if registration is enabled for this course
+            $isRegistrationEnabled = false;
+            $registrationUrl = null;
+
+            return view('admin.pages.courses.show', compact('course', 'stats', 'existingResources', 'allCourses', 'isRegistrationEnabled', 'registrationUrl'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.index')
