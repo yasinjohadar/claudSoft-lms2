@@ -258,7 +258,7 @@
                                                     <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}" 
                                                           method="POST" 
                                                           class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من حذف طلب الانضمام نهائياً؟ سيتم حذف التسجيل المرتبط أيضاً.');">
+                                                          onsubmit="return confirm('هل أنت متأكد من حذف طلب الانضمام نهائياً؟ سيتم الاحتفاظ بالتسجيل المرتبط.');">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-sm btn-danger" title="حذف نهائي">

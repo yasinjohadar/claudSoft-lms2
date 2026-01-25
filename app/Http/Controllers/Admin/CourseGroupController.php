@@ -1251,25 +1251,13 @@ class CourseGroupController extends Controller
                     ->with('error', 'طلب الانضمام غير مرتبط بهذه المجموعة');
             }
 
-            // حذف GroupRegistration المرتبط إن وجد
-            if ($membershipRequest->student_id) {
-                $registration = \App\Models\GroupRegistration::where('group_id', $groupId)
-                    ->where('user_id', $membershipRequest->student_id)
-                    ->where('email', $membershipRequest->student->email ?? null)
-                    ->first();
-                
-                if ($registration) {
-                    $registration->delete();
-                }
-            }
-
-            // حذف طلب الانضمام نهائياً
+            // حذف طلب الانضمام نهائياً فقط (بدون حذف التسجيل)
             $membershipRequest->forceDelete();
 
             DB::commit();
 
             return redirect()->back()
-                ->with('success', 'تم حذف طلب الانضمام والتسجيل المرتبط نهائياً');
+                ->with('success', 'تم حذف طلب الانضمام بنجاح. تم الاحتفاظ بالتسجيل المرتبط.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete membership request', [
