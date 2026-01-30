@@ -154,14 +154,22 @@
                                                     </td>
 
                                                     <td>
-                                                        @if ($user->phone)
-                                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->phone) }}"
-                                                                target="_blank"
-                                                                class="text-success text-decoration-none me-1"
-                                                                title="فتح WhatsApp">
-                                                                <i class="fab fa-whatsapp"></i>
-                                                            </a>
-                                                            {{ $user->phone }}
+                                                        @php
+                                                            $displayPhone = $user->full_phone ?? ($user->country_code && $user->phone ? $user->country_code . $user->phone : null) ?? $user->phone;
+                                                            $linkUrl = $user->whatsapp_url ?? ($displayPhone ? 'tel:' . preg_replace('/[^0-9+]/', '', $displayPhone) : null);
+                                                        @endphp
+                                                        @if ($displayPhone)
+                                                            @if ($linkUrl)
+                                                                <a href="{{ $linkUrl }}"
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    class="text-success text-decoration-none"
+                                                                    title="{{ $user->whatsapp_url ? 'فتح WhatsApp' : 'اتصال' }}">
+                                                                    <i class="fab fa-whatsapp me-1"></i>{{ $displayPhone }}
+                                                                </a>
+                                                            @else
+                                                                <i class="fab fa-whatsapp me-1 text-success"></i>{{ $displayPhone }}
+                                                            @endif
                                                         @else
                                                             -
                                                         @endif
