@@ -128,6 +128,17 @@
                             </button>
                         </form>
                         </div>
+                        <div id="delete-selected-container" style="display: none;">
+                        <form id="delete-selected-form" action="{{ route('courses.groups.membership-requests.delete-multiple', [$course->id, $group->id]) }}" method="POST" class="d-inline">
+                            @csrf
+                            @method('DELETE')
+                            <div id="delete-request-ids-container"></div>
+                            <button type="button" class="btn btn-sm btn-danger" id="delete-selected-btn" data-bs-toggle="modal" data-bs-target="#deleteSelectedModal">
+                                <i class="bi bi-trash me-1"></i>
+                                حذف المحدد
+                            </button>
+                        </form>
+                        </div>
                         @if(isset($pendingCount) && $pendingCount > 0)
                             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#approveAllModal">
                                 <i class="bi bi-check-all me-1"></i>
@@ -159,11 +170,7 @@
                                 @forelse($requests as $request)
                                     <tr>
                                         <td>
-                                            @if($request->status === 'pending')
-                                                <input type="checkbox" class="request-checkbox" name="request_ids[]" value="{{ $request->id }}">
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
+                                            <input type="checkbox" class="request-checkbox" name="request_ids[]" value="{{ $request->id }}" data-status="{{ $request->status }}">
                                         </td>
                                         <td>{{ $request->id }}</td>
                                         <td>
@@ -267,13 +274,25 @@
                                                     </form>
                                                 </div>
                                             @elseif($request->status === 'approved')
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-danger" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#rejectModal{{ $request->id }}"
-                                                        title="رفض">
-                                                    <i class="bi bi-x-circle"></i>
-                                                </button>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-danger" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#rejectModal{{ $request->id }}"
+                                                            title="رفض">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                    <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}" 
+                                                          method="POST" 
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('هل أنت متأكد من حذف سجل طلب الانضمام نهائياً؟ لن يؤثر ذلك على انضمام الطالب للمجموعة.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف نهائي">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
@@ -405,6 +424,32 @@
         </div>
     </div>
     @endif
+
+    <!-- Delete Selected Modal -->
+    <div class="modal fade" id="deleteSelectedModal" tabindex="-1" aria-labelledby="deleteSelectedModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteSelectedModalLabel">
+                        <i class="bi bi-trash me-2"></i>
+                        حذف الطلبات المحددة
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من حذف <strong id="delete-selected-count">0</strong> طلب انضمام نهائياً؟</p>
+                    <p class="text-muted small mb-0">سيتم حذف سجلات الطلبات فقط ولن يؤثر ذلك على انضمام من تم قبولهم للمجموعة.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-selected">
+                        <i class="bi bi-trash me-1"></i>
+                        نعم، حذف المحدد
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('scripts')
@@ -427,12 +472,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Update bulk actions visibility
+    const deleteSelectedContainer = document.getElementById('delete-selected-container');
+    const deleteSelectedForm = document.getElementById('delete-selected-form');
+    const deleteRequestIdsContainer = document.getElementById('delete-request-ids-container');
+
     function updateBulkActions() {
         const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
-        if (checkedBoxes.length > 0 && approveSelectedContainer) {
+        const hasPending = Array.from(checkedBoxes).some(cb => cb.getAttribute('data-status') === 'pending');
+        if (checkedBoxes.length > 0 && approveSelectedContainer && hasPending) {
             approveSelectedContainer.style.display = 'inline-block';
         } else if (approveSelectedContainer) {
             approveSelectedContainer.style.display = 'none';
+        }
+        if (checkedBoxes.length > 0 && deleteSelectedContainer) {
+            deleteSelectedContainer.style.display = 'inline-block';
+        } else if (deleteSelectedContainer) {
+            deleteSelectedContainer.style.display = 'none';
         }
     }
 
@@ -489,6 +544,37 @@ document.addEventListener('DOMContentLoaded', function() {
             // Submit the form
             if (approveSelectedForm) {
                 approveSelectedForm.submit();
+            }
+        });
+    }
+
+    // Delete selected: update count in modal and confirm
+    const deleteSelectedModal = document.getElementById('deleteSelectedModal');
+    const deleteSelectedCountSpan = document.getElementById('delete-selected-count');
+    const confirmDeleteSelectedBtn = document.getElementById('confirm-delete-selected');
+
+    if (deleteSelectedModal && deleteSelectedCountSpan && confirmDeleteSelectedBtn) {
+        deleteSelectedModal.addEventListener('show.bs.modal', function() {
+            const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+            deleteSelectedCountSpan.textContent = checkedBoxes.length;
+        });
+
+        confirmDeleteSelectedBtn.addEventListener('click', function() {
+            const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('يرجى تحديد طلب واحد على الأقل');
+                return;
+            }
+            deleteRequestIdsContainer.innerHTML = '';
+            checkedBoxes.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'request_ids[]';
+                input.value = checkbox.value;
+                deleteRequestIdsContainer.appendChild(input);
+            });
+            if (deleteSelectedForm) {
+                deleteSelectedForm.submit();
             }
         });
     }

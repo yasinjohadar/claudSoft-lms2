@@ -1,7 +1,7 @@
-@extends('frontend.layouts.master')
+@extends('frontend.layouts.standalone')
 
 @section('page-title')
-    التسجيل في {{ $group->name }}
+    التسجيل في دبلوم البرمجة - الدفعة ({{ $group->name }})
 @endsection
 
 @section('content')
@@ -9,11 +9,19 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
+                <!-- لوغو واسم الأكاديمية -->
+                <div class="text-center mb-4 pb-3 border-bottom">
+                    <a href="{{ url('/') }}" class="d-inline-block text-decoration-none">
+                        <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلود سوفت التعليمية" class="mb-2" style="max-height: 70px; width: auto;">
+                        <h2 class="h4 text-dark mb-0 mt-2">كلود سوفت التعليمية</h2>
+                    </a>
+                </div>
+
                 <div class="card shadow-sm">
                     <div class="card-header bg-primary text-white">
                         <h4 class="mb-0">
                             <i class="fas fa-user-plus me-2"></i>
-                            التسجيل في {{ $group->name }}
+                            التسجيل في دبلوم البرمجة - الدفعة ({{ $group->name }})
                         </h4>
                     </div>
                     <div class="card-body">
@@ -63,7 +71,7 @@
                             <!-- رقم الهاتف -->
                             <div class="row mb-3">
                                 <div class="col-md-4">
-                                    <label class="form-label required">رمز الدولة</label>
+                                    <label class="form-label required">رمز الدولة (بدون 0)</label>
                                     <input type="text" name="country_code" class="form-control @error('country_code') is-invalid @enderror" 
                                            value="{{ old('country_code', '+966') }}" placeholder="+966" required>
                                     @error('country_code')
@@ -71,9 +79,9 @@
                                     @enderror
                                 </div>
                                 <div class="col-md-8">
-                                    <label class="form-label required">رقم الهاتف</label>
+                                    <label class="form-label required">رقم الهاتف (بدون 0)</label>
                                     <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" 
-                                           value="{{ old('phone') }}" required>
+                                           value="{{ old('phone') }}" placeholder="5xxxxxxxx" required>
                                     @error('phone')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -112,7 +120,6 @@
                                         <option value="">اختر الجنس</option>
                                         <option value="male" {{ old('gender') == 'male' ? 'selected' : '' }}>ذكر</option>
                                         <option value="female" {{ old('gender') == 'female' ? 'selected' : '' }}>أنثى</option>
-                                        <option value="other" {{ old('gender') == 'other' ? 'selected' : '' }}>أخرى</option>
                                     </select>
                                     @error('gender')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -187,9 +194,13 @@
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="commitment_to_training" id="commitment_no" value="no" {{ old('commitment_to_training') == 'no' ? 'checked' : '' }} required>
                                             <label class="form-check-label text-danger" for="commitment_no">
-                                                في حال انتم غير مستعدين للالتزام يرجى إتاحة الفرصة لغيركم
+                                                لا (غير مستعد للالتزام)
                                             </label>
                                         </div>
+                                        <small class="text-danger d-block mt-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            في حال عدم الاستعداد للالتزام يرجى إتاحة الفرصة لغيركم لأن العدد محدود
+                                        </small>
                                         @error('commitment_to_training')
                                             <div class="text-danger small mt-1">{{ $message }}</div>
                                         @enderror
@@ -242,7 +253,7 @@
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="has_computer" id="computer_no" value="no" {{ old('has_computer') == 'no' ? 'checked' : '' }} required>
                                             <label class="form-check-label text-danger" for="computer_no">
-                                                لا أملك حاسوب (ليس بإمكانك المتابعة)
+                                                لا أملك حاسوب
                                             </label>
                                         </div>
                                         @error('has_computer')
@@ -443,4 +454,24 @@
         border-color: #0d6efd;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) {
+        function stripLeadingZero() {
+            var val = phoneInput.value.trim();
+            if (val && val.charAt(0) === '0') {
+                phoneInput.value = val.substring(1);
+            }
+        }
+        phoneInput.addEventListener('blur', stripLeadingZero);
+        phoneInput.addEventListener('input', function() {
+            if (phoneInput.value.length === 1 && phoneInput.value === '0') {
+                phoneInput.value = '';
+            }
+        });
+    }
+});
+</script>
 @endsection

@@ -75,6 +75,7 @@
                                 <th>البريد الإلكتروني</th>
                                 <th>الهاتف</th>
                                 <th>المجموعة</th>
+                                <th>هل تمتلك حاسوب</th>
                                 <th>الحالة</th>
                                 <th>تم إنشاء الحساب</th>
                                 <th>تاريخ التسجيل</th>
@@ -96,6 +97,15 @@
                                         <a href="{{ route('courses.groups.show', [$registration->group->course_id ?? 1, $registration->group_id]) }}" class="text-primary">
                                             {{ $registration->group->name }}
                                         </a>
+                                    </td>
+                                    <td>
+                                        @if($registration->has_computer === 'yes')
+                                            <span class="badge bg-success">نعم</span>
+                                        @elseif($registration->has_computer === 'no')
+                                            <span class="badge bg-secondary">لا</span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($registration->status === 'pending')
@@ -147,7 +157,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="text-center">لا توجد تسجيلات</td>
+                                    <td colspan="11" class="text-center">لا توجد تسجيلات</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -1272,6 +1272,51 @@ class CourseGroupController extends Controller
     }
 
     /**
+     * Delete multiple membership requests permanently (without affecting group membership).
+     */
+    public function deleteMultipleRequests($courseId, $groupId, Request $request)
+    {
+        $request->validate([
+            'request_ids' => 'required|array|min:1',
+            'request_ids.*' => 'required|integer|exists:group_membership_requests,id',
+        ], [], [
+            'request_ids' => 'معرفات الطلبات',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::findOrFail($groupId);
+            $requestIds = $request->input('request_ids');
+            $deletedCount = 0;
+
+            foreach ($requestIds as $requestId) {
+                $membershipRequest = GroupMembershipRequest::find($requestId);
+                if (!$membershipRequest || $membershipRequest->group_id != $groupId) {
+                    continue;
+                }
+                $membershipRequest->forceDelete();
+                $deletedCount++;
+            }
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "تم حذف {$deletedCount} طلب انضمام نهائياً. تم الاحتفاظ بالتسجيل المرتبط بمن تم قبولهم.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete multiple membership requests', [
+                'group_id' => $groupId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء حذف الطلبات: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Approve multiple membership requests.
      */
     public function approveMultipleRequests($courseId, $groupId, Request $request)

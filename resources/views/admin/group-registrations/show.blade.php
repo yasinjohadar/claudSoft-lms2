@@ -83,9 +83,84 @@
                                 <p>{{ $registration->city ?? '-' }}</p>
                             </div>
                         </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>العنوان:</strong>
+                                <p>{{ $registration->address ?? '-' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>رمز الدولة:</strong>
+                                <p>{{ $registration->country_code ?? '-' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- المعدات والخبرة والتدريب -->
+                @php
+                    $computerLevels = ['none' => 'بدون', 'beginner' => 'مبتدئ', 'intermediate' => 'متوسط', 'good' => 'جيد', 'advanced' => 'متقدم'];
+                    $progLevels = ['none' => 'بدون', 'beginner' => 'مبتدئ', 'intermediate' => 'متوسط', 'expert' => 'خبير'];
+                @endphp
+                <div class="card custom-card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">المعدات والخبرة والتدريب</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>هل تمتلك حاسوب:</strong>
+                                <p>
+                                    @if($registration->has_computer === 'yes')
+                                        <span class="badge bg-success">نعم</span>
+                                    @elseif($registration->has_computer === 'no')
+                                        <span class="badge bg-secondary">لا</span>
+                                    @else
+                                        -
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>الالتزام بالتدريب:</strong>
+                                <p>{{ $registration->commitment_to_training === 'yes' ? 'نعم' : ($registration->commitment_to_training === 'no' ? 'لا' : '-') }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>الوقت الكافي للمتابعة:</strong>
+                                <p>{{ $registration->has_sufficient_time === 'yes' ? 'نعم' : ($registration->has_sufficient_time === 'no' ? 'لا' : '-') }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>خبرة الحاسوب:</strong>
+                                <p>{{ $computerLevels[$registration->computer_experience_level] ?? $registration->computer_experience_level ?? '-' }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>خبرة البرمجة:</strong>
+                                <p>{{ $progLevels[$registration->programming_experience] ?? $registration->programming_experience ?? '-' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>الاهتمام بالمعسكر التدريبي:</strong>
+                                <p>{{ $registration->interested_in_bootcamp === 'yes' ? 'نعم' : ($registration->interested_in_bootcamp === 'no' ? 'لا' : '-') }}</p>
+                            </div>
+                        </div>
                         <div class="mb-3">
-                            <strong>العنوان:</strong>
-                            <p>{{ $registration->address ?? '-' }}</p>
+                            <strong>نبذة عن الحاسوب والبرمجة:</strong>
+                            <p>{{ $registration->computer_programming_background ?? '-' }}</p>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>آخر مرحلة دراسية:</strong>
+                                <p>{{ $registration->education_level ?? '-' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>التخصص الدراسي:</strong>
+                                <p>{{ $registration->education_major ?? '-' }}</p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <strong>العمل الحالي:</strong>
+                            <p>{{ $registration->current_job ?? '-' }}</p>
                         </div>
                     </div>
                 </div>

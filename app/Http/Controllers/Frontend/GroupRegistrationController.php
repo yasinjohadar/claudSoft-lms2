@@ -32,7 +32,16 @@ class GroupRegistrationController extends Controller
             abort(404, 'التسجيل غير متاح لهذه المجموعة');
         }
 
-        $nationalities = Nationality::orderBy('name')->get();
+        $arabNationalityNames = [
+            'سعودي', 'مصري', 'إماراتي', 'كويتي', 'قطري', 'بحريني', 'عماني', 'أردني', 'فلسطيني',
+            'لبناني', 'سوري', 'عراقي', 'يمني', 'ليبي', 'تونسي', 'جزائري', 'مغربي', 'موريتاني',
+            'سوداني', 'صومالي', 'جيبوتي', 'قمري',
+        ];
+        $nationalities = Nationality::whereIn('name', $arabNationalityNames)
+            ->orderBy('name')
+            ->get()
+            ->unique('name')
+            ->values();
 
         return view('frontend.group-registration.form', compact('group', 'nationalities', 'settings'));
     }
@@ -84,7 +93,7 @@ class GroupRegistrationController extends Controller
             'country_code' => 'required|string|max:5',
             'nationality_id' => 'nullable|exists:nationalities,id',
             'date_of_birth' => 'nullable|date|before:today',
-            'gender' => 'nullable|in:male,female,other',
+            'gender' => 'nullable|in:male,female',
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:1000',
@@ -133,6 +142,11 @@ class GroupRegistrationController extends Controller
         ];
 
         $validated = $request->validate($validationRules, $validationMessages);
+
+        // إزالة الصفر من بداية رقم الهاتف إن أدخله الطالب
+        if (!empty($validated['phone']) && str_starts_with(trim($validated['phone']), '0')) {
+            $validated['phone'] = preg_replace('/^0/', '', trim($validated['phone']), 1);
+        }
 
         try {
             $validated['group_id'] = $group->id;

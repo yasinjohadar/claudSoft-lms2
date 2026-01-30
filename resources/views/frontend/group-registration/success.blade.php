@@ -1,4 +1,4 @@
-@extends('frontend.layouts.master')
+@extends('frontend.layouts.standalone')
 
 @section('page-title')
     تم إرسال طلب التسجيل بنجاح

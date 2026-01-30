@@ -197,7 +197,7 @@ class GroupRegistrationService
             'gender' => $registration->gender,
             'address' => $registration->address,
             // 'city' => $registration->city, // عمود city غير موجود في جدول users
-            'password' => Hash::make(Str::random(16)), // كلمة مرور عشوائية
+            'password' => Hash::make('claud@4soft123@#'), // كلمة مرور افتراضية للمستخدمين المنشأين من التسجيل
             'is_active' => true,
         ];
 
@@ -239,6 +239,10 @@ class GroupRegistrationService
 
         // إزالة أي رموز أو مسافات
         $phone = preg_replace('/[^0-9]/', '', $phone);
+        // إزالة الصفر من بداية رقم الهاتف إن وُجد
+        if (str_starts_with($phone, '0')) {
+            $phone = preg_replace('/^0/', '', $phone, 1);
+        }
         $countryCode = preg_replace('/[^0-9+]/', '', $countryCode);
 
         // إزالة + من country_code إذا كان موجوداً
