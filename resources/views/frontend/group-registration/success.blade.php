@@ -16,6 +16,14 @@
                             <i class="fas fa-check-circle text-success" style="font-size: 100px;"></i>
                         </div>
                         <h2 class="text-success mb-4 fw-bold">تم إرسال طلب التسجيل بنجاح</h2>
+
+                        <!-- ملاحظة هامة -->
+                        <div class="alert alert-warning border-warning border-2 mb-4 mx-auto shadow-sm text-center" style="max-width: 600px;" role="alert">
+                            <i class="fas fa-info-circle text-warning mb-2" style="font-size: 1.75rem;"></i>
+                            <h5 class="alert-heading text-dark mb-2">ملاحظة هامة</h5>
+                            <p class="mb-2">يرجى <strong>قراءة هذه الصفحة بالكامل</strong> لمتابعة خطواتك القادمة.</p>
+                            <p class="mb-0 fw-bold">أهم خطوة من أجل إكمال انضمامك للدبلوم هي <strong>الانضمام لكروب الواتساب المخصص للدبلوم</strong> عبر الزر أدناه، لمتابعة الأخبار والتحديثات.</p>
+                        </div>
                         
                         <!-- معلومات الطالب -->
                         <div class="card bg-light mb-4 mx-auto" style="max-width: 600px;">
