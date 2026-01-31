@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\N8nWebhookController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,12 +44,21 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
             ->name('handler.docs');
     });
 
-    // WhatsApp webhook endpoints
+    // WhatsApp webhook endpoints (Meta Cloud API)
     Route::prefix('whatsapp')
         ->name('whatsapp.')
         ->middleware(['throttle:60,1'])
         ->group(function () {
             Route::get('/', [WhatsAppWebhookController::class, 'verify'])->name('verify');
             Route::post('/', [WhatsAppWebhookController::class, 'handle'])->name('handle');
+        });
+
+    // WhatsApp Web webhook endpoints (Node.js / whatsapp-web.js)
+    Route::prefix('whatsapp-web')
+        ->name('whatsapp-web.')
+        ->middleware(['throttle:120,1'])
+        ->group(function () {
+            // استقبال الرسائل الواردة من خدمة الواتساب ويب
+            Route::post('/incoming', [WhatsAppWebWebhookController::class, 'handleIncoming'])->name('incoming');
         });
 });

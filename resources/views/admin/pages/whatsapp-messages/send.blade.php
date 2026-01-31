@@ -106,10 +106,13 @@
 
                             <!-- Broadcast fields -->
                             <div id="broadcast-fields" style="display: none;">
+                                <div class="alert alert-light border mb-3">
+                                    <small class="text-muted">يمكنك اختيار <strong>المجموعة فقط</strong> (يُرسل لأعضاء المجموعة) أو <strong>الكورس فقط</strong> (يُرسل لطلاب الكورس) أو كلاهما. عند اختيار مجموعة يُرسل للطلاب المنضمين للمجموعة فقط بدون اشتراط الكورس.</small>
+                                </div>
                                 <div class="mb-3">
-                                    <label for="course_id" class="form-label">الكورس <span class="text-danger">*</span></label>
+                                    <label for="course_id" class="form-label">الكورس <span id="course-required-star" class="text-danger">*</span></label>
                                     <select class="form-select @error('course_id') is-invalid @enderror" id="course_id" name="course_id">
-                                        <option value="">اختر الكورس</option>
+                                        <option value="">اختر الكورس (أو اختر مجموعة فقط)</option>
                                         @foreach($courses as $course)
                                             <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>{{ $course->title }}</option>
                                         @endforeach
@@ -122,7 +125,7 @@
                                 <div class="mb-3">
                                     <label for="group_id" class="form-label">المجموعة <span class="text-muted">(اختياري)</span></label>
                                     <select class="form-select @error('group_id') is-invalid @enderror" id="group_id" name="group_id">
-                                        <option value="">جميع المجموعات</option>
+                                        <option value="">لا مجموعة (إرسال حسب الكورس فقط)</option>
                                         @foreach($groups as $group)
                                             <option value="{{ $group->id }}" 
                                                     {{ old('group_id') == $group->id ? 'selected' : '' }}>
@@ -130,17 +133,34 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">اختيار المجموعة يرسل للطلاب المنتمين لهذه المجموعة فقط</small>
+                                    <small class="text-muted">عند اختيار مجموعة يُرسل <strong>لأعضاء هذه المجموعة فقط</strong> (بدون اشتراط الكورس)</small>
                                     @error('group_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
 
                                 <div class="mb-3">
-                                    <div class="alert alert-info">
-                                        <strong>عدد الطلاب:</strong> <span id="students-count">0</span> طالب
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <span><strong>عدد الطلاب:</strong> <span id="students-count">0</span> طالب</span>
+                                        <a href="{{ route('admin.whatsapp-messages.broadcasts.index') }}" class="btn btn-sm btn-outline-primary">عرض تقارير الإرسال الجماعي</a>
                                     </div>
                                 </div>
+                                <div class="alert alert-warning border mb-3 small">
+                                    <strong>ملاحظات الإرسال الجماعي:</strong><br>
+                                    • تُطبَّق الفواصل الزمنية المحددة في إعدادات واتساب (الفاصل بين الرسائل، والتفاوت العشوائي إن كان مفعّلاً) بين كل رسالة والأخرى.<br>
+                                    • يجب تشغيل عامل الطابور <code>php artisan queue:work</code> حتى تُرسَل الرسائل الجماعية (تُرسَل أول رسالة فوراً، والباقي عبر الطابور).
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="template_select" class="form-label">استخدام قالب محفوظ <span class="text-muted">(اختياري)</span></label>
+                                <select class="form-select" id="template_select">
+                                    <option value="">— لا أستخدم قالباً —</option>
+                                    @foreach($templates ?? [] as $t)
+                                        <option value="{{ $t->id }}" data-body="{{ e($t->body) }}" data-type="{{ $t->type }}" data-language="{{ $t->language }}" data-meta-name="{{ e($t->meta_template_name ?? '') }}">{{ $t->name }} ({{ $t->type === 'text' ? 'نص' : 'قالب Meta' }})</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">اختيار قالب يملأ نص الرسالة أو بيانات القالب تلقائياً</small>
                             </div>
 
                             <div class="mb-3">
@@ -174,8 +194,15 @@
                             <div class="mb-3" id="template-fields" style="display: none;">
                                 <div class="mb-3">
                                     <label for="template_name" class="form-label">اسم القالب <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control @error('template_name') is-invalid @enderror" id="template_name" name="template_name" value="{{ old('template_name') }}" placeholder="اسم القالب المعتمد في Meta">
-                                    <small class="text-muted">يجب أن يكون القالب معتمداً في Meta Business Account</small>
+                                    <select class="form-select @error('template_name') is-invalid @enderror" id="template_name" name="template_name">
+                                        <option value="">— اختر قالباً معتمداً في Meta —</option>
+                                        @foreach($templates ?? [] as $t)
+                                            @if($t->type === 'template' && !empty($t->meta_template_name))
+                                                <option value="{{ e($t->meta_template_name) }}" data-language="{{ e($t->language) }}" {{ old('template_name') == $t->meta_template_name ? 'selected' : '' }}>{{ $t->name }} ({{ $t->meta_template_name }})</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">القوالب المحفوظة من نوع «قالب Meta». إن لم يظهر قالبك، أضفه من <a href="{{ route('admin.whatsapp-templates.create') }}" target="_blank">قوالب الرسائل</a>.</small>
                                     @error('template_name')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -232,6 +259,7 @@ $(document).ready(function() {
     const messageForm = document.getElementById('message-form');
     const typeSelect = document.getElementById('type');
     const messageField = document.getElementById('message-field');
+    const templateSelect = document.getElementById('template_select');
     const templateFields = document.getElementById('template-fields');
     const messageInput = document.getElementById('message');
     const templateNameInput = document.getElementById('template_name');
@@ -312,6 +340,20 @@ $(document).ready(function() {
         toInput.setAttribute('required', 'required');
     });
 
+    // عند الإرسال الجماعي: الكورس مطلوب فقط إذا لم تُختر مجموعة
+    function updateCourseRequired() {
+        if (!sendTypeBroadcast || !sendTypeBroadcast.checked) return;
+        const groupValue = groupSelect ? groupSelect.value : '';
+        const courseRequiredStar = document.getElementById('course-required-star');
+        if (groupValue) {
+            courseSelect.removeAttribute('required');
+            if (courseRequiredStar) courseRequiredStar.style.display = 'none';
+        } else {
+            courseSelect.setAttribute('required', 'required');
+            if (courseRequiredStar) courseRequiredStar.style.display = 'inline';
+        }
+    }
+
     // Toggle between individual and broadcast fields
     function toggleSendType() {
         if (sendTypeBroadcast.checked) {
@@ -320,7 +362,7 @@ $(document).ready(function() {
             placeholdersInfo.style.display = 'block';
             individualPlaceholdersInfo.style.display = 'none';
             toInput.removeAttribute('required');
-            courseSelect.setAttribute('required', 'required');
+            updateCourseRequired();
             updateStudentsCount();
         } else {
             individualFields.style.display = 'block';
@@ -335,6 +377,8 @@ $(document).ready(function() {
                 toInput.setAttribute('required', 'required');
             }
             courseSelect.removeAttribute('required');
+            const star = document.getElementById('course-required-star');
+            if (star) star.style.display = 'none';
         }
     }
 
@@ -360,34 +404,77 @@ $(document).ready(function() {
         const courseId = courseSelect.value;
         const groupId = groupSelect.value;
 
+        console.log('[Broadcast] updateStudentsCount called', { courseId, groupId });
+
         if (!courseId && !groupId) {
             studentsCountSpan.textContent = '0';
             return;
         }
 
-        fetch('{{ route("admin.whatsapp-messages.broadcast.students-count") }}?' + new URLSearchParams({
+        const url = '{{ route("admin.whatsapp-messages.broadcast.students-count") }}?' + new URLSearchParams({
             course_id: courseId || '',
             group_id: groupId || ''
-        }), {
+        });
+        console.log('[Broadcast] Fetching students count:', url);
+
+        fetch(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('[Broadcast] Response status:', response.status, response.statusText);
+            return response.json();
+        })
         .then(data => {
-            studentsCountSpan.textContent = data.count || 0;
+            const count = data.count ?? 0;
+            console.log('[Broadcast] Students count received:', count, data);
+            studentsCountSpan.textContent = count;
         })
         .catch(error => {
-            console.error('Error fetching students count:', error);
+            console.error('[Broadcast] Error fetching students count:', error);
         });
     }
 
     // Event listeners
     sendTypeIndividual.addEventListener('change', toggleSendType);
     sendTypeBroadcast.addEventListener('change', toggleSendType);
-    courseSelect.addEventListener('change', updateStudentsCount);
-    groupSelect.addEventListener('change', updateStudentsCount);
+    courseSelect.addEventListener('change', function() { updateCourseRequired(); updateStudentsCount(); });
+    groupSelect.addEventListener('change', function() { updateCourseRequired(); updateStudentsCount(); });
     typeSelect.addEventListener('change', toggleMessageType);
+
+    // عند اختيار قالب محفوظ: ملء الرسالة أو بيانات القالب
+    if (templateSelect) {
+        templateSelect.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            if (!opt || !opt.value) return;
+            const body = opt.getAttribute('data-body') || '';
+            const ttype = opt.getAttribute('data-type') || 'text';
+            const lang = opt.getAttribute('data-language') || 'ar';
+            const metaName = opt.getAttribute('data-meta-name') || '';
+            if (messageInput) messageInput.value = body;
+            if (typeSelect) {
+                typeSelect.value = ttype;
+                toggleMessageType();
+            }
+            if (templateNameInput) {
+                if (templateNameInput.tagName === 'SELECT') templateNameInput.value = metaName;
+                else templateNameInput.value = metaName;
+            }
+            if (languageInput) languageInput.value = lang;
+        });
+    }
+
+    // عند اختيار اسم القالب (نوع template): مزامنة اللغة من القالب المختار
+    if (templateNameInput && templateNameInput.tagName === 'SELECT') {
+        templateNameInput.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            if (opt && opt.value && languageInput) {
+                const lang = opt.getAttribute('data-language');
+                if (lang) languageInput.value = lang;
+            }
+        });
+    }
 
     // Initial state
     toggleSendType();
@@ -401,9 +488,9 @@ $(document).ready(function() {
             return false;
         }
 
-        if (sendTypeBroadcast.checked && !courseSelect.value) {
+        if (sendTypeBroadcast.checked && !courseSelect.value && !groupSelect.value) {
             e.preventDefault();
-            alert('يرجى اختيار الكورس');
+            alert('يرجى اختيار الكورس أو المجموعة للإرسال الجماعي');
             return false;
         }
 

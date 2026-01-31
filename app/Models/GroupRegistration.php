@@ -40,6 +40,7 @@ class GroupRegistration extends Model
         'whatsapp_sent',
         'email_sent_at',
         'whatsapp_sent_at',
+        'whatsapp_error',
         'user_created',
         'user_id',
         'status',

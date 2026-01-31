@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp\Providers;
 
 use App\DTOs\WhatsApp\SendMessageResponseDTO;
+use App\Exceptions\WhatsAppApiException;
 use App\Services\WhatsApp\WhatsAppProviderService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -37,37 +38,41 @@ class WhatsAppWebProvider implements WhatsAppProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return new SendMessageResponseDTO(
-                    success: true,
-                    metaMessageId: $data['message_id'] ?? null,
+                    metaMessageId: (string) ($data['message_id'] ?? ''),
                     rawResponse: $data
                 );
             }
 
             $errorData = $response->json();
             $errorMessage = $errorData['error'] ?? $errorData['message'] ?? 'Unknown error';
-            
-            Log::error('WhatsApp Web API Error', [
+
+            Log::channel('whatsapp')->error('WhatsApp Web API Error', [
                 'status' => $response->status(),
                 'error' => $errorMessage,
                 'response' => $errorData,
             ]);
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $errorMessage,
-                rawResponse: $errorData
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $errorMessage,
+                (int) ($response->status()),
+                null,
+                ['response' => $errorData]
             );
+        } catch (WhatsAppApiException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('WhatsApp Web Provider Exception', [
+            Log::channel('whatsapp')->error('WhatsApp Web Provider Exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $e->getMessage()
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $e->getMessage(),
+                (int) $e->getCode(),
+                $e,
+                ['trace' => $e->getTraceAsString()]
             );
         }
     }
@@ -92,10 +97,9 @@ class WhatsAppWebProvider implements WhatsAppProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return new SendMessageResponseDTO(
-                    success: true,
-                    metaMessageId: $data['message_id'] ?? null,
+                    metaMessageId: (string) ($data['message_id'] ?? ''),
                     rawResponse: $data
                 );
             }
@@ -103,19 +107,24 @@ class WhatsAppWebProvider implements WhatsAppProviderService
             $errorData = $response->json();
             $errorMessage = $errorData['error'] ?? $errorData['message'] ?? 'Unknown error';
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $errorMessage,
-                rawResponse: $errorData
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $errorMessage,
+                (int) ($response->status()),
+                null,
+                ['response' => $errorData]
             );
+        } catch (WhatsAppApiException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('WhatsApp Web Template Exception', [
+            Log::channel('whatsapp')->error('WhatsApp Web Template Exception', [
                 'error' => $e->getMessage(),
             ]);
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $e->getMessage()
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $e->getMessage(),
+                (int) $e->getCode(),
+                $e,
+                ['trace' => $e->getTraceAsString()]
             );
         }
     }
@@ -140,10 +149,9 @@ class WhatsAppWebProvider implements WhatsAppProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return new SendMessageResponseDTO(
-                    success: true,
-                    metaMessageId: $data['message_id'] ?? null,
+                    metaMessageId: (string) ($data['message_id'] ?? ''),
                     rawResponse: $data
                 );
             }
@@ -151,19 +159,24 @@ class WhatsAppWebProvider implements WhatsAppProviderService
             $errorData = $response->json();
             $errorMessage = $errorData['error'] ?? $errorData['message'] ?? 'Unknown error';
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $errorMessage,
-                rawResponse: $errorData
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $errorMessage,
+                (int) ($response->status()),
+                null,
+                ['response' => $errorData]
             );
+        } catch (WhatsAppApiException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('WhatsApp Web Document Exception', [
+            Log::channel('whatsapp')->error('WhatsApp Web Document Exception', [
                 'error' => $e->getMessage(),
             ]);
 
-            return new SendMessageResponseDTO(
-                success: false,
-                error: $e->getMessage()
+            throw new WhatsAppApiException(
+                'WhatsApp Web: ' . $e->getMessage(),
+                (int) $e->getCode(),
+                $e,
+                ['trace' => $e->getTraceAsString()]
             );
         }
     }

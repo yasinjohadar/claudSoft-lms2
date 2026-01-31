@@ -78,12 +78,13 @@
                                         </div>
 
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">المزود <span class="text-danger">*</span></label>
+                                            <label class="form-label">المرسل الافتراضي للرسائل (المزود) <span class="text-danger">*</span></label>
                                             <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required onchange="handleProviderChange(this.value)">
                                                 <option value="meta" {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'meta') || (!isset($settings['whatsapp_provider'])) ? 'selected' : '' }}>Meta (WhatsApp Cloud API)</option>
                                                 <option value="custom_api" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api' ? 'selected' : '' }}>Custom API</option>
                                                 <option value="whatsapp_web" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web' ? 'selected' : '' }}>WhatsApp Web (QR Code)</option>
                                             </select>
+                                            <small class="text-muted d-block mt-1">يُستخدم هذا المزود لإرسال جميع رسائل واتساب (ترحيب، إشعارات، إرسال جماعي، إلخ).</small>
                                             @error('whatsapp_provider')
                                                 <div class="text-danger small mt-1">{{ $message }}</div>
                                             @enderror
@@ -355,7 +356,52 @@
                                         </div>
 
                                         <div class="col-md-12 mb-3">
-                                            <label class="form-label">رسالة الرد التلقائي</label>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       name="auto_reply_use_ai" 
+                                                       id="auto_reply_use_ai"
+                                                       value="1"
+                                                       {{ ($settings['auto_reply_use_ai'] ?? false) ? 'checked' : '' }}
+                                                       onchange="toggleAutoReplyAiFields(this.checked)">
+                                                <label class="form-check-label" for="auto_reply_use_ai">
+                                                    <strong>استخدام الذكاء الاصطناعي للرد التلقائي</strong>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">عند التفعيل، سيتم توليد الرد تلقائياً باستخدام أحد موديلات الذكاء الاصطناعي في النظام بدلاً من رسالة ثابتة.</small>
+                                        </div>
+
+                                        <div id="auto_reply_ai_fields" class="row" style="display: {{ ($settings['auto_reply_use_ai'] ?? false) ? 'flex' : 'none' }};">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">موديل الذكاء الاصطناعي</label>
+                                                <select class="form-select" name="auto_reply_ai_model_id" id="auto_reply_ai_model_id">
+                                                    <option value="">— اختر الموديل (أو الافتراضي) —</option>
+                                                    @foreach($aiModels ?? [] as $model)
+                                                        <option value="{{ $model->id }}" {{ (string)($settings['auto_reply_ai_model_id'] ?? '') === (string)$model->id ? 'selected' : '' }}>
+                                                            {{ $model->name }} ({{ $model->provider }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted">إن لم تختر موديلاً، يُستخدم أفضل موديل متاح للدردشة.</small>
+                                                @error('auto_reply_ai_model_id')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-12 mb-3">
+                                                <label class="form-label">رسالة النظام (اختياري)</label>
+                                                <textarea class="form-control" 
+                                                          name="auto_reply_ai_system_prompt" 
+                                                          id="auto_reply_ai_system_prompt"
+                                                          rows="4"
+                                                          placeholder="أنت مساعد ودود يرد على رسائل الواتساب نيابة عن منصة تعليمية. أجب بشكل مختصر ومهذب بالعربية.">{{ old('auto_reply_ai_system_prompt', $settings['auto_reply_ai_system_prompt'] ?? '') }}</textarea>
+                                                <small class="text-muted">تحدد سلوك الرد التلقائي. اتركه فارغاً لاستخدام الوصف الافتراضي.</small>
+                                                @error('auto_reply_ai_system_prompt')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12 mb-3" id="auto_reply_fixed_message_wrap">
+                                            <label class="form-label">رسالة الرد التلقائي <span id="auto_reply_message_label_extra" class="text-muted">(تُستخدم عند عدم تفعيل الذكاء الاصطناعي أو عند فشل التوليد)</span></label>
                                             <textarea class="form-control" 
                                                       name="auto_reply_message" 
                                                       id="auto_reply_message"
@@ -366,6 +412,55 @@
                                             @enderror
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            <script>
+                                function toggleAutoReplyAiFields(useAi) {
+                                    var el = document.getElementById('auto_reply_ai_fields');
+                                    var labelExtra = document.getElementById('auto_reply_message_label_extra');
+                                    if (el) el.style.display = useAi ? 'flex' : 'none';
+                                    if (labelExtra) labelExtra.textContent = useAi ? '(تُستخدم عند عدم تفعيل الذكاء الاصطناعي أو عند فشل التوليد)' : '';
+                                }
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    var cb = document.getElementById('auto_reply_use_ai');
+                                    if (cb) toggleAutoReplyAiFields(cb.checked);
+                                });
+                            </script>
+
+                            <!-- Queue Worker (عامل الطابور) -->
+                            <div class="card border mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="ri-play-circle-line me-2"></i>عامل الطابور (Queue Worker)
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">مطلوب للرد التلقائي والإرسال الجماعي. يجب أن يعمل على نفس السيرفر الذي يشغّل Laravel.</p>
+                                    <div class="alert alert-info small mb-3">
+                                        <strong>على Linux أونلاين:</strong> زر التشغيل قد يتوقف الطابور بعد تحديث الصفحة. لتشغيله بشكل دائم استخدم <strong>Supervisor</strong> — انظر ملف <code>QUEUE_WORKER_LINUX.md</code> في المشروع أو مجلد <code>deploy/</code> لملف إعداد Supervisor.
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span id="queue-worker-status-badge" class="badge {{ ($queueWorkerStatus['running'] ?? false) ? 'bg-success' : 'bg-secondary' }} fs-6">
+                                                {{ ($queueWorkerStatus['running'] ?? false) ? 'يعمل' : 'متوقف' }}
+                                            </span>
+                                            @if(!empty($queueWorkerStatus['pid'] ?? null))
+                                                <span class="text-muted small">(PID: {{ $queueWorkerStatus['pid'] }})</span>
+                                            @endif
+                                        </div>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-success" id="queue-worker-start-btn" {{ ($queueWorkerStatus['running'] ?? false) ? 'disabled' : '' }}>
+                                                <i class="ri-play-line me-1"></i>تشغيل
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="queue-worker-stop-btn" {{ ($queueWorkerStatus['running'] ?? false) ? '' : 'disabled' }}>
+                                                <i class="ri-stop-line me-1"></i>إيقاف
+                                            </button>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="queue-worker-refresh-btn">
+                                            <i class="ri-refresh-line me-1"></i>تحديث الحالة
+                                        </button>
+                                    </div>
+                                    <div id="queue-worker-message" class="mt-2 small text-muted"></div>
                                 </div>
                             </div>
 
@@ -662,6 +757,105 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Test connection button not found');
     }
 });
+
+    // Queue Worker: تشغيل / إيقاف / تحديث الحالة
+    (function() {
+        const statusBadge = document.getElementById('queue-worker-status-badge');
+        const startBtn = document.getElementById('queue-worker-start-btn');
+        const stopBtn = document.getElementById('queue-worker-stop-btn');
+        const refreshBtn = document.getElementById('queue-worker-refresh-btn');
+        const messageEl = document.getElementById('queue-worker-message');
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+        function setRunning(running, pid) {
+            if (statusBadge) {
+                statusBadge.textContent = running ? 'يعمل' : 'متوقف';
+                statusBadge.className = 'badge fs-6 ' + (running ? 'bg-success' : 'bg-secondary');
+            }
+            if (startBtn) startBtn.disabled = !!running;
+            if (stopBtn) stopBtn.disabled = !running;
+        }
+
+        function showMessage(msg, isError) {
+            if (!messageEl) return;
+            messageEl.textContent = msg || '';
+            messageEl.className = 'mt-2 small ' + (isError ? 'text-danger' : 'text-muted');
+        }
+
+        function fetchStatus() {
+            fetch('{{ route("admin.whatsapp-settings.queue-worker.status") }}', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                setRunning(data.running, data.pid);
+                showMessage(data.message || '');
+            })
+            .catch(function() { showMessage('فشل جلب الحالة.', true); });
+        }
+
+        if (startBtn) {
+            startBtn.addEventListener('click', function() {
+                startBtn.disabled = true;
+                showMessage('جاري التشغيل...');
+                fetch('{{ route("admin.whatsapp-settings.queue-worker.start") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(r => r.json())
+                .then(function(data) {
+                    showMessage(data.message || '', !data.success);
+                    if (data.success) setRunning(true, data.pid);
+                    else startBtn.disabled = false;
+                    if (stopBtn) stopBtn.disabled = !data.success;
+                })
+                .catch(function() {
+                    showMessage('حدث خطأ أثناء التشغيل.', true);
+                    startBtn.disabled = false;
+                });
+            });
+        }
+        if (stopBtn) {
+            stopBtn.addEventListener('click', function() {
+                stopBtn.disabled = true;
+                showMessage('جاري الإيقاف...');
+                fetch('{{ route("admin.whatsapp-settings.queue-worker.stop") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(r => r.json())
+                .then(function(data) {
+                    showMessage(data.message || '');
+                    setRunning(false);
+                    if (startBtn) startBtn.disabled = false;
+                })
+                .catch(function() {
+                    showMessage('حدث خطأ أثناء الإيقاف.', true);
+                    stopBtn.disabled = false;
+                });
+            });
+        }
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                refreshBtn.disabled = true;
+                fetchStatus();
+                setTimeout(function() { refreshBtn.disabled = false; }, 500);
+            });
+        }
+    })();
+
 console.log('WhatsApp settings script loaded');
 </script>
 @endsection

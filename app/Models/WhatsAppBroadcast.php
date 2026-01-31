@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WhatsAppBroadcast extends Model
 {
@@ -66,6 +67,14 @@ class WhatsAppBroadcast extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Recipients of this broadcast (per-recipient status).
+     */
+    public function recipients(): HasMany
+    {
+        return $this->hasMany(WhatsAppBroadcastRecipient::class, 'broadcast_id');
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Models\WhatsAppBroadcast;
+use App\Models\WhatsAppBroadcastRecipient;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use Illuminate\Bus\Queueable;
@@ -45,12 +46,31 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
     }
 
     /**
+     * Get E.164 phone number for the student (same logic as controller).
+     */
+    private function getStudentPhone(): string
+    {
+        $phone = $this->student->full_phone
+            ?? (($this->student->country_code ?? '') . ($this->student->phone ?? ''))
+            ?: $this->student->phone
+            ?? '';
+
+        if ($phone !== '' && strpos($phone, '+') !== 0) {
+            $phone = '+' . ltrim($phone, '0');
+        }
+
+        return $phone;
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(
         SendWhatsAppMessage $sendService,
         BroadcastWhatsAppMessage $broadcastService
     ): void {
+        $phone = $this->getStudentPhone();
+
         try {
             // Update broadcast status to processing if not already
             if ($this->broadcast->status === WhatsAppBroadcast::STATUS_PENDING) {
@@ -59,11 +79,20 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
 
             // Send message
             if ($this->type === 'template') {
-                // For template messages, you might need to handle differently
-                // For now, we'll treat it as text
-                $sendService->sendText($this->student->phone, $this->message);
+                $sendService->sendText($phone, $this->message);
             } else {
-                $sendService->sendText($this->student->phone, $this->message);
+                $sendService->sendText($phone, $this->message);
+            }
+
+            // Update recipient record to sent
+            $recipient = WhatsAppBroadcastRecipient::where('broadcast_id', $this->broadcast->id)
+                ->where('user_id', $this->student->id)
+                ->first();
+            if ($recipient) {
+                $recipient->update([
+                    'status' => WhatsAppBroadcastRecipient::STATUS_SENT,
+                    'sent_at' => now(),
+                ]);
             }
 
             // Increment sent count
@@ -72,29 +101,41 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
             Log::info('Broadcast message sent successfully', [
                 'broadcast_id' => $this->broadcast->id,
                 'student_id' => $this->student->id,
-                'phone' => $this->student->phone,
+                'phone' => $phone,
             ]);
         } catch (Exception $e) {
+            // Update recipient record to failed
+            $recipient = WhatsAppBroadcastRecipient::where('broadcast_id', $this->broadcast->id)
+                ->where('user_id', $this->student->id)
+                ->first();
+            if ($recipient) {
+                $recipient->update([
+                    'status' => WhatsAppBroadcastRecipient::STATUS_FAILED,
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+
             // Increment failed count
             $this->broadcast->increment('failed_count');
 
             Log::error('Failed to send broadcast message', [
                 'broadcast_id' => $this->broadcast->id,
                 'student_id' => $this->student->id,
-                'phone' => $this->student->phone,
+                'phone' => $phone,
                 'error' => $e->getMessage(),
             ]);
 
             // Re-throw to trigger retry mechanism
             throw $e;
         } finally {
-            // Update status to completed if all messages are sent
+            // Update status to completed if all messages are sent (refresh to get latest counts)
+            $this->broadcast->refresh();
             $totalProcessed = $this->broadcast->sent_count + $this->broadcast->failed_count;
             if ($totalProcessed >= $this->broadcast->total_recipients) {
                 $status = $this->broadcast->failed_count === $this->broadcast->total_recipients
                     ? WhatsAppBroadcast::STATUS_FAILED
                     : WhatsAppBroadcast::STATUS_COMPLETED;
-                
+
                 $this->broadcast->update(['status' => $status]);
             }
         }

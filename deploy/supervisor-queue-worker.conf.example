@@ -1,0 +1,22 @@
+; تشغيل عامل الطابور Laravel بشكل دائم على Linux (لا يتوقف بعد التحديث أو إعادة تشغيل السيرفر)
+; الاستخدام:
+;   1. انسخ هذا الملف إلى السيرفر: مثلاً /etc/supervisor/conf.d/laravel-queue-worker.conf
+;   2. عدّل المسارات والأسطر المعلّمة أدناه (command, directory, user)
+;   3. نفّذ: sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start laravel-queue-worker
+
+[program:laravel-queue-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/html/storage/logs/queue-worker.log
+stopwaitsecs=3600
+; عدّل المسارات أعلاه:
+;   command: استبدل /var/www/html بمسار مشروعك (مثلاً /home/user/public_html أو /var/www/your-app)
+;   user: المستخدم الذي يشغّل ويب سيرفرك (مثلاً www-data أو nginx أو اسم مستخدمك)
+;   stdout_logfile: مسار سجل الطابور داخل المشروع

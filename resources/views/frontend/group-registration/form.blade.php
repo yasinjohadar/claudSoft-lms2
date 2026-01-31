@@ -1,7 +1,7 @@
 @extends('frontend.layouts.standalone')
 
 @section('page-title')
-    التسجيل في دبلوم البرمجة - الدفعة ({{ $group->name }})
+    التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
 @endsection
 
 @section('content')
@@ -12,16 +12,16 @@
                 <!-- لوغو واسم الأكاديمية -->
                 <div class="text-center mb-4 pb-3 border-bottom">
                     <a href="{{ url('/') }}" class="d-inline-block text-decoration-none">
-                        <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلود سوفت التعليمية" class="mb-2" style="max-height: 70px; width: auto;">
-                        <h2 class="h4 text-dark mb-0 mt-2">كلود سوفت التعليمية</h2>
+                        <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="mb-2" style="max-height: 70px; width: auto;">
+                        <h2 class="h4 text-dark mb-0 mt-2">كلاودسوفت التعليمية</h2>
                     </a>
                 </div>
 
                 <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">
+                    <div class="card-header text-white text-center registration-header" style="background-color: var(--secondary-Color, #0555a2) !important;">
+                        <h4 class="mb-0 registration-title">
                             <i class="fas fa-user-plus me-2"></i>
-                            التسجيل في دبلوم البرمجة - الدفعة ({{ $group->name }})
+                            التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
                         </h4>
                     </div>
                     <div class="card-body">
@@ -430,6 +430,32 @@
 </div>
 
 <style>
+    .registration-title {
+        line-height: 1.5;
+    }
+    @media (max-width: 768px) {
+        .registration-title {
+            line-height: 1.85;
+        }
+    }
+    
+    /* نقطتان رأسيتان بعد اسم الحقل في فورم التسجيل */
+    #registrationForm .form-label:not(.required)::after {
+        content: ":";
+    }
+    #registrationForm .form-label.required::after {
+        content: ": *";
+        color: red;
+    }
+    
+    /* تسميات أوضح وأكبر على الجوال */
+    @media (max-width: 768px) {
+        #registrationForm .form-label {
+            font-size: 1.125rem;
+            font-weight: 500;
+        }
+    }
+    
     .required::after {
         content: " *";
         color: red;

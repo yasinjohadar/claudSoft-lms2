@@ -239,9 +239,14 @@
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
                             <ul class="slide-menu child1 {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.group-registrations.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.group-registrations.index') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.*') ? 'active' : '' }}">
+                                <li class="slide {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.group-registrations.index') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">
                                         <i class="fas fa-list me-2"></i>جميع التسجيلات
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.group-registrations.whatsapp-report') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">
+                                        <i class="ri-whatsapp-line me-2"></i>تقارير رسائل الواتساب
                                     </a>
                                 </li>
                             </ul>
@@ -574,8 +579,16 @@
                                 <li class="slide {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">WhatsApp Web</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.*') ? 'active' : '' }}">الرسائل</a>
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">الرسائل</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-messages.broadcasts.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">
+                                        <i class="fas fa-broadcast-tower me-2"></i>تقارير الإرسال الجماعي
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.whatsapp-templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">قوالب الرسائل</a>
                                 </li>
                             </ul>
                         </li>

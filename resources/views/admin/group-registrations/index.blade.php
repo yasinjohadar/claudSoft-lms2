@@ -15,6 +15,11 @@
                     تسجيلات المجموعات
                 </h5>
             </div>
+            <div class="ms-auto">
+                <a href="{{ route('admin.group-registrations.whatsapp-report') }}" class="btn btn-primary">
+                    <i class="ri-whatsapp-line me-2"></i>تقارير رسائل الواتساب
+                </a>
+            </div>
         </div>
 
         @include('admin.components.alerts')

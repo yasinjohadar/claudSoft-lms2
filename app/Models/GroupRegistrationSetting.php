@@ -12,6 +12,7 @@ class GroupRegistrationSetting extends Model
 
     protected $fillable = [
         'group_id',
+        'diploma_name',
         'is_registration_enabled',
         'auto_create_user',
         'auto_approve_membership',
@@ -21,6 +22,7 @@ class GroupRegistrationSetting extends Model
         'whatsapp_template',
         'whatsapp_group_link',
         'require_email_verification',
+        'extra',
     ];
 
     protected $casts = [
@@ -30,6 +32,7 @@ class GroupRegistrationSetting extends Model
         'send_welcome_email' => 'boolean',
         'send_welcome_whatsapp' => 'boolean',
         'require_email_verification' => 'boolean',
+        'extra' => 'array',
     ];
 
     // Relationships

@@ -33,6 +33,18 @@
                             @csrf
                             @method('PUT')
 
+                            <!-- تسمية الدبلوم -->
+                            <div class="mb-4">
+                                <label class="form-label">تسمية الدبلوم (عنوان صفحة التسجيل)</label>
+                                <input type="text" name="diploma_name" class="form-control @error('diploma_name') is-invalid @enderror" 
+                                       value="{{ old('diploma_name', $settings->diploma_name) }}" 
+                                       placeholder="مثال: دبلوم البرمجة">
+                                @error('diploma_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">يظهر في عنوان صفحة التسجيل: "التسجيل في [هذا الاسم] [اسم المجموعة]"</small>
+                            </div>
+
                             <!-- تفعيل التسجيل -->
                             <div class="mb-4">
                                 <div class="form-check form-switch">

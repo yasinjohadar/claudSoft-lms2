@@ -45,6 +45,26 @@
             </div>
         @endif
 
+        @php
+            $currentProvider = $settings['whatsapp_provider'] ?? 'meta';
+            $providerLabels = [
+                'meta' => 'Meta (WhatsApp Cloud API)',
+                'custom_api' => 'Custom API',
+                'whatsapp_web' => 'WhatsApp Web (QR Code)',
+            ];
+        @endphp
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <strong><i class="ri-send-plane-line me-2"></i>المرسل الافتراضي للرسائل:</strong>
+            حالياً الرسائل تُرسل عبر <strong>{{ $providerLabels[$currentProvider] ?? $currentProvider }}</strong>.
+            @if($currentProvider !== 'whatsapp_web')
+                <br class="mt-1">
+                <a href="{{ route('admin.whatsapp-settings.index') }}#whatsapp_provider" class="alert-link">لجعل WhatsApp Web المرسل الافتراضي، انتقل إلى إعدادات WhatsApp العامة واختر المزود: WhatsApp Web (QR Code).</a>
+            @else
+                <br><span class="text-muted">جميع رسائل واتساب تُرسل عبر WhatsApp Web.</span>
+            @endif
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
         <div class="row">
             <!-- Connection Status Card -->
             <div class="col-xl-4 col-lg-6 col-md-12">

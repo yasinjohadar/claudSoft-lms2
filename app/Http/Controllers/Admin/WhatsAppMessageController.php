@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppBroadcast;
+use App\Models\WhatsAppBroadcastRecipient;
 use App\Models\WhatsAppContact;
+use App\Models\WhatsAppMessageTemplate;
 use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Services\WhatsApp\SendWhatsAppMessage;
@@ -19,6 +21,7 @@ use App\Exceptions\WhatsAppApiException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class WhatsAppMessageController extends Controller
 {
@@ -27,6 +30,28 @@ class WhatsAppMessageController extends Controller
         private BroadcastWhatsAppMessage $broadcastService,
         private WhatsAppSettingsService $settingsService
     ) {}
+
+    /**
+     * Return a user-friendly error message for WhatsApp errors (e.g. WhatsApp Web client errors).
+     * When a known WhatsApp Web client error is detected, logs full details to storage/logs/whatsapp-*.log for diagnosis.
+     */
+    private function getWhatsAppErrorMessage(\Throwable $e, array $context = []): string
+    {
+        $msg = $e->getMessage();
+        $isWhatsAppWebClientError = stripos($msg, 'markedUnread') !== false
+            || stripos($msg, 'static.whatsapp.net') !== false;
+
+        if ($isWhatsAppWebClientError) {
+            Log::channel('whatsapp')->error('WhatsApp Web client error - full details for diagnosis', array_merge([
+                'exception_class' => get_class($e),
+                'exception_message' => $e->getMessage(),
+                'exception_trace' => $e->getTraceAsString(),
+                'exception_code' => $e->getCode(),
+            ], $context));
+            return 'فشل إرسال الرسالة عبر واتساب ويب. جرّب إعادة ربط واتساب ويب أو المحاولة لاحقاً.';
+        }
+        return $msg;
+    }
 
     /**
      * Display messages list
@@ -92,8 +117,9 @@ class WhatsAppMessageController extends Controller
     {
         $courses = Course::where('is_published', true)->orderBy('title')->get();
         $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
-        
-        return view('admin.pages.whatsapp-messages.send', compact('courses', 'groups'));
+        $templates = WhatsAppMessageTemplate::active()->orderBy('name')->get(['id', 'name', 'body', 'type', 'language', 'meta_template_name']);
+
+        return view('admin.pages.whatsapp-messages.send', compact('courses', 'groups', 'templates'));
     }
 
     /**
@@ -278,7 +304,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                           ->with('error', 'فشل إرسال الرسالة: ' . $e->getMessage())
+                           ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
                            ->withInput();
         } catch (\Exception $e) {
             // Update message with error if message was created
@@ -299,7 +325,25 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $e->getMessage())
+                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
+                           ->withInput();
+        } catch (\Throwable $e) {
+            if (isset($message) && !empty($message->id)) {
+                $message->update([
+                    'status' => WhatsAppMessage::STATUS_FAILED,
+                    'error' => [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ],
+                ]);
+            }
+            Log::channel('whatsapp')->error('Throwable sending WhatsApp message', [
+                'message_id' => isset($message) ? $message->id : null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()
+                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
                            ->withInput();
         }
     }
@@ -314,13 +358,25 @@ class WhatsAppMessageController extends Controller
             'group_id' => 'nullable|exists:course_groups,id',
         ]);
 
-        $students = $this->broadcastService->getStudentsByCriteria(
-            $request->course_id,
-            $request->group_id
-        );
+        $courseId = $request->filled('course_id') ? (int) $request->course_id : null;
+        $groupId = $request->filled('group_id') ? (int) $request->group_id : null;
+
+        Log::channel('whatsapp')->info('Broadcast students count requested', [
+            'course_id' => $courseId,
+            'group_id' => $groupId,
+        ]);
+
+        $students = $this->broadcastService->getStudentsByCriteria($courseId, $groupId);
+        $count = $students->count();
+
+        Log::channel('whatsapp')->info('Broadcast students count result', [
+            'count' => $count,
+            'course_id' => $courseId,
+            'group_id' => $groupId,
+        ]);
 
         return response()->json([
-            'count' => $students->count(),
+            'count' => $count,
         ]);
     }
 
@@ -335,8 +391,12 @@ class WhatsAppMessageController extends Controller
             'message' => 'required_if:type,text|nullable|string|max:4096',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
-            // Broadcast fields
-            'course_id' => 'required_if:send_type,broadcast|nullable|exists:courses,id',
+            // Broadcast: عند اختيار مجموعة يُرسل لأعضاء المجموعة فقط (الكورس اختياري)
+            'course_id' => [
+                Rule::requiredIf(fn () => $request->input('send_type') === 'broadcast' && !$request->input('group_id')),
+                'nullable',
+                'exists:courses,id',
+            ],
             'group_id' => 'nullable|exists:course_groups,id',
             // Individual field
             'to' => 'required_if:send_type,individual|nullable|string|regex:/^\+[1-9]\d{1,14}$/',
@@ -344,7 +404,8 @@ class WhatsAppMessageController extends Controller
             'send_type.required' => 'نوع الإرسال مطلوب',
             'type.required' => 'نوع الرسالة مطلوب',
             'message.required_if' => 'نص الرسالة مطلوب',
-            'course_id.required_if' => 'الكورس مطلوب للإرسال الجماعي',
+            'course_id.required' => 'اختر الكورس أو المجموعة للإرسال الجماعي',
+            'course_id.required_if' => 'اختر الكورس أو المجموعة للإرسال الجماعي',
             'course_id.exists' => 'الكورس المحدد غير موجود',
             'group_id.exists' => 'المجموعة المحددة غير موجودة',
             'to.required_if' => 'رقم الهاتف مطلوب للإرسال الفردي',
@@ -372,54 +433,142 @@ class WhatsAppMessageController extends Controller
             $course = $validated['course_id'] ? Course::find($validated['course_id']) : null;
             $group = $validated['group_id'] ? CourseGroup::find($validated['group_id']) : null;
 
-            // Create broadcast record
+            // Create broadcast and recipient records first (so report can show per-recipient status)
             $broadcast = WhatsAppBroadcast::create([
                 'message_template' => $validated['message'] ?? $validated['template_name'] ?? '',
                 'send_type' => $validated['type'],
                 'course_id' => $validated['course_id'] ?? null,
                 'group_id' => $validated['group_id'] ?? null,
                 'total_recipients' => $students->count(),
-                'status' => WhatsAppBroadcast::STATUS_PENDING,
+                'status' => WhatsAppBroadcast::STATUS_PROCESSING,
+                'sent_count' => 0,
+                'failed_count' => 0,
                 'created_by' => Auth::id(),
             ]);
 
-            // Get delay settings
+            foreach ($students as $student) {
+                WhatsAppBroadcastRecipient::create([
+                    'broadcast_id' => $broadcast->id,
+                    'user_id' => $student->id,
+                    'status' => WhatsAppBroadcastRecipient::STATUS_PENDING,
+                ]);
+            }
+
+            // Send to first student synchronously so connection/API errors are shown to the user
+            $firstStudent = $students->first();
+            $firstMessage = $this->broadcastService->replacePlaceholders(
+                $validated['message'] ?? $validated['template_name'] ?? '',
+                $firstStudent,
+                $course,
+                $group
+            );
+            $phone = $firstStudent->full_phone ?? (($firstStudent->country_code ?? '') . ($firstStudent->phone ?? '')) ?: $firstStudent->phone;
+            if (strpos($phone, '+') !== 0) {
+                $phone = '+' . ltrim($phone, '0');
+            }
+
+            $settings = $this->settingsService->getSettings();
+            $provider = $settings['whatsapp_provider'] ?? 'meta';
+            $config = $this->settingsService->getProviderConfig();
+            $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+
+            try {
+                if ($validated['type'] === 'template') {
+                    $providerInstance->sendTemplate(
+                        $phone,
+                        $validated['template_name'],
+                        $validated['language'] ?? 'ar',
+                        []
+                    );
+                } else {
+                    $providerInstance->sendText($phone, $firstMessage, false);
+                }
+            } catch (\Throwable $firstSendError) {
+                $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
+                    ->where('user_id', $firstStudent->id)
+                    ->first();
+                if ($firstRecipient) {
+                    $firstRecipient->update([
+                        'status' => WhatsAppBroadcastRecipient::STATUS_FAILED,
+                        'error_message' => $firstSendError->getMessage(),
+                    ]);
+                }
+                $broadcast->update(['status' => WhatsAppBroadcast::STATUS_FAILED]);
+                throw $firstSendError;
+            }
+
+            // First send succeeded: update first recipient and broadcast counts
+            $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
+                ->where('user_id', $firstStudent->id)
+                ->first();
+            if ($firstRecipient) {
+                $firstRecipient->update([
+                    'status' => WhatsAppBroadcastRecipient::STATUS_SENT,
+                    'sent_at' => now(),
+                ]);
+            }
+            $broadcast->increment('sent_count');
+
             $delaySettings = $this->settingsService->getDelaySettings();
             $baseDelay = $delaySettings['delay_between_messages'];
-            
-            // Dispatch jobs for each student with delay
-            $index = 0;
-            foreach ($students as $student) {
+
+            $index = 1;
+            foreach ($students->slice(1) as $student) {
                 $message = $this->broadcastService->replacePlaceholders(
                     $validated['message'] ?? '',
                     $student,
                     $course,
                     $group
                 );
-
-                // Calculate delay for this message (with random variation if enabled)
                 $delay = $this->settingsService->calculateDelay($baseDelay);
-                
+
                 BroadcastWhatsAppMessageJob::dispatch(
-                    $broadcast, 
-                    $student, 
-                    $message, 
+                    $broadcast,
+                    $student,
+                    $message,
                     $validated['type'],
                     $delay,
                     $index
                 );
-                
                 $index++;
             }
 
-            return redirect()->route('admin.whatsapp-messages.index')
-                ->with('success', 'تم بدء إرسال ' . $students->count() . ' رسالة جماعية.');
-        } catch (\Exception $e) {
-            Log::error('Error sending broadcast message: ' . $e->getMessage());
+            if ($students->count() === 1) {
+                $broadcast->update(['status' => WhatsAppBroadcast::STATUS_COMPLETED]);
+            }
+
+            return redirect()->route('admin.whatsapp-messages.broadcasts.show', $broadcast)
+                ->with('success', 'تم بدء إرسال ' . $students->count() . ' رسالة جماعية. يمكنك متابعة التقرير في هذه الصفحة.');
+        } catch (\Throwable $e) {
+            Log::error('Error sending broadcast message: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             return redirect()->back()
-                ->with('error', 'فشل إرسال الرسالة الجماعية: ' . $e->getMessage())
+                ->with('error', 'فشل إرسال الرسالة الجماعية: ' . $this->getWhatsAppErrorMessage($e))
                 ->withInput();
         }
+    }
+
+    /**
+     * List past broadcasts (report index)
+     */
+    public function broadcastsIndex(Request $request)
+    {
+        $broadcasts = WhatsAppBroadcast::with(['course', 'group', 'creator'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('admin.pages.whatsapp-messages.broadcasts-index', compact('broadcasts'));
+    }
+
+    /**
+     * Show broadcast report (detail)
+     */
+    public function showBroadcast(WhatsAppBroadcast $broadcast)
+    {
+        $broadcast->load(['course', 'group', 'creator', 'recipients.user']);
+
+        return view('admin.pages.whatsapp-messages.broadcast-show', compact('broadcast'));
     }
 
     /**
@@ -506,7 +655,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'فشل إرسال الرسالة: ' . $e->getMessage());
+                ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e));
         } catch (\Exception $e) {
             // Update message with error
             $message->update([
@@ -525,7 +674,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e));
         }
     }
 }

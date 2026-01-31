@@ -17,7 +17,10 @@
                     </ol>
                 </nav>
             </div>
-            <div class="my-auto">
+            <div class="my-auto d-flex gap-2">
+                <a href="{{ route('admin.whatsapp-messages.broadcasts.index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-broadcast-tower me-1"></i> تقارير الإرسال الجماعي
+                </a>
                 <a href="{{ route('admin.whatsapp-messages.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> إرسال رسالة
                 </a>

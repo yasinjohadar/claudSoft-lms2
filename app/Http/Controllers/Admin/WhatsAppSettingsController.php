@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Exceptions\WhatsAppApiException;
+use App\Services\Ai\AIModelService;
+use App\Services\QueueWorkerService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Http\Request;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppSettingsController extends Controller
 {
     public function __construct(
-        private WhatsAppSettingsService $settingsService
+        private WhatsAppSettingsService $settingsService,
+        private AIModelService $aiModelService,
+        private QueueWorkerService $queueWorkerService
     ) {}
 
     /**
@@ -22,8 +26,10 @@ class WhatsAppSettingsController extends Controller
     {
         $this->settingsService->initializeDefaults();
         $settings = $this->settingsService->getSettings();
+        $aiModels = $this->aiModelService->getAvailableModels('chat');
+        $queueWorkerStatus = $this->queueWorkerService->status();
 
-        return view('admin.pages.whatsapp-settings.index', compact('settings'));
+        return view('admin.pages.whatsapp-settings.index', compact('settings', 'aiModels', 'queueWorkerStatus'));
     }
 
     /**
@@ -31,6 +37,18 @@ class WhatsAppSettingsController extends Controller
      */
     public function update(Request $request)
     {
+        // When WhatsApp Web is selected: use saved URL from settings if not in request
+        if ($request->input('whatsapp_provider') === 'whatsapp_web') {
+            $existing = $this->settingsService->getSettings();
+            if (empty($request->input('whatsapp_web_service_url'))) {
+                $request->merge(['whatsapp_web_service_url' => $existing['whatsapp_web_service_url'] ?? 'http://localhost:3000']);
+            }
+        }
+
+        $request->merge([
+            'auto_reply_ai_model_id' => $request->input('auto_reply_ai_model_id') ?: null,
+        ]);
+
         $validated = $request->validate([
             'whatsapp_enabled' => 'nullable',
             'whatsapp_provider' => 'required|string|in:meta,custom_api,whatsapp_web',
@@ -45,6 +63,9 @@ class WhatsAppSettingsController extends Controller
             'strict_signature' => 'nullable',
             'auto_reply' => 'nullable',
             'auto_reply_message' => 'nullable|string|max:500',
+            'auto_reply_use_ai' => 'nullable',
+            'auto_reply_ai_model_id' => 'nullable|integer|exists:ai_models,id',
+            'auto_reply_ai_system_prompt' => 'nullable|string|max:2000',
             'timeout' => 'nullable|integer|min:1|max:300',
             'custom_api_url' => 'required_if:whatsapp_provider,custom_api|nullable|string|url|max:500',
             'custom_api_key' => 'nullable|string|max:500',
@@ -66,6 +87,8 @@ class WhatsAppSettingsController extends Controller
             'verify_token.required_if' => 'رمز التحقق مطلوب للمزود Meta',
             'custom_api_url.required_if' => 'رابط API مطلوب للمزود المخصص',
             'custom_api_url.url' => 'رابط API غير صالح',
+            'whatsapp_web_service_url.required_if' => 'رابط خدمة WhatsApp Web مطلوب. يمكن تعبئته من صفحة إعدادات WhatsApp Web.',
+            'whatsapp_web_service_url.url' => 'رابط خدمة WhatsApp Web غير صالح',
             'timeout.integer' => 'المهلة الزمنية يجب أن تكون رقماً',
             'timeout.min' => 'المهلة الزمنية يجب أن تكون على الأقل ثانية واحدة',
             'timeout.max' => 'المهلة الزمنية يجب أن تكون أقل من 300 ثانية',
@@ -76,7 +99,13 @@ class WhatsAppSettingsController extends Controller
             $validated['whatsapp_enabled'] = $request->has('whatsapp_enabled') ? '1' : '0';
             $validated['strict_signature'] = $request->has('strict_signature') ? '1' : '0';
             $validated['auto_reply'] = $request->has('auto_reply') ? '1' : '0';
+            $validated['auto_reply_use_ai'] = $request->has('auto_reply_use_ai') ? '1' : '0';
             $validated['random_delay_enabled'] = $request->has('random_delay_enabled') ? '1' : '0';
+
+            if (empty($validated['auto_reply_ai_model_id'])) {
+                $validated['auto_reply_ai_model_id'] = '';
+            }
+            $validated['auto_reply_ai_system_prompt'] = $validated['auto_reply_ai_system_prompt'] ?? '';
 
             // If access_token, app_secret, custom_api_key, or whatsapp_web_api_token is empty, keep existing values
             if (empty($validated['access_token'])) {
@@ -170,6 +199,33 @@ class WhatsAppSettingsController extends Controller
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Queue worker: get status (for AJAX or initial page load).
+     */
+    public function queueWorkerStatus()
+    {
+        $status = $this->queueWorkerService->status();
+        return response()->json($status);
+    }
+
+    /**
+     * Queue worker: start.
+     */
+    public function queueWorkerStart()
+    {
+        $result = $this->queueWorkerService->start();
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    /**
+     * Queue worker: stop.
+     */
+    public function queueWorkerStop()
+    {
+        $result = $this->queueWorkerService->stop();
+        return response()->json($result);
     }
 
     /**

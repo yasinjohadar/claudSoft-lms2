@@ -58,6 +58,7 @@ class GroupRegistrationSettingController extends Controller
         }
 
         $validated = $request->validate([
+            'diploma_name' => 'nullable|string|max:255',
             'is_registration_enabled' => 'boolean',
             'auto_create_user' => 'boolean',
             'auto_approve_membership' => 'boolean',

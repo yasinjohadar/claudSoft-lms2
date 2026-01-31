@@ -47,6 +47,52 @@ class GroupRegistrationController extends Controller
     }
 
     /**
+     * تقرير رسائل الواتساب المرسلة عند التسجيل في المجموعات
+     */
+    public function whatsappReport(Request $request)
+    {
+        $query = GroupRegistration::with(['group', 'nationality'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('group_id')) {
+            $query->where('group_id', $request->group_id);
+        }
+
+        if ($request->filled('whatsapp_status')) {
+            if ($request->whatsapp_status === 'sent') {
+                $query->where('whatsapp_sent', true);
+            } elseif ($request->whatsapp_status === 'not_sent') {
+                $query->where('whatsapp_sent', false);
+            } elseif ($request->whatsapp_status === 'failed') {
+                $query->whereNotNull('whatsapp_error');
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('name_ar', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('full_phone', 'like', "%{$search}%");
+            });
+        }
+
+        $registrations = $query->paginate(20)->withQueryString();
+        $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.group-registrations.whatsapp-report', compact('registrations', 'groups'));
+    }
+
+    /**
      * عرض تفاصيل التسجيل
      */
     public function show(GroupRegistration $registration)

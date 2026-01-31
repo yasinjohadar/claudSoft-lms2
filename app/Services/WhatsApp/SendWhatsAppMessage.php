@@ -44,6 +44,31 @@ class SendWhatsAppMessage
     }
 
     /**
+     * Send text message synchronously (runs in the same request, no queue).
+     * Use for welcome messages so they are sent immediately without needing queue:work.
+     */
+    public function sendTextSync(string $to, string $text, bool $previewUrl = false): WhatsAppMessage
+    {
+        $contact = WhatsAppContact::findOrCreateByWaId($to);
+        $message = WhatsAppMessage::create([
+            'direction' => WhatsAppMessage::DIRECTION_OUTBOUND,
+            'contact_id' => $contact->id,
+            'type' => WhatsAppMessage::TYPE_TEXT,
+            'body' => $text,
+            'status' => WhatsAppMessage::STATUS_QUEUED,
+        ]);
+
+        $job = new SendWhatsAppMessageJob($message, [
+            'type' => 'text',
+            'text' => $text,
+            'preview_url' => $previewUrl,
+        ]);
+        \Illuminate\Support\Facades\Bus::dispatchSync($job);
+
+        return $message->fresh();
+    }
+
+    /**
      * Send template message
      */
     public function sendTemplate(
