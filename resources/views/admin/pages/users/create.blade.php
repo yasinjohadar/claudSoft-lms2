@@ -19,6 +19,19 @@
             padding: 0.75rem;
         }
 
+        /* أعلام الدول مستطيلة وليست دائرية */
+        .select2-container--bootstrap-5 .select2-results__option img,
+        .select2-container--bootstrap-5 .select2-selection__rendered img {
+            border-radius: 0 !important;
+        }
+
+        /* قائمة رمز الدولة: وضوح رمز ISO */
+        .country-code-select,
+        .country-code-select option,
+        .select2-container--bootstrap-5 .country-code-select + .select2 .select2-selection__rendered {
+            font-size: 1.05rem;
+        }
+
         .photo-preview {
             width: 100px;
             height: 100px;
@@ -154,27 +167,20 @@
                             <div class="col-md-3">
                                 <label class="form-label">رمز الدولة</label>
                                 <select class="form-select country-code-select @error('country_code') is-invalid @enderror"
-                                        name="country_code" id="country_code_select">
-                                    <option value="+966" selected>🇸🇦 السعودية (+966)</option>
-                                    <option value="+971">🇦🇪 الإمارات (+971)</option>
-                                    <option value="+20">🇪🇬 مصر (+20)</option>
-                                    <option value="+962">🇯🇴 الأردن (+962)</option>
-                                    <option value="+965">🇰🇼 الكويت (+965)</option>
-                                    <option value="+973">🇧🇭 البحرين (+973)</option>
-                                    <option value="+974">🇶🇦 قطر (+974)</option>
-                                    <option value="+968">🇴🇲 عمان (+968)</option>
-                                    <option value="+961">🇱🇧 لبنان (+961)</option>
-                                    <option value="+963">🇸🇾 سوريا (+963)</option>
-                                    <option value="+964">🇮🇶 العراق (+964)</option>
-                                    <option value="+967">🇾🇪 اليمن (+967)</option>
-                                    <option value="+212">🇲🇦 المغرب (+212)</option>
-                                    <option value="+213">🇩🇿 الجزائر (+213)</option>
-                                    <option value="+216">🇹🇳 تونس (+216)</option>
-                                    <option value="+218">🇱🇾 ليبيا (+218)</option>
-                                    <option value="+249">🇸🇩 السودان (+249)</option>
-                                    <option value="+90">🇹🇷 تركيا (+90)</option>
-                                    <option value="+1">🇺🇸 أمريكا (+1)</option>
-                                    <option value="+44">🇬🇧 بريطانيا (+44)</option>
+                                        name="country_code" id="country_code_select" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                                    <option value="">اختر رمز الدولة</option>
+                                    @foreach(config('country_codes.list', []) as $code => $label)
+                                        @php
+                                            $isoList = config('country_codes.iso', []);
+                                            $iso = $isoList[$code] ?? '';
+                                            $textOnly = config('country_codes.list_text_only', [])[$code] ?? $label;
+                                            $separator = config('country_codes.separator', '  ·  ');
+                                            $display = $iso !== '' ? $textOnly . $separator . $iso : $textOnly;
+                                        @endphp
+                                        <option value="{{ $code }}" data-iso="{{ strtolower($iso) }}" {{ old('country_code', config('country_codes.default')) == $code ? 'selected' : '' }}>
+                                            {{ $display }}
+                                        </option>
+                                    @endforeach
                                 </select>
                                 @error('country_code')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -214,22 +220,29 @@
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-floating">
+                                <label class="form-label">الجنسية</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img id="admin-nationality-flag-preview" src="" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;flex-shrink:0;display:none;">
                                     <select class="form-select @error('nationality_id') is-invalid @enderror"
-                                            name="nationality_id" aria-label="الجنسية">
+                                            name="nationality_id" id="admin_nationality_id_select" aria-label="الجنسية" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
                                         <option value="">اختر الجنسية</option>
                                         @foreach ($nationalities as $nationality)
-                                            <option value="{{ $nationality->id }}"
+                                            @php
+                                                $isoMap = config('country_codes.nationality_iso', []);
+                                                $displayMap = config('country_codes.nationality_display', []);
+                                                $iso = $isoMap[$nationality->name] ?? '';
+                                                $displayText = $displayMap[$nationality->name] ?? $nationality->name;
+                                            @endphp
+                                            <option value="{{ $nationality->id }}" data-flag-iso="{{ $iso }}"
                                                     {{ old('nationality_id') == $nationality->id ? 'selected' : '' }}>
-                                                {{ $nationality->name }}
+                                                {{ $displayText }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <label>الجنسية</label>
-                                    @error('nationality_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
                                 </div>
+                                @error('nationality_id')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <!-- كلمة المرور -->
@@ -352,27 +365,6 @@
             }
         }
 
-        // تحديث الرقم الكامل
-        function updateFullPhone() {
-            const countryCode = document.getElementById('country_code_select').value;
-            const phone = document.getElementById('phone_input').value;
-
-            if (phone) {
-                const fullPhone = countryCode + phone.replace(/\D/g, ''); // إزالة أي رموز غير رقمية
-                document.getElementById('full_phone').value = fullPhone;
-                console.log('Full Phone:', fullPhone);
-            }
-        }
-
-        // عند تغيير رمز الدولة أو رقم الهاتف
-        document.getElementById('country_code_select').addEventListener('change', updateFullPhone);
-        document.getElementById('phone_input').addEventListener('input', updateFullPhone);
-
-        // قبل إرسال النموذج
-        document.querySelector('form').addEventListener('submit', function(e) {
-            updateFullPhone();
-        });
-
         // تفعيل Select2 للأدوار وللدول
         $(document).ready(function() {
             $('select[name="roles[]"]').select2({
@@ -382,13 +374,51 @@
                 theme: "bootstrap-5"
             });
 
+            var flagUrlTemplate = $('#country_code_select').attr('data-flag-url') || 'https://flagcdn.com/w20/{iso}.png';
             $('.country-code-select').select2({
                 placeholder: "اختر رمز الدولة",
                 allowClear: false,
                 dir: "ltr",
                 width: '100%',
-                theme: "bootstrap-5"
+                theme: "bootstrap-5",
+                templateResult: function(state) {
+                    if (!state.id) return state.text;
+                    var iso = $(state.element).data('iso') || 'sa';
+                    var url = flagUrlTemplate.replace('{iso}', iso);
+                    var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                    $span.append($('<img src="' + url + '" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                    $span.append(document.createTextNode(state.text));
+                    return $span;
+                },
+                templateSelection: function(state) {
+                    if (!state.id) return state.text;
+                    var iso = $(state.element).data('iso') || 'sa';
+                    var url = flagUrlTemplate.replace('{iso}', iso);
+                    var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                    $span.append($('<img src="' + url + '" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                    $span.append(document.createTextNode(state.text));
+                    return $span;
+                }
             });
+
+            function updateAdminNationalityFlag() {
+                var sel = document.getElementById('admin_nationality_id_select');
+                var img = document.getElementById('admin-nationality-flag-preview');
+                if (!sel || !img) return;
+                var opt = sel.options[sel.selectedIndex];
+                var iso = opt && opt.getAttribute('data-flag-iso') ? opt.getAttribute('data-flag-iso') : '';
+                var urlTemplate = sel.getAttribute('data-flag-url') || 'https://flagcdn.com/w20/{iso}.png';
+                if (iso) {
+                    img.src = urlTemplate.replace('{iso}', iso.toLowerCase());
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+            }
+            if (document.getElementById('admin_nationality_id_select')) {
+                updateAdminNationalityFlag();
+                $('#admin_nationality_id_select').on('change', updateAdminNationalityFlag);
+            }
         });
     </script>
 @stop

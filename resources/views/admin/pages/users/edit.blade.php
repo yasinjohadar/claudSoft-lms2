@@ -133,13 +133,29 @@
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="tel" class="form-control @error('phone') is-invalid @enderror"
-                                           name="phone" placeholder="رقم الهاتف" value="{{ old('phone', $user->phone) }}">
-                                    <label>رقم الهاتف</label>
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                <label class="form-label">رقم الهاتف</label>
+                                <div class="row g-2">
+                                    <div class="col-5">
+                                        <select name="country_code" id="admin_edit_country_code" class="form-select @error('country_code') is-invalid @enderror" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                                            <option value="">رمز الدولة</option>
+                                            @foreach(config('country_codes.list', []) as $code => $label)
+                                                @php
+                                                    $isoList = config('country_codes.iso', []);
+                                                    $iso = $isoList[$code] ?? '';
+                                                    $textOnly = config('country_codes.list_text_only', [])[$code] ?? $label;
+                                                    $separator = config('country_codes.separator', '  ·  ');
+                                                    $display = $iso !== '' ? $textOnly . $separator . $iso : $textOnly;
+                                                    $selectedCode = old('country_code', $user->country_code ?? config('country_codes.default', '+966'));
+                                                @endphp
+                                                <option value="{{ $code }}" data-iso="{{ strtolower($iso) }}" {{ $selectedCode == $code ? 'selected' : '' }}>{{ $display }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('country_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div class="col-7">
+                                        <input type="tel" class="form-control @error('phone') is-invalid @enderror" name="phone" placeholder="5xxxxxxxx" value="{{ old('phone', $user->phone) }}">
+                                        @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
                                 </div>
                             </div>
 
@@ -156,16 +172,25 @@
 
                             <div class="col-md-6">
                                 <div class="form-floating">
-                                    <select class="form-select @error('nationality_id') is-invalid @enderror"
-                                            name="nationality_id" aria-label="الجنسية">
-                                        <option value="">اختر الجنسية</option>
-                                        @foreach ($nationalities as $nationality)
-                                            <option value="{{ $nationality->id }}"
-                                                    {{ old('nationality_id', $user->nationality_id) == $nationality->id ? 'selected' : '' }}>
-                                                {{ $nationality->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img id="admin-edit-nationality-flag" src="" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;flex-shrink:0;display:none;">
+                                        <select class="form-select @error('nationality_id') is-invalid @enderror"
+                                                name="nationality_id" id="admin_edit_nationality_select" aria-label="الجنسية" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                                            <option value="">اختر الجنسية</option>
+                                            @foreach ($nationalities as $nationality)
+                                                @php
+                                                    $isoMap = config('country_codes.nationality_iso', []);
+                                                    $displayMap = config('country_codes.nationality_display', []);
+                                                    $iso = $isoMap[$nationality->name] ?? '';
+                                                    $displayText = $displayMap[$nationality->name] ?? $nationality->name;
+                                                @endphp
+                                                <option value="{{ $nationality->id }}" data-flag-iso="{{ $iso }}"
+                                                        {{ old('nationality_id', $user->nationality_id) == $nationality->id ? 'selected' : '' }}>
+                                                    {{ $displayText }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <label>الجنسية</label>
                                     @error('nationality_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -253,6 +278,21 @@
             }
         }
 
+        function updateEditNationalityFlag() {
+            var sel = document.getElementById('admin_edit_nationality_select');
+            var img = document.getElementById('admin-edit-nationality-flag');
+            if (!sel || !img) return;
+            var opt = sel.options[sel.selectedIndex];
+            var iso = opt && opt.getAttribute('data-flag-iso') ? opt.getAttribute('data-flag-iso') : '';
+            var urlTemplate = sel.getAttribute('data-flag-url') || 'https://flagcdn.com/w20/{iso}.png';
+            if (iso) {
+                img.src = urlTemplate.replace('{iso}', iso.toLowerCase());
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+
         // تفعيل Select2 للأدوار (اختياري)
         $(document).ready(function() {
             $('select[name="roles[]"]').select2({
@@ -260,6 +300,10 @@
                 allowClear: true,
                 dir: "rtl"
             });
+            if (document.getElementById('admin_edit_nationality_select')) {
+                updateEditNationalityFlag();
+                $('#admin_edit_nationality_select').on('change', updateEditNationalityFlag);
+            }
         });
     </script>
 @stop

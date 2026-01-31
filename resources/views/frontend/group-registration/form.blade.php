@@ -1,5 +1,10 @@
 @extends('frontend.layouts.standalone')
 
+@push('head')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+@endpush
+
 @section('page-title')
     التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
 @endsection
@@ -35,7 +40,7 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" id="registrationForm">
+                        <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" id="registrationForm" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
                             @csrf
 
                             <!-- الاسم -->
@@ -71,9 +76,25 @@
                             <!-- رقم الهاتف -->
                             <div class="row mb-3">
                                 <div class="col-md-4">
-                                    <label class="form-label required">رمز الدولة (بدون 0)</label>
-                                    <input type="text" name="country_code" class="form-control @error('country_code') is-invalid @enderror" 
-                                           value="{{ old('country_code', '+966') }}" placeholder="+966" required>
+                                    <label class="form-label required">رمز الدولة</label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select name="country_code" id="country_code_select" class="form-select country-code-select @error('country_code') is-invalid @enderror" required
+                                                data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                                            <option value="">اختر رمز الدولة</option>
+                                            @foreach(config('country_codes.list', []) as $code => $label)
+                                                @php
+                                                    $isoList = config('country_codes.iso', []);
+                                                    $iso = $isoList[$code] ?? '';
+                                                    $textOnly = config('country_codes.list_text_only', [])[$code] ?? $label;
+                                                    $separator = config('country_codes.separator', '  ·  ');
+                                                    $display = $iso !== '' ? $textOnly . $separator . $iso : $textOnly;
+                                                @endphp
+                                                <option value="{{ $code }}" data-iso="{{ strtolower($iso) }}" {{ old('country_code', config('country_codes.default', '+966')) == $code ? 'selected' : '' }}>
+                                                    {{ $display }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     @error('country_code')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -91,14 +112,23 @@
                             <!-- الجنسية -->
                             <div class="mb-3">
                                 <label class="form-label">الجنسية</label>
-                                <select name="nationality_id" class="form-select @error('nationality_id') is-invalid @enderror">
-                                    <option value="">اختر الجنسية</option>
-                                    @foreach($nationalities as $nationality)
-                                        <option value="{{ $nationality->id }}" {{ old('nationality_id') == $nationality->id ? 'selected' : '' }}>
-                                            {{ $nationality->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select name="nationality_id" id="nationality_id_select" class="form-select nationality-select-with-flag @error('nationality_id') is-invalid @enderror"
+                                            data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                                        <option value="">اختر الجنسية</option>
+                                        @foreach($nationalities as $nationality)
+                                            @php
+                                                $isoMap = config('country_codes.nationality_iso', []);
+                                                $displayMap = config('country_codes.nationality_display', []);
+                                                $iso = $isoMap[$nationality->name] ?? '';
+                                                $displayText = $displayMap[$nationality->name] ?? $nationality->name;
+                                            @endphp
+                                            <option value="{{ $nationality->id }}" data-flag-iso="{{ $iso }}" {{ old('nationality_id') == $nationality->id ? 'selected' : '' }}>
+                                                {{ $displayText }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 @error('nationality_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -429,7 +459,22 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <style>
+    /* أعلام الدول مستطيلة وليست دائرية */
+    .select2-container--bootstrap-5 .select2-results__option img,
+    .select2-container--bootstrap-5 .select2-selection__rendered img {
+        border-radius: 0 !important;
+    }
+
+    /* قائمة رمز الدولة: فاصل ثابت ووضوح رمز ISO */
+    .country-code-select,
+    .country-code-select option {
+        font-size: 1.05rem;
+    }
+
     .registration-title {
         line-height: 1.5;
     }
@@ -483,6 +528,72 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var flagUrlTemplate = document.getElementById('registrationForm') && document.getElementById('registrationForm').getAttribute('data-flag-url')
+        ? document.getElementById('registrationForm').getAttribute('data-flag-url') : 'https://flagcdn.com/w20/{iso}.png';
+
+    // Select2 لرمز الدولة: عرض العلم داخل القائمة وعند الاختيار
+    var $countrySelect = $('#country_code_select');
+    if ($countrySelect.length) {
+        $countrySelect.select2({
+            placeholder: 'اختر رمز الدولة',
+            allowClear: false,
+            dir: 'rtl',
+            width: '100%',
+            theme: 'bootstrap-5',
+            templateResult: function(state) {
+                if (!state.id) return state.text;
+                var iso = $(state.element).data('iso') || 'sa';
+                var url = flagUrlTemplate.replace('{iso}', iso.toLowerCase());
+                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                $span.append(document.createTextNode(state.text));
+                return $span;
+            },
+            templateSelection: function(state) {
+                if (!state.id) return state.text;
+                var iso = $(state.element).data('iso') || 'sa';
+                var url = flagUrlTemplate.replace('{iso}', iso.toLowerCase());
+                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                $span.append(document.createTextNode(state.text));
+                return $span;
+            }
+        });
+    }
+
+    // Select2 للجنسية: نفس القائمة العلوية 100% (علم + اسم الدولة + الرمز + · + ISO)
+    var $nationalitySelect = $('#nationality_id_select');
+    if ($nationalitySelect.length) {
+        var natFlagUrl = $nationalitySelect.attr('data-flag-url') || flagUrlTemplate;
+        $nationalitySelect.select2({
+            placeholder: 'اختر الجنسية',
+            allowClear: false,
+            dir: 'rtl',
+            width: '100%',
+            theme: 'bootstrap-5',
+            templateResult: function(state) {
+                if (!state.id) return state.text;
+                var iso = $(state.element).data('flag-iso') || '';
+                if (!iso) return state.text;
+                var url = natFlagUrl.replace('{iso}', iso.toLowerCase());
+                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                $span.append(document.createTextNode(state.text));
+                return $span;
+            },
+            templateSelection: function(state) {
+                if (!state.id) return state.text;
+                var iso = $(state.element).data('flag-iso') || '';
+                if (!iso) return state.text;
+                var url = natFlagUrl.replace('{iso}', iso.toLowerCase());
+                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
+                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
+                $span.append(document.createTextNode(state.text));
+                return $span;
+            }
+        });
+    }
+
     var phoneInput = document.querySelector('input[name="phone"]');
     if (phoneInput) {
         function stripLeadingZero() {

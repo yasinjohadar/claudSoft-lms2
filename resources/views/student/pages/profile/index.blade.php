@@ -166,7 +166,9 @@
                     <div class="col">
                         <h2 class="mb-2 fw-bold">{{ $student->name_ar ?? $student->name }}</h2>
                         <p class="mb-1"><i class="fa fa-envelope me-2"></i>{{ $student->email }}</p>
-                        @if($student->phone)
+                        @if($student->full_phone ?? ($student->country_code && $student->phone))
+                            <p class="mb-0"><i class="fa fa-phone me-2"></i>{{ $student->full_phone ?? trim(($student->country_code ?? '') . ($student->phone ?? '')) }}</p>
+                        @elseif($student->phone)
                             <p class="mb-0"><i class="fa fa-phone me-2"></i>{{ $student->phone }}</p>
                         @endif
                     </div>
@@ -216,8 +218,11 @@
                                         <div class="info-label">
                                             <i class="fa fa-phone text-primary me-2"></i>رقم الهاتف
                                         </div>
-                                        <div class="info-value {{ $student->phone ? '' : 'empty' }}">
-                                            {{ $student->phone ?? 'غير محدد' }}
+                                        <div class="info-value {{ ($student->full_phone ?? $student->phone) ? '' : 'empty' }}">
+                                            @php
+                                                $displayPhone = $student->full_phone ?? trim(($student->country_code ?? '') . ($student->phone ?? '')) ?: $student->phone;
+                                            @endphp
+                                            {{ $displayPhone ?? 'غير محدد' }}
                                         </div>
                                     </div>
                                 </div>

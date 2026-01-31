@@ -92,9 +92,8 @@ public function index(Request $request)
             'name' => 'required|string|max:255',
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'nullable|string|max:20',
             'country_code' => 'nullable|string|max:5',
-            'full_phone' => 'nullable|string|max:25|unique:users,full_phone',
+            'phone' => 'nullable|string|max:20',
             'national_id' => 'nullable|string|max:20|unique:users,national_id',
             'nationality_id' => 'nullable|exists:nationalities,id',
             'password' => 'required|string|min:8|confirmed',
@@ -106,7 +105,6 @@ public function index(Request $request)
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'البريد الإلكتروني غير صحيح',
             'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'full_phone.unique' => 'رقم الهاتف مستخدم بالفعل',
             'national_id.unique' => 'رقم الهوية مستخدم بالفعل',
             'password.required' => 'كلمة المرور مطلوبة',
             'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
@@ -128,14 +126,13 @@ public function index(Request $request)
             }
         }
 
-        // إنشاء المستخدم
+        // إنشاء المستخدم (full_phone يُحسب تلقائياً في User model boot من country_code + phone)
         $user = User::create([
             'name' => $request->name,
             'name_ar' => $request->name_ar,
             'email' => $request->email,
-            'phone' => $request->phone,
             'country_code' => $request->country_code,
-            'full_phone' => $request->full_phone,
+            'phone' => $request->phone,
             'national_id' => $request->national_id,
             'nationality_id' => $request->nationality_id,
             'password' => Hash::make($request->password),
@@ -295,6 +292,7 @@ public function index(Request $request)
             'name' => 'required|string|max:255',
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'country_code' => 'nullable|string|max:5',
             'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
             'national_id' => 'nullable|string|max:20|unique:users,national_id,' . $id,
             'nationality_id' => 'nullable|exists:nationalities,id',
@@ -314,11 +312,12 @@ public function index(Request $request)
             'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
         ]);
 
-        // تجهيز البيانات للتحديث
+        // تجهيز البيانات للتحديث (country_code + phone يُحدّثان full_phone تلقائياً في User model boot)
         $updateData = [
             'name' => $request->name,
             'name_ar' => $request->name_ar,
             'email' => $request->email,
+            'country_code' => $request->country_code,
             'phone' => $request->phone,
             'national_id' => $request->national_id,
             'nationality_id' => $request->nationality_id,

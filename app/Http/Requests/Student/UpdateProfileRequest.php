@@ -28,6 +28,7 @@ class UpdateProfileRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
             // Email is not included - students cannot change their email
+            'country_code' => ['nullable', 'string', 'max:5'],
             'phone' => [
                 'nullable',
                 'string',
@@ -64,6 +65,7 @@ class UpdateProfileRequest extends FormRequest
             'name' => 'الاسم بالإنجليزية',
             'name_ar' => 'الاسم بالعربية',
             'email' => 'البريد الإلكتروني',
+            'country_code' => 'رمز الدولة',
             'phone' => 'رقم الهاتف',
             'national_id' => 'رقم الهوية',
             'date_of_birth' => 'تاريخ الميلاد',

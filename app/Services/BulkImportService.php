@@ -226,29 +226,13 @@ class BulkImportService
         // إزالة أي رموز غير رقمية
         $cleaned = preg_replace('/\D/', '', $fullPhone);
 
-        // قائمة رموز الدول
-        $countryCodes = [
-            '966' => '+966', // السعودية
-            '971' => '+971', // الإمارات
-            '20' => '+20',   // مصر
-            '962' => '+962', // الأردن
-            '965' => '+965', // الكويت
-            '973' => '+973', // البحرين
-            '974' => '+974', // قطر
-            '968' => '+968', // عمان
-            '961' => '+961', // لبنان
-            '963' => '+963', // سوريا
-            '964' => '+964', // العراق
-            '967' => '+967', // اليمن
-            '212' => '+212', // المغرب
-            '213' => '+213', // الجزائر
-            '216' => '+216', // تونس
-            '218' => '+218', // ليبيا
-            '249' => '+249', // السودان
-            '90' => '+90',   // تركيا
-            '1' => '+1',     // أمريكا
-            '44' => '+44',   // بريطانيا
-        ];
+        // قائمة رموز الدول من الإعداد (ترتيب من الأطول للأقصر لتفادي تداخل الرموز مثل 1 و 44)
+        $countryCodes = [];
+        foreach (array_keys(config('country_codes.list', [])) as $withPlus) {
+            $num = ltrim($withPlus, '+');
+            $countryCodes[$num] = $withPlus;
+        }
+        uksort($countryCodes, fn ($a, $b) => strlen($b) <=> strlen($a));
 
         // محاولة إيجاد رمز الدولة
         foreach ($countryCodes as $code => $formatted) {
@@ -262,11 +246,12 @@ class BulkImportService
         }
 
         // افتراضي: السعودية إذا لم يُعثر على رمز
+        $defaultCode = config('country_codes.default', '+966');
         $cleanedPhone = ltrim($cleaned, '0');
         return [
-            'country_code' => '+966',
+            'country_code' => $defaultCode,
             'phone' => $cleanedPhone,
-            'full_phone' => '+966' . $cleanedPhone,
+            'full_phone' => $defaultCode . $cleanedPhone,
         ];
     }
 

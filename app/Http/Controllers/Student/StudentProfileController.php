@@ -58,6 +58,7 @@ class StudentProfileController extends Controller
 
             // Update all fields (including nullable ones)
             $student->name_ar = $request->input('name_ar');
+            $student->country_code = $request->input('country_code');
             $student->phone = $request->input('phone');
             $student->national_id = $request->input('national_id');
             $student->date_of_birth = $request->input('date_of_birth');
