@@ -45,8 +45,8 @@ class WhatsAppSettingsService
             'custom_api_key' => $this->decryptIfEncrypted($settings['custom_api_key'] ?? ''),
             'custom_api_method' => $settings['custom_api_method'] ?? 'POST',
             'custom_api_headers' => $this->parseHeaders($settings['custom_api_headers'] ?? '{}'),
-            // WhatsApp Web settings
-            'whatsapp_web_service_url' => $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000',
+            // WhatsApp Web settings (normalize URL: no leading/trailing slashes)
+            'whatsapp_web_service_url' => $this->normalizeServiceUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000'),
             'whatsapp_web_api_token' => $this->decryptIfEncrypted($settings['whatsapp_web_api_token'] ?? ''),
             // Delay settings
             'delay_between_messages' => (int) ($settings['delay_between_messages'] ?? 3),
@@ -67,6 +67,11 @@ class WhatsAppSettingsService
             // Encrypt sensitive fields
             if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token']) && !empty($value)) {
                 $value = Crypt::encryptString($value);
+            }
+
+            // Normalize WhatsApp Web service URL when saving (remove leading slash that causes "غير متاح على: /https://...")
+            if ($key === 'whatsapp_web_service_url' && is_string($value)) {
+                $value = $this->normalizeServiceUrl($value);
             }
 
             // Handle JSON fields - custom_api_headers comes as string from textarea
@@ -209,6 +214,18 @@ class WhatsAppSettingsService
         }
         
         return $baseDelay;
+    }
+
+    /**
+     * Normalize Node.js service base URL (no leading slash, no trailing slash)
+     */
+    protected function normalizeServiceUrl(string $url): string
+    {
+        $url = trim($url);
+        if (str_starts_with($url, '/')) {
+            $url = substr($url, 1);
+        }
+        return rtrim($url, '/') ?: 'http://localhost:3000';
     }
 
     /**

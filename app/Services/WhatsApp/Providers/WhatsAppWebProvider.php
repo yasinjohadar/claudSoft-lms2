@@ -16,7 +16,11 @@ class WhatsAppWebProvider implements WhatsAppProviderService
     public function __construct(array $config)
     {
         $this->config = $config;
-        $this->baseUrl = $config['nodejs_service_url'] ?? 'http://localhost:3000';
+        $base = trim($config['nodejs_service_url'] ?? 'http://localhost:3000');
+        if (str_starts_with($base, '/')) {
+            $base = substr($base, 1);
+        }
+        $this->baseUrl = rtrim($base, '/') ?: 'http://localhost:3000';
     }
 
     /**

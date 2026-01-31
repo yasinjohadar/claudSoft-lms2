@@ -12,8 +12,11 @@
                 <h4 class="page-title fw-semibold fs-18 mb-0">ربط WhatsApp Web</h4>
                 <p class="fw-normal text-muted fs-14 mb-0">اربط جهازك الشخصي مع النظام عبر QR Code</p>
             </div>
-            <div>
-                <a href="{{ route('admin.whatsapp-settings.index') }}" class="btn btn-outline-primary">
+            <div class="d-flex gap-2">
+                <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-outline-primary">
+                    <i class="ri-settings-3-line me-1"></i>إعدادات رابط الخدمة
+                </a>
+                <a href="{{ route('admin.whatsapp-settings.index') }}" class="btn btn-outline-secondary">
                     <i class="ri-arrow-right-line me-1"></i>العودة للإعدادات
                 </a>
             </div>
@@ -72,8 +75,10 @@
                                     <span id="error-message"></span>
                                     <div class="mt-3">
                                         <small>
-                                            <strong>ملاحظة:</strong> يجب أن يكون Node.js service يعمل على: 
-                                            <code>{{ $nodejsUrl ?? 'http://localhost:3000' }}</code>
+                                            <strong>الرابط المستخدم حالياً:</strong> <code>{{ $nodejsUrl ?? 'http://localhost:3000' }}</code>
+                                            <br>
+                                            إذا كان الرابط خاطئاً (مثلاً localhost على السيرفر)، غيّره من
+                                            <a href="{{ route('admin.whatsapp-web-settings.index') }}">إعدادات WhatsApp Web</a> ثم احفظ واضغط «بدء الربط» مرة أخرى.
                                             <br>
                                             راجع ملف <code>whatsapp-web-service-README.md</code> لمعرفة كيفية إعداد الخدمة.
                                         </small>
@@ -88,7 +93,10 @@
                                 
                                 <div class="alert alert-info mt-4">
                                     <i class="ri-information-line me-2"></i>
-                                    <strong>مهم:</strong> يجب إعداد Node.js service أولاً قبل استخدام هذه الميزة.
+                                    <strong>الرابط المستخدم حالياً:</strong> <code>{{ $nodejsUrl ?? 'http://localhost:3000' }}</code>
+                                    @if(str_contains($nodejsUrl ?? '', 'localhost') && !in_array(request()->getHost(), ['localhost', '127.0.0.1']))
+                                        <br><strong class="text-warning">تنبيه:</strong> أنت على السيرفر لكن الرابط مضبوط على localhost. غيّر الرابط من <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="alert-link">إعدادات WhatsApp Web</a> إلى رابط الخدمة الأونلاين (مثل https://wa.claudsoft.com) ثم احفظ.
+                                    @endif
                                     <br>
                                     <small>راجع ملف <code>whatsapp-web-service-README.md</code> في المجلد الرئيسي للمشروع.</small>
                                 </div>

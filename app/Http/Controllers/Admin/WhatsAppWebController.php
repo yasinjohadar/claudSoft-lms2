@@ -34,7 +34,7 @@ class WhatsAppWebController extends Controller
         }
 
         $settings = $this->settingsService->getSettings();
-        $nodejsUrl = $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000';
+        $nodejsUrl = $this->normalizeNodejsUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
         $apiToken = $settings['whatsapp_web_api_token'] ?? '';
 
         return view('admin.pages.whatsapp-web.connect', compact('session', 'nodejsUrl', 'apiToken'));
@@ -47,7 +47,7 @@ class WhatsAppWebController extends Controller
     {
         try {
             $settings = $this->settingsService->getSettings();
-            $nodejsUrl = $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000';
+            $nodejsUrl = $this->normalizeNodejsUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
             $apiToken = $settings['whatsapp_web_api_token'] ?? '';
 
             // Generate session ID
@@ -154,14 +154,9 @@ class WhatsAppWebController extends Controller
             $session = WhatsAppWebSession::where('session_id', $sessionId)->firstOrFail();
             
             $settings = $this->settingsService->getSettings();
-            $nodejsUrl = $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000';
-            $apiToken = $settings['whatsapp_web_api_token'] ?? '';
-
-            $response = Http::timeout(10)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiToken,
-                ])
-                ->get("{$nodejsUrl}/api/whatsapp/qr/{$sessionId}");
+            $nodejsUrl = $this->normalizeNodejsUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
+            $client = $this->nodejsHttp($settings);
+            $response = $client->get("{$nodejsUrl}/api/whatsapp/qr/{$sessionId}");
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -197,7 +192,7 @@ class WhatsAppWebController extends Controller
             $session = WhatsAppWebSession::where('session_id', $sessionId)->firstOrFail();
             
             $settings = $this->settingsService->getSettings();
-            $nodejsUrl = $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000';
+            $nodejsUrl = $this->normalizeNodejsUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
             $apiToken = $settings['whatsapp_web_api_token'] ?? '';
 
             $response = Http::timeout(10)
@@ -259,7 +254,7 @@ class WhatsAppWebController extends Controller
             $session = WhatsAppWebSession::where('session_id', $sessionId)->firstOrFail();
             
             $settings = $this->settingsService->getSettings();
-            $nodejsUrl = $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000';
+            $nodejsUrl = $this->normalizeNodejsUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
             $apiToken = $settings['whatsapp_web_api_token'] ?? '';
 
             $response = Http::timeout(10)
@@ -285,5 +280,17 @@ class WhatsAppWebController extends Controller
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Normalize Node.js service URL (no leading/trailing slashes)
+     */
+    private function normalizeNodejsUrl(string $url): string
+    {
+        $url = trim($url);
+        if (str_starts_with($url, '/')) {
+            $url = substr($url, 1);
+        }
+        return rtrim($url, '/') ?: 'http://localhost:3000';
     }
 }

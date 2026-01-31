@@ -121,6 +121,11 @@ class WhatsAppWebSettingsController extends Controller
         try {
             $settings = $this->settingsService->getSettings();
             $nodejsUrl = $request->input('whatsapp_web_service_url', $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
+            $nodejsUrl = trim($nodejsUrl);
+            if (str_starts_with($nodejsUrl, '/')) {
+                $nodejsUrl = substr($nodejsUrl, 1);
+            }
+            $nodejsUrl = rtrim($nodejsUrl, '/') ?: 'http://localhost:3000';
             $apiToken = $request->input('whatsapp_web_api_token', $settings['whatsapp_web_api_token'] ?? '');
 
             // First check if Node.js service is reachable

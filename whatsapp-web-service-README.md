@@ -135,6 +135,63 @@ npm run dev
 pm2 start server.js --name whatsapp-web-service
 ```
 
+## Chrome / Puppeteer على السيرفر (Linux)
+
+خدمة WhatsApp Web تعتمد على Puppeteer وتحتاج متصفح Chrome (أو Chromium). إذا ظهر خطأ مثل **"Could not find Chrome"**:
+
+### 1. التأكد من مسار Chrome الصحيح
+
+المسار `/bin/google-chrome` **غالباً خاطئ** على Linux. جرّب:
+
+```bash
+# ابحث عن مسار Chrome أو Chromium على السيرفر
+which google-chrome
+which google-chrome-stable
+which chromium
+which chromium-browser
+```
+
+المسارات الشائعة:
+- `/usr/bin/google-chrome` أو `/usr/bin/google-chrome-stable`
+- `/usr/bin/chromium` أو `/usr/bin/chromium-browser`
+
+### 2. تعديل إعداد Puppeteer في الكود
+
+في ملف إعداد العميل (مثل `whatsapp-client.js` أو الملف الذي فيه `puppeteer: { executablePath: ... }`):
+
+**خيار أ:** استخدام المسار الصحيح بعد التأكد منه:
+```javascript
+puppeteer: {
+  executablePath: '/usr/bin/google-chrome-stable',  // أو المسار من which
+  headless: true,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', ...]
+}
+```
+
+**خيار ب:** إزالة `executablePath` واستخدام متصفح Puppeteer المثبت:
+```bash
+cd whatsapp-web-service
+npx puppeteer browsers install chrome
+```
+ثم في الكود لا تضبط `executablePath` (اترك Puppeteer يستخدم المتصفح من `~/.cache/puppeteer`).
+
+### 3. تثبيت Chrome/Chromium على السيرفر (إن لم يكن مثبتاً)
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install -y chromium-browser
+# أو
+sudo apt install -y google-chrome-stable
+
+# بعد التثبيت تحقق من المسار
+which chromium-browser
+# أو
+which google-chrome-stable
+```
+
+ثم ضبط `executablePath` في الكود على هذا المسار.
+
 ## ملاحظات
 
 - يجب حفظ الجلسات بشكل آمن
