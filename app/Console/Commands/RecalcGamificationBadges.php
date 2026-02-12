@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\Badge;
 use App\Models\ModuleCompletion;
 use App\Models\CourseEnrollment;
 use App\Services\Gamification\BadgeService;
@@ -44,6 +45,13 @@ class RecalcGamificationBadges extends Command
         if ($total === 0) {
             $this->warn('لم يتم العثور على مستخدمين.');
             return Command::SUCCESS;
+        }
+
+        $activeBadgesCount = Badge::where('is_active', true)->where('is_visible', true)->count();
+        if ($activeBadgesCount === 0) {
+            $this->warn('تحذير: لا توجد شارات نشطة ومعروضة (is_active=1, is_visible=1). تأكد من تشغيل BadgeSeeder أو إضافة شارات من لوحة التحكم.');
+        } else {
+            $this->info("عدد الشارات النشطة والمعروضة: {$activeBadgesCount}");
         }
 
         $this->info("معالجة {$total} مستخدم...");

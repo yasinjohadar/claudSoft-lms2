@@ -86,12 +86,16 @@ class BadgeService
 
                 return $userBadge;
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Failed to award badge", [
                 'user_id' => $user->id,
                 'badge_id' => $badge->id,
+                'badge_slug' => $badge->slug ?? null,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
+            report($e);
             return null;
         }
     }
@@ -144,7 +148,15 @@ class BadgeService
         $criteria = $badge->criteria;
         $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
-        // معايير مختلفة حسب النوع (استخدام ?? 0 لتفادي null عند غياب العمود أو عدم التحديث)
+        // دعم صيغة معايير: ['field' => 'lessons_completed', 'required_value' => 1] أو 'value' => 1
+        if (isset($criteria['field']) && (isset($criteria['required_value']) || isset($criteria['value']))) {
+            $field = $criteria['field'];
+            $required = (int) ($criteria['required_value'] ?? $criteria['value'] ?? 0);
+            $current = (int) ($stats->{$field} ?? 0);
+            return $current >= $required;
+        }
+
+        // معايير بصيغة مفتاح => حد أدنى (استخدام ?? 0 لتفادي null)
         foreach ($criteria as $key => $value) {
             switch ($key) {
                 case 'lessons_completed':

@@ -18,17 +18,22 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        @forelse($earnedBadges ?? [] as $badge)
+                        @forelse($earnedBadges ?? [] as $item)
+                            @php
+                                $badge = $item->badge ?? $item;
+                                $awardedAt = $item->awarded_at ?? optional($item->pivot)->awarded_at ?? null;
+                                $points = $badge->points_value ?? $badge->points_reward ?? 0;
+                            @endphp
                             <div class="col-lg-3 col-md-4 col-6 mb-4">
                                 <div class="card border-0 shadow-sm text-center h-100">
                                     <div class="card-body">
                                         <div class="fs-1 mb-2">{{ $badge->icon ?? '🏅' }}</div>
                                         <h6 class="fw-bold">{{ $badge->name }}</h6>
                                         <p class="small text-muted mb-2">{{ $badge->description }}</p>
-                                        <span class="badge bg-success">+{{ $badge->points_reward }} نقطة</span>
+                                        <span class="badge bg-success">+{{ $points }} نقطة</span>
                                         <p class="small text-muted mt-2 mb-0">
                                             <i class="fas fa-calendar-check me-1"></i>
-                                            {{ $badge->pivot->awarded_at->format('Y/m/d') }}
+                                            {{ $awardedAt ? $awardedAt->format('Y/m/d') : '—' }}
                                         </p>
                                     </div>
                                 </div>
