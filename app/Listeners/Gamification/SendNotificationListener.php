@@ -16,9 +16,17 @@ class SendNotificationListener
     }
 
     /**
+     * Invoke the listener (Laravel event dispatcher).
+     */
+    public function __invoke(object $event): void
+    {
+        $this->handle($event);
+    }
+
+    /**
      * Handle the event
      */
-    public function handle($event): void
+    public function handle(object $event): void
     {
         try {
             $user = $event->user ?? null;

@@ -32,7 +32,7 @@ class BadgeService
             }
 
             return DB::transaction(function () use ($user, $badge, $relatedType, $relatedId, $metadata) {
-                // إنشاء سجل الشارة
+                // إنشاء سجل الشارة (related_type/related_id قد يكونان null عند المنح التلقائي)
                 $userBadge = UserBadge::create([
                     'user_id' => $user->id,
                     'badge_id' => $badge->id,
@@ -42,8 +42,8 @@ class BadgeService
                     'metadata' => $metadata,
                 ]);
 
-                // تحديث إحصائيات المستخدم
-                $stats = $user->stats;
+                // تحديث إحصائيات المستخدم (إنشاء السجل إن لم يكن موجوداً)
+                $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
                 $stats->increment('total_badges');
 
                 // إحصائيات حسب الندرة
