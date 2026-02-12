@@ -142,45 +142,45 @@ class BadgeService
         }
 
         $criteria = $badge->criteria;
-        $stats = $user->stats;
+        $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
-        // معايير مختلفة حسب النوع
+        // معايير مختلفة حسب النوع (استخدام ?? 0 لتفادي null عند غياب العمود أو عدم التحديث)
         foreach ($criteria as $key => $value) {
             switch ($key) {
                 case 'lessons_completed':
-                    if ($stats->lessons_completed < $value) return false;
+                    if (($stats->lessons_completed ?? 0) < $value) return false;
                     break;
 
                 case 'courses_completed':
-                    if ($stats->courses_completed < $value) return false;
+                    if (($stats->courses_completed ?? 0) < $value) return false;
                     break;
 
                 case 'quizzes_completed':
-                    if ($stats->quizzes_completed < $value) return false;
+                    if (($stats->quizzes_completed ?? 0) < $value) return false;
                     break;
 
                 case 'perfect_scores':
-                    if ($stats->perfect_scores < $value) return false;
+                    if (($stats->perfect_scores ?? 0) < $value) return false;
                     break;
 
                 case 'current_streak':
-                    if ($stats->current_streak < $value) return false;
+                    if (($stats->current_streak ?? 0) < $value) return false;
                     break;
 
                 case 'total_points':
-                    if ($stats->total_points < $value) return false;
+                    if (($stats->total_points ?? 0) < $value) return false;
                     break;
 
                 case 'current_level':
-                    if ($stats->current_level < $value) return false;
+                    if (($stats->current_level ?? 0) < $value) return false;
                     break;
 
                 case 'total_badges':
-                    if ($stats->total_badges < $value) return false;
+                    if (($stats->total_badges ?? 0) < $value) return false;
                     break;
 
                 case 'assignments_completed':
-                    if ($stats->assignments_completed < $value) return false;
+                    if (($stats->assignments_completed ?? 0) < $value) return false;
                     break;
 
                 default:

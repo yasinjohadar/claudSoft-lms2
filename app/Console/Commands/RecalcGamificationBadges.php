@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Models\UserStat;
 use App\Models\ModuleCompletion;
-use App\Models\CourseModule;
+use App\Models\CourseEnrollment;
 use App\Services\Gamification\BadgeService;
 use App\Services\Gamification\AchievementService;
 use Illuminate\Console\Command;
@@ -63,11 +62,26 @@ class RecalcGamificationBadges extends Command
                 ->whereHas('module', fn ($q) => $q->where('module_type', 'lesson'))
                 ->count();
 
-            $prevLessons = (int) ($stats->lessons_completed ?? 0);
-            if (!$dryRun && $lessonsCount != $prevLessons) {
-                $stats->update(['lessons_completed' => $lessonsCount]);
+            // عدد الكورسات المكتملة من course_enrollments (نسبة إكمال 100%)
+            $coursesCount = CourseEnrollment::query()
+                ->where('student_id', $user->id)
+                ->where('completion_percentage', '>=', 100)
+                ->count();
+
+            $updates = [];
+            if ((int) ($stats->lessons_completed ?? 0) != $lessonsCount) {
+                $updates['lessons_completed'] = $lessonsCount;
+            }
+            if ((int) ($stats->courses_completed ?? 0) != $coursesCount) {
+                $updates['courses_completed'] = $coursesCount;
+            }
+            if (!$dryRun && count($updates) > 0) {
+                $stats->update($updates);
                 $statsUpdated++;
             }
+
+            // إعادة تحميل علاقة الإحصائيات حتى checkAllBadges يرى القيم المحدثة
+            $user->unsetRelation('stats');
 
             // التحقق من الشارات والإنجازات
             $awarded = $this->badgeService->checkAllBadges($user);
@@ -92,7 +106,7 @@ class RecalcGamificationBadges extends Command
             ['البيان', 'العدد'],
             [
                 ['مستخدمين تمت معالجتهم', $total],
-                ['سجلات إحصائيات محدثة (lessons_completed)', $dryRun ? '—' : $statsUpdated],
+                ['سجلات إحصائيات محدثة (دروس/كورسات)', $dryRun ? '—' : $statsUpdated],
                 ['شارات مُمنحة في هذه الجولة', $dryRun ? '—' : $badgesAwarded],
                 ['إنجازات مكتملة في هذه الجولة', $dryRun ? '—' : $achievementsCompleted],
             ]
