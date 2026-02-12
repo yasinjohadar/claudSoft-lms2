@@ -275,6 +275,8 @@ class AchievementService
                     'status' => 'in_progress',
                     'current_value' => 0,
                     'started_at' => now(),
+                    'related_type' => null,
+                    'related_id' => null,
                 ]
             );
 
