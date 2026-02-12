@@ -13,7 +13,8 @@ class RecalcGamificationBadges extends Command
 {
     protected $signature = 'gamification:recalc-badges
                             {--user= : معرّف مستخدم واحد فقط}
-                            {--dry-run : عرض النتائج دون حفظ}';
+                            {--dry-run : عرض النتائج دون حفظ}
+                            {--verbose : عرض أرقام الدروس/الكورسات للمستخدم الأول (لتشخيص السبب)}';
     protected $description = 'إعادة احتساب عداد الدروس المكتملة والتحقق من الشارات لجميع الطلاب المحققين للشروط';
 
     public function __construct(
@@ -27,6 +28,7 @@ class RecalcGamificationBadges extends Command
     {
         $userId = $this->option('user');
         $dryRun = $this->option('dry-run');
+        $verbose = $this->option('verbose');
 
         if ($dryRun) {
             $this->warn('وضع المعاينة (dry-run): لن يتم حفظ أي تغييرات.');
@@ -51,15 +53,17 @@ class RecalcGamificationBadges extends Command
         $statsUpdated = 0;
         $badgesAwarded = 0;
         $achievementsCompleted = 0;
+        $verboseShown = false;
 
         foreach ($users as $user) {
             $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
-            // عدد الدروس المكتملة من module_completions (وحدات من نوع lesson أو video؛ الفيديو يُحسب درساً عند الإكمال)
+            // عدد الوحدات المكتملة من module_completions (جميع الأنواع: lesson, video, quiz, resource, ...)
+            // لضمان ظهور الشارات حتى لو كانت الوحدات مسجلة بأنواع أخرى في course_modules
             $lessonsCount = ModuleCompletion::query()
                 ->where('student_id', $user->id)
                 ->where('completion_status', 'completed')
-                ->whereHas('module', fn ($q) => $q->whereIn('module_type', ['lesson', 'video']))
+                ->whereHas('module') // أي وحدة مرتبطة بـ course_modules
                 ->count();
 
             // عدد الكورسات المكتملة من course_enrollments (نسبة إكمال 100%)
@@ -67,6 +71,16 @@ class RecalcGamificationBadges extends Command
                 ->where('student_id', $user->id)
                 ->where('completion_percentage', '>=', 100)
                 ->count();
+
+            if ($verbose && !$verboseShown) {
+                $rawCompletions = ModuleCompletion::query()
+                    ->where('student_id', $user->id)
+                    ->where('completion_status', 'completed')
+                    ->count();
+                $this->newLine();
+                $this->line("  [تشخيص] المستخدم #{$user->id} ({$user->name}): وحدات مكتملة (محسوبة) = {$lessonsCount}, إكمالات خام = {$rawCompletions}, كورسات مكتملة = {$coursesCount}");
+                $verboseShown = true;
+            }
 
             $updates = [];
             if ((int) ($stats->lessons_completed ?? 0) != $lessonsCount) {
