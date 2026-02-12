@@ -14,7 +14,7 @@ class RecalcGamificationBadges extends Command
     protected $signature = 'gamification:recalc-badges
                             {--user= : معرّف مستخدم واحد فقط}
                             {--dry-run : عرض النتائج دون حفظ}
-                            {--verbose : عرض أرقام الدروس/الكورسات للمستخدم الأول (لتشخيص السبب)}';
+                            {--diagnose : عرض أرقام الدروس/الكورسات للمستخدم الأول (لتشخيص السبب)}';
     protected $description = 'إعادة احتساب عداد الدروس المكتملة والتحقق من الشارات لجميع الطلاب المحققين للشروط';
 
     public function __construct(
@@ -28,7 +28,7 @@ class RecalcGamificationBadges extends Command
     {
         $userId = $this->option('user');
         $dryRun = $this->option('dry-run');
-        $verbose = $this->option('verbose');
+        $diagnose = $this->option('diagnose');
 
         if ($dryRun) {
             $this->warn('وضع المعاينة (dry-run): لن يتم حفظ أي تغييرات.');
@@ -72,7 +72,7 @@ class RecalcGamificationBadges extends Command
                 ->where('completion_percentage', '>=', 100)
                 ->count();
 
-            if ($verbose && !$verboseShown) {
+            if ($diagnose && !$verboseShown) {
                 $rawCompletions = ModuleCompletion::query()
                     ->where('student_id', $user->id)
                     ->where('completion_status', 'completed')
