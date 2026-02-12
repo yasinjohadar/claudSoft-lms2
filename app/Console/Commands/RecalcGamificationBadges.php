@@ -55,11 +55,11 @@ class RecalcGamificationBadges extends Command
         foreach ($users as $user) {
             $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
-            // عدد الدروس المكتملة من module_completions (وحدات من نوع lesson فقط)
+            // عدد الدروس المكتملة من module_completions (وحدات من نوع lesson أو video؛ الفيديو يُحسب درساً عند الإكمال)
             $lessonsCount = ModuleCompletion::query()
                 ->where('student_id', $user->id)
                 ->where('completion_status', 'completed')
-                ->whereHas('module', fn ($q) => $q->where('module_type', 'lesson'))
+                ->whereHas('module', fn ($q) => $q->whereIn('module_type', ['lesson', 'video']))
                 ->count();
 
             // عدد الكورسات المكتملة من course_enrollments (نسبة إكمال 100%)
