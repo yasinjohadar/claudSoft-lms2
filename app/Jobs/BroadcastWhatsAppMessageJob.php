@@ -33,14 +33,14 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
         public ?int $delaySeconds = null,
         public int $messageIndex = 0
     ) {
-        // Calculate delay if not provided
+        // Calculate delay if not provided (e.g. when dispatched from elsewhere)
         if ($this->delaySeconds === null) {
             $settingsService = app(\App\Services\WhatsApp\WhatsAppSettingsService::class);
             $this->delaySeconds = $settingsService->calculateDelay();
         }
-        
-        // Add delay to job if not first message
-        if ($this->messageIndex > 0) {
+
+        // Delay is absolute seconds from now (controller passes cumulative delay for broadcast)
+        if ($this->delaySeconds !== null && $this->delaySeconds > 0) {
             $this->delay($this->delaySeconds);
         }
     }

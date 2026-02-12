@@ -513,6 +513,7 @@ class WhatsAppMessageController extends Controller
             $baseDelay = $delaySettings['delay_between_messages'];
 
             $index = 1;
+            $cumulativeDelay = 0;
             foreach ($students->slice(1) as $student) {
                 $message = $this->broadcastService->replacePlaceholders(
                     $validated['message'] ?? '',
@@ -521,13 +522,14 @@ class WhatsAppMessageController extends Controller
                     $group
                 );
                 $delay = $this->settingsService->calculateDelay($baseDelay);
+                $cumulativeDelay += $delay;
 
                 BroadcastWhatsAppMessageJob::dispatch(
                     $broadcast,
                     $student,
                     $message,
                     $validated['type'],
-                    $delay,
+                    $cumulativeDelay,
                     $index
                 );
                 $index++;
