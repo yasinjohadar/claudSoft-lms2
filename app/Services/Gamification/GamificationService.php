@@ -119,7 +119,7 @@ class GamificationService
             'xp' => 25,
         ]);
 
-        return $this->awardReward(
+        $result = $this->awardReward(
             $user,
             $config['points'],
             $config['xp'],
@@ -129,6 +129,12 @@ class GamificationService
             $lessonId,
             $metadata
         );
+
+        // تحديث عداد الدروس المكتملة (لدعم منح الشارات)
+        $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
+        $stats->increment('lessons_completed');
+
+        return $result;
     }
 
     /**
