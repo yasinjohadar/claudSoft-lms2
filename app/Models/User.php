@@ -10,12 +10,13 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Notifications\ResetPasswordNotification;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, CanResetPassword;
-      use HasRoles;
+    use HasApiTokens, HasFactory, Notifiable, CanResetPassword;
+    use HasRoles;
 
     /**
      * The attributes that are mass assignable.

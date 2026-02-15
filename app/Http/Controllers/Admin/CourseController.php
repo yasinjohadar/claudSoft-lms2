@@ -350,11 +350,17 @@ class CourseController extends Controller
 
             // Handle image upload (same logic as store)
             if ($request->hasFile('image')) {
-                // Delete old image if exists
-                if ($course->image) {
-                    $this->storageHelper->deleteFile('public', $course->image);
+                $storedPath = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
+                if ($storedPath) {
+                    // Delete old image only after successful upload
+                    if ($course->image) {
+                        $this->storageHelper->deleteFile('public', $course->image);
+                    }
+                    $validated['image'] = $storedPath;
+                } else {
+                    // عدم الكتابة في القاعدة عند فشل الرفع، وإزالة كائن الملف من validated
+                    unset($validated['image']);
                 }
-                $validated['image'] = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
             }
 
             // Set updated_by
