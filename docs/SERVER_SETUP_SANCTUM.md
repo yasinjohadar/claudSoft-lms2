@@ -34,7 +34,10 @@
    php artisan cache:clear
    ```
 
-**الطريقة اليدوية:** نفّذ على السيرفر (SSH):
+**إذا ظهر:** `Could not open input file: /home/.../composer.phar`  
+معناه أن Composer غير مثبت بعد. نفّذ أوامر التثبيت أدناه أولاً (انسخها والصقها في الطرفية).
+
+**الطريقة اليدوية — تثبيت Composer (بدون رفع أي ملف):** نفّذ على السيرفر (SSH):
 
 ```bash
 cd ~
@@ -135,7 +138,20 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
 
 ## حل تعارض Git (merge) على السيرفر
 
-إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
+إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** (ملفات في `vendor/`) أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
+
+**تحذير:** تنفيذ `git checkout -- vendor/` يستبدل أو يزيل مجلد `vendor` الحالي. **الموقع سيتوقف** حتى تعيد تثبيت الحزم (المسار 1 أو 2 أدناه). جهّز Composer على السيرفر أو مجلد `vendor` من جهازك قبل التنفيذ.
+
+**بدون رفع أي ملف — انسخ الأوامر والصقها في الطرفية (أنت بالفعل في `public_html`):**
+```bash
+rm -f vendor.zip
+git checkout -- vendor/
+```
+ثم أعد تنفيذ السحب/الدمج من cPanel أو نفّذ `git pull`. **وبعد نجاح الدمج مباشرةً ثبّت الحزم (الخطوة 4 أدناه) وإلا سيبقى الموقع متوقفاً.**
+
+**أو باستخدام السكربت:** ارفع [docs/fix-git-merge-on-server.sh](fix-git-merge-on-server.sh) إلى السيرفر داخل المشروع، ثم من مجلد المشروع: `bash docs/fix-git-merge-on-server.sh`.
+
+**طريقة يدوية (تفصيل):**
 
 1. **إزالة أو نقل `vendor.zip`** (حتى لا يُستبدل بالدمج):
    ```bash
@@ -159,3 +175,28 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
    - **المسار 2:** رفع مجلد `vendor` كاملاً من جهازك بعد `composer install --no-dev` و `composer dump-autoload`
 
 ثم نفّذ: `php artisan config:clear` و `php artisan cache:clear`.
+
+---
+
+## الموقع توقف بعد تنفيذ الأوامر (rm vendor.zip و git checkout -- vendor/)
+
+هذا متوقّع: `git checkout -- vendor/` يزيل أو يستبدل مجلد `vendor` الذي كان يشغّل الموقع. لإعادة تشغيل الموقع:
+
+1. **المسار 1 — تثبيت Composer على السيرفر ثم تثبيت الحزم:**  
+   من الطرفية (بعد تثبيت Composer كما في بداية هذا الملف):
+   ```bash
+   cd /home/rootclaudsoftadi/public_html
+   php ~/composer.phar install --no-dev --optimize-autoloader
+   php artisan config:clear
+   php artisan cache:clear
+   ```
+
+2. **المسار 2 — رفع مجلد vendor من جهازك:**  
+   على جهازك من مجلد المشروع: `composer install --no-dev` ثم `composer dump-autoload`. ثم ارفع مجلد `vendor` بالكامل إلى السيرفر (استبدال المجلد الموجود). على السيرفر:
+   ```bash
+   cd /home/rootclaudsoftadi/public_html
+   php artisan config:clear
+   php artisan cache:clear
+   ```
+
+بعد تنفيذ أحد المسارين يعود الموقع للعمل.

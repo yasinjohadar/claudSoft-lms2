@@ -140,7 +140,73 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxx
 
 ---
 
-## 4. قائمة الكورسات مع الأقسام والدروس
+## 4. كتالوج الكورسات (كل الكورسات المنشورة — للعرض في التطبيق)
+
+يعيد **كل** الكورسات المنشورة والمرئية. استخدم هذا المسار لعرض قائمة الكورسات في Flutter حتى لو لم يكن الطالب مسجّلاً فيها. كل عنصر يتضمّن `is_enrolled` و `enrollment` إن كان الطالب مسجّلاً.
+
+| البند | القيمة |
+|--------|--------|
+| **Method** | `GET` |
+| **Path** | `/api/student/catalog` |
+| **مصادقة** | نعم — `Authorization: Bearer <token>` (ودور المستخدم: طالب) |
+
+**طلب مثال:**
+```http
+GET /api/student/catalog
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**استجابة ناجحة (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "courses": [
+      {
+        "id": 1,
+        "title": "اسم الكورس",
+        "slug": "course-slug",
+        "description": "وصف الكورس",
+        "short_description": "وصف قصير",
+        "image": "https://domain.com/storage/courses/1.jpg",
+        "level": "مبتدئ",
+        "language": "ar",
+        "duration_in_hours": 10,
+        "is_free": true,
+        "is_enrolled": false,
+        "enrollment": null
+      },
+      {
+        "id": 2,
+        "title": "كورس آخر",
+        "slug": "other-course",
+        "description": "...",
+        "short_description": "...",
+        "image": "https://...",
+        "level": "متوسط",
+        "language": "ar",
+        "duration_in_hours": 5,
+        "is_free": false,
+        "is_enrolled": true,
+        "enrollment": {
+          "enrollment_id": 10,
+          "enrollment_status": "active",
+          "completion_percentage": 0,
+          "last_accessed_at": null
+        }
+      }
+    ]
+  }
+}
+```
+
+**ملاحظة:** لا يتضمّن الأقسام والدروس. لتفاصيل كورس واحد (أقسام + دروس) استخدم `/api/student/courses` للكورسات المسجّل فيها فقط.
+
+---
+
+## 5. قائمة كورساتي (المسجّل فيها) مع الأقسام والدروس
+
+يعيد الكورسات التي **سجّل فيها الطالب فقط** مع الأقسام والوحدات (دروس/فيديو). إن كانت القائمة فارغة فاستخدم `/api/student/catalog` لعرض كل الكورسات.
 
 | البند | القيمة |
 |--------|--------|
