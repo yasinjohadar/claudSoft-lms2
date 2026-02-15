@@ -112,11 +112,12 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
 
 ## التأكد من الملفات المرفوعة
 
-تأكد أن هذه الملفات محدّثة على السيرفر:
+في الحالتين (المسار 1 أو 2) تأكد أن الملفات التالية محدّثة على السيرفر:
 
 - `config/auth.php` — فيه تعريف حارس `sanctum`.
 - `app/Providers/AppServiceProvider.php` — فيه تسجيل الـ driver يدوياً.
 - وجود مجلد `vendor/laravel/sanctum/` وبداخله ملف `src/Guard.php`.
+- هذا الملف `docs/SERVER_SETUP_SANCTUM.md` للرجوع عند الحاجة.
 
 ---
 
@@ -129,3 +130,32 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
 | بعد أي مسار | `php artisan config:clear` و `cache:clear` ثم التحقق من Sanctum |
 
 بعد تنفيذ هذه الخطوات، جرّب الطلب من التطبيق مرة أخرى.
+
+---
+
+## حل تعارض Git (merge) على السيرفر
+
+إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
+
+1. **إزالة أو نقل `vendor.zip`** (حتى لا يُستبدل بالدمج):
+   ```bash
+   cd /home/rootclaudsoftadi/public_html   # أو مسار المشروع
+   rm vendor.zip
+   # أو: mv vendor.zip vendor.zip.bak
+   ```
+
+2. **التخلّي عن التغييرات المحلية في `vendor`** حتى يكتمل الدمج (مجلد `vendor` يجب ألا يُتتبّع بـ Git؛ بعد الدمج سيكون في `.gitignore`):
+   ```bash
+   git checkout -- vendor/
+   ```
+
+3. **إعادة تنفيذ السحب/الدمج** من واجهة cPanel أو:
+   ```bash
+   git pull
+   ```
+
+4. **بعد نجاح الدمج:** مجلد `vendor` لن يأتي من Git (لأنه مُدرج في `.gitignore`). ثبّت الحزم بأحد المسارين:
+   - **المسار 1:** `php ~/composer.phar install --no-dev --optimize-autoloader`
+   - **المسار 2:** رفع مجلد `vendor` كاملاً من جهازك بعد `composer install --no-dev` و `composer dump-autoload`
+
+ثم نفّذ: `php artisan config:clear` و `php artisan cache:clear`.
