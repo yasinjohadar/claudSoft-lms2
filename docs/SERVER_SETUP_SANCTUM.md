@@ -138,7 +138,9 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
 
 ## حل تعارض Git (merge) على السيرفر
 
-إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** (ملفات في `vendor/`) أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
+إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** — وغالباً يذكر ملفات مثل `vendor/composer/autoload_classmap.php`, `vendor/composer/autoload_files.php`, `vendor/composer/autoload_psr4.php`, `vendor/composer/autoload_static.php` أو غيرها داخل `vendor/` — أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
+
+**نفس الحل ينطبق:** التخلّي عن التغييرات في كل مجلد `vendor` بالأمر أدناه ثم إعادة السحب/الدمج، ثم إعادة تثبيت الحزم فوراً.
 
 **تحذير:** تنفيذ `git checkout -- vendor/` يستبدل أو يزيل مجلد `vendor` الحالي. **الموقع سيتوقف** حتى تعيد تثبيت الحزم (المسار 1 أو 2 أدناه). جهّز Composer على السيرفر أو مجلد `vendor` من جهازك قبل التنفيذ.
 
@@ -148,6 +150,16 @@ rm -f vendor.zip
 git checkout -- vendor/
 ```
 ثم أعد تنفيذ السحب/الدمج من cPanel أو نفّذ `git pull`. **وبعد نجاح الدمج مباشرةً ثبّت الحزم (الخطوة 4 أدناه) وإلا سيبقى الموقع متوقفاً.**
+
+**إذا استمر نفس الخطأ بعد تنفيذ الأوامر أعلاه:** قد يكون Git لا يزال يتتبّع مجلد `vendor`. نفّذ التالي من مجلد المشروع (SSH) لإخراج `vendor` من التتبّع مع الإبقاء على الملفات على القرص؛ بعدها جرّب السحب/الدمج مرة أخرى:
+```bash
+cd /home/rootclaudsoftadi/public_html
+rm -f vendor.zip
+git rm -r --cached vendor/
+git status
+git pull
+```
+إن ظهرت رسالة تطلب رسالة commit (في بعض الإعدادات)، نفّذ: `git commit -m "Stop tracking vendor"` ثم `git pull`. بعد نجاح الـ pull الملفات داخل `vendor/` تبقى على القرص (غير متتبّعة) والموقع يعمل؛ لا حاجة لإعادة تثبيت الحزم إلا إذا حُذف مجلد `vendor` فعلياً.
 
 **أو باستخدام السكربت:** ارفع [docs/fix-git-merge-on-server.sh](fix-git-merge-on-server.sh) إلى السيرفر داخل المشروع، ثم من مجلد المشروع: `bash docs/fix-git-merge-on-server.sh`.
 
