@@ -138,6 +138,42 @@ php -r "var_dump(class_exists('Laravel\Sanctum\Guard'));"
 
 ## حل تعارض Git (merge) على السيرفر
 
+---
+
+### حل نهائي — لئلا يعود الخطأ عند كل سحب من cPanel
+
+**إذا ظهر:** `fatal: empty ident name (for <user@host>) not allowed`  
+معناه أن Git غير مضبوط (الاسم أو البريد). اضبط الهوية مرة واحدة ثم نفّذ بقية الأوامر:
+
+```bash
+cd /home/rootclaudsoftadi/public_html
+git config user.email "you@example.com"
+git config user.name "Server"
+```
+
+(غيّر `you@example.com` و `Server` إن أردت؛ يمكن استخدام أي بريد واسم.)
+
+ثم نفّذ التسلسل التالي **مرة واحدة** من مجلد المشروع:
+
+```bash
+cd /home/rootclaudsoftadi/public_html
+rm -f vendor.zip
+git rm -r --cached vendor/
+git commit -m "Stop tracking vendor"
+git pull origin main
+```
+
+- إن كان الفرع عندك غير `main` استبدل `main` باسمه (مثلاً `master`).
+- **إذا ظهر:** `fatal: Need to specify how to reconcile divergent branches` — نفّذ السحب مع الدمج صراحة:  
+  `git pull origin main --no-rebase`  
+  أو ضبط الدمج كافتراضي ثم السحب:  
+  `git config pull.rebase false` ثم `git pull origin main`.
+- بعد التنفيذ: مجلد `vendor` يبقى على القرص والموقع يعمل. في السحبات التالية (من cPanel أو SSH) لن يظهر الخطأ.
+
+**إن كنت تعتمد على cPanel للسحب:** بعد تنفيذ الأوامر أعلاه من SSH، جرّب السحب مرة أخرى من cPanel للتأكد.
+
+---
+
 إذا ظهر خطأ مثل: **"Your local changes to the following files would be overwritten by merge"** — وغالباً يذكر ملفات مثل `vendor/composer/autoload_classmap.php`, `vendor/composer/autoload_files.php`, `vendor/composer/autoload_psr4.php`, `vendor/composer/autoload_static.php` أو غيرها داخل `vendor/` — أو **"The following untracked working tree files would be overwritten by merge: vendor.zip"** عند السحب أو الدمج من cPanel/SSH:
 
 **نفس الحل ينطبق:** التخلّي عن التغييرات في كل مجلد `vendor` بالأمر أدناه ثم إعادة السحب/الدمج، ثم إعادة تثبيت الحزم فوراً.
