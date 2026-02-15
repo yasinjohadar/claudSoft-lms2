@@ -60,21 +60,27 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerSanctumDriverIfNeeded(): void
     {
-        if (!class_exists(\Laravel\Sanctum\Guard::class)) {
-            return;
+        $guardClass = \Laravel\Sanctum\Guard::class;
+        if (!class_exists($guardClass)) {
+            // عند رفع vendor يدوياً قد لا يُحدّث الـ autoload — تحميل الملف يدوياً
+            $guardFile = base_path('vendor/laravel/sanctum/src/Guard.php');
+            if (file_exists($guardFile)) {
+                require_once $guardFile;
+            }
+            if (!class_exists($guardClass)) {
+                return;
+            }
         }
 
         Auth::extend('sanctum', function ($app, $name, array $config) {
             $auth = $app['auth'];
+            $expiration = config('sanctum.expiration');
+            $lastUsedAt = config('sanctum.last_used_at', true);
+            $provider = $config['provider'] ?? null;
             return new RequestGuard(
-                new \Laravel\Sanctum\Guard(
-                    $auth,
-                    config('sanctum.expiration'),
-                    $config['provider'] ?? null,
-                    config('sanctum.last_used_at', true)
-                ),
+                new \Laravel\Sanctum\Guard($auth, $expiration, $provider, $lastUsedAt),
                 $app['request'],
-                $auth->createUserProvider($config['provider'] ?? null)
+                $auth->createUserProvider($provider)
             );
         });
     }
