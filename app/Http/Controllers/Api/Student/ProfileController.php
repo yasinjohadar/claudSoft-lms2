@@ -180,14 +180,15 @@ class ProfileController extends Controller
             DB::beginTransaction();
 
             $user->name = $validated['name'];
-            $user->name_ar = $request->input('name_ar');
-            $user->country_code = $request->input('country_code');
-            $user->phone = $request->input('phone');
-            $user->national_id = $request->input('national_id');
-            $user->date_of_birth = $request->input('date_of_birth');
-            $user->gender = $request->input('gender');
-            $user->address = $request->input('address');
-            $user->nationality_id = $request->input('nationality_id');
+            $user->name_ar = filled($request->input('name_ar')) ? trim((string) $request->input('name_ar')) : null;
+            $user->country_code = filled($request->input('country_code')) ? trim((string) $request->input('country_code')) : null;
+            $user->phone = filled($request->input('phone')) ? trim((string) $request->input('phone')) : null;
+            $user->national_id = filled($request->input('national_id')) ? trim((string) $request->input('national_id')) : null;
+            $user->date_of_birth = filled($request->input('date_of_birth')) ? $request->input('date_of_birth') : null;
+            $user->gender = filled($request->input('gender')) ? $request->input('gender') : null;
+            $user->address = filled($request->input('address')) ? trim((string) $request->input('address')) : null;
+            $val = $request->input('nationality_id');
+            $user->nationality_id = (filled($val) && is_numeric($val)) ? (int) $val : null;
             $user->is_profile_public = $request->boolean('is_profile_public');
 
             if ($request->hasFile('photo')) {
