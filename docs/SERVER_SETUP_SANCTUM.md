@@ -164,13 +164,54 @@ git pull origin main
 ```
 
 - إن كان الفرع عندك غير `main` استبدل `main` باسمه (مثلاً `master`).
-- **إذا ظهر:** `fatal: Need to specify how to reconcile divergent branches` — نفّذ السحب مع الدمج صراحة:  
+- **إذا ظهر:** `CONFLICT (modify/delete)` لملفات `vendor/composer/autoload_*.php` — الملفات محذوفة عندك ومعدّلة على الريموت. للإبقاء على الحذف من التتبّع مع الإبقاء على الملفات على القرص (حتى يعمل الموقع):
+```bash
+cd /home/rootclaudsoftadi/public_html
+git rm --cached vendor/composer/autoload_classmap.php vendor/composer/autoload_files.php vendor/composer/autoload_psr4.php vendor/composer/autoload_static.php
+git commit -m "Resolve merge: keep vendor untracked"
+git status
+```
+بعدها يمكنك تنفيذ `git pull origin main --no-rebase` لاحقاً إن بقي تحديث.
+
+**بعد حل التعارض:** إن ظهر `Your branch is ahead of 'origin/main' by 2 commits` — يمكنك دفع التعديلات إلى الريموت من السيرفر: `git push origin main` — أو **من اللوكال** (أنسب) كما في الفقرة التالية.
+
+**دفع من اللوكال (جهازك):** لتفادي الـ push من السيرفر، نفّذ مرة واحدة من مجلد المشروع على جهازك:
+```bash
+git rm -r --cached vendor/
+git add .gitignore
+git status
+git commit -m "Stop tracking vendor"
+git push origin main
+```
+(إن كان `vendor` غير متتبّع أصلاً، `git rm -r --cached vendor/` قد لا يغيّر شيئاً — تحقق من `git status` ثم commit و push لأي تغييرات في `.gitignore` أو غيره.) بعد الدفع يصبح الريموت محدّثاً؛ على السيرفر نفّذ `git pull origin main` ليكون متزامناً.
+
+**بعد نجاح الرفع من اللوكال — ماذا نعمل؟**
+1. **على السيرفر (SSH):** `cd /home/rootclaudsoftadi/public_html` ثم `git pull origin main` لمزامنة الفرع مع الريموت.
+2. **التحقق من الموقع:** افتح الموقع في المتصفح وتأكد أنه يعمل.
+3. **للتحديثات القادمة:** نفّذ السحب من SSH فقط: `git pull origin main` (تجنّب السحب من واجهة cPanel لتفادي تعارضات vendor).
+4. **تطبيق Flutter:** تأكد أن قائمة الكورسات تستدعي `GET /api/student/catalog` لعرض كل الكورسات المنشورة.
+
+**إذا ظهر:** `Pulling is not possible because you have unmerged files` أو `Exiting because of an unresolved conflict` (بدون ذكر CONFLICT modify/delete)  
+معناه أن دمجاً سابقاً لم يُكتمل. ألغِ الدمج ثم أعد التنفيذ من البداية:
+```bash
+cd /home/rootclaudsoftadi/public_html
+git merge --abort
+git status
+```
+ثم نفّذ من جديد: `git rm -r --cached vendor/` (إن ظهر vendor في الحالة) ثم `git commit -m "Stop tracking vendor"` ثم `git pull origin main --no-rebase`.
+
+**إذا ظهر:** `fatal: Need to specify how to reconcile divergent branches` — نفّذ السحب مع الدمج صراحة:  
   `git pull origin main --no-rebase`  
   أو ضبط الدمج كافتراضي ثم السحب:  
   `git config pull.rebase false` ثم `git pull origin main`.
 - بعد التنفيذ: مجلد `vendor` يبقى على القرص والموقع يعمل. في السحبات التالية (من cPanel أو SSH) لن يظهر الخطأ.
 
 **إن كنت تعتمد على cPanel للسحب:** بعد تنفيذ الأوامر أعلاه من SSH، جرّب السحب مرة أخرى من cPanel للتأكد.
+
+**إذا عاد خطأ تعارض `vendor/composer/` عند السحب من cPanel:** قد تكون واجهة cPanel تستخدم مساراً أو بيئة مختلفة. **الأفضل لهذا المشروع:** تنفيذ السحب من الطرفية (SSH) فقط وعدم استخدام زر السحب/النشر من cPanel، لتجنّب التعارض نهائياً.
+
+**إذا ظهر:** `fatal: a branch named 'main' already exists` (كود 128)  
+معناه أن واجهة cPanel تحاول **إنشاء** فرع باسم `main` بينما الفرع موجود مسبقاً. لا تستخدم خيار "إنشاء فرع" أو "Clone" لفرع main؛ استخدم خيار **السحب (Pull)** لتحديث الفرع الحالي، أو نفّذ السحب من SSH: `git pull origin main`.
 
 ---
 

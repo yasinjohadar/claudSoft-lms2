@@ -27,8 +27,8 @@ Route::prefix('student')->name('api.student.')->group(function () {
     Route::post('logout', [StudentAuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
     Route::get('me', [StudentAuthController::class, 'me'])->middleware('auth:sanctum')->name('me');
 
-    // محمية بتوكن Sanctum + دور طالب فقط
-    Route::middleware(['auth:sanctum', 'role:student'])->group(function () {
+    // محمية بتوكن Sanctum + دور طالب فقط (مع تسجيل الطلبات للتشخيص)
+    Route::middleware(['log.student.api', 'auth:sanctum', 'role:student'])->group(function () {
         // بروفايل الطالب الكامل (كل البيانات لعرضها في Flutter)
         Route::get('profile', [StudentProfileController::class, 'show'])->name('profile.show');
         // كتالوج كل الكورسات المنشورة (للعرض في التطبيق حتى بدون تسجيل)

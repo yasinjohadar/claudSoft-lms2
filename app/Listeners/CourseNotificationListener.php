@@ -63,6 +63,8 @@ class CourseNotificationListener
         try {
             $user = $event->user;
             $lesson = $event->lesson;
+            $courseId = $lesson->module->course_id ?? null;
+            $actionUrl = $courseId ? route('student.learn.course', ['courseId' => $courseId]) : null;
 
             // إرسال إشعار إتمام الدرس
             $this->notificationService->send(
@@ -71,7 +73,7 @@ class CourseNotificationListener
                 title: 'أكملت درساً جديداً! ✅',
                 message: "رائع! أكملت درس \"{$lesson->title}\". استمر في التقدم!",
                 icon: '📖',
-                actionUrl: route('student.learn.course', ['courseId' => $lesson->module->course_id ?? null]),
+                actionUrl: $actionUrl,
                 relatedType: get_class($lesson),
                 relatedId: $lesson->id,
                 metadata: [
