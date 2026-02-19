@@ -5,14 +5,24 @@ namespace App\Http\Controllers\Api\Student;
 use App\Http\Controllers\Controller;
 use App\Models\CourseEnrollment;
 use App\Models\Gamification\Level;
+use App\Models\Nationality;
+use App\Services\Storage\StorageHelperService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * API بروفايل الطالب الكامل — لعرض كل البيانات في تطبيق Flutter.
  */
 class ProfileController extends Controller
 {
+    public function __construct(
+        protected StorageHelperService $storageHelper
+    ) {
+    }
     /**
      * بروفايل الطالب الكامل: بيانات الحساب، الإحصائيات، المستوى، الشارات، الإنجازات، ملخص التسجيلات.
      */
@@ -140,6 +150,119 @@ class ProfileController extends Controller
         return response()->json([
             'success' => true,
             'data' => $profile,
+        ]);
+    }
+
+    /**
+     * تحديث الملف الشخصي (مطابق للوحة تحكم الطالب).
+     * يقبل application/json أو multipart/form-data مع حقل photo اختياري.
+     */
+    public function update(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
+            'country_code' => ['nullable', 'string', 'max:5'],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^([0-9\s\-\+\(\)]*)$/'],
+            'national_id' => ['nullable', 'string', 'max:20', \Illuminate\Validation\Rule::unique('users', 'national_id')->ignore($user->id)],
+            'date_of_birth' => ['nullable', 'date', 'before:today'],
+            'gender' => ['nullable', 'string', 'in:male,female'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'nationality_id' => ['nullable', 'exists:nationalities,id'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif', 'max:2048'],
+        ];
+
+        $validated = $request->validate($rules);
+
+        try {
+            DB::beginTransaction();
+
+            $user->name = $validated['name'];
+            $user->name_ar = $request->input('name_ar');
+            $user->country_code = $request->input('country_code');
+            $user->phone = $request->input('phone');
+            $user->national_id = $request->input('national_id');
+            $user->date_of_birth = $request->input('date_of_birth');
+            $user->gender = $request->input('gender');
+            $user->address = $request->input('address');
+            $user->nationality_id = $request->input('nationality_id');
+            $user->is_profile_public = $request->boolean('is_profile_public');
+
+            if ($request->hasFile('photo')) {
+                $oldPath = $user->avatar;
+                if ($oldPath && $this->storageHelper->fileExists('public', $oldPath)) {
+                    try {
+                        $this->storageHelper->deleteFile('public', $oldPath);
+                    } catch (\Exception $e) {
+                        Log::warning('Api ProfileController: Failed to delete old avatar', ['path' => $oldPath, 'error' => $e->getMessage()]);
+                    }
+                }
+
+                $photoPath = $this->storageHelper->storeUploadedFile('public', 'profile-photos', $request->file('photo'), 'image');
+                if (!$photoPath) {
+                    $photoPath = $request->file('photo')->store('profile-photos', 'public');
+                }
+                if ($photoPath) {
+                    $user->avatar = $photoPath;
+                }
+            }
+
+            $user->save();
+            DB::commit();
+
+            $user->loadMissing('nationality');
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'name_ar' => $user->name_ar ?? $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'country_code' => $user->country_code,
+                'full_phone' => $user->full_phone,
+                'avatar' => $user->avatar ? url($user->avatar) : null,
+                'date_of_birth' => $this->formatDate($user->date_of_birth),
+                'gender' => $user->gender,
+                'address' => $user->address,
+                'city' => $user->city,
+                'nationality_id' => $user->nationality_id,
+                'nationality_name' => $user->nationality?->name ?? null,
+                'student_id' => $user->student_id,
+                'is_profile_public' => (bool) $user->is_profile_public,
+                'last_login_at' => $this->formatDateTime($user->last_login_at),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $userData,
+            ]);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Api ProfileController update failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تحديث الملف الشخصي.',
+            ], 422);
+        }
+    }
+
+    /**
+     * قائمة الجنسيات لاستخدامها في نموذج تعديل الملف الشخصي.
+     */
+    public function nationalities(Request $request): JsonResponse
+    {
+        $list = Nationality::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($n) => ['id' => (int) $n->id, 'name' => (string) $n->name]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['nationalities' => $list],
         ]);
     }
 

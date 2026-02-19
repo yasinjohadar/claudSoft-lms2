@@ -206,17 +206,22 @@ class CourseController extends Controller
                     ];
 
                     if ($modulable) {
-                        $item['content'] = [
+                        $content = [
                             'id' => (int) $modulable->id,
                             'title' => $modulable->title !== null ? (string) $modulable->title : null,
                             'description' => $modulable->description !== null ? (string) $modulable->description : null,
                             'content' => $modulable->content !== null ? (string) $modulable->content : null,
-                            'reading_time' => $modulable->reading_time !== null ? (int) $modulable->reading_time : null,
-                            'video_url' => $modulable->video_url !== null ? (string) $modulable->video_url : null,
-                            'video_path' => $modulable->video_path !== null ? (string) $modulable->video_path : null,
-                            'duration' => $modulable->duration !== null ? (int) $modulable->duration : null,
-                            'thumbnail' => $modulable->thumbnail !== null ? (string) $modulable->thumbnail : null,
+                            'reading_time' => isset($modulable->reading_time) ? (int) $modulable->reading_time : null,
+                            'video_url' => isset($modulable->video_url) ? (string) $modulable->video_url : null,
+                            'video_path' => isset($modulable->video_path) ? (string) $modulable->video_path : null,
+                            'duration' => isset($modulable->duration) ? (int) $modulable->duration : null,
+                            'thumbnail' => isset($modulable->thumbnail) ? (string) $modulable->thumbnail : null,
                         ];
+                        if ($modulable instanceof \App\Models\Resource) {
+                            $content['resource_url'] = $modulable->resource_url !== null ? (string) $modulable->resource_url : null;
+                            $content['display_mode'] = $modulable->display_mode !== null ? (string) $modulable->display_mode : 'external';
+                        }
+                        $item['content'] = $content;
                     }
 
                     return $item;

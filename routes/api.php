@@ -31,6 +31,8 @@ Route::prefix('student')->name('api.student.')->group(function () {
     Route::middleware(['log.student.api', 'auth:sanctum', 'role:student'])->group(function () {
         // بروفايل الطالب الكامل (كل البيانات لعرضها في Flutter)
         Route::get('profile', [StudentProfileController::class, 'show'])->name('profile.show');
+        Route::put('profile', [StudentProfileController::class, 'update'])->name('profile.update');
+        Route::get('nationalities', [StudentProfileController::class, 'nationalities'])->name('nationalities');
         // كتالوج كل الكورسات المنشورة (للعرض في التطبيق حتى بدون تسجيل)
         Route::get('catalog', [StudentCourseController::class, 'catalog'])->name('catalog');
         // الكورسات المرتبطة بالطالب مع الأقسام والدروس/الفيديوهات
