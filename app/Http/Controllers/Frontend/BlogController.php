@@ -65,7 +65,7 @@ class BlogController extends Controller
                                 ->limit(3)
                                 ->get();
 
-        return view('frontend.pages.blog.index', compact(
+        return view('frontend2.pages.blog', compact(
             'posts',
             'categories',
             'popularTags',
@@ -120,7 +120,7 @@ class BlogController extends Controller
                                ->limit(5)
                                ->get();
 
-        return view('frontend.pages.blog.show', compact(
+        return view('frontend2.pages.blog-show', compact(
             'post',
             'relatedPosts',
             'previousPost',

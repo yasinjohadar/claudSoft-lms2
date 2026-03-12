@@ -11,6 +11,7 @@ use App\Http\Controllers\Frontend\GroupRegistrationController;
 
 
 Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
+Route::get('/about', [HomeController::class, 'about'])->name('frontend.about');
 Route::get('/courses', [CourseController::class, 'index'])->name('frontend.courses.index');
 Route::get('/courses/{slug}', [CourseController::class, 'show'])->name('frontend.courses.show');
 
@@ -27,6 +28,16 @@ Route::get('/students', [StudentController::class, 'index'])->name('frontend.stu
 Route::get('/students/{id}', [StudentController::class, 'show'])->name('frontend.students.show');
 Route::get('/contact', [HomeController::class, 'contact'])->name('frontend.contact');
 Route::post('/contact', [HomeController::class, 'sendContact'])->name('frontend.contact.send');
+
+// Skills pages
+Route::prefix('skills')->name('frontend.skills.')->group(function () {
+    Route::get('/web', [HomeController::class, 'skillWeb'])->name('web');
+    Route::get('/servers', [HomeController::class, 'skillServers'])->name('servers');
+    Route::get('/security', [HomeController::class, 'skillSecurity'])->name('security');
+    Route::get('/mobile', [HomeController::class, 'skillMobile'])->name('mobile');
+    Route::get('/devops', [HomeController::class, 'skillDevops'])->name('devops');
+    Route::get('/consultation', [HomeController::class, 'skillConsultation'])->name('consultation');
+});
 
 // Blog Routes
 Route::prefix('blog')->name('frontend.blog.')->group(function () {

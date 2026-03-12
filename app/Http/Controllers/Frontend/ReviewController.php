@@ -21,7 +21,7 @@ class ReviewController extends Controller
                         ->orderBy('created_at', 'desc')
                         ->paginate(12);
 
-        return view('frontend.pages.reviews', compact('reviews'));
+        return view('frontend2.pages.reviews', compact('reviews'));
     }
 
     /**

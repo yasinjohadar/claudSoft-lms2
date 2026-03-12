@@ -46,7 +46,7 @@ class HomeController extends Controller
                    ->limit(6)
                    ->get();
 
-        return view('frontend.pages.index', compact('reviews', 'courses', 'latestPosts', 'faqs'));
+        return view('frontend2.pages.index', compact('reviews', 'courses', 'latestPosts', 'faqs'));
     }
 
     public function reviews()
@@ -61,7 +61,42 @@ class HomeController extends Controller
     public function contact()
     {
         $settings = \App\Models\ContactSetting::getSettings();
-        return view('frontend.pages.contact', compact('settings'));
+        return view('frontend2.pages.contact', compact('settings'));
+    }
+
+    public function about()
+    {
+        return view('frontend2.pages.about');
+    }
+
+    public function skillWeb()
+    {
+        return view('frontend2.pages.service-detail');
+    }
+
+    public function skillServers()
+    {
+        return view('frontend2.pages.service-detail-servers');
+    }
+
+    public function skillSecurity()
+    {
+        return view('frontend2.pages.service-detail-security');
+    }
+
+    public function skillMobile()
+    {
+        return view('frontend2.pages.service-detail-mobile');
+    }
+
+    public function skillDevops()
+    {
+        return view('frontend2.pages.service-detail-devops');
+    }
+
+    public function skillConsultation()
+    {
+        return view('frontend2.pages.consultation');
     }
 
     public function sendContact(Request $request)

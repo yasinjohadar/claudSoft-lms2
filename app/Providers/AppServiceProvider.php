@@ -41,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
             $contactSettings = ContactSetting::getSettings();
             $view->with('contactSettings', $contactSettings);
         });
+        View::composer('frontend2.layouts.footer', function ($view) {
+            $contactSettings = ContactSetting::getSettings();
+            $view->with('contactSettings', $contactSettings);
+        });
 
         // Initialize WhatsApp settings defaults
         try {

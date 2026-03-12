@@ -60,7 +60,7 @@ class CourseController extends Controller
 
         $courses = $query->paginate(12);
 
-        return view('frontend.pages.courses', compact('courses', 'categories'));
+        return view('frontend2.pages.courses', compact('courses', 'categories'));
     }
 
     public function show($slug)
