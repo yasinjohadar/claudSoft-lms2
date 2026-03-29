@@ -559,6 +559,28 @@ ul {
     box-shadow: 0 4px 14px rgba(0, 76, 138, 0.35);
 }
 
+/* زر الدخول/اللوحة داخل قائمة الروابط: بدون خط سفلي للرابط العادي */
+.main-navbar .nav-link.nav-auth-cta {
+    padding: 8px 18px !important;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.main-navbar .nav-link.nav-auth-cta::after {
+    display: none !important;
+}
+
+.main-navbar .nav-link.nav-auth-cta:hover,
+.main-navbar .nav-link.nav-auth-cta:focus {
+    color: #fff !important;
+}
+
+@media (min-width: 992px) {
+    .main-navbar .nav-item-auth {
+        margin-inline-start: 0.35rem;
+    }
+}
+
 .navbar-nav-actions {
     flex-shrink: 0;
 }
