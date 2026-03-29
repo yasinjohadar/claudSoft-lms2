@@ -60,11 +60,10 @@
                     <li class="nav-item"><a class="nav-link" href="courses.html">الكورسات</a></li>
                     <li class="nav-item"><a class="nav-link" href="projects.html">المشاريع</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#services">الخدمات</a></li>
-                    <li class="nav-item"><a class="nav-link" href="index.html#gallery">معرض الصور</a></li>
                     <li class="nav-item"><a class="nav-link" href="blog.html">المدونة</a></li>
                     <li class="nav-item"><a class="nav-link" href="contact.html">تواصل معنا</a></li>
                 </ul>
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap justify-content-center justify-content-lg-end w-100 w-lg-auto mt-3 mt-lg-0 navbar-nav-actions">
                     <div class="nav-social">
                         <a href="#" target="_blank" rel="noopener noreferrer" title="فيسبوك" aria-label="فيسبوك"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" target="_blank" rel="noopener noreferrer" title="يوتيوب" aria-label="يوتيوب"><i class="fab fa-youtube"></i></a>
@@ -74,6 +73,11 @@
                         <a href="#" target="_blank" rel="noopener noreferrer" title="تليجرام" aria-label="تليجرام"><i class="fab fa-telegram-plane"></i></a>
                     </div>
                     <button class="theme-toggle" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الليلي/النهاري"><i class="fas fa-sun"></i></button>
+                    @auth
+                        <a href="{{ route('dashboard') }}" class="nav-auth-cta"><i class="fas fa-tachometer-alt me-1" aria-hidden="true"></i>لوحة التحكم</a>
+                    @else
+                        <a href="{{ route('login') }}" class="nav-auth-cta"><i class="fas fa-sign-in-alt me-1" aria-hidden="true"></i>تسجيل الدخول</a>
+                    @endauth
                 </div>
             </div>
         </div>
