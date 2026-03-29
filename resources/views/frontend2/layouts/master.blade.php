@@ -7,7 +7,7 @@
     <meta name="description" content="@yield('meta_description', 'أكاديمية كلاودسوفت للخدمات والحلول البرمجية — تدريب تقني، تطوير ويب وموبايل، استشارات وحلول برمجية. دورات عملية واحترافية.')">
     <title>@yield('title', 'أكاديمية كلاودسوفت للخدمات والحلول البرمجية | Claud Soft Academy')</title>
 
-    <link rel="icon" type="image/svg+xml" href="{{ asset('frontend2/assets/images/favicon.svg') }}">
+    <link rel="icon" type="image/png" href="{{ asset('frontend2/assets/images/logo.png') }}">
 
     <!-- Bootstrap 5 RTL -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">

@@ -470,7 +470,7 @@
                 <div class="col-lg-4 col-md-6">
                     <div class="glass-panel blog-card animate-on-scroll animate-delay-1">
                         <div class="blog-img-wrapper">
-                            <img src="{{ $post->featured_image ? asset('storage/' . $post->featured_image) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $post->title }}" width="400" height="180" loading="lazy">
+                            <img src="{{ $post->featured_image ? blog_image_url($post->featured_image) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $post->title }}" width="400" height="180" loading="lazy">
                         </div>
                         <div class="blog-body">
                             <div class="blog-meta">
