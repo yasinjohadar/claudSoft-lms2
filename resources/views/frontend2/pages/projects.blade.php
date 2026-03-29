@@ -70,15 +70,15 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#services">الخدمات</a></li>
                     <li class="nav-item"><a class="nav-link" href="blog.html">المدونة</a></li>
                     <li class="nav-item"><a class="nav-link" href="contact.html">تواصل معنا</a></li>
-                    <li class="nav-item nav-item-auth">
+                    <li class="nav-item">
                         @auth
-                            <a href="{{ route('dashboard') }}" class="nav-link nav-auth-cta"><i class="fas fa-tachometer-alt me-1" aria-hidden="true"></i>لوحة التحكم</a>
+                            <a class="nav-link" href="{{ route('dashboard') }}">لوحة التحكم</a>
                         @else
-                            <a href="{{ route('login') }}" class="nav-link nav-auth-cta"><i class="fas fa-sign-in-alt me-1" aria-hidden="true"></i>تسجيل الدخول</a>
+                            <a class="nav-link" href="{{ route('login') }}">تسجيل الدخول</a>
                         @endauth
                     </li>
                 </ul>
-                <div class="d-flex align-items-center gap-3 flex-wrap justify-content-center justify-content-lg-end w-100 w-lg-auto mt-3 mt-lg-0 navbar-nav-actions">
+                <div class="d-flex align-items-center gap-3">
                     <div class="nav-social">
                         <a href="#" target="_blank" rel="noopener noreferrer" title="فيسبوك" aria-label="فيسبوك"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" target="_blank" rel="noopener noreferrer" title="يوتيوب" aria-label="يوتيوب"><i class="fab fa-youtube"></i></a>
