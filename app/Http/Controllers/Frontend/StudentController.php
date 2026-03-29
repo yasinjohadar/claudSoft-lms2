@@ -33,7 +33,7 @@ class StudentController extends Controller
                           ->paginate(12)
                           ->withQueryString(); // للحفاظ على معاملات البحث في الروابط
 
-        return view('frontend.pages.students', compact('students'));
+        return view('frontend2.pages.students', compact('students'));
     }
 
     /**
@@ -83,7 +83,7 @@ class StudentController extends Controller
             'achievements_count' => $achievements->count(),
         ];
 
-        return view('frontend.pages.student-details', compact(
+        return view('frontend2.pages.student-detail', compact(
             'student',
             'enrollments',
             'certificates',

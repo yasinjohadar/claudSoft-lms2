@@ -67,28 +67,8 @@ class FrontendCourseController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'category_id' => 'required|exists:frontend_course_categories,id',
-            'instructor_id' => 'required|exists:users,id',
-            'level' => 'required|in:beginner,intermediate,advanced',
-            'language' => 'required|string|max:10',
-            'price' => 'nullable|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0',
-            'is_free' => 'boolean',
-            'is_featured' => 'boolean',
-            'is_active' => 'boolean',
-            'currency' => 'required|string|max:10',
-            'status' => 'required|in:draft,published,archived',
-            'requirements' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'preview_video' => 'nullable|string',
-            'meta_title' => 'nullable|string|max:255',
-            'meta_description' => 'nullable|string',
-            'meta_keywords' => 'nullable|string',
-        ]);
+        $validated = $request->validate($this->frontendCourseValidationRules());
+        $validated = $this->normalizeCourseAttributes($request, $validated);
 
         DB::beginTransaction();
 
@@ -112,11 +92,6 @@ class FrontendCourseController extends Controller
             if ($validated['status'] === 'published' && !isset($validated['published_at'])) {
                 $validated['published_at'] = now();
             }
-
-            // Handle checkboxes (if not present in request, set to false)
-            $validated['is_free'] = $request->has('is_free') && $request->is_free == '1';
-            $validated['is_featured'] = $request->has('is_featured') && $request->is_featured == '1';
-            $validated['is_active'] = $request->has('is_active') && $request->is_active == '1';
 
             // Create course
             $course = FrontendCourse::create($validated);
@@ -163,28 +138,8 @@ class FrontendCourseController extends Controller
      */
     public function update(Request $request, FrontendCourse $frontendCourse)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'category_id' => 'required|exists:frontend_course_categories,id',
-            'instructor_id' => 'required|exists:users,id',
-            'level' => 'required|in:beginner,intermediate,advanced',
-            'language' => 'required|string|max:10',
-            'price' => 'nullable|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0',
-            'is_free' => 'boolean',
-            'is_featured' => 'boolean',
-            'is_active' => 'boolean',
-            'currency' => 'required|string|max:10',
-            'status' => 'required|in:draft,published,archived',
-            'requirements' => 'nullable|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'preview_video' => 'nullable|string',
-            'meta_title' => 'nullable|string|max:255',
-            'meta_description' => 'nullable|string',
-            'meta_keywords' => 'nullable|string',
-        ]);
+        $validated = $request->validate($this->frontendCourseValidationRules());
+        $validated = $this->normalizeCourseAttributes($request, $validated);
 
         DB::beginTransaction();
 
@@ -213,11 +168,6 @@ class FrontendCourseController extends Controller
             if ($validated['status'] === 'published' && $frontendCourse->status !== 'published') {
                 $validated['published_at'] = now();
             }
-
-            // Handle checkboxes (if not present in request, set to false)
-            $validated['is_free'] = $request->has('is_free') && $request->is_free == '1';
-            $validated['is_featured'] = $request->has('is_featured') && $request->is_featured == '1';
-            $validated['is_active'] = $request->has('is_active') && $request->is_active == '1';
 
             // Update course
             $frontendCourse->update($validated);
@@ -392,5 +342,90 @@ class FrontendCourseController extends Controller
         })->count();
 
         $course->update(['lessons_count' => $totalLessons]);
+    }
+
+    /**
+     * @return array<string, string|array<int, string>>
+     */
+    protected function frontendCourseValidationRules(): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'description' => 'required|string',
+            'category_id' => 'required|exists:frontend_course_categories,id',
+            'instructor_id' => 'required|exists:users,id',
+            'level' => 'required|in:beginner,intermediate,advanced',
+            'language' => 'required|string|max:10',
+            'price' => 'nullable|numeric|min:0',
+            'discount_price' => 'nullable|numeric|min:0',
+            'is_free' => 'boolean',
+            'is_featured' => 'boolean',
+            'is_active' => 'boolean',
+            'currency' => 'required|string|max:10',
+            'status' => 'required|in:draft,published,archived',
+            'requirements' => 'nullable|string',
+            'thumbnail' => 'nullable|image|max:2048',
+            'preview_video' => 'nullable|string|max:2048',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string',
+            'meta_keywords' => 'nullable|string',
+            'what_you_learn' => 'nullable|array',
+            'what_you_learn.*' => 'nullable|string|max:1000',
+            'og_title' => 'nullable|string|max:255',
+            'og_description' => 'nullable|string',
+            'og_type' => 'nullable|string|max:50',
+            'og_image' => 'nullable|string|max:500',
+            'twitter_card' => 'nullable|string|max:50',
+            'twitter_title' => 'nullable|string|max:255',
+            'twitter_description' => 'nullable|string',
+            'twitter_image' => 'nullable|string|max:500',
+            'canonical_url' => 'nullable|string|max:500',
+            'robots' => 'nullable|string|max:255',
+            'author' => 'nullable|string|max:255',
+            'schema_markup' => 'nullable|string',
+            'focus_keyword' => 'nullable|string|max:255',
+            'seo_score' => 'nullable|string',
+            'reading_time' => 'nullable|integer|min:0|max:99999',
+            'duration' => 'nullable|numeric|min:0|max:9999',
+            'certificate' => 'boolean',
+            'lifetime_access' => 'boolean',
+            'downloadable_resources' => 'boolean',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    protected function normalizeCourseAttributes(Request $request, array $validated): array
+    {
+        $validated['is_free'] = $request->has('is_free') && $request->is_free == '1';
+        $validated['is_featured'] = $request->has('is_featured') && $request->is_featured == '1';
+        $validated['is_active'] = $request->has('is_active') && $request->is_active == '1';
+        $validated['certificate'] = $request->boolean('certificate');
+        $validated['lifetime_access'] = $request->boolean('lifetime_access', true);
+        $validated['downloadable_resources'] = $request->boolean('downloadable_resources');
+
+        if (isset($validated['what_you_learn']) && is_array($validated['what_you_learn'])) {
+            $validated['what_you_learn'] = array_values(array_filter(array_map(function ($item) {
+                return is_string($item) ? trim($item) : '';
+            }, $validated['what_you_learn'])));
+            if ($validated['what_you_learn'] === []) {
+                $validated['what_you_learn'] = null;
+            }
+        }
+
+        if (array_key_exists('schema_markup', $validated)) {
+            $raw = $validated['schema_markup'];
+            if ($raw === null || $raw === '') {
+                $validated['schema_markup'] = null;
+            } elseif (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                $validated['schema_markup'] = is_array($decoded) ? $decoded : null;
+            }
+        }
+
+        return $validated;
     }
 }

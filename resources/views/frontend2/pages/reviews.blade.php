@@ -108,26 +108,31 @@
                      data-avatar="{{ $review->student_image ? asset('storage/' . $review->student_image) : ($review->user && $review->user->avatar ? asset('storage/' . $review->user->avatar) : '') }}">
                     <div class="glass-panel testimonial-card h-100" style="cursor: pointer;" title="اضغط لقراءة كامل الرأي">
                         @if($review->is_featured)
-                        <span class="position-absolute top-0 start-0 m-3 badge rounded-pill" style="background: var(--clr-secondary); color: #fff;"><i class="fas fa-star me-1"></i> مميز</span>
+                        <span class="badge rounded-pill testimonial-card__badge" style="background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark)); color: #fff;"><i class="fas fa-star me-1"></i> مميز</span>
                         @endif
-                        <div class="stars">
-                            @php $rating = (int)($review->rating ?? 5); @endphp
-                            @for($i = 1; $i <= 5; $i++)
-                                <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
-                            @endfor
-                        </div>
-                        <p class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</p>
-                        <div class="student-info">
-                            @if($review->student_image)
-                                <img src="{{ asset('storage/' . $review->student_image) }}" alt="{{ $review->student_name }}" class="student-avatar" width="50" height="50" loading="lazy">
-                            @elseif($review->user && $review->user->avatar)
-                                <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="{{ $review->student_name ?? $review->user->name }}" class="student-avatar" width="50" height="50" loading="lazy">
-                            @else
-                                <div class="student-avatar-placeholder">{{ strtoupper(mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1)) }}</div>
-                            @endif
-                            <div>
-                                <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
-                                <div class="student-role">{{ $review->student_position ?? '—' }}</div>
+                        <div class="testimonial-card__inner">
+                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
+                            <div class="stars testimonial-card__stars">
+                                @php $rating = (int)($review->rating ?? 5); @endphp
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
+                                @endfor
+                            </div>
+                            <blockquote class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</blockquote>
+                            <div class="student-info testimonial-card__author">
+                                <div class="testimonial-card__avatar-ring">
+                                    @if($review->student_image)
+                                        <img src="{{ asset('storage/' . $review->student_image) }}" alt="{{ $review->student_name }}" class="student-avatar" width="52" height="52" loading="lazy">
+                                    @elseif($review->user && $review->user->avatar)
+                                        <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="{{ $review->student_name ?? $review->user->name }}" class="student-avatar" width="52" height="52" loading="lazy">
+                                    @else
+                                        <div class="student-avatar-placeholder">{{ strtoupper(mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1)) }}</div>
+                                    @endif
+                                </div>
+                                <div class="testimonial-card__author-text">
+                                    <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
+                                    <div class="student-role">{{ $review->student_position ?? '—' }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -147,7 +152,7 @@
             </div>
 
             @if($reviews->hasPages())
-            <div class="d-flex justify-content-center mt-5 animate-on-scroll">
+            <div class="f2-pagination-wrap mt-5 animate-on-scroll">
                 {{ $reviews->links('pagination::bootstrap-5') }}
             </div>
             @endif
@@ -187,24 +192,6 @@
             </div>
         </div>
     </div>
-
-    <style>
-    .student-avatar-placeholder {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-full);
-        background: var(--clr-primary);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        font-weight: 700;
-        border: 2px solid var(--clr-primary);
-        flex-shrink: 0;
-    }
-    .testimonial-card { position: relative; }
-    </style>
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {

@@ -124,6 +124,11 @@ class DatabaseSeeder extends Seeder
         $this->call(N8nWebhookEndpointSeeder::class);
         $this->command->info('');
 
+        // 21. التوثيق (أقسام + صفحات تجريبية)
+        $this->command->info('📍 المرحلة 21: أقسام وصفحات التوثيق التجريبية');
+        $this->call(DocumentationSeeder::class);
+        $this->command->info('');
+
         $this->command->info('✨ تم إكمال عملية ملء قاعدة البيانات بنجاح!');
         $this->command->info('📊 الإحصائيات النهائية:');
         $this->command->info('   - 20 كورس تقني');

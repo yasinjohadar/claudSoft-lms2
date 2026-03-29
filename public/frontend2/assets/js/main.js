@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const htmlEl = document.documentElement;
 
   // Load saved theme
-  const savedTheme = localStorage.getItem('yj-theme') || 'light';
+  const savedTheme = localStorage.getItem('yj-theme') || 'dark';
   htmlEl.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
 

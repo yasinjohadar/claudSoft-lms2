@@ -7,13 +7,16 @@ use App\Http\Controllers\Frontend\ReviewController;
 use App\Http\Controllers\Frontend\StudentController;
 use App\Http\Controllers\Frontend\BlogController;
 use App\Http\Controllers\Frontend\GroupRegistrationController;
+use App\Http\Controllers\Frontend\DocumentationController;
 
 
 
 Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 Route::get('/about', [HomeController::class, 'about'])->name('frontend.about');
 Route::get('/courses', [CourseController::class, 'index'])->name('frontend.courses.index');
-Route::get('/courses/{slug}', [CourseController::class, 'show'])->name('frontend.courses.show');
+// تفاصيل الكورس للواجهة الجديدة (frontend2) — اسم الراوت ثابت ليتم تحديث الروابط تلقائياً
+Route::get('/course/{slug}', [CourseController::class, 'show'])->name('frontend.courses.show');
+Route::redirect('/courses/{slug}', '/course/{slug}', 301);
 
 // Group Registration Routes
 Route::prefix('group-registration')->name('frontend.group-registration.')->group(function () {
@@ -29,8 +32,12 @@ Route::get('/students/{id}', [StudentController::class, 'show'])->name('frontend
 Route::get('/contact', [HomeController::class, 'contact'])->name('frontend.contact');
 Route::post('/contact', [HomeController::class, 'sendContact'])->name('frontend.contact.send');
 
-// Skills pages
-Route::prefix('skills')->name('frontend.skills.')->group(function () {
+// Legacy /skills/* URLs -> /services/* (301)
+Route::redirect('skills/{segment}', '/services/{segment}', 301)
+    ->whereIn('segment', ['web', 'servers', 'security', 'mobile', 'devops', 'consultation']);
+
+// Service pages (public offerings)
+Route::prefix('services')->name('frontend.services.')->group(function () {
     Route::get('/web', [HomeController::class, 'skillWeb'])->name('web');
     Route::get('/servers', [HomeController::class, 'skillServers'])->name('servers');
     Route::get('/security', [HomeController::class, 'skillSecurity'])->name('security');
@@ -48,6 +55,14 @@ Route::prefix('blog')->name('frontend.blog.')->group(function () {
     Route::get('/{slug}', [BlogController::class, 'show'])->name('show');
 });
 
+
+// Documentation (public) — نفس تصميم public/docs/css/style.css
+Route::prefix('docs')->name('frontend.docs.')->group(function () {
+    Route::get('/', [DocumentationController::class, 'index'])->name('index');
+    Route::get('/{categorySlug}/{pagePath?}', [DocumentationController::class, 'show'])
+        ->where('pagePath', '.*')
+        ->name('show');
+});
 // Sitemap Route
 Route::get('/sitemap.xml', [\App\Http\Controllers\Frontend\SitemapController::class, 'index'])->name('frontend.sitemap');
 
@@ -60,6 +75,7 @@ Route::get('/robots.txt', function() {
     $content .= "User-agent: *\n";
     $content .= "Allow: /\n";
     $content .= "Allow: /courses\n";
+    $content .= "Allow: /course\n";
     $content .= "Allow: /blog\n";
     $content .= "Allow: /reviews\n";
     $content .= "Allow: /students\n";

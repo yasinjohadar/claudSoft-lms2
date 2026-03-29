@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
+<html lang="ar" dir="rtl" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -60,7 +60,7 @@
                     <li class="nav-item"><a class="nav-link" href="index.html">الرئيسية</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.html">حول المدرب</a></li>
                     <li class="nav-item"><a class="nav-link" href="courses.html">الكورسات</a></li>
-                    <li class="nav-item"><a class="nav-link" href="index.html#skills">المهارات</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#services">الخدمات</a></li>
                     <li class="nav-item"><a class="nav-link" href="index.html#gallery">معرض الصور</a></li>
                     <li class="nav-item"><a class="nav-link" href="blog.html">المدونة</a></li>
                     <li class="nav-item"><a class="nav-link" href="contact.html">تواصل معنا</a></li>
@@ -74,7 +74,7 @@
                         <a href="https://github.com" target="_blank" rel="noopener noreferrer" title="جيت هاب" aria-label="جيت هاب"><i class="fab fa-github"></i></a>
                         <a href="https://t.me" target="_blank" rel="noopener noreferrer" title="تليجرام" aria-label="تليجرام"><i class="fab fa-telegram-plane"></i></a>
                     </div>
-                    <button class="theme-toggle" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الليلي/النهاري"><i class="fas fa-moon"></i></button>
+                    <button class="theme-toggle" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الليلي/النهاري"><i class="fas fa-sun"></i></button>
                 </div>
             </div>
         </div>
@@ -104,7 +104,7 @@
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">القناة</span>
                 <h2>مقاطع فيديو تعليمية وعملية</h2>
-                <p>فيديوهات من قناتي على يوتيوب في تطوير الويب، البرمجة، وتطبيقات الموبايل</p>
+                <p>فيديوهات من قناتنا على يوتيوب في تطوير الويب، البرمجة، وتطبيقات الموبايل</p>
             </div>
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6">

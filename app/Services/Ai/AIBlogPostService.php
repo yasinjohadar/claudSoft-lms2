@@ -4,12 +4,15 @@ namespace App\Services\Ai;
 
 use App\Models\AIModel;
 use App\Models\BlogCategory;
+use App\Services\Ai\Concerns\ParsesAiJsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Services\Ai\AIProviderFactory;
 use Illuminate\Support\Str;
 
 class AIBlogPostService
 {
+    use ParsesAiJsonResponse;
+
     public function __construct(
         private AIModelService $modelService
     ) {}
@@ -495,55 +498,6 @@ class AIBlogPostService
         
         // Extract first meaningful words from topic
         return implode(' ', array_slice($topicWords, 0, 3));
-    }
-
-    /**
-     * Parse JSON response from AI
-     */
-    private function parseJSONResponse(string $response): array
-    {
-        // التحقق من ترميز UTF-8 وإصلاحه إذا لزم الأمر
-        if (!mb_check_encoding($response, 'UTF-8')) {
-            Log::warning('Invalid UTF-8 encoding detected in response, attempting to fix');
-            $response = mb_convert_encoding($response, 'UTF-8', 'auto');
-            // إذا فشل التحويل، جرب ترميزات أخرى
-            if (!mb_check_encoding($response, 'UTF-8')) {
-                $response = mb_convert_encoding($response, 'UTF-8', ['UTF-8', 'ISO-8859-1', 'Windows-1256']);
-            }
-        }
-        
-        // تنظيف النص من الأحرف غير الصالحة في UTF-8
-        $response = mb_convert_encoding($response, 'UTF-8', 'UTF-8');
-        
-        // Try to extract JSON from response
-        $jsonStart = strpos($response, '{');
-        $jsonEnd = strrpos($response, '}');
-        
-        if ($jsonStart !== false && $jsonEnd !== false) {
-            $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
-            
-            try {
-                // استخدام JSON_INVALID_UTF8_IGNORE لتجاهل الأحرف غير الصالحة
-                $decoded = json_decode($jsonString, true, 512, JSON_INVALID_UTF8_IGNORE);
-                
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    return $decoded;
-                } else {
-                    Log::warning('JSON decode error in parseJSONResponse', [
-                        'error' => json_last_error_msg(),
-                        'error_code' => json_last_error(),
-                        'json_preview' => mb_substr($jsonString, 0, 200),
-                    ]);
-                }
-            } catch (\JsonException $e) {
-                Log::error('JSON exception in parseJSONResponse: ' . $e->getMessage(), [
-                    'json_preview' => mb_substr($jsonString, 0, 200),
-                ]);
-            }
-        }
-        
-        // If JSON parsing fails, try to extract data from text
-        return [];
     }
 
     /**

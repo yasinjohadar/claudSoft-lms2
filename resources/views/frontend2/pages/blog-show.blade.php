@@ -230,13 +230,13 @@
                         <h5 class="mb-3"><i class="fas fa-fire me-2" style="color: var(--clr-primary);"></i> مقالات شائعة</h5>
                         <div class="d-flex flex-column gap-3">
                             @foreach($popularPosts as $popular)
-                            <a href="{{ $popular->url }}" class="d-flex gap-3 text-decoration-none" style="color: inherit;">
+                            <a href="{{ $popular->url }}" class="d-flex gap-3 align-items-start text-decoration-none w-100 min-w-0" style="color: inherit;">
                                 @if($popular->featured_image)
-                                <img src="{{ blog_image_url($popular->featured_image) }}" alt="" class="rounded" width="70" height="70" style="object-fit: cover;">
+                                <img src="{{ blog_image_url($popular->featured_image) }}" alt="" class="rounded flex-shrink-0" width="70" height="70" style="object-fit: cover;">
                                 @else
-                                <div class="rounded d-flex align-items-center justify-content-center bg-secondary bg-opacity-25" style="width:70px;height:70px;"><i class="fas fa-newspaper text-muted"></i></div>
+                                <div class="rounded d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 flex-shrink-0" style="width:70px;height:70px;min-width:70px;"><i class="fas fa-newspaper text-muted"></i></div>
                                 @endif
-                                <div class="flex-grow-1 min-w-0">
+                                <div class="flex-grow-1 min-w-0 overflow-hidden">
                                     <strong class="d-block text-truncate">{{ Str::limit($popular->title, 45) }}</strong>
                                     <span class="small text-muted"><i class="fas fa-eye me-1"></i>{{ $popular->views_count }}</span>
                                     <span class="small text-muted me-2"><i class="fas fa-calendar me-1"></i>{{ $popular->published_at?->diffForHumans() }}</span>
@@ -251,40 +251,67 @@
         </div>
 
         @if($relatedPosts->count() > 0)
-        <div class="container mt-5">
-            <h4 class="mb-4 animate-on-scroll"><i class="fas fa-link me-2" style="color: var(--clr-primary);"></i> مقالات ذات صلة</h4>
-            <div class="row g-4">
-                @foreach($relatedPosts as $related)
-                <div class="col-md-4 animate-on-scroll">
-                    <a href="{{ $related->url }}" class="text-decoration-none d-block h-100">
-                        <div class="glass-panel overflow-hidden rounded-3 h-100">
-                            @if($related->featured_image)
-                            <img src="{{ blog_image_url($related->featured_image) }}" alt="{{ $related->title }}" class="w-100" style="height:200px;object-fit: cover;" loading="lazy">
-                            @else
-                            <div class="d-flex align-items-center justify-content-center bg-secondary bg-opacity-25" style="height:200px;"><i class="fas fa-newspaper fa-3x text-muted"></i></div>
-                            @endif
-                            <div class="p-4">
-                                @if($related->category)
-                                <span class="badge rounded-pill mb-2" style="background: var(--clr-primary);">{{ $related->category->name }}</span>
-                                @endif
-                                <h6 class="fw-bold">{{ $related->title }}</h6>
-                                <p class="small text-muted mb-0">{{ Str::limit(strip_tags($related->excerpt ?? ''), 80) }}</p>
-                                <span class="small text-muted"><i class="fas fa-calendar me-1"></i>{{ $related->published_at?->diffForHumans() }}</span>
+        <section class="blog-related-section">
+            <div class="container">
+                <h4 class="blog-related-heading mb-4 animate-on-scroll"><i class="fas fa-link me-2" style="color: var(--clr-primary);"></i> مقالات ذات صلة</h4>
+                <div class="row g-4">
+                    @foreach($relatedPosts as $related)
+                    <div class="col-lg-4 col-md-6 animate-on-scroll">
+                        <a href="{{ $related->url }}" class="text-decoration-none d-block h-100" style="color: inherit;">
+                            <div class="glass-panel blog-card h-100 animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
+                                <div class="blog-img-wrapper">
+                                    @if($related->featured_image)
+                                    <img src="{{ blog_image_url($related->featured_image) }}" alt="{{ $related->featured_image_alt ?: $related->title }}" width="400" height="180" loading="lazy">
+                                    @else
+                                    <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $related->title }}" width="400" height="180" loading="lazy">
+                                    @endif
+                                    @if($related->category)
+                                    <div style="position: absolute; top: 12px; right: 12px; background: var(--clr-primary); color: #fff; padding: 3px 12px; border-radius: 50px; font-size: 0.72rem; font-weight: 600;">{{ $related->category->name }}</div>
+                                    @endif
+                                </div>
+                                <div class="blog-body">
+                                    <div class="blog-meta">
+                                        <span><i class="fas fa-calendar-alt"></i> {{ $related->published_at ? $related->published_at->format('d F Y') : '—' }}</span>
+                                        @if($related->reading_time)
+                                        <span><i class="fas fa-clock"></i> {{ $related->reading_time }} دقائق</span>
+                                        @endif
+                                    </div>
+                                    <h5 class="blog-related-card-title">{{ Str::limit($related->title, 70) }}</h5>
+                                    <p>{{ Str::limit(strip_tags($related->excerpt ?? ''), 100) }}</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--clr-border);">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <img src="{{ asset('frontend2/assets/images/logo.png') }}" alt="" width="30" height="30" loading="lazy" style="width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--clr-primary); object-fit: cover;">
+                                            <span style="font-size: 0.8rem; font-weight: 600;">{{ $related->author?->name ?? 'المدير' }}</span>
+                                        </div>
+                                        <span class="read-more" style="margin-top: 0;">المزيد <i class="fas fa-arrow-left"></i></span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </a>
+                        </a>
+                    </div>
+                    @endforeach
                 </div>
-                @endforeach
             </div>
-        </div>
+        </section>
         @endif
     </article>
 
     <style>
-    /* الميتا والتواريخ: لون يتبع الثيم (واضح في الوضع الليلي) */
-    .article-meta-line { color: var(--clr-text-muted); }
-    .article-meta-link { color: var(--clr-primary); }
-    .article-meta-link:hover { color: var(--clr-primary-light); }
+    /* مقالات ذات صلة: فاصل وعناوين متعددة الأسطر */
+    .blog-related-section {
+        margin-top: 0.5rem;
+        padding-top: 2.5rem;
+        padding-bottom: 0.5rem;
+        border-top: 1px solid var(--clr-border);
+    }
+    .blog-related-card-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
+        line-height: 1.45;
+    }
 
     /* خلفية المحتوى: في الوضع النهاري لون رمادي-أزرق خفيف بدل الأبيض الصريح */
     .blog-article .article-content { font-size: 1.05rem; line-height: 1.85; color: var(--clr-text); background: rgba(248, 250, 252, 0.95); opacity: 1; visibility: visible; min-height: 1px; }
@@ -296,9 +323,37 @@
     .blog-article .article-content ul, .blog-article .article-content ol { margin: 1rem 0; padding-right: 1.5rem; color: var(--clr-text); }
     .blog-article .article-content li { margin-bottom: 0.5rem; color: var(--clr-text); }
     .blog-article .article-content blockquote { border-right: 4px solid var(--clr-primary); padding: 1rem 1.25rem; background: var(--clr-surface); margin: 1.5rem 0; border-radius: var(--radius-sm); font-style: italic; color: var(--clr-text); }
-    .blog-article .article-content code { background: var(--clr-surface); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.9em; color: var(--clr-secondary); }
+    /* كود مضمّن (أي code ليس داخل pre — يشمل span>code من المحرّر): لون محايد + LTR */
+    .blog-article .article-content code {
+        background: rgba(15, 23, 42, 0.07) !important;
+        color: #0f172a !important;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.88em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        direction: ltr;
+        unicode-bidi: isolate;
+        text-align: left;
+        white-space: pre-wrap;
+        word-break: break-word;
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: middle;
+    }
     .blog-article .article-content pre { background: #2d2d2d; color: #f8f8f2; padding: 1.25rem; border-radius: var(--radius-md); overflow-x: auto; margin: 1.5rem 0; direction: ltr; text-align: left; }
-    .blog-article .article-content pre code { background: transparent; padding: 0; color: inherit; }
+    .blog-article .article-content pre code {
+        background: transparent !important;
+        padding: 0 !important;
+        color: inherit !important;
+        border: none !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        font-size: inherit !important;
+        display: block !important;
+        max-width: none !important;
+        vertical-align: baseline !important;
+    }
     .blog-article .article-content a { color: var(--clr-primary); }
     .blog-article .article-content a:hover { color: var(--clr-primary-light); }
 
@@ -306,8 +361,12 @@
     .blog-article .article-content * { background: transparent !important; color: inherit !important; }
     .blog-article .article-content pre,
     .blog-article .article-content pre * { background: #2d2d2d !important; color: #f8f8f2 !important; }
-    .blog-article .article-content pre code { background: transparent !important; color: #f8f8f2 !important; }
-    .blog-article .article-content code { background: var(--clr-surface) !important; color: var(--clr-secondary) !important; }
+    .blog-article .article-content pre code { background: transparent !important; color: #f8f8f2 !important; border: none !important; }
+    .blog-article .article-content code {
+        background: rgba(15, 23, 42, 0.07) !important;
+        color: #0f172a !important;
+        border: 1px solid rgba(15, 23, 42, 0.12) !important;
+    }
     /* إلغاء الخلفيات البيضاء المضمنة (من محرر النص) في الوضعين */
     .blog-article .article-content [style*="background-color: white"],
     .blog-article .article-content [style*="background: white"],
@@ -322,6 +381,16 @@
     [data-theme="dark"] .blog-article .article-content { background: var(--glass-bg) !important; color: var(--clr-text) !important; border-color: var(--clr-border); }
     [data-theme="dark"] .blog-article .article-content a { color: var(--clr-primary-light) !important; }
     [data-theme="dark"] .blog-article .text-muted { color: var(--clr-text-muted) !important; }
+    [data-theme="dark"] .blog-article .article-content code {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #e2e8f0 !important;
+        border-color: var(--clr-border) !important;
+    }
+    [data-theme="dark"] .blog-article .article-content pre code {
+        background: transparent !important;
+        color: #f8f8f2 !important;
+        border: none !important;
+    }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>

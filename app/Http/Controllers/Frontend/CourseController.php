@@ -95,6 +95,6 @@ class CourseController extends Controller
         $contactSettings = ContactSetting::getSettings();
         $socialLinks = $contactSettings->social_links ?? [];
 
-        return view('frontend.pages.course-details', compact('course', 'relatedCourses', 'reviews', 'socialLinks'));
+        return view('frontend2.pages.course-detail', compact('course', 'relatedCourses', 'reviews', 'socialLinks'));
     }
 }

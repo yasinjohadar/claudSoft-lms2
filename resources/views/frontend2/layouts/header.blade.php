@@ -35,7 +35,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}">الرئيسية</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.about') }}">حول الأكاديمية</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.courses.index') }}">الكورسات</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#skills">المهارات</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#services">الخدمات</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.home') }}#gallery">معرض الصور</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.blog.index') }}">المدونة</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('frontend.contact') }}">تواصل معنا</a></li>
@@ -50,7 +50,7 @@
                     <a href="https://github.com" target="_blank" rel="noopener noreferrer" title="جيت هاب" aria-label="جيت هاب"><i class="fab fa-github"></i></a>
                     <a href="https://t.me" target="_blank" rel="noopener noreferrer" title="تليجرام" aria-label="تليجرام"><i class="fab fa-telegram-plane"></i></a>
                 </div>
-                <button class="theme-toggle" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الليلي/النهاري"><i class="fas fa-moon"></i></button>
+                <button class="theme-toggle" id="themeToggle" title="تبديل الوضع" aria-label="تبديل الوضع الليلي/النهاري"><i class="fas fa-sun"></i></button>
             </div>
         </div>
     </div>

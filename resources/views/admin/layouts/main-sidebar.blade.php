@@ -118,6 +118,11 @@
                                         <i class="ri-add-circle-line me-2"></i>إضافة كورس جديد
                                     </a>
                                 </li>
+                                <li class="slide {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.frontend-courses.ai.create') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">
+                                        <i class="fas fa-robot me-2"></i>توليد كورس بالذكاء الاصطناعي
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 
@@ -147,6 +152,47 @@
                                 <li class="slide {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.blog.tags.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">
                                         <i class="ri-price-tag-3-line me-2"></i>الوسوم
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- التوثيق (Docs) -->
+                        <li class="slide has-sub {{ request()->routeIs('admin.docs.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}">
+                                <i class="ri-book-open-line side-menu__icon"></i>
+                                <span class="side-menu__label">التوثيق</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.docs.*') ? 'display: block;' : '' }}">
+                                <li class="slide {{ request()->routeIs('admin.docs.pages.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.pages.index') }}" class="side-menu__item {{ request()->routeIs('admin.docs.pages.*') ? 'active' : '' }}">
+                                        <i class="ri-file-text-line me-2"></i>صفحات التوثيق
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.docs.pages.create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.pages.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.pages.create') ? 'active' : '' }}">
+                                        <i class="ri-add-circle-line me-2"></i>إضافة صفحة
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.ai-pages.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
+                                        <i class="fas fa-robot me-2"></i>توليد بالذكاء الاصطناعي
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.ai-pages.improve') }}" class="side-menu__item {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
+                                        <i class="fas fa-magic me-2"></i>تحسين محتوى (AI)
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.docs.categories.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.docs.categories.*') ? 'active' : '' }}">
+                                        <i class="ri-folder-line me-2"></i>أقسام التوثيق
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.docs.categories.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
+                                        <i class="ri-folder-add-line me-2"></i>إضافة قسم
                                     </a>
                                 </li>
                             </ul>

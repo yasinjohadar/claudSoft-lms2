@@ -1,3 +1,4 @@
+@php($course = $course ?? null)
 <div class="row">
     <!-- Right Column - معلومات الكورس -->
     <div class="col-lg-8">
@@ -11,7 +12,7 @@
                 <div class="mb-3">
                     <label class="form-label">عنوان الكورس <span class="text-danger">*</span></label>
                     <input type="text" name="title" class="form-control @error('title') is-invalid @enderror"
-                           value="{{ old('title', $course->title ?? '') }}" required>
+                           value="{{ old('title', $course?->title ?? '') }}" required>
                     @error('title')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -20,7 +21,7 @@
                 <div class="mb-3">
                     <label class="form-label">عنوان فرعي</label>
                     <input type="text" name="subtitle" class="form-control @error('subtitle') is-invalid @enderror"
-                           value="{{ old('subtitle', $course->subtitle ?? '') }}">
+                           value="{{ old('subtitle', $course?->subtitle ?? '') }}">
                     @error('subtitle')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -28,7 +29,7 @@
 
                 <div class="mb-3">
                     <label class="form-label">الوصف <span class="text-danger">*</span></label>
-                    <textarea name="description" rows="5" class="form-control @error('description') is-invalid @enderror" required>{{ old('description', $course->description ?? '') }}</textarea>
+                    <textarea name="description" rows="5" class="form-control @error('description') is-invalid @enderror" required>{{ old('description', $course?->description ?? '') }}</textarea>
                     @error('description')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -36,7 +37,7 @@
 
                 <div class="mb-3">
                     <label class="form-label">المتطلبات</label>
-                    <textarea name="requirements" rows="3" class="form-control @error('requirements') is-invalid @enderror">{{ old('requirements', $course->requirements ?? '') }}</textarea>
+                    <textarea name="requirements" rows="3" class="form-control @error('requirements') is-invalid @enderror">{{ old('requirements', $course?->requirements ?? '') }}</textarea>
                     @error('requirements')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -54,7 +55,7 @@
             </div>
             <div class="card-body">
                 <div id="sections-container">
-                    @if(isset($course) && $course->sections->count() > 0)
+                    @if(optional($course?->sections)->count() > 0)
                         @foreach($course->sections as $sectionIndex => $section)
                             <div class="section-item border rounded p-3 mb-3" data-section-index="{{ $sectionIndex }}">
                                 <input type="hidden" name="sections[{{ $sectionIndex }}][id]" value="{{ $section->id }}">
@@ -141,6 +142,14 @@
                                                     </select>
                                                 </div>
                                             </div>
+                                            <div class="row g-2 mt-1">
+                                                <div class="col-md-8">
+                                                    <textarea name="sections[{{ $sectionIndex }}][lessons][{{ $lessonIndex }}][description]" rows="2" class="form-control form-control-sm" placeholder="وصف الدرس">{{ $lesson->description }}</textarea>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" name="sections[{{ $sectionIndex }}][lessons][{{ $lessonIndex }}][video_url]" class="form-control form-control-sm" placeholder="رابط فيديو (اختياري)" value="{{ $lesson->video_url }}">
+                                                </div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -173,9 +182,9 @@
                 <div class="mb-3">
                     <label class="form-label">الحالة</label>
                     <select name="status" class="form-select @error('status') is-invalid @enderror" required>
-                        <option value="draft" {{ old('status', $course->status ?? 'draft') == 'draft' ? 'selected' : '' }}>مسودة</option>
-                        <option value="published" {{ old('status', $course->status ?? '') == 'published' ? 'selected' : '' }}>منشور</option>
-                        <option value="archived" {{ old('status', $course->status ?? '') == 'archived' ? 'selected' : '' }}>مؤرشف</option>
+                        <option value="draft" {{ old('status', $course?->status ?? 'draft') == 'draft' ? 'selected' : '' }}>مسودة</option>
+                        <option value="published" {{ old('status', $course?->status ?? '') == 'published' ? 'selected' : '' }}>منشور</option>
+                        <option value="archived" {{ old('status', $course?->status ?? '') == 'archived' ? 'selected' : '' }}>مؤرشف</option>
                     </select>
                     @error('status')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -187,7 +196,7 @@
                     <select name="category_id" class="form-select @error('category_id') is-invalid @enderror" required>
                         <option value="">اختر التصنيف</option>
                         @foreach($categories as $category)
-                        <option value="{{ $category->id }}" {{ old('category_id', $course->category_id ?? '') == $category->id ? 'selected' : '' }}>
+                        <option value="{{ $category->id }}" {{ old('category_id', $course?->category_id ?? '') == $category->id ? 'selected' : '' }}>
                             {{ $category->name }}
                         </option>
                         @endforeach
@@ -202,7 +211,7 @@
                     <select name="instructor_id" class="form-select @error('instructor_id') is-invalid @enderror" required>
                         <option value="">اختر المدرب</option>
                         @foreach($instructors as $instructor)
-                        <option value="{{ $instructor->id }}" {{ old('instructor_id', $course->instructor_id ?? '') == $instructor->id ? 'selected' : '' }}>
+                        <option value="{{ $instructor->id }}" {{ old('instructor_id', $course?->instructor_id ?? '') == $instructor->id ? 'selected' : '' }}>
                             {{ $instructor->name }}
                         </option>
                         @endforeach
@@ -215,9 +224,9 @@
                 <div class="mb-3">
                     <label class="form-label">المستوى</label>
                     <select name="level" class="form-select @error('level') is-invalid @enderror" required>
-                        <option value="beginner" {{ old('level', $course->level ?? 'beginner') == 'beginner' ? 'selected' : '' }}>مبتدئ</option>
-                        <option value="intermediate" {{ old('level', $course->level ?? '') == 'intermediate' ? 'selected' : '' }}>متوسط</option>
-                        <option value="advanced" {{ old('level', $course->level ?? '') == 'advanced' ? 'selected' : '' }}>متقدم</option>
+                        <option value="beginner" {{ old('level', $course?->level ?? 'beginner') == 'beginner' ? 'selected' : '' }}>مبتدئ</option>
+                        <option value="intermediate" {{ old('level', $course?->level ?? '') == 'intermediate' ? 'selected' : '' }}>متوسط</option>
+                        <option value="advanced" {{ old('level', $course?->level ?? '') == 'advanced' ? 'selected' : '' }}>متقدم</option>
                     </select>
                     @error('level')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -227,7 +236,7 @@
                 <div class="mb-3">
                     <label class="form-label">اللغة</label>
                     <input type="text" name="language" class="form-control @error('language') is-invalid @enderror"
-                           value="{{ old('language', $course->language ?? 'ar') }}" required>
+                           value="{{ old('language', $course?->language ?? 'ar') }}" required>
                     @error('language')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -236,7 +245,7 @@
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_featured" value="1"
-                               id="is_featured" {{ old('is_featured', $course->is_featured ?? false) ? 'checked' : '' }}>
+                               id="is_featured" {{ old('is_featured', $course?->is_featured ?? false) ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_featured">
                             كورس مميز
                         </label>
@@ -247,12 +256,34 @@
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_active" value="1"
-                               id="is_active" {{ old('is_active', $course->is_active ?? true) ? 'checked' : '' }}>
+                               id="is_active" {{ old('is_active', $course?->is_active ?? true) ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_active">
                             نشط
                         </label>
                     </div>
                     <small class="text-muted">الكورسات النشطة فقط تظهر في الواجهة الأمامية</small>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="certificate" value="1" id="certificate"
+                               {{ old('certificate', $course?->certificate ?? false) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="certificate">يمنح شهادة</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="lifetime_access" value="1" id="lifetime_access"
+                               {{ old('lifetime_access', $course?->lifetime_access ?? true) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="lifetime_access">وصول مدى الحياة</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="downloadable_resources" value="1" id="downloadable_resources"
+                               {{ old('downloadable_resources', $course?->downloadable_resources ?? false) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="downloadable_resources">موارد قابلة للتنزيل</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -266,18 +297,18 @@
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_free" value="1"
-                               id="is_free" {{ old('is_free', $course->is_free ?? false) ? 'checked' : '' }}>
+                               id="is_free" {{ old('is_free', $course?->is_free ?? false) ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_free">
                             كورس مجاني
                         </label>
                     </div>
                 </div>
 
-                <div id="pricing-fields" style="{{ old('is_free', $course->is_free ?? false) ? 'display:none' : '' }}">
+                <div id="pricing-fields" style="{{ old('is_free', $course?->is_free ?? false) ? 'display:none' : '' }}">
                     <div class="mb-3">
                         <label class="form-label">السعر</label>
                         <input type="number" step="0.01" name="price" class="form-control @error('price') is-invalid @enderror"
-                               value="{{ old('price', $course->price ?? 0) }}">
+                               value="{{ old('price', $course?->price ?? 0) }}">
                         @error('price')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -286,7 +317,7 @@
                     <div class="mb-3">
                         <label class="form-label">سعر الخصم</label>
                         <input type="number" step="0.01" name="discount_price" class="form-control @error('discount_price') is-invalid @enderror"
-                               value="{{ old('discount_price', $course->discount_price ?? '') }}">
+                               value="{{ old('discount_price', $course?->discount_price ?? '') }}">
                         @error('discount_price')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -295,9 +326,9 @@
                     <div class="mb-3">
                         <label class="form-label">العملة</label>
                         <select name="currency" class="form-select @error('currency') is-invalid @enderror">
-                            <option value="SAR" {{ old('currency', $course->currency ?? 'SAR') == 'SAR' ? 'selected' : '' }}>ريال سعودي (SAR)</option>
-                            <option value="USD" {{ old('currency', $course->currency ?? '') == 'USD' ? 'selected' : '' }}>دولار (USD)</option>
-                            <option value="EGP" {{ old('currency', $course->currency ?? '') == 'EGP' ? 'selected' : '' }}>جنيه مصري (EGP)</option>
+                            <option value="SAR" {{ old('currency', $course?->currency ?? 'SAR') == 'SAR' ? 'selected' : '' }}>ريال سعودي (SAR)</option>
+                            <option value="USD" {{ old('currency', $course?->currency ?? '') == 'USD' ? 'selected' : '' }}>دولار (USD)</option>
+                            <option value="EGP" {{ old('currency', $course?->currency ?? '') == 'EGP' ? 'selected' : '' }}>جنيه مصري (EGP)</option>
                         </select>
                         @error('currency')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -314,8 +345,8 @@
             </div>
             <div class="card-body">
                 <div class="mb-3" id="thumbnail-preview-container">
-                    @if(isset($course) && $course->thumbnail)
-                    <img src="{{ $course->thumbnail_url }}"
+                    @if(isset($course) && $course?->thumbnail)
+                    <img src="{{ $course?->thumbnail_url }}"
                          alt="Current thumbnail"
                          id="thumbnail-preview"
                          class="img-fluid rounded"
@@ -351,20 +382,84 @@
                 <div class="mb-3">
                     <label class="form-label">عنوان SEO</label>
                     <input type="text" name="meta_title" class="form-control"
-                           value="{{ old('meta_title', $course->meta_title ?? '') }}">
+                           value="{{ old('meta_title', $course?->meta_title ?? '') }}">
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">وصف SEO</label>
-                    <textarea name="meta_description" rows="3" class="form-control">{{ old('meta_description', $course->meta_description ?? '') }}</textarea>
+                    <textarea name="meta_description" rows="3" class="form-control">{{ old('meta_description', $course?->meta_description ?? '') }}</textarea>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">الكلمات المفتاحية</label>
                     <input type="text" name="meta_keywords" class="form-control"
-                           value="{{ old('meta_keywords', $course->meta_keywords ?? '') }}"
+                           value="{{ old('meta_keywords', $course?->meta_keywords ?? '') }}"
                            placeholder="كلمة1, كلمة2, كلمة3">
                 </div>
+
+                @if(!empty($showAiExtras))
+                <div class="mb-3">
+                    <label class="form-label">مدة الكورس (ساعات تقديرية)</label>
+                    <input type="number" step="0.1" name="duration" id="field_duration" class="form-control"
+                           value="{{ old('duration', $course?->duration ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">فيديو تعريفي (رابط)</label>
+                    <input type="text" name="preview_video" id="field_preview_video" class="form-control"
+                           value="{{ old('preview_video', $course?->preview_video ?? '') }}">
+                </div>
+                <hr>
+                <p class="text-muted small mb-2">SEO متقدم (اختياري)</p>
+                <div class="mb-3">
+                    <label class="form-label">OG عنوان</label>
+                    <input type="text" name="og_title" id="field_og_title" class="form-control" value="{{ old('og_title', $course?->og_title ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">OG وصف</label>
+                    <textarea name="og_description" id="field_og_description" rows="2" class="form-control">{{ old('og_description', $course?->og_description ?? '') }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">OG نوع</label>
+                    <input type="text" name="og_type" id="field_og_type" class="form-control" value="{{ old('og_type', $course?->og_type ?? 'website') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Twitter عنوان</label>
+                    <input type="text" name="twitter_title" id="field_twitter_title" class="form-control" value="{{ old('twitter_title', $course?->twitter_title ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Twitter وصف</label>
+                    <textarea name="twitter_description" id="field_twitter_description" rows="2" class="form-control">{{ old('twitter_description', $course?->twitter_description ?? '') }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">الكلمة المستهدفة (SEO)</label>
+                    <input type="text" name="focus_keyword" id="field_focus_keyword" class="form-control" value="{{ old('focus_keyword', $course?->focus_keyword ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">زمن القراءة (دقائق)</label>
+                    <input type="number" name="reading_time" id="field_reading_time" class="form-control" value="{{ old('reading_time', $course?->reading_time ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Robots</label>
+                    <input type="text" name="robots" id="field_robots" class="form-control" value="{{ old('robots', $course?->robots ?? '') }}" placeholder="index, follow">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">المؤلف (ظهور SEO)</label>
+                    <input type="text" name="author" id="field_author" class="form-control" value="{{ old('author', $course?->author ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رابط canonical</label>
+                    <input type="text" name="canonical_url" id="field_canonical_url" class="form-control" value="{{ old('canonical_url', $course?->canonical_url ?? '') }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Schema JSON-LD (اختياري، JSON صالح)</label>
+                    <textarea name="schema_markup" id="field_schema_markup" rows="4" class="form-control font-monospace small">{{ old('schema_markup', ($course && $course->schema_markup) ? json_encode($course->schema_markup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : '') }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ماذا ستتعلم (نقطة لكل سطر — يُحدَّث تلقائياً بعد التوليد)</label>
+                    <div id="what-you-learn-inputs"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addWhatYouLearnRow('')">+ إضافة نقطة</button>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -389,7 +484,7 @@
 
 <script>
 console.log('✅ Form script loaded!');
-let sectionIndex = {{ isset($course) && $course->sections->count() > 0 ? $course->sections->count() : 0 }};
+let sectionIndex = {{ optional($course?->sections)->count() ?? 0 }};
 console.log('Section index:', sectionIndex);
 
 // Toggle pricing fields based on is_free checkbox
@@ -519,6 +614,14 @@ function addLesson(btn) {
                     </select>
                 </div>
             </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-8">
+                    <textarea name="sections[${sectionIdx}][lessons][${lessonCount}][description]" rows="2" class="form-control form-control-sm" placeholder="وصف الدرس"></textarea>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="sections[${sectionIdx}][lessons][${lessonCount}][video_url]" class="form-control form-control-sm" placeholder="رابط فيديو (اختياري)">
+                </div>
+            </div>
         </div>
     `;
 
@@ -615,6 +718,27 @@ function previewThumbnail(input) {
         preview.src = '';
         preview.classList.add('d-none');
     }
+}
+
+function addWhatYouLearnRow(value) {
+    const c = document.getElementById('what-you-learn-inputs');
+    if (!c) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'input-group mb-1';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'form-control';
+    inp.name = 'what_you_learn[]';
+    inp.placeholder = 'نقطة تعلم';
+    if (value) inp.value = value;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline-danger';
+    btn.innerHTML = '&times;';
+    btn.addEventListener('click', function () { wrap.remove(); });
+    wrap.appendChild(inp);
+    wrap.appendChild(btn);
+    c.appendChild(wrap);
 }
 
 // إعادة ترقيم الأقسام والدروس عند تحميل الصفحة وقبل إرسال النموذج

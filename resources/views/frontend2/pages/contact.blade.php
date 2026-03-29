@@ -157,7 +157,7 @@
 
                     <!-- وسائل التواصل الاجتماعي (ديناميكية) -->
                     @if(!empty($settings->social_links))
-                    <div class="glass-panel animate-on-scroll">
+                    <div class="glass-panel contact-follow-panel animate-on-scroll">
                         <h4 style="font-weight:800; margin-bottom:15px;">{{ $settings->social_title ?? 'تابعنا' }}</h4>
                         @if($settings->social_subtitle ?? null)
                         <p style="color:var(--clr-text-secondary); font-size:0.9rem; margin-bottom:15px;">{{ $settings->social_subtitle }}</p>
@@ -175,14 +175,6 @@
                     @endif
                 </div>
             </div>
-
-            @if($settings->show_map && !empty($settings->map_embed_url))
-            <div class="mt-5 animate-on-scroll">
-                <div class="glass-panel p-0 overflow-hidden" style="border-radius: var(--radius-md);">
-                    <iframe src="{{ $settings->map_embed_url }}" width="100%" height="350" style="border:0; display:block;" allowfullscreen="" loading="lazy" title="موقعنا على الخريطة"></iframe>
-                </div>
-            </div>
-            @endif
         </div>
     </section>
 @endsection

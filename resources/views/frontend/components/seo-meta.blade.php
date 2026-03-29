@@ -86,35 +86,36 @@
 @endif
 
 {{-- Breadcrumb Schema --}}
-<script type="application/ld+json">
-{
-  "@@context": "https://schema.org",
-  "@@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@@type": "ListItem",
-      "position": 1,
-      "name": "الرئيسية",
-      "item": "{{ route('frontend.home') }}"
-    },
-    {
-      "@@type": "ListItem",
-      "position": 2,
-      "name": "الكورسات",
-      "item": "{{ route('frontend.courses.index') }}"
-    },
-    {
-      "@@type": "ListItem",
-      "position": 3,
-      "name": "{{ $course->category->name ?? 'التصنيف' }}",
-      "item": "{{ route('frontend.courses.index', ['category' => $course->category_id]) }}"
-    },
-    {
-      "@@type": "ListItem",
-      "position": 4,
-      "name": "{{ $course->title }}",
-      "item": "{{ $courseUrl }}"
+@php
+    $breadcrumbItems = [
+        ['position' => 1, 'name' => 'الرئيسية', 'item' => route('frontend.home')],
+        ['position' => 2, 'name' => 'الكورسات', 'item' => route('frontend.courses.index')],
+    ];
+    if ($course->category) {
+        $breadcrumbItems[] = [
+            'position' => count($breadcrumbItems) + 1,
+            'name' => $course->category->name,
+            'item' => route('frontend.courses.index', ['category' => $course->category_id]),
+        ];
     }
-  ]
-}
+    $breadcrumbItems[] = [
+        'position' => count($breadcrumbItems) + 1,
+        'name' => $course->title,
+        'item' => $courseUrl,
+    ];
+    $breadcrumbJson = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => array_map(function ($row) {
+            return [
+                '@type' => 'ListItem',
+                'position' => $row['position'],
+                'name' => $row['name'],
+                'item' => $row['item'],
+            ];
+        }, $breadcrumbItems),
+    ];
+@endphp
+<script type="application/ld+json">
+{!! json_encode($breadcrumbJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>

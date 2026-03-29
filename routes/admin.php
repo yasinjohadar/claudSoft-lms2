@@ -44,10 +44,14 @@ use App\Http\Controllers\Admin\WebhookManagementController;
 use App\Http\Controllers\Admin\N8nWebhookController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\FrontendCourseController;
+use App\Http\Controllers\Admin\AIFrontendCourseController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogTagController;
+use App\Http\Controllers\Admin\DocumentationCategoryController;
+use App\Http\Controllers\Admin\DocumentationPageController;
+use App\Http\Controllers\Admin\AIDocumentationPageController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\FaqController;
@@ -698,6 +702,9 @@ Route::prefix('admin')
         });
 
         // Frontend Courses Management
+        Route::get('frontend-courses/ai/create', [AIFrontendCourseController::class, 'create'])->name('admin.frontend-courses.ai.create');
+        Route::post('frontend-courses/ai/generate', [AIFrontendCourseController::class, 'generate'])->name('admin.frontend-courses.ai.generate');
+
         Route::resource('frontend-courses', FrontendCourseController::class)->names([
             'index' => 'admin.frontend-courses.index',
             'create' => 'admin.frontend-courses.create',
@@ -755,6 +762,43 @@ Route::prefix('admin')
                 'destroy' => 'tags.destroy',
             ]);
             Route::post('tags/update-counts', [BlogTagController::class, 'updatePostsCount'])->name('tags.update-counts');
+        });
+
+        // ========== Documentation (التوثيق) ==========
+        Route::prefix('docs')->name('admin.docs.')->group(function () {
+            Route::resource('categories', DocumentationCategoryController::class)
+                ->parameters(['categories' => 'documentation_category'])
+                ->except(['show'])
+                ->names([
+                    'index' => 'categories.index',
+                    'create' => 'categories.create',
+                    'store' => 'categories.store',
+                    'edit' => 'categories.edit',
+                    'update' => 'categories.update',
+                    'destroy' => 'categories.destroy',
+                ]);
+            Route::post('categories/{documentation_category}/toggle-active', [DocumentationCategoryController::class, 'toggleActive'])
+                ->name('categories.toggle-active');
+
+            Route::get('ai-pages/create', [AIDocumentationPageController::class, 'create'])->name('ai-pages.create');
+            Route::get('ai-pages/improve', [AIDocumentationPageController::class, 'improve'])->name('ai-pages.improve');
+            Route::post('ai-pages/generate', [AIDocumentationPageController::class, 'generate'])->name('ai-pages.generate');
+            Route::post('ai-pages/refine', [AIDocumentationPageController::class, 'refine'])->name('ai-pages.refine');
+            Route::post('ai-pages', [AIDocumentationPageController::class, 'store'])->name('ai-pages.store');
+
+            Route::resource('pages', DocumentationPageController::class)
+                ->parameters(['pages' => 'documentation_page'])
+                ->except(['show'])
+                ->names([
+                    'index' => 'pages.index',
+                    'create' => 'pages.create',
+                    'store' => 'pages.store',
+                    'edit' => 'pages.edit',
+                    'update' => 'pages.update',
+                    'destroy' => 'pages.destroy',
+                ]);
+            Route::post('pages/{documentation_page}/toggle-publish', [DocumentationPageController::class, 'togglePublish'])
+                ->name('pages.toggle-publish');
         });
 
         // ========== FAQs Management Routes ==========

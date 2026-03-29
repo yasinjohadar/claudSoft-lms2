@@ -223,28 +223,28 @@
             </div>
             <div class="row g-4">
                 <div class="col-sm-6 col-lg-3">
-                    <a href="{{ route('frontend.skills.web') }}" class="service-related-card glass-panel animate-on-scroll">
+                    <a href="{{ route('frontend.services.web') }}" class="service-related-card glass-panel animate-on-scroll">
                         <i class="fas fa-globe"></i>
                         <h6>تطوير تطبيقات الويب</h6>
                         <p>مواقع وتطبيقات ويب بـ React و Node.js</p>
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="{{ route('frontend.skills.mobile') }}" class="service-related-card glass-panel animate-on-scroll">
+                    <a href="{{ route('frontend.services.mobile') }}" class="service-related-card glass-panel animate-on-scroll">
                         <i class="fas fa-mobile-alt"></i>
                         <h6>تطبيقات الجوال</h6>
                         <p>تطوير تطبيقات أندرويد و iOS</p>
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="{{ route('frontend.skills.security') }}" class="service-related-card glass-panel animate-on-scroll">
+                    <a href="{{ route('frontend.services.security') }}" class="service-related-card glass-panel animate-on-scroll">
                         <i class="fas fa-shield-alt"></i>
                         <h6>أمن المعلومات</h6>
                         <p>حماية الأنظمة والبيانات وتقييم الثغرات</p>
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="{{ route('frontend.skills.servers') }}" class="service-related-card glass-panel animate-on-scroll">
+                    <a href="{{ route('frontend.services.servers') }}" class="service-related-card glass-panel animate-on-scroll">
                         <i class="fas fa-server"></i>
                         <h6>إدارة السيرفرات</h6>
                         <p>إعداد وإدارة الخوادم والاستضافة</p>

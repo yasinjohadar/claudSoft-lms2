@@ -255,7 +255,7 @@
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">Next.js</span>
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">Bootstrap</span>
                         </div>
-                        <a href="{{ route('frontend.home') }}#skills" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
+                        <a href="{{ route('frontend.home') }}#services" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
@@ -274,7 +274,7 @@
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">Django</span>
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">MySQL</span>
                         </div>
-                        <a href="{{ route('frontend.home') }}#skills" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
+                        <a href="{{ route('frontend.home') }}#services" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
@@ -293,7 +293,7 @@
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">Dart</span>
                             <span style="background:var(--clr-surface); padding:4px 12px; border-radius:50px; font-size:0.78rem; color:var(--clr-text-secondary);">Firebase</span>
                         </div>
-                        <a href="{{ route('frontend.home') }}#skills" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
+                        <a href="{{ route('frontend.home') }}#services" class="btn-outline-custom mt-3" style="display:inline-flex; padding:8px 18px; font-size:0.88rem;"><i class="fas fa-arrow-left"></i> اعرف المزيد</a>
                     </div>
                 </div>
             </div>

@@ -15,6 +15,7 @@
     <meta name="twitter:title" content="أكاديمية كلاودسوفت للخدمات والحلول البرمجية">
     <meta name="twitter:description" content="أكاديمية كلاودسوفت — تدريب تقني، تطوير ويب وموبايل، استشارات وحلول برمجية. دورات عملية واحترافية.">
     <meta name="twitter:image" content="{{ asset('frontend2/assets/images/logo.png') }}">
+    <link rel="stylesheet" href="{{ asset('assets/libs/swiper/swiper-bundle.min.css') }}">
 @endpush
 
 @section('content')
@@ -67,8 +68,13 @@
                 </div>
                 <div class="col-lg-5 order-1 order-lg-2">
                     <div class="hero-image-wrapper animate-on-scroll">
-                        <div class="hero-ring"></div>
-                        <img src="{{ asset('frontend2/assets/images/trainer.svg') }}" alt="أكاديمية كلاودسوفت" class="hero-img" width="350" height="350" loading="eager">
+                        <img src="{{ asset('frontend2/assets/images/hero-img.jpg') }}"
+                            alt="تمثيل بصري لتقنية وبرمجة — أكاديمية كلاودسوفت"
+                            class="hero-img"
+                            width="900"
+                            height="900"
+                            loading="eager"
+                            decoding="async">
                     </div>
                 </div>
             </div>
@@ -76,7 +82,7 @@
     </section>
 
     <!-- ============ SKILLS SECTION ============ -->
-    <section class="section-padding" id="skills">
+    <section class="section-padding" id="services">
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">مهاراتي</span>
@@ -85,56 +91,56 @@
             </div>
             <div class="row g-4">
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.web') }}" class="glass-panel skill-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.web') }}" class="glass-panel skill-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-globe"></i></div>
                         <h5>تطوير تطبيقات الويب</h5>
                         <p>تصميم وتطوير مواقع وتطبيقات ويب حديثة ومتجاوبة واحترافية</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.mobile') }}" class="glass-panel skill-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.mobile') }}" class="glass-panel skill-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-mobile-alt"></i></div>
                         <h5>تطبيقات الجوال</h5>
                         <p>تطوير تطبيقات الهواتف الذكية متعددة المنصات للأندرويد والـ iOS</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.security') }}" class="glass-panel skill-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.security') }}" class="glass-panel skill-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-shield-alt"></i></div>
                         <h5>أمن المعلومات</h5>
                         <p>حماية الأنظمة والبيانات وتقييم الثغرات وتطبيق أفضل الممارسات الأمنية</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.servers') }}" class="glass-panel skill-card animate-on-scroll animate-delay-4" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.servers') }}" class="glass-panel skill-card animate-on-scroll animate-delay-4" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-server"></i></div>
                         <h5>إدارة السيرفرات</h5>
                         <p>إعداد وإدارة الخوادم، الاستضافة، والنشر مع Linux والخدمات السحابية</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.home') }}#skills" class="glass-panel skill-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.home') }}#services" class="glass-panel skill-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-database"></i></div>
                         <h5>قواعد البيانات</h5>
                         <p>تصميم وإدارة قواعد البيانات SQL و NoSQL وتحسين الأداء</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.devops') }}" class="glass-panel skill-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.devops') }}" class="glass-panel skill-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-cloud"></i></div>
                         <h5>DevOps والسحابة</h5>
                         <p>أتمتة النشر، الحاويات، CI/CD والعمل على منصات سحابية</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.home') }}#skills" class="glass-panel skill-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.home') }}#services" class="glass-panel skill-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-project-diagram"></i></div>
                         <h5>إدارة المشاريع التقنية</h5>
                         <p>تخطيط ومتابعة المشاريع البرمجية وتنسيق الفرق التقنية</p>
                     </a>
                 </div>
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a href="{{ route('frontend.skills.consultation') }}" class="glass-panel skill-card animate-on-scroll animate-delay-4" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="{{ route('frontend.services.consultation') }}" class="glass-panel skill-card animate-on-scroll animate-delay-4" style="text-decoration:none;color:inherit;display:block;height:100%;">
                         <div class="skill-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                         <h5>استشارات وتدريب تقني</h5>
                         <p>تقديم الاستشارات التقنية ودورات تدريبية في البرمجة والتكنولوجيا</p>
@@ -145,85 +151,90 @@
     </section>
 
     <!-- ============ FEATURED COURSES ============ -->
-    <section class="section-padding" id="courses" style="background: var(--clr-bg-secondary);">
+    <section class="section-padding" id="courses" style="background: var(--clr-bg);">
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">الكورسات</span>
                 <h2>أحدث الدورات التدريبية</h2>
                 <p>دورات عملية شاملة تأخذك من الصفر إلى الاحتراف</p>
             </div>
-            <div class="row g-4">
-                @forelse($courses ?? [] as $course)
-                <div class="col-lg-4 col-md-6">
-                    <a href="{{ route('frontend.courses.show', $course->slug) }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
-                        <div class="course-img-wrapper">
-                            <img src="{{ $course->thumbnail ? course_image_url($course->thumbnail) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $course->title }}" width="400" height="200" loading="lazy">
-                            @if($course->is_featured)<span class="course-badge">مميز</span>@endif
+            <div class="home-courses-swiper-wrap position-relative">
+                <div class="swiper home-courses-swiper">
+                    <div class="swiper-wrapper">
+                        @forelse($courses ?? [] as $course)
+                        <div class="swiper-slide">
+                            <a href="{{ route('frontend.courses.show', $course->slug) }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
+                                <div class="course-img-wrapper">
+                                    <img src="{{ $course->thumbnail ? course_image_url($course->thumbnail) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $course->title }}" width="400" height="200" loading="lazy">
+                                </div>
+                                <div class="course-body">
+                                    <h5>{{ $course->title }}</h5>
+                                    <p>{{ Str::limit(strip_tags($course->description ?? ''), 100) }}</p>
+                                </div>
+                                <div class="course-footer">
+                                    <span><i class="fas fa-folder"></i> {{ $course->category?->name ?? '—' }}</span>
+                                    <span><i class="fas fa-clock"></i> {{ $course->duration ? number_format((float) $course->duration, 2) . ' ساعة' : '—' }}</span>
+                                    <span class="price">{{ $course->is_free ? 'مجاني' : (isset($course->price) ? number_format((float) $course->price, 2) . ' ' . ($course->currency ?? 'ر.س') : '—') }}</span>
+                                </div>
+                            </a>
                         </div>
-                        <div class="course-body">
-                            <h5>{{ $course->title }}</h5>
-                            <p>{{ Str::limit(strip_tags($course->description ?? ''), 100) }}</p>
+                        @empty
+                        <div class="swiper-slide">
+                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
+                                <div class="course-img-wrapper">
+                                    <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="تطوير الويب الشامل" width="400" height="200" loading="lazy">
+                                    <span class="course-badge">الأكثر مبيعاً</span>
+                                </div>
+                                <div class="course-body">
+                                    <h5>دورة تطوير الويب الشاملة</h5>
+                                    <p>تعلم HTML, CSS, JavaScript, React وNode.js من الصفر حتى بناء مشاريع حقيقية كاملة</p>
+                                </div>
+                                <div class="course-footer">
+                                    <span><i class="fas fa-folder"></i> تطوير الويب</span>
+                                    <span><i class="fas fa-clock"></i> 45 ساعة</span>
+                                    <span class="price">$49.99</span>
+                                </div>
+                            </a>
                         </div>
-                        <div class="course-footer">
-                            <span><i class="fas fa-users"></i> {{ number_format($course->students_count ?? 0) }} طالب</span>
-                            <span><i class="fas fa-clock"></i> {{ $course->duration ? number_format((float) $course->duration, 2) . ' ساعة' : '—' }}</span>
-                            <span class="price">{{ $course->is_free ? 'مجاني' : (isset($course->price) ? number_format((float) $course->price, 2) . ' ' . ($course->currency ?? 'ر.س') : '—') }}</span>
+                        <div class="swiper-slide">
+                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;cursor:pointer;">
+                                <div class="course-img-wrapper">
+                                    <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="بايثون للمبتدئين" width="400" height="200" loading="lazy">
+                                    <span class="course-badge">جديد</span>
+                                </div>
+                                <div class="course-body">
+                                    <h5>بايثون من الصفر إلى الاحتراف</h5>
+                                    <p>تعلم لغة بايثون وعلوم البيانات والأتمتة مع تطبيقات عملية ومشاريع حقيقية</p>
+                                </div>
+                                <div class="course-footer">
+                                    <span><i class="fas fa-folder"></i> البرمجة</span>
+                                    <span><i class="fas fa-clock"></i> 35 ساعة</span>
+                                    <span class="price">$39.99</span>
+                                </div>
+                            </a>
                         </div>
-                    </a>
+                        <div class="swiper-slide">
+                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;cursor:pointer;">
+                                <div class="course-img-wrapper">
+                                    <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="تطوير تطبيقات الموبايل" width="400" height="200" loading="lazy">
+                                    <span class="course-badge">متقدم</span>
+                                </div>
+                                <div class="course-body">
+                                    <h5>تطوير تطبيقات الموبايل بـ Flutter</h5>
+                                    <p>ابنِ تطبيقات موبايل احترافية لـ Android و iOS باستخدام Flutter و Dart</p>
+                                </div>
+                                <div class="course-footer">
+                                    <span><i class="fas fa-folder"></i> تطبيقات الجوال</span>
+                                    <span><i class="fas fa-clock"></i> 40 ساعة</span>
+                                    <span class="price">$44.99</span>
+                                </div>
+                            </a>
+                        </div>
+                        @endforelse
+                    </div>
                 </div>
-                @empty
-                <div class="col-lg-4 col-md-6">
-                    <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
-                        <div class="course-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="تطوير الويب الشامل" width="400" height="200" loading="lazy">
-                            <span class="course-badge">الأكثر مبيعاً</span>
-                        </div>
-                        <div class="course-body">
-                            <h5>دورة تطوير الويب الشاملة</h5>
-                            <p>تعلم HTML, CSS, JavaScript, React وNode.js من الصفر حتى بناء مشاريع حقيقية كاملة</p>
-                        </div>
-                        <div class="course-footer">
-                            <span><i class="fas fa-users"></i> 1,200 طالب</span>
-                            <span><i class="fas fa-clock"></i> 45 ساعة</span>
-                            <span class="price">$49.99</span>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;cursor:pointer;">
-                        <div class="course-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="بايثون للمبتدئين" width="400" height="200" loading="lazy">
-                            <span class="course-badge">جديد</span>
-                        </div>
-                        <div class="course-body">
-                            <h5>بايثون من الصفر إلى الاحتراف</h5>
-                            <p>تعلم لغة بايثون وعلوم البيانات والأتمتة مع تطبيقات عملية ومشاريع حقيقية</p>
-                        </div>
-                        <div class="course-footer">
-                            <span><i class="fas fa-users"></i> 800 طالب</span>
-                            <span><i class="fas fa-clock"></i> 35 ساعة</span>
-                            <span class="price">$39.99</span>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;cursor:pointer;">
-                        <div class="course-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="تطوير تطبيقات الموبايل" width="400" height="200" loading="lazy">
-                            <span class="course-badge">متقدم</span>
-                        </div>
-                        <div class="course-body">
-                            <h5>تطوير تطبيقات الموبايل بـ Flutter</h5>
-                            <p>ابنِ تطبيقات موبايل احترافية لـ Android و iOS باستخدام Flutter و Dart</p>
-                        </div>
-                        <div class="course-footer">
-                            <span><i class="fas fa-users"></i> 650 طالب</span>
-                            <span><i class="fas fa-clock"></i> 40 ساعة</span>
-                            <span class="price">$44.99</span>
-                        </div>
-                    </a>
-                </div>
-                @endforelse
+                <div class="swiper-button-prev home-courses-swiper-btn home-courses-swiper-btn-prev" role="button" aria-label="الشريحة السابقة"></div>
+                <div class="swiper-button-next home-courses-swiper-btn home-courses-swiper-btn-next" role="button" aria-label="الشريحة التالية"></div>
             </div>
             <div class="text-center mt-5 animate-on-scroll">
                 <a href="{{ route('frontend.courses.index') }}" class="btn-primary-custom">
@@ -245,17 +256,29 @@
                 @forelse($reviews ?? [] as $review)
                 <div class="col-lg-4 col-md-6">
                     <div class="glass-panel testimonial-card animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
-                        <div class="stars">
-                            @php $rating = (int)($review->rating ?? 5); @endphp
-                            @for($i = 1; $i <= 5; $i++)
-                                <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
-                            @endfor
-                        </div>
-                        <p class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</p>
-                        <div class="student-info">
-                            <div>
-                                <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
-                                <div class="student-role">{{ $review->student_position ?? '—' }}</div>
+                        <div class="testimonial-card__inner">
+                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
+                            <div class="stars testimonial-card__stars">
+                                @php $rating = (int)($review->rating ?? 5); @endphp
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
+                                @endfor
+                            </div>
+                            <blockquote class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</blockquote>
+                            <div class="student-info testimonial-card__author">
+                                <div class="testimonial-card__avatar-ring">
+                                    @if(!empty($review->student_image))
+                                        <img src="{{ asset('storage/' . $review->student_image) }}" alt="" class="student-avatar" width="52" height="52" loading="lazy">
+                                    @elseif($review->relationLoaded('user') && $review->user && $review->user->avatar)
+                                        <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="" class="student-avatar" width="52" height="52" loading="lazy">
+                                    @else
+                                        <div class="student-avatar-placeholder">{{ strtoupper(mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1)) }}</div>
+                                    @endif
+                                </div>
+                                <div class="testimonial-card__author-text">
+                                    <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
+                                    <div class="student-role">{{ $review->student_position ?? '—' }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -263,42 +286,60 @@
                 @empty
                 <div class="col-lg-4 col-md-6">
                     <div class="glass-panel testimonial-card animate-on-scroll animate-delay-1">
-                        <div class="stars">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                        </div>
-                        <p class="quote-text">"دورة تطوير الويب كانت نقطة تحول في مسيرتي المهنية. أسلوب الشرح ممتاز والتطبيقات العملية رائعة. أنصح الجميع بالتسجيل!"</p>
-                        <div class="student-info">
-                            <div>
-                                <div class="student-name">أحمد محمد</div>
-                                <div class="student-role">مطور ويب - سوريا</div>
+                        <div class="testimonial-card__inner">
+                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
+                            <div class="stars testimonial-card__stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <blockquote class="quote-text">"دورة تطوير الويب كانت نقطة تحول في مسيرتي المهنية. أسلوب الشرح ممتاز والتطبيقات العملية رائعة. أنصح الجميع بالتسجيل!"</blockquote>
+                            <div class="student-info testimonial-card__author">
+                                <div class="testimonial-card__avatar-ring">
+                                    <div class="student-avatar-placeholder">أ</div>
+                                </div>
+                                <div class="testimonial-card__author-text">
+                                    <div class="student-name">أحمد محمد</div>
+                                    <div class="student-role">مطور ويب - سوريا</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
                     <div class="glass-panel testimonial-card animate-on-scroll animate-delay-2">
-                        <div class="stars">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                        </div>
-                        <p class="quote-text">"المدرب ياسين من أفضل المدربين العرب. شرحه واضح ومبسط، والمحتوى محدث دائماً بآخر التقنيات. استفدت كثيراً من دورة بايثون."</p>
-                        <div class="student-info">
-                            <div>
-                                <div class="student-name">سارة العلي</div>
-                                <div class="student-role">مهندسة برمجيات - الأردن</div>
+                        <div class="testimonial-card__inner">
+                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
+                            <div class="stars testimonial-card__stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <blockquote class="quote-text">"المدرب ياسين من أفضل المدربين العرب. شرحه واضح ومبسط، والمحتوى محدث دائماً بآخر التقنيات. استفدت كثيراً من دورة بايثون."</blockquote>
+                            <div class="student-info testimonial-card__author">
+                                <div class="testimonial-card__avatar-ring">
+                                    <div class="student-avatar-placeholder">س</div>
+                                </div>
+                                <div class="testimonial-card__author-text">
+                                    <div class="student-name">سارة العلي</div>
+                                    <div class="student-role">مهندسة برمجيات - الأردن</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
                     <div class="glass-panel testimonial-card animate-on-scroll animate-delay-3">
-                        <div class="stars">
-                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-                        </div>
-                        <p class="quote-text">"تعلمت Flutter من دورة الموبايل وقمت ببناء أول تطبيق لي خلال شهرين فقط! الدعم الفني والمتابعة من المدرب كانت ممتازة."</p>
-                        <div class="student-info">
-                            <div>
-                                <div class="student-name">عمر حسان</div>
-                                <div class="student-role">مطور تطبيقات - العراق</div>
+                        <div class="testimonial-card__inner">
+                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
+                            <div class="stars testimonial-card__stars">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                            </div>
+                            <blockquote class="quote-text">"تعلمت Flutter من دورة الموبايل وقمت ببناء أول تطبيق لي خلال شهرين فقط! الدعم الفني والمتابعة من المدرب كانت ممتازة."</blockquote>
+                            <div class="student-info testimonial-card__author">
+                                <div class="testimonial-card__avatar-ring">
+                                    <div class="student-avatar-placeholder">ع</div>
+                                </div>
+                                <div class="testimonial-card__author-text">
+                                    <div class="student-name">عمر حسان</div>
+                                    <div class="student-role">مطور تطبيقات - العراق</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -318,8 +359,8 @@
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">معرض الصور</span>
-                <h2>صور من نشاطاتي</h2>
-                <p>لقطات من الفعاليات والورشات والدورات التدريبية</p>
+                <h2>صور من نشاطاتنا</h2>
+                <p>لقطات من فعالياتنا وورشاتنا ودوراتنا التدريبية</p>
             </div>
             <div class="gallery-grid animate-on-scroll">
                 <div class="gallery-item">
@@ -367,8 +408,8 @@
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">الفيديوهات</span>
-                <h2>فيديوهات من أعمالي</h2>
-                <p>مقاطع فيديو تعليمية وعملية من القناة</p>
+                <h2>فيديوهات من نشاطاتنا</h2>
+                <p>مقاطع تعليمية وعملية من قناتنا وحصصنا التدريبية</p>
             </div>
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6">
@@ -576,3 +617,28 @@
         }
     </style>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('assets/libs/swiper/swiper-bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.querySelector('.home-courses-swiper');
+            if (!el || typeof Swiper === 'undefined') return;
+            new Swiper('.home-courses-swiper', {
+                rtl: true,
+                slidesPerView: 1,
+                spaceBetween: 24,
+                watchOverflow: true,
+                navigation: {
+                    nextEl: '.home-courses-swiper-wrap .swiper-button-next',
+                    prevEl: '.home-courses-swiper-wrap .swiper-button-prev',
+                },
+                breakpoints: {
+                    576: { slidesPerView: 2, spaceBetween: 24 },
+                    992: { slidesPerView: 3, spaceBetween: 24 },
+                    1200: { slidesPerView: 4, spaceBetween: 24 },
+                },
+            });
+        });
+    </script>
+@endpush

@@ -39,7 +39,7 @@ class ReviewController extends Controller
                            ->with('error', 'لقد قمت بإضافة تقييم مسبقاً. يمكنك تعديله من لوحة التحكم الخاصة بك.');
         }
 
-        return view('frontend.pages.add-review');
+        return view('frontend2.pages.review-create');
     }
 
     /**

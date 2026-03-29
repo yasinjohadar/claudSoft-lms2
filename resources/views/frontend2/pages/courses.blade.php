@@ -190,7 +190,7 @@
             </div>
 
             @if($courses->hasPages())
-            <div class="d-flex justify-content-center mt-5 animate-on-scroll">
+            <div class="f2-pagination-wrap mt-5 animate-on-scroll">
                 {{ $courses->appends(request()->query())->links('pagination::bootstrap-5') }}
             </div>
             @endif

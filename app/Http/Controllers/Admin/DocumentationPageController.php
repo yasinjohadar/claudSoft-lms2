@@ -1,0 +1,191 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SaveDocumentationPageRequest;
+use App\Models\DocumentationCategory;
+use App\Models\DocumentationPage;
+use Illuminate\Http\Request;
+
+class DocumentationPageController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = DocumentationPage::with(['category', 'parent'])->orderByDesc('updated_at');
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('title', 'like', "%{$s}%")
+                    ->orWhere('slug', 'like', "%{$s}%");
+            });
+        }
+
+        if ($request->filled('documentation_category_id')) {
+            $query->where('documentation_category_id', $request->documentation_category_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $pages = $query->paginate(25)->withQueryString();
+        $categories = DocumentationCategory::ordered()->get();
+
+        return view('admin.docs.pages.index', compact('pages', 'categories'));
+    }
+
+    public function create(Request $request)
+    {
+        $categories = DocumentationCategory::active()->ordered()->get();
+        $categoryId = $request->get('documentation_category_id');
+        $parentOptions = $this->flatParentOptionsForCreate();
+
+        return view('admin.docs.pages.create', compact('categories', 'parentOptions', 'categoryId'));
+    }
+
+    public function store(SaveDocumentationPageRequest $request)
+    {
+        $validated = $request->validated();
+
+        $validated['updated_by'] = $request->user()->id;
+        $validated['is_indexable'] = $request->boolean('is_indexable', true);
+
+        if (($validated['status'] ?? '') === 'published' && empty($validated['published_at'])) {
+            $validated['published_at'] = now();
+        }
+
+        $page = DocumentationPage::create($validated);
+
+        return redirect()->route('admin.docs.pages.edit', $page)
+            ->with('success', 'تم إنشاء صفحة التوثيق');
+    }
+
+    public function edit(DocumentationPage $documentation_page)
+    {
+        $documentation_page->load(['category']);
+        $categories = DocumentationCategory::active()->ordered()->get();
+        $parentOptions = $this->parentPageOptions(
+            $documentation_page->documentation_category_id,
+            $documentation_page->id
+        );
+
+        return view('admin.docs.pages.edit', compact('documentation_page', 'categories', 'parentOptions'));
+    }
+
+    public function update(SaveDocumentationPageRequest $request, DocumentationPage $documentation_page)
+    {
+        $validated = $request->validated();
+
+        $validated['updated_by'] = $request->user()->id;
+        $validated['is_indexable'] = $request->boolean('is_indexable', true);
+
+        if (($validated['status'] ?? '') === 'published' && empty($validated['published_at'])) {
+            $validated['published_at'] = $documentation_page->published_at ?? now();
+        }
+
+        $documentation_page->update($validated);
+
+        return redirect()->route('admin.docs.pages.edit', $documentation_page)
+            ->with('success', 'تم حفظ التعديلات');
+    }
+
+    public function destroy(DocumentationPage $documentation_page)
+    {
+        if ($documentation_page->children()->exists()) {
+            return back()->with('error', 'لا يمكن الحذف: توجد صفحات فرعية. انقلها أو احذفها أولاً.');
+        }
+
+        $documentation_page->delete();
+
+        return redirect()->route('admin.docs.pages.index')
+            ->with('success', 'تم حذف الصفحة');
+    }
+
+    public function togglePublish(DocumentationPage $documentation_page)
+    {
+        if ($documentation_page->status === 'published') {
+            $documentation_page->update(['status' => 'draft']);
+            $message = 'تم إلغاء نشر الصفحة';
+        } else {
+            $documentation_page->update([
+                'status' => 'published',
+                'published_at' => $documentation_page->published_at ?? now(),
+            ]);
+            $message = 'تم نشر الصفحة';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    private function flatParentOptionsForCreate(): array
+    {
+        $pages = DocumentationPage::with('category')->orderBy('documentation_category_id')->orderBy('sort_order')->orderBy('title')->get();
+        $options = [];
+        foreach ($pages as $p) {
+            $cat = $p->category->name ?? '—';
+            $options[$p->id] = $cat . ' — ' . $p->title;
+        }
+
+        return $options;
+    }
+
+    private function parentPageOptions(?int $categoryId, ?int $excludeId = null): array
+    {
+        if (! $categoryId) {
+            return [];
+        }
+
+        $pages = DocumentationPage::where('documentation_category_id', $categoryId)
+            ->ordered()
+            ->get(['id', 'title', 'parent_id']);
+
+        $options = [];
+        foreach ($pages as $p) {
+            if ($excludeId !== null && (int) $p->id === $excludeId) {
+                continue;
+            }
+            if ($excludeId !== null && $this->isUnderPage($pages, $excludeId, (int) $p->id)) {
+                continue;
+            }
+            $depth = $this->pageDepth($pages, $p);
+            $prefix = str_repeat('— ', $depth);
+            $options[$p->id] = $prefix . $p->title;
+        }
+
+        return $options;
+    }
+
+    private function pageDepth($collection, DocumentationPage $page): int
+    {
+        $d = 0;
+        $current = $page;
+        while ($current->parent_id) {
+            $d++;
+            $current = $collection->firstWhere('id', $current->parent_id);
+            if (! $current || $d > 50) {
+                break;
+            }
+        }
+
+        return $d;
+    }
+
+    /** هل pageId تحت شجرة ancestorId */
+    private function isUnderPage($collection, int $ancestorId, int $candidateId): bool
+    {
+        $current = $collection->firstWhere('id', $candidateId);
+        while ($current) {
+            if ((int) $current->id === $ancestorId) {
+                return true;
+            }
+            if (! $current->parent_id) {
+                return false;
+            }
+            $current = $collection->firstWhere('id', $current->parent_id);
+        }
+
+        return false;
+    }
+}

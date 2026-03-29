@@ -167,7 +167,7 @@
 
             <!-- Pagination -->
             @if($posts->hasPages())
-            <div class="animate-on-scroll d-flex justify-content-center gap-2 flex-wrap mt-5">
+            <div class="f2-pagination-wrap mt-5 animate-on-scroll">
                 {{ $posts->withQueryString()->links('pagination::bootstrap-5') }}
             </div>
             @endif
