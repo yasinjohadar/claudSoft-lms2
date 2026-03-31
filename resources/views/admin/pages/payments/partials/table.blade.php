@@ -108,6 +108,13 @@
                     <i class="fas fa-eye"></i>
                 </a>
 
+                @if($payment->invoice_id && $payment->invoice && $payment->invoice->remaining_amount > 0)
+                    <a href="{{ route('payments.create', ['invoice_id' => $payment->invoice_id]) }}"
+                       class="btn btn-sm btn-success" title="استكمال المبلغ الناقص">
+                        <i class="fas fa-plus-circle"></i>
+                    </a>
+                @endif
+
                 @if($payment->status == 'completed')
                     <button type="button" class="btn btn-sm btn-warning"
                             onclick="confirmRefund({{ $payment->id }})" title="استرداد">

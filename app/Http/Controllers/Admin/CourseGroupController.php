@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\GroupMembershipRequest;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -279,6 +280,61 @@ class CourseGroupController extends Controller
                 ->pluck('due_amount', 'student_id')
                 ->toArray();
 
+            $studentOutstandingInvoicesById = Invoice::query()
+                ->with(['items.campEnrollment.camp:id,name'])
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('remaining_amount', '>', 0)
+                ->orderBy('due_date')
+                ->get(['id', 'student_id', 'invoice_number', 'remaining_amount', 'due_date', 'status'])
+                ->groupBy('student_id')
+                ->map(function ($invoices) {
+                    return $invoices->map(function ($invoice) {
+                        $campNames = $invoice->items
+                            ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->toArray();
+
+                        return [
+                            'invoice_number' => $invoice->invoice_number,
+                            'remaining_amount' => (float) $invoice->remaining_amount,
+                            'due_date' => optional($invoice->due_date)->format('Y-m-d'),
+                            'is_overdue' => (bool) $invoice->is_overdue,
+                            'camp_names' => $campNames,
+                        ];
+                    })->values()->toArray();
+                })
+                ->toArray();
+
+            $studentPaymentsById = Payment::query()
+                ->with(['invoice:id,invoice_number', 'paymentMethod:id,name'])
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('status', 'completed')
+                ->orderByDesc('payment_date')
+                ->get(['id', 'student_id', 'invoice_id', 'payment_method_id', 'payment_number', 'amount', 'payment_date', 'status'])
+                ->groupBy('student_id')
+                ->map(function ($payments) {
+                    return $payments->map(function ($payment) {
+                        return [
+                            'payment_number' => $payment->payment_number,
+                            'amount' => (float) $payment->amount,
+                            'payment_date' => optional($payment->payment_date)->format('Y-m-d'),
+                            'invoice_number' => optional($payment->invoice)->invoice_number,
+                            'payment_method' => optional($payment->paymentMethod)->name,
+                        ];
+                    })->values()->toArray();
+                })
+                ->toArray();
+
+            $studentPaidTotalsById = Payment::query()
+                ->selectRaw('student_id, SUM(amount) as paid_total')
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('status', 'completed')
+                ->groupBy('student_id')
+                ->pluck('paid_total', 'student_id')
+                ->toArray();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -309,11 +365,14 @@ class CourseGroupController extends Controller
                         'lastActivityByUserId' => $lastActivityByUserId,
                         'onlineUserIds' => $onlineUserIds,
                         'dueAmountsByStudentId' => $dueAmountsByStudentId,
+                        'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById,
+                        'studentPaymentsById' => $studentPaymentsById,
+                        'studentPaidTotalsById' => $studentPaidTotalsById,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
@@ -1069,6 +1128,61 @@ class CourseGroupController extends Controller
                 ->pluck('due_amount', 'student_id')
                 ->toArray();
 
+            $studentOutstandingInvoicesById = Invoice::query()
+                ->with(['items.campEnrollment.camp:id,name'])
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('remaining_amount', '>', 0)
+                ->orderBy('due_date')
+                ->get(['id', 'student_id', 'invoice_number', 'remaining_amount', 'due_date', 'status'])
+                ->groupBy('student_id')
+                ->map(function ($invoices) {
+                    return $invoices->map(function ($invoice) {
+                        $campNames = $invoice->items
+                            ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->toArray();
+
+                        return [
+                            'invoice_number' => $invoice->invoice_number,
+                            'remaining_amount' => (float) $invoice->remaining_amount,
+                            'due_date' => optional($invoice->due_date)->format('Y-m-d'),
+                            'is_overdue' => (bool) $invoice->is_overdue,
+                            'camp_names' => $campNames,
+                        ];
+                    })->values()->toArray();
+                })
+                ->toArray();
+
+            $studentPaymentsById = Payment::query()
+                ->with(['invoice:id,invoice_number', 'paymentMethod:id,name'])
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('status', 'completed')
+                ->orderByDesc('payment_date')
+                ->get(['id', 'student_id', 'invoice_id', 'payment_method_id', 'payment_number', 'amount', 'payment_date', 'status'])
+                ->groupBy('student_id')
+                ->map(function ($payments) {
+                    return $payments->map(function ($payment) {
+                        return [
+                            'payment_number' => $payment->payment_number,
+                            'amount' => (float) $payment->amount,
+                            'payment_date' => optional($payment->payment_date)->format('Y-m-d'),
+                            'invoice_number' => optional($payment->invoice)->invoice_number,
+                            'payment_method' => optional($payment->paymentMethod)->name,
+                        ];
+                    })->values()->toArray();
+                })
+                ->toArray();
+
+            $studentPaidTotalsById = Payment::query()
+                ->selectRaw('student_id, SUM(amount) as paid_total')
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('status', 'completed')
+                ->groupBy('student_id')
+                ->pluck('paid_total', 'student_id')
+                ->toArray();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -1099,11 +1213,14 @@ class CourseGroupController extends Controller
                         'lastActivityByUserId' => [],
                         'onlineUserIds' => [],
                         'dueAmountsByStudentId' => $dueAmountsByStudentId,
+                        'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById,
+                        'studentPaymentsById' => $studentPaymentsById,
+                        'studentPaidTotalsById' => $studentPaidTotalsById,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')

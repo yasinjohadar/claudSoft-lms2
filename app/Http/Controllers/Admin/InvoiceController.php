@@ -86,6 +86,75 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Display unpaid and overdue invoices listing.
+     */
+    public function dueOverdue(Request $request)
+    {
+        $query = Invoice::with(['student', 'items.campEnrollment.camp', 'payments'])
+            ->unpaid()
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhereHas('student', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('issue_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('issue_date', '<=', $request->to_date);
+        }
+
+        if ($request->filled('camp_id')) {
+            $query->whereHas('items.campEnrollment', function ($q) use ($request) {
+                $q->where('camp_id', $request->camp_id);
+            });
+        }
+
+        // due_type: all | due (not overdue) | overdue
+        if ($request->filled('due_type')) {
+            if ($request->due_type === 'overdue') {
+                $query->overdue();
+            } elseif ($request->due_type === 'due') {
+                $today = now()->toDateString();
+                $query->where(function ($q) use ($today) {
+                    $q->whereNull('due_date')
+                        ->orWhereDate('due_date', '>=', $today);
+                });
+            }
+        }
+
+        $stats = [
+            'paid_amount' => (float) (clone $query)->sum('paid_amount'),
+            'unpaid_amount' => (float) (clone $query)->sum('remaining_amount'),
+        ];
+
+        $invoices = $query->paginate(20);
+        $trainingCamps = TrainingCamp::orderBy('name')->get(['id', 'name']);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => view('admin.pages.invoices.partials.stats', compact('stats'))->render(),
+                'table' => view('admin.pages.invoices.partials.table', compact('invoices'))->render(),
+                'pagination' => $invoices->hasPages() ? $invoices->links()->render() : '',
+            ]);
+        }
+
+        return view('admin.pages.invoices.due-overdue', compact('invoices', 'trainingCamps', 'stats'));
+    }
+
+    /**
      * Display the specified invoice.
      */
     public function show(string $id)

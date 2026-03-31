@@ -1,5 +1,9 @@
 @extends('student.layouts.master')
 
+@push('head-scripts')
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+@endpush
+
 @section('page-title')
     {{ $module->title }}
 @stop
@@ -471,7 +475,10 @@
 
                 <!-- Complete -->
                 @if($enrollment)
-                    <div class="card border-primary">
+                    <div class="card border-primary" id="module-completion-card"
+                         data-module-id="{{ $module->id }}"
+                         data-url-complete="{{ route('student.learn.module.mark-complete', $module->id) }}"
+                         data-url-incomplete="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center flex-grow-1">
@@ -479,29 +486,24 @@
                                         <h5><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
                                         <p class="text-muted mb-0">قم بتحديده كمكتمل للمتابعة</p>
                                     </div>
-                                    @if($isCompleted)
-                                        <div class="d-flex align-items-center ms-4">
-                                            <i class="fas fa-check-circle text-success me-2"></i>
-                                            <span class="text-success fw-semibold">مكتمل</span>
-                                        </div>
-                                    @endif
+                                    <div id="module-completion-badge" class="d-flex align-items-center ms-4 {{ $isCompleted ? '' : 'd-none' }}">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        <span class="text-success fw-semibold">مكتمل</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    @if($isCompleted)
-                                        <form action="{{ route('student.learn.module.mark-incomplete', $module->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                                <i class="fas fa-times me-1"></i>إلغاء الإكمال
-                                            </button>
-                                        </form>
-                                    @else
-                                        <form action="{{ route('student.learn.module.mark-complete', $module->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-check me-2"></i>تحديد كمكتمل
-                                            </button>
-                                        </form>
-                                    @endif
+                                <div id="module-completion-actions">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm js-module-completion-btn {{ $isCompleted ? '' : 'd-none' }}"
+                                            data-action="incomplete"
+                                            data-url="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
+                                        <i class="fas fa-times me-1"></i>إلغاء الإكمال
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-primary js-module-completion-btn {{ $isCompleted ? 'd-none' : '' }}"
+                                            data-action="complete"
+                                            data-url="{{ route('student.learn.module.mark-complete', $module->id) }}">
+                                        <i class="fas fa-check me-2"></i>تحديد كمكتمل
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -857,6 +859,7 @@
                                         </div>
                                         @foreach($section->modules as $mod)
                                             <a href="{{ route('student.learn.module', $mod->id) }}"
+                                               data-sidebar-module-id="{{ $mod->id }}"
                                                class="d-flex align-items-center justify-content-between text-decoration-none mb-1 p-2 rounded {{ $mod->id == $module->id ? 'bg-primary text-white' : (in_array($mod->id, $completedModules) ? 'bg-success-transparent text-success' : 'bg-light text-dark') }}"
                                                style="font-size: 0.8rem; border-right: 3px solid {{ $mod->id == $module->id ? '#7c3aed' : (in_array($mod->id, $completedModules) ? '#10b981' : 'transparent') }};">
                                                 <div class="d-flex align-items-center flex-grow-1">
@@ -875,17 +878,15 @@
                                                     @endif
                                                     <span>{{ $mod->title }}</span>
                                                 </div>
-                                                @if(in_array($mod->id, $completedModules))
-                                                    <span class="d-flex align-items-center">
+                                                <span class="d-flex align-items-center" data-sidebar-status>
+                                                    @if(in_array($mod->id, $completedModules))
                                                         <i class="fas fa-check-circle {{ $mod->id == $module->id ? 'text-white' : 'text-success' }} me-1"></i>
                                                         <small class="{{ $mod->id == $module->id ? 'text-white' : 'text-success' }}">مكتمل</small>
-                                                    </span>
-                                                @else
-                                                    <span class="d-flex align-items-center">
+                                                    @else
                                                         <i class="fas fa-circle text-muted me-1" style="font-size: 0.7rem;"></i>
                                                         <small class="text-muted">غير مكتمل</small>
-                                                    </span>
-                                                @endif
+                                                    @endif
+                                                </span>
                                             </a>
                                         @endforeach
                                     </div>
@@ -901,9 +902,212 @@
 </div>
 @stop
 
-@section('script')
+@section('scripts')
 <script>
     setTimeout(() => $('.alert').fadeOut(), 5000);
+
+    (function () {
+        const currentModuleId = {{ (int) $module->id }};
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        function sidebarStatusHtml(isCompleted, isCurrent) {
+            if (isCompleted && isCurrent) {
+                return '<i class="fas fa-check-circle text-white me-1"></i><small class="text-white">مكتمل</small>';
+            }
+            if (isCompleted) {
+                return '<i class="fas fa-check-circle text-success me-1"></i><small class="text-success">مكتمل</small>';
+            }
+            return '<i class="fas fa-circle text-muted me-1" style="font-size: 0.7rem;"></i><small class="text-muted">غير مكتمل</small>';
+        }
+
+        function updateSidebarModuleRow(moduleId, isCompleted) {
+            const link = document.querySelector('a[data-sidebar-module-id="' + moduleId + '"]');
+            if (!link) {
+                return;
+            }
+            const isCurrent = moduleId === currentModuleId;
+            const base = 'd-flex align-items-center justify-content-between text-decoration-none mb-1 p-2 rounded';
+            let extra = '';
+            let border = 'transparent';
+            if (isCurrent) {
+                extra = 'bg-primary text-white';
+                border = '#7c3aed';
+            } else if (isCompleted) {
+                extra = 'bg-success-transparent text-success';
+                border = '#10b981';
+            } else {
+                extra = 'bg-light text-dark';
+                border = 'transparent';
+            }
+            link.className = base + ' ' + extra;
+            link.style.fontSize = '0.8rem';
+            link.style.borderRight = '3px solid ' + border;
+
+            const statusEl = link.querySelector('[data-sidebar-status]');
+            if (statusEl) {
+                statusEl.className = 'd-flex align-items-center';
+                statusEl.innerHTML = sidebarStatusHtml(isCompleted, isCurrent);
+            }
+        }
+
+        function setCompletionCardState(isCompleted) {
+            const badge = document.getElementById('module-completion-badge');
+            const btnComplete = document.querySelector('.js-module-completion-btn[data-action="complete"]');
+            const btnIncomplete = document.querySelector('.js-module-completion-btn[data-action="incomplete"]');
+            if (badge) {
+                badge.classList.toggle('d-none', !isCompleted);
+            }
+            if (btnComplete) {
+                btnComplete.classList.toggle('d-none', isCompleted);
+            }
+            if (btnIncomplete) {
+                btnIncomplete.classList.toggle('d-none', !isCompleted);
+            }
+        }
+
+        /* تصفيق حقيقي: public/assets/sounds/lesson-complete-applause.mp3 (مشروع Archive.org: ApplauseSecondAttempt / crowdapplause1_64kb). */
+        var lessonCompleteApplauseUrl = @json(asset('assets/sounds/lesson-complete-applause.mp3'));
+        var lessonApplauseMaxSeconds = 5;
+
+        function celebrateLessonComplete(applauseAudio) {
+            var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            if (!reducedMotion && typeof window.confetti === 'function') {
+                var fire = window.confetti;
+                var scalar = 1.08;
+                var emojiShapes = [];
+                if (typeof fire.shapeFromText === 'function') {
+                    emojiShapes = [
+                        fire.shapeFromText({ text: '👏', scalar: scalar }),
+                        fire.shapeFromText({ text: '👏', scalar: scalar }),
+                        fire.shapeFromText({ text: '🎉', scalar: scalar }),
+                        fire.shapeFromText({ text: '✨', scalar: scalar }),
+                        fire.shapeFromText({ text: '⭐', scalar: scalar }),
+                    ];
+                }
+                function emojiBurst(overrides) {
+                    var base = {
+                        scalar: scalar,
+                        particleCount: 52,
+                        spread: 72,
+                        gravity: 0.9,
+                        ticks: 260,
+                        startVelocity: 46,
+                    };
+                    if (emojiShapes.length) {
+                        base.shapes = emojiShapes;
+                    } else {
+                        base.shapes = ['circle'];
+                    }
+                    return Object.assign(base, overrides || {});
+                }
+                fire(emojiBurst({ origin: { x: 0.5, y: 0.7 } }));
+                setTimeout(function () {
+                    fire(emojiBurst({
+                        particleCount: 38,
+                        angle: 58,
+                        spread: 58,
+                        origin: { x: 0.06, y: 0.78 },
+                    }));
+                }, 170);
+                setTimeout(function () {
+                    fire(emojiBurst({
+                        particleCount: 38,
+                        angle: 122,
+                        spread: 58,
+                        origin: { x: 0.94, y: 0.78 },
+                    }));
+                }, 310);
+            }
+
+            function tryMp3() {
+                if (!applauseAudio) {
+                    return Promise.reject();
+                }
+                applauseAudio.currentTime = 0;
+                var scheduleStop = function () {
+                    window.setTimeout(function () {
+                        try {
+                            applauseAudio.pause();
+                            applauseAudio.currentTime = 0;
+                        } catch (e2) {}
+                    }, lessonApplauseMaxSeconds * 1000);
+                };
+                var p = applauseAudio.play();
+                if (p && typeof p.then === 'function') {
+                    p.then(scheduleStop).catch(function () {});
+                } else {
+                    scheduleStop();
+                }
+                return p || Promise.resolve();
+            }
+            tryMp3().catch(function () {});
+        }
+
+        document.querySelectorAll('.js-module-completion-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const url = btn.getAttribute('data-url');
+                if (!url) {
+                    return;
+                }
+                if (!csrfToken) {
+                    alert('لم يتم العثور على رمز الأمان (CSRF). حدّث الصفحة.');
+                    return;
+                }
+                var applauseAudio = new Audio(lessonCompleteApplauseUrl);
+                applauseAudio.volume = 0.42;
+                applauseAudio.preload = 'auto';
+
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>جارٍ التحديث...';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({}),
+                })
+                    .then(function (response) {
+                        var ct = response.headers.get('content-type') || '';
+                        if (!ct.includes('application/json')) {
+                            return { ok: false, status: response.status, data: { success: false, message: 'تعذر قراءة الرد، حدّث الصفحة وحاول مجددًا.' } };
+                        }
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, status: response.status, data: data || {} };
+                        });
+                    })
+                    .then(function (result) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+
+                        if (!result.ok || !result.data.success) {
+                            const msg = (result.data && result.data.message) ? result.data.message : 'تعذر تحديث حالة الدرس';
+                            alert(msg);
+                            return;
+                        }
+
+                        const mid = result.data.module_id;
+                        const completed = !!result.data.is_completed;
+                        if (completed) {
+                            celebrateLessonComplete(applauseAudio);
+                        }
+                        setCompletionCardState(completed);
+                        updateSidebarModuleRow(mid, completed);
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                        alert('حدث خطأ في الاتصال، حاول مرة أخرى.');
+                    });
+            });
+        });
+    })();
 </script>
 <style>
     /* Ensure embed iframe takes full width */

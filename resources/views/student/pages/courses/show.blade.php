@@ -722,32 +722,6 @@
                                 @endif
                             </div>
 
-                            <!-- Enroll Button -->
-                            @php
-                                $isEnrolled = auth()->user()->enrolledCourses()->where('course_id', $course->id)->exists();
-                            @endphp
-
-                            @if($enrollment)
-                                <a href="{{ route('student.learn.course', $course->id) }}"
-                                   class="btn btn-success w-100 mb-3 py-3">
-                                    <i class="fas fa-play me-2"></i>الذهاب إلى الكورس
-                                </a>
-                            @else
-                                @if($course->is_free || $course->price == 0)
-                                    <form action="{{ route('student.courses.enroll', $course->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="btn btn-primary w-100 mb-3 py-3">
-                                            <i class="fas fa-user-plus me-2"></i>التسجيل المجاني
-                                        </button>
-                                    </form>
-                                @else
-                                    <a href="{{ route('student.courses.checkout', $course->id) }}"
-                                       class="btn btn-primary w-100 mb-3 py-3">
-                                        <i class="fas fa-shopping-cart me-2"></i>شراء الكورس
-                                    </a>
-                                @endif
-                            @endif
-
                             <!-- Course Features -->
                             <div class="border-top pt-4 mt-3">
                                 <h6 class="mb-4 fw-bold">هذا الكورس يشمل:</h6>
@@ -772,18 +746,6 @@
                                         <div>
                                             <div class="fw-semibold">{{ $stats['total_modules'] ?? 0 }} درس</div>
                                             <small class="text-muted">محاضرات شاملة</small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="feature-item">
-                                    <div class="d-flex align-items-center">
-                                        <div class="feature-icon bg-warning-transparent text-warning">
-                                            <i class="fas fa-infinity"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-semibold">وصول مدى الحياة</div>
-                                            <small class="text-muted">تعلم في أي وقت</small>
                                         </div>
                                     </div>
                                 </div>

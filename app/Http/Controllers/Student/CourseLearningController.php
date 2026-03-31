@@ -189,7 +189,7 @@ class CourseLearningController extends Controller
     /**
      * Mark module as complete (زر "تم الإنجاز").
      */
-    public function markAsComplete($moduleId)
+    public function markAsComplete(Request $request, $moduleId)
     {
         DB::beginTransaction();
         try {
@@ -202,6 +202,14 @@ class CourseLearningController extends Controller
                 ->first();
 
             if (!$enrollment || !$enrollment->isActive()) {
+                DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'أنت غير مسجل في هذا الكورس',
+                    ], 403);
+                }
+
                 return redirect()->back()->with('error', 'أنت غير مسجل في هذا الكورس');
             }
 
@@ -257,10 +265,27 @@ class CourseLearningController extends Controller
 
             DB::commit();
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تحديد الدرس كمكتمل',
+                    'module_id' => (int) $moduleId,
+                    'is_completed' => true,
+                    'completion_percentage' => $courseCompletion,
+                ]);
+            }
+
             return redirect()->back()->with('success', 'تم تحديد الدرس كمكتمل');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: ' . $e->getMessage(),
+                ], 422);
+            }
 
             return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
@@ -269,7 +294,7 @@ class CourseLearningController extends Controller
     /**
      * Mark module as incomplete (إلغاء الإنجاز).
      */
-    public function markAsIncomplete($moduleId)
+    public function markAsIncomplete(Request $request, $moduleId)
     {
         DB::beginTransaction();
         try {
@@ -282,6 +307,14 @@ class CourseLearningController extends Controller
                 ->first();
 
             if (!$enrollment || !$enrollment->isActive()) {
+                DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'أنت غير مسجل في هذا الكورس',
+                    ], 403);
+                }
+
                 return redirect()->back()->with('error', 'أنت غير مسجل في هذا الكورس');
             }
 
@@ -297,14 +330,31 @@ class CourseLearningController extends Controller
             $this->updateSectionCompletion($module->section_id, $student->id);
 
             // Update course enrollment completion percentage
-            $this->updateCourseCompletion($module->course_id, $student->id);
+            $courseCompletion = $this->updateCourseCompletion($module->course_id, $student->id);
 
             DB::commit();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم إلغاء إكمال الدرس',
+                    'module_id' => (int) $moduleId,
+                    'is_completed' => false,
+                    'completion_percentage' => $courseCompletion,
+                ]);
+            }
 
             return redirect()->back()->with('success', 'تم إلغاء إكمال الدرس');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: ' . $e->getMessage(),
+                ], 422);
+            }
 
             return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
         }

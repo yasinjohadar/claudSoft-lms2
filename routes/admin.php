@@ -142,6 +142,7 @@ Route::prefix('admin')
 
         // Invoices routes
         Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
+        Route::get('invoices-due-overdue', [InvoiceController::class, 'dueOverdue'])->name('invoices.due-overdue');
         Route::post('invoices/{id}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('invoices/{id}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
         Route::post('invoices/{id}/force-delete', [InvoiceController::class, 'forceDelete'])->name('invoices.force-delete');

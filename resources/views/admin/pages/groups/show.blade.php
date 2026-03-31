@@ -396,7 +396,7 @@
 
                             <div id="groupMembersFilterFeedback" class="small text-muted mb-2"></div>
                             <div id="groupMembersTableContainer">
-                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? []])
+                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? [], 'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById ?? [], 'studentPaymentsById' => $studentPaymentsById ?? [], 'studentPaidTotalsById' => $studentPaidTotalsById ?? []])
                             </div>
                         </div>
                     </div>
