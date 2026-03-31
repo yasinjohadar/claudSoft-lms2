@@ -1,42 +1,136 @@
-@extends('frontend.layouts.standalone')
+@extends('frontend2.layouts.master')
 
 @push('head')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <style>
+        .registration-page-section {
+            background: var(--clr-bg);
+        }
+        .registration-form-wrapper {
+            padding: 28px;
+        }
+        .registration-title {
+            line-height: 1.5;
+        }
+        .registration-subtitle {
+            color: var(--clr-text-secondary);
+            margin-bottom: 22px;
+            font-size: 0.95rem;
+        }
+        .registration-hero-logo {
+            max-height: 62px;
+            width: auto;
+            display: block;
+            margin: 0 auto 10px;
+        }
+        .registration-section-card {
+            border: 1px solid var(--clr-border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .registration-section-card .card-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .registration-section-card .card-body {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .form-check {
+            padding-right: 1.75em;
+            padding-left: 0;
+        }
+        .form-check .form-check-input {
+            float: right;
+            margin-right: -1.75em;
+            margin-left: 0.5em;
+            border-color: #555;
+            border-width: 2px;
+        }
+        .form-check .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        #registrationForm .form-label:not(.required)::after {
+            content: ":";
+        }
+        #registrationForm .form-label.required::after {
+            content: ": *";
+            color: #dc3545;
+        }
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+        .select2-container--bootstrap-5 .select2-results__option img,
+        .select2-container--bootstrap-5 .select2-selection__rendered img {
+            border-radius: 0 !important;
+        }
+        .country-code-select,
+        .country-code-select option {
+            font-size: 1.05rem;
+        }
+        @media (max-width: 768px) {
+            .registration-title {
+                line-height: 1.85;
+            }
+            #registrationForm .form-label {
+                font-size: 1.02rem;
+                font-weight: 600;
+            }
+            .registration-form-wrapper {
+                padding: 18px;
+            }
+        }
+    </style>
 @endpush
 
-@section('page-title')
-    التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
-@endsection
+@section('title', 'التسجيل في ' . ($settings->diploma_name ?? 'دبلوم البرمجة') . ' - الدفعة (' . $group->name . ')')
 
 @section('content')
-<div class="main-content">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <!-- لوغو واسم الأكاديمية -->
-                <div class="text-center mb-4 pb-3 border-bottom">
-                    <a href="{{ url('/') }}" class="d-inline-block text-decoration-none">
-                        <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="mb-2" style="max-height: 70px; width: auto;">
-                        <h2 class="h4 text-dark mb-0 mt-2">كلاودسوفت التعليمية</h2>
-                    </a>
-                </div>
+    <section class="page-banner page-banner-contact">
+        <div class="page-banner-overlay"></div>
+        <div class="container position-relative">
+            <div class="page-banner-content animate-on-scroll">
+                <div class="page-banner-icon"><i class="fas fa-user-plus"></i></div>
+                <h1 class="page-banner-title">التسجيل في <span>{{ $group->name }}</span></h1>
+                <p class="page-banner-desc">{{ $settings->diploma_name ?? 'دبلوم البرمجة' }}</p>
+                <nav class="page-banner-breadcrumb" aria-label="breadcrumb">
+                    <a href="{{ route('frontend.home') }}">الرئيسية</a>
+                    <span class="page-banner-sep">/</span>
+                    <span>التسجيل الجماعي</span>
+                </nav>
+            </div>
+        </div>
+        <div class="page-banner-shape"></div>
+    </section>
 
-                <div class="card shadow-sm">
-                    <div class="card-header text-white text-center registration-header" style="background-color: var(--secondary-Color, #0555a2) !important;">
-                        <h4 class="mb-0 registration-title">
+    <section class="section-padding registration-page-section">
+        <div class="container">
+            <div class="row justify-content-center g-4">
+                <div class="col-lg-10">
+                    <div class="glass-panel registration-form-wrapper animate-on-scroll">
+                        <div class="text-center mb-4 pb-3 border-bottom">
+                            <a href="{{ url('/') }}" class="d-inline-block text-decoration-none">
+                                <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="registration-hero-logo">
+                                <h2 class="h5 mb-0 mt-2">كلاودسوفت التعليمية</h2>
+                            </a>
+                        </div>
+
+                        <h4 class="registration-title fw-bold mb-2">
                             <i class="fas fa-user-plus me-2"></i>
                             التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
                         </h4>
-                    </div>
-                    <div class="card-body">
+                        <p class="registration-subtitle">يرجى تعبئة جميع الحقول المطلوبة بدقة لضمان مراجعة طلبك بسرعة.</p>
+
                         @if($errors->any())
-                            <div class="alert alert-danger">
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                 <ul class="mb-0">
                                     @foreach($errors->all() as $error)
                                         <li>{{ $error }}</li>
                                     @endforeach
                                 </ul>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         @endif
 
@@ -204,7 +298,7 @@
                             <hr class="my-4">
 
                             <!-- قسم الالتزام والوقت -->
-                            <div class="card border-primary mb-4">
+                            <div class="card registration-section-card border-primary mb-4">
                                 <div class="card-header bg-primary text-white">
                                     <h5 class="mb-0">
                                         <i class="fas fa-calendar-check me-2"></i>
@@ -263,7 +357,7 @@
                             </div>
 
                             <!-- قسم المعدات والخبرة -->
-                            <div class="card border-info mb-4">
+                            <div class="card registration-section-card border-info mb-4">
                                 <div class="card-header bg-info text-white">
                                     <h5 class="mb-0">
                                         <i class="fas fa-laptop-code me-2"></i>
@@ -373,7 +467,7 @@
                             </div>
 
                             <!-- قسم المعلومات التعليمية -->
-                            <div class="card border-success mb-4">
+                            <div class="card registration-section-card border-success mb-4">
                                 <div class="card-header bg-success text-white">
                                     <h5 class="mb-0">
                                         <i class="fas fa-graduation-cap me-2"></i>
@@ -411,7 +505,7 @@
                             </div>
 
                             <!-- قسم المعسكر -->
-                            <div class="card border-warning mb-4">
+                            <div class="card registration-section-card border-warning mb-4">
                                 <div class="card-header bg-warning text-dark">
                                     <h5 class="mb-0">
                                         <i class="fas fa-campground me-2"></i>
@@ -456,75 +550,12 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+@endsection
 
+@push('scripts')
 <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-<style>
-    /* أعلام الدول مستطيلة وليست دائرية */
-    .select2-container--bootstrap-5 .select2-results__option img,
-    .select2-container--bootstrap-5 .select2-selection__rendered img {
-        border-radius: 0 !important;
-    }
-
-    /* قائمة رمز الدولة: فاصل ثابت ووضوح رمز ISO */
-    .country-code-select,
-    .country-code-select option {
-        font-size: 1.05rem;
-    }
-
-    .registration-title {
-        line-height: 1.5;
-    }
-    @media (max-width: 768px) {
-        .registration-title {
-            line-height: 1.85;
-        }
-    }
-    
-    /* نقطتان رأسيتان بعد اسم الحقل في فورم التسجيل */
-    #registrationForm .form-label:not(.required)::after {
-        content: ":";
-    }
-    #registrationForm .form-label.required::after {
-        content: ": *";
-        color: red;
-    }
-    
-    /* تسميات أوضح وأكبر على الجوال */
-    @media (max-width: 768px) {
-        #registrationForm .form-label {
-            font-size: 1.125rem;
-            font-weight: 500;
-        }
-    }
-    
-    .required::after {
-        content: " *";
-        color: red;
-    }
-    
-    /* RTL support for radio buttons - put radio circle on the right */
-    .form-check {
-        padding-right: 1.75em;
-        padding-left: 0;
-    }
-    
-    .form-check .form-check-input {
-        float: right;
-        margin-right: -1.75em;
-        margin-left: 0.5em;
-        border-color: #555;
-        border-width: 2px;
-    }
-    
-    .form-check .form-check-input:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-    }
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -611,4 +642,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endsection
+@endpush

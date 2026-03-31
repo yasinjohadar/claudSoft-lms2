@@ -18,7 +18,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['student', 'items', 'payments'])
+        $query = Invoice::with(['student', 'items.campEnrollment.camp', 'payments'])
             ->orderBy('created_at', 'desc');
 
         // Filter by search (student name/email or invoice number)
@@ -63,6 +63,12 @@ class InvoiceController extends Controller
             });
         }
 
+        $statsQuery = clone $query;
+        $stats = [
+            'paid_amount' => (float) (clone $statsQuery)->sum('paid_amount'),
+            'unpaid_amount' => (float) (clone $statsQuery)->sum('remaining_amount'),
+        ];
+
         $invoices = $query->paginate(20);
         $students = User::role('student')->orderBy('name')->get();
         $trainingCamps = TrainingCamp::orderBy('name')->get(['id', 'name']);
@@ -70,12 +76,13 @@ class InvoiceController extends Controller
         // Handle AJAX requests
         if ($request->ajax()) {
             return response()->json([
+                'stats' => view('admin.pages.invoices.partials.stats', compact('stats'))->render(),
                 'table' => view('admin.pages.invoices.partials.table', compact('invoices'))->render(),
                 'pagination' => $invoices->hasPages() ? $invoices->links()->render() : ''
             ]);
         }
 
-        return view('admin.pages.invoices.index', compact('invoices', 'students', 'trainingCamps'));
+        return view('admin.pages.invoices.index', compact('invoices', 'students', 'trainingCamps', 'stats'));
     }
 
     /**

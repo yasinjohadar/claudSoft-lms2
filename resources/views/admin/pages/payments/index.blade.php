@@ -26,103 +26,21 @@
             </div>
 
             <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-primary-transparent">
-                                        <i class="fas fa-money-bill-wave fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">إجمالي المدفوعات</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">${{ number_format($payments->where('status', 'completed')->sum('amount'), 2) }}</h4>
-                                    <span class="badge bg-primary-transparent">{{ $payments->where('status', 'completed')->count() }} دفعة</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-warning-transparent">
-                                        <i class="fas fa-clock fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">دفعات معلقة</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">${{ number_format($payments->where('status', 'pending')->sum('amount'), 2) }}</h4>
-                                    <span class="badge bg-warning-transparent">{{ $payments->where('status', 'pending')->count() }} دفعة</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-danger-transparent">
-                                        <i class="fas fa-times-circle fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">دفعات ملغاة</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">${{ number_format($payments->where('status', 'cancelled')->sum('amount'), 2) }}</h4>
-                                    <span class="badge bg-danger-transparent">{{ $payments->where('status', 'cancelled')->count() }} دفعة</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-info-transparent">
-                                        <i class="fas fa-undo fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">مبالغ مستردة</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">${{ number_format($payments->where('status', 'refunded')->sum('amount'), 2) }}</h4>
-                                    <span class="badge bg-info-transparent">{{ $payments->where('status', 'refunded')->count() }} دفعة</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="row mb-4" id="paymentsStatsContainer">
+                @include('admin.pages.payments.partials.stats', ['stats' => $stats])
             </div>
 
             <!-- Filters -->
             <div class="card custom-card mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('payments.index') }}">
-                        <div class="row g-3">
-                            <div class="col-md-3">
+                    <form method="GET" action="{{ route('payments.index') }}" id="paymentsFilterForm">
+                        <div class="row g-2">
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                 <label class="form-label">رقم الدفعة</label>
-                                <input type="text" name="payment_number" class="form-control"
+                                <input type="text" name="payment_number" id="paymentsSearchInput" class="form-control"
                                        value="{{ request('payment_number') }}" placeholder="البحث برقم الدفعة">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                 <label class="form-label">الحالة</label>
                                 <select name="status" class="form-select">
                                     <option value="">جميع الحالات</option>
@@ -133,7 +51,7 @@
                                     <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                 <label class="form-label">حالة السداد</label>
                                 <select name="payment_status" class="form-select">
                                     <option value="">جميع الحالات</option>
@@ -142,19 +60,30 @@
                                     <option value="unpaid" {{ request('payment_status') == 'unpaid' ? 'selected' : '' }}>غير مسدد</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                <label class="form-label">المعسكر</label>
+                                <select name="camp_id" class="form-select">
+                                    <option value="">جميع المعسكرات</option>
+                                    @foreach($camps as $camp)
+                                        <option value="{{ $camp->id }}" {{ (string) request('camp_id') === (string) $camp->id ? 'selected' : '' }}>
+                                            {{ $camp->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                 <label class="form-label">من تاريخ</label>
                                 <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                 <label class="form-label">إلى تاريخ</label>
                                 <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                             </div>
-                            <div class="col-md-12">
-                                <button type="submit" class="btn btn-primary">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary" id="paymentsSearchBtn">
                                     <i class="fas fa-search me-1"></i>بحث
                                 </button>
-                                <a href="{{ route('payments.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('payments.index') }}" class="btn btn-secondary" id="paymentsResetBtn">
                                     <i class="fas fa-redo me-1"></i>إعادة تعيين
                                 </a>
                             </div>
@@ -169,122 +98,33 @@
                     <div class="card-title">قائمة المدفوعات</div>
                 </div>
                 <div class="card-body">
-                    @if($payments->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>رقم الدفعة</th>
-                                        <th>رقم الفاتورة</th>
-                                        <th>الطالب</th>
-                                        <th>المبلغ</th>
-                                        <th>المبلغ المتبقي</th>
-                                        <th>طريقة الدفع</th>
-                                        <th>تاريخ الدفع</th>
-                                        <th>الحالة</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($payments as $payment)
-                                        <tr>
-                                            <td>
-                                                <a href="{{ route('payments.show', $payment->id) }}" class="text-primary fw-semibold">
-                                                    {{ $payment->payment_number }}
-                                                </a>
-                                            </td>
-                                            <td>
-                                                @if($payment->invoice)
-                                                    <a href="{{ route('invoices.show', $payment->invoice_id) }}">
-                                                        {{ $payment->invoice->invoice_number }}
-                                                    </a>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($payment->invoice && $payment->invoice->student)
-                                                    {{ $payment->invoice->student->name }}
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="fw-bold">${{ number_format($payment->amount, 2) }}</td>
-                                            <td>
-                                                @if($payment->invoice && $payment->invoice->remaining_amount > 0)
-                                                    <span class="text-danger fw-bold">${{ number_format($payment->invoice->remaining_amount, 2) }}</span>
-                                                @elseif($payment->invoice)
-                                                    <span class="text-success">$0.00</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($payment->paymentMethod)
-                                                    <i class="bi bi-credit-card me-1"></i>{{ $payment->paymentMethod->name }}
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $payment->payment_date->format('Y-m-d') }}</td>
-                                            <td>
-                                                @php
-                                                    $statusColors = [
-                                                        'pending' => 'bg-warning',
-                                                        'completed' => 'bg-success',
-                                                        'failed' => 'bg-danger',
-                                                        'cancelled' => 'bg-secondary',
-                                                        'refunded' => 'bg-info'
-                                                    ];
-                                                    $statusLabels = [
-                                                        'pending' => 'معلقة',
-                                                        'completed' => 'مكتملة',
-                                                        'failed' => 'فاشلة',
-                                                        'cancelled' => 'ملغاة',
-                                                        'refunded' => 'مستردة'
-                                                    ];
-                                                @endphp
-                                                <span class="badge {{ $statusColors[$payment->status] ?? 'bg-secondary' }}">
-                                                    {{ $statusLabels[$payment->status] ?? $payment->status }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <a href="{{ route('payments.show', $payment->id) }}"
-                                                       class="btn btn-sm btn-info" title="عرض">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
+                    <div id="paymentsFilterFeedback" class="small text-muted mb-2"></div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>رقم الدفعة</th>
+                                    <th>رقم الفاتورة</th>
+                                    <th>الطالب</th>
+                                    <th>المعسكر المرتبط</th>
+                                    <th>المبلغ</th>
+                                    <th>المبلغ المتبقي</th>
+                                    <th>حالة السداد</th>
+                                    <th>طريقة الدفع</th>
+                                    <th>تاريخ الدفع</th>
+                                    <th>الحالة</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                @include('admin.pages.payments.partials.table', ['payments' => $payments])
+                            </tbody>
+                        </table>
+                    </div>
 
-                                                    @if($payment->status == 'completed')
-                                                        <button type="button" class="btn btn-sm btn-warning"
-                                                                onclick="confirmRefund({{ $payment->id }})" title="استرداد">
-                                                            <i class="fas fa-undo"></i>
-                                                        </button>
-                                                    @endif
-
-                                                    @if($payment->status == 'pending')
-                                                        <button type="button" class="btn btn-sm btn-danger"
-                                                                onclick="confirmCancel({{ $payment->id }})" title="إلغاء">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mt-3">
-                            {{ $payments->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">لا توجد مدفوعات</p>
-                        </div>
-                    @endif
+                    <div class="mt-3" id="paymentsPagination">
+                        {{ $payments->links() }}
+                    </div>
                 </div>
             </div>
 
@@ -363,5 +203,88 @@
         form.action = '{{ url("admin/payments") }}/' + paymentId + '/refund';
         new bootstrap.Modal(document.getElementById('refundModal')).show();
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('paymentsFilterForm');
+        if (!form) return;
+
+        const tableBody = document.getElementById('paymentsTableBody');
+        const paginationContainer = document.getElementById('paymentsPagination');
+        const statsContainer = document.getElementById('paymentsStatsContainer');
+        const feedback = document.getElementById('paymentsFilterFeedback');
+        const searchInput = document.getElementById('paymentsSearchInput');
+        const resetBtn = document.getElementById('paymentsResetBtn');
+        let activeController = null;
+
+        const debounce = (fn, wait = 400) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn(...args), wait);
+            };
+        };
+
+        const loadPayments = async (url = null) => {
+            if (activeController) activeController.abort();
+            activeController = new AbortController();
+
+            const params = new URLSearchParams(new FormData(form));
+            const targetUrl = url || `${form.action}?${params.toString()}`;
+            feedback.textContent = 'جاري تحميل النتائج...';
+
+            try {
+                const response = await fetch(targetUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    signal: activeController.signal
+                });
+
+                if (!response.ok) throw new Error('Failed request');
+                const data = await response.json();
+
+                if (statsContainer && data.stats) {
+                    statsContainer.innerHTML = data.stats;
+                }
+                tableBody.innerHTML = data.table || '';
+                paginationContainer.innerHTML = data.pagination || '';
+                feedback.textContent = '';
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                feedback.textContent = 'حدث خطأ أثناء تحميل النتائج';
+            }
+        };
+
+        const debouncedLoad = debounce(() => loadPayments(), 450);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadPayments();
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedLoad);
+        }
+
+        form.querySelectorAll('select, input[type="date"]').forEach((element) => {
+            element.addEventListener('change', () => loadPayments());
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                loadPayments(form.action);
+            });
+        }
+
+        paginationContainer.addEventListener('click', function (e) {
+            const link = e.target.closest('a');
+            if (!link) return;
+            e.preventDefault();
+            loadPayments(link.href);
+        });
+    });
 </script>
 @stop

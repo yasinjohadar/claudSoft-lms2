@@ -13,6 +13,26 @@
             </div>
         </td>
 
+        <td>
+            @php
+                $campNames = $invoice->items
+                    ->map(function ($item) {
+                        return optional(optional($item->campEnrollment)->camp)->name;
+                    })
+                    ->filter()
+                    ->unique()
+                    ->values();
+            @endphp
+
+            @if($campNames->isNotEmpty())
+                @foreach($campNames as $campName)
+                    <span class="badge bg-primary-transparent text-primary me-1">{{ $campName }}</span>
+                @endforeach
+            @else
+                <span class="text-muted">-</span>
+            @endif
+        </td>
+
         <td>{{ $invoice->issue_date->format('Y-m-d') }}</td>
 
         <td>
@@ -157,7 +177,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="10" class="text-center py-5">
+        <td colspan="11" class="text-center py-5">
             <div class="text-muted">
                 <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                 <h5>لا توجد فواتير</h5>

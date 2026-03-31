@@ -50,9 +50,9 @@
             <!-- Filters -->
             <div class="card custom-card mb-4">
                 <div class="card-body">
-                    <form action="{{ route('training-camps.enrollments') }}" method="GET" class="row g-3">
+                    <form id="enrollmentsFilterForm" action="{{ route('training-camps.enrollments') }}" method="GET" class="row g-3">
                         <div class="col-md-3">
-                            <input type="text" name="search" class="form-control"
+                            <input id="enrollmentsSearchInput" type="text" name="search" class="form-control"
                                    placeholder="بحث بالاسم أو البريد..." value="{{ request('search') }}">
                         </div>
                         <div class="col-md-2">
@@ -82,12 +82,18 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-search me-1"></i>بحث
                             </button>
                         </div>
+                        <div class="col-md-1">
+                            <button type="button" id="clearEnrollmentsFilters" class="btn btn-light w-100">
+                                <i class="fas fa-eraser me-1"></i>مسح
+                            </button>
+                        </div>
                     </form>
+                    <small id="enrollmentsFilterFeedback" class="text-muted d-block mt-2"></small>
                 </div>
             </div>
 
@@ -97,144 +103,9 @@
                     <div class="card-title">قائمة الطلبات</div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">الطالب</th>
-                                    <th scope="col">المعسكر</th>
-                                    <th scope="col">تاريخ الطلب</th>
-                                    <th scope="col">الحالة</th>
-                                    <th scope="col">حالة الدفع</th>
-                                    <th scope="col">العمليات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($enrollments as $enrollment)
-                                    <tr>
-                                        <td>{{ $loop->iteration + ($enrollments->currentPage() - 1) * $enrollments->perPage() }}</td>
-
-                                        <td>
-                                            <div>
-                                                <strong>{{ $enrollment->student->name }}</strong>
-                                                <br><small class="text-muted">{{ $enrollment->student->email }}</small>
-                                            </div>
-                                        </td>
-
-                                        <td>
-                                            <div>
-                                                <strong>{{ $enrollment->camp->name }}</strong>
-                                                <br><small class="text-muted">
-                                                    {{ $enrollment->camp->start_date->format('Y-m-d') }}
-                                                </small>
-                                            </div>
-                                        </td>
-
-                                        <td>
-                                            <small>{{ $enrollment->created_at->format('Y-m-d H:i') }}</small>
-                                        </td>
-
-                                        <td>
-                                            @php
-                                                $statusColors = [
-                                                    'pending' => 'bg-warning text-dark',
-                                                    'approved' => 'bg-success',
-                                                    'rejected' => 'bg-danger',
-                                                    'cancelled' => 'bg-secondary'
-                                                ];
-                                            @endphp
-                                            <span class="badge {{ $statusColors[$enrollment->status] ?? 'bg-secondary' }}">
-                                                {{ $enrollment->status_label }}
-                                            </span>
-                                        </td>
-
-                                        <td>
-                                            @php
-                                                $paymentColors = [
-                                                    'unpaid' => 'bg-warning text-dark',
-                                                    'paid' => 'bg-success',
-                                                    'refunded' => 'bg-secondary'
-                                                ];
-                                            @endphp
-                                            <span class="badge {{ $paymentColors[$enrollment->payment_status] ?? 'bg-secondary' }}">
-                                                {{ $enrollment->payment_status_label }}
-                                            </span>
-                                        </td>
-
-                                        <td>
-                                            <div class="d-flex gap-1 flex-wrap">
-                                                @php
-                                                    $statusButtons = [
-                                                        'pending' => [
-                                                            'class' => 'btn-warning',
-                                                            'icon' => 'fa-clock',
-                                                            'label' => 'قيد الانتظار',
-                                                            'title' => 'تغيير إلى: قيد الانتظار',
-                                                            'color' => 'warning'
-                                                        ],
-                                                        'approved' => [
-                                                            'class' => 'btn-success',
-                                                            'icon' => 'fa-check-circle',
-                                                            'label' => 'مقبول',
-                                                            'title' => 'تغيير إلى: مقبول',
-                                                            'color' => 'success'
-                                                        ],
-                                                        'rejected' => [
-                                                            'class' => 'btn-danger',
-                                                            'icon' => 'fa-times-circle',
-                                                            'label' => 'مرفوض',
-                                                            'title' => 'تغيير إلى: مرفوض',
-                                                            'color' => 'danger'
-                                                        ],
-                                                        'cancelled' => [
-                                                            'class' => 'btn-secondary',
-                                                            'icon' => 'fa-ban',
-                                                            'label' => 'ملغي',
-                                                            'title' => 'تغيير إلى: ملغي',
-                                                            'color' => 'secondary'
-                                                        ]
-                                                    ];
-                                                @endphp
-                                                
-                                                @foreach($statusButtons as $status => $button)
-                                                    @if($enrollment->status !== $status)
-                                                        <button type="button"
-                                                                class="btn btn-xs {{ $button['class'] }}"
-                                                                title="{{ $button['title'] }}"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#changeStatusModal"
-                                                                data-enrollment-id="{{ $enrollment->id }}"
-                                                                data-new-status="{{ $status }}"
-                                                                data-status-label="{{ $button['label'] }}"
-                                                                data-status-icon="{{ $button['icon'] }}"
-                                                                data-status-color="{{ $button['color'] }}">
-                                                            <i class="fas {{ $button['icon'] }}"></i>
-                                                        </button>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5">
-                                            <div class="text-muted">
-                                                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                                                <h5>لا توجد طلبات تسجيل</h5>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    <div id="enrollmentsTableContainer">
+                        @include('admin.pages.training-camps.partials.enrollments-table', ['enrollments' => $enrollments])
                     </div>
-
-                    @if($enrollments->hasPages())
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $enrollments->links() }}
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -396,5 +267,170 @@
         document.body.appendChild(form);
         form.submit();
     });
+
+    function debounce(fn, delay) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    function initEnrollmentsAjaxFilters() {
+        const form = document.getElementById('enrollmentsFilterForm');
+        const searchInput = document.getElementById('enrollmentsSearchInput');
+        const clearFiltersBtn = document.getElementById('clearEnrollmentsFilters');
+        const tableContainer = document.getElementById('enrollmentsTableContainer');
+        const feedback = document.getElementById('enrollmentsFilterFeedback');
+
+        if (!form || !tableContainer) {
+            return;
+        }
+
+        let currentController = null;
+        let lastRequestUrl = null;
+
+        const serializeForm = function() {
+            const formData = new FormData(form);
+            const searchValue = (formData.get('search') || '').toString().trim();
+            formData.set('search', searchValue);
+            return new URLSearchParams(formData).toString();
+        };
+
+        const setFeedback = function(message) {
+            if (feedback) {
+                feedback.textContent = message;
+            }
+        };
+
+        const renderLoading = function(isLoading) {
+            tableContainer.style.opacity = isLoading ? '0.6' : '1';
+            tableContainer.style.pointerEvents = isLoading ? 'none' : 'auto';
+        };
+
+        const fetchAndRender = function(url) {
+            if (url === lastRequestUrl) {
+                return;
+            }
+            lastRequestUrl = url;
+
+            if (currentController) {
+                currentController.abort();
+            }
+
+            currentController = new AbortController();
+            renderLoading(true);
+            setFeedback('جاري تحديث النتائج...');
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch enrollments');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (!data || typeof data.table_html !== 'string') {
+                        throw new Error('Invalid AJAX response');
+                    }
+
+                    tableContainer.innerHTML = data.table_html;
+                    initCopyStudentEmailButtons();
+                    setFeedback('تم تحديث النتائج');
+                })
+                .catch(function(error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    console.error(error);
+                    setFeedback('تعذر تحديث النتائج، حاول مرة أخرى.');
+                })
+                .finally(function() {
+                    renderLoading(false);
+                });
+        };
+
+        const requestFromForm = function() {
+            const queryString = serializeForm();
+            const baseUrl = form.getAttribute('action');
+            const requestUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+            fetchAndRender(requestUrl);
+        };
+
+        const debouncedSearch = debounce(requestFromForm, 350);
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        form.querySelectorAll('select[name="status"], select[name="payment_status"], select[name="camp_id"]').forEach(function(selectEl) {
+            selectEl.addEventListener('change', requestFromForm);
+        });
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            requestFromForm();
+        });
+
+        tableContainer.addEventListener('click', function(event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', function() {
+                form.reset();
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                lastRequestUrl = null;
+                requestFromForm();
+            });
+        }
+    }
+
+    function initCopyStudentEmailButtons() {
+        document.querySelectorAll('.copy-student-email-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const email = btn.getAttribute('data-email');
+                if (!email) {
+                    return;
+                }
+
+                navigator.clipboard.writeText(email).then(function() {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    setTimeout(function() {
+                        btn.innerHTML = originalHtml;
+                    }, 1500);
+                }).catch(function() {
+                    console.error('Failed to copy student email');
+                });
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initEnrollmentsAjaxFilters();
+            initCopyStudentEmailButtons();
+        });
+    } else {
+        initEnrollmentsAjaxFilters();
+        initCopyStudentEmailButtons();
+    }
 </script>
 @stop

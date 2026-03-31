@@ -65,10 +65,10 @@
 
                             <div class="flex-shrink-0">
                                 <div class="form-check form-switch form-switch-right form-switch-md">
-                                    <form action="{{ route('users.index') }}" method="GET"
+                                    <form id="usersFilterForm" action="{{ route('users.index') }}" method="GET"
                                         class="d-flex align-items-center gap-2">
                                         {{-- حقل البحث --}}
-                                        <input style="width: 300px" type="text" name="query" class="form-control"
+                                        <input id="usersSearchInput" style="width: 300px" type="text" name="query" class="form-control"
                                             placeholder="بحث بالاسم أو الإيميل أو الهاتف" value="{{ request('query') }}">
 
                                         {{-- فلتر الحالة النشطة --}}
@@ -95,6 +95,7 @@
                                         <button type="submit" class="btn btn-secondary">بحث</button>
                                         <a href="{{ route('users.index') }}" class="btn btn-danger">مسح </a>
                                     </form>
+                                    <small id="usersSearchFeedback" class="text-muted d-block mt-1"></small>
                                 </div>
                             </div>
                         </div>
@@ -103,170 +104,8 @@
                         <div class="card-body">
                             <p class="text-muted">
                             <div class="">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th scope="col" style="width: 40px;">#</th>
-                                                <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
-                                                <th scope="col" style="min-width: 200px;">البريد</th>
-                                                <th scope="col" style="min-width: 120px;">الهاتف</th>
-                                                <th scope="col" style="min-width: 130px;">اخر دخول</th>
-                                                <th scope="col" style="min-width: 150px;">الأدوار</th>
-                                                <th scope="col" style="min-width: 110px;">الحالة</th>
-                                                <th scope="col" style="min-width: 120px;">الحالة النشطة</th>
-                                                <th scope="col" style="min-width: 200px;">العمليات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-
-                                            @forelse ($users as $user)
-                                                @php
-                                                    $userSessions = $sessions->get($user->id);
-                                                    $lastSession = $userSessions ? $userSessions->first() : null;
-                                                @endphp
-                                                <tr>
-                                                    <th scope="row">{{ $loop->iteration }}</th>
-
-                                                    <td>
-                                                        <a href="{{ route('users.show', $user->id) }}"
-                                                            class="text-decoration-none">
-                                                            {{ $user->name }}
-                                                        </a>
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($user->email)
-                                                            <button type="button" 
-                                                                    class="btn btn-sm btn-outline-secondary copy-email-btn me-1" 
-                                                                    data-email="{{ $user->email }}"
-                                                                    title="نسخ البريد">
-                                                                <i class="fas fa-copy"></i>
-                                                            </button>
-                                                            <a href="mailto:{{ $user->email }}"
-                                                                class="text-primary text-decoration-none"
-                                                                title="إرسال بريد إلكتروني">
-                                                                {{ $user->email }}
-                                                            </a>
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        @php
-                                                            $displayPhone = $user->full_phone ?? ($user->country_code && $user->phone ? $user->country_code . $user->phone : null) ?? $user->phone;
-                                                            $linkUrl = $user->whatsapp_url ?? ($displayPhone ? 'tel:' . preg_replace('/[^0-9+]/', '', $displayPhone) : null);
-                                                        @endphp
-                                                        @if ($displayPhone)
-                                                            @if ($linkUrl)
-                                                                <a href="{{ $linkUrl }}"
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    class="text-success text-decoration-none"
-                                                                    title="{{ $user->whatsapp_url ? 'فتح WhatsApp' : 'اتصال' }}">
-                                                                    <i class="fab fa-whatsapp me-1"></i>{{ $displayPhone }}
-                                                                </a>
-                                                            @else
-                                                                <i class="fab fa-whatsapp me-1 text-success"></i>{{ $displayPhone }}
-                                                            @endif
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($lastSession)
-                                                            {{ \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->diffForHumans() }}
-                                                        @else
-                                                            لا توجد جلسات
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        @foreach ($user->getRoleNames() as $role)
-                                                            <span class="badge bg-primary me-1">{{ $role }}</span>
-                                                        @endforeach
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($user->is_connected)
-                                                            <span class="badge bg-success">متصل</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">غير متصل</span>
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        <button class="btn btn-sm {{ $user->is_active ? 'btn-success' : 'btn-secondary' }}"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#toggleStatus{{ $user->id }}"
-                                                                title="تغيير الحالة">
-                                                            <i class="fas fa-power-off me-1"></i>
-                                                            {{ $user->is_active ? 'نشط' : 'غير نشط' }}
-                                                        </button>
-                                                    </td>
-
-                                                    <td>
-                                                        @if($user->hasRole('student'))
-                                                            <a class="btn btn-primary btn-sm me-1"
-                                                                href="{{ route('admin.users.courses', $user->id) }}"
-                                                                title="عرض الكورسات">
-                                                                <i class="fas fa-book"></i>
-                                                            </a>
-                                                            @if($user->is_active)
-                                                                <button type="button" 
-                                                                        class="btn btn-success btn-sm me-1 impersonate-btn" 
-                                                                        data-user-id="{{ $user->id }}"
-                                                                        data-user-name="{{ $user->name }}"
-                                                                        title="الدخول كطالب في تبويب جديد">
-                                                                    <i class="fas fa-user-secret"></i>
-                                                                </button>
-                                                            @endif
-                                                            @if($user->hasRole('student'))
-                                                                <a href="{{ route('users.student-details', $user->id) }}" 
-                                                                   class="btn btn-info btn-sm me-1"
-                                                                   title="عرض تفاصيل الطالب والمجموعات">
-                                                                    <i class="fas fa-users"></i>
-                                                                </a>
-                                                            @endif
-                                                        @endif
-                                                        <a class="btn btn-info btn-sm me-1"
-                                                            href="{{ route('users.edit', $user->id) }}"
-                                                            title="تعديل المستخدم">
-                                                            <i class="fa-solid fa-pen-to-square"></i>
-                                                        </a>
-                                                        <a class="btn btn-danger btn-sm me-1" data-bs-toggle="modal"
-                                                            data-bs-target="#delete{{ $user->id }}"
-                                                            title="حذف المستخدم">
-                                                            <i class="fa-solid fa-trash-can"></i>
-                                                        </a>
-                                                        <a href="#" class="btn btn-warning btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#change_password{{ $user->id }}"
-                                                            title="تعديل كلمة السر">
-                                                            <i class="fa-solid fa-key"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-
-                                                @include('admin.pages.users.delete')
-                                                @include('admin.pages.users.change_password')
-                                                @include('admin.pages.users.toggle_status')
-                                            @empty
-                                                <tr>
-                                                    <td colspan="8" class="text-center text-danger fw-bold">لا توجد
-                                                        بيانات متاحة
-                                                    </td>
-                                                </tr>
-                                            @endforelse
-
-                                        </tbody>
-                                    </table>
-
-                                    <div class="mt-3">
-                                        {{ $users->withQueryString()->links() }}
-                                    </div>
+                                <div id="usersTableContainer">
+                                    @include('admin.pages.users._users_table', ['users' => $users, 'sessions' => $sessions])
                                 </div>
                             </div>
 
@@ -627,6 +466,117 @@
         document.addEventListener('DOMContentLoaded', initCopyEmailButtons);
     } else {
         initCopyEmailButtons();
+    }
+
+    function debounce(fn, delay) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    function initUsersAjaxSearch() {
+        const form = document.getElementById('usersFilterForm');
+        const tableContainer = document.getElementById('usersTableContainer');
+        const searchInput = document.getElementById('usersSearchInput');
+        const feedback = document.getElementById('usersSearchFeedback');
+
+        if (!form || !tableContainer) {
+            return;
+        }
+
+        const getQueryString = function() {
+            const formData = new FormData(form);
+            const query = (formData.get('query') || '').toString().trim();
+            formData.set('query', query);
+            return new URLSearchParams(formData).toString();
+        };
+
+        let currentController = null;
+
+        const fetchAndRender = function(url) {
+            if (currentController) {
+                currentController.abort();
+            }
+
+            currentController = new AbortController();
+
+            if (feedback) {
+                feedback.textContent = 'جاري البحث...';
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('فشل جلب النتائج');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (!data || typeof data.table_html !== 'string') {
+                        throw new Error('صيغة استجابة غير متوقعة');
+                    }
+
+                    tableContainer.innerHTML = data.table_html;
+                    initImpersonateButtons();
+                    initCopyEmailButtons();
+
+                    if (feedback) {
+                        feedback.textContent = 'تم تحديث النتائج بنجاح';
+                    }
+                })
+                .catch(function(error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                    }
+                    console.error(error);
+                });
+        };
+
+        const triggerSearch = function() {
+            const queryString = getQueryString();
+            const baseUrl = form.getAttribute('action');
+            const url = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            fetchAndRender(url);
+        };
+
+        const debouncedSearch = debounce(triggerSearch, 350);
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        form.querySelectorAll('select[name="is_active"], select[name="status"]').forEach(function(selectElement) {
+            selectElement.addEventListener('change', triggerSearch);
+        });
+
+        tableContainer.addEventListener('click', function(event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUsersAjaxSearch);
+    } else {
+        initUsersAjaxSearch();
     }
 })();
 </script>

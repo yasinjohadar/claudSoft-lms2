@@ -65,6 +65,18 @@ public function index(Request $request)
         // تنفيذ الاستعلام
         $users = $usersQuery->paginate(10);
 
+        if ($request->ajax()) {
+            $tableHtml = view('admin.pages.users._users_table', [
+                'users' => $users,
+                'sessions' => $sessions,
+            ])->render();
+
+            return response()->json([
+                'table_html' => $tableHtml,
+                'count' => $users->total(),
+            ]);
+        }
+
         return view("admin.pages.users.index", compact("users", "roles", "sessions"));
     }
 

@@ -30,6 +30,29 @@
     .btn-xs i {
         font-size: 0.875rem;
     }
+    .camp-quick-info .kv-item small {
+        display: block;
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+    .camp-quick-info .kv-item strong {
+        font-size: 0.9rem;
+    }
+    .compact-side-card .card-body {
+        padding: 0.75rem 1rem;
+    }
+    .compact-side-card .meta-row {
+        margin-bottom: 0.55rem;
+    }
+    .compact-side-card .meta-row small {
+        font-size: 0.72rem;
+        color: #6c757d;
+        display: block;
+    }
+    .compact-side-card .meta-row p {
+        margin-bottom: 0;
+        font-size: 0.86rem;
+    }
 </style>
 @stop
 
@@ -139,86 +162,7 @@
             </div>
 
             <div class="row">
-                <!-- معلومات المعسكر -->
-                <div class="col-xl-8">
-                    <div class="card custom-card info-card">
-                        <div class="card-header">
-                            <div class="card-title">معلومات المعسكر</div>
-                        </div>
-                        <div class="card-body">
-                            @if($camp->image)
-                                <img src="{{ asset('storage/' . $camp->image) }}"
-                                     alt="{{ $camp->name }}"
-                                     class="camp-image-large mb-4">
-                            @endif
-
-                            <h4 class="mb-3">{{ $camp->name }}</h4>
-
-                            @if($camp->description)
-                                <div class="mb-4">
-                                    <h6 class="text-muted mb-2">الوصف:</h6>
-                                    <p class="text-muted">{{ $camp->description }}</p>
-                                </div>
-                            @endif
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">التصنيف:</h6>
-                                    @if($camp->category)
-                                        <span class="badge" style="background-color: {{ $camp->category->color }}">
-                                            {{ $camp->category->name }}
-                                        </span>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">المدرب:</h6>
-                                    <p>{{ $camp->instructor_name ?? '-' }}</p>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">الموقع:</h6>
-                                    <p>{{ $camp->location ?? '-' }}</p>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">تاريخ البداية:</h6>
-                                    <p>{{ $camp->start_date->format('Y-m-d') }}</p>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">تاريخ النهاية:</h6>
-                                    <p>{{ $camp->end_date->format('Y-m-d') }}</p>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <h6 class="text-muted mb-1">الحالة:</h6>
-                                    @if($camp->isOngoing())
-                                        <span class="badge bg-success">جاري الآن</span>
-                                    @elseif($camp->hasEnded())
-                                        <span class="badge bg-secondary">منتهي</span>
-                                    @else
-                                        <span class="badge bg-info">قادم</span>
-                                    @endif
-
-                                    @if($camp->is_active)
-                                        <span class="badge bg-success ms-1">نشط</span>
-                                    @else
-                                        <span class="badge bg-danger ms-1">معطل</span>
-                                    @endif
-
-                                    @if($camp->is_featured)
-                                        <span class="badge bg-warning ms-1">
-                                            <i class="fas fa-star me-1"></i>مميز
-                                        </span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                <div class="col-xl-9">
                     <!-- إدارة الأعضاء -->
                     <div class="card custom-card">
                         <div class="card-header d-flex justify-content-between align-items-center">
@@ -277,37 +221,74 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- معلومات المعسكر (مختصرة) -->
+                    <div class="card custom-card info-card camp-quick-info mt-3">
+                        <div class="card-header py-2">
+                            <div class="card-title mb-0">معلومات المعسكر</div>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="kv-item">
+                                    <small>المعسكر</small>
+                                    <strong>{{ $camp->name }}</strong>
+                                </div>
+                                <div class="kv-item">
+                                    <small>المدرب</small>
+                                    <strong>{{ $camp->instructor_name ?? '-' }}</strong>
+                                </div>
+                                <div class="kv-item">
+                                    <small>البداية</small>
+                                    <strong>{{ $camp->start_date->format('Y-m-d') }}</strong>
+                                </div>
+                                <div class="kv-item">
+                                    <small>النهاية</small>
+                                    <strong>{{ $camp->end_date->format('Y-m-d') }}</strong>
+                                </div>
+                                <div class="kv-item">
+                                    <small>الحالة</small>
+                                    @if($camp->isOngoing())
+                                        <span class="badge bg-success">جاري الآن</span>
+                                    @elseif($camp->hasEnded())
+                                        <span class="badge bg-secondary">منتهي</span>
+                                    @else
+                                        <span class="badge bg-info">قادم</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- معلومات إضافية -->
-                <div class="col-xl-4">
-                    <div class="card custom-card">
+                <div class="col-xl-3">
+                    <div class="card custom-card compact-side-card">
                         <div class="card-header">
                             <div class="card-title">معلومات إضافية</div>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
+                            <div class="meta-row">
                                 <small class="text-muted">المعرف (Slug)</small>
                                 <p class="mb-0"><code>{{ $camp->slug }}</code></p>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="meta-row">
                                 <small class="text-muted">الترتيب</small>
                                 <p class="mb-0">{{ $camp->order }}</p>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="meta-row">
                                 <small class="text-muted">تاريخ الإنشاء</small>
                                 <p class="mb-0">{{ $camp->created_at->format('Y-m-d H:i') }}</p>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="meta-row">
                                 <small class="text-muted">آخر تحديث</small>
                                 <p class="mb-0">{{ $camp->updated_at->format('Y-m-d H:i') }}</p>
                             </div>
 
                             @if($camp->max_participants)
-                                <div class="mb-3">
+                                <div class="meta-row">
                                     <small class="text-muted">المقاعد المتبقية</small>
                                     <p class="mb-0">
                                         <strong>{{ $camp->availableSeats() }}</strong> من {{ $camp->max_participants }}
@@ -367,6 +348,7 @@
     const updateStatusUrlTemplate = '{{ route("training-camps.enrollments.update-status", [$camp->id, ":id"]) }}';
     const destroyUrlTemplate = '{{ route("training-camps.enrollments.destroy", [$camp->id, ":id"]) }}';
     let currentPage = 1;
+    let currentFilterController = null;
 
     // Status configuration
     const statusConfig = {
@@ -394,12 +376,18 @@
             if (value) url.searchParams.append(key, value);
         }
 
+        if (currentFilterController) {
+            currentFilterController.abort();
+        }
+        currentFilterController = new AbortController();
+
         fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            signal: currentFilterController.signal
         })
         .then(response => response.json())
         .then(data => {
@@ -413,6 +401,9 @@
             }
         })
         .catch(error => {
+            if (error.name === 'AbortError') {
+                return;
+            }
             console.error('Error:', error);
             toastr.error('حدث خطأ أثناء تحميل البيانات');
         });
@@ -663,12 +654,30 @@
     }
 
 
+    function debounce(fn, delay) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    const debouncedLoadEnrollments = debounce(function() {
+        loadEnrollments(1);
+    }, 350);
+
     // Filter event handlers
+    document.getElementById('filter-search')?.addEventListener('input', function() {
+        debouncedLoadEnrollments();
+    });
     document.getElementById('filter-search')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            loadEnrollments(1);
-        }
+        if (e.key === 'Enter') e.preventDefault();
+    });
+    document.getElementById('filter-status')?.addEventListener('change', function() {
+        loadEnrollments(1);
+    });
+    document.getElementById('filter-payment-status')?.addEventListener('change', function() {
+        loadEnrollments(1);
     });
 
     // Load enrollments on page load

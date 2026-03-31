@@ -399,7 +399,19 @@ class TrainingCampController extends Controller
      */
     public function enrollments(Request $request)
     {
-        $query = \App\Models\CampEnrollment::with(['camp', 'student'])
+        $query = \App\Models\CampEnrollment::query()
+            ->select([
+                'id',
+                'camp_id',
+                'student_id',
+                'status',
+                'payment_status',
+                'created_at',
+            ])
+            ->with([
+                'camp:id,name,start_date',
+                'student:id,name,email',
+            ])
             ->orderBy('created_at', 'desc');
 
         // Filter by status
@@ -427,7 +439,22 @@ class TrainingCampController extends Controller
         }
 
         $enrollments = $query->paginate(20);
-        $camps = TrainingCamp::active()->orderBy('name')->get();
+        $camps = TrainingCamp::active()->orderBy('name')->get(['id', 'name']);
+
+        if ($request->ajax()) {
+            $tableHtml = view('admin.pages.training-camps.partials.enrollments-table', [
+                'enrollments' => $enrollments,
+            ])->render();
+
+            return response()->json([
+                'table_html' => $tableHtml,
+                'meta' => [
+                    'total' => $enrollments->total(),
+                    'current_page' => $enrollments->currentPage(),
+                    'last_page' => $enrollments->lastPage(),
+                ],
+            ]);
+        }
 
         return view('admin.pages.training-camps.enrollments', compact('enrollments', 'camps'));
     }

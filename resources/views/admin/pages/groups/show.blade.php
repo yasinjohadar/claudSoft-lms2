@@ -336,21 +336,13 @@
 
                         <div class="card-body">
                             <!-- Search and Filter Form -->
-                            <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4">
+                            <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4" id="groupMembersFilterForm">
                                 <div class="row g-3 align-items-end">
                                     <div class="col-md-3">
                                         <label class="form-label">البحث</label>
-                                        <input type="text" name="search" class="form-control"
+                                        <input type="text" name="search" class="form-control" id="groupMembersSearchInput"
                                                placeholder="ابحث بالاسم، الإيميل أو الهاتف..."
                                                value="{{ request('search') }}">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">الدور</label>
-                                        <select name="role" class="form-select">
-                                            <option value="">جميع الأدوار</option>
-                                            <option value="leader" {{ request('role') == 'leader' ? 'selected' : '' }}>قائد</option>
-                                            <option value="member" {{ request('role') == 'member' ? 'selected' : '' }}>عضو</option>
-                                        </select>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label">المجموعة الأخرى</label>
@@ -391,10 +383,10 @@
                                     </div>
                                     <div class="col-md-12 mt-3">
                                         <div class="d-flex gap-2">
-                                            <button type="submit" class="btn btn-primary">
+                                            <button type="submit" class="btn btn-primary" id="groupMembersSearchBtn">
                                                 <i class="fas fa-search me-1"></i>بحث
                                             </button>
-                                            <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين">
+                                            <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين" id="groupMembersResetBtn">
                                                 <i class="fas fa-redo me-1"></i>إعادة تعيين
                                             </a>
                                         </div>
@@ -402,168 +394,10 @@
                                 </div>
                             </form>
 
-                            @if($members && $members->isNotEmpty())
-                                <div class="table-responsive">
-                                    <table class="table table-hover text-nowrap">
-                                        <thead>
-                                            <tr>
-                                                <th width="50">
-                                                    <input type="checkbox" id="selectAllMembers" title="تحديد الكل">
-                                                </th>
-                                                <th>#</th>
-                                                <th>اسم الطالب</th>
-                                                <th>البريد الإلكتروني</th>
-                                                <th>رقم الهاتف</th>
-                                                <th>الدور</th>
-                                                <th>تاريخ الانضمام</th>
-                                                <th>آخر دخول</th>
-                                                <th>الحالة</th>
-                                                <th>المجموعات الأخرى</th>
-                                                <th>الإجراءات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($members as $index => $memberRecord)
-                                                @if($memberRecord->student)
-                                                    <tr>
-                                                        <td>
-                                                            <input type="checkbox" class="member-checkbox" value="{{ $memberRecord->student_id }}" data-member-name="{{ $memberRecord->student->name }}">
-                                                        </td>
-                                                        <td>{{ ($members->currentPage() - 1) * $members->perPage() + $index + 1 }}</td>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                @if($memberRecord->student->avatar)
-                                                                    <img src="{{ asset('storage/' . $memberRecord->student->avatar) }}" alt="{{ $memberRecord->student->name }}" class="avatar avatar-sm rounded-circle me-2">
-                                                                @else
-                                                                    <div class="avatar avatar-sm rounded-circle bg-primary-transparent me-2">
-                                                                        <span class="fw-bold">{{ substr($memberRecord->student->name, 0, 1) }}</span>
-                                                                    </div>
-                                                                @endif
-                                                                <a href="{{ route('users.show', $memberRecord->student_id) }}" class="text-decoration-none">
-                                                                    <strong>{{ $memberRecord->student->name }}</strong>
-                                                                </a>
-                                                            </div>
-                                                        </td>
-                                                        <td>{{ $memberRecord->student->email }}</td>
-                                                        <td>
-                                                            @if($memberRecord->student->phone)
-                                                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $memberRecord->student->phone) }}" target="_blank" class="text-success" title="مراسلة عبر واتساب">
-                                                                    <i class="fab fa-whatsapp me-1"></i>{{ $memberRecord->student->phone }}
-                                                                </a>
-                                                            @else
-                                                                -
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @if($memberRecord->role == 'leader')
-                                                                <span class="badge bg-warning">قائد</span>
-                                                            @else
-                                                                <span class="badge bg-info">عضو</span>
-                                                            @endif
-                                                        </td>
-                                                        <td>{{ $memberRecord->joined_at ? $memberRecord->joined_at->format('Y-m-d') : '-' }}</td>
-                                                        <td>
-                                                            @php
-                                                                $studentId = $memberRecord->student_id;
-                                                                $lastActivity = $lastActivityByUserId[$studentId] ?? null;
-                                                                $isOnline = in_array($studentId, $onlineUserIds ?? []);
-                                                            @endphp
-                                                            @if($lastActivity)
-                                                                <span title="{{ $lastActivity->format('Y-m-d H:i:s') }}">
-                                                                    {{ $lastActivity->format('Y-m-d H:i') }}
-                                                                </span>
-                                                            @else
-                                                                <span class="text-muted">-</span>
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @if($isOnline)
-                                                                <span class="badge bg-success" title="متصل الآن - آخر نشاط: {{ $lastActivity ? $lastActivity->format('Y-m-d H:i:s') : 'الآن' }}">
-                                                                    <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>متصل
-                                                                </span>
-                                                            @else
-                                                                <span class="badge bg-secondary" title="غير متصل{{ $lastActivity ? ' - آخر نشاط: ' . $lastActivity->format('Y-m-d H:i:s') : '' }}">
-                                                                    <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>غير متصل
-                                                                </span>
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @php
-                                                                $otherGroups = $memberRecord->student->courseGroupMemberships
-                                                                    ->filter(function($membership) use ($group) {
-                                                                        return $membership->group_id != $group->id && $membership->group;
-                                                                    })
-                                                                    ->pluck('group')
-                                                                    ->filter();
-                                                            @endphp
-                                                            
-                                                            @if($otherGroups->isNotEmpty())
-                                                                <div class="d-flex flex-wrap gap-1">
-                                                                    @foreach($otherGroups->take(3) as $otherGroup)
-                                                                        @php
-                                                                            $otherGroupCourse = $otherGroup->courses->first();
-                                                                        @endphp
-                                                                        @if($otherGroupCourse)
-                                                                            <a href="{{ route('courses.groups.show', [$otherGroupCourse->id, $otherGroup->id]) }}" 
-                                                                               class="badge bg-primary-transparent text-primary" 
-                                                                               title="{{ $otherGroup->name }}">
-                                                                                {{ $otherGroup->name }}
-                                                                            </a>
-                                                                        @else
-                                                                            <span class="badge bg-primary-transparent text-primary" 
-                                                                                  title="{{ $otherGroup->name }}">
-                                                                                {{ $otherGroup->name }}
-                                                                            </span>
-                                                                        @endif
-                                                                    @endforeach
-                                                                    @if($otherGroups->count() > 3)
-                                                                        <span class="badge bg-secondary-transparent text-secondary" 
-                                                                              title="{{ $otherGroups->skip(3)->pluck('name')->implode(', ') }}">
-                                                                            +{{ $otherGroups->count() - 3 }}
-                                                                        </span>
-                                                                    @endif
-                                                                </div>
-                                                            @else
-                                                                <span class="text-muted">-</span>
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            <div class="btn-group" role="group">
-                                                                <button type="button" class="btn btn-sm btn-outline-primary" title="تغيير الدور">
-                                                                    <i class="fas fa-user-tag"></i>
-                                                                </button>
-                                                                <button type="button" 
-                                                                        class="btn btn-sm btn-outline-danger" 
-                                                                        title="إزالة"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#removeMemberModal{{ $memberRecord->student_id }}"
-                                                                        data-member-name="{{ $memberRecord->student->name }}"
-                                                                        data-member-id="{{ $memberRecord->student_id }}">
-                                                                    <i class="fas fa-user-times"></i>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- Pagination -->
-                                <div class="mt-4 d-flex justify-content-center">
-                                    {{ $members->links() }}
-                                </div>
-                            @else
-                                <div class="text-center py-5">
-                                    <i class="fas fa-users fa-5x text-muted mb-4 opacity-25"></i>
-                                    <h4 class="text-muted mb-3">لا يوجد أعضاء</h4>
-                                    <p class="text-muted">ابدأ بإضافة أعضاء إلى هذه المجموعة</p>
-                                    <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                                        <i class="fas fa-user-plus me-2"></i>إضافة عضو
-                                    </button>
-                                </div>
-                            @endif
+                            <div id="groupMembersFilterFeedback" class="small text-muted mb-2"></div>
+                            <div id="groupMembersTableContainer">
+                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? []])
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -683,47 +517,6 @@
         </div>
     </div>
 
-    <!-- Remove Member Modals -->
-    @foreach($members as $memberRecord)
-        @if($memberRecord->student)
-            <div class="modal fade" id="removeMemberModal{{ $memberRecord->student_id }}" tabindex="-1" aria-labelledby="removeMemberModalLabel{{ $memberRecord->student_id }}" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content shadow-lg rounded-4">
-                        <div class="modal-header border-0 pb-0">
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body text-center py-4">
-                            <div class="mb-4">
-                                <div class="avatar avatar-xl mx-auto mb-3 bg-danger-transparent">
-                                    <i class="fas fa-user-times fs-24 text-danger"></i>
-                                </div>
-                                <h5 class="mb-2" id="removeMemberModalLabel{{ $memberRecord->student_id }}">إزالة العضو من المجموعة</h5>
-                                <p class="text-muted mb-0">
-                                    هل أنت متأكد من إزالة <strong>{{ $memberRecord->student->name }}</strong> من هذه المجموعة؟
-                                </p>
-                                <p class="text-danger small mt-2 mb-0">
-                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                    لا يمكن التراجع عن هذا الإجراء!
-                                </p>
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 pt-0 justify-content-center">
-                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-2"></i>إلغاء
-                            </button>
-                            <form action="{{ route('groups.remove-member', [$group->id, $memberRecord->student_id]) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-user-times me-2"></i>نعم، إزالة العضو
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
-    @endforeach
 @stop
 
 @section('script')
@@ -740,8 +533,7 @@
         });
     }, 10000);
 
-    // Bulk Selection and Actions
-    (function() {
+    function initGroupMembersSelection() {
         const selectAllCheckbox = document.getElementById('selectAllMembers');
         const memberCheckboxes = document.querySelectorAll('.member-checkbox');
         const bulkActionsBar = document.getElementById('bulkActionsBar');
@@ -755,6 +547,10 @@
             const selected = document.querySelectorAll('.member-checkbox:checked');
             const count = selected.length;
             
+            if (!bulkActionsBar || !selectedCountSpan || !bulkRemoveCountSpan || !bulkRemoveBtn) {
+                return;
+            }
+
             if (count > 0) {
                 bulkActionsBar.style.display = 'block';
                 selectedCountSpan.textContent = count;
@@ -849,7 +645,80 @@
 
         // Initial update
         updateBulkActions();
-    })();
+    }
+
+    function initGroupMembersAjaxFilters() {
+        const form = document.getElementById('groupMembersFilterForm');
+        const container = document.getElementById('groupMembersTableContainer');
+        const feedback = document.getElementById('groupMembersFilterFeedback');
+        const searchInput = document.getElementById('groupMembersSearchInput');
+        const resetBtn = document.getElementById('groupMembersResetBtn');
+        if (!form || !container) return;
+
+        let activeController = null;
+        let debounceTimer = null;
+
+        const loadMembers = async (url = null) => {
+            if (activeController) activeController.abort();
+            activeController = new AbortController();
+
+            const params = new URLSearchParams(new FormData(form));
+            const targetUrl = url || `${form.action}?${params.toString()}`;
+            if (feedback) feedback.textContent = 'جاري تحميل النتائج...';
+
+            try {
+                const response = await fetch(targetUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    signal: activeController.signal
+                });
+                if (!response.ok) throw new Error('Failed request');
+                const data = await response.json();
+                container.innerHTML = data.table_html || '';
+                if (feedback) feedback.textContent = '';
+                initGroupMembersSelection();
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                if (feedback) feedback.textContent = 'حدث خطأ أثناء تحميل البيانات';
+            }
+        };
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadMembers();
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => loadMembers(), 450);
+            });
+        }
+
+        form.querySelectorAll('select, input[type="date"]').forEach((element) => {
+            element.addEventListener('change', () => loadMembers());
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                loadMembers(form.action);
+            });
+        }
+
+        container.addEventListener('click', function (e) {
+            const link = e.target.closest('.pagination a');
+            if (!link) return;
+            e.preventDefault();
+            loadMembers(link.href);
+        });
+    }
+
+    initGroupMembersSelection();
+    initGroupMembersAjaxFilters();
 
     // Initialize Choices.js for single student select
     let singleChoicesInstance = null;

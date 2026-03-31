@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
+use App\Models\TrainingCamp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,12 +17,17 @@ class PaymentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Payment::with(['invoice.student', 'paymentMethod', 'receivedBy'])
+        $query = Payment::with([
+                'invoice.student',
+                'invoice.items.campEnrollment.camp',
+                'paymentMethod',
+                'receivedBy'
+            ])
             ->orderBy('payment_date', 'desc');
 
-        // Filter by search
-        if ($request->filled('search')) {
-            $search = $request->search;
+        // Filter by payment number or generic search
+        if ($request->filled('payment_number') || $request->filled('search')) {
+            $search = $request->payment_number ?? $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('payment_number', 'like', "%{$search}%")
                   ->orWhere('transaction_id', 'like', "%{$search}%")
@@ -61,6 +67,13 @@ class PaymentController extends Controller
             $query->where('payment_method_id', $request->payment_method_id);
         }
 
+        // Filter by associated training camp
+        if ($request->filled('camp_id')) {
+            $query->whereHas('invoice.items.campEnrollment', function ($q) use ($request) {
+                $q->where('camp_id', $request->camp_id);
+            });
+        }
+
         // Filter by date range
         if ($request->filled('from_date')) {
             $query->whereDate('payment_date', '>=', $request->from_date);
@@ -69,10 +82,45 @@ class PaymentController extends Controller
             $query->whereDate('payment_date', '<=', $request->to_date);
         }
 
+        $statsBaseQuery = clone $query;
+        $completedStatsQuery = clone $query;
+        $pendingStatsQuery = clone $query;
+        $cancelledStatsQuery = clone $query;
+        $refundedStatsQuery = clone $query;
+
+        $invoiceIds = (clone $query)
+            ->reorder()
+            ->select('invoice_id')
+            ->whereNotNull('invoice_id')
+            ->distinct()
+            ->pluck('invoice_id');
+
+        $stats = [
+            'completed_amount' => (float) $completedStatsQuery->where('status', 'completed')->sum('amount'),
+            'completed_count' => (int) (clone $query)->where('status', 'completed')->count(),
+            'pending_amount' => (float) $pendingStatsQuery->where('status', 'pending')->sum('amount'),
+            'pending_count' => (int) (clone $query)->where('status', 'pending')->count(),
+            'cancelled_amount' => (float) $cancelledStatsQuery->where('status', 'cancelled')->sum('amount'),
+            'cancelled_count' => (int) (clone $query)->where('status', 'cancelled')->count(),
+            'refunded_amount' => (float) $refundedStatsQuery->where('status', 'refunded')->sum('amount'),
+            'refunded_count' => (int) (clone $query)->where('status', 'refunded')->count(),
+            'paid_amount' => (float) $statsBaseQuery->sum('amount'),
+            'remaining_amount' => (float) Invoice::whereIn('id', $invoiceIds)->sum('remaining_amount'),
+        ];
+
         $payments = $query->paginate(20);
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
+        $camps = TrainingCamp::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('admin.pages.payments.index', compact('payments', 'paymentMethods'));
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => view('admin.pages.payments.partials.stats', compact('stats'))->render(),
+                'table' => view('admin.pages.payments.partials.table', compact('payments'))->render(),
+                'pagination' => $payments->hasPages() ? $payments->links()->render() : ''
+            ]);
+        }
+
+        return view('admin.pages.payments.index', compact('payments', 'paymentMethods', 'camps', 'stats'));
     }
 
     /**

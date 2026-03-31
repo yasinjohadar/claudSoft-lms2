@@ -96,6 +96,10 @@
                 </div>
             </div>
 
+            <div class="row mb-4" id="invoices-stats-container">
+                @include('admin.pages.invoices.partials.stats', ['stats' => $stats])
+            </div>
+
             <!-- Start::row-1 -->
             <div class="row">
                 <div class="col-xl-12">
@@ -172,6 +176,7 @@
                                             <th scope="col" style="width: 50px;">#</th>
                                             <th scope="col">رقم الفاتورة</th>
                                             <th scope="col">الطالب</th>
+                                            <th scope="col">المعسكر المرتبط</th>
                                             <th scope="col">تاريخ الإصدار</th>
                                             <th scope="col">الاستحقاق</th>
                                             <th scope="col">المبلغ الإجمالي</th>
@@ -217,9 +222,10 @@
             isLoading = true;
             const tableBody = $('#invoices-table-body');
             const pagination = $('#invoices-pagination');
+            const statsContainer = $('#invoices-stats-container');
             
             // Show loading indicator
-            tableBody.html('<tr><td colspan="10" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
+            tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
 
             const formData = {
                 search: $('#search').val(),
@@ -240,13 +246,16 @@
                     'Accept': 'application/json'
                 },
                 success: function(response) {
+                    if (response.stats) {
+                        statsContainer.html(response.stats);
+                    }
                     tableBody.html(response.table);
                     pagination.html(response.pagination || '');
                     isLoading = false;
                 },
                 error: function(xhr) {
                     console.error('Error loading invoices:', xhr);
-                    tableBody.html('<tr><td colspan="10" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
+                    tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
                     isLoading = false;
                 }
             });

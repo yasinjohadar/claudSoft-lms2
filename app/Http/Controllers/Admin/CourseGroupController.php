@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\GroupMembershipRequest;
+use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -217,11 +218,6 @@ class CourseGroupController extends Controller
                 });
             }
 
-            // Role filter
-            if ($request->filled('role')) {
-                $membersQuery->where('role', $request->role);
-            }
-
             // Filter by other group membership
             if ($request->filled('other_group_id')) {
                 $otherGroupId = $request->other_group_id;
@@ -274,6 +270,15 @@ class CourseGroupController extends Controller
 
             $members = $membersQuery->paginate($request->get('per_page', 15));
 
+            $memberIdsInPage = $members->pluck('student_id')->filter()->values();
+            $dueAmountsByStudentId = Invoice::query()
+                ->selectRaw('student_id, SUM(remaining_amount) as due_amount')
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('remaining_amount', '>', 0)
+                ->groupBy('student_id')
+                ->pluck('due_amount', 'student_id')
+                ->toArray();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -295,7 +300,20 @@ class CourseGroupController extends Controller
                 ->whereNotIn('id', $groupStudentIds)
                 ->get();
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds'));
+            if ($request->ajax()) {
+                return response()->json([
+                    'table_html' => view('admin.pages.groups.partials.members-table', [
+                        'members' => $members,
+                        'group' => $group,
+                        'course' => $course,
+                        'lastActivityByUserId' => $lastActivityByUserId,
+                        'onlineUserIds' => $onlineUserIds,
+                        'dueAmountsByStudentId' => $dueAmountsByStudentId,
+                    ])->render(),
+                ]);
+            }
+
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
@@ -1009,11 +1027,6 @@ class CourseGroupController extends Controller
                 });
             }
 
-            // Role filter
-            if ($request->filled('role')) {
-                $membersQuery->where('role', $request->role);
-            }
-
             // Filter by other group membership
             if ($request->filled('other_group_id')) {
                 $otherGroupId = $request->other_group_id;
@@ -1047,6 +1060,15 @@ class CourseGroupController extends Controller
 
             $members = $membersQuery->paginate($request->get('per_page', 15));
 
+            $memberIdsInPage = $members->pluck('student_id')->filter()->values();
+            $dueAmountsByStudentId = Invoice::query()
+                ->selectRaw('student_id, SUM(remaining_amount) as due_amount')
+                ->whereIn('student_id', $memberIdsInPage)
+                ->where('remaining_amount', '>', 0)
+                ->groupBy('student_id')
+                ->pluck('due_amount', 'student_id')
+                ->toArray();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -1068,7 +1090,20 @@ class CourseGroupController extends Controller
                 ->whereNotIn('id', $groupStudentIds)
                 ->get();
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups'));
+            if ($request->ajax()) {
+                return response()->json([
+                    'table_html' => view('admin.pages.groups.partials.members-table', [
+                        'members' => $members,
+                        'group' => $group,
+                        'course' => $course,
+                        'lastActivityByUserId' => [],
+                        'onlineUserIds' => [],
+                        'dueAmountsByStudentId' => $dueAmountsByStudentId,
+                    ])->render(),
+                ]);
+            }
+
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
@@ -1111,7 +1146,23 @@ class CourseGroupController extends Controller
                 })
                 ->findOrFail($groupId);
 
-            $query = GroupMembershipRequest::with(['student', 'approver', 'rejecter'])
+            $query = GroupMembershipRequest::query()
+                ->select([
+                    'id',
+                    'group_id',
+                    'student_id',
+                    'status',
+                    'message',
+                    'payment_date',
+                    'created_at',
+                    'approved_at',
+                    'rejected_at',
+                ])
+                ->with([
+                    'student:id,name,name_ar,email,phone,country_code',
+                    'approver:id,name',
+                    'rejecter:id,name',
+                ])
                 ->where('group_id', $groupId);
 
             // Filter by status
@@ -1140,6 +1191,23 @@ class CourseGroupController extends Controller
             $pendingCount = GroupMembershipRequest::where('group_id', $groupId)
                 ->where('status', 'pending')
                 ->count();
+
+            if ($request->ajax()) {
+                $tableHtml = view('admin.course-groups.partials.membership-requests-table', [
+                    'requests' => $requests,
+                    'course' => $course,
+                    'group' => $group,
+                ])->render();
+
+                return response()->json([
+                    'table_html' => $tableHtml,
+                    'meta' => [
+                        'total' => $requests->total(),
+                        'current_page' => $requests->currentPage(),
+                        'last_page' => $requests->lastPage(),
+                    ],
+                ]);
+            }
 
             return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount'));
         } catch (\Exception $e) {

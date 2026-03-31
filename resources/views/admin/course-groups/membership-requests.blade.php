@@ -78,10 +78,11 @@
             <!-- Filter Form -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}">
+                    <form id="membershipRequestsFilterForm" method="GET" action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <input type="text"
+                                       id="membershipRequestsSearchInput"
                                        name="search"
                                        class="form-control"
                                        placeholder="البحث بالاسم، الإيميل أو الهاتف..."
@@ -101,12 +102,13 @@
                                 </button>
                             </div>
                             <div class="col-md-3">
-                                <a href="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}" class="btn btn-outline-secondary w-100">
+                                <button type="button" id="membershipRequestsResetBtn" class="btn btn-outline-secondary w-100">
                                     <i class="bi bi-arrow-clockwise"></i> إعادة تعيين
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </form>
+                    <small id="membershipRequestsFeedback" class="text-muted d-block mt-2"></small>
                 </div>
             </div>
 
@@ -115,7 +117,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">
                         <i class="bi bi-list-ul me-2"></i>
-                        طلبات الانضمام ({{ $requests->total() }})
+                        طلبات الانضمام (<span id="membershipRequestsTotal">{{ $requests->total() }}</span>)
                     </h6>
                     <div class="d-flex gap-2">
                         <div id="approve-selected-container" style="display: none;">
@@ -148,221 +150,9 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        <input type="checkbox" id="select-all-checkbox" title="تحديد الكل">
-                                    </th>
-                                    <th>#</th>
-                                    <th>اسم الطالب</th>
-                                    <th>البريد الإلكتروني</th>
-                                    <th>رقم الهاتف</th>
-                                    <th>تاريخ الطلب</th>
-                                    <th>موعد تسديد الرسوم</th>
-                                    <th>الرسالة</th>
-                                    <th>الحالة</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($requests as $request)
-                                    <tr>
-                                        <td>
-                                            <input type="checkbox" class="request-checkbox" name="request_ids[]" value="{{ $request->id }}" data-status="{{ $request->status }}">
-                                        </td>
-                                        <td>{{ $request->id }}</td>
-                                        <td>
-                                            <strong>{{ $request->student->name }}</strong>
-                                            @if($request->student->name_ar)
-                                                <br><small class="text-muted">{{ $request->student->name_ar }}</small>
-                                            @endif
-                                        </td>
-                                        <td>{{ $request->student->email }}</td>
-                                        <td>
-                                            @if($request->student->phone)
-                                                {{ $request->student->phone }}
-                                                @if($request->student->country_code)
-                                                    ({{ $request->student->country_code }})
-                                                @endif
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $request->created_at->format('Y-m-d H:i') }}</td>
-                                        <td>
-                                            @if($request->payment_date)
-                                                <span class="badge bg-info">{{ $request->payment_date->format('Y-m-d') }}</span>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($request->message)
-                                                <button type="button" 
-                                                        class="btn btn-sm btn-outline-info" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#messageModal{{ $request->id }}">
-                                                    <i class="bi bi-envelope"></i> عرض
-                                                </button>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($request->status === 'pending')
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bi bi-clock-history"></i> قيد المراجعة
-                                                </span>
-                                            @elseif($request->status === 'approved')
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-check-circle"></i> مقبول
-                                                </span>
-                                                @if($request->approved_at)
-                                                    <br><small class="text-muted">{{ $request->approved_at->format('Y-m-d') }}</small>
-                                                @endif
-                                            @elseif($request->status === 'rejected')
-                                                <span class="badge bg-danger">
-                                                    <i class="bi bi-x-circle"></i> مرفوض
-                                                </span>
-                                                @if($request->rejected_at)
-                                                    <br><small class="text-muted">{{ $request->rejected_at->format('Y-m-d') }}</small>
-                                                @endif
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($request->status === 'pending')
-                                                <div class="btn-group" role="group">
-                                                    <form action="{{ route('courses.groups.membership-requests.approve', [$course->id, $group->id, $request->id]) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من قبول طلب الانضمام؟');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-success" title="قبول">
-                                                            <i class="bi bi-check-circle"></i>
-                                                        </button>
-                                                    </form>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#rejectModal{{ $request->id }}"
-                                                            title="رفض">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
-                                                </div>
-                                            @elseif($request->status === 'rejected')
-                                                <div class="btn-group" role="group">
-                                                    <form action="{{ route('courses.groups.membership-requests.approve', [$course->id, $group->id, $request->id]) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من قبول طلب الانضمام المرفوض؟');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-success" title="قبول">
-                                                            <i class="bi bi-check-circle"></i>
-                                                        </button>
-                                                    </form>
-                                                    <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من حذف طلب الانضمام نهائياً؟ سيتم الاحتفاظ بالتسجيل المرتبط.');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-danger" title="حذف نهائي">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            @elseif($request->status === 'approved')
-                                                <div class="btn-group" role="group">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#rejectModal{{ $request->id }}"
-                                                            title="رفض">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
-                                                    <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من حذف سجل طلب الانضمام نهائياً؟ لن يؤثر ذلك على انضمام الطالب للمجموعة.');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف نهائي">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-
-                                    <!-- Message Modal -->
-                                    @if($request->message)
-                                        <div class="modal fade" id="messageModal{{ $request->id }}" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">رسالة من الطالب</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>{{ $request->message }}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
-
-                                    <!-- Reject Modal -->
-                                    <div class="modal fade" id="rejectModal{{ $request->id }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <form action="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $request->id]) }}" method="POST">
-                                                    @csrf
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">رفض طلب الانضمام</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>هل أنت متأكد من رفض طلب انضمام <strong>{{ $request->student->name }}</strong>؟</p>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">ملاحظات (اختياري)</label>
-                                                            <textarea name="admin_notes" 
-                                                                      class="form-control" 
-                                                                      rows="3"
-                                                                      placeholder="أضف ملاحظات حول سبب الرفض..."></textarea>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                        <button type="submit" class="btn btn-danger">رفض الطلب</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <tr>
-                                        <td colspan="10" class="text-center py-5">
-                                            <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
-                                            <h5 class="text-muted">لا توجد طلبات</h5>
-                                            <p class="text-muted">لا توجد طلبات انضمام لهذه المجموعة</p>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                    <div id="membershipRequestsTableContainer">
+                        @include('admin.course-groups.partials.membership-requests-table', ['requests' => $requests, 'course' => $course, 'group' => $group])
                     </div>
-
-                    <!-- Pagination -->
-                    @if($requests->hasPages())
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $requests->links() }}
-                        </div>
-                    @endif
                 </div>
             </div>
         </div>
@@ -455,23 +245,16 @@
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const selectAllCheckbox = document.getElementById('select-all-checkbox');
-    const requestCheckboxes = document.querySelectorAll('.request-checkbox');
+    const tableContainer = document.getElementById('membershipRequestsTableContainer');
+    const filterForm = document.getElementById('membershipRequestsFilterForm');
+    const searchInput = document.getElementById('membershipRequestsSearchInput');
+    const resetBtn = document.getElementById('membershipRequestsResetBtn');
+    const totalCounter = document.getElementById('membershipRequestsTotal');
+    const feedback = document.getElementById('membershipRequestsFeedback');
+
     const approveSelectedContainer = document.getElementById('approve-selected-container');
     const approveSelectedForm = document.getElementById('approve-selected-form');
     const selectedRequestIdsContainer = document.getElementById('selected-request-ids-container');
-
-    // Select/Deselect All
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            requestCheckboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-            });
-            updateBulkActions();
-        });
-    }
-
-    // Update bulk actions visibility
     const deleteSelectedContainer = document.getElementById('delete-selected-container');
     const deleteSelectedForm = document.getElementById('delete-selected-form');
     const deleteRequestIdsContainer = document.getElementById('delete-request-ids-container');
@@ -491,8 +274,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update select all checkbox state
     function updateSelectAll() {
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const requestCheckboxes = document.querySelectorAll('.request-checkbox');
         if (selectAllCheckbox && requestCheckboxes.length > 0) {
             const allChecked = Array.from(requestCheckboxes).every(cb => cb.checked);
             const someChecked = Array.from(requestCheckboxes).some(cb => cb.checked);
@@ -501,13 +285,160 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Listen to individual checkbox changes
-    requestCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateBulkActions();
-            updateSelectAll();
+    function initSelectionHandlers() {
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const requestCheckboxes = document.querySelectorAll('.request-checkbox');
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                requestCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkActions();
+            });
+        }
+
+        requestCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateBulkActions();
+                updateSelectAll();
+            });
         });
-    });
+    }
+
+    function initCopyEmailButtons() {
+        document.querySelectorAll('.copy-email-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const email = btn.getAttribute('data-email');
+                if (!email) return;
+
+                navigator.clipboard.writeText(email).then(function() {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="bi bi-check2 text-success"></i>';
+                    setTimeout(function() {
+                        btn.innerHTML = originalHtml;
+                    }, 1200);
+                }).catch(function() {
+                    console.error('Failed to copy email');
+                });
+            });
+        });
+    }
+
+    function debounce(fn, delay) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    let currentController = null;
+    let lastRequestUrl = null;
+
+    function setFeedback(message) {
+        if (feedback) {
+            feedback.textContent = message;
+        }
+    }
+
+    function fetchAndRender(url) {
+        if (!tableContainer) return;
+        if (url === lastRequestUrl) return;
+        lastRequestUrl = url;
+
+        if (currentController) {
+            currentController.abort();
+        }
+
+        currentController = new AbortController();
+        tableContainer.style.opacity = '0.6';
+        setFeedback('جاري تحديث النتائج...');
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            signal: currentController.signal,
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed request');
+                return response.json();
+            })
+            .then(data => {
+                if (!data || typeof data.table_html !== 'string') {
+                    throw new Error('Invalid response');
+                }
+
+                tableContainer.innerHTML = data.table_html;
+                if (totalCounter && data.meta && typeof data.meta.total !== 'undefined') {
+                    totalCounter.textContent = data.meta.total;
+                }
+
+                initSelectionHandlers();
+                initCopyEmailButtons();
+                updateBulkActions();
+                updateSelectAll();
+                setFeedback('تم تحديث النتائج');
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') return;
+                console.error(error);
+                setFeedback('تعذر تحديث النتائج. حاول مرة أخرى.');
+            })
+            .finally(() => {
+                tableContainer.style.opacity = '1';
+            });
+    }
+
+    function requestFromFilterForm() {
+        if (!filterForm) return;
+        const formData = new FormData(filterForm);
+        const searchValue = (formData.get('search') || '').toString().trim();
+        formData.set('search', searchValue);
+        const queryString = new URLSearchParams(formData).toString();
+        const baseUrl = filterForm.getAttribute('action');
+        fetchAndRender(queryString ? `${baseUrl}?${queryString}` : baseUrl);
+    }
+
+    const debouncedSearch = debounce(requestFromFilterForm, 350);
+
+    if (searchInput) {
+        searchInput.addEventListener('input', debouncedSearch);
+    }
+
+    if (filterForm) {
+        filterForm.querySelectorAll('select[name="status"]').forEach(function(sel) {
+            sel.addEventListener('change', requestFromFilterForm);
+        });
+
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            requestFromFilterForm();
+        });
+    }
+
+    if (resetBtn && filterForm) {
+        resetBtn.addEventListener('click', function() {
+            filterForm.reset();
+            if (searchInput) searchInput.value = '';
+            lastRequestUrl = null;
+            requestFromFilterForm();
+        });
+    }
+
+    if (tableContainer) {
+        tableContainer.addEventListener('click', function(e) {
+            const paginationLink = e.target.closest('.pagination a');
+            if (!paginationLink) return;
+
+            e.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
 
     // Update selected count in modal when opening
     const approveSelectedBtn = document.getElementById('approve-selected-btn');
@@ -579,7 +510,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initial update
+    // Initial setup
+    initSelectionHandlers();
+    initCopyEmailButtons();
     updateBulkActions();
     updateSelectAll();
 });
