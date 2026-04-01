@@ -25,15 +25,5 @@
         </div>
     @endif
 
-    <!-- Breadcrumb -->
-    <div class="page-header">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}" data-turbo="false">الرئيسية</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('student.courses.my-courses') }}" data-turbo="false">كورساتي</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('student.courses.show', $module->course_id) }}" data-turbo="false">{{ $module->course->title }}</a></li>
-            <li class="breadcrumb-item active">{{ $module->title }}</li>
-        </ol>
-    </div>
-
     @include('student.courses.learning.module-main-inner')
 </turbo-frame>

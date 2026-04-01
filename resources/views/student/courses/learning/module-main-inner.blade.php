@@ -10,8 +10,9 @@
                             str_contains($videoUrl, 'iframe.mediadelivery')
                         );
                     @endphp
-                    <div class="card">
-                        <div class="card-body p-3">
+                    <div class="student-learn-video-sticky-wrap">
+                    <div class="card student-learn-video-card">
+                        <div class="card-body p-0 p-lg-3">
                             {{-- Video Container with 16:9 Aspect Ratio --}}
                             <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
                                 @php
@@ -62,6 +63,7 @@
                                 @endif
                             </div>
                         </div>
+                    </div>
                     </div>
                 @endif
 
@@ -418,34 +420,34 @@
 
                 <!-- Complete -->
                 @if($enrollment)
-                    <div class="card border-primary" id="module-completion-card"
+                    <div class="card border-primary student-learn-completion-card" id="module-completion-card"
                          data-module-id="{{ $module->id }}"
                          data-url-complete="{{ route('student.learn.module.mark-complete', $module->id) }}"
                          data-url-incomplete="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center flex-grow-1">
-                                    <div>
-                                        <h5><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
-                                        <p class="text-muted mb-0">قم بتحديده كمكتمل للمتابعة</p>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="d-flex align-items-center flex-grow-1 min-w-0">
+                                    <div class="min-w-0">
+                                        <h5 class="student-learn-completion-title mb-1"><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
+                                        <p class="text-muted mb-0 student-learn-completion-sub">قم بتحديده كمكتمل للمتابعة</p>
                                     </div>
-                                    <div id="module-completion-badge" class="d-flex align-items-center ms-4 {{ $isCompleted ? '' : 'd-none' }}">
-                                        <i class="fas fa-check-circle text-success me-2"></i>
-                                        <span class="text-success fw-semibold">مكتمل</span>
+                                    <div id="module-completion-badge" class="d-flex align-items-center ms-3 flex-shrink-0 {{ $isCompleted ? '' : 'd-none' }}">
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                        <span class="text-success fw-semibold student-learn-completion-badge-text">مكتمل</span>
                                     </div>
                                 </div>
-                                <div id="module-completion-actions">
+                                <div id="module-completion-actions" class="flex-shrink-0">
                                     <button type="button"
-                                            class="btn btn-outline-secondary btn-sm js-module-completion-btn {{ $isCompleted ? '' : 'd-none' }}"
+                                            class="btn btn-outline-secondary btn-sm js-module-completion-btn student-learn-completion-btn {{ $isCompleted ? '' : 'd-none' }}"
                                             data-action="incomplete"
                                             data-url="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
                                         <i class="fas fa-times me-1"></i>إلغاء الإكمال
                                     </button>
                                     <button type="button"
-                                            class="btn btn-primary js-module-completion-btn {{ $isCompleted ? 'd-none' : '' }}"
+                                            class="btn btn-primary btn-sm js-module-completion-btn student-learn-completion-btn {{ $isCompleted ? 'd-none' : '' }}"
                                             data-action="complete"
                                             data-url="{{ route('student.learn.module.mark-complete', $module->id) }}">
-                                        <i class="fas fa-check me-2"></i>تحديد كمكتمل
+                                        <i class="fas fa-check me-1"></i>تحديد كمكتمل
                                     </button>
                                 </div>
                             </div>

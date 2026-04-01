@@ -42,20 +42,109 @@
         height: 100% !important;
         border: 0 !important;
     }
+
+    /* يُحدَّث من JS بارتفاع .app-header الفعلي حتى يثبت الفيديو تماماً تحت الناف بار */
+    .student-learn-module-page {
+        --student-learn-sticky-top: calc(3.75rem + 2px);
+    }
+
+    @media (max-width: 991.98px) {
+        .student-learn-module-page.main-content {
+            padding-inline: 5px !important;
+        }
+
+        .student-learn-module-page > .container-fluid {
+            padding-inline: 0 !important;
+        }
+
+        .student-learn-module-page .row {
+            --bs-gutter-x: 0;
+            margin-inline: 0;
+        }
+
+        .student-learn-module-page .row > [class*="col-"] {
+            padding-inline: 0;
+        }
+
+        .student-learn-module-page .student-learn-video-card {
+            border-radius: 0;
+            border-inline-width: 0;
+            margin-bottom: 1rem;
+        }
+
+        .student-learn-module-page .student-learn-video-card .card-body {
+            padding: 0 !important;
+        }
+
+        .student-learn-module-page .student-learn-video-card .video-container {
+            border-radius: 0 !important;
+        }
+
+        /* تثبيت الفيديو أسفل الهيدر: top = ارتفاع الهيدر (يُضبط بـ JS) — z-index أقل من .app-header (100) */
+        .student-learn-module-page .student-learn-video-sticky-wrap {
+            position: sticky;
+            top: var(--student-learn-sticky-top);
+            z-index: 99;
+            background: var(--body-bg, #fff);
+        }
+
+        /* بطاقة إكمال الدرس: حجم أنسب للجوال */
+        .student-learn-module-page .student-learn-completion-card {
+            border-radius: 5px !important;
+        }
+
+        .student-learn-module-page .student-learn-completion-card .card-body {
+            padding: 0.65rem 0.75rem;
+        }
+
+        .student-learn-module-page .student-learn-completion-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .student-learn-module-page .student-learn-completion-title .fa-graduation-cap {
+            font-size: 0.9em;
+        }
+
+        .student-learn-module-page .student-learn-completion-sub {
+            font-size: 0.75rem;
+            line-height: 1.35;
+        }
+
+        .student-learn-module-page .student-learn-completion-badge-text {
+            font-size: 0.8125rem;
+        }
+
+        .student-learn-module-page .student-learn-completion-btn {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            line-height: 1.35;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .student-learn-module-page .student-learn-video-sticky-wrap {
+            position: static;
+            z-index: auto;
+            background: transparent;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content student-learn-module-page">
     <div class="container-fluid">
 
         <div class="row">
-            <div class="col-lg-9 order-2">
+            {{-- الجوال: الفيديو/المحتوى أولاً، ثم محتوى الكورس؛ سطح المكتب: الشريط ثم المحتوى كما كان --}}
+            <div class="col-lg-9 order-1 order-lg-2">
                 @include('student.courses.learning.module-main')
             </div>
 
             <!-- Sidebar -->
-            <div class="col-lg-3 order-1">
+            <div class="col-lg-3 order-2 order-lg-1">
                 <div class="sidebar-nav">
                     <div class="card">
                         <!-- Module Info Header -->
@@ -180,6 +269,17 @@
         var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : null;
         var lessonCompleteApplauseUrl = @json(asset('assets/sounds/lesson-complete-applause.mp3'));
         var lessonApplauseMaxSeconds = 5;
+
+        function syncLearnStickyVideoTop() {
+            var page = document.querySelector('.student-learn-module-page');
+            var header = document.querySelector('.app-header');
+            if (!page) {
+                return;
+            }
+            if (header && header.offsetHeight > 0) {
+                page.style.setProperty('--student-learn-sticky-top', header.offsetHeight + 'px');
+            }
+        }
 
         function getLearnFrame() {
             return document.getElementById('student-learn-main');
@@ -569,9 +669,12 @@
         });
 
         function onReady() {
+            syncLearnStickyVideoTop();
             window.syncStudentLearnSidebarFromFrame();
             fadeAlertsInMain();
         }
+
+        window.addEventListener('resize', syncLearnStickyVideoTop);
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', onReady);
