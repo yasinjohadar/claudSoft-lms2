@@ -267,6 +267,55 @@
         color: #1f2937;
         font-weight: 600;
     }
+
+    .student-course-show-title {
+        font-size: 2rem;
+        color: #1f2937;
+    }
+
+    @media (max-width: 991.98px) {
+        /* غلاف الصفحة: 5px فقط من حافة الشاشة */
+        .student-course-show-page.main-content.app-content {
+            padding-inline: 5px !important;
+            margin-inline: 0 !important;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .student-course-show-page > .container-fluid {
+            padding-inline: 0 !important;
+            margin-inline: 0 !important;
+            --bs-gutter-x: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* إلغاء gutter صفوف Bootstrap (كان يضيف ~24px من الجانبين داخل الأعمدة) */
+        .student-course-show-page .row {
+            --bs-gutter-x: 0;
+            margin-inline-start: 0 !important;
+            margin-inline-end: 0 !important;
+        }
+
+        .student-course-show-page .row > [class*="col-"] {
+            padding-inline: 0 !important;
+        }
+
+        /* تقليل الحشوة الداخلية للبطاقات بدل p-4/p-3 العريضة على الجوال */
+        .student-course-show-page .card-body.p-4 {
+            padding: 1rem 0.75rem !important;
+        }
+
+        .student-course-show-page .card-body.p-3 {
+            padding: 0.75rem !important;
+        }
+
+        .student-course-show-page .student-course-show-title {
+            font-size: 1.25rem;
+            line-height: 1.35;
+        }
+    }
 </style>
 @stop
 
@@ -285,11 +334,11 @@
         </div>
     @endif
 
-    <div class="main-content app-content">
+    <div class="main-content app-content student-course-show-page">
         <div class="container-fluid">
 
-            <!-- Breadcrumb -->
-            <nav aria-label="breadcrumb" class="my-3">
+            <!-- Breadcrumb: مخفي على الجوال لتوفير المساحة -->
+            <nav aria-label="breadcrumb" class="my-3 d-none d-lg-block">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="/">الرئيسية</a></li>
                     <li class="breadcrumb-item"><a href="{{ route('student.courses.index') }}">الكورسات</a></li>
@@ -312,7 +361,7 @@
                                 </span>
                             @endif
 
-                            <h1 class="mb-3 fw-bold" style="font-size: 2rem; color: #1f2937;">{{ $course->title }}</h1>
+                            <h1 class="mb-3 fw-bold student-course-show-title">{{ $course->title }}</h1>
                             <p class="lead mb-4 text-muted" style="font-size: 1.125rem;">{{ $course->short_description }}</p>
 
                             <div class="d-flex flex-wrap gap-3 mb-3">
