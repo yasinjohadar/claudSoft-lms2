@@ -207,7 +207,7 @@ class CourseGroupController extends Controller
             }
 
             // Get paginated members with search and filters
-            $membersQuery = $group->members()->with('student');
+            $membersQuery = $group->members()->with(['student.roles']);
 
             // Search filter
             if ($request->filled('search')) {
@@ -1074,7 +1074,7 @@ class CourseGroupController extends Controller
             ];
 
             // Get paginated members with search and filters
-            $membersQuery = $group->members()->with('student');
+            $membersQuery = $group->members()->with(['student.roles']);
 
             // Search filter
             if ($request->filled('search')) {

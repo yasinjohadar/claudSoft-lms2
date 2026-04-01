@@ -517,6 +517,8 @@
         </div>
     </div>
 
+    @include('admin.partials.impersonate-student')
+
 @stop
 
 @section('script')

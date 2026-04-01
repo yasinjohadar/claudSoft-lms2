@@ -132,6 +132,15 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
+                                    @if($memberRecord->student->hasRole('student') && $memberRecord->student->is_active)
+                                        <button type="button"
+                                                class="btn btn-sm btn-success impersonate-btn"
+                                                data-user-id="{{ $memberRecord->student_id }}"
+                                                data-user-name="{{ $memberRecord->student->name }}"
+                                                title="الدخول كطالب في تبويب جديد">
+                                            <i class="fas fa-user-secret"></i>
+                                        </button>
+                                    @endif
                                     <button type="button" class="btn btn-sm btn-outline-primary" title="تغيير الدور">
                                         <i class="fas fa-user-tag"></i>
                                     </button>
