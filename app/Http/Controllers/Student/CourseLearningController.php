@@ -172,12 +172,23 @@ class CourseLearningController extends Controller
                     ->toArray();
             }
 
-            return view('student.courses.learning.module', compact(
+            $learnViewData = compact(
                 'module',
                 'enrollment',
                 'isCompleted',
                 'completedModules'
-            ));
+            );
+
+            $isLearnMainPartial = request()->header('Turbo-Frame') === 'student-learn-main'
+                || request()->header('X-Learn-Partial') === 'main';
+
+            if ($isLearnMainPartial) {
+                return response()
+                    ->view('student.courses.learning.module-main', $learnViewData)
+                    ->header('Content-Type', 'text/html; charset=UTF-8');
+            }
+
+            return view('student.courses.learning.module', $learnViewData);
 
         } catch (\Exception $e) {
             return redirect()

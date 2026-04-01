@@ -111,15 +111,13 @@
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">
                         <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="notificationDropdown" aria-expanded="false">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle position-relative" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="notificationDropdown" aria-expanded="false">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon"  height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             @php
                                 $unreadCount = Auth::user()->gamificationNotifications()->unread()->count();
                             @endphp
                             @if($unreadCount > 0)
-                                <span id="notification-badge" class="badge bg-danger rounded-pill header-icon-badge pulse pulse-danger">
-                                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
-                                </span>
+                                <span id="notification-badge" class="badge bg-danger rounded-pill student-notif-count-badge">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
                             @endif
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
@@ -185,30 +183,28 @@
                     </div>
                     <!-- End::header-element -->
 
-                    @push('styles')
-                    <style>
-                    .unread-notification {
-                        background-color: #f8f9fa;
-                        border-right: 3px solid #667eea;
-                    }
-                    .unread-notification:hover {
-                        background-color: #e9ecef;
-                    }
-                    .cursor-pointer {
-                        cursor: pointer;
-                    }
-                    .header-icon-badge {
-                        position: absolute;
-                        top: -5px;
-                        left: 10px;
-                        font-size: 10px;
-                        padding: 2px 6px;
-                    }
-                    </style>
-                    @endpush
+                    {{-- أنماط شارة الإشعارات في public/assets/css/custom.css (لا تستخدم @push styles هنا؛ الرأس يُعرض قبل تضمين الهيدر) --}}
 
                     @push('scripts')
                     <script>
+                    function removeStudentNotificationBadgeUi() {
+                        var badge = document.getElementById('notification-badge');
+                        if (badge) {
+                            badge.remove();
+                        }
+                    }
+                    function appendStudentNotificationBadgeToHeader(count) {
+                        var anchor = document.getElementById('notificationDropdown');
+                        if (!anchor) {
+                            return;
+                        }
+                        removeStudentNotificationBadgeUi();
+                        var badge = document.createElement('span');
+                        badge.id = 'notification-badge';
+                        badge.className = 'badge bg-danger rounded-pill student-notif-count-badge';
+                        badge.textContent = count > 99 ? '99+' : String(count);
+                        anchor.appendChild(badge);
+                    }
                     function markNotificationAsReadAndRedirect(notificationId, actionUrl) {
                         // Mark notification as read
                         fetch(`/student/gamification/notifications/${notificationId}/mark-as-read`, {
@@ -236,7 +232,7 @@
                                             badge.textContent = newCount > 99 ? '99+' : newCount;
                                         }
                                     } else {
-                                        if (badge) badge.remove();
+                                        removeStudentNotificationBadgeUi();
                                     }
                                 }
 
@@ -267,9 +263,7 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                // Update badge
-                                const badge = document.getElementById('notification-badge');
-                                if (badge) badge.remove();
+                                removeStudentNotificationBadgeUi();
 
                                 // Update count
                                 document.getElementById('unread-count').textContent = '0';
@@ -347,12 +341,7 @@
 
                                     if (count > 0) {
                                         if (!badge) {
-                                            // Create badge if not exists
-                                            const newBadge = document.createElement('span');
-                                            newBadge.id = 'notification-badge';
-                                            newBadge.className = 'badge bg-danger rounded-pill header-icon-badge pulse pulse-danger';
-                                            newBadge.textContent = count > 99 ? '99+' : count;
-                                            document.querySelector('#notificationDropdown').appendChild(newBadge);
+                                            appendStudentNotificationBadgeToHeader(count);
                                         } else {
                                             badge.textContent = count > 99 ? '99+' : count;
                                         }
@@ -363,7 +352,7 @@
                                             loadNotificationsDropdown();
                                         }
                                     } else {
-                                        if (badge) badge.remove();
+                                        removeStudentNotificationBadgeUi();
                                     }
                                 }
                             })

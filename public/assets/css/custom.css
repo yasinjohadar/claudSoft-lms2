@@ -8,3 +8,68 @@
 a {
     font-weight: bold !important;
 }
+
+/*
+ * شارة عدد الإشعارات في هيدر الطالب
+ * تُحمَّل هنا لأن @push('styles') داخل main-header يُنفَّذ بعد @stack('styles') في head فلا يُطبَّق.
+ */
+.main-header-notification .unread-notification {
+    background-color: #f8f9fa;
+    border-right: 3px solid #667eea;
+}
+
+.main-header-notification .unread-notification:hover {
+    background-color: #e9ecef;
+}
+
+.main-header-notification .cursor-pointer {
+    cursor: pointer;
+}
+
+.main-header-notification #notificationDropdown {
+    position: relative !important;
+}
+
+.main-header-notification #notificationDropdown #notification-badge.student-notif-count-badge {
+    position: absolute !important;
+    /* أقرب لزاوية الجرس: للأسفل + باتجاه اليمين (مع RTL يُضبط عبر inset-inline) */
+    top: 3px !important;
+    inset-inline-end: 10px !important;
+    inset-inline-start: auto !important;
+    z-index: 6;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 14px !important;
+    height: 14px !important;
+    max-width: 32px;
+    padding: 0 3px !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    text-align: center;
+    border: 0 !important;
+    border-radius: 9999px !important;
+    animation: studentHeaderNotifGlow 2s ease-in-out infinite !important;
+    will-change: box-shadow;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.95),
+        0 0 8px 2px rgba(220, 53, 69, 0.75),
+        0 0 0 0 rgba(248, 113, 113, 0.45) !important;
+}
+
+@keyframes studentHeaderNotifGlow {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.95),
+            0 0 6px 2px rgba(220, 53, 69, 0.8),
+            0 0 0 0 rgba(248, 113, 113, 0.5);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.9),
+            0 0 14px 5px rgba(220, 53, 69, 0.6),
+            0 0 0 6px rgba(248, 113, 113, 0.25);
+    }
+}
