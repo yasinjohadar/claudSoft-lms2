@@ -219,7 +219,7 @@
                                         <div class="flex-grow-1">
                                             <h6 class="mb-1">{{ $completion->module->title }}</h6>
                                             <p class="text-muted mb-0 fs-12">
-                                                <i class="fas fa-clock me-1"></i>{{ $completion->completed_at->diffForHumans() }}
+                                                <i class="fas fa-clock me-1"></i>{{ $completion->completed_at?->diffForHumans() ?? '—' }}
                                                 @if($completion->score)
                                                     <span class="ms-2">
                                                         <i class="fas fa-star text-warning me-1"></i>الدرجة: {{ $completion->score }}%
