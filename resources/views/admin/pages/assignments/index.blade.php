@@ -111,9 +111,13 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary-transparent">
-                                                {{ $assignment->course->title }}
-                                            </span>
+                                            @if($assignment->course)
+                                                <span class="badge bg-primary-transparent">
+                                                    {{ $assignment->course->title }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                         <td>
                                             @if($assignment->lesson)
