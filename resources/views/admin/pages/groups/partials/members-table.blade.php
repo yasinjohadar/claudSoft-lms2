@@ -1,6 +1,22 @@
 @php
     $paymentMethodsList = $paymentMethods ?? collect();
+    $groupMembersFilterActive = request()->filled('search')
+        || request()->filled('other_group_id')
+        || request()->filled('groups_count')
+        || request()->filled('online_status')
+        || request()->filled('login_status');
+    $groupStats = $stats ?? [];
+    $groupTotalMemberCount = $groupStats['total_members'] ?? null;
 @endphp
+@if($groupMembersFilterActive && isset($members))
+    <div class="alert alert-light border py-2 px-3 mb-3 small" role="status">
+        عدد النتائج المطابقة للفلتر:
+        <strong class="text-dark">{{ $members->total() }}</strong>
+        @if($groupTotalMemberCount !== null)
+            <span class="text-muted ms-1">من أصل <strong>{{ $groupTotalMemberCount }}</strong> عضواً في المجموعة</span>
+        @endif
+    </div>
+@endif
 @if($members && $members->isNotEmpty())
     <div class="table-responsive">
         <table class="table table-hover text-nowrap">
@@ -215,6 +231,12 @@
 
     <div class="mt-4 d-flex justify-content-center">
         {{ $members->withQueryString()->links() }}
+    </div>
+@elseif($members && $groupMembersFilterActive && $members->isEmpty())
+    <div class="text-center py-4">
+        <i class="fas fa-filter fa-3x text-muted mb-3 opacity-50"></i>
+        <h5 class="text-muted mb-2">لا توجد نتائج مطابقة للفلتر</h5>
+        <p class="text-muted small mb-0">جرّب تغيير معايير البحث أو <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}">إعادة التعيين</a>.</p>
     </div>
 @else
     <div class="text-center py-5">
