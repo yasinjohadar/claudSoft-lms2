@@ -338,7 +338,7 @@
                             <!-- Search and Filter Form -->
                             <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4" id="groupMembersFilterForm">
                                 <div class="row g-3 align-items-end">
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label">البحث</label>
                                         <input type="text" name="search" class="form-control" id="groupMembersSearchInput"
                                                placeholder="ابحث بالاسم، الإيميل أو الهاتف..."
@@ -373,22 +373,40 @@
                                             <option value="offline" {{ request('online_status') == 'offline' ? 'selected' : '' }}>غير المتصلين فقط</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">الترتيب</label>
-                                        <select name="sort" class="form-select">
-                                            <option value="joined_at" {{ request('sort', 'joined_at') == 'joined_at' ? 'selected' : '' }}>تاريخ الانضمام</option>
-                                            <option value="created_at" {{ request('sort') == 'created_at' ? 'selected' : '' }}>تاريخ التسجيل</option>
+                                    <div class="col-md-3">
+                                        <label class="form-label">تسجيل الدخول</label>
+                                        <select name="login_status" class="form-select">
+                                            <option value="">الكل</option>
+                                            <option value="never" {{ request('login_status') === 'never' ? 'selected' : '' }}>لم يسجّل دخولاً بعد</option>
                                         </select>
-                                        <input type="hidden" name="order" value="{{ request('order', 'desc') }}">
                                     </div>
-                                    <div class="col-md-12 mt-3">
-                                        <div class="d-flex gap-2">
-                                            <button type="submit" class="btn btn-primary" id="groupMembersSearchBtn">
-                                                <i class="fas fa-search me-1"></i>بحث
-                                            </button>
-                                            <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين" id="groupMembersResetBtn">
-                                                <i class="fas fa-redo me-1"></i>إعادة تعيين
-                                            </a>
+                                    <div class="col-md-12 mt-2">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-3">
+                                                <label class="form-label">الترتيب حسب</label>
+                                                <select name="sort" class="form-select">
+                                                    <option value="joined_at" {{ request('sort', 'joined_at') == 'joined_at' ? 'selected' : '' }}>تاريخ الانضمام</option>
+                                                    <option value="created_at" {{ request('sort') == 'created_at' ? 'selected' : '' }}>تاريخ العضوية في المجموعة</option>
+                                                    <option value="last_login_at" {{ request('sort') == 'last_login_at' ? 'selected' : '' }}>آخر تسجيل دخول</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">الاتجاه</label>
+                                                <select name="order" class="form-select">
+                                                    <option value="desc" {{ request('order', 'desc') == 'desc' ? 'selected' : '' }}>تنازلي</option>
+                                                    <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>تصاعدي</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-7 mt-md-4">
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <button type="submit" class="btn btn-primary" id="groupMembersSearchBtn">
+                                                        <i class="fas fa-search me-1"></i>بحث
+                                                    </button>
+                                                    <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="btn btn-outline-secondary" title="إعادة تعيين" id="groupMembersResetBtn">
+                                                        <i class="fas fa-redo me-1"></i>إعادة تعيين
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

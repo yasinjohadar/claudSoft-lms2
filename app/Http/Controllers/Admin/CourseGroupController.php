@@ -181,6 +181,11 @@ class CourseGroupController extends Controller
             // Get all member student IDs first (for sessions query)
             $memberStudentIds = $group->members()->pluck('student_id')->toArray();
 
+            /*
+             * Laravel `sessions.last_activity` (ephemeral rows; cleared when sessions expire) is used only
+             * for "نشط حالياً" (online within last 5 minutes). The members table column "آخر دخول" shows
+             * `users.last_login_at` from AuthenticatedSessionController — the persistent last successful login.
+             */
             // Get last activity from sessions table for group members only
             $sessions = DB::table('sessions')
                 ->whereNotNull('user_id')
@@ -266,10 +271,30 @@ class CourseGroupController extends Controller
                 }
             }
 
-            // Sort
+            // Filter: students who have never logged in (users.last_login_at is null)
+            if ($request->get('login_status') === 'never') {
+                $membersQuery->whereHas('student', function ($q) {
+                    $q->whereNull('last_login_at');
+                });
+            }
+
+            // Sort (whitelist columns; last_login_at lives on users)
+            $allowedSorts = ['joined_at', 'created_at', 'last_login_at'];
             $sortBy = $request->get('sort', 'joined_at');
-            $sortOrder = $request->get('order', 'desc');
-            $membersQuery->orderBy($sortBy, $sortOrder);
+            if (! in_array($sortBy, $allowedSorts, true)) {
+                $sortBy = 'joined_at';
+            }
+            $sortOrder = strtolower((string) $request->get('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            if ($sortBy === 'last_login_at') {
+                $membersQuery
+                    ->leftJoin('users', 'users.id', '=', 'course_group_members.student_id')
+                    ->select('course_group_members.*')
+                    ->orderByRaw('users.last_login_at IS NULL ASC')
+                    ->orderBy('users.last_login_at', $sortOrder);
+            } else {
+                $membersQuery->orderBy($sortBy, $sortOrder);
+            }
 
             $members = $membersQuery->paginate($request->get('per_page', 15));
 

@@ -80,10 +80,14 @@
                                     $studentId = $memberRecord->student_id;
                                     $lastActivity = $lastActivityByUserId[$studentId] ?? null;
                                     $isOnline = in_array($studentId, $onlineUserIds ?? []);
+                                    $lastLoginAt = $memberRecord->student->last_login_at;
                                 @endphp
-                                @if($lastActivity)
-                                    <span title="{{ $lastActivity->format('Y-m-d H:i:s') }}">
-                                        {{ $lastActivity->format('Y-m-d H:i') }}
+                                @if($lastLoginAt)
+                                    @php
+                                        $lastLoginCarbon = \Carbon\Carbon::parse($lastLoginAt);
+                                    @endphp
+                                    <span title="آخر تسجيل دخول: {{ $lastLoginCarbon->format('Y-m-d H:i:s') }}">
+                                        {{ $lastLoginCarbon->format('Y-m-d H:i') }}
                                     </span>
                                 @else
                                     <span class="text-muted">-</span>
@@ -91,12 +95,12 @@
                             </td>
                             <td>
                                 @if($isOnline)
-                                    <span class="badge bg-success" title="متصل الآن - آخر نشاط: {{ $lastActivity ? $lastActivity->format('Y-m-d H:i:s') : 'الآن' }}">
-                                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>متصل
+                                    <span class="badge bg-success" title="نشاط جلسة خلال آخر 5 دقائق — آخر نشاط: {{ $lastActivity ? $lastActivity->format('Y-m-d H:i:s') : 'الآن' }}">
+                                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>نشط حالياً
                                     </span>
                                 @else
-                                    <span class="badge bg-secondary" title="غير متصل{{ $lastActivity ? ' - آخر نشاط: ' . $lastActivity->format('Y-m-d H:i:s') : '' }}">
-                                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>غير متصل
+                                    <span class="badge bg-secondary" title="لا يوجد نشاط جلسة خلال آخر 5 دقائق{{ $lastActivity ? ' — آخر نشاط جلسة: ' . $lastActivity->format('Y-m-d H:i:s') : '' }}">
+                                        <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>غير نشط حالياً
                                     </span>
                                 @endif
                             </td>
