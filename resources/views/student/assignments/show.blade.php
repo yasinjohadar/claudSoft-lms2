@@ -74,7 +74,11 @@
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('student.courses.show', $assignment->course_id) }}">{{ $assignment->course->title }}</a></li>
+                            @if($assignment->course)
+                                <li class="breadcrumb-item"><a href="{{ route('student.courses.show', $assignment->course_id) }}">{{ $assignment->course->title }}</a></li>
+                            @else
+                                <li class="breadcrumb-item"><a href="{{ route('student.assignments.index') }}">غير مرتبط بكورس</a></li>
+                            @endif
                             <li class="breadcrumb-item active">الواجب</li>
                         </ol>
                     </nav>

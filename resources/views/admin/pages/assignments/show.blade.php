@@ -48,7 +48,11 @@
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <p class="mb-2"><strong>الكورس:</strong></p>
-                                    <span class="badge bg-primary-transparent">{{ $assignment->course->title }}</span>
+                                    @if($assignment->course)
+                                        <span class="badge bg-primary-transparent">{{ $assignment->course->title }}</span>
+                                    @else
+                                        <span class="text-muted">غير محدد</span>
+                                    @endif
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-2"><strong>الدرس:</strong></p>
