@@ -151,7 +151,7 @@
                 </div>
                 <div class="card-body">
                     <div id="membershipRequestsTableContainer">
-                        @include('admin.course-groups.partials.membership-requests-table', ['requests' => $requests, 'course' => $course, 'group' => $group])
+                        @include('admin.course-groups.partials.membership-requests-table', ['requests' => $requests, 'course' => $course, 'group' => $group, 'otherGroupsByStudentId' => $otherGroupsByStudentId ?? collect()])
                     </div>
                 </div>
             </div>

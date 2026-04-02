@@ -7,6 +7,7 @@
                 </th>
                 <th>#</th>
                 <th>اسم الطالب</th>
+                <th>مجموعات أخرى</th>
                 <th>البريد الإلكتروني</th>
                 <th>رقم الهاتف</th>
                 <th>تاريخ الطلب</th>
@@ -27,6 +28,38 @@
                         <strong>{{ $request->student->name }}</strong>
                         @if($request->student->name_ar)
                             <br><small class="text-muted">{{ $request->student->name_ar }}</small>
+                        @endif
+                    </td>
+                    <td>
+                        @php
+                            $map = $otherGroupsByStudentId ?? collect();
+                            $sidOg = (int) $request->student_id;
+                            $otherGroups = $map[$sidOg] ?? $map[$request->student_id] ?? collect();
+                        @endphp
+                        @if($otherGroups->isNotEmpty())
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach($otherGroups->take(5) as $otherGroup)
+                                    @php
+                                        $otherGroupCourse = $otherGroup->courses->first();
+                                    @endphp
+                                    @if($otherGroupCourse)
+                                        <a href="{{ route('courses.groups.show', [$otherGroupCourse->id, $otherGroup->id]) }}" class="badge bg-primary-transparent text-primary text-decoration-none" title="{{ $otherGroup->name }}">
+                                            {{ $otherGroup->name }}
+                                        </a>
+                                    @else
+                                        <span class="badge bg-primary-transparent text-primary" title="{{ $otherGroup->name }}">
+                                            {{ $otherGroup->name }}
+                                        </span>
+                                    @endif
+                                @endforeach
+                                @if($otherGroups->count() > 5)
+                                    <span class="badge bg-secondary-transparent text-secondary" title="{{ $otherGroups->skip(5)->pluck('name')->implode('، ') }}">
+                                        +{{ $otherGroups->count() - 5 }}
+                                    </span>
+                                @endif
+                            </div>
+                        @else
+                            <span class="text-muted">-</span>
                         @endif
                     </td>
                     <td>
@@ -186,7 +219,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="10" class="text-center py-5">
+                    <td colspan="11" class="text-center py-5">
                         <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
                         <h5 class="text-muted">لا توجد طلبات</h5>
                         <p class="text-muted">لا توجد طلبات انضمام لهذه المجموعة</p>

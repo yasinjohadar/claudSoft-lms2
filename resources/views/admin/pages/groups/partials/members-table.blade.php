@@ -1,3 +1,6 @@
+@php
+    $paymentMethodsList = $paymentMethods ?? collect();
+@endphp
 @if($members && $members->isNotEmpty())
     <div class="table-responsive">
         <table class="table table-hover text-nowrap">
@@ -41,7 +44,20 @@
                                     </a>
                                 </div>
                             </td>
-                            <td>{{ $memberRecord->student->email }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-1 flex-wrap">
+                                    <span class="text-break">{{ $memberRecord->student->email }}</span>
+                                    @if($memberRecord->student->email)
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary py-0 px-1 js-copy-member-email"
+                                                title="نسخ البريد"
+                                                data-email="{{ $memberRecord->student->email }}"
+                                                aria-label="نسخ البريد الإلكتروني">
+                                            <i class="fas fa-copy fa-xs"></i>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
                             <td>
                                 @if($memberRecord->student->phone)
                                     <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $memberRecord->student->phone) }}" target="_blank" class="text-success" title="مراسلة عبر واتساب">
@@ -86,7 +102,13 @@
                             </td>
                             <td>
                                 @php
-                                    $dueAmount = (float) ($dueAmountsByStudentId[$memberRecord->student_id] ?? 0);
+                                    $sidDue = (int) $memberRecord->student_id;
+                                    $dueAmount = (float) (
+                                        $dueAmountsByStudentId[$sidDue]
+                                        ?? $dueAmountsByStudentId[$memberRecord->student_id]
+                                        ?? $dueAmountsByStudentId[(string) $memberRecord->student_id]
+                                        ?? 0
+                                    );
                                 @endphp
                                 @if($dueAmount > 0)
                                     <span class="badge bg-danger">${{ number_format($dueAmount, 2) }}</span>
@@ -139,6 +161,24 @@
                                                 data-user-name="{{ $memberRecord->student->name }}"
                                                 title="الدخول كطالب في تبويب جديد">
                                             <i class="fas fa-user-secret"></i>
+                                        </button>
+                                    @endif
+                                    @if($dueAmount > 0 && $paymentMethodsList->isNotEmpty())
+                                        @php
+                                            $sid = (int) $memberRecord->student_id;
+                                            $invoicesPayload = $studentOutstandingInvoicesById[$sid]
+                                                ?? $studentOutstandingInvoicesById[$memberRecord->student_id]
+                                                ?? $studentOutstandingInvoicesById[(string) $memberRecord->student_id]
+                                                ?? [];
+                                        @endphp
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-success js-open-record-payment"
+                                                title="تسجيل دفعة"
+                                                data-student-id="{{ $memberRecord->student_id }}"
+                                                data-student-name="{{ $memberRecord->student->name }}"
+                                                data-total-due="{{ number_format($dueAmount, 2, '.', '') }}"
+                                                data-invoices='@json($invoicesPayload)'>
+                                            <i class="fas fa-dollar-sign"></i>
                                         </button>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-outline-primary" title="تغيير الدور">
@@ -198,10 +238,27 @@
                     <div class="modal-body">
                         @php
                             $studentId = $memberRecord->student_id;
-                            $dueAmount = (float) ($dueAmountsByStudentId[$studentId] ?? 0);
-                            $paidTotal = (float) ($studentPaidTotalsById[$studentId] ?? 0);
-                            $outstandingInvoices = $studentOutstandingInvoicesById[$studentId] ?? [];
-                            $studentPayments = $studentPaymentsById[$studentId] ?? [];
+                            $sidModal = (int) $studentId;
+                            $dueAmount = (float) (
+                                $dueAmountsByStudentId[$sidModal]
+                                ?? $dueAmountsByStudentId[$studentId]
+                                ?? $dueAmountsByStudentId[(string) $studentId]
+                                ?? 0
+                            );
+                            $paidTotal = (float) (
+                                $studentPaidTotalsById[$sidModal]
+                                ?? $studentPaidTotalsById[$studentId]
+                                ?? $studentPaidTotalsById[(string) $studentId]
+                                ?? 0
+                            );
+                            $outstandingInvoices = $studentOutstandingInvoicesById[$sidModal]
+                                ?? $studentOutstandingInvoicesById[$studentId]
+                                ?? $studentOutstandingInvoicesById[(string) $studentId]
+                                ?? [];
+                            $studentPayments = $studentPaymentsById[$sidModal]
+                                ?? $studentPaymentsById[$studentId]
+                                ?? $studentPaymentsById[(string) $studentId]
+                                ?? [];
                         @endphp
 
                         <div class="row g-3 mb-3">
@@ -237,6 +294,7 @@
                                 <table class="table table-sm table-bordered align-middle">
                                     <thead class="table-light">
                                         <tr>
+                                            <th>#</th>
                                             <th>رقم الفاتورة</th>
                                             <th>المبلغ المتبقي</th>
                                             <th>تاريخ الاستحقاق</th>
@@ -246,6 +304,7 @@
                                     <tbody>
                                         @foreach($outstandingInvoices as $invoice)
                                             <tr>
+                                                <td class="text-muted small">{{ $invoice['id'] ?? '-' }}</td>
                                                 <td>{{ $invoice['invoice_number'] ?? '-' }}</td>
                                                 <td><span class="text-danger fw-bold">${{ number_format((float) ($invoice['remaining_amount'] ?? 0), 2) }}</span></td>
                                                 <td>

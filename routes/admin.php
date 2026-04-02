@@ -165,6 +165,9 @@ Route::prefix('admin')
         Route::post('courses/{id}/toggle-publish', [CourseController::class, 'togglePublish'])->name('courses.toggle-publish');
         Route::post('courses/{id}/toggle-visibility', [CourseController::class, 'toggleVisibility'])->name('courses.toggle-visibility');
         Route::get('courses/{id}/modules', [CourseController::class, 'getModules'])->name('courses.modules');
+        Route::get('courses/{course}/restrictions/groups', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionGroups'])->name('courses.restrictions.groups');
+        Route::get('courses/{course}/restrictions/bulk-state', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionBulkState'])->name('courses.restrictions.bulk-state');
+        Route::post('courses/{course}/modules/restrictions/sync-bulk', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncBulkModuleRestrictions'])->name('courses.modules.restrictions.sync-bulk');
 
         // Course Sections routes
         Route::resource('courses.sections', CourseSectionController::class)->except(['index']);
@@ -254,6 +257,7 @@ Route::prefix('admin')
         Route::post('groups/{groupId}/add-member', [CourseGroupController::class, 'addMember'])->name('groups.add-member');
         Route::get('groups/{groupId}/bulk-enroll', [CourseGroupController::class, 'showBulkEnrollPage'])->name('groups.bulk-enroll-page');
         Route::post('groups/{groupId}/add-bulk-members', [CourseGroupController::class, 'addBulkMembers'])->name('groups.add-bulk-members');
+        Route::post('groups/{group}/members/{user}/payments', [CourseGroupController::class, 'recordMemberPayment'])->name('groups.members.payments.store');
         Route::delete('groups/{groupId}/remove-member/{memberId}', [CourseGroupController::class, 'removeMember'])->name('groups.remove-member');
         Route::delete('groups/{groupId}/bulk-remove-members', [CourseGroupController::class, 'bulkRemoveMembers'])->name('groups.bulk-remove-members');
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');

@@ -396,7 +396,7 @@
 
                             <div id="groupMembersFilterFeedback" class="small text-muted mb-2"></div>
                             <div id="groupMembersTableContainer">
-                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? [], 'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById ?? [], 'studentPaymentsById' => $studentPaymentsById ?? [], 'studentPaidTotalsById' => $studentPaidTotalsById ?? []])
+                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? [], 'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById ?? [], 'studentPaymentsById' => $studentPaymentsById ?? [], 'studentPaidTotalsById' => $studentPaidTotalsById ?? [], 'paymentMethods' => $paymentMethods ?? collect()])
                             </div>
                         </div>
                     </div>
@@ -511,6 +511,74 @@
                         <button type="submit" class="btn btn-success">
                             <i class="fas fa-users me-2"></i>إضافة الكل
                         </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record payment for member (from members table) -->
+    <div class="modal fade" id="recordGroupMemberPaymentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="recordGroupMemberPaymentForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-dollar-sign me-2"></i>
+                            تسجيل دفعة — <span id="recordPaymentStudentName"></span>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="recordPaymentStudentId" value="">
+                        @if(($paymentMethods ?? collect())->isEmpty())
+                            <div class="alert alert-warning mb-0">
+                                لا توجد طرق دفع مفعّلة. أضف طريقة دفع من إعدادات النظام أولاً.
+                            </div>
+                        @else
+                            <div id="recordPaymentTotalDueBanner" class="alert alert-info py-2 small mb-3" role="status">
+                                <strong>إجمالي المستحق على الطالب:</strong>
+                                $<span id="recordPaymentTotalDueValue">0.00</span>
+                                <span id="recordPaymentTotalDueHint" class="d-block mt-2 mb-0 text-muted"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="recordPaymentInvoiceId">الفاتورة</label>
+                                <select class="form-select" id="recordPaymentInvoiceId" required></select>
+                                <small class="text-muted">المبلغ الافتراضي = المتبقي على <strong>هذه</strong> الفاتورة فقط (ليس بالضرورة كامل الدين إن وُجدت فواتير أخرى).</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="recordPaymentAmount">المبلغ (لهذه الفاتورة)</label>
+                                <input type="number" class="form-control" id="recordPaymentAmount" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="recordPaymentMethodId">طريقة الدفع</label>
+                                <select class="form-select" id="recordPaymentMethodId" required>
+                                    @foreach(($paymentMethods ?? collect()) as $pm)
+                                        <option value="{{ $pm->id }}">{{ $pm->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="recordPaymentDate">تاريخ الدفع</label>
+                                <input type="date" class="form-control" id="recordPaymentDate" value="{{ date('Y-m-d') }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="recordPaymentTransactionId">رقم العملية (اختياري)</label>
+                                <input type="text" class="form-control" id="recordPaymentTransactionId" autocomplete="off">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label" for="recordPaymentNotes">ملاحظات (اختياري)</label>
+                                <textarea class="form-control" id="recordPaymentNotes" rows="2"></textarea>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        @if(($paymentMethods ?? collect())->isNotEmpty())
+                            <button type="submit" class="btn btn-success" id="recordGroupMemberPaymentSubmit">
+                                <i class="fas fa-check me-1"></i>تسجيل الدفعة
+                            </button>
+                        @endif
                     </div>
                 </form>
             </div>
@@ -717,10 +785,239 @@
             e.preventDefault();
             loadMembers(link.href);
         });
+
+        window.refreshGroupMembersTable = function () {
+            loadMembers();
+        };
     }
 
     initGroupMembersSelection();
     initGroupMembersAjaxFilters();
+
+    const groupMemberPaymentBaseUrl = @json(url('/admin/groups/' . $group->id . '/members'));
+
+    function openRecordGroupMemberPaymentModal(btn) {
+        const studentId = btn.getAttribute('data-student-id');
+        const studentName = btn.getAttribute('data-student-name') || '';
+        let invoices = [];
+        try {
+            invoices = JSON.parse(btn.getAttribute('data-invoices') || '[]');
+        } catch (err) {
+            invoices = [];
+        }
+        const modalEl = document.getElementById('recordGroupMemberPaymentModal');
+        const submitBtn = document.getElementById('recordGroupMemberPaymentSubmit');
+        if (!modalEl) {
+            return;
+        }
+
+        const nameEl = document.getElementById('recordPaymentStudentName');
+        if (nameEl) {
+            nameEl.textContent = studentName;
+        }
+        const sid = document.getElementById('recordPaymentStudentId');
+        if (sid) {
+            sid.value = studentId || '';
+        }
+
+        const totalDue = parseFloat(btn.getAttribute('data-total-due') || '0') || 0;
+        const totalDueValEl = document.getElementById('recordPaymentTotalDueValue');
+        const totalDueHintEl = document.getElementById('recordPaymentTotalDueHint');
+        if (totalDueValEl) {
+            totalDueValEl.textContent = totalDue.toFixed(2);
+        }
+        if (totalDueHintEl) {
+            let sumInv = 0;
+            invoices.forEach(function (inv) {
+                sumInv += Number(inv.remaining_amount || 0);
+            });
+            if (invoices.length > 1) {
+                totalDueHintEl.textContent =
+                    'لدى الطالب ' +
+                    invoices.length +
+                    ' فاتورة بمستحقات. اختر فاتورة من القائمة؛ الحقل «المبلغ» يطبق على الفاتورة المختارة فقط. كرر التسجيل لفاتورة أخرى إن لزم.';
+            } else if (invoices.length === 1) {
+                totalDueHintEl.textContent =
+                    'إن كان الرقم أعلاه أكبر من «متبقي» الفاتورة المعروضة، يوجد غالباً فواتير أخرى — راجع «تفاصيل الدفع» من الجدول.';
+            } else {
+                totalDueHintEl.textContent = '';
+            }
+            if (invoices.length > 0 && Math.abs(sumInv - totalDue) > 0.02) {
+                totalDueHintEl.textContent +=
+                    ' (تنبيه: مجموع المتبقي في القائمة $' +
+                    sumInv.toFixed(2) +
+                    ' يختلف عن الإجمالي المعروض؛ حدّث الصفحة.)';
+            }
+        }
+
+        if (!submitBtn || invoices.length === 0) {
+            if (typeof toastr !== 'undefined') {
+                toastr.warning('تعذر تحميل قائمة الفواتير. حدّث الصفحة أو أعد المحاولة.');
+            } else {
+                alert('تعذر تحميل قائمة الفواتير. حدّث الصفحة أو أعد المحاولة.');
+            }
+            return;
+        }
+
+        invoices = invoices.slice().sort(function (a, b) {
+            return Number(b.remaining_amount || 0) - Number(a.remaining_amount || 0);
+        });
+
+        const sel = document.getElementById('recordPaymentInvoiceId');
+        sel.innerHTML = '';
+        invoices.forEach(function (inv) {
+            const opt = document.createElement('option');
+            opt.value = inv.id;
+            opt.textContent = (inv.invoice_number || '') + ' — متبقي: $' + Number(inv.remaining_amount || 0).toFixed(2);
+            opt.dataset.remaining = String(inv.remaining_amount || 0);
+            sel.appendChild(opt);
+        });
+
+        function syncAmountToInvoice() {
+            const opt = sel.options[sel.selectedIndex];
+            const rem = opt ? parseFloat(opt.dataset.remaining || '0') : 0;
+            const amountInput = document.getElementById('recordPaymentAmount');
+            if (!amountInput) {
+                return;
+            }
+            amountInput.max = rem > 0 ? rem : '';
+            amountInput.value = rem > 0 ? rem.toFixed(2) : '';
+        }
+        sel.onchange = syncAmountToInvoice;
+        syncAmountToInvoice();
+
+        const tx = document.getElementById('recordPaymentTransactionId');
+        const nt = document.getElementById('recordPaymentNotes');
+        if (tx) {
+            tx.value = '';
+        }
+        if (nt) {
+            nt.value = '';
+        }
+
+        let payModal = bootstrap.Modal.getInstance(modalEl);
+        if (!payModal) {
+            payModal = new bootstrap.Modal(modalEl);
+        }
+        payModal.show();
+    }
+
+    const groupMembersTableContainer = document.getElementById('groupMembersTableContainer');
+    if (groupMembersTableContainer) {
+        groupMembersTableContainer.addEventListener('click', function (e) {
+            const copyBtn = e.target.closest('.js-copy-member-email');
+            if (copyBtn && copyBtn.dataset.email) {
+                e.preventDefault();
+                const email = copyBtn.dataset.email;
+                const done = function () {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success('تم نسخ البريد');
+                    } else {
+                        alert('تم نسخ البريد');
+                    }
+                };
+                const fail = function () {
+                    alert('تعذر النسخ. انسخ يدوياً: ' + email);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(email).then(done).catch(fail);
+                } else {
+                    fail();
+                }
+                return;
+            }
+
+            const payBtn = e.target.closest('.js-open-record-payment');
+            if (payBtn) {
+                e.preventDefault();
+                openRecordGroupMemberPaymentModal(payBtn);
+            }
+        });
+    }
+
+    const recordGroupMemberPaymentForm = document.getElementById('recordGroupMemberPaymentForm');
+    if (recordGroupMemberPaymentForm) {
+        recordGroupMemberPaymentForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('recordGroupMemberPaymentSubmit');
+            if (!submitBtn) {
+                return;
+            }
+            const studentId = document.getElementById('recordPaymentStudentId').value;
+            if (!studentId) {
+                return;
+            }
+            const url = groupMemberPaymentBaseUrl + '/' + studentId + '/payments';
+            const payload = {
+                invoice_id: document.getElementById('recordPaymentInvoiceId').value,
+                amount: parseFloat(document.getElementById('recordPaymentAmount').value),
+                payment_method_id: document.getElementById('recordPaymentMethodId').value,
+                payment_date: document.getElementById('recordPaymentDate').value,
+                transaction_id: document.getElementById('recordPaymentTransactionId').value || null,
+                notes: document.getElementById('recordPaymentNotes').value || null,
+            };
+
+            submitBtn.disabled = true;
+            const origHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الحفظ...';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json().catch(function () {
+                    return {};
+                });
+
+                if (response.ok && data.success) {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(data.message || 'تم تسجيل الدفعة');
+                    } else {
+                        alert(data.message || 'تم تسجيل الدفعة');
+                    }
+                    const modalEl = document.getElementById('recordGroupMemberPaymentModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) {
+                        modal.hide();
+                    }
+                    if (typeof window.refreshGroupMembersTable === 'function') {
+                        window.refreshGroupMembersTable();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    let msg = data.message || 'فشل تسجيل الدفعة';
+                    if (data.errors) {
+                        const first = Object.values(data.errors)[0];
+                        if (Array.isArray(first) && first[0]) {
+                            msg = first[0];
+                        }
+                    }
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error(msg);
+                    } else {
+                        alert(msg);
+                    }
+                }
+            } catch (err) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('حدث خطأ في الاتصال');
+                } else {
+                    alert('حدث خطأ في الاتصال');
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+            }
+        });
+    }
 
     // Initialize Choices.js for single student select
     let singleChoicesInstance = null;

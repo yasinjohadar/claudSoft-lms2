@@ -44,6 +44,9 @@
 <div id="module-container-{{ $module->id }}" class="mb-3 border rounded" style="transition: all 0.3s ease;">
     <div class="d-flex align-items-center justify-content-between p-3">
         <div class="d-flex align-items-center flex-grow-1">
+            <div class="form-check me-2 flex-shrink-0 align-self-center">
+                <input type="checkbox" class="form-check-input js-module-bulk-check" value="{{ $module->id }}" id="module-bulk-check-{{ $module->id }}" data-section-id="{{ $section->id }}" title="تحديد للقيود الجماعية" aria-label="تحديد الوحدة">
+            </div>
             <span class="avatar avatar-md me-3
                 {{ $module->module_type == 'lesson' ? 'bg-primary-transparent text-primary' : '' }}
                 {{ $module->module_type == 'video' ? 'bg-danger-transparent text-danger' : '' }}

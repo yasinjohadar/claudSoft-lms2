@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseGroup;
+use App\Models\CourseGroupMember;
 use App\Models\GroupMembershipRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -297,6 +299,7 @@ class CourseGroupController extends Controller
                             ->toArray();
 
                         return [
+                            'id' => $invoice->id,
                             'invoice_number' => $invoice->invoice_number,
                             'remaining_amount' => (float) $invoice->remaining_amount,
                             'due_date' => optional($invoice->due_date)->format('Y-m-d'),
@@ -305,6 +308,7 @@ class CourseGroupController extends Controller
                         ];
                     })->values()->toArray();
                 })
+                ->mapWithKeys(fn ($rows, $studentId) => [(int) $studentId => $rows])
                 ->toArray();
 
             $studentPaymentsById = Payment::query()
@@ -334,6 +338,12 @@ class CourseGroupController extends Controller
                 ->groupBy('student_id')
                 ->pluck('paid_total', 'student_id')
                 ->toArray();
+
+            $dueAmountsByStudentId = collect($dueAmountsByStudentId)
+                ->mapWithKeys(fn ($amount, $studentId) => [(int) $studentId => $amount])
+                ->all();
+
+            $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
 
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
@@ -368,11 +378,12 @@ class CourseGroupController extends Controller
                         'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById,
                         'studentPaymentsById' => $studentPaymentsById,
                         'studentPaidTotalsById' => $studentPaidTotalsById,
+                        'paymentMethods' => $paymentMethods,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
@@ -1145,6 +1156,7 @@ class CourseGroupController extends Controller
                             ->toArray();
 
                         return [
+                            'id' => $invoice->id,
                             'invoice_number' => $invoice->invoice_number,
                             'remaining_amount' => (float) $invoice->remaining_amount,
                             'due_date' => optional($invoice->due_date)->format('Y-m-d'),
@@ -1153,6 +1165,7 @@ class CourseGroupController extends Controller
                         ];
                     })->values()->toArray();
                 })
+                ->mapWithKeys(fn ($rows, $studentId) => [(int) $studentId => $rows])
                 ->toArray();
 
             $studentPaymentsById = Payment::query()
@@ -1182,6 +1195,12 @@ class CourseGroupController extends Controller
                 ->groupBy('student_id')
                 ->pluck('paid_total', 'student_id')
                 ->toArray();
+
+            $dueAmountsByStudentId = collect($dueAmountsByStudentId)
+                ->mapWithKeys(fn ($amount, $studentId) => [(int) $studentId => $amount])
+                ->all();
+
+            $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
 
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
@@ -1216,11 +1235,12 @@ class CourseGroupController extends Controller
                         'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById,
                         'studentPaymentsById' => $studentPaymentsById,
                         'studentPaidTotalsById' => $studentPaidTotalsById,
+                        'paymentMethods' => $paymentMethods,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
@@ -1303,7 +1323,28 @@ class CourseGroupController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             $requests = $query->paginate($request->get('per_page', 15));
-            
+
+            $studentIds = $requests->pluck('student_id')->unique()->filter()->values();
+            $otherGroupsByStudentId = collect();
+            if ($studentIds->isNotEmpty()) {
+                $otherGroupsByStudentId = CourseGroupMember::query()
+                    ->whereIn('student_id', $studentIds)
+                    ->where('group_id', '!=', (int) $groupId)
+                    ->with([
+                        'group' => function ($q) {
+                            $q->select('id', 'name')
+                                ->with(['courses' => function ($cq) {
+                                    $cq->select('courses.id');
+                                }]);
+                        },
+                    ])
+                    ->get()
+                    ->groupBy(fn ($row) => (int) $row->student_id)
+                    ->map(function ($rows) {
+                        return $rows->pluck('group')->filter()->unique('id')->values();
+                    });
+            }
+
             // Get count of pending requests for "Approve All" button
             $pendingCount = GroupMembershipRequest::where('group_id', $groupId)
                 ->where('status', 'pending')
@@ -1314,6 +1355,7 @@ class CourseGroupController extends Controller
                     'requests' => $requests,
                     'course' => $course,
                     'group' => $group,
+                    'otherGroupsByStudentId' => $otherGroupsByStudentId,
                 ])->render();
 
                 return response()->json([
@@ -1326,7 +1368,7 @@ class CourseGroupController extends Controller
                 ]);
             }
 
-            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount'));
+            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount', 'otherGroupsByStudentId'));
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: ' . $e->getMessage());
@@ -1639,6 +1681,74 @@ class CourseGroupController extends Controller
             DB::rollBack();
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء قبول جميع الطلبات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Record a payment for a group member (invoice must belong to the student).
+     */
+    public function recordMemberPayment(Request $request, CourseGroup $group, User $user)
+    {
+        if (! $group->students()->where('users.id', $user->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطالب ليس عضواً في هذه المجموعة.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'payment_date' => 'required|date',
+            'transaction_id' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $invoice = Invoice::findOrFail($validated['invoice_id']);
+
+        if ((int) $invoice->student_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الفاتورة لا تتبع هذا الطالب.',
+            ], 422);
+        }
+
+        if ($validated['amount'] > $invoice->remaining_amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المبلغ المدخل أكبر من المبلغ المتبقي ($' . number_format((float) $invoice->remaining_amount, 2) . ')',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $payment = $invoice->recordPayment($validated['amount'], [
+                'payment_method_id' => $validated['payment_method_id'],
+                'payment_date' => $validated['payment_date'],
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'received_by' => auth()->id(),
+            ]);
+
+            $payment->receipt_number = Payment::generateReceiptNumber();
+            $payment->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تسجيل الدفعة بنجاح',
+                'payment_id' => $payment->id,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تسجيل الدفعة: ' . $e->getMessage(),
+            ], 500);
         }
     }
 }

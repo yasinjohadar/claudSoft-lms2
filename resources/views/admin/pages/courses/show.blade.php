@@ -579,6 +579,24 @@
                         </a>
                     </div>
 
+                    <!-- Bulk module restrictions -->
+                    <div class="card custom-card mb-3 border-warning border-opacity-50" id="bulkModuleRestrictionsToolbar">
+                        <div class="card-body py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="text-muted small" id="bulk-module-selected-count">0 وحدة محددة</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-module-select-all">
+                                    تحديد الكل
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-module-deselect-all">
+                                    إلغاء التحديد
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-warning" id="bulk-module-restrictions-btn" disabled>
+                                <i class="fas fa-users-cog me-1"></i>قيود على المحدد
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Sections Accordion -->
                     <div class="accordion accordion-customicon1 accordion-primary" id="sectionsAccordion">
                     @forelse($course->sections()->orderBy('order_index')->get() as $section)
@@ -646,8 +664,16 @@
                                     </div>
 
                                     <!-- Section Header with Actions -->
-                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                                        <div></div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <span class="text-muted small">هذا القسم فقط:</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary js-section-select-all-modules" data-section-id="{{ $section->id }}" title="تحديد كل وحدات هذا القسم">
+                                                تحديد كل الوحدات
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary js-section-deselect-all-modules" data-section-id="{{ $section->id }}" title="إلغاء تحديد وحدات هذا القسم">
+                                                إلغاء تحديد الوحدات
+                                            </button>
+                                        </div>
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-sm btn-outline-warning manage-restrictions-btn"
                                                     data-type="section"
@@ -744,6 +770,9 @@
                                         <div id="module-container-{{ $module->id }}" class="mb-3 border rounded" style="transition: all 0.3s ease;">
                                             <div class="d-flex align-items-center justify-content-between p-3">
                                                 <div class="d-flex align-items-center flex-grow-1">
+                                                    <div class="form-check me-2 flex-shrink-0 align-self-center">
+                                                        <input type="checkbox" class="form-check-input js-module-bulk-check" value="{{ $module->id }}" id="module-bulk-check-{{ $module->id }}" data-section-id="{{ $section->id }}" title="تحديد للقيود الجماعية" aria-label="تحديد الوحدة">
+                                                    </div>
                                                     <span class="avatar avatar-md me-3
                                                         {{ $module->module_type == 'lesson' ? 'bg-primary-transparent text-primary' : '' }}
                                                         {{ $module->module_type == 'video' ? 'bg-danger-transparent text-danger' : '' }}
@@ -1325,11 +1354,128 @@
     }, 5000);
 
     // Access Restrictions Management
+    const courseRestrictionsUrls = {
+        groups: @json(route('courses.restrictions.groups', $course)),
+        bulkState: @json(route('courses.restrictions.bulk-state', $course)),
+        syncBulk: @json(route('courses.modules.restrictions.sync-bulk', $course)),
+    };
+
     let currentRestrictions = {
+        mode: 'single',
         type: null,
         id: null,
-        title: null
+        title: null,
+        moduleIds: [],
     };
+
+    function setRestrictionsModalBulkUi(isBulk) {
+        const notice = document.getElementById('restrictionsModalBulkNotice');
+        if (notice) {
+            notice.classList.toggle('d-none', !isBulk);
+        }
+    }
+
+    function updateBulkModuleToolbar() {
+        const checks = document.querySelectorAll('.js-module-bulk-check:checked');
+        const n = checks.length;
+        const countEl = document.getElementById('bulk-module-selected-count');
+        const btn = document.getElementById('bulk-module-restrictions-btn');
+        if (countEl) {
+            countEl.textContent = n + (n === 1 ? ' وحدة محددة' : ' وحدات محددة');
+        }
+        if (btn) {
+            btn.disabled = n === 0;
+        }
+    }
+
+    function renderRestrictionsGroupsList(allGroups, restrictedGroupIds, options) {
+        options = options || {};
+        const bulkCoverageById = options.bulkCoverageById || null;
+
+        const groupsList = document.getElementById('restrictionsGroupsList');
+        const toolbar = document.getElementById('restrictionsGroupsToolbar');
+        if (!groupsList) {
+            return;
+        }
+        groupsList.innerHTML = '';
+
+        const restrictedSet = new Set(
+            (restrictedGroupIds || []).map(function (x) {
+                return parseInt(x, 10);
+            })
+        );
+
+        if (allGroups && allGroups.length > 0) {
+            if (toolbar) {
+                toolbar.classList.remove('d-none');
+            }
+            allGroups.forEach(function (group) {
+                const groupId = parseInt(group.id, 10);
+                let isChecked = false;
+                let setIndeterminate = false;
+                let bulkModeAttr = '';
+
+                if (bulkCoverageById && bulkCoverageById[groupId]) {
+                    const cov = bulkCoverageById[groupId];
+                    if (cov.all_have) {
+                        bulkModeAttr = ' data-initial-bulk-mode="all"';
+                        isChecked = true;
+                        setIndeterminate = false;
+                    } else if (!cov.any_have) {
+                        bulkModeAttr = ' data-initial-bulk-mode="none"';
+                        isChecked = false;
+                        setIndeterminate = false;
+                    } else {
+                        bulkModeAttr = ' data-initial-bulk-mode="mixed"';
+                        isChecked = false;
+                        setIndeterminate = true;
+                    }
+                } else {
+                    isChecked = restrictedSet.has(groupId);
+                }
+
+                const groupItem = document.createElement('div');
+                groupItem.className = 'form-check mb-3';
+                groupItem.innerHTML =
+                    '<input class="form-check-input restriction-group-cb" type="checkbox" ' +
+                    'value="' + groupId + '" id="group_' + groupId + '"' + bulkModeAttr + ' ' +
+                    (isChecked ? 'checked' : '') + '>' +
+                    '<label class="form-check-label" for="group_' + groupId + '">' +
+                    '<strong>' + group.name + '</strong>' +
+                    (group.description
+                        ? '<br><small class="text-muted">' + group.description + '</small>'
+                        : '') +
+                    '</label>';
+                groupsList.appendChild(groupItem);
+
+                if (setIndeterminate) {
+                    const cb = groupItem.querySelector('.restriction-group-cb');
+                    if (cb) {
+                        cb.indeterminate = true;
+                    }
+                }
+            });
+        } else {
+            if (toolbar) {
+                toolbar.classList.add('d-none');
+            }
+            groupsList.innerHTML =
+                '<div class="alert alert-info">لا توجد مجموعات مرتبطة بهذا الكورس</div>';
+        }
+    }
+
+    function showRestrictionsModalSpinner() {
+        const groupsList = document.getElementById('restrictionsGroupsList');
+        const toolbar = document.getElementById('restrictionsGroupsToolbar');
+        if (toolbar) {
+            toolbar.classList.add('d-none');
+        }
+        if (groupsList) {
+            groupsList.innerHTML =
+                '<div class="text-center py-3"><div class="spinner-border text-primary" role="status">' +
+                '<span class="visually-hidden">جاري التحميل...</span></div></div>';
+        }
+    }
 
     // Handle manage restrictions button click
     document.addEventListener('DOMContentLoaded', function() {
@@ -1340,13 +1486,114 @@
                 const id = this.getAttribute('data-id');
                 const title = this.getAttribute('data-title');
 
+                currentRestrictions.mode = 'single';
                 currentRestrictions.type = type;
                 currentRestrictions.id = id;
                 currentRestrictions.title = title;
+                currentRestrictions.moduleIds = [];
 
                 loadRestrictions(type, id);
             });
         });
+
+        const bulkSelectAll = document.getElementById('bulk-module-select-all');
+        const bulkDeselectAll = document.getElementById('bulk-module-deselect-all');
+        const bulkOpenBtn = document.getElementById('bulk-module-restrictions-btn');
+        if (bulkSelectAll) {
+            bulkSelectAll.addEventListener('click', function () {
+                document.querySelectorAll('.js-module-bulk-check').forEach(function (cb) {
+                    cb.checked = true;
+                });
+                updateBulkModuleToolbar();
+            });
+        }
+        if (bulkDeselectAll) {
+            bulkDeselectAll.addEventListener('click', function () {
+                document.querySelectorAll('.js-module-bulk-check').forEach(function (cb) {
+                    cb.checked = false;
+                });
+                updateBulkModuleToolbar();
+            });
+        }
+        if (bulkOpenBtn) {
+            bulkOpenBtn.addEventListener('click', function () {
+                openBulkModuleRestrictionsModal();
+            });
+        }
+        document.addEventListener('change', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('js-module-bulk-check')) {
+                updateBulkModuleToolbar();
+            }
+        });
+
+        const sectionsAccordion = document.getElementById('sectionsAccordion');
+        if (sectionsAccordion) {
+            sectionsAccordion.addEventListener('click', function (e) {
+                const selectBtn = e.target.closest('.js-section-select-all-modules');
+                const deselectBtn = e.target.closest('.js-section-deselect-all-modules');
+                if (selectBtn) {
+                    e.preventDefault();
+                    const sid = selectBtn.getAttribute('data-section-id');
+                    if (!sid) {
+                        return;
+                    }
+                    document
+                        .querySelectorAll('.js-module-bulk-check[data-section-id="' + sid + '"]')
+                        .forEach(function (cb) {
+                            cb.checked = true;
+                        });
+                    updateBulkModuleToolbar();
+                    return;
+                }
+                if (deselectBtn) {
+                    e.preventDefault();
+                    const sid = deselectBtn.getAttribute('data-section-id');
+                    if (!sid) {
+                        return;
+                    }
+                    document
+                        .querySelectorAll('.js-module-bulk-check[data-section-id="' + sid + '"]')
+                        .forEach(function (cb) {
+                            cb.checked = false;
+                        });
+                    updateBulkModuleToolbar();
+                }
+            });
+        }
+
+        const gSelectAll = document.getElementById('restrictionsGroupsSelectAllBtn');
+        const gDeselectAll = document.getElementById('restrictionsGroupsDeselectAllBtn');
+        if (gSelectAll) {
+            gSelectAll.addEventListener('click', function () {
+                document
+                    .querySelectorAll('#restrictionsGroupsList .restriction-group-cb')
+                    .forEach(function (cb) {
+                        cb.checked = true;
+                        cb.indeterminate = false;
+                    });
+            });
+        }
+        if (gDeselectAll) {
+            gDeselectAll.addEventListener('click', function () {
+                document
+                    .querySelectorAll('#restrictionsGroupsList .restriction-group-cb')
+                    .forEach(function (cb) {
+                        cb.checked = false;
+                        cb.indeterminate = false;
+                    });
+            });
+        }
+
+        const restrictionsModalEl = document.getElementById('restrictionsModal');
+        if (restrictionsModalEl) {
+            restrictionsModalEl.addEventListener('hidden.bs.modal', function () {
+                currentRestrictions.mode = 'single';
+                currentRestrictions.moduleIds = [];
+                setRestrictionsModalBulkUi(false);
+            });
+        }
+
+        updateBulkModuleToolbar();
 
         // Delete module buttons
         document.querySelectorAll('.delete-module-btn').forEach(function(btn) {
@@ -1368,78 +1615,110 @@
         }
     });
 
+    function openBulkModuleRestrictionsModal() {
+        const selected = Array.from(document.querySelectorAll('.js-module-bulk-check:checked')).map(function (cb) {
+            return parseInt(cb.value, 10);
+        });
+        if (selected.length === 0) {
+            alert('حدد وحدة واحدة على الأقل.');
+            return;
+        }
+
+        currentRestrictions.mode = 'bulk';
+        currentRestrictions.type = 'module';
+        currentRestrictions.id = null;
+        currentRestrictions.title = null;
+        currentRestrictions.moduleIds = selected;
+
+        showRestrictionsModalSpinner();
+        setRestrictionsModalBulkUi(true);
+        document.getElementById('restrictionsModalTitle').textContent =
+            'قيود جماعية — ' + selected.length + ' وحدة';
+
+        const params = new URLSearchParams();
+        selected.forEach(function (id) {
+            params.append('module_ids[]', id);
+        });
+
+        fetch(courseRestrictionsUrls.bulkState + '?' + params.toString(), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+            },
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    return response.json().then(function (err) {
+                        throw new Error(err.message || 'حدث خطأ في تحميل حالة القيود الجماعية');
+                    });
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.success) {
+                    const bulkCoverageById = {};
+                    (data.group_coverage || []).forEach(function (row) {
+                        bulkCoverageById[row.id] = {
+                            all_have: !!row.all_have,
+                            any_have: !!row.any_have,
+                        };
+                    });
+                    renderRestrictionsGroupsList(data.all_groups || [], [], {
+                        bulkCoverageById: bulkCoverageById,
+                    });
+                    const modal = new bootstrap.Modal(document.getElementById('restrictionsModal'));
+                    modal.show();
+                } else {
+                    alert(data.message || 'حدث خطأ في تحميل المجموعات');
+                }
+            })
+            .catch(function (error) {
+                console.error('Error:', error);
+                alert(error.message || 'حدث خطأ في الاتصال');
+            });
+    }
+
     // Load restrictions
     function loadRestrictions(type, id) {
-        const url = type === 'section' 
-            ? `/admin/sections/${id}/restrictions`
-            : `/admin/modules/${id}/restrictions`;
+        const url =
+            type === 'section'
+                ? `/admin/sections/${id}/restrictions`
+                : `/admin/modules/${id}/restrictions`;
+
+        showRestrictionsModalSpinner();
+        setRestrictionsModalBulkUi(false);
 
         fetch(url, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
-            }
+                Accept: 'application/json',
+            },
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || 'حدث خطأ في تحميل القيود');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Update modal title
-                document.getElementById('restrictionsModalTitle').textContent = 
-                    `إدارة القيود - ${currentRestrictions.title}`;
-
-                // Clear and populate groups list
-                const groupsList = document.getElementById('restrictionsGroupsList');
-                groupsList.innerHTML = '';
-
-                if (data.all_groups && data.all_groups.length > 0) {
-                    console.log('Loading groups:', {
-                        all_groups: data.all_groups,
-                        restricted_group_ids: data.restricted_group_ids
+            .then(function (response) {
+                if (!response.ok) {
+                    return response.json().then(function (err) {
+                        throw new Error(err.message || 'حدث خطأ في تحميل القيود');
                     });
-                    
-                    data.all_groups.forEach(function(group) {
-                        // Convert both to numbers for comparison
-                        const groupId = parseInt(group.id);
-                        const restrictedIds = Array.isArray(data.restricted_group_ids) 
-                            ? data.restricted_group_ids.map(id => parseInt(id))
-                            : [];
-                        const isChecked = restrictedIds.includes(groupId);
-                        
-                        const groupItem = document.createElement('div');
-                        groupItem.className = 'form-check mb-3';
-                        groupItem.innerHTML = `
-                            <input class="form-check-input" type="checkbox" 
-                                   value="${groupId}" id="group_${groupId}" 
-                                   ${isChecked ? 'checked' : ''}>
-                            <label class="form-check-label" for="group_${groupId}">
-                                <strong>${group.name}</strong>
-                                ${group.description ? '<br><small class="text-muted">' + group.description + '</small>' : ''}
-                            </label>
-                        `;
-                        groupsList.appendChild(groupItem);
-                    });
-                } else {
-                    groupsList.innerHTML = '<div class="alert alert-info">لا توجد مجموعات مرتبطة بهذا الكورس</div>';
                 }
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.success) {
+                    document.getElementById('restrictionsModalTitle').textContent =
+                        'إدارة القيود - ' + currentRestrictions.title;
 
-                // Show modal
-                const modal = new bootstrap.Modal(document.getElementById('restrictionsModal'));
-                modal.show();
-            } else {
-                alert(data.message || 'حدث خطأ في تحميل القيود');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message || 'حدث خطأ في الاتصال');
-        });
+                    renderRestrictionsGroupsList(data.all_groups || [], data.restricted_group_ids || []);
+
+                    const modal = new bootstrap.Modal(document.getElementById('restrictionsModal'));
+                    modal.show();
+                } else {
+                    alert(data.message || 'حدث خطأ في تحميل القيود');
+                }
+            })
+            .catch(function (error) {
+                console.error('Error:', error);
+                alert(error.message || 'حدث خطأ في الاتصال');
+            });
     }
 
     /**
@@ -1530,78 +1809,128 @@
     // Save restrictions
     function saveRestrictions() {
         const groupsList = document.getElementById('restrictionsGroupsList');
-        const checkboxes = groupsList.querySelectorAll('input[type="checkbox"]:checked');
-        const groupIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-
-        console.log('Saving restrictions:', {
-            type: currentRestrictions.type,
-            id: currentRestrictions.id,
-            groupIds: groupIds
-        });
-
-        const type = currentRestrictions.type;
-        const id = currentRestrictions.id;
-        const url = type === 'section'
-            ? `/admin/sections/${id}/restrictions/sync`
-            : `/admin/modules/${id}/restrictions/sync`;
-
-        // Disable save button to prevent double submission
         const saveBtn = document.getElementById('saveRestrictionsBtn');
         const originalBtnText = saveBtn.innerHTML;
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري الحفظ...';
+
+        const isBulk = currentRestrictions.mode === 'bulk';
+        let url;
+        let body;
+
+        if (isBulk) {
+            const addGroupIds = [];
+            const removeGroupIds = [];
+            groupsList.querySelectorAll('.restriction-group-cb').forEach(function (cb) {
+                const gid = parseInt(cb.value, 10);
+                const initial = cb.getAttribute('data-initial-bulk-mode');
+                if (!initial) {
+                    return;
+                }
+                if (initial === 'mixed' && cb.indeterminate) {
+                    return;
+                }
+                if (initial === 'all') {
+                    if (!cb.checked) {
+                        removeGroupIds.push(gid);
+                    }
+                } else if (initial === 'none') {
+                    if (cb.checked) {
+                        addGroupIds.push(gid);
+                    }
+                } else if (initial === 'mixed') {
+                    if (cb.checked) {
+                        addGroupIds.push(gid);
+                    } else {
+                        removeGroupIds.push(gid);
+                    }
+                }
+            });
+
+            if (addGroupIds.length === 0 && removeGroupIds.length === 0) {
+                alert(
+                    'لم يُرسل أي تغيير. المجموعات ذات الحالة «بعض الوحدات فقط» تبقى دون تعديل ما لم تحددها صراحةً (أو استخدم «تحديد كل المجموعات» / «إلغاء التحديد»).'
+                );
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnText;
+                return;
+            }
+
+            url = courseRestrictionsUrls.syncBulk;
+            body = JSON.stringify({
+                module_ids: currentRestrictions.moduleIds,
+                add_group_ids: addGroupIds,
+                remove_group_ids: removeGroupIds,
+            });
+        } else {
+            const checkboxes = groupsList.querySelectorAll('.restriction-group-cb:checked');
+            const groupIds = Array.from(checkboxes).map(function (cb) {
+                return parseInt(cb.value, 10);
+            });
+            const type = currentRestrictions.type;
+            const id = currentRestrictions.id;
+            url =
+                type === 'section'
+                    ? '/admin/sections/' + id + '/restrictions/sync'
+                    : '/admin/modules/' + id + '/restrictions/sync';
+            body = JSON.stringify({
+                group_ids: groupIds,
+            });
+        }
 
         fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
+                Accept: 'application/json',
             },
-            body: JSON.stringify({
-                group_ids: groupIds
-            })
+            body: body,
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || 'Network response was not ok');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Save response:', data);
-            if (data.success) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('restrictionsModal'));
-                modal.hide();
-
-                // Show success message
-                if (typeof toastr !== 'undefined') {
-                    toastr.success(data.message || 'تم تحديث القيود بنجاح');
-                } else {
-                    alert(data.message || 'تم تحديث القيود بنجاح');
+            .then(function (response) {
+                if (!response.ok) {
+                    return response.json().then(function (err) {
+                        throw new Error(err.message || 'Network response was not ok');
+                    });
                 }
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.success) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('restrictionsModal'));
+                    modal.hide();
 
-                // Update badges directly without page reload
-                updateRestrictionsBadges(type, id, data.groups || []);
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(data.message || 'تم تحديث القيود بنجاح');
+                    } else {
+                        alert(data.message || 'تم تحديث القيود بنجاح');
+                    }
 
-                // Re-enable save button
+                    if (isBulk) {
+                        const pm = data.per_module_groups || {};
+                        (data.updated_module_ids || []).forEach(function (mid) {
+                            const key = String(mid);
+                            updateRestrictionsBadges('module', mid, pm[key] || []);
+                        });
+                        document.querySelectorAll('.js-module-bulk-check').forEach(function (cb) {
+                            cb.checked = false;
+                        });
+                        updateBulkModuleToolbar();
+                    } else {
+                        updateRestrictionsBadges(currentRestrictions.type, currentRestrictions.id, data.groups || []);
+                    }
+                } else {
+                    alert(data.message || 'حدث خطأ في حفظ القيود');
+                }
+            })
+            .catch(function (error) {
+                console.error('Error saving restrictions:', error);
+                alert('حدث خطأ في الاتصال: ' + error.message);
+            })
+            .finally(function () {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalBtnText;
-            } else {
-                alert(data.message || 'حدث خطأ في حفظ القيود');
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalBtnText;
-            }
-        })
-        .catch(error => {
-            console.error('Error saving restrictions:', error);
-            alert('حدث خطأ في الاتصال: ' + error.message);
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalBtnText;
-        });
+            });
     }
 
     // Store current deletion data
@@ -1843,6 +2172,14 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>ملاحظة:</strong> حدد المجموعات التي يمكنها الوصول إلى هذا المحتوى. إذا لم تحدد أي مجموعة، سيكون المحتوى متاحاً لجميع المجموعات.
+                </div>
+                <div id="restrictionsModalBulkNotice" class="alert alert-warning d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>قيود جماعية (دمج):</strong> التحديد يضيف المجموعة إلى كل الوحدات المختارة دون حذف بقية القيود على كل وحدة. إلغاء التحديد يزيل المجموعة من الوحدات المختارة فقط. الصناديق «بعض الوحدات» (غير محددة بشكل قاطع) تبقى كما هي ما لم تغيّرها صراحةً أو تستخدم أزرار تحديد/إلغاء الكل.
+                </div>
+                <div id="restrictionsGroupsToolbar" class="mb-3 d-none d-flex flex-wrap gap-2 align-items-center">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="restrictionsGroupsSelectAllBtn">تحديد كل المجموعات</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="restrictionsGroupsDeselectAllBtn">إلغاء تحديد المجموعات</button>
                 </div>
                 <div id="restrictionsGroupsList">
                     <div class="text-center">
@@ -2267,6 +2604,10 @@
                                     } else {
                                         // Append to accordion body
                                         sectionElement.insertAdjacentHTML('beforeend', data.module_html);
+                                    }
+
+                                    if (typeof updateBulkModuleToolbar === 'function') {
+                                        updateBulkModuleToolbar();
                                     }
                                     
                                     // Update modules count badge
