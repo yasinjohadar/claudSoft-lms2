@@ -97,6 +97,7 @@ Route::prefix('admin')
             Route::get('/download-errors/{session}', [BulkUserImportController::class, 'downloadErrors'])->name('errors');
         });
 
+        Route::get('users/{user}/admin-notes', [UserController::class, 'adminNotesFragment'])->name('admin.users.admin-notes');
         Route::resource('users', UserController::class);
         Route::resource('roles', RoleController::class);
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');

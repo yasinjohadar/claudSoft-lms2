@@ -81,6 +81,14 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Session::class, 'user_id');
     }
 
+    /**
+     * Administrative notes attached to this user (e.g. deactivation reasons).
+     */
+    public function adminNotes()
+    {
+        return $this->hasMany(UserAdminNote::class, 'user_id')->orderByDesc('occurred_on')->orderByDesc('id');
+    }
+
     public function nationality()
     {
         return $this->belongsTo(Nationality::class);

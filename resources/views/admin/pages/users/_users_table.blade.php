@@ -95,6 +95,13 @@
                     </td>
 
                     <td>
+                        <button type="button"
+                            class="btn btn-outline-secondary btn-sm me-1 js-open-admin-notes"
+                            data-notes-url="{{ route('admin.users.admin-notes', $user) }}"
+                            data-user-name="{{ $user->name }}"
+                            title="عرض الملاحظات الإدارية">
+                            <i class="fas fa-sticky-note"></i>
+                        </button>
                         @if($user->hasRole('student'))
                             <a class="btn btn-primary btn-sm me-1" href="{{ route('admin.users.courses', $user->id) }}"
                                 title="عرض الكورسات">

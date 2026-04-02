@@ -218,6 +218,14 @@
                                     <i class="fas fa-mobile-alt me-1"></i> الأجهزة
                                 </a>
 										</li>
+                            <li class="nav-item">
+                                <a href="#tab-admin-notes" class="nav-link" data-bs-toggle="tab">
+                                    <i class="fas fa-sticky-note me-1"></i> الملاحظات الإدارية
+                                    @if(isset($adminNotes) && $adminNotes->isNotEmpty())
+                                        <span class="badge bg-secondary ms-1">{{ $adminNotes->count() }}</span>
+                                    @endif
+                                </a>
+										</li>
 									</ul>
 
 								<div class="tab-content border border-top-0 p-4 br-dark">
@@ -684,6 +692,48 @@
                                         <a href="{{ route('admin.user-devices.user', $user->id) }}" class="btn btn-outline-primary">
                                             <i class="fas fa-list me-1"></i>عرض جميع الأجهزة
                                         </a>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Admin notes -->
+                            <div class="tab-pane" id="tab-admin-notes">
+                                <h5 class="mb-3">سجل الملاحظات الإدارية</h5>
+                                <p class="text-muted small mb-3">تُسجَّل الملاحظات تلقائياً عند إيقاف تفعيل المستخدم من لوحة المستخدمين، ويمكن لاحقاً إضافة مصادر أخرى.</p>
+                                @if(!isset($adminNotes) || $adminNotes->isEmpty())
+                                    <p class="text-muted mb-0">لا توجد ملاحظات مسجلة لهذا المستخدم.</p>
+                                @else
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-bordered mb-0 align-middle">
+                                            <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 110px;">تاريخ الحدث</th>
+                                                <th>الملاحظة</th>
+                                                <th style="width: 140px;">المصدر</th>
+                                                <th style="width: 160px;">سجّلها</th>
+                                                <th style="width: 150px;">وقت التسجيل</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach($adminNotes as $note)
+                                                <tr>
+                                                    <td>{{ $note->occurred_on?->format('Y-m-d') }}</td>
+                                                    <td class="text-wrap" style="white-space: normal;">{{ $note->body }}</td>
+                                                    <td>
+                                                        @if($note->source === 'deactivation')
+                                                            <span class="badge bg-warning-transparent text-warning">إيقاف تفعيل</span>
+                                                        @elseif($note->source === 'reactivation')
+                                                            <span class="badge bg-success-transparent text-success">تفعيل</span>
+                                                        @else
+                                                            <span class="badge bg-secondary-transparent text-secondary">{{ $note->source }}</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>{{ $note->creator?->name ?? '—' }}</td>
+                                                    <td><small class="text-muted">{{ $note->created_at?->format('Y-m-d H:i') }}</small></td>
+                                                </tr>
+                                            @endforeach
+                                            </tbody>
+                                        </table>
                                     </div>
                                 @endif
                             </div>

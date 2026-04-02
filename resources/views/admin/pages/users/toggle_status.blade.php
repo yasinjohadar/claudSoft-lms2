@@ -34,6 +34,22 @@
                             </div>
                         </div>
 
+                        <div class="mb-3 text-start">
+                            <label for="occurred_on{{ $user->id }}" class="form-label fw-semibold">تاريخ الملاحظة <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('occurred_on') is-invalid @enderror" id="occurred_on{{ $user->id }}" name="occurred_on"
+                                   value="{{ old('occurred_on', now()->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}" required>
+                            @error('occurred_on')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label for="admin_note_body{{ $user->id }}" class="form-label fw-semibold">ملاحظة / سبب التوقيف <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('admin_note_body') is-invalid @enderror" id="admin_note_body{{ $user->id }}" name="admin_note_body" rows="4" required maxlength="5000" placeholder="اكتب سبب إيقاف التفعيل...">{{ old('admin_note_body') }}</textarea>
+                            @error('admin_note_body')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <div class="d-flex justify-content-center gap-3 mt-4">
                             <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
                                 <i class="fas fa-times me-2"></i>إلغاء
@@ -67,6 +83,22 @@
                                     سيتمكن المستخدم من الدخول للنظام
                                 </small>
                             </div>
+                        </div>
+
+                        <div class="mb-3 text-start">
+                            <label for="occurred_on_activate{{ $user->id }}" class="form-label fw-semibold">تاريخ الملاحظة <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('occurred_on') is-invalid @enderror" id="occurred_on_activate{{ $user->id }}" name="occurred_on"
+                                   value="{{ old('occurred_on', now()->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}" required>
+                            @error('occurred_on')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label for="admin_note_body_activate{{ $user->id }}" class="form-label fw-semibold">ملاحظة عن التفعيل <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('admin_note_body') is-invalid @enderror" id="admin_note_body_activate{{ $user->id }}" name="admin_note_body" rows="4" required maxlength="5000" placeholder="اكتب ملاحظة توثّق سبب إعادة التفعيل...">{{ old('admin_note_body') }}</textarea>
+                            @error('admin_note_body')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         <div class="d-flex justify-content-center gap-3 mt-4">

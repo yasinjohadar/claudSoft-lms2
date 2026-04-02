@@ -122,6 +122,20 @@
     </div>
     <!-- End::app-content -->
 
+    <div class="modal fade" id="adminUserNotesModal" tabindex="-1" aria-labelledby="adminUserNotesModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminUserNotesModalTitle">ملاحظات إدارية</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body" id="adminUserNotesModalBody">
+                    <p class="text-muted mb-0">جاري التحميل...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @include('admin.partials.impersonate-student')
 
 @stop
@@ -285,6 +299,54 @@
     } else {
         initUsersAjaxSearch();
     }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.js-open-admin-notes');
+        if (!btn) {
+            return;
+        }
+        e.preventDefault();
+        const url = btn.getAttribute('data-notes-url');
+        const name = btn.getAttribute('data-user-name') || '';
+        const modalEl = document.getElementById('adminUserNotesModal');
+        if (!modalEl || !url) {
+            return;
+        }
+        const titleEl = document.getElementById('adminUserNotesModalTitle');
+        const bodyEl = document.getElementById('adminUserNotesModalBody');
+        if (titleEl) {
+            titleEl.textContent = name ? ('ملاحظات إدارية — ' + name) : 'ملاحظات إدارية';
+        }
+        if (bodyEl) {
+            bodyEl.innerHTML = '<p class="text-muted mb-0">جاري التحميل...</p>';
+        }
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('bad response');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (bodyEl && data && typeof data.html === 'string') {
+                    bodyEl.innerHTML = data.html;
+                }
+            })
+            .catch(function() {
+                if (bodyEl) {
+                    bodyEl.innerHTML = '<p class="text-danger mb-0">تعذر تحميل الملاحظات.</p>';
+                }
+            });
+    });
 })();
 </script>
 @stop

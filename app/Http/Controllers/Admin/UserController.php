@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use HashContext;
 use App\Models\User;
+use App\Models\UserAdminNote;
 use App\Models\Nationality;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
@@ -263,8 +264,11 @@ public function index(Request $request)
             'blocked' => $userDevices->where('is_blocked', true)->count(),
         ];
 
+        $adminNotes = $user->adminNotes()->with('creator')->get();
+
         return view('admin.pages.users.profile', compact(
             'user',
+            'adminNotes',
             'enrollments',
             'courseStats',
             'quizAttempts',
@@ -402,29 +406,84 @@ public function index(Request $request)
  */
 public function toggleStatus(Request $request, $id)
 {
-    try {
-        $user = User::findOrFail($id);
+    $user = User::findOrFail($id);
 
-        // التحقق من أن المستخدم لا يحاول إلغاء تفعيل نفسه
-        if ($user->id === auth()->id()) {
+    if ($user->id === auth()->id()) {
+        return redirect()->route('users.index')
+            ->with('error', 'لا يمكنك إلغاء تفعيل حسابك الشخصي');
+    }
+
+    if ($user->is_active) {
+        $validated = $request->validate([
+            'admin_note_body' => 'required|string|max:5000',
+            'occurred_on' => 'required|date|before_or_equal:today',
+        ], [
+            'admin_note_body.required' => 'يرجى إدخال سبب أو ملاحظة توقيف المستخدم.',
+            'occurred_on.required' => 'يرجى تحديد تاريخ الملاحظة.',
+            'occurred_on.before_or_equal' => 'تاريخ الملاحظة لا يمكن أن يكون في المستقبل.',
+        ]);
+
+        try {
+            DB::transaction(function () use ($user, $validated) {
+                UserAdminNote::create([
+                    'user_id' => $user->id,
+                    'created_by' => auth()->id(),
+                    'body' => $validated['admin_note_body'],
+                    'occurred_on' => $validated['occurred_on'],
+                    'source' => 'deactivation',
+                ]);
+                $user->is_active = false;
+                $user->save();
+            });
+        } catch (\Throwable $e) {
             return redirect()->route('users.index')
-                ->with('error', 'لا يمكنك إلغاء تفعيل حسابك الشخصي');
+                ->with('error', 'حدث خطأ أثناء تحديث حالة المستخدم: ' . $e->getMessage());
         }
 
-        // تبديل الحالة
-        $newStatus = !$user->is_active;
-        $user->is_active = $newStatus;
-        $user->save();
-
-        $status = $user->is_active ? 'مفعل' : 'غير مفعل';
-
         return redirect()->route('users.index')
-            ->with('success', "تم تحديث حالة المستخدم {$user->name} إلى: {$status}");
+            ->with('success', "تم إيقاف تفعيل المستخدم {$user->name} وتسجيل الملاحظة.");
+    }
 
-    } catch (\Exception $e) {
+    $validated = $request->validate([
+        'admin_note_body' => 'required|string|max:5000',
+        'occurred_on' => 'required|date|before_or_equal:today',
+    ], [
+        'admin_note_body.required' => 'يرجى إدخال ملاحظة عن سبب التفعيل.',
+        'occurred_on.required' => 'يرجى تحديد تاريخ الملاحظة.',
+        'occurred_on.before_or_equal' => 'تاريخ الملاحظة لا يمكن أن يكون في المستقبل.',
+    ]);
+
+    try {
+        DB::transaction(function () use ($user, $validated) {
+            UserAdminNote::create([
+                'user_id' => $user->id,
+                'created_by' => auth()->id(),
+                'body' => $validated['admin_note_body'],
+                'occurred_on' => $validated['occurred_on'],
+                'source' => 'reactivation',
+            ]);
+            $user->is_active = true;
+            $user->save();
+        });
+    } catch (\Throwable $e) {
         return redirect()->route('users.index')
             ->with('error', 'حدث خطأ أثناء تحديث حالة المستخدم: ' . $e->getMessage());
     }
+
+    return redirect()->route('users.index')
+        ->with('success', "تم تفعيل المستخدم {$user->name} وتسجيل الملاحظة.");
+}
+
+/**
+ * JSON fragment: admin notes table HTML for modal (users list).
+ */
+public function adminNotesFragment(User $user)
+{
+    $notes = $user->adminNotes()->with('creator')->get();
+
+    return response()->json([
+        'html' => view('admin.pages.users.partials.admin-notes-modal-body', compact('user', 'notes'))->render(),
+    ]);
 }
 
 /**
