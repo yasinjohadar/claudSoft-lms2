@@ -79,13 +79,21 @@ class CourseNoteController extends Controller
 
     public function byCourse($courseId)
     {
+        $course = Course::findOrFail($courseId);
+
+        $isEnrolled = $course->enrollments()
+            ->where('student_id', auth()->id())
+            ->exists();
+
+        if (! $isEnrolled) {
+            abort(403);
+        }
+
         $notes = CourseNote::where('user_id', auth()->id())
             ->where('course_id', $courseId)
             ->with('lesson')
             ->latest()
             ->get();
-
-        $course = Course::findOrFail($courseId);
 
         return view('student.course-notes.by-course', compact('notes', 'course'));
     }

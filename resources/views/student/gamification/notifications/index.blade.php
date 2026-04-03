@@ -21,14 +21,13 @@
 
     <div class="row">
         <div class="col-xl-12">
-            <div class="card custom-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="card-title">
-                        الإشعارات
-                        <span class="badge bg-primary-transparent ms-2" id="total-count">{{ $notifications->total() }}</span>
+            <div class="card custom-card student-gamification-notifications-page">
+                <div class="card-header flex-wrap gap-3 d-flex justify-content-between align-items-center border-bottom">
+                    <div class="card-title mb-0 d-flex align-items-center flex-wrap gap-2">
+                        <span>الإشعارات</span>
+                        <span class="badge bg-primary-transparent text-primary" id="total-count">{{ $notifications->total() }}</span>
                     </div>
-                    <div class="d-flex gap-2">
-                        <!-- Filter Buttons -->
+                    <div class="d-flex flex-wrap align-items-center gap-2">
                         <div class="btn-group" role="group">
                             <input type="radio" class="btn-check" name="filter" id="filter-all" value="all" {{ !request('filter') || request('filter') == 'all' ? 'checked' : '' }}>
                             <label class="btn btn-outline-primary btn-sm" for="filter-all" onclick="filterNotifications('all')">الكل</label>
@@ -37,8 +36,7 @@
                             <label class="btn btn-outline-primary btn-sm" for="filter-unread" onclick="filterNotifications('unread')">غير المقروءة</label>
                         </div>
 
-                        <!-- Type Filter -->
-                        <select class="form-select form-select-sm" style="width: 200px;" onchange="filterByType(this.value)">
+                        <select class="form-select form-select-sm student-gamification-notif-type-select" aria-label="تصفية حسب النوع" onchange="filterByType(this.value)">
                             <option value="">جميع الأنواع</option>
                             <option value="certificate_issued" {{ request('type') == 'certificate_issued' ? 'selected' : '' }}>الشهادات</option>
                             <option value="course_completed" {{ request('type') == 'course_completed' ? 'selected' : '' }}>الكورسات</option>
@@ -50,66 +48,62 @@
                         </select>
                     </div>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body student-gamification-notif-list-wrap p-3 p-md-4">
                     @if($notifications->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table text-nowrap table-hover">
-                                <tbody id="notifications-tbody">
-                                    @foreach($notifications as $notification)
-                                        <tr class="notification-item {{ !$notification->is_read ? 'table-primary' : '' }}"
-                                            data-id="{{ $notification->id }}"
-                                            style="cursor: pointer;"
-                                            onclick="viewNotification({{ $notification->id }}, '{{ $notification->action_url ?? '#' }}')">
-                                            <td style="width: 50px;">
-                                                <div class="fs-20">
-                                                    {!! $notification->icon_html !!}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="flex-grow-1">
-                                                        <h6 class="mb-1 fw-semibold">
-                                                            {{ $notification->title }}
-                                                            @if(!$notification->is_read)
-                                                                <span class="badge bg-primary rounded-pill ms-2" style="font-size: 10px;">جديد</span>
-                                                            @endif
-                                                        </h6>
-                                                        <p class="mb-0 text-muted fs-13">{{ $notification->message }}</p>
-                                                        <small class="text-muted">
-                                                            <i class="ri-time-line me-1"></i>{{ $notification->time_ago }}
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td style="width: 100px;" class="text-end">
-                                                <button type="button" class="btn btn-sm btn-icon btn-danger-light"
-                                                        onclick="event.stopPropagation(); deleteNotification({{ $notification->id }})"
-                                                        title="حذف">
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        <div class="vstack gap-3" id="notifications-list">
+                            @foreach($notifications as $notification)
+                                <div class="student-gamification-notif-card card border shadow-sm {{ !$notification->is_read ? 'is-unread' : '' }}"
+                                     data-id="{{ $notification->id }}"
+                                     data-action-url="{{ e($notification->action_url ?? '') }}"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="viewNotificationFromCard(this)"
+                                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();viewNotificationFromCard(this);}">
+                                    <div class="card-body d-flex flex-column flex-sm-row align-items-stretch align-items-sm-start gap-3 py-3 px-3 px-sm-4">
+                                        <div class="student-gamification-notif-icon flex-shrink-0 d-flex align-items-center justify-content-center rounded-3 border">
+                                            <span class="fs-22 d-inline-flex align-items-center justify-content-center student-gamification-notif-icon-inner">{!! $notification->icon_html !!}</span>
+                                        </div>
+                                        <div class="flex-grow-1 min-w-0 text-start">
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                <h6 class="mb-0 fw-semibold student-gamification-notif-title">{{ $notification->title }}</h6>
+                                                @if(!$notification->is_read)
+                                                    <span class="badge bg-primary rounded-pill notif-new-badge" style="font-size: 10px;">جديد</span>
+                                                @endif
+                                            </div>
+                                            <p class="mb-2 text-muted fs-13 lh-base student-gamification-notif-message">{{ $notification->message }}</p>
+                                            <div class="d-flex align-items-center text-muted fs-12">
+                                                <i class="ri-time-line me-1 flex-shrink-0"></i>
+                                                <span>{{ $notification->time_ago }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-shrink-0 d-flex align-items-start justify-content-sm-end">
+                                            <button type="button" class="btn btn-sm btn-outline-danger student-gamification-notif-delete"
+                                                    onclick="event.stopPropagation(); deleteNotification({{ $notification->id }})"
+                                                    title="حذف"
+                                                    aria-label="حذف الإشعار">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
 
-                        <!-- Pagination -->
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    عرض {{ $notifications->firstItem() }} إلى {{ $notifications->lastItem() }} من أصل {{ $notifications->total() }}
-                                </div>
-                                <div>
-                                    {{ $notifications->links() }}
-                                </div>
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 pt-4 mt-1 border-top student-gamification-notif-pagination-row">
+                            <div class="text-muted fs-13 text-center text-sm-start mb-0">
+                                عرض {{ $notifications->firstItem() }} إلى {{ $notifications->lastItem() }} من أصل {{ $notifications->total() }}
+                            </div>
+                            <div class="student-gamification-notif-pagination">
+                                {{ $notifications->links() }}
                             </div>
                         </div>
                     @else
-                        <div class="text-center p-5">
-                            <i class="ri-notification-off-line fs-1 text-muted mb-3"></i>
-                            <h5 class="text-muted">لا توجد إشعارات</h5>
-                            <p class="text-muted">ليس لديك أي إشعارات حالياً</p>
+                        <div class="text-center py-5 px-3 student-gamification-notif-empty">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 student-gamification-notif-empty-icon">
+                                <i class="ri-notification-off-line fs-1 text-muted"></i>
+                            </div>
+                            <h5 class="text-muted mb-2">لا توجد إشعارات</h5>
+                            <p class="text-muted mb-0 fs-14">ليس لديك أي إشعارات حالياً</p>
                         </div>
                     @endif
                 </div>
@@ -142,8 +136,18 @@ function filterByType(type) {
     window.location.href = url.toString();
 }
 
+function notifCardSelector(notificationId) {
+    return `.student-gamification-notif-card[data-id="${notificationId}"]`;
+}
+
+function viewNotificationFromCard(el) {
+    const id = parseInt(el.getAttribute('data-id'), 10);
+    const raw = el.getAttribute('data-action-url') || '';
+    const actionUrl = raw.trim() === '' ? '#' : raw;
+    viewNotification(id, actionUrl);
+}
+
 function viewNotification(notificationId, actionUrl) {
-    // Mark as read
     fetch(`/student/gamification/notifications/${notificationId}/mark-as-read`, {
         method: 'POST',
         headers: {
@@ -154,15 +158,13 @@ function viewNotification(notificationId, actionUrl) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update UI
-            const row = document.querySelector(`tr[data-id="${notificationId}"]`);
-            if (row) {
-                row.classList.remove('table-primary');
-                const badge = row.querySelector('.badge.bg-primary');
+            const card = document.querySelector(notifCardSelector(notificationId));
+            if (card) {
+                card.classList.remove('is-unread');
+                const badge = card.querySelector('.notif-new-badge');
                 if (badge) badge.remove();
             }
 
-            // Redirect if there's an action URL
             if (actionUrl && actionUrl !== '#') {
                 window.location.href = actionUrl;
             }
@@ -186,18 +188,15 @@ function deleteNotification(notificationId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remove row from table
-            const row = document.querySelector(`tr[data-id="${notificationId}"]`);
-            if (row) {
-                row.remove();
+            const card = document.querySelector(notifCardSelector(notificationId));
+            if (card) {
+                card.remove();
             }
 
-            // Show success message
             alert(data.message);
 
-            // Reload if no more notifications
-            const tbody = document.getElementById('notifications-tbody');
-            if (tbody.children.length === 0) {
+            const list = document.getElementById('notifications-list');
+            if (list && list.children.length === 0) {
                 window.location.reload();
             }
         }
@@ -223,15 +222,10 @@ function markAllAsRead() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remove all unread styling
-            document.querySelectorAll('.table-primary').forEach(row => {
-                row.classList.remove('table-primary');
+            document.querySelectorAll('.student-gamification-notif-card.is-unread').forEach(card => {
+                card.classList.remove('is-unread');
             });
-            document.querySelectorAll('.badge.bg-primary').forEach(badge => {
-                if (badge.textContent === 'جديد') {
-                    badge.remove();
-                }
-            });
+            document.querySelectorAll('.notif-new-badge').forEach(badge => badge.remove());
 
             alert(data.message);
         }
@@ -242,16 +236,5 @@ function markAllAsRead() {
     });
 }
 </script>
-@endpush
-
-@push('styles')
-<style>
-.notification-item:hover {
-    background-color: #f8f9fa;
-}
-.table-primary {
-    background-color: #e7f1ff !important;
-}
-</style>
 @endpush
 @endsection

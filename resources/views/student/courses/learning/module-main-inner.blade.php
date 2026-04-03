@@ -172,14 +172,14 @@
 
                             <div class="row g-3 mb-4">
                                 <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-star text-warning fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">الدرجة القصوى</p>
                                         <h4 class="mb-0">{{ $assignment->max_grade }}</h4>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-upload text-primary fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">نوع التسليم</p>
                                         <span class="badge bg-secondary">
@@ -190,14 +190,14 @@
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-clock text-danger fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">موعد التسليم</p>
                                         <p class="mb-0 small">{{ $assignment->due_date ? $assignment->due_date->format('Y-m-d') : 'غير محدد' }}</p>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-redo text-info fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">إعادة التسليم</p>
                                         <span class="badge {{ $assignment->allow_resubmission ? 'bg-success' : 'bg-secondary' }}">
@@ -480,14 +480,14 @@
 
                             <div class="row g-3 mb-4">
                                 <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">عدد الأسئلة</p>
                                         <h4 class="mb-0">{{ $questionModule->questions->count() }}</h4>
                                     </div>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-star text-warning fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">إجمالي الدرجات</p>
                                         <h4 class="mb-0">{{ $questionModule->getTotalGrade() }}</h4>
@@ -495,7 +495,7 @@
                                 </div>
                                 @if($questionModule->time_limit)
                                     <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                        <div class="text-center p-3 rounded student-learn-stat-tile">
                                             <i class="fas fa-clock text-danger fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">الوقت المحدد</p>
                                             <h4 class="mb-0">{{ $questionModule->time_limit }} <small>دقيقة</small></h4>
@@ -503,7 +503,7 @@
                                     </div>
                                 @endif
                                 <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-redo text-primary fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">المحاولات المسموحة</p>
                                         <h4 class="mb-0">{{ $questionModule->attempts_allowed }}</h4>
@@ -520,7 +520,7 @@
                                             <div class="list-group-item d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
                                 <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                <span class="text-dark">
+                                <span class="student-learn-question-preview-text">
                                                         {!! Str::limit(strip_tags($question->question_text), 100) !!}
                                                     </span>
                                                 </div>
@@ -628,14 +628,14 @@
 
                             <div class="row g-3 mb-4">
                                 <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">عدد الأسئلة</p>
                                         <h4 class="mb-0">{{ $quiz->quizQuestions->count() }}</h4>
                                     </div>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                    <div class="text-center p-3 rounded student-learn-stat-tile">
                                         <i class="fas fa-star text-warning fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">إجمالي الدرجات</p>
                                         <h4 class="mb-0">{{ $quiz->max_score ?? $quiz->calculateMaxScore() ?? $quiz->quizQuestions->sum('max_score') }}</h4>
@@ -643,7 +643,7 @@
                                 </div>
                                 @if($quiz->time_limit)
                                     <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                        <div class="text-center p-3 rounded student-learn-stat-tile">
                                             <i class="fas fa-clock text-danger fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">الوقت المحدد</p>
                                             <h4 class="mb-0">{{ $quiz->time_limit }} <small>دقيقة</small></h4>
@@ -652,7 +652,7 @@
                                 @endif
                                 @if($quiz->attempts_allowed)
                                     <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
+                                        <div class="text-center p-3 rounded student-learn-stat-tile">
                                             <i class="fas fa-redo text-primary fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">المحاولات المسموحة</p>
                                             <h4 class="mb-0">{{ $quiz->attempts_allowed }}</h4>
@@ -673,7 +673,7 @@
                                             <div class="list-group-item d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
                                 <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                <span class="text-dark">
+                                <span class="student-learn-question-preview-text">
                                                         {!! Str::limit(strip_tags($question->question_text ?? ''), 100) !!}
                                                     </span>
                                                 </div>

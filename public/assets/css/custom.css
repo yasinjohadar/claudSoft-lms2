@@ -152,6 +152,111 @@ a {
     }
 }
 
+/* إشعارات التحفيز (الطالب): بطاقات متناسقة مع الثيم (فاتح/ليلي) — بدون تدرجات */
+.student-gamification-notifications-page .student-gamification-notif-list-wrap {
+    background-color: var(--default-background, var(--bs-tertiary-bg, #f8f9fa));
+}
+
+.student-gamification-notif-type-select {
+    min-width: 11rem;
+    max-width: 100%;
+}
+
+/* خلفية البطاقة: نفس متغيرات قالب Valex (تعمل مع data-theme-mode=dark) */
+.student-gamification-notif-card {
+    cursor: pointer;
+    background-color: var(--custom-white, #fff) !important;
+    border-color: var(--default-border, var(--bs-border-color)) !important;
+    border-radius: 0.75rem !important;
+    color: var(--default-text-color, inherit);
+    transition:
+        transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
+        box-shadow 0.28s ease,
+        border-color 0.22s ease,
+        background-color 0.22s ease;
+    overflow: hidden;
+}
+
+.student-gamification-notif-card.is-unread {
+    border-inline-start: 3px solid var(--primary-color, var(--bs-primary)) !important;
+    background-color: rgba(var(--primary-rgb), 0.08) !important;
+}
+
+.student-gamification-notif-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(var(--primary-rgb), 0.35) !important;
+}
+
+.student-gamification-notif-card.is-unread:hover {
+    background-color: rgba(var(--primary-rgb), 0.12) !important;
+}
+
+.student-gamification-notif-card:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-rgb), 0.28);
+}
+
+.student-gamification-notif-icon {
+    width: 3rem;
+    height: 3rem;
+    min-width: 3rem;
+    min-height: 3rem;
+    background-color: var(--default-background, var(--bs-secondary-bg)) !important;
+    border-color: var(--default-border, var(--bs-border-color)) !important;
+}
+
+.student-gamification-notif-delete {
+    transition: transform 0.18s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.student-gamification-notif-delete:hover {
+    transform: scale(1.06);
+}
+
+.student-gamification-notif-empty-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    background-color: var(--default-background, var(--bs-light)) !important;
+}
+
+.student-gamification-notif-title,
+.student-gamification-notif-message {
+    word-break: break-word;
+}
+
+@media print {
+    .student-gamification-notif-card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+    }
+
+    .student-gamification-notif-card:hover {
+        transform: none !important;
+    }
+}
+
+/* الوضع الليلي: المتغيرات أعلاه تُحدَّث على html — تعزيز الظل والنصوص الثانوية */
+[data-theme-mode="dark"] .student-gamification-notif-card .text-muted,
+[data-bs-theme="dark"] .student-gamification-notif-card .text-muted {
+    color: var(--text-muted, rgba(255, 255, 255, 0.6)) !important;
+}
+
+[data-theme-mode="dark"] .student-gamification-notif-card:hover,
+[data-bs-theme="dark"] .student-gamification-notif-card:hover {
+    box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme-mode="dark"] .student-gamification-notif-card.is-unread,
+[data-bs-theme="dark"] .student-gamification-notif-card.is-unread {
+    background-color: rgba(var(--primary-rgb), 0.14) !important;
+}
+
+[data-theme-mode="dark"] .student-gamification-notif-card.is-unread:hover,
+[data-bs-theme="dark"] .student-gamification-notif-card.is-unread:hover {
+    background-color: rgba(var(--primary-rgb), 0.2) !important;
+}
+
 /* اختبار الطالب: بطاقة خيار بالكامل قابلة للنقر + تفاعل hover */
 .quiz-option-hit {
     cursor: pointer;
@@ -338,6 +443,8 @@ a {
     .question-container .drop-zone,
     .question-container .ordering-item,
     .question-review-card,
+    .student-gamification-notif-card,
+    .student-gamification-notif-delete,
     .student-learn-stat-tile {
         transition: none !important;
     }
@@ -357,6 +464,14 @@ a {
         transform: none;
     }
 
+    .student-gamification-notif-card:hover {
+        transform: none;
+    }
+
+    .student-gamification-notif-delete:hover {
+        transform: none;
+    }
+
     .fill-blank-input:focus {
         transform: none;
     }
@@ -370,12 +485,19 @@ a {
     }
 }
 
-/* صفحة الدرس: بطاقة اختبار / وحدة أسئلة — بدون تدرجات، مظهر مسطّح وواضح */
+/* صفحة الدرس: اختبار / وحدة أسئلة — متوافق مع الثيم (Valex + data-theme-mode) */
 .student-learn-assessment-card {
-    border: 1px solid var(--bs-border-color);
+    border: 1px solid var(--default-border, var(--bs-border-color));
     border-radius: 0.75rem;
     box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.045);
     overflow: hidden;
+    background-color: var(--custom-white, #fff);
+    color: var(--default-text-color, inherit);
+}
+
+[data-theme-mode="dark"] .student-learn-assessment-card,
+[data-bs-theme="dark"] .student-learn-assessment-card {
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.25);
 }
 
 .student-learn-assessment-header {
@@ -387,7 +509,7 @@ a {
 }
 
 .student-learn-assessment-header--quiz {
-    background-color: var(--bs-primary);
+    background-color: var(--primary-color, var(--bs-primary));
 }
 
 .student-learn-assessment-header--qm {
@@ -400,19 +522,25 @@ a {
 
 .student-learn-stat-tile {
     height: 100%;
-    border: 1px solid var(--bs-border-color) !important;
+    border: 1px solid var(--default-border, var(--bs-border-color)) !important;
     border-radius: 0.65rem !important;
-    background: var(--bs-body-bg) !important;
+    background: var(--default-background, var(--bs-tertiary-bg, #f8f9fa)) !important;
     transition:
         border-color 0.2s ease,
         box-shadow 0.22s ease,
-        transform 0.2s ease;
+        transform 0.2s ease,
+        background-color 0.2s ease;
 }
 
 .student-learn-stat-tile:hover {
-    border-color: rgba(var(--bs-primary-rgb), 0.38) !important;
-    box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.06);
+    border-color: rgba(var(--primary-rgb), 0.4) !important;
+    box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
+}
+
+[data-theme-mode="dark"] .student-learn-stat-tile:hover,
+[data-bs-theme="dark"] .student-learn-stat-tile:hover {
+    box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.35);
 }
 
 .student-learn-stat-tile i.fs-4 {
@@ -422,7 +550,7 @@ a {
     width: 3rem;
     height: 3rem;
     border-radius: 0.55rem;
-    background: var(--bs-tertiary-bg);
+    background: var(--custom-bg-color, var(--bs-tertiary-bg));
     margin-bottom: 0.65rem !important;
 }
 
@@ -431,25 +559,44 @@ a {
     text-transform: none;
 }
 
+.student-learn-stat-tile .text-muted {
+    color: var(--text-muted, var(--bs-secondary-color)) !important;
+}
+
 .student-learn-stat-tile h4 {
     font-weight: 700;
-    color: var(--bs-emphasis-color);
+    color: var(--default-text-color, var(--bs-emphasis-color));
+}
+
+.student-learn-stat-tile h4 small {
+    color: var(--text-muted, inherit);
+    font-weight: 600;
 }
 
 .student-learn-assessment-card .list-group-item {
-    border-color: var(--bs-border-color-translucent, var(--bs-border-color));
+    border-color: var(--default-border, var(--bs-border-color-translucent, var(--bs-border-color)));
+    background-color: var(--custom-white, var(--bs-body-bg));
+    color: var(--default-text-color, inherit);
     transition: background-color 0.15s ease;
 }
 
 .student-learn-assessment-card .list-group-item:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.04);
+    background-color: rgba(var(--primary-rgb), 0.06);
+}
+
+.student-learn-question-preview-text {
+    color: var(--default-text-color, inherit);
 }
 
 .student-learn-assessment-actions {
     padding: 1.35rem 1.25rem;
     border-radius: 0.65rem;
-    background: var(--bs-tertiary-bg);
-    border: 1px dashed var(--bs-border-color);
+    background: var(--default-background, var(--bs-tertiary-bg));
+    border: 1px dashed var(--default-border, var(--bs-border-color));
+}
+
+.student-learn-assessment-actions .text-muted {
+    color: var(--text-muted, inherit) !important;
 }
 
 .student-learn-assessment-actions .btn-lg {
@@ -458,20 +605,21 @@ a {
     font-weight: 600;
 }
 
-[data-bs-theme="dark"] .student-learn-stat-tile,
-[data-theme-mode="dark"] .student-learn-stat-tile {
-    background: var(--bs-secondary-bg) !important;
-}
-
-[data-bs-theme="dark"] .student-learn-assessment-actions,
-[data-theme-mode="dark"] .student-learn-assessment-actions {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: var(--bs-border-color);
-}
-
 /* بطاقة «تحديد كمكتمل» */
 .student-learn-completion-card {
     border-radius: 0.75rem !important;
     box-shadow: 0 0.125rem 0.45rem rgba(0, 0, 0, 0.04);
-    border-color: rgba(var(--bs-primary-rgb), 0.28) !important;
+    border-color: rgba(var(--primary-rgb), 0.35) !important;
+    background-color: var(--custom-white, #fff);
+    color: var(--default-text-color, inherit);
+}
+
+.student-learn-completion-card .text-muted,
+.student-learn-completion-sub {
+    color: var(--text-muted, inherit) !important;
+}
+
+[data-theme-mode="dark"] .student-learn-completion-card,
+[data-bs-theme="dark"] .student-learn-completion-card {
+    box-shadow: 0 0.125rem 0.45rem rgba(0, 0, 0, 0.3);
 }
