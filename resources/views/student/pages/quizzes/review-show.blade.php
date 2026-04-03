@@ -108,18 +108,15 @@
                     <h6 class="alert-heading">
                         <i class="fas fa-comment me-2"></i>ملاحظات المدرس
                     </h6>
-                    <p class="mb-0">{{ $attempt->feedback }}</p>
+                    <p class="mb-0">{!! mixed_bidi_html($attempt->feedback) !!}</p>
                 </div>
             @endif
 
-            <!-- Questions Review -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <i class="fas fa-list me-2"></i>مراجعة الأسئلة والإجابات
-                    </div>
-                </div>
-                <div class="card-body">
+            <!-- Questions Review: كل سؤال في بطاقة مستقلة -->
+            <div class="quiz-review-questions-section">
+                <h5 class="fs-18 fw-semibold mb-3 d-flex align-items-center">
+                    <i class="fas fa-list me-2 text-primary"></i>مراجعة الأسئلة والإجابات
+                </h5>
                     @foreach($orderedResponses as $index => $response)
                         @if($response)
                             @php
@@ -127,7 +124,8 @@
                                 $questionNumber = $index + 1;
                             @endphp
 
-                            <div class="question-review mb-4 pb-4 {{ $loop->last ? '' : 'border-bottom' }}">
+                            <div class="card custom-card question-review-card mb-4">
+                                <div class="card-body">
                                 <!-- Question Header -->
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <div>
@@ -160,7 +158,9 @@
 
                                 <!-- Question Text -->
                                 <div class="mb-3">
-                                    <p class="fw-semibold mb-2">{{ $question->question_text }}</p>
+                                    <div class="question-text fw-semibold mb-2">
+                                        {!! mixed_bidi_html($question->question_text) !!}
+                                    </div>
                                     @if($question->media_url && $question->media_type == 'image')
                                         <img src="{{ $question->media_url }}" alt="صورة السؤال" class="img-fluid rounded mt-2" style="max-width: 400px;">
                                     @endif
@@ -258,10 +258,10 @@
                                             @if($fillBlanksAnswer && is_array($fillBlanksAnswer) && !empty($savedAnswers))
                                                 <div class="p-3 bg-white rounded border">
                                                     @foreach($parts as $index => $part)
-                                                        <span>{!! $part !!}</span>
+                                                        <span>{!! mixed_bidi_html($part) !!}</span>
                                                         @if($index < count($parts) - 1)
                                                             <span class="badge bg-primary text-white px-3 py-2 ms-1">
-                                                                {{ $savedAnswers[$index] ?? '___' }}
+                                                                {!! mixed_bidi_html((string) ($savedAnswers[$index] ?? '___')) !!}
                                                             </span>
                                                         @endif
                                                     @endforeach
@@ -286,7 +286,8 @@
                                                     @foreach($question->options as $option)
                                                         @if(isset($matchingAnswer[$option->id]))
                                                             <li class="mb-2">
-                                                                <strong>{{ $option->option_text }}:</strong> {{ $matchingAnswer[$option->id] }}
+                                                                <strong>{!! mixed_bidi_html($option->option_text) !!}:</strong>
+                                                                {!! mixed_bidi_html(is_scalar($matchingAnswer[$option->id]) ? (string) $matchingAnswer[$option->id] : json_encode($matchingAnswer[$option->id], JSON_UNESCAPED_UNICODE)) !!}
                                                             </li>
                                                         @endif
                                                     @endforeach
@@ -313,7 +314,7 @@
                                                             $option = $question->options->find($optionId);
                                                         @endphp
                                                         @if($option)
-                                                            <li class="mb-2">{{ $option->option_text }}</li>
+                                                            <li class="mb-2">{!! mixed_bidi_html($option->option_text) !!}</li>
                                                         @endif
                                                     @endforeach
                                                 </ol>
@@ -337,7 +338,7 @@
                                                 }
                                             @endphp
                                             @if($numericalAnswer !== null && $numericalAnswer !== '')
-                                                <span class="badge bg-info text-white fs-14 px-3 py-2">{{ $numericalAnswer }}</span>
+                                                <span class="badge bg-info text-white fs-14 px-3 py-2">{!! mixed_bidi_html((string) $numericalAnswer) !!}</span>
                                             @else
                                                 <span class="text-muted">لم يتم الإجابة</span>
                                             @endif
@@ -382,7 +383,7 @@
                                             @if($selectedOption)
                                                 {{-- عرض نص الخيار إذا وُجد --}}
                                                 <span class="badge {{ $selectedOption->is_correct ? 'bg-success' : 'bg-danger' }} text-white fs-14 px-3 py-2">
-                                                    {{ $selectedOption->option_text }}
+                                                    {!! mixed_bidi_html($selectedOption->option_text) !!}
                                                     @if($selectedOption->is_correct)
                                                         <i class="fas fa-check-circle ms-2"></i>
                                                     @else
@@ -402,13 +403,13 @@
                                                 <span class="text-muted">لم يتم الإجابة</span>
                                             @endif
                                         @elseif($response->response_text && $question->questionType->name != 'multiple_choice_single')
-                                            {{ $response->response_text }}
+                                            {!! mixed_bidi_html($response->response_text) !!}
                                         @elseif($response->selected_option_ids && $question->questionType->name != 'multiple_choice_single')
                                             <ul class="mb-0">
                                                 @foreach($question->options as $option)
                                                     @if(in_array($option->id, $response->selected_option_ids))
                                                         <li class="mb-2">
-                                                            {{ $option->option_text }}
+                                                            {!! mixed_bidi_html($option->option_text) !!}
                                                             @if($option->is_correct)
                                                                 <i class="fas fa-check-circle text-success ms-2"></i>
                                                             @else
@@ -430,7 +431,7 @@
                                             @if(is_array($genericAnswer))
                                                 <pre class="mb-0">{{ json_encode($genericAnswer, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                             @else
-                                                {{ $genericAnswer }}
+                                                {!! mixed_bidi_html(is_scalar($genericAnswer) ? (string) $genericAnswer : json_encode($genericAnswer, JSON_UNESCAPED_UNICODE)) !!}
                                             @endif
                                         @else
                                             <span class="text-muted">لم يتم الإجابة</span>
@@ -464,7 +465,7 @@
                                                 @if($correctOptions->isNotEmpty())
                                                     <ul class="mb-0">
                                                         @foreach($correctOptions as $option)
-                                                            <li>{{ $option->option_text }}</li>
+                                                            <li>{!! mixed_bidi_html($option->option_text) !!}</li>
                                                         @endforeach
                                                     </ul>
                                                 @else
@@ -522,7 +523,7 @@
                                                 @if($correctOptions->isNotEmpty())
                                                     <ul class="mb-0">
                                                         @foreach($correctOptions as $option)
-                                                            <li>{{ $option->option_text }}</li>
+                                                            <li>{!! mixed_bidi_html($option->option_text) !!}</li>
                                                         @endforeach
                                                     </ul>
                                                 @else
@@ -573,10 +574,13 @@
                                                 @if(!empty($correctAnswers))
                                                     <div class="p-3 bg-white rounded border">
                                                         @foreach($parts as $index => $part)
-                                                            <span>{!! $part !!}</span>
+                                                            <span>{!! mixed_bidi_html($part) !!}</span>
                                                             @if($index < count($parts) - 1)
+                                                                @php
+                                                                    $__correctBlank = is_array($correctAnswers) ? ($correctAnswers[$index] ?? '___') : $correctAnswers;
+                                                                @endphp
                                                                 <span class="badge bg-success text-white px-3 py-2 ms-1">
-                                                                    {{ is_array($correctAnswers) ? ($correctAnswers[$index] ?? '___') : $correctAnswers }}
+                                                                    {!! mixed_bidi_html(is_scalar($__correctBlank) ? (string) $__correctBlank : json_encode($__correctBlank, JSON_UNESCAPED_UNICODE)) !!}
                                                                 </span>
                                                             @endif
                                                         @endforeach
@@ -609,7 +613,8 @@
                                                         @foreach($question->options as $option)
                                                             @if(isset($correctMatching[$option->id]) && $correctMatching[$option->id])
                                                                 <li class="mb-2">
-                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctMatching[$option->id] }}
+                                                                    <strong>{!! mixed_bidi_html($option->option_text) !!}:</strong>
+                                                                    {!! mixed_bidi_html(is_scalar($correctMatching[$option->id]) ? (string) $correctMatching[$option->id] : json_encode($correctMatching[$option->id], JSON_UNESCAPED_UNICODE)) !!}
                                                                 </li>
                                                             @endif
                                                         @endforeach
@@ -643,7 +648,7 @@
                                                 @if($correctOrder->isNotEmpty())
                                                     <ol class="mb-0">
                                                         @foreach($correctOrder as $option)
-                                                            <li class="mb-2">{{ $option->option_text }}</li>
+                                                            <li class="mb-2">{!! mixed_bidi_html($option->option_text) !!}</li>
                                                         @endforeach
                                                     </ol>
                                                 @else
@@ -675,7 +680,7 @@
                                                 @endphp
                                                 
                                                 @if($correctNumerical !== null)
-                                                    <span class="badge bg-success text-white fs-14 px-3 py-2">{{ $correctNumerical }}</span>
+                                                    <span class="badge bg-success text-white fs-14 px-3 py-2">{!! mixed_bidi_html((string) $correctNumerical) !!}</span>
                                                 @else
                                                     <div class="alert alert-warning mb-0">
                                                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -704,7 +709,8 @@
                                                         @foreach($question->options as $option)
                                                             @if(isset($correctDragDrop[$option->id]))
                                                                 <li class="mb-2">
-                                                                    <strong>{{ $option->option_text }}:</strong> {{ $correctDragDrop[$option->id] }}
+                                                                    <strong>{!! mixed_bidi_html($option->option_text) !!}:</strong>
+                                                                    {!! mixed_bidi_html(is_scalar($correctDragDrop[$option->id]) ? (string) $correctDragDrop[$option->id] : json_encode($correctDragDrop[$option->id], JSON_UNESCAPED_UNICODE)) !!}
                                                                 </li>
                                                             @endif
                                                         @endforeach
@@ -744,7 +750,7 @@
                                                 
                                                 @if($correctAnswer)
                                                     <div class="p-3 bg-white rounded border">
-                                                        <strong>الإجابة الصحيحة:</strong> {{ $correctAnswer }}
+                                                        <strong>الإجابة الصحيحة:</strong> {!! mixed_bidi_html(is_scalar($correctAnswer) ? (string) $correctAnswer : json_encode($correctAnswer, JSON_UNESCAPED_UNICODE)) !!}
                                                     </div>
                                                 @else
                                                     <div class="alert alert-info mb-0">
@@ -770,7 +776,7 @@
                                         <h6 class="alert-heading">
                                             <i class="fas fa-info-circle me-2"></i>شرح الإجابة
                                         </h6>
-                                        <p class="mb-0">{{ $question->explanation }}</p>
+                                        <p class="mb-0">{!! mixed_bidi_html($question->explanation) !!}</p>
                                     </div>
                                 @endif
 
@@ -780,13 +786,13 @@
                                         <h6 class="alert-heading">
                                             <i class="fas fa-comment me-2"></i>ملاحظات المصحح
                                         </h6>
-                                        <p class="mb-0">{{ $response->feedback }}</p>
+                                        <p class="mb-0">{!! mixed_bidi_html($response->feedback) !!}</p>
                                     </div>
                                 @endif
+                                </div>
                             </div>
                         @endif
                     @endforeach
-                </div>
             </div>
 
             <!-- Actions -->

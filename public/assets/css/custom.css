@@ -73,3 +73,405 @@ a {
             0 0 0 6px rgba(248, 113, 113, 0.25);
     }
 }
+
+/* نصوص أسئلة: تاغات HTML + BiDi (طالب / أدمن) */
+.mixed-bidi-tag-chip {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9em;
+    line-height: 1.35;
+    padding: 0.12em 0.45em;
+    margin: 0 0.12em;
+    border-radius: 0.35rem;
+    vertical-align: baseline;
+    unicode-bidi: isolate;
+    direction: ltr;
+    background-color: var(--bs-secondary-bg, #e9ecef);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    color: var(--bs-body-color, #212529);
+}
+
+[data-theme-mode="dark"] .mixed-bidi-tag-chip,
+[data-bs-theme="dark"] .mixed-bidi-tag-chip {
+    background-color: var(--bs-dark-bg-subtle, #2b3035);
+    border-color: var(--bs-border-color, #495057);
+}
+
+.mixed-bidi-inline-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9em;
+    padding: 0.1em 0.35em;
+    margin: 0 0.1em;
+    border-radius: 0.25rem;
+    unicode-bidi: isolate;
+    direction: ltr;
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08));
+}
+
+[data-theme-mode="dark"] .mixed-bidi-inline-code,
+[data-bs-theme="dark"] .mixed-bidi-inline-code {
+    background-color: var(--bs-dark-bg-subtle, #2b3035);
+}
+
+.question-text {
+    line-height: 1.65;
+}
+
+/* تقرير مراجعة الاختبار: كل سؤال في بطاقة منفصلة */
+.question-review-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.045);
+    transition:
+        transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
+        box-shadow 0.28s ease,
+        border-color 0.22s ease;
+}
+
+.question-review-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.45rem 1.1rem rgba(0, 0, 0, 0.08);
+    border-color: rgba(var(--bs-primary-rgb), 0.25);
+}
+
+[data-bs-theme="dark"] .question-review-card:hover,
+[data-theme-mode="dark"] .question-review-card:hover {
+    box-shadow: 0 0.45rem 1.1rem rgba(0, 0, 0, 0.35);
+    border-color: rgba(var(--bs-primary-rgb), 0.35);
+}
+
+@media print {
+    .question-review-card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+    }
+
+    .question-review-card:hover {
+        transform: none !important;
+    }
+}
+
+/* اختبار الطالب: بطاقة خيار بالكامل قابلة للنقر + تفاعل hover */
+.quiz-option-hit {
+    cursor: pointer;
+    min-height: 2.75rem;
+    transition:
+        transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
+        box-shadow 0.28s ease,
+        border-color 0.22s ease,
+        background-color 0.22s ease;
+    will-change: transform;
+}
+
+.quiz-option-hit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
+    border-color: rgba(var(--bs-primary-rgb), 0.45) !important;
+    background-color: rgba(var(--bs-primary-rgb), 0.06);
+}
+
+.quiz-option-hit:focus-within {
+    outline: none;
+    border-color: rgba(var(--bs-primary-rgb), 0.65) !important;
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.22);
+}
+
+.quiz-option-hit:active {
+    transform: translateY(0);
+    transition-duration: 0.12s;
+}
+
+/* خيار محدد (صح/خطأ، اختيار من متعدد) */
+.quiz-option-hit:has(.form-check-input:checked) {
+    border-color: rgba(var(--bs-primary-rgb), 0.55) !important;
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+    box-shadow: 0 0.2rem 0.65rem rgba(var(--bs-primary-rgb), 0.12);
+}
+
+.quiz-option-hit:has(.form-check-input:checked):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.35rem 0.85rem rgba(var(--bs-primary-rgb), 0.18);
+}
+
+.quiz-option-hit .form-check-input {
+    margin-top: 0.35rem;
+    transition: transform 0.18s ease;
+}
+
+.quiz-option-hit:hover .form-check-input {
+    transform: scale(1.06);
+}
+
+[data-bs-theme="dark"] .quiz-option-hit:hover,
+[data-theme-mode="dark"] .quiz-option-hit:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.14);
+    box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.35);
+}
+
+[data-bs-theme="dark"] .quiz-option-hit:has(.form-check-input:checked),
+[data-theme-mode="dark"] .quiz-option-hit:has(.form-check-input:checked) {
+    background-color: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* مطابقة: توسيع منطقة النقر + hover */
+.matching-select-hit {
+    cursor: pointer;
+    transition:
+        transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+        box-shadow 0.25s ease,
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+    border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08));
+}
+
+.matching-select-hit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.07);
+    border-color: rgba(var(--bs-primary-rgb), 0.4);
+    background-color: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.matching-select-hit:focus-within {
+    border-color: rgba(var(--bs-primary-rgb), 0.55);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.18);
+}
+
+.matching-select-hit .form-select {
+    min-height: 2.75rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* صف السؤال في المطابقة (العمود الأيسر) */
+.matching-container .row.align-items-center .col-6:first-child .p-3.border.rounded.bg-light {
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.25s ease,
+        border-color 0.2s ease;
+}
+
+.matching-container .row.align-items-center .col-6:first-child .p-3.border.rounded.bg-light:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.3rem 0.75rem rgba(0, 0, 0, 0.06);
+    border-color: rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* إجابات نصية / رقمية داخل بطاقة السؤال */
+.answer-options textarea.form-control.answer-input,
+.answer-options input.form-control.answer-input[type="number"]:not(.fill-blank-input) {
+    transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.2s ease;
+}
+
+.answer-options textarea.form-control.answer-input:hover,
+.answer-options input.form-control.answer-input[type="number"]:not(.fill-blank-input):hover {
+    border-color: rgba(var(--bs-primary-rgb), 0.45);
+}
+
+.answer-options textarea.form-control.answer-input:focus,
+.answer-options input.form-control.answer-input[type="number"]:not(.fill-blank-input):focus {
+    border-color: rgba(var(--bs-primary-rgb), 0.65);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15);
+}
+
+/* تعبئة الفراغات */
+.fill-blank-container > .p-4.bg-light.rounded.border {
+    transition: box-shadow 0.25s ease, border-color 0.22s ease, background-color 0.22s ease;
+}
+
+.fill-blank-container > .p-4.bg-light.rounded.border:hover {
+    box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.06);
+    border-color: rgba(var(--bs-primary-rgb), 0.3);
+}
+
+.fill-blank-input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+}
+
+.fill-blank-input:hover {
+    border-color: rgba(var(--bs-primary-rgb), 0.5);
+}
+
+.fill-blank-input:focus {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* سحب وإفلات — مناطق الإفلات */
+.question-container .drop-zone {
+    transition:
+        transform 0.2s ease,
+        border-color 0.22s ease,
+        box-shadow 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.question-container .drop-zone:hover:not(.drag-over) {
+    transform: translateY(-1px);
+    border-color: rgba(var(--bs-primary-rgb), 0.35) !important;
+    box-shadow: 0 0.25rem 0.65rem rgba(0, 0, 0, 0.05);
+}
+
+/* ترتيب: نفس أسلوب الخيارات (بدون تدرج) — تعزيز للوضع الداكن */
+[data-bs-theme="dark"] .question-container .ordering-item,
+[data-theme-mode="dark"] .question-container .ordering-item {
+    background-color: var(--bs-body-bg, #212529) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .question-container .ordering-item:hover:not(.dragging),
+[data-theme-mode="dark"] .question-container .ordering-item:hover:not(.dragging) {
+    background-color: rgba(var(--bs-primary-rgb), 0.14) !important;
+    box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quiz-option-hit,
+    .quiz-option-hit .form-check-input,
+    .matching-select-hit,
+    .matching-select-hit .form-select,
+    .matching-container .row.align-items-center .col-6:first-child .p-3.border.rounded.bg-light,
+    .answer-options textarea.form-control.answer-input,
+    .answer-options input.form-control.answer-input[type="number"]:not(.fill-blank-input),
+    .fill-blank-container > .p-4.bg-light.rounded.border,
+    .fill-blank-input,
+    .question-container .drop-zone,
+    .question-container .ordering-item,
+    .question-review-card,
+    .student-learn-stat-tile {
+        transition: none !important;
+    }
+
+    .quiz-option-hit:hover,
+    .matching-select-hit:hover,
+    .matching-container .row.align-items-center .col-6:first-child .p-3.border.rounded.bg-light:hover,
+    .question-container .drop-zone:hover:not(.drag-over) {
+        transform: none;
+    }
+
+    .question-container .ordering-item:hover:not(.dragging) {
+        transform: none;
+    }
+
+    .question-review-card:hover {
+        transform: none;
+    }
+
+    .fill-blank-input:focus {
+        transform: none;
+    }
+
+    .quiz-option-hit:hover .form-check-input {
+        transform: none;
+    }
+
+    .student-learn-stat-tile:hover {
+        transform: none;
+    }
+}
+
+/* صفحة الدرس: بطاقة اختبار / وحدة أسئلة — بدون تدرجات، مظهر مسطّح وواضح */
+.student-learn-assessment-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.045);
+    overflow: hidden;
+}
+
+.student-learn-assessment-header {
+    color: #fff;
+    border: none;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.student-learn-assessment-header--quiz {
+    background-color: var(--bs-primary);
+}
+
+.student-learn-assessment-header--qm {
+    background-color: var(--bs-info);
+}
+
+.student-learn-assessment-header .mb-0 {
+    letter-spacing: -0.01em;
+}
+
+.student-learn-stat-tile {
+    height: 100%;
+    border: 1px solid var(--bs-border-color) !important;
+    border-radius: 0.65rem !important;
+    background: var(--bs-body-bg) !important;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.22s ease,
+        transform 0.2s ease;
+}
+
+.student-learn-stat-tile:hover {
+    border-color: rgba(var(--bs-primary-rgb), 0.38) !important;
+    box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+}
+
+.student-learn-stat-tile i.fs-4 {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.55rem;
+    background: var(--bs-tertiary-bg);
+    margin-bottom: 0.65rem !important;
+}
+
+.student-learn-stat-tile .small {
+    font-weight: 500;
+    text-transform: none;
+}
+
+.student-learn-stat-tile h4 {
+    font-weight: 700;
+    color: var(--bs-emphasis-color);
+}
+
+.student-learn-assessment-card .list-group-item {
+    border-color: var(--bs-border-color-translucent, var(--bs-border-color));
+    transition: background-color 0.15s ease;
+}
+
+.student-learn-assessment-card .list-group-item:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.student-learn-assessment-actions {
+    padding: 1.35rem 1.25rem;
+    border-radius: 0.65rem;
+    background: var(--bs-tertiary-bg);
+    border: 1px dashed var(--bs-border-color);
+}
+
+.student-learn-assessment-actions .btn-lg {
+    min-width: 14rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+}
+
+[data-bs-theme="dark"] .student-learn-stat-tile,
+[data-theme-mode="dark"] .student-learn-stat-tile {
+    background: var(--bs-secondary-bg) !important;
+}
+
+[data-bs-theme="dark"] .student-learn-assessment-actions,
+[data-theme-mode="dark"] .student-learn-assessment-actions {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--bs-border-color);
+}
+
+/* بطاقة «تحديد كمكتمل» */
+.student-learn-completion-card {
+    border-radius: 0.75rem !important;
+    box-shadow: 0 0.125rem 0.45rem rgba(0, 0, 0, 0.04);
+    border-color: rgba(var(--bs-primary-rgb), 0.28) !important;
+}

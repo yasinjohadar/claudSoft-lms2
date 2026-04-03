@@ -88,7 +88,7 @@
                         <!-- Question Text -->
                         @if($question->questionType->name !== 'fill_blanks')
                         <div class="question-text mb-4">
-                            {{ $question->question_text }}
+                            {!! mixed_bidi_html($question->question_text) !!}
                         </div>
                         @endif
 
@@ -130,63 +130,71 @@
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
                                     @foreach($question->options as $option)
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
+                                    <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
+                                        <input class="form-check-input flex-shrink-0 answer-input"
                                                type="radio"
                                                name="question_{{ $question->id }}"
                                                id="option_{{ $option->id }}"
                                                value="{{ $option->id }}"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer == $option->id ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {{ $option->option_text }}
-                                        </label>
-                                    </div>
+                                        <span class="flex-grow-1">
+                                            @if(filled($option->option_text))
+                                                {!! mixed_bidi_html($option->option_text) !!}
+                                            @else
+                                                (نص الخيار غير متوفر)
+                                            @endif
+                                        </span>
+                                    </label>
                                     @endforeach
                                     @break
 
                                 @case('multiple_choice_multiple')
                                     @foreach($question->options as $option)
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
+                                    <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
+                                        <input class="form-check-input flex-shrink-0 answer-input"
                                                type="checkbox"
                                                name="question_{{ $question->id }}[]"
                                                id="option_{{ $option->id }}"
                                                value="{{ $option->id }}"
                                                data-question-id="{{ $question->id }}"
                                                {{ is_array($savedAnswer) && in_array($option->id, $savedAnswer) ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100" for="option_{{ $option->id }}">
-                                            {{ $option->option_text }}
-                                        </label>
-                                    </div>
+                                        <span class="flex-grow-1">
+                                            @if(filled($option->option_text))
+                                                {!! mixed_bidi_html($option->option_text) !!}
+                                            @else
+                                                (نص الخيار غير متوفر)
+                                            @endif
+                                        </span>
+                                    </label>
                                     @endforeach
                                     @break
 
                                 @case('true_false')
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
+                                    <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
+                                        <input class="form-check-input flex-shrink-0 answer-input"
                                                type="radio"
                                                name="question_{{ $question->id }}"
                                                id="true_{{ $question->id }}"
                                                value="true"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer === 'true' ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100 fs-5" for="true_{{ $question->id }}">
+                                        <span class="flex-grow-1 fs-5">
                                             <i class="fas fa-check-circle text-success me-2"></i>صحيح
-                                        </label>
-                                    </div>
-                                    <div class="form-check mb-3 p-3 border rounded hover-shadow">
-                                        <input class="form-check-input answer-input"
+                                        </span>
+                                    </label>
+                                    <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
+                                        <input class="form-check-input flex-shrink-0 answer-input"
                                                type="radio"
                                                name="question_{{ $question->id }}"
                                                id="false_{{ $question->id }}"
                                                value="false"
                                                data-question-id="{{ $question->id }}"
                                                {{ $savedAnswer === 'false' ? 'checked' : '' }}>
-                                        <label class="form-check-label w-100 fs-5" for="false_{{ $question->id }}">
+                                        <span class="flex-grow-1 fs-5">
                                             <i class="fas fa-times-circle text-danger me-2"></i>خطأ
-                                        </label>
-                                    </div>
+                                        </span>
+                                    </label>
                                     @break
 
                                 @case('short_answer')
@@ -221,7 +229,7 @@
                                     <div class="fill-blank-container" data-question-id="{{ $question->id }}">
                                         <div class="p-4 bg-light rounded border">
                                             @foreach($parts as $index => $part)
-                                                <span>{!! $part !!}</span>
+                                                <span>{!! mixed_bidi_html($part) !!}</span>
                                                 @if($index < count($parts) - 1)
                                                     <input type="text"
                                                            class="form-control d-inline-block fill-blank-input"
@@ -257,20 +265,23 @@
                                             <div class="col-6">
                                                 <div class="p-3 border rounded bg-light">
                                                     <span class="badge bg-primary me-2">{{ $optionIndex + 1 }}</span>
-                                                    {{ $option->option_text }}
+                                                    {!! mixed_bidi_html($option->option_text) !!}
                                                 </div>
                                             </div>
                                             <div class="col-6">
-                                                <select class="form-select answer-input matching-select"
-                                                        name="question_{{ $question->id }}[{{ $option->id }}]"
-                                                        data-question-id="{{ $question->id }}">
-                                                    <option value="">-- اختر الإجابة --</option>
-                                                    @foreach($answers as $answer)
-                                                        <option value="{{ $answer }}" {{ isset($savedAnswers[$option->id]) && $savedAnswers[$option->id] == $answer ? 'selected' : '' }}>
-                                                            {{ $answer }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
+                                                <label for="matching_q{{ $question->id }}_opt{{ $option->id }}" class="matching-select-hit d-block w-100 mb-0 p-2 rounded">
+                                                    <select class="form-select answer-input matching-select"
+                                                            id="matching_q{{ $question->id }}_opt{{ $option->id }}"
+                                                            name="question_{{ $question->id }}[{{ $option->id }}]"
+                                                            data-question-id="{{ $question->id }}">
+                                                        <option value="">-- اختر الإجابة --</option>
+                                                        @foreach($answers as $answer)
+                                                            <option value="{{ $answer }}" {{ isset($savedAnswers[$option->id]) && $savedAnswers[$option->id] == $answer ? 'selected' : '' }}>
+                                                                {{ $answer }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
                                             </div>
                                         </div>
                                         @endforeach
@@ -320,7 +331,7 @@
                                                             <div class="d-flex align-items-center">
                                                                 <div class="drop-zone-label flex-grow-1 p-3 bg-light rounded-start border">
                                                                     <span class="badge bg-primary me-2">{{ $optionIndex + 1 }}</span>
-                                                                    {{ $option->option_text }}
+                                                                    {!! mixed_bidi_html($option->option_text) !!}
                                                                 </div>
                                                                 <div class="drop-zone rounded-end border border-start-0"
                                                                      data-option-id="{{ $option->id }}"
@@ -384,7 +395,7 @@
                                                             <i class="fas fa-grip-vertical"></i>
                                                         </span>
                                                         <span class="ordering-number me-3">{{ $itemIndex + 1 }}</span>
-                                                        <span class="ordering-text">{{ $item->option_text }}</span>
+                                                        <span class="ordering-text">{!! mixed_bidi_html($item->option_text) !!}</span>
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -458,7 +469,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-success" onclick="submitQuiz()">
+                <button type="button" class="btn btn-success" id="confirm-submit-quiz" onclick="submitQuiz()">
                     <i class="fas fa-check me-2"></i>إرسال الآن
                 </button>
             </div>
@@ -470,10 +481,7 @@
 
 @push('styles')
 <style>
-    .hover-shadow:hover {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        cursor: pointer;
-    }
+    /* تفاعل خيارات الاختبار: انظر public/assets/css/custom.css */
 
     .question-nav-btn.answered {
         background-color: #28a745;
@@ -506,18 +514,25 @@
     .drag-item {
         padding: 12px 15px;
         margin-bottom: 10px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #fff;
+        color: inherit;
+        border: 1px solid var(--bs-border-color, #dee2e6);
         border-radius: 8px;
         cursor: grab;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        transition:
+            transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
+            box-shadow 0.28s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
+        box-shadow: 0 0.125rem 0.4rem rgba(0, 0, 0, 0.04);
         user-select: none;
     }
 
     .drag-item:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
+        border-color: rgba(var(--bs-primary-rgb), 0.45);
+        background-color: rgba(var(--bs-primary-rgb), 0.06);
     }
 
     .drag-item:active {
@@ -553,8 +568,9 @@
     }
 
     .dropped-item {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        color: white;
+        background: rgba(var(--bs-success-rgb), 0.1);
+        color: inherit;
+        border: 1px solid rgba(var(--bs-success-rgb), 0.35);
         padding: 8px 12px;
         border-radius: 6px;
         display: flex;
@@ -576,9 +592,9 @@
     }
 
     .btn-remove-item {
-        background: rgba(255,255,255,0.3);
-        border: none;
-        color: white;
+        background: rgba(var(--bs-danger-rgb), 0.12);
+        border: 1px solid rgba(var(--bs-danger-rgb), 0.35);
+        color: var(--bs-danger);
         width: 24px;
         height: 24px;
         border-radius: 50%;
@@ -587,11 +603,11 @@
         justify-content: center;
         cursor: pointer;
         margin-right: 8px;
-        transition: all 0.2s ease;
+        transition: transform 0.2s ease, background-color 0.2s ease;
     }
 
     .btn-remove-item:hover {
-        background: rgba(255,255,255,0.5);
+        background: rgba(var(--bs-danger-rgb), 0.2);
         transform: scale(1.1);
     }
 
@@ -608,42 +624,55 @@
         padding: 20px;
     }
 
-    /* Ordering Styles */
+    /* Ordering Styles — خلفية بيضاء مثل باقي الخيارات + نفس أسلوب hover */
     .ordering-item {
+        display: flex;
+        align-items: center;
         padding: 15px;
         margin-bottom: 10px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #fff;
+        color: inherit;
+        border: 1px solid var(--bs-border-color, #dee2e6);
         border-radius: 8px;
         cursor: grab;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        transition:
+            transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
+            box-shadow 0.28s ease,
+            border-color 0.22s ease,
+            background-color 0.22s ease;
+        box-shadow: 0 0.125rem 0.4rem rgba(0, 0, 0, 0.04);
         user-select: none;
     }
 
-    .ordering-item:hover {
+    .ordering-item:hover:not(.dragging) {
         transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
+        border-color: rgba(var(--bs-primary-rgb), 0.45);
+        background-color: rgba(var(--bs-primary-rgb), 0.06);
     }
 
     .ordering-item:active {
         cursor: grabbing;
+        transform: translateY(0);
+        transition-duration: 0.12s;
     }
 
     .ordering-item.dragging {
-        opacity: 0.5;
+        opacity: 0.55;
     }
 
     .ordering-item.drag-over {
-        border-top: 3px solid #4caf50;
+        border-top: 3px solid var(--bs-success, #198754);
     }
 
     .ordering-handle {
-        color: rgba(255,255,255,0.7);
+        color: var(--bs-secondary-color, #6c757d);
     }
 
     .ordering-number {
-        background: rgba(255,255,255,0.3);
+        background: rgba(var(--bs-primary-rgb), 0.12);
+        color: var(--bs-primary);
+        border: 1px solid rgba(var(--bs-primary-rgb), 0.22);
         padding: 5px 10px;
         border-radius: 50%;
         font-weight: bold;
@@ -660,7 +689,7 @@
 @push('scripts')
 <script>
     const attemptId = {{ $attempt->id }};
-    const totalQuestions = {{ $questions->count() }};
+    let totalQuestions = {{ $questions->count() }};
     let currentQuestionIndex = 0;
     let answeredQuestions = new Set();
     let remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
@@ -669,6 +698,10 @@
 
     // Initialize on page load
     $(document).ready(function() {
+        var domQuestionCount = $('.question-container').length;
+        if (domQuestionCount > 0) {
+            totalQuestions = domQuestionCount;
+        }
         initializeAnswers();
         updateProgress();
         updateQuestionNavigation();
@@ -1213,8 +1246,8 @@
     // Update question navigation buttons
     function updateQuestionNavigation() {
         $('.question-nav-btn').each(function() {
-            const questionId = parseInt($(this).data('question-id'));
-            const questionIndex = $(this).data('question-index');
+            const questionId = parseInt($(this).data('question-id'), 10);
+            const questionIndex = parseInt($(this).attr('data-question-index'), 10);
 
             $(this).removeClass('answered active');
 
@@ -1222,7 +1255,7 @@
                 $(this).addClass('answered');
             }
 
-            if (questionIndex === currentQuestionIndex) {
+            if (!isNaN(questionIndex) && questionIndex === currentQuestionIndex) {
                 $(this).addClass('active');
             }
         });
@@ -1230,8 +1263,12 @@
 
     // Navigation functions
     function goToQuestion(index) {
+        index = parseInt(index, 10);
+        if (isNaN(index) || index < 0 || index >= totalQuestions) {
+            return;
+        }
         $('.question-container').hide();
-        $(`.question-container[data-question-index="${index}"]`).show();
+        $('.question-container[data-question-index="' + index + '"]').show();
         currentQuestionIndex = index;
         updateQuestionNavigation();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1249,7 +1286,8 @@
         }
     }
 
-    // Submit confirmation
+    const SUBMIT_SAVE_TIMEOUT_MS = 10000;
+
     function showSubmitConfirmation() {
         const answeredCount = answeredQuestions.size;
         const unansweredCount = totalQuestions - answeredCount;
@@ -1257,62 +1295,74 @@
         $('#submit-answered-count').text(answeredCount);
         $('#submit-unanswered-count').text(unansweredCount);
 
-        const submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
-        submitModal.show();
+        const el = document.getElementById('submitModal');
+        if (el) {
+            const submitModal = bootstrap.Modal.getOrCreateInstance(el);
+            submitModal.show();
+        }
     }
 
-    // Submit quiz
     function submitQuiz(autoSubmit = false) {
-        // Mark as submitting to prevent beforeunload warning
         isSubmitting = true;
-        
-        // Remove beforeunload listener
+
+        const confirmBtn = document.getElementById('confirm-submit-quiz');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+        }
+
+        const modalEl = document.getElementById('submitModal');
+        if (modalEl) {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) {
+                inst.hide();
+            }
+        }
+
         window.removeEventListener('beforeunload', preventUnload);
-        
+
         if (timerInterval) {
             clearInterval(timerInterval);
         }
 
-        // Save all answers one final time before submitting
-        // Force save ALL questions, not just answered ones
         const savePromises = [];
         $('.question-container').each(function() {
             const questionId = parseInt($(this).data('question-id'));
             if (questionId) {
                 console.log('Saving answer for question:', questionId, 'before submit');
-                // Save this answer - saveAnswer now returns a promise
                 const promise = saveAnswer(questionId);
                 if (promise && promise.then) {
-                    savePromises.push(promise);
+                    savePromises.push(promise.catch(function(err) {
+                        console.error('Save failed for question', questionId, err);
+                    }));
                 } else {
-                    // If saveAnswer returns a resolved promise, add a small delay
                     savePromises.push(Promise.resolve());
                 }
             }
         });
-        
+
         console.log('Total promises to wait for:', savePromises.length);
 
-        // Wait for all answers to be saved, then submit
-        if (savePromises.length > 0) {
-            Promise.all(savePromises).then(() => {
-                console.log('All answers saved, submitting form...');
-                // Longer delay to ensure all AJAX requests complete and database is updated
-                setTimeout(() => {
-                    submitForm();
-                }, 1000); // Increased from 300ms to 1000ms
-            }).catch((error) => {
-                console.error('Error saving answers:', error);
-                // Even if some saves fail, proceed with submission
-                setTimeout(() => {
-                    submitForm();
-                }, 1000);
-            });
-        } else {
-            // No questions found, submit immediately
-            console.warn('No questions found to save!');
-            submitForm();
-        }
+        const saveAllSettled = savePromises.length > 0
+            ? Promise.all(savePromises)
+            : Promise.resolve();
+
+        const timeoutPromise = new Promise(function(resolve) {
+            setTimeout(function() {
+                console.warn('Submit: save wait capped at', SUBMIT_SAVE_TIMEOUT_MS, 'ms; proceeding.');
+                resolve();
+            }, SUBMIT_SAVE_TIMEOUT_MS);
+        });
+
+        Promise.race([saveAllSettled, timeoutPromise]).then(function() {
+            setTimeout(function() {
+                submitForm();
+            }, 300);
+        }).catch(function(error) {
+            console.error('Error saving answers:', error);
+            setTimeout(function() {
+                submitForm();
+            }, 300);
+        });
         
         function submitForm() {
             const form = $('<form>', {
@@ -1405,6 +1455,12 @@
             form.submit();
         }
     }
+
+    window.showSubmitConfirmation = showSubmitConfirmation;
+    window.submitQuiz = submitQuiz;
+    window.goToQuestion = goToQuestion;
+    window.nextQuestion = nextQuestion;
+    window.previousQuestion = previousQuestion;
     
     // Prevent accidental page close - only when quiz is in progress
     function preventUnload(e) {

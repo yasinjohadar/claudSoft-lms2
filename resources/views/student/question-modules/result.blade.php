@@ -168,22 +168,20 @@
         </div>
     </div>
 
-    <!-- Questions Review -->
+    <!-- Questions Review: بطاقة مستقلة لكل سؤال -->
     @if($showResults)
-    <div class="card">
-        <div class="card-header bg-light">
-            <h4 class="mb-0">
-                <i class="fas fa-list-check me-2"></i>
-                مراجعة الأسئلة والإجابات
-            </h4>
-        </div>
-        <div class="card-body p-0">
+    <div class="quiz-review-questions-section mb-4">
+        <h4 class="fs-18 fw-semibold mb-3 d-flex align-items-center">
+            <i class="fas fa-list-check me-2 text-primary"></i>
+            مراجعة الأسئلة والإجابات
+        </h4>
             @foreach($questionsWithResponses as $index => $item)
                 @php
                     $question = $item['question'];
                     $response = $item['response'];
                 @endphp
-                <div class="question-review border-bottom p-4 {{ $loop->last ? '' : 'border-bottom' }}">
+                <div class="card custom-card question-review-card mb-4">
+                    <div class="card-body p-4">
                     <!-- Question Header -->
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <div>
@@ -237,7 +235,7 @@
 
                     <!-- Question Text -->
                     <div class="question-text mb-3 p-3 bg-light rounded">
-                        {{ $question->question_text }}
+                        {!! mixed_bidi_html($question->question_text) !!}
                     </div>
 
                     <!-- Question Image -->
@@ -314,7 +312,7 @@
                                                 @endif
                                             </div>
                                             <div class="flex-grow-1">
-                                                {{ $option->option_text }}
+                                                {!! mixed_bidi_html($option->option_text) !!}
                                                 @if($isStudentAnswer)
                                                     <span class="badge {{ $isCorrectOption ? 'bg-success' : 'bg-danger' }} ms-2">
                                                         <i class="fas fa-user me-1"></i>إجابتك
@@ -497,8 +495,11 @@
                                                     $answerText = 'لم يتم الإجابة';
                                                 }
                                             }
+                                            $answerLines = preg_split('/\r\n|\r|\n/', (string) $answerText);
                                         @endphp
-                                        {!! nl2br(e($answerText)) !!}
+                                        @foreach($answerLines as $line)
+                                            {!! mixed_bidi_html($line) !!}@if(!$loop->last)<br>@endif
+                                        @endforeach
                                     </div>
                                 </div>
                                 @if($question->model_answer)
@@ -507,7 +508,9 @@
                                         <i class="fas fa-lightbulb me-1"></i>الإجابة النموذجية:
                                     </strong>
                                     <div class="p-3 bg-success bg-opacity-10 rounded border border-success">
-                                        {!! $question->model_answer !!}
+                                        @foreach(preg_split('/\r\n|\r|\n/', (string) $question->model_answer) as $modelLine)
+                                            {!! mixed_bidi_html($modelLine) !!}@if(!$loop->last)<br>@endif
+                                        @endforeach
                                     </div>
                                 </div>
                                 @endif
@@ -527,7 +530,7 @@
                                         @endphp
                                         <div class="row mb-2 p-2 rounded border {{ $isCorrect ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10' }}">
                                             <div class="col-5">
-                                                <strong>{{ $option->option_text }}</strong>
+                                                <strong>{!! mixed_bidi_html($option->option_text) !!}</strong>
                                             </div>
                                             <div class="col-1 text-center">
                                                 <i class="fas fa-arrow-left"></i>
@@ -535,7 +538,7 @@
                                             <div class="col-6">
                                                 @if($studentAnswer)
                                                     <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
-                                                        {{ $studentAnswer }}
+                                                        {!! mixed_bidi_html(is_scalar($studentAnswer) ? (string) $studentAnswer : json_encode($studentAnswer, JSON_UNESCAPED_UNICODE)) !!}
                                                         @if($isCorrect)
                                                             <i class="fas fa-check ms-1"></i>
                                                         @else
@@ -543,11 +546,11 @@
                                                         @endif
                                                     </span>
                                                     @if(!$isCorrect)
-                                                        <br><small class="text-success">الإجابة الصحيحة: {{ $correctAnswer }}</small>
+                                                        <br><small class="text-success">الإجابة الصحيحة: {!! mixed_bidi_html(is_scalar($correctAnswer) ? (string) $correctAnswer : json_encode($correctAnswer, JSON_UNESCAPED_UNICODE)) !!}</small>
                                                     @endif
                                                 @else
                                                     <span class="text-muted">لم يتم الإجابة</span>
-                                                    <br><small class="text-success">الإجابة الصحيحة: {{ $correctAnswer }}</small>
+                                                    <br><small class="text-success">الإجابة الصحيحة: {!! mixed_bidi_html(is_scalar($correctAnswer) ? (string) $correctAnswer : json_encode($correctAnswer, JSON_UNESCAPED_UNICODE)) !!}</small>
                                                 @endif
                                             </div>
                                         </div>
@@ -564,15 +567,15 @@
                                 @endphp
                                 <div class="fill-blank-results p-3 bg-light rounded">
                                     @foreach($parts as $index => $part)
-                                        <span>{!! $part !!}</span>
+                                        <span>{!! mixed_bidi_html($part) !!}</span>
                                         @if($index < count($parts) - 1)
                                             @php
                                                 $studentAnswer = $studentAnswers[$index] ?? null;
                                                 $correctAnswer = $correctAnswers[$index] ?? '';
-                                                $isCorrect = $studentAnswer && strtolower(trim($studentAnswer)) === strtolower(trim($correctAnswer));
+                                                $isCorrect = $studentAnswer && strtolower(trim((string) $studentAnswer)) === strtolower(trim((string) $correctAnswer));
                                             @endphp
                                             <span class="badge {{ $isCorrect ? 'bg-success' : 'bg-danger' }} mx-1">
-                                                {{ $studentAnswer ?? '___' }}
+                                                {!! mixed_bidi_html((string) ($studentAnswer ?? '___')) !!}
                                                 @if($isCorrect)
                                                     <i class="fas fa-check ms-1"></i>
                                                 @else
@@ -580,7 +583,7 @@
                                                 @endif
                                             </span>
                                             @if(!$isCorrect && $correctAnswer)
-                                                <small class="text-success">({{ $correctAnswer }})</small>
+                                                <small class="text-success">({!! mixed_bidi_html((string) $correctAnswer) !!})</small>
                                             @endif
                                         @endif
                                     @endforeach
@@ -593,7 +596,7 @@
                     @if($response && $response->feedback)
                     <div class="alert alert-info mt-3 mb-0">
                         <strong><i class="fas fa-comment me-2"></i>ملاحظات المدرس:</strong>
-                        <p class="mb-0 mt-2">{{ $response->feedback }}</p>
+                        <p class="mb-0 mt-2">{!! mixed_bidi_html($response->feedback) !!}</p>
                     </div>
                     @endif
 
@@ -601,12 +604,12 @@
                     @if($question->explanation)
                     <div class="alert alert-light border mt-3 mb-0">
                         <strong><i class="fas fa-info-circle me-2"></i>شرح:</strong>
-                        <p class="mb-0 mt-2">{!! $question->explanation !!}</p>
+                        <p class="mb-0 mt-2">{!! mixed_bidi_html($question->explanation) !!}</p>
                     </div>
                     @endif
+                    </div>
                 </div>
             @endforeach
-        </div>
     </div>
     @else
     <!-- Results Hidden Message -->
@@ -660,13 +663,9 @@
             page-break-inside: avoid;
         }
 
-        .question-review {
+        .question-review-card {
             page-break-inside: avoid;
         }
-    }
-
-    .question-review:hover {
-        background-color: #f8f9fa;
     }
 </style>
 @endpush

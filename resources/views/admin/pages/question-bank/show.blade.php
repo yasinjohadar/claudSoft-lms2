@@ -54,7 +54,7 @@
                             <div class="mb-4">
                                 <h6 class="text-muted mb-2">نص السؤال:</h6>
                                 <div class="p-3 bg-light rounded">
-                                    <p class="mb-0 fs-16">{{ $question->question_text }}</p>
+                                    <p class="mb-0 fs-16">{!! mixed_bidi_html($question->question_text) !!}</p>
                                 </div>
                             </div>
 
@@ -77,14 +77,14 @@
                                                     <div class="flex-grow-1">
                                                         <div class="d-flex align-items-center mb-2">
                                                             <span class="badge bg-secondary me-2">{{ $index + 1 }}</span>
-                                                            <strong>{{ $option->option_text }}</strong>
+                                                            <strong>{!! mixed_bidi_html($option->option_text) !!}</strong>
                                                             @if($option->is_correct)
                                                                 <i class="fas fa-check-circle text-success ms-2 fs-18"></i>
                                                             @endif
                                                         </div>
                                                         @if($option->feedback)
                                                             <small class="text-muted">
-                                                                <i class="fas fa-comment me-1"></i>{{ $option->feedback }}
+                                                                <i class="fas fa-comment me-1"></i>{!! mixed_bidi_html($option->feedback) !!}
                                                             </small>
                                                         @endif
                                                     </div>
@@ -104,7 +104,7 @@
                                 <div class="mb-4">
                                     <h6 class="text-muted mb-2">شرح الإجابة:</h6>
                                     <div class="alert alert-info mb-0">
-                                        <i class="fas fa-lightbulb me-2"></i>{{ $question->explanation }}
+                                        <i class="fas fa-lightbulb me-2"></i>{!! mixed_bidi_html($question->explanation) !!}
                                     </div>
                                 </div>
                             @endif

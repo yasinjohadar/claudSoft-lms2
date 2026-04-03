@@ -462,11 +462,11 @@
                     @endphp
 
                     <!-- Question Module Info Card -->
-                    <div class="card mb-4">
-                        <div class="card-header" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white;">
-                            <h5 class="mb-0"><i class="fas fa-clipboard-question me-2"></i>{{ $questionModule->title }}</h5>
+                    <div class="card mb-4 student-learn-assessment-card">
+                        <div class="card-header student-learn-assessment-header student-learn-assessment-header--qm rounded-0">
+                            <h5 class="mb-0 fw-semibold"><i class="fas fa-clipboard-question me-2 opacity-90"></i>{{ $questionModule->title }}</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body p-4">
                             @if($questionModule->description)
                                 <p class="text-muted mb-3">{{ $questionModule->description }}</p>
                             @endif
@@ -479,31 +479,31 @@
                             @endif
 
                             <div class="row g-3 mb-4">
-                                <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                         <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">عدد الأسئلة</p>
                                         <h4 class="mb-0">{{ $questionModule->questions->count() }}</h4>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                         <i class="fas fa-star text-warning fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">إجمالي الدرجات</p>
                                         <h4 class="mb-0">{{ $questionModule->getTotalGrade() }}</h4>
                                     </div>
                                 </div>
                                 @if($questionModule->time_limit)
-                                    <div class="col-md-3">
-                                        <div class="text-center p-3 bg-light rounded">
+                                    <div class="col-6 col-md-3">
+                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                             <i class="fas fa-clock text-danger fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">الوقت المحدد</p>
                                             <h4 class="mb-0">{{ $questionModule->time_limit }} <small>دقيقة</small></h4>
                                         </div>
                                     </div>
                                 @endif
-                                <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                         <i class="fas fa-redo text-primary fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">المحاولات المسموحة</p>
                                         <h4 class="mb-0">{{ $questionModule->attempts_allowed }}</h4>
@@ -565,7 +565,7 @@
                             @endif
 
                             <!-- Start Test Button -->
-                            <div class="text-center mt-4">
+                            <div class="text-center mt-4 student-learn-assessment-actions">
                                 @if($inProgressAttempt)
                                     <a href="{{ route('student.question-module.take', $inProgressAttempt->id) }}" class="btn btn-lg btn-warning" data-turbo="false">
                                         <i class="fas fa-play-circle me-2"></i>متابعة الاختبار
@@ -610,11 +610,11 @@
                     @endphp
 
                     <!-- Quiz Info Card -->
-                    <div class="card mb-4">
-                        <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white;">
-                            <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>{{ $quiz->title }}</h5>
+                    <div class="card mb-4 student-learn-assessment-card">
+                        <div class="card-header student-learn-assessment-header student-learn-assessment-header--quiz rounded-0">
+                            <h5 class="mb-0 fw-semibold"><i class="fas fa-question-circle me-2 opacity-90"></i>{{ $quiz->title }}</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body p-4">
                             @if($quiz->description)
                                 <p class="text-muted mb-3">{{ $quiz->description }}</p>
                             @endif
@@ -627,23 +627,23 @@
                             @endif
 
                             <div class="row g-3 mb-4">
-                                <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                         <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">عدد الأسئلة</p>
                                         <h4 class="mb-0">{{ $quiz->quizQuestions->count() }}</h4>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="text-center p-3 bg-light rounded">
+                                <div class="col-6 col-md-3">
+                                    <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                         <i class="fas fa-star text-warning fs-4 mb-2"></i>
                                         <p class="mb-1 text-muted small">إجمالي الدرجات</p>
                                         <h4 class="mb-0">{{ $quiz->max_score ?? $quiz->calculateMaxScore() ?? $quiz->quizQuestions->sum('max_score') }}</h4>
                                     </div>
                                 </div>
                                 @if($quiz->time_limit)
-                                    <div class="col-md-3">
-                                        <div class="text-center p-3 bg-light rounded">
+                                    <div class="col-6 col-md-3">
+                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                             <i class="fas fa-clock text-danger fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">الوقت المحدد</p>
                                             <h4 class="mb-0">{{ $quiz->time_limit }} <small>دقيقة</small></h4>
@@ -651,8 +651,8 @@
                                     </div>
                                 @endif
                                 @if($quiz->attempts_allowed)
-                                    <div class="col-md-3">
-                                        <div class="text-center p-3 bg-light rounded">
+                                    <div class="col-6 col-md-3">
+                                        <div class="text-center p-3 bg-light rounded student-learn-stat-tile">
                                             <i class="fas fa-redo text-primary fs-4 mb-2"></i>
                                             <p class="mb-1 text-muted small">المحاولات المسموحة</p>
                                             <h4 class="mb-0">{{ $quiz->attempts_allowed }}</h4>
@@ -710,7 +710,7 @@
                             @endif
 
                             <!-- Start Quiz Button -->
-                            <div class="text-center mt-4">
+                            <div class="text-center mt-4 student-learn-assessment-actions">
                                 @if($inProgressAttempt)
                                     <a href="{{ route('student.quizzes.take', $inProgressAttempt->id) }}" class="btn btn-lg btn-warning" data-turbo="false">
                                         <i class="fas fa-play-circle me-2"></i>متابعة الاختبار
