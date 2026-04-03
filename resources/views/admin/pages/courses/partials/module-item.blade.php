@@ -138,6 +138,11 @@
                     title="إدارة القيود للمجموعات">
                 <i class="fas fa-users-cog me-1"></i>قيود
             </button>
+            <a href="{{ route('courses.modules.completions', ['course' => $module->course_id, 'module' => $module->id]) }}"
+               class="btn btn-sm btn-outline-success"
+               title="تقدم وإكمال الطلاب لهذه الوحدة">
+                <i class="fas fa-user-check me-1"></i>تقدم الطلاب
+            </a>
             @if($module->module_type == 'assignment' && $module->modulable_id)
                 <a href="{{ route('assignments.show', $module->modulable_id) }}"
                    class="btn btn-sm btn-outline-info">

@@ -563,6 +563,11 @@
                                 <i class="fas fa-cog me-2"></i>الإعدادات
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('courses.completion-summary', $course) }}">
+                                <i class="fas fa-chart-bar me-2"></i>ملخص الإكمال
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 <div class="card-body">
@@ -881,6 +886,11 @@
                                                         title="إدارة القيود للمجموعات">
                                                     <i class="fas fa-users-cog me-1"></i>قيود
                                                 </button>
+                                                <a href="{{ route('courses.modules.completions', ['course' => $course->id, 'module' => $module->id]) }}"
+                                                   class="btn btn-sm btn-outline-success"
+                                                   title="تقدم وإكمال الطلاب لهذه الوحدة">
+                                                    <i class="fas fa-user-check me-1"></i>تقدم الطلاب
+                                                </a>
                                                 @if($module->module_type == 'assignment' && $module->modulable_id)
                                                     <a href="{{ route('assignments.show', $module->modulable_id) }}"
                                                        class="btn btn-sm btn-outline-info">

@@ -90,7 +90,7 @@ class GroupRegistrationController extends Controller
                     }),
             ],
             'phone' => 'required|string|max:20',
-            'country_code' => 'required|string|max:5',
+            'country_code' => ['required', 'string', 'max:8', \Illuminate\Validation\Rule::in(config('country_codes.allowed_codes'))],
             'nationality_id' => 'nullable|exists:nationalities,id',
             'date_of_birth' => 'nullable|date|before:today',
             'gender' => 'nullable|in:male,female',

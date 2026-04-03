@@ -9,6 +9,7 @@ use App\Models\Nationality;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
@@ -100,12 +101,16 @@ public function index(Request $request)
      */
     public function store(Request $request)
     {
+        if ($request->input('country_code') === '') {
+            $request->merge(['country_code' => null]);
+        }
+
         // التحقق من صحة البيانات
         $request->validate([
             'name' => 'required|string|max:255',
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'country_code' => 'nullable|string|max:5',
+            'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
             'phone' => 'nullable|string|max:20',
             'national_id' => 'nullable|string|max:20|unique:users,national_id',
             'nationality_id' => 'nullable|exists:nationalities,id',
@@ -303,12 +308,16 @@ public function index(Request $request)
     {
         $user = User::findOrFail($id);
 
+        if ($request->input('country_code') === '') {
+            $request->merge(['country_code' => null]);
+        }
+
         // التحقق من صحة البيانات
         $request->validate([
             'name' => 'required|string|max:255',
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-            'country_code' => 'nullable|string|max:5',
+            'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
             'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
             'national_id' => 'nullable|string|max:20|unique:users,national_id,' . $id,
             'nationality_id' => 'nullable|exists:nationalities,id',

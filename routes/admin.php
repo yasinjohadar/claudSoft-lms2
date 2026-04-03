@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseSectionController;
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\ModuleCompletionReportController;
+use App\Http\Controllers\Admin\CourseModuleCompletionSummaryController;
 use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
@@ -169,6 +171,8 @@ Route::prefix('admin')
         Route::get('courses/{course}/restrictions/groups', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionGroups'])->name('courses.restrictions.groups');
         Route::get('courses/{course}/restrictions/bulk-state', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionBulkState'])->name('courses.restrictions.bulk-state');
         Route::post('courses/{course}/modules/restrictions/sync-bulk', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncBulkModuleRestrictions'])->name('courses.modules.restrictions.sync-bulk');
+        Route::get('courses/{course}/modules/{module}/completions', [ModuleCompletionReportController::class, 'index'])->name('courses.modules.completions');
+        Route::get('courses/{course}/completion-summary', [CourseModuleCompletionSummaryController::class, 'index'])->name('courses.completion-summary');
 
         // Course Sections routes
         Route::resource('courses.sections', CourseSectionController::class)->except(['index']);

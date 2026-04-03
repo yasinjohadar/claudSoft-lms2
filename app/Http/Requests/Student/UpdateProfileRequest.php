@@ -15,6 +15,13 @@ class UpdateProfileRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('country_code') && $this->input('country_code') === '') {
+            $this->merge(['country_code' => null]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -28,7 +35,7 @@ class UpdateProfileRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
             // Email is not included - students cannot change their email
-            'country_code' => ['nullable', 'string', 'max:5'],
+            'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
             'phone' => [
                 'nullable',
                 'string',
