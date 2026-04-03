@@ -101,17 +101,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // التوجيه حسب الدور عبر spatie
+        // إن وُجد رابط محفوظ (مثلاً بعد محاولة فتح /docs/... بدون جلسة)، العودة إليه بعد الدخول
+        $fallback = route('frontend.home', absolute: false);
         if ($user->hasRole('admin')) {
-            return redirect()->route('admin.dashboard');
+            $fallback = route('admin.dashboard', absolute: false);
+        } elseif ($user->hasRole('student')) {
+            $fallback = route('student.dashboard', absolute: false);
         }
 
-        if ($user->hasRole('student')) {
-            return redirect()->route('student.dashboard');
-        }
-
-        // احتياط: لو لم يكن له أي دور
-        return redirect()->route('home');
+        return redirect()->intended($fallback);
     }
 
     // مساعد بسيط لاكتشاف نوع الجهاز

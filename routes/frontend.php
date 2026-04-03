@@ -56,12 +56,14 @@ Route::prefix('blog')->name('frontend.blog.')->group(function () {
 });
 
 
-// Documentation (public) — نفس تصميم public/docs/css/style.css
-Route::prefix('docs')->name('frontend.docs.')->group(function () {
-    Route::get('/', [DocumentationController::class, 'index'])->name('index');
-    Route::get('/{categorySlug}/{pagePath?}', [DocumentationController::class, 'show'])
-        ->where('pagePath', '.*')
-        ->name('show');
+// Documentation — للمستخدمين المسجّلين فقط؛ نفس تصميم public/docs/css/style.css
+Route::middleware('auth')->group(function () {
+    Route::prefix('docs')->name('frontend.docs.')->group(function () {
+        Route::get('/', [DocumentationController::class, 'index'])->name('index');
+        Route::get('/{categorySlug}/{pagePath?}', [DocumentationController::class, 'show'])
+            ->where('pagePath', '.*')
+            ->name('show');
+    });
 });
 // Sitemap Route
 Route::get('/sitemap.xml', [\App\Http\Controllers\Frontend\SitemapController::class, 'index'])->name('frontend.sitemap');
@@ -84,7 +86,8 @@ Route::get('/robots.txt', function() {
     $content .= "# Disallow admin and student panels\n";
     $content .= "Disallow: /admin/\n";
     $content .= "Disallow: /student/\n";
-    $content .= "Disallow: /api/\n\n";
+    $content .= "Disallow: /api/\n";
+    $content .= "Disallow: /docs\n\n";
     
     $content .= "# Disallow private files\n";
     $content .= "Disallow: /storage/private/\n";
