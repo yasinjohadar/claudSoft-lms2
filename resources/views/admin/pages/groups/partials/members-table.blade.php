@@ -1,5 +1,6 @@
 @php
     $paymentMethodsList = $paymentMethods ?? collect();
+    $trainingCampsForModal = $trainingCampsForModal ?? collect();
     $groupMembersFilterActive = request()->filled('search')
         || request()->filled('other_group_id')
         || request()->filled('groups_count')
@@ -41,7 +42,7 @@
             <tbody>
                 @foreach($members as $index => $memberRecord)
                     @if($memberRecord->student)
-                        <tr>
+                        <tr data-student-row-id="{{ $memberRecord->student_id }}">
                             <td>
                                 <input type="checkbox" class="member-checkbox" value="{{ $memberRecord->student_id }}" data-member-name="{{ $memberRecord->student->name }}">
                             </td>
@@ -181,6 +182,15 @@
                                                 data-user-name="{{ $memberRecord->student->name }}"
                                                 title="الدخول كطالب في تبويب جديد">
                                             <i class="fas fa-user-secret"></i>
+                                        </button>
+                                    @endif
+                                    @if($memberRecord->student->hasRole('student') && $trainingCampsForModal->isNotEmpty())
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary js-open-attach-camp-modal"
+                                                title="إضافة إلى معسكر تدريبي"
+                                                data-student-id="{{ $memberRecord->student_id }}"
+                                                data-student-name="{{ $memberRecord->student->name }}">
+                                            <i class="fas fa-campground"></i>
                                         </button>
                                     @endif
                                     @if($dueAmount > 0 && $paymentMethodsList->isNotEmpty())

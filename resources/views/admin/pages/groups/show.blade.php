@@ -414,7 +414,7 @@
 
                             <div id="groupMembersFilterFeedback" class="small text-muted mb-2"></div>
                             <div id="groupMembersTableContainer">
-                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'stats' => $stats ?? [], 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? [], 'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById ?? [], 'studentPaymentsById' => $studentPaymentsById ?? [], 'studentPaidTotalsById' => $studentPaidTotalsById ?? [], 'paymentMethods' => $paymentMethods ?? collect()])
+                                @include('admin.pages.groups.partials.members-table', ['members' => $members, 'group' => $group, 'course' => $course, 'stats' => $stats ?? [], 'lastActivityByUserId' => $lastActivityByUserId ?? [], 'onlineUserIds' => $onlineUserIds ?? [], 'dueAmountsByStudentId' => $dueAmountsByStudentId ?? [], 'studentOutstandingInvoicesById' => $studentOutstandingInvoicesById ?? [], 'studentPaymentsById' => $studentPaymentsById ?? [], 'studentPaidTotalsById' => $studentPaidTotalsById ?? [], 'paymentMethods' => $paymentMethods ?? collect(), 'trainingCampsForModal' => $trainingCampsForModal ?? collect()])
                             </div>
                         </div>
                     </div>
@@ -474,6 +474,60 @@
             </div>
         </div>
     </div>
+
+    @if(($trainingCampsForModal ?? collect())->isNotEmpty())
+    <div class="modal fade" id="attachTrainingCampModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-campground me-2"></i>
+                        إضافة الطالب إلى معسكر تدريبي
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        الطالب: <strong id="attachCampStudentName">—</strong>
+                    </p>
+                    <input type="hidden" id="attachCampStudentId" value="">
+                    <div class="mb-3">
+                        <label class="form-label" for="attachCampSelect">اختر المعسكر</label>
+                        <select class="form-select" id="attachCampSelect">
+                            <option value="">— اختر معسكراً —</option>
+                            @foreach($trainingCampsForModal as $tc)
+                                <option value="{{ $tc->id }}">
+                                    {{ $tc->name }}
+                                    @if($tc->start_date)
+                                        ({{ $tc->start_date->format('Y-m-d') }})
+                                    @endif
+                                    — ${{ number_format((float) $tc->price, 2) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="attachCampDetails" class="border rounded p-3 bg-light bg-opacity-10 small d-none">
+                        <div id="attachCampDetailsLoading" class="text-muted d-none">
+                            <span class="spinner-border spinner-border-sm me-2"></span>جاري جلب تفاصيل المعسكر...
+                        </div>
+                        <div id="attachCampDetailsContent" class="d-none"></div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label" for="attachCampNotes">ملاحظات (اختياري)</label>
+                        <textarea class="form-control" id="attachCampNotes" rows="2" maxlength="1000" placeholder="ملاحظات التسجيل"></textarea>
+                    </div>
+                    <div class="alert alert-danger py-2 d-none" id="attachCampFormError" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="attachCampSubmitBtn" disabled>
+                        <i class="fas fa-check me-1"></i>تأكيد التسجيل وإصدار الفاتورة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Add Bulk Members Modal -->
     <div class="modal fade" id="addBulkMembersModal" tabindex="-1">
@@ -813,6 +867,202 @@
     initGroupMembersAjaxFilters();
 
     const groupMemberPaymentBaseUrl = @json(url('/admin/groups/' . $group->id . '/members'));
+    @if(($trainingCampsForModal ?? collect())->isNotEmpty())
+    @php
+        $campModalDataUrlTemplateJs = str_replace(
+            '999999999',
+            '__CAMP_ID__',
+            route('training-camps.modal-data', ['camp' => 999999999])
+        );
+        $enrollCampUrlTemplateJs = str_replace(
+            '999999999',
+            '__USER_ID__',
+            route('groups.members.training-camp-enrollment', ['group' => $group->id, 'user' => 999999999])
+        );
+    @endphp
+    const campModalDataUrlTemplate = @json($campModalDataUrlTemplateJs);
+    const enrollCampUrlTemplate = @json($enrollCampUrlTemplateJs);
+
+    function attachCampEscapeHtml(text) {
+        if (!text) return '';
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function openAttachCampModal(btn) {
+        const modalEl = document.getElementById('attachTrainingCampModal');
+        if (!modalEl) return;
+        const studentId = btn.getAttribute('data-student-id') || '';
+        const studentName = btn.getAttribute('data-student-name') || '';
+        document.getElementById('attachCampStudentId').value = studentId;
+        const nameEl = document.getElementById('attachCampStudentName');
+        if (nameEl) nameEl.textContent = studentName || '—';
+        const sel = document.getElementById('attachCampSelect');
+        if (sel) sel.value = '';
+        const notes = document.getElementById('attachCampNotes');
+        if (notes) notes.value = '';
+        const err = document.getElementById('attachCampFormError');
+        if (err) {
+            err.classList.add('d-none');
+            err.textContent = '';
+        }
+        const details = document.getElementById('attachCampDetails');
+        const loading = document.getElementById('attachCampDetailsLoading');
+        const content = document.getElementById('attachCampDetailsContent');
+        if (details) details.classList.add('d-none');
+        if (loading) loading.classList.add('d-none');
+        if (content) {
+            content.classList.add('d-none');
+            content.innerHTML = '';
+        }
+        const submitBtn = document.getElementById('attachCampSubmitBtn');
+        if (submitBtn) submitBtn.disabled = true;
+        let m = bootstrap.Modal.getInstance(modalEl);
+        if (!m) m = new bootstrap.Modal(modalEl);
+        m.show();
+    }
+
+    async function loadAttachCampDetails(campId) {
+        const details = document.getElementById('attachCampDetails');
+        const loading = document.getElementById('attachCampDetailsLoading');
+        const content = document.getElementById('attachCampDetailsContent');
+        const submitBtn = document.getElementById('attachCampSubmitBtn');
+        if (!details || !loading || !content) return;
+        details.classList.remove('d-none');
+        loading.classList.remove('d-none');
+        content.classList.add('d-none');
+        content.innerHTML = '';
+        if (submitBtn) submitBtn.disabled = true;
+        const url = campModalDataUrlTemplate.replace('__CAMP_ID__', String(campId));
+        try {
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await response.json().catch(function () { return {}; });
+            loading.classList.add('d-none');
+            if (!response.ok || !data.success || !data.camp) {
+                content.innerHTML = '<p class="text-danger mb-0">تعذر تحميل تفاصيل المعسكر.</p>';
+                content.classList.remove('d-none');
+                return;
+            }
+            const c = data.camp;
+            const descHtml = attachCampEscapeHtml(c.description || '').replace(/\n/g, '<br>');
+            const cat = c.category_name ? attachCampEscapeHtml(c.category_name) : '—';
+            const instructor = c.instructor_name ? attachCampEscapeHtml(c.instructor_name) : '—';
+            const loc = c.location ? attachCampEscapeHtml(c.location) : '—';
+            const maxP = c.max_participants != null ? attachCampEscapeHtml(String(c.max_participants)) : '—';
+            const showUrlAttr = String(c.show_url || '#').replace(/"/g, '&quot;');
+            content.innerHTML =
+                '<dl class="row mb-0">' +
+                '<dt class="col-sm-4">الاسم</dt><dd class="col-sm-8">' + attachCampEscapeHtml(c.name || '') + '</dd>' +
+                '<dt class="col-sm-4">السعر</dt><dd class="col-sm-8"><strong>$' + Number(c.price).toFixed(2) + '</strong></dd>' +
+                '<dt class="col-sm-4">تاريخ البداية / النهاية</dt><dd class="col-sm-8">' + attachCampEscapeHtml(c.start_date || '') + ' — ' + attachCampEscapeHtml(c.end_date || '') + '</dd>' +
+                '<dt class="col-sm-4">المدة (أيام)</dt><dd class="col-sm-8">' + (c.duration_days != null ? attachCampEscapeHtml(String(c.duration_days)) : '—') + '</dd>' +
+                '<dt class="col-sm-4">التصنيف</dt><dd class="col-sm-8">' + cat + '</dd>' +
+                '<dt class="col-sm-4">المدرب</dt><dd class="col-sm-8">' + instructor + '</dd>' +
+                '<dt class="col-sm-4">الموقع</dt><dd class="col-sm-8">' + loc + '</dd>' +
+                '<dt class="col-sm-4">المشاركون</dt><dd class="col-sm-8">' + (c.current_participants != null ? c.current_participants : '0') + ' / ' + maxP + ' (تسجيلات: ' + (c.enrollments_count != null ? c.enrollments_count : '0') + ')</dd>' +
+                '<dt class="col-sm-4">الحالة</dt><dd class="col-sm-8">' + (c.is_active ? 'نشط' : 'غير نشط') + '</dd>' +
+                '<dt class="col-sm-4">الوصف</dt><dd class="col-sm-8">' + (descHtml || '<span class="text-muted">—</span>') + '</dd>' +
+                '</dl>' +
+                '<p class="mb-0 mt-3"><a href="' + showUrlAttr + '" target="_blank" rel="noopener">فتح صفحة المعسكر <i class="fas fa-external-link-alt fa-xs"></i></a></p>';
+            content.classList.remove('d-none');
+            if (submitBtn) submitBtn.disabled = false;
+        } catch (e) {
+            loading.classList.add('d-none');
+            content.innerHTML = '<p class="text-danger mb-0">حدث خطأ في الاتصال.</p>';
+            content.classList.remove('d-none');
+        }
+    }
+
+    (function initAttachTrainingCampModal() {
+        const sel = document.getElementById('attachCampSelect');
+        if (!sel) return;
+        sel.addEventListener('change', function () {
+            const id = sel.value;
+            if (!id) {
+                const details = document.getElementById('attachCampDetails');
+                const submitBtn = document.getElementById('attachCampSubmitBtn');
+                if (details) details.classList.add('d-none');
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+            loadAttachCampDetails(id);
+        });
+        const submitBtn = document.getElementById('attachCampSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async function () {
+                const studentId = document.getElementById('attachCampStudentId').value;
+                const campId = document.getElementById('attachCampSelect').value;
+                const notesEl = document.getElementById('attachCampNotes');
+                const err = document.getElementById('attachCampFormError');
+                if (!studentId || !campId) return;
+                const url = enrollCampUrlTemplate.replace('__USER_ID__', String(studentId));
+                submitBtn.disabled = true;
+                const orig = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الحفظ...';
+                if (err) {
+                    err.classList.add('d-none');
+                    err.textContent = '';
+                }
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({
+                            camp_id: parseInt(campId, 10),
+                            notes: notesEl && notesEl.value ? notesEl.value : null,
+                        }),
+                    });
+                    const data = await response.json().catch(function () { return {}; });
+                    if (response.ok && data.success) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success(data.message || 'تم التسجيل');
+                        } else {
+                            alert(data.message || 'تم التسجيل');
+                        }
+                        const modalEl = document.getElementById('attachTrainingCampModal');
+                        const m = bootstrap.Modal.getInstance(modalEl);
+                        if (m) m.hide();
+                        if (typeof window.refreshGroupMembersTable === 'function') {
+                            window.refreshGroupMembersTable();
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        let msg = data.message || 'فشل التسجيل';
+                        if (data.errors) {
+                            const first = Object.values(data.errors)[0];
+                            if (Array.isArray(first) && first[0]) msg = first[0];
+                        }
+                        if (err) {
+                            err.textContent = msg;
+                            err.classList.remove('d-none');
+                        } else if (typeof toastr !== 'undefined') {
+                            toastr.error(msg);
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                } catch (e) {
+                    if (err) {
+                        err.textContent = 'حدث خطأ في الاتصال';
+                        err.classList.remove('d-none');
+                    }
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = orig;
+                }
+            });
+        }
+    })();
+    @endif
 
     function openRecordGroupMemberPaymentModal(btn) {
         const studentId = btn.getAttribute('data-student-id');
@@ -950,6 +1200,14 @@
                 e.preventDefault();
                 openRecordGroupMemberPaymentModal(payBtn);
             }
+
+            @if(($trainingCampsForModal ?? collect())->isNotEmpty())
+            const campBtn = e.target.closest('.js-open-attach-camp-modal');
+            if (campBtn) {
+                e.preventDefault();
+                openAttachCampModal(campBtn);
+            }
+            @endif
         });
     }
 

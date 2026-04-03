@@ -10,6 +10,7 @@ use App\Models\CourseGroup;
 use App\Models\User;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Services\TrainingCampEnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 use Carbon\Carbon;
+use InvalidArgumentException;
 
 class TrainingCampController extends Controller
 {
@@ -181,6 +183,37 @@ class TrainingCampController extends Controller
             ->get(['id', 'name']);
 
         return view('admin.pages.training-camps.show', compact('camp', 'students', 'courseGroups'));
+    }
+
+    /**
+     * JSON payload for selecting a camp in admin modals (e.g. group members table).
+     */
+    public function modalData(string $camp)
+    {
+        $campModel = TrainingCamp::with('category')
+            ->withCount('enrollments')
+            ->findOrFail($camp);
+
+        return response()->json([
+            'success' => true,
+            'camp' => [
+                'id' => $campModel->id,
+                'name' => $campModel->name,
+                'description' => $campModel->description,
+                'price' => (float) $campModel->price,
+                'start_date' => optional($campModel->start_date)->format('Y-m-d'),
+                'end_date' => optional($campModel->end_date)->format('Y-m-d'),
+                'duration_days' => $campModel->duration_days,
+                'instructor_name' => $campModel->instructor_name,
+                'location' => $campModel->location,
+                'max_participants' => $campModel->max_participants,
+                'current_participants' => $campModel->current_participants,
+                'enrollments_count' => $campModel->enrollments_count,
+                'category_name' => optional($campModel->category)->name,
+                'is_active' => (bool) $campModel->is_active,
+                'show_url' => route('training-camps.show', $campModel->id),
+            ],
+        ]);
     }
 
     /**
@@ -841,7 +874,7 @@ class TrainingCampController extends Controller
     /**
      * Store a new enrollment for a camp.
      */
-    public function storeEnrollment(Request $request, string $campId)
+    public function storeEnrollment(Request $request, string $campId, TrainingCampEnrollmentService $enrollmentService)
     {
         try {
             $camp = TrainingCamp::findOrFail($campId);
@@ -856,70 +889,26 @@ class TrainingCampController extends Controller
                 'student_id.exists' => 'الطالب المحدد غير موجود',
             ]);
 
-            // Check if student is already enrolled
-            $existingEnrollment = CampEnrollment::where('camp_id', $campId)
-                ->where('student_id', $validated['student_id'])
-                ->first();
-
-            if ($existingEnrollment) {
-                return redirect()->route('training-camps.enrollments.create-individual', $campId)
-                    ->withErrors(['student_id' => 'الطالب مسجل بالفعل في هذا المعسكر'])
-                    ->withInput();
-            }
-
-            DB::beginTransaction();
-
-            $enrollment = CampEnrollment::create([
-                'camp_id' => $campId,
-                'student_id' => $validated['student_id'],
-                'status' => $validated['status'] ?? 'pending',
-                'payment_status' => $validated['payment_status'] ?? 'unpaid',
-                'notes' => $validated['notes'] ?? null,
-                'enrollment_date' => now(),
-            ]);
-
-            // Create invoice for the camp enrollment
-            $invoice = Invoice::create([
-                'invoice_number' => Invoice::generateInvoiceNumber(),
-                'student_id' => $validated['student_id'],
-                'total_amount' => $camp->price,
-                'paid_amount' => 0,
-                'remaining_amount' => $camp->price,
-                'tax_amount' => 0,
-                'discount_amount' => 0,
-                'status' => 'issued',
-                'issue_date' => now(),
-                'due_date' => $camp->start_date,
-                'notes' => 'فاتورة التسجيل في معسكر: ' . $camp->name,
-                'created_by' => auth()->id(),
-            ]);
-
-            // Create invoice item
-            InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'description' => 'رسوم التسجيل في معسكر: ' . $camp->name,
-                'quantity' => 1,
-                'unit_price' => $camp->price,
-                'total_price' => $camp->price,
-                'camp_enrollment_id' => $enrollment->id,
-            ]);
-
-            // Update current_participants if status is approved
-            if ($enrollment->status === 'approved') {
-                $camp->increment('current_participants');
-            }
-
-            DB::commit();
+            $enrollmentService->enrollStudent(
+                $camp,
+                (int) $validated['student_id'],
+                $validated['status'] ?? null,
+                $validated['payment_status'] ?? null,
+                $validated['notes'] ?? null
+            );
 
             return redirect()->route('training-camps.show', $campId)
                 ->with('success', 'تم إضافة العضو بنجاح');
 
+        } catch (InvalidArgumentException $e) {
+            return redirect()->route('training-camps.enrollments.create-individual', $campId)
+                ->withErrors(['student_id' => $e->getMessage()])
+                ->withInput();
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->route('training-camps.enrollments.create-individual', $campId)
                 ->withErrors($e->errors())
                 ->withInput();
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->route('training-camps.enrollments.create-individual', $campId)
                 ->withErrors(['error' => 'حدث خطأ: ' . $e->getMessage()])
                 ->withInput();

@@ -121,6 +121,7 @@ Route::prefix('admin')
         Route::delete('course-categories/{id}/force-delete', [CourseCategoryController::class, 'forceDelete'])->name('course-categories.force-delete');
 
         // Training Camps routes
+        Route::get('training-camps/{camp}/modal-data', [TrainingCampController::class, 'modalData'])->name('training-camps.modal-data');
         Route::resource('training-camps', TrainingCampController::class);
         Route::get('training-camps-enrollments', [TrainingCampController::class, 'enrollments'])->name('training-camps.enrollments');
         Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollmentOld'])->name('training-camps.enrollments.old.approve');
@@ -263,6 +264,7 @@ Route::prefix('admin')
         Route::get('groups/{groupId}/bulk-enroll', [CourseGroupController::class, 'showBulkEnrollPage'])->name('groups.bulk-enroll-page');
         Route::post('groups/{groupId}/add-bulk-members', [CourseGroupController::class, 'addBulkMembers'])->name('groups.add-bulk-members');
         Route::post('groups/{group}/members/{user}/payments', [CourseGroupController::class, 'recordMemberPayment'])->name('groups.members.payments.store');
+        Route::post('groups/{group}/members/{user}/training-camp-enrollment', [CourseGroupController::class, 'storeMemberTrainingCampEnrollment'])->name('groups.members.training-camp-enrollment');
         Route::delete('groups/{groupId}/remove-member/{memberId}', [CourseGroupController::class, 'removeMember'])->name('groups.remove-member');
         Route::delete('groups/{groupId}/bulk-remove-members', [CourseGroupController::class, 'bulkRemoveMembers'])->name('groups.bulk-remove-members');
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');

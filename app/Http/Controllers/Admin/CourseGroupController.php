@@ -10,10 +10,13 @@ use App\Models\GroupMembershipRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\TrainingCamp;
 use App\Models\User;
+use App\Services\TrainingCampEnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class CourseGroupController extends Controller
 {
@@ -370,6 +373,8 @@ class CourseGroupController extends Controller
 
             $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
 
+            $trainingCampsForModal = $this->activeTrainingCampsForModal();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -405,11 +410,12 @@ class CourseGroupController extends Controller
                         'studentPaymentsById' => $studentPaymentsById,
                         'studentPaidTotalsById' => $studentPaidTotalsById,
                         'paymentMethods' => $paymentMethods,
+                        'trainingCampsForModal' => $trainingCampsForModal,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'lastActivityByUserId', 'onlineUserIds', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods', 'trainingCampsForModal'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
@@ -1228,6 +1234,8 @@ class CourseGroupController extends Controller
 
             $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
 
+            $trainingCampsForModal = $this->activeTrainingCampsForModal();
+
             // Load other groups for each student member
             $members->each(function($member) use ($group) {
                 if ($member->student) {
@@ -1263,11 +1271,12 @@ class CourseGroupController extends Controller
                         'studentPaymentsById' => $studentPaymentsById,
                         'studentPaidTotalsById' => $studentPaidTotalsById,
                         'paymentMethods' => $paymentMethods,
+                        'trainingCampsForModal' => $trainingCampsForModal,
                     ])->render(),
                 ]);
             }
 
-            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods'));
+            return view('admin.pages.groups.show', compact('course', 'group', 'stats', 'availableStudents', 'members', 'allGroups', 'dueAmountsByStudentId', 'studentOutstandingInvoicesById', 'studentPaymentsById', 'studentPaidTotalsById', 'paymentMethods', 'trainingCampsForModal'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
@@ -1714,6 +1723,74 @@ class CourseGroupController extends Controller
     /**
      * Record a payment for a group member (invoice must belong to the student).
      */
+    protected function activeTrainingCampsForModal()
+    {
+        return TrainingCamp::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'price', 'start_date']);
+    }
+
+    /**
+     * Enroll a group member in a training camp (creates invoice like camp admin enrollment).
+     */
+    public function storeMemberTrainingCampEnrollment(Request $request, CourseGroup $group, User $user, TrainingCampEnrollmentService $enrollmentService)
+    {
+        if (! $group->students()->where('users.id', $user->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطالب ليس عضواً في هذه المجموعة.',
+            ], 422);
+        }
+
+        if (! $user->hasRole('student')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المستخدم ليس طالباً.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'camp_id' => 'required|exists:training_camps,id',
+            'status' => 'nullable|in:pending,approved,rejected,cancelled',
+            'payment_status' => 'nullable|in:unpaid,paid,refunded',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $camp = TrainingCamp::findOrFail($validated['camp_id']);
+
+        try {
+            $enrollmentService->enrollStudent(
+                $camp,
+                (int) $user->id,
+                $validated['status'] ?? null,
+                $validated['payment_status'] ?? null,
+                $validated['notes'] ?? null
+            );
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        $newDueAmount = (float) Invoice::query()
+            ->where('student_id', $user->id)
+            ->where('remaining_amount', '>', 0)
+            ->sum('remaining_amount');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل الطالب في المعسكر وإصدار الفاتورة.',
+            'new_due_amount' => $newDueAmount,
+        ]);
+    }
+
     public function recordMemberPayment(Request $request, CourseGroup $group, User $user)
     {
         if (! $group->students()->where('users.id', $user->id)->exists()) {
