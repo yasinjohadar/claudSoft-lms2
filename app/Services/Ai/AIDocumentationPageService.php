@@ -114,10 +114,12 @@ PROMPT;
         }
 
         $data = $this->parseJSONResponse($response);
-        $content = isset($data['content']) ? trim((string) $data['content']) : '';
+        $content = isset($data['content'])
+            ? $this->normalizeGeneratedHtmlContent((string) $data['content'])
+            : '';
 
         if ($content === '') {
-            $content = trim(strip_tags($response)) !== '' ? $response : '';
+            $content = $this->normalizeGeneratedHtmlContent($response);
             if ($content === '') {
                 throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
             }
@@ -279,11 +281,21 @@ GUIDE;
         $data = $this->parseJSONResponse($response);
 
         if (! isset($data['title']) || ! isset($data['content'])) {
+            $fallbackContent = $this->normalizeGeneratedHtmlContent($response);
+            if ($fallbackContent === '') {
+                throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
+            }
+
             return [
                 'title' => $topic,
-                'content' => $response,
-                'excerpt' => $this->generateExcerpt($response, $language),
+                'content' => $fallbackContent,
+                'excerpt' => $this->generateExcerpt($fallbackContent, $language),
             ];
+        }
+
+        $data['content'] = $this->normalizeGeneratedHtmlContent((string) $data['content']);
+        if ($data['content'] === '') {
+            throw new \Exception('تم استلام استجابة لكن دون HTML صالح للعرض. حاول مجدداً.');
         }
 
         return $data;
@@ -339,6 +351,28 @@ GUIDE;
         $text = preg_replace('/\s+/', ' ', $text);
 
         return Str::limit(trim($text), 200);
+    }
+
+    private function normalizeGeneratedHtmlContent(string $content): string
+    {
+        $value = trim($content);
+        if ($value === '') {
+            return '';
+        }
+
+        // بعض المزوّدين يرجعون HTML داخل نص JSON escaped (مثل: \"<p>..<\/p>\n\")
+        if (($value[0] ?? '') === '"' && (substr($value, -1) === '"')) {
+            $decodedString = json_decode($value, true);
+            if (is_string($decodedString) && trim($decodedString) !== '') {
+                $value = trim($decodedString);
+            }
+        }
+
+        $value = str_replace(['\\/', '\\"'], ['/', '"'], $value);
+        $value = preg_replace('/\\\\r\\\\n|\\\\n|\\\\r/', "\n", $value) ?? $value;
+        $value = preg_replace('/\r\n|\r/', "\n", $value) ?? $value;
+
+        return trim($value);
     }
 
     private function normalizeSlugFromTitle(?string $slug, string $title): string
