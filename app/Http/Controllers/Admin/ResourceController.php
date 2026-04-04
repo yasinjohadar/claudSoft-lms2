@@ -22,10 +22,10 @@ class ResourceController extends Controller
         try {
             $query = Resource::with(['creator', 'updater', 'courseModules.course']);
 
-            // Search
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
+            // Search (trim — filled() is true for whitespace-only strings)
+            $search = trim((string) $request->input('search', ''));
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%")
                       ->orWhere('file_name', 'like', "%{$search}%");
@@ -48,11 +48,10 @@ class ResourceController extends Controller
                 $query->where('resource_type', $resourceType);
             }
             
-            // Filter by course
-            if ($request->filled('course_id')) {
-                $courseId = $request->course_id;
-                // Resources are linked to courses through course_modules
-                $query->whereHas('courseModules', function($q) use ($courseId) {
+            // Filter by course (integer — avoids driver quirks with string IDs)
+            $courseId = (int) $request->input('course_id', 0);
+            if ($courseId > 0) {
+                $query->whereHas('courseModules', function ($q) use ($courseId) {
                     $q->where('course_id', $courseId);
                 });
             }
@@ -67,8 +66,18 @@ class ResourceController extends Controller
                 $query->where('is_visible', $request->is_visible);
             }
 
+            // Align with UI: «عام» includes NULL/empty (same as Resource::scopeForStudentExternalLibrary)
             if ($request->filled('resource_scope')) {
-                $query->where('resource_scope', $request->resource_scope);
+                $scope = (string) $request->resource_scope;
+                if ($scope === Resource::SCOPE_GENERAL) {
+                    $query->where(function ($q) {
+                        $q->where('resource_scope', Resource::SCOPE_GENERAL)
+                            ->orWhereNull('resource_scope')
+                            ->orWhere('resource_scope', '');
+                    });
+                } elseif ($scope === Resource::SCOPE_PRIVATE) {
+                    $query->where('resource_scope', Resource::SCOPE_PRIVATE);
+                }
             }
 
             if ($request->filled('classification')) {

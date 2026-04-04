@@ -116,7 +116,7 @@
             <!-- Filters -->
             <div class="card custom-card mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('resources.index') }}">
+                    <form method="GET" action="{{ request()->url() }}">
                         <div class="row g-3">
                             <div class="col-lg-2 col-md-4">
                                 <label class="form-label">البحث</label>
@@ -169,7 +169,7 @@
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-search me-1"></i>بحث
                                     </button>
-                                    <a href="{{ route('resources.index') }}" class="btn btn-secondary">
+                                    <a href="{{ request()->url() }}" class="btn btn-secondary">
                                         <i class="fas fa-redo me-1"></i>إعادة تعيين
                                     </a>
                                 </div>
