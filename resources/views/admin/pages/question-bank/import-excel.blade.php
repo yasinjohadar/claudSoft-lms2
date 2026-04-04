@@ -48,12 +48,12 @@
                                 <ul class="mb-0 mt-2">
                                     <li>يجب أن يكون الملف بصيغة Excel (.xlsx أو .xls)</li>
                                     <li>حجم الملف يجب أن يكون أقل من 10 ميجابايت</li>
-                                    <li><strong class="text-danger">اسم الكورس مطلوب</strong> - يجب كتابة اسم الكورس في عمود "الكورس"</li>
-                                    <li>اسم الكورس يجب أن يطابق اسم كورس موجود في النظام</li>
-                                    <li>اللغة البرمجية اختيارية - يمكن تحديدها في عمود "اللغة البرمجية" أو اختيار لغة افتراضية أدناه</li>
-                                    <li>اسم اللغة البرمجية يجب أن يطابق اسم لغة موجودة في النظام</li>
+                                    <li>القالب الجديد يحتوي ورقتين: <strong>دليل</strong> (شرح الأنواع) و<strong>أسئلة</strong> (البيانات). يُفضّل العمل على ورقة <strong>أسئلة</strong>. ملفات القالب القديم (13 عموداً) ما زالت مدعومة.</li>
+                                    <li><strong class="text-danger">اسم الكورس مطلوب</strong> في عمود «الكورس» ويجب أن يطابق اسماً منشوراً في النظام</li>
+                                    <li>عمود <strong>اسم الدرس</strong> اختياري — يُحفظ مع السؤال للتنظيم (يظهر في المعاينة)</li>
+                                    <li>الأسئلة تشمل: اختيار من متعدد (واحد/متعدد)، صح/خطأ، إجابة قصيرة، مقالي، مطابقة، ملء فراغات، ترتيب، رقمي، محسوب — راجع ورقة الدليل لتفاصيل الأعمدة</li>
+                                    <li>اللغة البرمجية اختيارية من العمود أو من القائمة أدناه</li>
                                     <li>سيتم عرض معاينة للبيانات قبل الاستيراد</li>
-                                    <li>يمكنك تحميل ملف قالب Excel كمرجع</li>
                                 </ul>
                             </div>
 
@@ -117,8 +117,9 @@
                                             <th width="50">#</th>
                                             <th>نوع السؤال</th>
                                             <th>نص السؤال</th>
+                                            <th>اسم الدرس</th>
                                             <th>الخيارات</th>
-                                            <th>الإجابة الصحيحة</th>
+                                            <th>الإجابة / إضافي</th>
                                             <th>الدرجة</th>
                                             <th>الصعوبة</th>
                                             <th>الكورس</th>
@@ -278,27 +279,33 @@ function displayPreview(result) {
         const tr = document.createElement('tr');
         tr.className = hasError ? 'preview-row-error' : 'preview-row-valid';
 
-        // Get options text
         const options = [];
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= 6; i++) {
             if (row['option_' + i]) {
                 options.push(`${i}. ${row['option_' + i]}`);
             }
         }
+        const extraBits = [];
+        if (row.accepted_answers) extraBits.push('مقبولة: ' + row.accepted_answers);
+        if (row.matching_pairs_raw) extraBits.push('مطابقة: ' + (row.matching_pairs_raw.length > 40 ? row.matching_pairs_raw.substring(0, 40) + '…' : row.matching_pairs_raw));
+        const answerCell = row.correct_answer
+            ? row.correct_answer + (extraBits.length ? '<br><small class="text-muted">' + extraBits.join('<br>') + '</small>' : '')
+            : (extraBits.length ? '<small class="text-muted">' + extraBits.join('<br>') + '</small>' : '<span class="text-muted">—</span>');
 
         tr.innerHTML = `
             <td>${row.row_number}</td>
             <td>${row.question_type || '<span class="text-danger">مفقود</span>'}</td>
             <td>${row.question_text ? (row.question_text.length > 50 ? row.question_text.substring(0, 50) + '...' : row.question_text) : '<span class="text-danger">مفقود</span>'}</td>
+            <td>${row.lesson_name ? row.lesson_name : '<span class="text-muted">—</span>'}</td>
             <td>${options.length > 0 ? options.join('<br>') : '<span class="text-muted">لا توجد</span>'}</td>
-            <td>${row.correct_answer || '<span class="text-danger">مفقود</span>'}</td>
+            <td>${answerCell}</td>
             <td>${row.points || '1'}</td>
             <td>${row.difficulty || 'medium'}</td>
             <td>${row.course ? row.course : '<span class="text-danger">مطلوب</span>'}</td>
             <td>${row.language ? row.language : '<span class="text-muted">-</span>'}</td>
             <td>
-                ${hasError ? 
-                    '<span class="badge bg-danger status-badge">خطأ</span>' : 
+                ${hasError ?
+                    '<span class="badge bg-danger status-badge">خطأ</span>' :
                     '<span class="badge bg-success status-badge">صحيح</span>'
                 }
             </td>

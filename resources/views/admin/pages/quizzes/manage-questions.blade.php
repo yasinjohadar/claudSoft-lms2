@@ -177,12 +177,12 @@
                 </div>
                 <div class="modal-body">
                     <!-- Filters -->
-                    <div class="row mb-3">
-                        <div class="col-md-4">
+                    <div class="row mb-3 g-2">
+                        <div class="col-lg-3 col-md-6">
                             <label class="form-label">البحث</label>
                             <input type="text" id="search-questions" class="form-control" placeholder="ابحث في الأسئلة...">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-lg-3 col-md-6">
                             <label class="form-label">نوع السؤال</label>
                             <select id="filter-question-type" class="form-select">
                                 <option value="">جميع الأنواع</option>
@@ -191,7 +191,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-lg-3 col-md-6">
                             <label class="form-label">الكورس</label>
                             <select id="filter-course" class="form-select">
                                 <option value="">جميع الكورسات</option>
@@ -199,6 +199,15 @@
                                     <option value="{{ $course->id }}" {{ $quiz->course_id == $course->id ? 'selected' : '' }}>
                                         {{ $course->title }}
                                     </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">الدرس</label>
+                            <select id="filter-lesson" class="form-select">
+                                <option value="">جميع الدروس</option>
+                                @foreach($bankLessonNames as $lessonName)
+                                    <option value="{{ $lessonName }}">{{ $lessonName }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -214,15 +223,20 @@
                                     <th>السؤال</th>
                                     <th>النوع</th>
                                     <th>الكورس</th>
+                                    <th>اسم الدرس</th>
                                     <th width="100">الدرجة الافتراضية</th>
                                 </tr>
                             </thead>
                             <tbody id="available-questions-list">
                                 @forelse($availableQuestions as $question)
+                                    @php
+                                        $importLessonLabel = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
+                                    @endphp
                                     <tr class="question-row" 
                                         data-question-id="{{ $question->id }}"
                                         data-question-type="{{ $question->question_type_id }}"
                                         data-course-id="{{ $question->course_id ?? '' }}"
+                                        data-lesson-name="{{ $importLessonLabel !== null && trim((string) $importLessonLabel) !== '' ? trim((string) $importLessonLabel) : '' }}"
                                         data-question-text="{{ strip_tags($question->question_text) }}">
                                         <td>
                                             <input type="checkbox" 
@@ -233,11 +247,18 @@
                                         <td>{!! Str::limit(strip_tags($question->question_text), 80) !!}</td>
                                         <td><span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span></td>
                                         <td>{{ $question->course->title ?? 'عام' }}</td>
+                                        <td>
+                                            @if($importLessonLabel !== null && trim((string) $importLessonLabel) !== '')
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ $importLessonLabel }}">{{ $importLessonLabel }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $question->default_grade }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">لا توجد أسئلة متاحة للاستيراد</td>
+                                        <td colspan="6" class="text-center text-muted">لا توجد أسئلة متاحة للاستيراد</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -473,23 +494,26 @@ $(document).ready(function() {
         updateDeleteButtonState();
     });
 
-    // Filter questions
+    // Filter questions (import modal rows only)
     function filterQuestions() {
         const searchText = $('#search-questions').val().toLowerCase();
         const questionType = $('#filter-question-type').val();
         const courseId = $('#filter-course').val();
+        const lessonName = ($('#filter-lesson').val() || '').toString();
 
-        $('.question-row').each(function() {
+        $('#available-questions-list .question-row').each(function() {
             const $row = $(this);
-            const questionText = $row.data('question-text').toLowerCase();
+            const questionText = ($row.data('question-text') || '').toString().toLowerCase();
             const rowQuestionType = $row.data('question-type');
             const rowCourseId = $row.data('course-id') || '';
+            const rowLessonName = ($row.attr('data-lesson-name') || '').toString();
 
             const matchesSearch = !searchText || questionText.includes(searchText);
             const matchesType = !questionType || rowQuestionType == questionType;
             const matchesCourse = !courseId || rowCourseId == courseId;
+            const matchesLesson = !lessonName || rowLessonName === lessonName;
 
-            if (matchesSearch && matchesType && matchesCourse) {
+            if (matchesSearch && matchesType && matchesCourse && matchesLesson) {
                 $row.show();
             } else {
                 $row.hide();
@@ -497,7 +521,7 @@ $(document).ready(function() {
         });
     }
 
-    $('#search-questions, #filter-question-type, #filter-course').on('input change', filterQuestions);
+    $('#search-questions, #filter-question-type, #filter-course, #filter-lesson').on('input change', filterQuestions);
 
     // Import selected questions
     $('#import-selected-questions').on('click', function() {

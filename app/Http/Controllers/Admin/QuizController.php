@@ -546,7 +546,18 @@ class QuizController extends Controller
         // Get all courses for filtering dropdown
         $courses = \App\Models\Course::where('is_published', true)->get();
 
-        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses'));
+        $bankLessonNames = $availableQuestions
+            ->map(function (\App\Models\QuestionBank $q) {
+                $name = $q->lesson_name ?? ($q->metadata['lesson_name'] ?? null);
+
+                return $name !== null && trim((string) $name) !== '' ? trim((string) $name) : null;
+            })
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses', 'bankLessonNames'));
     }
 
     /**

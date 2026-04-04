@@ -58,6 +58,16 @@
                                 </div>
                             </div>
 
+                            @php
+                                $lessonShow = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
+                            @endphp
+                            @if($lessonShow)
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-2">اسم الدرس:</h6>
+                                    <p class="mb-0">{{ $lessonShow }}</p>
+                                </div>
+                            @endif
+
                             <!-- Media -->
                             @if($question->question_image)
                                 <div class="mb-4">

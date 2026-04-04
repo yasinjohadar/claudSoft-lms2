@@ -26,6 +26,7 @@ class QuestionBank extends Model
         'course_id',
         'question_type_id',
         'question_text',
+        'lesson_name',
         'question_image',
         'explanation',
         'default_grade',

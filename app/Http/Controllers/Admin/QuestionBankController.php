@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\ProgrammingLanguage;
+use App\Services\QuestionBankExcelImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class QuestionBankController extends Controller
@@ -776,88 +778,63 @@ class QuestionBankController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         try {
+            $excel = app(QuestionBankExcelImportService::class);
             $file = $request->file('excel_file');
             $spreadsheet = IOFactory::load($file->getRealPath());
-            $worksheet = $spreadsheet->getActiveSheet();
+            $worksheet = $excel->getQuestionsWorksheet($spreadsheet);
             $rows = $worksheet->toArray();
 
-            // Remove header row
-            $headerRow = array_shift($rows);
-            
+            $headerRow = array_shift($rows) ?? [];
+            $legacy = $excel->isLegacyHeaderRow($headerRow);
+
             $parsedData = [];
             $errors = [];
-            
+            $questionTypes = QuestionType::where('is_active', true)->get();
+
             foreach ($rows as $rowIndex => $row) {
-                $rowNumber = $rowIndex + 2; // +2 because we removed header and array is 0-indexed
-                
-                // Skip empty rows
-                if (empty(array_filter($row))) {
+                $rowNumber = $rowIndex + 2;
+
+                if (empty(array_filter($row, fn ($c) => trim((string) ($c ?? '')) !== ''))) {
                     continue;
                 }
 
-                $questionData = [
-                    'row_number' => $rowNumber,
-                    'question_type' => trim($row[0] ?? ''),
-                    'question_text' => trim($row[1] ?? ''),
-                    'option_1' => trim($row[2] ?? ''),
-                    'option_2' => trim($row[3] ?? ''),
-                    'option_3' => trim($row[4] ?? ''),
-                    'option_4' => trim($row[5] ?? ''),
-                    'correct_answer' => trim($row[6] ?? ''),
-                    'points' => trim($row[7] ?? '1'),
-                    'difficulty' => trim($row[8] ?? 'medium'),
-                    'course' => trim($row[9] ?? ''),
-                    'explanation' => trim($row[10] ?? ''),
-                    'tags' => trim($row[11] ?? ''),
-                    'language' => trim($row[12] ?? ''),
-                ];
+                $questionData = $legacy
+                    ? $excel->buildRowFromLegacy($row, $rowNumber)
+                    : $excel->buildRowFromMapped($headerRow, $row, $rowNumber);
 
-                // Validate required fields
-                $rowErrors = [];
-                if (empty($questionData['question_type'])) {
-                    $rowErrors[] = 'نوع السؤال مطلوب';
-                }
-                if (empty($questionData['question_text'])) {
-                    $rowErrors[] = 'نص السؤال مطلوب';
-                }
-                if (empty($questionData['correct_answer'])) {
-                    $rowErrors[] = 'الإجابة الصحيحة مطلوبة';
-                }
-                if (empty($questionData['course'])) {
-                    $rowErrors[] = 'اسم الكورس مطلوب';
-                }
+                $resolvedType = $excel->resolveQuestionType($questionData['question_type'] ?? '', $questionTypes);
+                $rowErrors = $excel->validateRowForType($questionData, $resolvedType);
 
-                if (!empty($rowErrors)) {
+                if ($rowErrors !== []) {
                     $errors[] = [
                         'row' => $rowNumber,
-                        'errors' => $rowErrors
+                        'errors' => $rowErrors,
                     ];
                 }
 
                 $parsedData[] = $questionData;
             }
 
-            // Get question types mapping
-            $questionTypes = QuestionType::where('is_active', true)->get();
+            $errorRowIds = array_unique(array_column($errors, 'row'));
+            $validRows = count(array_filter($parsedData, fn ($r) => ! in_array($r['row_number'], $errorRowIds, true)));
+
             $typeMapping = [];
             foreach ($questionTypes as $type) {
                 $typeMapping[$type->display_name] = $type->id;
                 $typeMapping[$type->name] = $type->id;
             }
 
-            // Get courses mapping
             $courses = Course::where('is_published', true)->get();
             $courseMapping = [];
             foreach ($courses as $course) {
                 $courseMapping[$course->title] = $course->id;
             }
 
-            // Get programming languages mapping
             $programmingLanguages = ProgrammingLanguage::active()->get();
             $languageMapping = [];
             foreach ($programmingLanguages as $lang) {
@@ -873,12 +850,12 @@ class QuestionBankController extends Controller
                 'course_mapping' => $courseMapping,
                 'language_mapping' => $languageMapping,
                 'total_rows' => count($parsedData),
-                'valid_rows' => count($parsedData) - count($errors),
+                'valid_rows' => $validRows,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء قراءة الملف: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء قراءة الملف: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1058,72 +1035,24 @@ class QuestionBankController extends Controller
                         continue;
                     }
 
-                    // Create question
                     Log::debug('Question Import: Creating question', [
                         'index' => $index,
                         'course_id' => $courseId,
                         'question_type_id' => $questionType->id,
                     ]);
-                    
-                    $question = QuestionBank::create([
-                        'course_id' => $courseId,
-                        'question_type_id' => $questionType->id,
-                        'question_text' => $questionData['question_text'],
-                        'explanation' => $questionData['explanation'] ?? null,
-                        'default_grade' => floatval($questionData['points'] ?? 1),
-                        'difficulty_level' => $this->mapDifficulty($questionData['difficulty'] ?? 'medium'),
-                        'tags' => !empty($questionData['tags']) ? explode(',', $questionData['tags']) : null,
-                        'is_active' => true,
-                        'created_by' => auth()->id(),
-                    ]);
-                    
-                    Log::debug('Question Import: Question created', [
+
+                    $question = $this->createQuestionFromExcelImportRow(
+                        $questionData,
+                        $questionType,
+                        $courseId,
+                        $languageMapping,
+                        $defaultLanguageId
+                    );
+
+                    Log::debug('Question Import: Question imported', [
                         'question_id' => $question->id,
                         'index' => $index,
                     ]);
-
-                    // Create options
-                    $options = [];
-                    for ($i = 1; $i <= 4; $i++) {
-                        $optionText = $questionData['option_' . $i] ?? '';
-                        if (!empty($optionText)) {
-                            $options[] = [
-                                'option_text' => $optionText,
-                                'is_correct' => $this->isCorrectAnswer($questionData['correct_answer'], $i),
-                                'option_order' => $i,
-                            ];
-                        }
-                    }
-
-                    foreach ($options as $optionData) {
-                        QuestionOption::create([
-                            'question_id' => $question->id,
-                            'option_text' => $optionData['option_text'],
-                            'is_correct' => $optionData['is_correct'],
-                            'option_order' => $optionData['option_order'],
-                            'score_weight' => 1.0,
-                        ]);
-                    }
-
-                    // Attach programming language
-                    $languageId = null;
-                    if (!empty($questionData['language'])) {
-                        $languageName = trim($questionData['language']);
-                        $languageId = $languageMapping[$languageName] ?? null;
-                    }
-                    
-                    // Use default language if not specified in Excel
-                    if (!$languageId && $defaultLanguageId) {
-                        $languageId = $defaultLanguageId;
-                    }
-
-                    if ($languageId) {
-                        Log::debug('Question Import: Attaching programming language', [
-                            'question_id' => $question->id,
-                            'language_id' => $languageId,
-                        ]);
-                        $question->programmingLanguages()->attach($languageId);
-                    }
 
                     $imported++;
                     Log::debug('Question Import: Question imported successfully', [
@@ -1222,57 +1151,266 @@ class QuestionBankController extends Controller
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+        $excel = app(QuestionBankExcelImportService::class);
 
-        // Set headers
-        $headers = [
-            'نوع السؤال', 'نص السؤال', 'الخيار 1', 'الخيار 2', 
-            'الخيار 3', 'الخيار 4', 'الإجابة الصحيحة', 
-            'الدرجة', 'الصعوبة', 'الكورس', 'الشرح', 'العلامات', 'اللغة البرمجية'
+        $spreadsheet = new Spreadsheet;
+        $guide = $spreadsheet->getActiveSheet();
+        $guide->setTitle(QuestionBankExcelImportService::SHEET_GUIDE);
+
+        $guide->fromArray(['نوع السؤال', 'الأعمدة المطلوبة', 'ملاحظات'], null, 'A1');
+        $guideRows = [
+            [
+                'اختيار من متعدد (إجابة واحدة)',
+                'الخيارات 1–6، الإجابة الصحيحة (رقم الخيار)',
+                'مثال الإجابة: 1',
+            ],
+            [
+                'اختيار من متعدد (إجابات متعددة)',
+                'الخيارات، الإجابة الصحيحة كأرقام مفصولة بفاصلة إنجليزية',
+                'مثال: 1,3',
+            ],
+            [
+                'صح / خطأ',
+                'الإجابة الصحيحة: true أو false أو 1 أو 2 أو صح أو خطأ',
+                'لا حاجة لملء أعمدة الخيارات',
+            ],
+            [
+                'إجابة قصيرة',
+                'إجابات مقبولة (افصل بين البدائل بـ |) أو عمود الإجابة الصحيحة لبديل واحد',
+                'حساس لحالة الأحرف: نعم أو لا',
+            ],
+            [
+                'مقالي (إجابة طويلة)',
+                'الحد الأدنى/الأقصى للكلمات، إجابة نموذجية، معايير التقييم (اختياري)',
+                'لا حاجة لإجابة صحيحة آلية',
+            ],
+            [
+                'مطابقة',
+                'أزواج المطابقة: سؤال1||إجابة1;;;سؤال2||إجابة2',
+                'استخدم || بين الطرفين و;;; بين الأزواج',
+            ],
+            [
+                'ملء الفراغات',
+                'نص السؤال يحتوي [[blank]] أو ___ ، وإجابات مقبولة بنفس تنسيق الإجابة القصيرة',
+                'ترتب الإجابات كتسلسل الفراغات',
+            ],
+            [
+                'ترتيب',
+                'الخيار 1 ثم 2… بالترتيب الصحيح (سيتم خلطها للطالب)',
+                'على الأقل عنصران',
+            ],
+            [
+                'إجابة رقمية',
+                'الإجابة الصحيحة، هامش الخطأ، الوحدة (اختياري)',
+                'الأرقام تقبل الفاصلة العشرية بنقطة أو فاصلة',
+            ],
+            [
+                'محسوب (معادلات)',
+                'مثل الرقمي + عمود المعادلة (اختياري) والإجابة المتوقعة',
+                'التقييم يعتمد على الإجابة الرقمية والهامش',
+            ],
+        ];
+        $guide->fromArray($guideRows, null, 'A2');
+        $guide->getStyle('A1:C1')->getFont()->setBold(true);
+
+        $questionsSheet = new Worksheet($spreadsheet, QuestionBankExcelImportService::SHEET_QUESTIONS);
+        $spreadsheet->addSheet($questionsSheet, 1);
+
+        $headers = QuestionBankExcelImportService::templateHeadersOrder();
+        $questionsSheet->fromArray($headers, null, 'A1');
+
+        $coursePlaceholder = 'اسم الكورس هنا';
+
+        $exampleRows = [
+            ['اختيار من متعدد (إجابة واحدة)', 'ما عاصمة السعودية؟', 'درس الجغرافيا', 'الرياض', 'جدة', 'الدمام', 'مكة', '', '', '1', '', '', '', '1', 'easy', $coursePlaceholder, 'شرح', 'وسم1', '', '', '', '', '', '', '', ''],
+            ['اختيار من متعدد (إجابات متعددة)', 'اختر اللغات البرمجية', '', 'PHP', 'Python', 'C#', 'HTML', '', '', '1,2', '', '', '', '2', 'medium', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['صح / خطأ', 'الشمس تشرق من الغرب', '', '', '', '', '', '', '', 'false', '', '', '', '1', 'easy', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['إجابة قصيرة', 'ما ناتج 2+2؟', 'درس الحساب', '', '', '', '', '', '', '', '4|أربعة|٤', 'لا', '', '1', 'easy', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['مقالي (إجابة طويلة)', 'ناقش مفهوم البرمجة كائنية التوجه', 'درس OOP', '', '', '', '', '', '', '', '', '', '', '10', 'medium', $coursePlaceholder, '', '', '', '', '', '50', '500', 'نموذج للمدرس', 'المحتوى والأسلوب', ''],
+            ['مطابقة', 'طابق المصطلحات', '', '', '', '', '', '', '', '', '', '', 'متغير||variable;;;دالة||function', '2', 'medium', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['ملء الفراغات', 'عاصمة السعودية [[blank]]', '', '', '', '', '', '', '', '', 'الرياض', 'لا', '', '1', 'easy', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['ترتيب', 'رتّب مراحل الماء', '', 'تبخر', 'تكثف', 'هطول', 'جريان', '', '', '', '', '', '', '2', 'easy', $coursePlaceholder, '', '', '', '', '', '', '', '', '', ''],
+            ['إجابة رقمية', 'ما ناتج 15 × 8؟', '', '', '', '', '', '', '', '120', '', '', '', '1', 'easy', $coursePlaceholder, '', '', '', '5', '', '', '', '', ''],
+            ['محسوب (معادلات)', 'احسب الناتج', '', '', '', '', '', '', '', '100', '', '', '', '2', 'medium', $coursePlaceholder, '', '', '', '0', '', '', '', '', '2*50'],
         ];
 
-        $sheet->fromArray($headers, null, 'A1');
+        $questionsSheet->fromArray($exampleRows, null, 'A2');
 
-        // Add example row
-        $exampleRow = [
-            'اختيار من متعدد (إجابة واحدة)',
-            'ما هي عاصمة المملكة العربية السعودية؟',
-            'الرياض',
-            'جدة',
-            'الدمام',
-            'مكة المكرمة',
-            '1',
-            '1',
-            'easy',
-            'اسم الكورس هنا', // Required - يجب أن يطابق اسم كورس موجود في النظام
-            'الرياض هي عاصمة المملكة العربية السعودية',
-            'جغرافيا,عواصم',
-            'JavaScript' // مثال للغة البرمجية - يجب أن يطابق اسم لغة موجودة في النظام
-        ];
-        $sheet->fromArray($exampleRow, null, 'A2');
-
-        // Style header row
-        $sheet->getStyle('A1:M1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:M1')->getFill()
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $questionsSheet->getStyle('A1:'.$lastCol.'1')->getFont()->setBold(true);
+        $questionsSheet->getStyle('A1:'.$lastCol.'1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF4472C4');
-        $sheet->getStyle('A1:M1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        $questionsSheet->getStyle('A1:'.$lastCol.'1')->getFont()->getColor()->setARGB('FFFFFFFF');
 
-        // Auto-size columns
-        foreach (range('A', 'M') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
+        for ($ci = 1; $ci <= count($headers); $ci++) {
+            $questionsSheet->getColumnDimensionByColumn($ci)->setAutoSize(true);
         }
 
-        $writer = new Xlsx($spreadsheet);
-        $filename = 'question_bank_template_' . date('Y-m-d') . '.xlsx';
-        
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
+        $spreadsheet->setActiveSheetIndex(1);
 
-        $writer->save('php://output');
-        exit;
+        $filename = 'question_bank_template_'.date('Y-m-d').'.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'qb_tpl');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+
+        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildExcelImportBaseMetadata(array $questionData): array
+    {
+        return [];
+    }
+
+    /**
+     * @return array<int, string>|null
+     */
+    private function parseExcelImportTags(?string $tags): ?array
+    {
+        $tags = trim((string) $tags);
+        if ($tags === '') {
+            return null;
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $tags))));
+    }
+
+    /**
+     * Create one question from a parsed Excel row (types supported by import).
+     */
+    private function createQuestionFromExcelImportRow(
+        array $questionData,
+        QuestionType $questionType,
+        int $courseId,
+        array $languageMapping,
+        ?int $defaultLanguageId
+    ): QuestionBank {
+        $excel = app(QuestionBankExcelImportService::class);
+        $meta = $this->buildExcelImportBaseMetadata($questionData);
+        $name = $questionType->name;
+
+        switch ($name) {
+            case 'short_answer':
+            case 'fill_blanks':
+                $answers = $excel->parseAcceptedAnswersList($questionData);
+                $meta['correct_answers'] = $answers;
+                $meta['case_sensitive'] = $excel->parseCaseSensitiveFlag($questionData['case_sensitive'] ?? '');
+                break;
+
+            case 'essay':
+                if (($questionData['min_words'] ?? '') !== '') {
+                    $meta['min_words'] = (int) $questionData['min_words'];
+                }
+                if (($questionData['max_words'] ?? '') !== '') {
+                    $meta['max_words'] = (int) $questionData['max_words'];
+                }
+                if (! empty(trim((string) ($questionData['model_answer'] ?? '')))) {
+                    $meta['model_answer'] = trim($questionData['model_answer']);
+                }
+                if (! empty(trim((string) ($questionData['grading_criteria'] ?? '')))) {
+                    $meta['grading_criteria'] = trim($questionData['grading_criteria']);
+                }
+                break;
+
+            case 'numerical':
+            case 'calculated':
+                $meta['correct_answer'] = floatval(str_replace(',', '.', (string) $questionData['correct_answer']));
+                $tolRaw = trim((string) ($questionData['tolerance'] ?? ''));
+                $meta['tolerance'] = $tolRaw !== '' ? floatval(str_replace(',', '.', $tolRaw)) : 0.0;
+                if (! empty(trim((string) ($questionData['unit'] ?? '')))) {
+                    $meta['unit'] = trim($questionData['unit']);
+                }
+                if ($name === 'calculated' && ! empty(trim((string) ($questionData['formula'] ?? '')))) {
+                    $meta['formula'] = trim($questionData['formula']);
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        $lessonName = trim((string) ($questionData['lesson_name'] ?? ''));
+
+        $question = QuestionBank::create([
+            'course_id' => $courseId,
+            'question_type_id' => $questionType->id,
+            'question_text' => $questionData['question_text'],
+            'lesson_name' => $lessonName !== '' ? $lessonName : null,
+            'explanation' => ! empty(trim((string) ($questionData['explanation'] ?? ''))) ? trim($questionData['explanation']) : null,
+            'default_grade' => floatval($questionData['points'] ?? 1),
+            'difficulty_level' => $this->mapDifficulty($questionData['difficulty'] ?? 'medium'),
+            'tags' => $this->parseExcelImportTags($questionData['tags'] ?? null),
+            'metadata' => $meta === [] ? null : $meta,
+            'is_active' => true,
+            'created_by' => auth()->id(),
+        ]);
+
+        switch ($name) {
+            case 'multiple_choice_single':
+            case 'multiple_choice_multiple':
+                for ($i = 1; $i <= 6; $i++) {
+                    $optionText = trim((string) ($questionData['option_'.$i] ?? ''));
+                    if ($optionText === '') {
+                        continue;
+                    }
+                    QuestionOption::create([
+                        'question_id' => $question->id,
+                        'option_text' => $optionText,
+                        'is_correct' => $this->isCorrectAnswer($questionData['correct_answer'] ?? '', $i),
+                        'option_order' => $i,
+                        'score_weight' => 1.0,
+                    ]);
+                }
+                break;
+
+            case 'true_false':
+                $norm = $excel->normalizeTrueFalseAnswer($questionData['correct_answer'] ?? '');
+                $this->createQuestionOptions($question, [
+                    ['option_text' => 'صح', 'option_order' => 1],
+                    ['option_text' => 'خطأ', 'option_order' => 2],
+                ], null, $norm);
+                break;
+
+            case 'matching':
+                $pairs = $excel->parseMatchingPairsRaw($questionData['matching_pairs_raw'] ?? '');
+                $this->createMatchingOptions($question, $excel->matchingPairsForCreate($pairs));
+                break;
+
+            case 'ordering':
+                $this->createOrderingOptions($question, $excel->nonEmptyOptions($questionData, 6));
+                break;
+
+            case 'fill_blanks':
+                $answers = $meta['correct_answers'] ?? [];
+                $this->createFillBlanksOptions($question, $answers, (bool) ($meta['case_sensitive'] ?? false));
+                break;
+
+            case 'short_answer':
+            case 'essay':
+            case 'numerical':
+            case 'calculated':
+                break;
+
+            default:
+                throw new \InvalidArgumentException('نوع السؤال غير مدعوم في الاستيراد: '.$name);
+        }
+
+        $languageId = null;
+        if (! empty($questionData['language'])) {
+            $languageName = trim($questionData['language']);
+            $languageId = $languageMapping[$languageName] ?? null;
+        }
+        if (! $languageId && $defaultLanguageId) {
+            $languageId = $defaultLanguageId;
+        }
+        if ($languageId) {
+            $question->programmingLanguages()->attach($languageId);
+        }
+
+        return $question;
     }
 
     /**

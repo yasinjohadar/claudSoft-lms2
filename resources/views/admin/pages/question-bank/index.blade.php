@@ -244,6 +244,7 @@
                                     <th width="10%">النوع</th>
                                     <th width="12%">اللغات</th>
                                     <th width="10%">الكورس</th>
+                                    <th width="10%">الدرس</th>
                                     <th width="8%">الصعوبة</th>
                                     <th width="6%">الدرجة</th>
                                     <th width="6%">الاستخدام</th>
@@ -289,6 +290,16 @@
                                                 <span class="badge bg-secondary-transparent">
                                                     عام
                                                 </span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @php
+                                                $lessonLabel = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
+                                            @endphp
+                                            @if($lessonLabel)
+                                                <span class="text-truncate d-inline-block" style="max-width: 180px;" title="{{ $lessonLabel }}">{{ $lessonLabel }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
                                             @endif
                                         </td>
                                         <td>
@@ -338,7 +349,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="text-center py-5">
+                                        <td colspan="11" class="text-center py-5">
                                             <div class="mb-3">
                                                 <i class="fas fa-question-circle fs-48 text-muted"></i>
                                             </div>
@@ -623,7 +634,7 @@
                         
                         // Check if table is empty
                         if (remainingCount === 0) {
-                            $('tbody').html('<tr><td colspan="10" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
+                            $('tbody').html('<tr><td colspan="11" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
                         }
                     });
                 }
@@ -742,7 +753,7 @@
                                                 
                                                 // Check if table is empty
                                                 if (remainingCount === 0) {
-                                                    $('tbody').html('<tr><td colspan="10" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
+                                                    $('tbody').html('<tr><td colspan="11" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
                                                 }
                                             }
                                         });

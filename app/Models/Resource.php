@@ -43,6 +43,7 @@ class Resource extends Model
             'excel' => 'Excel',
             'image' => 'صورة',
             'audio' => 'صوت',
+            'extenstion' => 'إضافة محرر الاكواد',
             'archive' => 'أرشيف',
             'external_sites' => 'مواقع إضافية خارجية',
             'other' => 'أخرى',
