@@ -118,6 +118,67 @@
             border-color: #dc3545;
         }
         
+        .password-input-wrap {
+            position: relative;
+        }
+        
+        .password-input-wrap .form-control {
+            padding-inline-end: 3rem;
+        }
+        
+        .password-toggle-btn {
+            position: absolute;
+            inset-inline-end: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #0555a2;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+        
+        .password-toggle-btn:hover {
+            color: #044080;
+            background: rgba(5, 85, 162, 0.08);
+            transform: translateY(-50%) scale(1.06);
+        }
+        
+        .password-toggle-btn:focus {
+            outline: none;
+        }
+        
+        .password-toggle-btn:focus-visible {
+            outline: 2px solid #0555a2;
+            outline-offset: 2px;
+            background: rgba(5, 85, 162, 0.1);
+        }
+        
+        .password-toggle-btn svg {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        
+        .password-toggle-btn .icon-password-hide {
+            display: none;
+        }
+        
+        .password-toggle-btn.is-password-revealed .icon-password-show {
+            display: none;
+        }
+        
+        .password-toggle-btn.is-password-revealed .icon-password-hide {
+            display: block;
+        }
+        
         .invalid-feedback {
             display: block;
             color: #dc3545;
@@ -304,19 +365,42 @@
 
             <div class="form-group">
                 <label for="password">كلمة المرور</label>
-                <input 
-                    id="password" 
-                    type="password" 
-                    name="password" 
-                    class="form-control @error('password') is-invalid @enderror" 
-                    required 
-                    autocomplete="current-password"
-                    placeholder="أدخل كلمة المرور"
-                >
-                                                    @error('password')
-                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                    @enderror
-                                                </div>
+                <div class="password-input-wrap">
+                    <input 
+                        id="password" 
+                        type="password" 
+                        name="password" 
+                        class="form-control @error('password') is-invalid @enderror" 
+                        required 
+                        autocomplete="current-password"
+                        placeholder="أدخل كلمة المرور"
+                    >
+                    <button
+                        type="button"
+                        id="password-toggle"
+                        class="password-toggle-btn"
+                        aria-pressed="false"
+                        aria-label="إظهار كلمة المرور"
+                        title="إظهار كلمة المرور"
+                    >
+                        <!-- عين مغلقة + رموش فوق الجفن: النص مخفي -->
+                        <svg class="icon-password-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path stroke-width="1.65" d="M3 10.5c3.2-2.3 6.8-3.3 9.5-3.3s6.3 1 9.5 3.3" />
+                            <path stroke-width="1.65" d="M3 13.5c3.2 2.3 6.8 3.3 9.5 3.3s6.3-1 9.5-3.3" />
+                            <path stroke-width="1.2" opacity="0.92" d="M4.8 9l-1.1-2.5M7.8 7.5l-0.65-2.85M12 6.7V3.5M16.2 7.5l0.65-2.85M19.2 9l1.1-2.5" />
+                        </svg>
+                        <!-- عين مفتوحة واسعة + بؤبؤ ولمعة: تعبير النظر إلى النص الظاهر -->
+                        <svg class="icon-password-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" d="M1.5 12s4-7 10.5-7S22.5 12 22.5 12s-4 7-10.5 7S1.5 12 1.5 12z" />
+                            <ellipse cx="12.5" cy="12" rx="3.4" ry="3.8" fill="currentColor" stroke="none" />
+                            <circle cx="10.6" cy="9.9" r="1.15" fill="#ffffff" stroke="none" opacity="0.95" />
+                        </svg>
+                    </button>
+                </div>
+                @error('password')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
 
             <div class="remember-me">
                 <input type="checkbox" id="remember" name="remember">
@@ -338,5 +422,25 @@
             <p>ليس لديك حساب؟ <a href="{{ route('register') }}">إنشاء حساب جديد</a></p>
         </div>
     </div>
+    <script>
+        (function () {
+            var input = document.getElementById('password');
+            var btn = document.getElementById('password-toggle');
+            if (!input || !btn) return;
+            function applyState(revealed) {
+                input.type = revealed ? 'text' : 'password';
+                btn.classList.toggle('is-password-revealed', revealed);
+                btn.setAttribute('aria-pressed', revealed ? 'true' : 'false');
+                btn.setAttribute('aria-label', revealed ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+                btn.setAttribute('title', revealed ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+            }
+
+            applyState(false);
+
+            btn.addEventListener('click', function () {
+                applyState(input.type === 'password');
+            });
+        })();
+    </script>
 </body>
 </html>
