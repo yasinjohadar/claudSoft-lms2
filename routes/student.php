@@ -36,6 +36,7 @@ use App\Http\Controllers\Student\StudentWorkController;
 use App\Http\Controllers\Student\CourseReviewController;
 use App\Http\Controllers\Student\PlatformReviewController;
 use App\Http\Controllers\Student\GroupMembershipRequestController;
+use App\Http\Controllers\Student\ExternalResourceController;
 
 Route::prefix('student')
     ->middleware(['auth', 'role:student'])
@@ -99,6 +100,12 @@ Route::prefix('student')
 
             // Resource Download
             Route::get('/modules/{moduleId}/download-resource', [CourseLearningController::class, 'downloadResource'])->name('module.download-resource');
+        });
+
+        // General (external) resources library — نطاق عام
+        Route::prefix('external-resources')->name('student.external-resources.')->group(function () {
+            Route::get('/', [ExternalResourceController::class, 'index'])->name('index');
+            Route::get('/{resource}/access', [ExternalResourceController::class, 'access'])->name('access');
         });
 
         // Course Progress & Statistics

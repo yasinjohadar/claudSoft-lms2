@@ -7,6 +7,7 @@ use App\Models\Resource;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -66,6 +67,14 @@ class ResourceController extends Controller
                 $query->where('is_visible', $request->is_visible);
             }
 
+            if ($request->filled('resource_scope')) {
+                $query->where('resource_scope', $request->resource_scope);
+            }
+
+            if ($request->filled('classification')) {
+                $query->where('classification', $request->classification);
+            }
+
             // Sort
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
@@ -74,7 +83,7 @@ class ResourceController extends Controller
             $resources = $query->paginate($request->get('per_page', 15));
 
             // Get filter options
-            $resourceTypes = ['pdf', 'doc', 'ppt', 'excel', 'image', 'audio', 'archive', 'other'];
+            $resourceTypes = Resource::resourceTypeKeys();
 
             // Get statistics
             $totalResources = Resource::count();
@@ -105,7 +114,6 @@ class ResourceController extends Controller
     public function create(Request $request)
     {
         try {
-            $resourceTypes = ['pdf', 'doc', 'ppt', 'excel', 'image', 'audio', 'archive', 'other'];
             $courses = \App\Models\Course::select('id', 'title')->get();
             
             // Get all existing resources for selection
@@ -130,7 +138,7 @@ class ResourceController extends Controller
                 $course = \App\Models\Course::find($courseId);
             }
 
-            return view('admin.pages.resources.create', compact('resourceTypes', 'courses', 'section', 'course', 'sectionId', 'courseId', 'existingResources'));
+            return view('admin.pages.resources.create', compact('courses', 'section', 'course', 'sectionId', 'courseId', 'existingResources'));
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
         }
@@ -147,12 +155,18 @@ class ResourceController extends Controller
             'is_visible' => $request->has('is_visible'),
             'allow_download' => $request->has('allow_download'),
             'preview_available' => $request->has('preview_available'),
+            'resource_scope' => $request->input('resource_scope', Resource::SCOPE_GENERAL),
+            'classification' => $request->filled('classification') ? $request->input('classification') : null,
         ]);
+
+        $classificationRule = 'nullable|in:' . implode(',', Resource::classificationKeys());
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'resource_type' => 'required|in:pdf,doc,ppt,excel,image,audio,archive,other',
+            'resource_scope' => 'required|in:general,private',
+            'classification' => $classificationRule,
+            'resource_type' => ['required', Rule::in(Resource::resourceTypeKeys())],
             'resource_source' => 'required|in:file,url,existing',
             'file' => 'required_if:resource_source,file|nullable|file|max:51200',
             'resource_url' => 'required_if:resource_source,url|nullable|url|max:500',
@@ -169,6 +183,9 @@ class ResourceController extends Controller
         ], [
             'resource_type.required' => 'يرجى اختيار نوع المورد',
             'resource_type.in' => 'نوع المورد غير صحيح',
+            'resource_scope.required' => 'يرجى اختيار نطاق المورد (عام أو خاص)',
+            'resource_scope.in' => 'قيمة نطاق المورد غير صحيحة',
+            'classification.in' => 'التصنيف المحدد غير صالح',
             'resource_source.required' => 'يرجى اختيار مصدر المورد',
             'resource_source.in' => 'مصدر المورد غير صحيح',
             'file.required_if' => 'يرجى اختيار ملف للرفع',
@@ -230,6 +247,8 @@ class ResourceController extends Controller
                 if ($request->filled('description')) {
                     $resource->description = $request->description;
                 }
+                $resource->resource_scope = $validated['resource_scope'];
+                $resource->classification = $validated['classification'] ?? null;
                 $resource->save();
             } else {
                 // Set creator for new resource
@@ -317,13 +336,19 @@ class ResourceController extends Controller
             'is_visible' => $request->has('is_visible'),
             'allow_download' => $request->has('allow_download'),
             'preview_available' => $request->has('preview_available'),
+            'resource_scope' => $request->input('resource_scope', Resource::SCOPE_GENERAL),
+            'classification' => $request->filled('classification') ? $request->input('classification') : null,
         ]);
+
+        $classificationRule = 'nullable|in:' . implode(',', Resource::classificationKeys());
 
         try {
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'resource_type' => 'required|in:pdf,doc,ppt,excel,image,audio,archive,other',
+                'resource_scope' => 'required|in:general,private',
+                'classification' => $classificationRule,
+                'resource_type' => ['required', Rule::in(Resource::resourceTypeKeys())],
                 'resource_source' => 'required|in:file,url,existing',
                 'file' => 'required_if:resource_source,file|nullable|file|max:51200',
                 'resource_url' => 'required_if:resource_source,url|nullable|url|max:500',
@@ -340,6 +365,9 @@ class ResourceController extends Controller
             ], [
                 'resource_type.required' => 'يرجى اختيار نوع المورد',
                 'resource_type.in' => 'نوع المورد غير صحيح',
+                'resource_scope.required' => 'يرجى اختيار نطاق المورد (عام أو خاص)',
+                'resource_scope.in' => 'قيمة نطاق المورد غير صحيحة',
+                'classification.in' => 'التصنيف المحدد غير صالح',
                 'resource_source.required' => 'يرجى اختيار مصدر المورد',
                 'resource_source.in' => 'مصدر المورد غير صحيح',
                 'file.required_if' => 'يرجى اختيار ملف للرفع',
@@ -399,6 +427,8 @@ class ResourceController extends Controller
                 if ($request->filled('description')) {
                     $resource->description = $request->description;
                 }
+                $resource->resource_scope = $validated['resource_scope'];
+                $resource->classification = $validated['classification'] ?? null;
                 $resource->save();
             } else {
                 // Set creator for new resource
@@ -552,10 +582,9 @@ class ResourceController extends Controller
     {
         try {
             $resource = Resource::findOrFail($id);
-            $resourceTypes = ['pdf', 'doc', 'ppt', 'excel', 'image', 'audio', 'archive', 'other'];
             $courses = \App\Models\Course::select('id', 'title')->get();
 
-            return view('admin.pages.resources.edit', compact('resource', 'resourceTypes', 'courses'));
+            return view('admin.pages.resources.edit', compact('resource', 'courses'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('resources.index')
@@ -576,12 +605,18 @@ class ResourceController extends Controller
             'is_visible' => $request->has('is_visible'),
             'allow_download' => $request->has('allow_download'),
             'preview_available' => $request->has('preview_available'),
+            'resource_scope' => $request->input('resource_scope', Resource::SCOPE_GENERAL),
+            'classification' => $request->filled('classification') ? $request->input('classification') : null,
         ]);
+
+        $classificationRule = 'nullable|in:' . implode(',', Resource::classificationKeys());
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'resource_type' => 'required|in:pdf,doc,ppt,excel,image,audio,archive,other',
+            'resource_scope' => 'required|in:general,private',
+            'classification' => $classificationRule,
+            'resource_type' => ['required', Rule::in(Resource::resourceTypeKeys())],
             'resource_source' => 'required|in:file,url,existing',
             'file' => 'required_if:resource_source,file|nullable|file|max:51200',
             'resource_url' => 'required_if:resource_source,url|nullable|url|max:500',
@@ -598,6 +633,9 @@ class ResourceController extends Controller
         ], [
             'resource_type.required' => 'يرجى اختيار نوع المورد',
             'resource_type.in' => 'نوع المورد غير صحيح',
+            'resource_scope.required' => 'يرجى اختيار نطاق المورد (عام أو خاص)',
+            'resource_scope.in' => 'قيمة نطاق المورد غير صحيحة',
+            'classification.in' => 'التصنيف المحدد غير صالح',
             'resource_source.required' => 'يرجى اختيار مصدر المورد',
             'resource_source.in' => 'مصدر المورد غير صحيح',
             'file.required_if' => 'يرجى اختيار ملف للرفع',

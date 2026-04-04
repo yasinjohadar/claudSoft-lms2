@@ -2317,7 +2317,18 @@
                                         <option value="image">صورة</option>
                                         <option value="audio">صوت</option>
                                         <option value="archive">أرشيف</option>
+                                        <option value="external_sites">مواقع إضافية خارجية</option>
                                         <option value="other">أخرى</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">التصنيف</label>
+                                    <select name="classification" class="form-select">
+                                        <option value="">— بدون تصنيف —</option>
+                                        @foreach(\App\Models\Resource::classificationOptions() as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -2329,6 +2340,21 @@
                                             <option value="{{ $courseOption->id }}">{{ $courseOption->title }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">نطاق المورد <span class="text-danger">*</span></label>
+                                    <div class="d-flex flex-wrap gap-3 mt-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="resource_scope" id="modal_resource_scope_general" value="general">
+                                            <label class="form-check-label" for="modal_resource_scope_general">عام</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="resource_scope" id="modal_resource_scope_private" value="private" checked>
+                                            <label class="form-check-label" for="modal_resource_scope_private">خاص</label>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">من الكورس: الافتراضي «خاص»؛ يمكن اختيار «عام» لمرجع مشترك.</small>
                                 </div>
 
                                 <div class="col-12">
@@ -2533,6 +2559,10 @@
                 
                 // Reset to default values
                 document.getElementById('modalSourceUrl').checked = true;
+                const rsPriv = document.getElementById('modal_resource_scope_private');
+                const rsGen = document.getElementById('modal_resource_scope_general');
+                if (rsPriv) rsPriv.checked = true;
+                if (rsGen) rsGen.checked = false;
                 toggleResourceSourceModal();
             });
         }

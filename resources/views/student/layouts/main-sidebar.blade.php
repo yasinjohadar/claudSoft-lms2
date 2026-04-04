@@ -37,6 +37,77 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - كورساتي -->
+                        <li class="slide">
+                            <a href="{{ route('student.courses.my-courses') }}" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                                <span class="side-menu__label">كورساتي</span>
+                                <span class="badge bg-primary-transparent ms-auto">جديد</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - اختباراتي -->
+                        <li class="slide {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.quizzes.review.index') }}" class="side-menu__item {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
+                                <i class="fas fa-clipboard-check side-menu__icon"></i>
+                                <span class="side-menu__label">اختباراتي</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - تقدمي -->
+                        <li class="slide">
+                            <a href="{{ route('student.progress.overview') }}" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                                <span class="side-menu__label">تقدمي في الكورسات</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - الموارد الخارجية -->
+                        <li class="slide {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.external-resources.index') }}" class="side-menu__item {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">
+                                <i class="ri-links-line side-menu__icon"></i>
+                                <span class="side-menu__label">الموارد الخارجية</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - شهاداتي -->
+                        <li class="slide">
+                            <a href="{{ route('student.certificates.index') }}" class="side-menu__item">
+                                <i class="fas fa-certificate side-menu__icon"></i>
+                                <span class="side-menu__label">شهاداتي</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - فواتيري -->
+                        <li class="slide">
+                            <a href="{{ route('student.invoices.index') }}" class="side-menu__item">
+                                <i class="fas fa-file-invoice-dollar side-menu__icon"></i>
+                                <span class="side-menu__label">فواتيري</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - مدفوعاتي -->
+                        <li class="slide">
+                            <a href="{{ route('student.payments.index') }}" class="side-menu__item">
+                                <i class="fas fa-money-bill-wave side-menu__icon"></i>
+                                <span class="side-menu__label">مدفوعاتي</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - ملفي الشخصي -->
                         <li class="slide">
                             <a href="{{ route('student.profile.index') }}" class="side-menu__item">
@@ -81,68 +152,6 @@
                             <a href="{{ route('student.training-camps.my-enrollments') }}" class="side-menu__item">
                                 <i class="fas fa-clipboard-list side-menu__icon"></i>
                                 <span class="side-menu__label">معسكراتي</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - كورساتي -->
-                        <li class="slide">
-                            <a href="{{ route('student.courses.my-courses') }}" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                </svg>
-                                <span class="side-menu__label">كورساتي</span>
-                                <span class="badge bg-primary-transparent ms-auto">جديد</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - اختباراتي -->
-                        <li class="slide {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
-                            <a href="{{ route('student.quizzes.review.index') }}" class="side-menu__item {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
-                                <i class="fas fa-clipboard-check side-menu__icon"></i>
-                                <span class="side-menu__label">اختباراتي</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - تقدمي -->
-                        <li class="slide">
-                            <a href="{{ route('student.progress.overview') }}" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                                </svg>
-                                <span class="side-menu__label">تقدمي في الكورسات</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - شهاداتي -->
-                        <li class="slide">
-                            <a href="{{ route('student.certificates.index') }}" class="side-menu__item">
-                                <i class="fas fa-certificate side-menu__icon"></i>
-                                <span class="side-menu__label">شهاداتي</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - فواتيري -->
-                        <li class="slide">
-                            <a href="{{ route('student.invoices.index') }}" class="side-menu__item">
-                                <i class="fas fa-file-invoice-dollar side-menu__icon"></i>
-                                <span class="side-menu__label">فواتيري</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - مدفوعاتي -->
-                        <li class="slide">
-                            <a href="{{ route('student.payments.index') }}" class="side-menu__item">
-                                <i class="fas fa-money-bill-wave side-menu__icon"></i>
-                                <span class="side-menu__label">مدفوعاتي</span>
                             </a>
                         </li>
                         <!-- End::slide -->

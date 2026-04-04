@@ -76,21 +76,24 @@
                                 <label class="form-label">نوع المورد <span class="text-danger">*</span></label>
                                 <select name="resource_type" class="form-select @error('resource_type') is-invalid @enderror" required>
                                     <option value="">اختر النوع</option>
-                                    @foreach($resourceTypes as $type)
-                                        <option value="{{ $type }}" {{ old('resource_type', $resource->resource_type) == $type ? 'selected' : '' }}>
-                                            @if($type == 'pdf') PDF
-                                            @elseif($type == 'doc') DOC/DOCX
-                                            @elseif($type == 'ppt') PPT/PPTX
-                                            @elseif($type == 'excel') Excel
-                                            @elseif($type == 'image') صورة
-                                            @elseif($type == 'audio') صوت
-                                            @elseif($type == 'archive') أرشيف
-                                            @else أخرى
-                                            @endif
-                                        </option>
+                                    @foreach(\App\Models\Resource::resourceTypeOptions() as $key => $label)
+                                        <option value="{{ $key }}" {{ old('resource_type', $resource->resource_type) == $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
                                 @error('resource_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">التصنيف</label>
+                                <select name="classification" class="form-select @error('classification') is-invalid @enderror">
+                                    <option value="">— بدون تصنيف —</option>
+                                    @foreach(\App\Models\Resource::classificationOptions() as $key => $label)
+                                        <option value="{{ $key }}" {{ old('classification', $resource->classification) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('classification')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -107,6 +110,26 @@
                                 </select>
                                 @error('course_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">نطاق المورد <span class="text-danger">*</span></label>
+                                <div class="d-flex flex-wrap gap-3 mt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="resource_scope" id="resource_scope_general" value="general"
+                                               {{ old('resource_scope', $resource->resource_scope ?? 'general') === 'general' ? 'checked' : '' }} required>
+                                        <label class="form-check-label" for="resource_scope_general">عام</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="resource_scope" id="resource_scope_private" value="private"
+                                               {{ old('resource_scope', $resource->resource_scope ?? 'general') === 'private' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="resource_scope_private">خاص</label>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-1">عام: مرجع عام. خاص: مرتبط بسياق أو كورس محدد.</small>
+                                @error('resource_scope')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
 

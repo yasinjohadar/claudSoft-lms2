@@ -10,9 +10,55 @@ class Resource extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const SCOPE_GENERAL = 'general';
+
+    public const SCOPE_PRIVATE = 'private';
+
+    /** @return array<string, string> قيم التخزين => التسمية العربية */
+    public static function classificationOptions(): array
+    {
+        return [
+            'design' => 'تصميم',
+            'programming' => 'برمجة',
+            'animation' => 'أنيميشن',
+            'video' => 'فيديو',
+            'marketing' => 'تسويق',
+            'general' => 'عام',
+            'other' => 'أخرى',
+        ];
+    }
+
+    public static function classificationKeys(): array
+    {
+        return array_keys(self::classificationOptions());
+    }
+
+    /** @return array<string, string> قيم نوع المورد => التسمية العربية */
+    public static function resourceTypeOptions(): array
+    {
+        return [
+            'pdf' => 'PDF',
+            'doc' => 'DOC/DOCX',
+            'ppt' => 'PPT/PPTX',
+            'excel' => 'Excel',
+            'image' => 'صورة',
+            'audio' => 'صوت',
+            'archive' => 'أرشيف',
+            'external_sites' => 'مواقع إضافية خارجية',
+            'other' => 'أخرى',
+        ];
+    }
+
+    public static function resourceTypeKeys(): array
+    {
+        return array_keys(self::resourceTypeOptions());
+    }
+
     protected $fillable = [
         'title',
         'description',
+        'resource_scope',
+        'classification',
         'resource_type',
         'resource_source',
         'resource_url',
@@ -105,6 +151,36 @@ class Resource extends Model
     public function scopeByType($query, string $type)
     {
         return $query->where('resource_type', $type);
+    }
+
+    /**
+     * صفحة «الموارد الخارجية» للطالب: كل ما نطاقه عام (أو قديم بلا قيمة = عام). النطاق الخاص يُستبعد.
+     */
+    public function scopeForStudentExternalLibrary($query)
+    {
+        return $query
+            ->where(function ($q) {
+                $q->where('resource_scope', self::SCOPE_GENERAL)
+                    ->orWhereNull('resource_scope')
+                    ->orWhere('resource_scope', '');
+            })
+            ->published()
+            ->visible()
+            ->available();
+    }
+
+    public function isAccessibleInExternalLibrary(): bool
+    {
+        if ($this->resource_scope === self::SCOPE_PRIVATE) {
+            return false;
+        }
+        if ($this->resource_scope !== self::SCOPE_GENERAL && $this->resource_scope !== null && $this->resource_scope !== '') {
+            return false;
+        }
+
+        return $this->is_published
+            && $this->is_visible
+            && $this->isAvailable();
     }
 
     // Helper Methods
@@ -225,6 +301,7 @@ class Resource extends Model
             'image' => 'fa-file-image',
             'audio' => 'fa-file-audio',
             'archive' => 'fa-file-archive',
+            'external_sites' => 'fa-globe',
             'other' => 'fa-file',
         ];
 
@@ -245,5 +322,24 @@ class Resource extends Model
     public function isExternal(): bool
     {
         return ($this->display_mode ?? 'external') === 'external';
+    }
+
+    public function isGeneralScope(): bool
+    {
+        return ($this->resource_scope ?? self::SCOPE_GENERAL) === self::SCOPE_GENERAL;
+    }
+
+    public function getResourceScopeLabelAr(): string
+    {
+        return $this->isGeneralScope() ? 'عام' : 'خاص';
+    }
+
+    public function getClassificationLabelAr(): ?string
+    {
+        if ($this->classification === null || $this->classification === '') {
+            return null;
+        }
+
+        return self::classificationOptions()[$this->classification] ?? $this->classification;
     }
 }

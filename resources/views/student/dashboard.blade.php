@@ -401,6 +401,14 @@
                                 </a>
                             </div>
                             <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+                                <a href="{{ route('student.external-resources.index') }}" class="quick-link-card d-block">
+                                    <div class="icon-wrapper bg-teal-transparent">
+                                        <i class="bi bi-link-45deg text-info fs-4"></i>
+                                    </div>
+                                    <p class="link-title">الموارد الخارجية</p>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
                                 <a href="{{ route('student.question-module.stats.index') }}" class="quick-link-card d-block">
                                     <div class="icon-wrapper bg-info-transparent">
                                         <i class="bi bi-question-circle text-info fs-4"></i>

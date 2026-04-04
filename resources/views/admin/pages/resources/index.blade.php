@@ -118,12 +118,12 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('resources.index') }}">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-lg-2 col-md-4">
                                 <label class="form-label">البحث</label>
                                 <input type="text" name="search" class="form-control"
                                        value="{{ request('search') }}" placeholder="ابحث عن مورد...">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-lg-2 col-md-4">
                                 <label class="form-label">نوع الملف</label>
                                 <select name="type" class="form-select">
                                     <option value="">جميع الأنواع</option>
@@ -132,10 +132,11 @@
                                     <option value="ppt" {{ request('type') == 'ppt' ? 'selected' : '' }}>PPT/PPTX</option>
                                     <option value="xls" {{ request('type') == 'xls' ? 'selected' : '' }}>XLS/XLSX</option>
                                     <option value="zip" {{ request('type') == 'zip' ? 'selected' : '' }}>ZIP/RAR</option>
+                                    <option value="external_sites" {{ request('type') == 'external_sites' ? 'selected' : '' }}>مواقع إضافية خارجية</option>
                                     <option value="other" {{ request('type') == 'other' ? 'selected' : '' }}>أخرى</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-lg-3 col-md-4">
                                 <label class="form-label">الكورس</label>
                                 <select name="course_id" class="form-select">
                                     <option value="">جميع الكورسات</option>
@@ -146,9 +147,25 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div>
+                            <div class="col-lg-2 col-md-4">
+                                <label class="form-label">النطاق</label>
+                                <select name="resource_scope" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="general" {{ request('resource_scope') === 'general' ? 'selected' : '' }}>عام</option>
+                                    <option value="private" {{ request('resource_scope') === 'private' ? 'selected' : '' }}>خاص</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-4">
+                                <label class="form-label">التصنيف</label>
+                                <select name="classification" class="form-select">
+                                    <option value="">الكل</option>
+                                    @foreach(\App\Models\Resource::classificationOptions() as $key => $label)
+                                        <option value="{{ $key }}" {{ request('classification') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-12 d-flex align-items-end">
+                                <div class="pb-1">
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-search me-1"></i>بحث
                                     </button>
@@ -175,6 +192,8 @@
                                     <tr>
                                         <th>الملف</th>
                                         <th>النوع</th>
+                                        <th>التصنيف</th>
+                                        <th>النطاق</th>
                                         <th>الكورس</th>
                                         <th>الحجم</th>
                                         <th>التحميلات</th>
@@ -223,6 +242,20 @@
                                                 <span class="badge bg-{{ $iconColor }}-transparent text-uppercase">
                                                     {{ $resource->resource_type ?? $extension }}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                @if($resource->classification && $resource->getClassificationLabelAr())
+                                                    <span class="badge bg-info-transparent">{{ $resource->getClassificationLabelAr() }}</span>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if(($resource->resource_scope ?? 'general') === 'private')
+                                                    <span class="badge bg-warning-transparent text-dark">خاص</span>
+                                                @else
+                                                    <span class="badge bg-secondary-transparent">عام</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 @php

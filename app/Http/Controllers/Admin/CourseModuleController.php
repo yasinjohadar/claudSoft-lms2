@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\Video;
 use App\Models\Resource;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -133,7 +134,9 @@ class CourseModuleController extends Controller
             'resource_source_type' => 'required_without:modulable_id_resource|nullable|in:file,url',
             'resource_file' => 'required_if:resource_source_type,file|nullable|file|max:51200',
             'resource_url' => 'required_if:resource_source_type,url|nullable|url|max:500',
-            'resource_type' => 'required_without:modulable_id_resource|nullable|in:pdf,doc,ppt,excel,image,audio,archive,other',
+            'resource_type' => ['required_without:modulable_id_resource', 'nullable', Rule::in(Resource::resourceTypeKeys())],
+            'resource_scope' => 'nullable|in:general,private',
+            'classification' => 'nullable|in:' . implode(',', \App\Models\Resource::classificationKeys()),
             'modulable_id_resource' => 'nullable|exists:resources,id',
         ]);
 
@@ -179,6 +182,8 @@ class CourseModuleController extends Controller
                             'title' => $validated['title'],
                             'description' => $validated['description'] ?? null,
                             'resource_type' => $request->input('resource_type'),
+                            'resource_scope' => $request->input('resource_scope', Resource::SCOPE_PRIVATE),
+                            'classification' => $request->filled('classification') ? $request->input('classification') : null,
                             'course_id' => $request->input('course_id'),
                             'is_published' => true,
                             'is_visible' => true,

@@ -31,6 +31,8 @@
                 <i class="fas fa-file-image"></i>
             @elseif($resource->resource_type == 'archive')
                 <i class="fas fa-file-archive"></i>
+            @elseif($resource->resource_type == 'external_sites')
+                <i class="fas fa-globe"></i>
             @elseif($resource->resource_type == 'code')
                 <i class="fas fa-file-code"></i>
             @else

@@ -269,11 +269,39 @@
                                                             <option value="image" {{ old('resource_type') == 'image' ? 'selected' : '' }}>صورة</option>
                                                             <option value="audio" {{ old('resource_type') == 'audio' ? 'selected' : '' }}>صوت</option>
                                                             <option value="archive" {{ old('resource_type') == 'archive' ? 'selected' : '' }}>أرشيف</option>
+                                                            <option value="external_sites" {{ old('resource_type') == 'external_sites' ? 'selected' : '' }}>مواقع إضافية خارجية</option>
                                                             <option value="other" {{ old('resource_type') == 'other' ? 'selected' : '' }}>أخرى</option>
                                                         </select>
                                                         @error('resource_type')
                                                             <div class="invalid-feedback">{{ $message }}</div>
                                                         @enderror
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">نطاق المورد</label>
+                                                        <div class="d-flex flex-wrap gap-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="resource_scope" id="module_resource_scope_general" value="general"
+                                                                       {{ old('resource_scope') === 'general' ? 'checked' : '' }}>
+                                                                <label class="form-check-label" for="module_resource_scope_general">عام</label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="resource_scope" id="module_resource_scope_private" value="private"
+                                                                       {{ old('resource_scope', 'private') === 'private' ? 'checked' : '' }}>
+                                                                <label class="form-check-label" for="module_resource_scope_private">خاص</label>
+                                                            </div>
+                                                        </div>
+                                                        <small class="text-muted">عند إنشاء مورد جديد مع الوحدة: الافتراضي «خاص».</small>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">التصنيف</label>
+                                                        <select name="classification" class="form-select">
+                                                            <option value="">— بدون تصنيف —</option>
+                                                            @foreach(\App\Models\Resource::classificationOptions() as $key => $label)
+                                                                <option value="{{ $key }}" {{ old('classification') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                                            @endforeach
+                                                        </select>
                                                     </div>
 
                                                     <!-- Or Select Existing Resource -->
