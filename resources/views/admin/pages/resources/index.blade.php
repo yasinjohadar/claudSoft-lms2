@@ -283,12 +283,22 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group">
-                                                    <a href="{{ asset('storage/' . $resource->file_path) }}"
-                                                       class="btn btn-sm btn-success"
-                                                       title="تحميل"
-                                                       download>
-                                                        <i class="fas fa-download"></i>
-                                                    </a>
+                                                    @if($resource->file_path)
+                                                        <a href="{{ route('resources.download', $resource->id) }}"
+                                                           class="btn btn-sm btn-success"
+                                                           title="تحميل">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                    @endif
+                                                    @if($resource->resource_url)
+                                                        <a href="{{ $resource->resource_url }}"
+                                                           class="btn btn-sm btn-info"
+                                                           title="عرض المورد الخارجي"
+                                                           target="_blank"
+                                                           rel="noopener noreferrer">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    @endif
                                                     <a href="{{ route('resources.edit', $resource->id) }}"
                                                        class="btn btn-sm btn-primary" title="تعديل">
                                                         <i class="fas fa-edit"></i>
@@ -308,7 +318,7 @@
                         </div>
 
                         <div class="mt-3">
-                            {{ $resources->links() }}
+                            {{ $resources->withQueryString()->links() }}
                         </div>
                     @else
                         <div class="text-center py-5">

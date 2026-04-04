@@ -75,12 +75,16 @@ class ResourceController extends Controller
                 $query->where('classification', $request->classification);
             }
 
-            // Sort
+            // Sort (whitelist only — avoid arbitrary column names from query string)
             $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
+            $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $allowedSort = ['created_at', 'updated_at', 'title', 'sort_order', 'download_count'];
+            if (! in_array($sortBy, $allowedSort, true)) {
+                $sortBy = 'created_at';
+            }
             $query->orderBy($sortBy, $sortOrder);
 
-            $resources = $query->paginate($request->get('per_page', 15));
+            $resources = $query->paginate($request->get('per_page', 15))->withQueryString();
 
             // Get filter options
             $resourceTypes = Resource::resourceTypeKeys();
