@@ -6,11 +6,29 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveDocumentationPageRequest;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 
 class DocumentationPageController extends Controller
 {
     public function index(Request $request)
+    {
+        $pages = $this->paginatedDocumentationPages($request);
+        $categories = DocumentationCategory::ordered()->get();
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'tbody_html' => view('admin.docs.pages.partials.table-rows', compact('pages'))->render(),
+                'pagination_html' => view('admin.docs.pages.partials.pagination', compact('pages'))->render(),
+                'total' => $pages->total(),
+                'current_page' => $pages->currentPage(),
+            ]);
+        }
+
+        return view('admin.docs.pages.index', compact('pages', 'categories'));
+    }
+
+    private function paginatedDocumentationPages(Request $request): LengthAwarePaginator
     {
         $query = DocumentationPage::with(['category', 'parent'])->orderByDesc('updated_at');
 
@@ -30,10 +48,7 @@ class DocumentationPageController extends Controller
             $query->where('status', $request->status);
         }
 
-        $pages = $query->paginate(25)->withQueryString();
-        $categories = DocumentationCategory::ordered()->get();
-
-        return view('admin.docs.pages.index', compact('pages', 'categories'));
+        return $query->paginate(25)->withQueryString();
     }
 
     public function create(Request $request)

@@ -33,12 +33,12 @@
 
         <div class="card custom-card mb-4">
             <div class="card-body">
-                <form method="GET" class="row g-3">
+                <form id="docs-pages-filters" method="GET" action="{{ route('admin.docs.pages.index') }}" class="row g-3">
                     <div class="col-md-3">
-                        <input type="text" name="search" class="form-control" placeholder="بحث (عنوان أو slug)..." value="{{ request('search') }}">
+                        <input type="text" name="search" id="docs-pages-search" class="form-control" placeholder="بحث (عنوان أو slug)..." value="{{ request('search') }}" autocomplete="off">
                     </div>
                     <div class="col-md-3">
-                        <select name="documentation_category_id" class="form-select">
+                        <select name="documentation_category_id" id="docs-pages-category" class="form-select">
                             <option value="">كل الأقسام</option>
                             @foreach($categories as $cat)
                             <option value="{{ $cat->id }}" {{ (string) request('documentation_category_id') === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -46,23 +46,23 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <select name="status" class="form-select">
+                        <select name="status" id="docs-pages-status" class="form-select">
                             <option value="">كل الحالات</option>
                             <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>مسودة</option>
                             <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>منشور</option>
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">تصفية</button>
-                        <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary">إعادة</a>
+                        <button type="submit" class="btn btn-primary" id="docs-pages-submit">تصفية</button>
+                        <button type="button" class="btn btn-secondary" id="docs-pages-reset">إعادة</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card custom-card">
+        <div class="card custom-card" id="docs-pages-results-card">
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive position-relative" id="docs-pages-table-responsive" aria-busy="false">
                     <table class="table table-hover text-nowrap mb-0">
                         <thead>
                             <tr>
@@ -76,55 +76,139 @@
                                 <th width="340">إجراءات</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @forelse($pages as $page)
-                            <tr>
-                                <td>{{ $loop->iteration + ($pages->currentPage() - 1) * $pages->perPage() }}</td>
-                                <td><strong>{{ $page->title }}</strong></td>
-                                <td>{{ $page->category->name ?? '—' }}</td>
-                                <td>{{ $page->parent->title ?? '—' }}</td>
-                                <td><code>{{ $page->slug }}</code></td>
-                                <td>
-                                    @if($page->status === 'published')
-                                        <span class="badge bg-success">منشور</span>
-                                    @else
-                                        <span class="badge bg-secondary">مسودة</span>
-                                    @endif
-                                </td>
-                                <td><small class="text-muted">{{ $page->updated_at?->diffForHumans() }}</small></td>
-                                <td class="d-flex flex-wrap gap-1 align-items-center">
-                                    <a href="{{ route('admin.docs.ai-pages.improve', ['documentation_page_id' => $page->id]) }}"
-                                        class="btn btn-sm btn-outline-primary"
-                                        title="فتح هذه الصفحة في أداة الفحص والتعديل بالتعليمات">فحص بالذكاء</a>
-                                    @if($page->isPublished() && $page->category && $page->category->is_active)
-                                        <a href="{{ route('frontend.docs.show', ['categorySlug' => $page->category->slug, 'pagePath' => $page->slugPathUnderCategory()]) }}"
-                                            class="btn btn-sm btn-outline-info" target="_blank" rel="noopener noreferrer" title="فتح الصفحة على الموقع">عرض المقال</a>
-                                    @else
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="يتطلب نشر الصفحة وقسمًا نشطًا">عرض المقال</button>
-                                    @endif
-                                    <form action="{{ route('admin.docs.pages.toggle-publish', $page) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="نشر / إلغاء نشر">نشر</button>
-                                    </form>
-                                    <a href="{{ route('admin.docs.pages.edit', $page) }}" class="btn btn-sm btn-primary">تعديل</a>
-                                    <form action="{{ route('admin.docs.pages.destroy', $page) }}" method="POST" class="d-inline" onsubmit="return confirm('حذف هذه الصفحة؟');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger">حذف</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr><td colspan="8" class="text-center py-4 text-muted">لا توجد صفحات بعد</td></tr>
-                            @endforelse
+                        <tbody id="docs-pages-tbody">
+                            @include('admin.docs.pages.partials.table-rows', ['pages' => $pages])
                         </tbody>
                     </table>
                 </div>
             </div>
-            @if($pages->hasPages())
-            <div class="card-footer">{{ $pages->withQueryString()->links() }}</div>
-            @endif
+            <div class="card-footer" id="docs-pages-pagination">
+                @include('admin.docs.pages.partials.pagination', ['pages' => $pages])
+            </div>
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var form = document.getElementById('docs-pages-filters');
+    var tbody = document.getElementById('docs-pages-tbody');
+    var paginationEl = document.getElementById('docs-pages-pagination');
+    var tableResponsive = document.getElementById('docs-pages-table-responsive');
+    var resultsCard = document.getElementById('docs-pages-results-card');
+    var resetBtn = document.getElementById('docs-pages-reset');
+    var searchInput = document.getElementById('docs-pages-search');
+    if (!form || !tbody || !paginationEl) return;
+
+    var listBase = @json(route('admin.docs.pages.index'));
+    var debounceTimer = null;
+    var debounceMs = 300;
+
+    function buildListUrlFromForm() {
+        var params = new URLSearchParams(new FormData(form));
+        params.forEach(function (_v, k) {
+            if (params.get(k) === '') params.delete(k);
+        });
+        params.delete('page');
+        var qs = params.toString();
+        return listBase + (qs ? '?' + qs : '');
+    }
+
+    function showLoadState(loading) {
+        if (tableResponsive) {
+            tableResponsive.setAttribute('aria-busy', loading ? 'true' : 'false');
+        }
+        if (resultsCard) {
+            resultsCard.style.opacity = loading ? '0.55' : '1';
+            resultsCard.style.pointerEvents = loading ? 'none' : '';
+        }
+    }
+
+    function notifyError() {
+        if (typeof toastr !== 'undefined') {
+            toastr.error('تعذّر تحميل النتائج. حاول مرة أخرى.');
+        } else {
+            alert('تعذّر تحميل النتائج. حاول مرة أخرى.');
+        }
+    }
+
+    function fetchDocsPages(url, options) {
+        options = options || {};
+        var push = options.push !== false;
+        var fetchUrl = (url.indexOf('http') === 0) ? url : new URL(url, window.location.origin).href;
+
+        showLoadState(true);
+        fetch(fetchUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('bad status');
+                return r.json();
+            })
+            .then(function (data) {
+                tbody.innerHTML = data.tbody_html || '';
+                paginationEl.innerHTML = data.pagination_html || '';
+                if (push) {
+                    var u = new URL(fetchUrl);
+                    window.history.pushState({ docsPages: true }, '', u.pathname + u.search);
+                }
+            })
+            .catch(function () {
+                notifyError();
+            })
+            .finally(function () {
+                showLoadState(false);
+            });
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        fetchDocsPages(buildListUrlFromForm());
+    });
+
+    form.querySelectorAll('select').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+            fetchDocsPages(buildListUrlFromForm());
+        });
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                fetchDocsPages(buildListUrlFromForm());
+            }, debounceMs);
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+            if (searchInput) searchInput.value = '';
+            var cat = document.getElementById('docs-pages-category');
+            var st = document.getElementById('docs-pages-status');
+            if (cat) cat.value = '';
+            if (st) st.value = '';
+            fetchDocsPages(listBase);
+        });
+    }
+
+    paginationEl.addEventListener('click', function (e) {
+        var a = e.target.closest('a[href]');
+        if (!a || !paginationEl.contains(a)) return;
+        var href = a.getAttribute('href');
+        if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+        e.preventDefault();
+        var nextUrl = a.href;
+        fetchDocsPages(nextUrl);
+    });
+
+    window.addEventListener('popstate', function () {
+        fetchDocsPages(window.location.pathname + window.location.search, { push: false });
+    });
+})();
+</script>
 @endsection
