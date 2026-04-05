@@ -691,6 +691,42 @@ class QuizResponse extends Model
     }
 
     /**
+     * خريطة فراغات الطالب من response_data: يدعم ['answer'=>[...]] و ['answers'=>...] والشكل المسطح {0:"x"} كما يحفظه QuizAttemptController للأنواع المعقدة.
+     *
+     * @return array<int, mixed>
+     */
+    private function getFillBlanksAnswerMapFromResponseData(): array
+    {
+        $raw = $this->response_data;
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        if (isset($raw['answer']) && is_array($raw['answer'])) {
+            return $raw['answer'];
+        }
+
+        if (isset($raw['answers']) && is_array($raw['answers'])) {
+            return $raw['answers'];
+        }
+
+        $reserved = ['answer', 'answers', 'numeric_value'];
+        $out = [];
+        foreach ($raw as $k => $v) {
+            if (in_array($k, $reserved, true)) {
+                continue;
+            }
+            if (is_int($k)) {
+                $out[$k] = $v;
+            } elseif (is_string($k) && $k !== '' && ctype_digit($k)) {
+                $out[(int) $k] = $v;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Grade fill in the blanks.
      *
      * أسئلة بنك الأسئلة تُصحَّح من جدول الخيارات (is_correct + option_order) عند وجود خيارات صحيحة؛
@@ -702,10 +738,9 @@ class QuizResponse extends Model
             return [false, 0];
         }
 
-        // Support both formats: 'answers' (old) and 'answer' (new from QuestionModule format)
-        $answers = $this->response_data['answer'] ?? $this->response_data['answers'] ?? [];
+        $answers = $this->getFillBlanksAnswerMapFromResponseData();
 
-        if (! is_array($answers) || empty($answers)) {
+        if ($answers === []) {
             return [false, 0];
         }
 
