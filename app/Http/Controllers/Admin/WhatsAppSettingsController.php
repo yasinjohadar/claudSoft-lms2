@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Exceptions\WhatsAppApiException;
 use App\Services\Ai\AIModelService;
 use App\Services\QueueWorkerService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
@@ -79,6 +78,7 @@ class WhatsAppSettingsController extends Controller
             'max_delay' => 'nullable|integer|min:1|max:10',
             'custom_api_method' => 'nullable|string|in:GET,POST',
             'custom_api_headers' => 'nullable|string|max:1000',
+            'study_report_delivery' => 'nullable|string|in:email,whatsapp,both',
         ], [
             'whatsapp_provider.required' => 'نوع المزود مطلوب',
             'whatsapp_provider.in' => 'نوع المزود غير صالح',
@@ -128,15 +128,20 @@ class WhatsAppSettingsController extends Controller
                 $validated['whatsapp_web_api_token'] = $existingSettings['whatsapp_web_api_token'] ?? '';
             }
 
+            if (empty($validated['study_report_delivery'] ?? null)) {
+                $validated['study_report_delivery'] = $this->settingsService->getSettings()['study_report_delivery'] ?? 'both';
+            }
+
             $this->settingsService->updateSettings($validated);
 
             return redirect()->route('admin.whatsapp-settings.index')
-                           ->with('success', 'تم حفظ الإعدادات بنجاح.');
+                ->with('success', 'تم حفظ الإعدادات بنجاح.');
         } catch (\Exception $e) {
-            Log::error('Error updating WhatsApp settings: ' . $e->getMessage());
+            Log::error('Error updating WhatsApp settings: '.$e->getMessage());
+
             return redirect()->back()
-                           ->with('error', 'حدث خطأ أثناء حفظ الإعدادات: ' . $e->getMessage())
-                           ->withInput();
+                ->with('error', 'حدث خطأ أثناء حفظ الإعدادات: '.$e->getMessage())
+                ->withInput();
         }
     }
 
@@ -153,7 +158,7 @@ class WhatsAppSettingsController extends Controller
             if ($provider === 'custom_api') {
                 $customApiUrl = $request->input('custom_api_url', $settings['custom_api_url'] ?? '');
                 $customApiKey = $request->input('custom_api_key', $settings['custom_api_key'] ?? '');
-                
+
                 $config = [
                     'api_url' => $customApiUrl,
                     'api_key' => $customApiKey,
@@ -163,7 +168,7 @@ class WhatsAppSettingsController extends Controller
             } elseif ($provider === 'whatsapp_web') {
                 $nodejsUrl = $request->input('whatsapp_web_service_url', $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');
                 $apiToken = $request->input('whatsapp_web_api_token', $settings['whatsapp_web_api_token'] ?? '');
-                
+
                 $config = [
                     'nodejs_service_url' => $nodejsUrl,
                     'api_token' => $apiToken,
@@ -176,7 +181,7 @@ class WhatsAppSettingsController extends Controller
                 if (empty($accessToken)) {
                     $accessToken = $settings['access_token'] ?? '';
                 }
-                
+
                 $config = [
                     'api_version' => $apiVersion,
                     'phone_number_id' => $phoneNumberId,
@@ -190,13 +195,14 @@ class WhatsAppSettingsController extends Controller
 
             return response()->json($result, $result['success'] ? 200 : 500);
         } catch (\Exception $e) {
-            Log::error('Error testing WhatsApp connection: ' . $e->getMessage(), [
+            Log::error('Error testing WhatsApp connection: '.$e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'message' => 'حدث خطأ: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -207,6 +213,7 @@ class WhatsAppSettingsController extends Controller
     public function queueWorkerStatus()
     {
         $status = $this->queueWorkerService->status();
+
         return response()->json($status);
     }
 
@@ -216,6 +223,7 @@ class WhatsAppSettingsController extends Controller
     public function queueWorkerStart()
     {
         $result = $this->queueWorkerService->start();
+
         return response()->json($result, $result['success'] ? 200 : 500);
     }
 
@@ -225,6 +233,7 @@ class WhatsAppSettingsController extends Controller
     public function queueWorkerStop()
     {
         $result = $this->queueWorkerService->stop();
+
         return response()->json($result);
     }
 
@@ -240,6 +249,7 @@ class WhatsAppSettingsController extends Controller
         if (is_string($headers)) {
             try {
                 $decoded = json_decode($headers, true);
+
                 return is_array($decoded) ? $decoded : [];
             } catch (\Exception $e) {
                 return [];

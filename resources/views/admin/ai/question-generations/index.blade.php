@@ -93,7 +93,16 @@
                                                     <span class="badge bg-secondary">معلق</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $generation->model->name ?? '-' }}</td>
+                                            <td>
+                                                @if($generation->laravelAiModel)
+                                                    <span class="badge bg-info text-dark">{{ $generation->laravelAiModel->name }}</span>
+                                                    <small class="text-muted d-block">Laravel AI</small>
+                                                @elseif($generation->model)
+                                                    {{ $generation->model->name }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
                                             <td>{{ $generation->cost ? number_format($generation->cost, 6) : '-' }}</td>
                                             <td>
                                                 <div class="d-flex gap-2 justify-content-center flex-wrap">

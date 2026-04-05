@@ -35,6 +35,9 @@
             <div>
                 <h4 class="mb-0">إنشاء مقال بالذكاء الاصطناعي</h4>
                 <p class="mb-0 text-muted">إنشاء مقال متكامل مع جميع حقول SEO</p>
+                @if(!empty($useLaravelAiEngine))
+                    <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK»؛ حقول SEO تُشتق تلقائياً من المسودة.</p>
+                @endif
             </div>
             <div class="ms-auto">
                 <a href="{{ route('admin.blog.posts.index') }}" class="btn btn-secondary">
@@ -81,13 +84,24 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">موديل AI</label>
-                                    <select id="ai_model_id" class="form-select">
-                                        <option value="">استخدام الموديل الافتراضي</option>
-                                        @foreach($models as $model)
-                                        <option value="{{ $model->id }}">{{ $model->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if(!empty($useLaravelAiEngine))
+                                        <label class="form-label">موديل Laravel AI SDK</label>
+                                        <select id="laravel_ai_model_id" class="form-select">
+                                            <option value="">افتراضي (أولوية + قدرة blog.generate)</option>
+                                            @foreach($laravelAiModels as $lmodel)
+                                                <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">إدارة الموديلات من: موديلات Laravel AI SDK</small>
+                                    @else
+                                        <label class="form-label">موديل AI</label>
+                                        <select id="ai_model_id" class="form-select">
+                                            <option value="">استخدام الموديل الافتراضي</option>
+                                            @foreach($models as $model)
+                                                <option value="{{ $model->id }}">{{ $model->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -598,6 +612,8 @@ function initTinyMCE() {
     });
 }
 
+const useLaravelAiEngine = @json(!empty($useLaravelAiEngine));
+
 // Wait for DOM and all scripts to be ready
 document.addEventListener('DOMContentLoaded', function() {
     // Wait a bit more to ensure all libraries are loaded
@@ -627,7 +643,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Collect form data
         const formData = {
             topic: topic,
-            ai_model_id: document.getElementById('ai_model_id').value,
             content_length: document.getElementById('content_length').value,
             tone: document.getElementById('tone').value,
             language: document.getElementById('language').value,
@@ -639,6 +654,13 @@ document.addEventListener('DOMContentLoaded', function() {
             generate_keyword_synonyms: document.getElementById('generate_keyword_synonyms').checked,
             _token: '{{ csrf_token() }}'
         };
+        if (useLaravelAiEngine) {
+            const el = document.getElementById('laravel_ai_model_id');
+            formData.laravel_ai_model_id = el ? el.value : '';
+        } else {
+            const el = document.getElementById('ai_model_id');
+            formData.ai_model_id = el ? el.value : '';
+        }
 
         // Send AJAX request
         fetch('{{ route("admin.blog.ai-posts.generate") }}', {

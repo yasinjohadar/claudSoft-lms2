@@ -5,7 +5,6 @@ namespace App\Services\WhatsApp;
 use App\Models\SystemSetting;
 use Exception;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Log;
 
 class WhatsAppSettingsService
 {
@@ -55,6 +54,8 @@ class WhatsAppSettingsService
             'random_delay_enabled' => filter_var($settings['random_delay_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
             'min_delay' => (int) ($settings['min_delay'] ?? 2),
             'max_delay' => (int) ($settings['max_delay'] ?? 5),
+            // إشعار تقرير الدراسة: email | whatsapp | both
+            'study_report_delivery' => $settings['study_report_delivery'] ?? 'both',
         ];
     }
 
@@ -65,7 +66,7 @@ class WhatsAppSettingsService
     {
         foreach ($newSettings as $key => $value) {
             // Encrypt sensitive fields
-            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token']) && !empty($value)) {
+            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token']) && ! empty($value)) {
                 $value = Crypt::encryptString($value);
             }
 
@@ -78,7 +79,7 @@ class WhatsAppSettingsService
             if ($key === 'custom_api_headers') {
                 if (is_array($value)) {
                     $value = json_encode($value);
-                } elseif (is_string($value) && !empty(trim($value))) {
+                } elseif (is_string($value) && ! empty(trim($value))) {
                     // Validate JSON if it's a non-empty string
                     $decoded = json_decode($value, true);
                     if (json_last_error() !== JSON_ERROR_NONE) {
@@ -138,10 +139,11 @@ class WhatsAppSettingsService
             'random_delay_enabled' => 'true',
             'min_delay' => '2',
             'max_delay' => '5',
+            'study_report_delivery' => 'both',
         ];
 
         foreach ($defaults as $key => $value) {
-            if (!SystemSetting::byKey($key)->ofGroup('whatsapp')->exists()) {
+            if (! SystemSetting::byKey($key)->ofGroup('whatsapp')->exists()) {
                 SystemSetting::set($key, $value, 'string', 'whatsapp');
             }
         }
@@ -186,7 +188,7 @@ class WhatsAppSettingsService
     public function getDelaySettings(): array
     {
         $settings = $this->getSettings();
-        
+
         return [
             'delay_between_messages' => $settings['delay_between_messages'],
             'delay_between_broadcasts' => $settings['delay_between_broadcasts'],
@@ -204,15 +206,16 @@ class WhatsAppSettingsService
     {
         $delaySettings = $this->getDelaySettings();
         $baseDelay = $customDelay ?? $delaySettings['delay_between_messages'];
-        
+
         if ($delaySettings['random_delay_enabled']) {
             $min = $delaySettings['min_delay'];
             $max = $delaySettings['max_delay'];
             // Add random variation between min and max
             $randomVariation = rand($min, $max);
+
             return $baseDelay + $randomVariation;
         }
-        
+
         return $baseDelay;
     }
 
@@ -225,6 +228,7 @@ class WhatsAppSettingsService
         if (str_starts_with($url, '/')) {
             $url = substr($url, 1);
         }
+
         return rtrim($url, '/') ?: 'http://localhost:3000';
     }
 
@@ -256,13 +260,10 @@ class WhatsAppSettingsService
 
         try {
             $decoded = json_decode($headersJson, true);
+
             return is_array($decoded) ? $decoded : [];
         } catch (Exception $e) {
             return [];
         }
     }
 }
-
-
-
-

@@ -10,6 +10,9 @@
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">إنشاء أسئلة بالذكاء الاصطناعي</h5>
+                @if(!empty($useLaravelAiEngine))
+                    <p class="mb-0 text-muted small"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديل من «موديلات Laravel AI SDK» (قدرة questions.generate عند الافتراضي).</p>
+                @endif
             </div>
             <div>
                 <a href="{{ route('question-bank.index') }}" class="btn btn-secondary btn-sm">
@@ -53,6 +56,17 @@
                                 <input type="hidden" name="quiz_id" value="{{ $quiz->id }}">
                             @endif
 
+                            <div id="course_block" class="mb-3">
+                                <label for="course_id" class="form-label">الكورس <span class="text-danger">*</span></label>
+                                <select class="form-select" id="course_id" name="course_id" required>
+                                    <option value="">اختر الكورس</option>
+                                    @foreach($courses as $course)
+                                        <option value="{{ $course->id }}" {{ (string) old('course_id') === (string) $course->id ? 'selected' : '' }}>{{ $course->title }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">يُحفظ مع كل سؤال في بنك الأسئلة لتسهيل الفرز</small>
+                            </div>
+
                             <div class="mb-3">
                                 <label for="source_type" class="form-label">نوع المصدر <span class="text-danger">*</span></label>
                                 <select class="form-select" id="source_type" name="source_type" required>
@@ -62,21 +76,24 @@
                                 </select>
                             </div>
 
-                            <div id="lesson_source" class="mb-3" style="display: none;">
-                                <label for="course_id" class="form-label">الكورس <span class="text-danger">*</span></label>
-                                <select class="form-select" id="course_id" name="course_id">
-                                    <option value="">اختر الكورس</option>
-                                    @foreach($courses as $course)
-                                        <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>{{ $course->title }}</option>
-                                    @endforeach
-                                </select>
+                            <div id="lesson_name_block" class="mb-3">
+                                <label for="lesson_name" class="form-label">اسم الدرس / الوحدة <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="lesson_name" name="lesson_name" value="{{ old('lesson_name') }}" maxlength="255" placeholder="كما يظهر في بنك الأسئلة">
+                                <small class="text-muted">مطلوب عند النص اليدوي أو الموضوع؛ يُطابق حقل بنك الأسئلة</small>
                             </div>
 
-                            <div id="lesson_select" class="mb-3" style="display: none;">
+                            <div id="lesson_select_block" class="mb-3" style="display: none;">
                                 <label for="lesson_id" class="form-label">الدرس <span class="text-danger">*</span></label>
-                                <select class="form-select" id="lesson_id" name="lesson_id" disabled>
+                                <select class="form-select" id="lesson_id" name="lesson_id"
+                                    {{ old('source_type') == 'lesson_content' && old('course_id') ? '' : 'disabled' }}>
                                     <option value="">اختر الكورس أولاً</option>
+                                    @if(isset($lessons) && $lessons->isNotEmpty())
+                                        @foreach($lessons as $lesson)
+                                            <option value="{{ $lesson->id }}" {{ (string) old('lesson_id') === (string) $lesson->id ? 'selected' : '' }}>{{ $lesson->title }}</option>
+                                        @endforeach
+                                    @endif
                                 </select>
+                                <small class="text-muted">يُحفظ اسم الدرس تلقائياً من عنوان الدرس المختار</small>
                             </div>
 
                             <div id="text_source" class="mb-3">
@@ -102,10 +119,10 @@
                                 <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                                     @foreach($questionTypes as $questionType)
                                         <div class="form-check mb-2">
-                                            <input class="form-check-input question-type-checkbox" 
-                                                   type="checkbox" 
-                                                   name="question_types[]" 
-                                                   value="{{ $questionType->id }}" 
+                                            <input class="form-check-input question-type-checkbox"
+                                                   type="checkbox"
+                                                   name="question_types[]"
+                                                   value="{{ $questionType->id }}"
                                                    id="question_type_{{ $questionType->id }}"
                                                    {{ in_array($questionType->id, old('question_types', [])) ? 'checked' : '' }}>
                                             <label class="form-check-label" for="question_type_{{ $questionType->id }}">
@@ -140,13 +157,23 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="ai_model_id" class="form-label">موديل AI (اختياري)</label>
-                                <select class="form-select" id="ai_model_id" name="ai_model_id">
-                                    <option value="">استخدام الموديل الافتراضي</option>
-                                    @foreach($models as $model)
-                                        <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
-                                    @endforeach
-                                </select>
+                                @if(!empty($useLaravelAiEngine))
+                                    <label for="laravel_ai_model_id" class="form-label">موديل Laravel AI SDK (اختياري)</label>
+                                    <select class="form-select" id="laravel_ai_model_id" name="laravel_ai_model_id">
+                                        <option value="">افتراضي (أولوية + قدرة questions.generate)</option>
+                                        @foreach($laravelAiModels as $lmodel)
+                                            <option value="{{ $lmodel->id }}" {{ (string) old('laravel_ai_model_id') === (string) $lmodel->id ? 'selected' : '' }}>{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <label for="ai_model_id" class="form-label">موديل AI (اختياري)</label>
+                                    <select class="form-select" id="ai_model_id" name="ai_model_id">
+                                        <option value="">استخدام الموديل الافتراضي</option>
+                                        @foreach($models as $model)
+                                            <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
                             </div>
 
                             <div class="d-flex gap-2">
@@ -169,25 +196,71 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const sourceType = document.getElementById('source_type');
-    const lessonSource = document.getElementById('lesson_source');
-    const lessonSelect = document.getElementById('lesson_select');
+    const lessonNameBlock = document.getElementById('lesson_name_block');
+    const lessonSelectBlock = document.getElementById('lesson_select_block');
     const textSource = document.getElementById('text_source');
     const courseSelect = document.getElementById('course_id');
     const lessonIdSelect = document.getElementById('lesson_id');
+    const lessonNameInput = document.getElementById('lesson_name');
     const sourceContent = document.getElementById('source_content');
     const form = document.getElementById('questionCreationForm');
     const questionTypeCheckboxes = document.querySelectorAll('.question-type-checkbox');
     const questionTypesError = document.getElementById('question_types_error');
 
+    function loadLessonsForCourse(courseId, preserveSelectedId) {
+        if (!courseId) {
+            lessonIdSelect.disabled = true;
+            lessonIdSelect.innerHTML = '<option value="">اختر الكورس أولاً</option>';
+            return;
+        }
+        lessonIdSelect.disabled = false;
+        const url = '{{ route("admin.courses.lessons", ":id") }}'.replace(':id', courseId);
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                lessonIdSelect.innerHTML = '<option value="">اختر الدرس</option>';
+                if (data && data.length > 0) {
+                    data.forEach(lesson => {
+                        const opt = document.createElement('option');
+                        opt.value = lesson.id;
+                        opt.textContent = lesson.title;
+                        if (preserveSelectedId && String(lesson.id) === String(preserveSelectedId)) {
+                            opt.selected = true;
+                        }
+                        lessonIdSelect.appendChild(opt);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading lessons:', error);
+                lessonIdSelect.innerHTML = '<option value="">خطأ في تحميل الدروس</option>';
+            });
+    }
+
+    const initialOldLessonId = @json(old('lesson_id'));
+
     function toggleSourceFields() {
-        if (sourceType.value === 'lesson_content') {
-            lessonSource.style.display = 'block';
-            lessonSelect.style.display = 'block';
+        const isLesson = sourceType.value === 'lesson_content';
+        if (isLesson) {
+            lessonSelectBlock.style.display = 'block';
+            lessonNameBlock.style.display = 'none';
+            lessonNameInput.removeAttribute('required');
+            lessonNameInput.value = '';
             textSource.style.display = 'none';
             sourceContent.removeAttribute('required');
+            if (courseSelect.value) {
+                lessonIdSelect.disabled = false;
+                const needsFetch = lessonIdSelect.options.length <= 1;
+                if (needsFetch) {
+                    loadLessonsForCourse(courseSelect.value, initialOldLessonId);
+                }
+            }
         } else {
-            lessonSource.style.display = 'none';
-            lessonSelect.style.display = 'none';
+            lessonSelectBlock.style.display = 'none';
+            lessonNameBlock.style.display = 'block';
+            lessonNameInput.setAttribute('required', 'required');
+            lessonIdSelect.disabled = true;
+            lessonIdSelect.innerHTML = '<option value="">اختر الكورس أولاً</option>';
             textSource.style.display = 'block';
             sourceContent.setAttribute('required', 'required');
         }
@@ -197,41 +270,19 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleSourceFields();
 
     courseSelect.addEventListener('change', function() {
-        const courseId = this.value;
-        if (courseId) {
-            lessonIdSelect.disabled = false;
-            // Load lessons for the selected course
-            const url = '{{ route("admin.courses.lessons", ":id") }}'.replace(':id', courseId);
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    lessonIdSelect.innerHTML = '<option value="">اختر الدرس</option>';
-                    if (data && data.length > 0) {
-                        data.forEach(lesson => {
-                            lessonIdSelect.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading lessons:', error);
-                    lessonIdSelect.innerHTML = '<option value="">خطأ في تحميل الدروس</option>';
-                });
-        } else {
-            lessonIdSelect.disabled = true;
-            lessonIdSelect.innerHTML = '<option value="">اختر الكورس أولاً</option>';
+        if (sourceType.value === 'lesson_content') {
+            loadLessonsForCourse(this.value, null);
         }
     });
 
-    // التحقق من اختيار نوع واحد على الأقل
     function validateQuestionTypes() {
         const checked = Array.from(questionTypeCheckboxes).some(cb => cb.checked);
         if (!checked) {
             questionTypesError.style.display = 'block';
             return false;
-        } else {
-            questionTypesError.style.display = 'none';
-            return true;
         }
+        questionTypesError.style.display = 'none';
+        return true;
     }
 
     questionTypeCheckboxes.forEach(checkbox => {
@@ -249,4 +300,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @stop
-

@@ -1,42 +1,40 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Student\StudentProfileController;
-use App\Http\Controllers\Student\TrainingCampController;
-use App\Http\Controllers\Student\InvoiceController;
+use App\Http\Controllers\Student\CalendarController;
 use App\Http\Controllers\Student\CourseController;
 use App\Http\Controllers\Student\CourseLearningController;
+use App\Http\Controllers\Student\CourseNoteController;
 use App\Http\Controllers\Student\CourseProgressController;
-use App\Http\Controllers\Student\QuizAttemptController;
-use App\Http\Controllers\Student\QuizReviewController;
+use App\Http\Controllers\Student\CourseReviewController;
+use App\Http\Controllers\Student\ExternalResourceController;
+use App\Http\Controllers\Student\Gamification\AchievementController as StudentAchievementController;
+use App\Http\Controllers\Student\Gamification\ChallengeController as StudentChallengeController;
+use App\Http\Controllers\Student\Gamification\CompetitionController as StudentCompetitionController;
+use App\Http\Controllers\Student\Gamification\DashboardController as GamificationDashboardController;
+use App\Http\Controllers\Student\Gamification\FriendshipController as StudentFriendshipController;
+use App\Http\Controllers\Student\Gamification\InventoryController as StudentInventoryController;
+use App\Http\Controllers\Student\Gamification\LeaderboardController as StudentLeaderboardController;
+use App\Http\Controllers\Student\Gamification\LevelController as StudentLevelController;
+use App\Http\Controllers\Student\Gamification\NotificationController as StudentNotificationController;
+use App\Http\Controllers\Student\Gamification\PointsController as StudentPointsController;
+use App\Http\Controllers\Student\Gamification\ShopController as StudentShopController;
+use App\Http\Controllers\Student\Gamification\SocialActivityController as StudentSocialActivityController;
+use App\Http\Controllers\Student\Gamification\StreakController as StudentStreakController;
+use App\Http\Controllers\Student\GroupMembershipRequestController;
+use App\Http\Controllers\Student\InvoiceController;
+use App\Http\Controllers\Student\NoteController;
+use App\Http\Controllers\Student\NotificationPreferencesController;
+use App\Http\Controllers\Student\PlatformReviewController;
 use App\Http\Controllers\Student\QuestionModuleAttemptController;
 use App\Http\Controllers\Student\QuestionModuleStatsController;
-use App\Http\Controllers\Student\StudentDashboardController;
-use App\Http\Controllers\Student\Gamification\DashboardController as GamificationDashboardController;
-use App\Http\Controllers\Student\Gamification\PointsController as StudentPointsController;
-use App\Http\Controllers\Student\Gamification\LevelController as StudentLevelController;
-use App\Http\Controllers\Student\Gamification\StreakController as StudentStreakController;
-use App\Http\Controllers\Student\Gamification\BadgeController as StudentBadgeController;
-use App\Http\Controllers\Student\Gamification\AchievementController as StudentAchievementController;
-use App\Http\Controllers\Student\Gamification\LeaderboardController as StudentLeaderboardController;
-use App\Http\Controllers\Student\Gamification\ChallengeController as StudentChallengeController;
-use App\Http\Controllers\Student\Gamification\ShopController as StudentShopController;
-use App\Http\Controllers\Student\Gamification\InventoryController as StudentInventoryController;
-use App\Http\Controllers\Student\Gamification\FriendshipController as StudentFriendshipController;
-use App\Http\Controllers\Student\Gamification\CompetitionController as StudentCompetitionController;
-use App\Http\Controllers\Student\Gamification\SocialActivityController as StudentSocialActivityController;
-use App\Http\Controllers\Student\Gamification\NotificationController as StudentNotificationController;
-use App\Http\Controllers\Student\NotificationPreferencesController;
-use App\Http\Controllers\Student\NoteController;
-use App\Http\Controllers\Student\StudentFeedbackController;
-use App\Http\Controllers\Student\CourseNoteController;
 use App\Http\Controllers\Student\ReminderController as StudentReminderController;
-use App\Http\Controllers\Student\CalendarController;
+use App\Http\Controllers\Student\StudentCourseAiReportController;
+use App\Http\Controllers\Student\StudentDashboardController;
+use App\Http\Controllers\Student\StudentFeedbackController;
+use App\Http\Controllers\Student\StudentProfileController;
 use App\Http\Controllers\Student\StudentWorkController;
-use App\Http\Controllers\Student\CourseReviewController;
-use App\Http\Controllers\Student\PlatformReviewController;
-use App\Http\Controllers\Student\GroupMembershipRequestController;
-use App\Http\Controllers\Student\ExternalResourceController;
+use App\Http\Controllers\Student\TrainingCampController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('student')
     ->middleware(['auth', 'role:student'])
@@ -44,6 +42,9 @@ Route::prefix('student')
 
         // Dashboard
         Route::get('/', [StudentDashboardController::class, 'index'])->name('student.dashboard');
+
+        // تقارير الدراسة (AI) — صفحة مركزية من الشريط الجانبي
+        Route::get('/study-reports', [StudentCourseAiReportController::class, 'hub'])->name('student.study-reports.index');
 
         // Profile Routes
         Route::prefix('profile')->name('student.profile.')->group(function () {
@@ -116,6 +117,8 @@ Route::prefix('student')
             Route::get('/courses/{courseId}/certificate/view', [CourseProgressController::class, 'viewCertificate'])->name('certificate.view'); // View certificate online
             Route::get('/courses/{courseId}/export', [CourseProgressController::class, 'exportReport'])->name('export'); // Export progress report
             Route::get('/courses/{courseId}/stats', [CourseProgressController::class, 'getStats'])->name('stats'); // AJAX: Get statistics
+            Route::get('/courses/{course}/ai-reports', [StudentCourseAiReportController::class, 'index'])->name('ai-reports.index');
+            Route::get('/ai-reports/{report}', [StudentCourseAiReportController::class, 'show'])->name('ai-reports.show');
         });
 
         // ========== Assignments Routes (Student) ==========

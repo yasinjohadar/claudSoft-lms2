@@ -367,38 +367,14 @@ class QuestionModuleResponse extends Model
     }
 
     /**
-     * Grade fill in the blanks question.
+     * Grade fill in the blanks question (مصدر السؤال: بنك الأسئلة — انظر QuestionBank).
      */
     private function gradeFillBlanks($question, $studentAnswer)
     {
-        // Student answer should be an array of [blank_number => answer]
-        if (!is_array($studentAnswer) || empty($studentAnswer)) {
+        if (! is_array($studentAnswer) || empty($studentAnswer)) {
             return false;
         }
 
-        // Get all correct answers (options are the blank answers)
-        $correctAnswers = $question->options()
-            ->where('is_correct', true)
-            ->orderBy('option_order')
-            ->pluck('option_text')
-            ->toArray();
-
-        // Check if all blanks are filled correctly
-        foreach ($correctAnswers as $index => $correctAnswer) {
-            $blankNumber = $index + 1;
-
-            if (!isset($studentAnswer[$blankNumber])) {
-                return false;
-            }
-
-            $studentBlankAnswer = trim(strtolower($studentAnswer[$blankNumber]));
-            $correctBlankAnswer = trim(strtolower($correctAnswer));
-
-            if ($studentBlankAnswer !== $correctBlankAnswer) {
-                return false;
-            }
-        }
-
-        return true;
+        return $question->matchesFillBlanksAnswer($studentAnswer);
     }
 }

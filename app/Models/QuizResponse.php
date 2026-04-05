@@ -692,6 +692,9 @@ class QuizResponse extends Model
 
     /**
      * Grade fill in the blanks.
+     *
+     * أسئلة بنك الأسئلة تُصحَّح من جدول الخيارات (is_correct + option_order) عند وجود خيارات صحيحة؛
+     * وإلا يُستخدم metadata.correct_answers للتوافق مع البيانات القديمة.
      */
     private function gradeFillBlanks(): array
     {
@@ -702,11 +705,31 @@ class QuizResponse extends Model
         // Support both formats: 'answers' (old) and 'answer' (new from QuestionModule format)
         $answers = $this->response_data['answer'] ?? $this->response_data['answers'] ?? [];
 
-        $metadata = $this->question->metadata ?? [];
+        if (! is_array($answers) || empty($answers)) {
+            return [false, 0];
+        }
+
+        $question = $this->question;
+        $usesBankOptions = $question->options()->where('is_correct', true)->exists();
+
+        if ($usesBankOptions) {
+            $summary = $question->summarizeFillBlanksFromOptions($answers);
+            if ($summary['blank_count'] < 1) {
+                return [false, 0];
+            }
+
+            $isFullyCorrect = $summary['all_filled']
+                && $summary['correct_count'] === $summary['blank_count'];
+            $partialScore = ($summary['correct_count'] / $summary['blank_count']) * $this->max_score;
+
+            return [$isFullyCorrect, $partialScore];
+        }
+
+        $metadata = $question->metadata ?? [];
         $correctAnswers = $metadata['correct_answers'] ?? [];
         $caseSensitive = $metadata['case_sensitive'] ?? false;
 
-        if (empty($correctAnswers) || empty($answers)) {
+        if (empty($correctAnswers)) {
             return [false, 0];
         }
 
@@ -720,10 +743,10 @@ class QuizResponse extends Model
                 continue;
             }
 
-            $studentAnswer = trim($answer);
-            $compare = $caseSensitive ? $correctAnswer : mb_strtolower($correctAnswer);
+            $studentAnswer = trim((string) $answer);
+            $compare = $caseSensitive ? $correctAnswer : mb_strtolower((string) $correctAnswer);
 
-            if (!$caseSensitive) {
+            if (! $caseSensitive) {
                 $studentAnswer = mb_strtolower($studentAnswer);
             }
 
@@ -733,7 +756,7 @@ class QuizResponse extends Model
         }
 
         $isFullyCorrect = $correctCount === $totalBlanks;
-        $partialScore = ($correctCount / $totalBlanks) * $this->max_score;
+        $partialScore = $totalBlanks > 0 ? ($correctCount / $totalBlanks) * $this->max_score : 0;
 
         return [$isFullyCorrect, $partialScore];
     }

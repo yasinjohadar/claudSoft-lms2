@@ -36,6 +36,10 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2 mt-3 mt-md-0">
+                    <a href="{{ route('student.progress.ai-reports.index', $course) }}"
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-robot me-1"></i>تقارير الدراسة (AI)
+                    </a>
                     @if($stats['can_get_certificate'])
                         <a href="{{ route('student.progress.certificate', $course->id) }}"
                            class="btn btn-success">

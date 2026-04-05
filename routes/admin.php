@@ -1,87 +1,81 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\CourseCategoryController;
-use App\Http\Controllers\Admin\TrainingCampController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\InvoiceController;
-use App\Http\Controllers\Admin\PaymentController;
-use App\Http\Controllers\Admin\PaymentMethodController;
-use App\Http\Controllers\Admin\CourseController;
-use App\Http\Controllers\Admin\CourseSectionController;
-use App\Http\Controllers\Admin\CourseModuleController;
-use App\Http\Controllers\Admin\ModuleCompletionReportController;
-use App\Http\Controllers\Admin\CourseModuleCompletionSummaryController;
-use App\Http\Controllers\Admin\LessonController;
-use App\Http\Controllers\Admin\VideoController;
-use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
-use App\Http\Controllers\Admin\CourseEnrollmentController;
-use App\Http\Controllers\Admin\CourseGroupController;
-use App\Http\Controllers\Admin\QuizController;
-use App\Http\Controllers\Admin\QuestionBankController;
-use App\Http\Controllers\Admin\QuestionPoolController;
-use App\Http\Controllers\Admin\QuizGradingController;
-use App\Http\Controllers\Admin\QuizAnalyticsController;
-use App\Http\Controllers\Admin\Gamification\DashboardController as GamificationDashboardController;
-use App\Http\Controllers\Admin\Gamification\PointsController as AdminPointsController;
-use App\Http\Controllers\Admin\Gamification\LevelController as AdminLevelController;
-use App\Http\Controllers\Admin\Gamification\BadgeController as AdminBadgeController;
-use App\Http\Controllers\Admin\Gamification\AchievementController as AdminAchievementController;
-use App\Http\Controllers\Admin\Gamification\LeaderboardController as AdminLeaderboardController;
-use App\Http\Controllers\Admin\Gamification\ChallengeController as AdminChallengeController;
-use App\Http\Controllers\Admin\Gamification\ShopCategoryController as AdminShopCategoryController;
-use App\Http\Controllers\Admin\Gamification\ShopItemController as AdminShopItemController;
-use App\Http\Controllers\Admin\Gamification\PurchaseController as AdminPurchaseController;
-use App\Http\Controllers\Admin\Gamification\SocialActivityController as AdminSocialActivityController;
-use App\Http\Controllers\Admin\Gamification\CompetitionController as AdminCompetitionController;
-use App\Http\Controllers\Admin\Gamification\AnalyticsController as AdminAnalyticsController;
-use App\Http\Controllers\Admin\ReminderController;
-use App\Http\Controllers\Admin\CalendarController;
-use App\Http\Controllers\Admin\StudentWorkController;
-use App\Http\Controllers\Admin\CourseReviewController as AdminCourseReviewController;
-use App\Http\Controllers\Admin\WebhookManagementController;
-use App\Http\Controllers\Admin\N8nWebhookController;
-use App\Http\Controllers\Admin\BulkUserImportController;
-use App\Http\Controllers\Admin\FrontendCourseController;
-use App\Http\Controllers\Admin\AIFrontendCourseController;
-use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\AIBlogPostController;
-use App\Http\Controllers\Admin\BlogCategoryController;
-use App\Http\Controllers\Admin\BlogTagController;
-use App\Http\Controllers\Admin\DocumentationCategoryController;
-use App\Http\Controllers\Admin\DocumentationPageController;
+use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AIDocumentationPageController;
-use App\Http\Controllers\Admin\UserSessionController;
-use App\Http\Controllers\Admin\UserDeviceController;
-use App\Http\Controllers\Admin\FaqController;
-use App\Http\Controllers\Admin\ContactSettingController;
-use App\Http\Controllers\Admin\GoogleSettingController;
-use App\Http\Controllers\Admin\SiteSettingController;
+use App\Http\Controllers\Admin\AIFrontendCourseController;
+use App\Http\Controllers\Admin\AIGradingSettingsController;
 use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AIQuestionGenerationController;
 use App\Http\Controllers\Admin\AIQuestionSolvingController;
-use App\Http\Controllers\Admin\AIStudentFeedbackController;
-use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AISettingsController;
-use App\Http\Controllers\Admin\AIGradingSettingsController;
-use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\AIStudentFeedbackController;
+use App\Http\Controllers\Admin\BlogCategoryController;
+use App\Http\Controllers\Admin\BlogPostController;
+use App\Http\Controllers\Admin\BlogTagController;
+use App\Http\Controllers\Admin\BulkUserImportController;
+use App\Http\Controllers\Admin\CalendarController;
+use App\Http\Controllers\Admin\ContactSettingController;
+use App\Http\Controllers\Admin\CourseCategoryController;
+use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\CourseEnrollmentController;
+use App\Http\Controllers\Admin\CourseGroupController;
+use App\Http\Controllers\Admin\CourseModuleCompletionSummaryController;
+use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\CourseReviewController as AdminCourseReviewController;
+use App\Http\Controllers\Admin\CourseSectionController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DocumentationCategoryController;
+use App\Http\Controllers\Admin\DocumentationPageController;
+use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\FrontendCourseController;
+use App\Http\Controllers\Admin\Gamification\AchievementController as AdminAchievementController;
+use App\Http\Controllers\Admin\Gamification\AnalyticsController as AdminAnalyticsController;
+use App\Http\Controllers\Admin\Gamification\BadgeController as AdminBadgeController;
+use App\Http\Controllers\Admin\Gamification\ChallengeController as AdminChallengeController;
+use App\Http\Controllers\Admin\Gamification\CompetitionController as AdminCompetitionController;
+use App\Http\Controllers\Admin\Gamification\DashboardController as GamificationDashboardController;
+use App\Http\Controllers\Admin\Gamification\LeaderboardController as AdminLeaderboardController;
+use App\Http\Controllers\Admin\Gamification\LevelController as AdminLevelController;
+use App\Http\Controllers\Admin\Gamification\PointsController as AdminPointsController;
+use App\Http\Controllers\Admin\Gamification\PurchaseController as AdminPurchaseController;
+use App\Http\Controllers\Admin\Gamification\ShopCategoryController as AdminShopCategoryController;
+use App\Http\Controllers\Admin\Gamification\ShopItemController as AdminShopItemController;
+use App\Http\Controllers\Admin\Gamification\SocialActivityController as AdminSocialActivityController;
+use App\Http\Controllers\Admin\GoogleSettingController;
 use App\Http\Controllers\Admin\GroupRegistrationController;
 use App\Http\Controllers\Admin\GroupRegistrationSettingController;
-use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\LaravelAiModelController;
+use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\ModuleCompletionReportController;
+use App\Http\Controllers\Admin\N8nWebhookController;
+use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\ReminderController;
+use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SiteSettingController;
+use App\Http\Controllers\Admin\StudentCourseAiReportController;
+use App\Http\Controllers\Admin\StudentWorkController;
+use App\Http\Controllers\Admin\TrainingCampController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserDeviceController;
+use App\Http\Controllers\Admin\VideoController;
+use App\Http\Controllers\Admin\WebhookManagementController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')
     ->middleware('auth')
     ->middleware(['auth', 'role:admin'])
     ->group(function () {
 
-
         Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
 
         // Test route
-        Route::get('/test-questions', function() {
+        Route::get('/test-questions', function () {
             return view('test-route');
         });
 
@@ -127,7 +121,7 @@ Route::prefix('admin')
         Route::post('training-camps-enrollments/{id}/approve', [TrainingCampController::class, 'approveEnrollmentOld'])->name('training-camps.enrollments.old.approve');
         Route::post('training-camps-enrollments/{id}/reject', [TrainingCampController::class, 'rejectEnrollmentOld'])->name('training-camps.enrollments.old.reject');
         Route::post('training-camps-enrollments/{id}/update-status', [TrainingCampController::class, 'updateEnrollmentStatusOld'])->name('training-camps.enrollments.old.update-status');
-        
+
         // Camp enrollments management routes (for camp show page)
         Route::prefix('training-camps/{camp}/enrollments')->name('training-camps.enrollments.')->group(function () {
             Route::get('/', [TrainingCampController::class, 'campEnrollments'])->name('index');
@@ -270,7 +264,7 @@ Route::prefix('admin')
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');
         Route::post('groups/{groupId}/toggle-visibility', [CourseGroupController::class, 'toggleVisibility'])->name('groups.toggle-visibility');
         Route::post('groups/{groupId}/toggle-active', [CourseGroupController::class, 'toggleActive'])->name('groups.toggle-active');
-        
+
         // Group Membership Requests routes
         Route::get('courses/{courseId}/groups/{groupId}/membership-requests', [CourseGroupController::class, 'membershipRequests'])->name('courses.groups.membership-requests');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/approve', [CourseGroupController::class, 'approveRequest'])->name('courses.groups.membership-requests.approve');
@@ -296,7 +290,6 @@ Route::prefix('admin')
             Route::delete('/{registration}', [GroupRegistrationController::class, 'destroy'])->name('destroy');
         });
 
-
         // Group Registration Settings Routes
         Route::prefix('groups/{group}/registration-settings')->name('admin.group-registration-settings.')->group(function () {
             Route::get('/', [GroupRegistrationSettingController::class, 'index'])->name('index');
@@ -321,7 +314,7 @@ Route::prefix('admin')
         Route::post('quizzes/{id}/toggle-publish', [\App\Http\Controllers\Admin\QuizController::class, 'togglePublish'])->name('quizzes.toggle-publish');
         Route::get('quizzes/course/{courseId}/lessons', [\App\Http\Controllers\Admin\QuizController::class, 'getLessons'])->name('quizzes.get-lessons');
         Route::post('quizzes/{id}/recalculate-score', [\App\Http\Controllers\Admin\QuizController::class, 'recalculateScore'])->name('quizzes.recalculate-score');
-        
+
         // Quiz Questions Management
         Route::get('quizzes/{id}/manage-questions', [\App\Http\Controllers\Admin\QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');
         Route::get('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
@@ -339,7 +332,7 @@ Route::prefix('admin')
         Route::get('question-bank/type/{typeId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByType'])->name('question-bank.by-type');
         Route::post('question-bank/bulk-action', [\App\Http\Controllers\Admin\QuestionBankController::class, 'bulkAction'])->name('question-bank.bulk-action');
         Route::post('question-bank/delete-multiple', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyMultiple'])->name('question-bank.delete-multiple');
-        
+
         // Excel Import/Export
         Route::get('question-bank/import/excel', [\App\Http\Controllers\Admin\QuestionBankController::class, 'showImportForm'])->name('question-bank.import.excel');
         Route::post('question-bank/import/preview', [\App\Http\Controllers\Admin\QuestionBankController::class, 'previewImport'])->name('question-bank.import.preview');
@@ -865,8 +858,6 @@ Route::prefix('admin')
                 'show' => 'question-generations.show',
             ]);
 
-
-
             Route::post('question-generations/{generation}/process', [AIQuestionGenerationController::class, 'process'])->name('question-generations.process');
             Route::post('question-generations/{generation}/save', [AIQuestionGenerationController::class, 'save'])->name('question-generations.save');
             Route::post('question-generations/{generation}/save-selected', [AIQuestionGenerationController::class, 'saveSelected'])->name('question-generations.save-selected');
@@ -886,6 +877,17 @@ Route::prefix('admin')
             Route::post('student-feedback/generate/{student}', [AIStudentFeedbackController::class, 'generateFeedback'])->name('student-feedback.generate-feedback');
             Route::get('student-feedback/{studentFeedback}', [AIStudentFeedbackController::class, 'show'])->name('student-feedback.show');
 
+            // Student progress AI reports (course / group batch)
+            Route::get('student-progress-reports', [StudentCourseAiReportController::class, 'index'])->name('student-progress-reports.index');
+            Route::get('student-progress-reports/batches', [StudentCourseAiReportController::class, 'batchesIndex'])->name('student-progress-reports.batches.index');
+            Route::get('student-progress-reports/batches/{batch}', [StudentCourseAiReportController::class, 'showBatch'])->name('student-progress-reports.batches.show');
+            Route::get('student-progress-reports/create', [StudentCourseAiReportController::class, 'create'])->name('student-progress-reports.create');
+            Route::get('student-progress-reports/enrolled-students', [StudentCourseAiReportController::class, 'enrolledStudents'])->name('student-progress-reports.enrolled-students');
+            Route::get('student-progress-reports/course-groups', [StudentCourseAiReportController::class, 'courseGroups'])->name('student-progress-reports.course-groups');
+            Route::post('student-progress-reports/preview', [StudentCourseAiReportController::class, 'preview'])->name('student-progress-reports.preview');
+            Route::post('student-progress-reports/dispatch', [StudentCourseAiReportController::class, 'dispatchBatch'])->name('student-progress-reports.dispatch');
+            Route::get('student-progress-reports/{report}', [StudentCourseAiReportController::class, 'show'])->name('student-progress-reports.show');
+
             // Content
             Route::post('content/summarize', [AIContentController::class, 'summarize'])->name('content.summarize');
             Route::get('content/lesson-summary/{lesson}', [AIContentController::class, 'lessonSummary'])->name('content.lesson-summary');
@@ -897,6 +899,23 @@ Route::prefix('admin')
             Route::put('settings', [AISettingsController::class, 'update'])->name('settings.update');
             Route::get('settings/grading', [AIGradingSettingsController::class, 'index'])->name('settings.grading');
             Route::put('settings/grading', [AIGradingSettingsController::class, 'update'])->name('settings.grading.update');
+        });
+
+        // ========== Laravel AI SDK (parallel stack; DB-backed credentials) ==========
+        Route::prefix('ai-sdk')->name('admin.ai-sdk.')->group(function () {
+            Route::post('models/test-temp', [LaravelAiModelController::class, 'testTemp'])->name('models.test-temp');
+            Route::resource('models', LaravelAiModelController::class)
+                ->parameters(['models' => 'laravel_ai_model'])
+                ->except(['show'])
+                ->names([
+                    'index' => 'models.index',
+                    'create' => 'models.create',
+                    'store' => 'models.store',
+                    'edit' => 'models.edit',
+                    'update' => 'models.update',
+                    'destroy' => 'models.destroy',
+                ]);
+            Route::post('models/{laravel_ai_model}/test', [LaravelAiModelController::class, 'test'])->name('models.test');
         });
 
         // ========== WhatsApp Routes ==========
@@ -973,7 +992,7 @@ Route::prefix('admin')
         // ===============================================
         // نظام النسخ الاحتياطي
         // ===============================================
-        Route::prefix('backups')->name('backups.')->group(function() {
+        Route::prefix('backups')->name('backups.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\BackupController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\BackupController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\BackupController::class, 'store'])->name('store');
@@ -986,7 +1005,7 @@ Route::prefix('admin')
             Route::get('/stats/overview', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('stats');
         });
 
-        Route::prefix('backup-schedules')->name('backup-schedules.')->group(function() {
+        Route::prefix('backup-schedules')->name('backup-schedules.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'store'])->name('store');
@@ -998,7 +1017,7 @@ Route::prefix('admin')
             Route::post('/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('toggle-active');
         });
 
-        Route::prefix('backup-storage')->name('backup-storage.')->group(function() {
+        Route::prefix('backup-storage')->name('backup-storage.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\BackupStorageController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'store'])->name('store');
@@ -1011,7 +1030,7 @@ Route::prefix('admin')
         });
 
         // App Storage
-        Route::prefix('app-storage')->name('app-storage.')->group(function() {
+        Route::prefix('app-storage')->name('app-storage.')->group(function () {
             Route::get('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'index'])->name('configs.index');
             Route::get('/configs/create', [\App\Http\Controllers\Admin\AppStorageController::class, 'create'])->name('configs.create');
             Route::post('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'store'])->name('configs.store');
@@ -1024,7 +1043,7 @@ Route::prefix('admin')
             Route::get('/analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
         });
 
-        Route::prefix('storage-disk-mappings')->name('storage-disk-mappings.')->group(function() {
+        Route::prefix('storage-disk-mappings')->name('storage-disk-mappings.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'store'])->name('store');
@@ -1035,5 +1054,3 @@ Route::prefix('admin')
         });
 
     });
-
-

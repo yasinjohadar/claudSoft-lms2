@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\CleansUtf8AiResponse;
+use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveDocumentationPageRequest;
 use App\Models\AIModel;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
+use App\Models\LaravelAiModel;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
+use App\Services\AiNew\LaravelAiDocumentationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 class AIDocumentationPageController extends Controller
 {
     use CleansUtf8AiResponse;
+    use UsesLaravelAiSdkForWizards;
 
     public function __construct(
         private AIDocumentationPageService $docService,
@@ -41,7 +45,19 @@ class AIDocumentationPageController extends Controller
             'label' => ($p->category->name ?? '—').' — '.$p->title,
         ])->values()->all();
 
-        return view('admin.docs.pages.ai-create', compact('categories', 'models', 'categoryId', 'parentPagesJson'));
+        $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
+        $laravelAiModels = $useLaravelAiEngine
+            ? LaravelAiModel::query()->activeOrdered()->get()
+            : collect();
+
+        return view('admin.docs.pages.ai-create', compact(
+            'categories',
+            'models',
+            'categoryId',
+            'parentPagesJson',
+            'useLaravelAiEngine',
+            'laravelAiModels',
+        ));
     }
 
     public function improve(Request $request)
@@ -71,12 +87,19 @@ class AIDocumentationPageController extends Controller
                 'label' => ($p->category->name ?? '—').' — '.$p->title,
             ])->values()->all();
 
+        $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
+        $laravelAiModels = $useLaravelAiEngine
+            ? LaravelAiModel::query()->activeOrdered()->get()
+            : collect();
+
         return view('admin.docs.pages.ai-improve', compact(
             'models',
             'prefillPage',
             'categories',
             'categoryId',
-            'parentPagesJson'
+            'parentPagesJson',
+            'useLaravelAiEngine',
+            'laravelAiModels',
         ));
     }
 
@@ -86,33 +109,59 @@ class AIDocumentationPageController extends Controller
             'source_html' => 'required|string|max:'.AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS,
             'user_notes' => 'nullable|string|max:5000',
             'ai_model_id' => 'nullable|exists:ai_models,id',
+            'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
             'update_excerpt' => 'boolean',
         ]);
 
         try {
-            $model = $validated['ai_model_id']
-                ? AIModel::find($validated['ai_model_id'])
-                : $this->modelService->getDefaultModel();
+            $refineOptions = [
+                'user_notes' => $validated['user_notes'] ?? null,
+                'tone' => $validated['tone'] ?? 'professional',
+                'language' => $validated['language'] ?? 'ar',
+                'update_excerpt' => $validated['update_excerpt'] ?? false,
+            ];
 
-            if (! $model) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'لا يوجد موديل AI متاح',
-                ], 400);
+            if ($this->wizardUsesLaravelAiSdk('docs_engine')) {
+                $laraModel = null;
+                if (! empty($validated['laravel_ai_model_id'])) {
+                    $laraModel = LaravelAiModel::query()
+                        ->where('id', $validated['laravel_ai_model_id'])
+                        ->where('is_active', true)
+                        ->first();
+                    if (! $laraModel) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
+                        ], 400);
+                    }
+                }
+
+                $data = app(LaravelAiDocumentationService::class)->refineForLegacy(
+                    $validated['source_html'],
+                    $refineOptions,
+                    Auth::user(),
+                    $laraModel,
+                );
+            } else {
+                $model = $validated['ai_model_id']
+                    ? AIModel::find($validated['ai_model_id'])
+                    : $this->modelService->getDefaultModel();
+
+                if (! $model) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لا يوجد موديل AI متاح',
+                    ], 400);
+                }
+
+                $data = $this->docService->refineDocumentationContent(
+                    $validated['source_html'],
+                    $model,
+                    $refineOptions
+                );
             }
-
-            $data = $this->docService->refineDocumentationContent(
-                $validated['source_html'],
-                $model,
-                [
-                    'user_notes' => $validated['user_notes'] ?? null,
-                    'tone' => $validated['tone'] ?? 'professional',
-                    'language' => $validated['language'] ?? 'ar',
-                    'update_excerpt' => $validated['update_excerpt'] ?? false,
-                ]
-            );
 
             $data = $this->cleanUtf8Data($data);
 
@@ -154,6 +203,7 @@ class AIDocumentationPageController extends Controller
         $validated = $request->validate([
             'topic' => 'required|string|max:500',
             'ai_model_id' => 'nullable|exists:ai_models,id',
+            'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
             'content_length' => 'required|in:short,medium,long',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
@@ -163,17 +213,6 @@ class AIDocumentationPageController extends Controller
         ]);
 
         try {
-            $model = $validated['ai_model_id']
-                ? AIModel::find($validated['ai_model_id'])
-                : $this->modelService->getDefaultModel();
-
-            if (! $model) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'لا يوجد موديل AI متاح',
-                ], 400);
-            }
-
             $category = DocumentationCategory::find($validated['documentation_category_id']);
             $parent = ! empty($validated['parent_id'])
                 ? DocumentationPage::find($validated['parent_id'])
@@ -186,18 +225,54 @@ class AIDocumentationPageController extends Controller
                 ], 422);
             }
 
-            $data = $this->docService->generateDocumentationPage(
-                $validated['topic'],
-                $model,
-                [
-                    'content_length' => $validated['content_length'],
-                    'tone' => $validated['tone'] ?? 'professional',
-                    'language' => $validated['language'] ?? 'ar',
-                    'category' => $category,
-                    'parent' => $parent,
-                    'generate_meta' => $validated['generate_meta'] ?? true,
-                ]
-            );
+            $wizardOptions = [
+                'content_length' => $validated['content_length'],
+                'tone' => $validated['tone'] ?? 'professional',
+                'language' => $validated['language'] ?? 'ar',
+                'category' => $category,
+                'parent' => $parent,
+                'generate_meta' => $validated['generate_meta'] ?? true,
+            ];
+
+            if ($this->wizardUsesLaravelAiSdk('docs_engine')) {
+                $laraModel = null;
+                if (! empty($validated['laravel_ai_model_id'])) {
+                    $laraModel = LaravelAiModel::query()
+                        ->where('id', $validated['laravel_ai_model_id'])
+                        ->where('is_active', true)
+                        ->first();
+                    if (! $laraModel) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
+                        ], 400);
+                    }
+                }
+
+                $data = app(LaravelAiDocumentationService::class)->generateForLegacyWizard(
+                    $validated['topic'],
+                    $wizardOptions,
+                    Auth::user(),
+                    $laraModel,
+                );
+            } else {
+                $model = $validated['ai_model_id']
+                    ? AIModel::find($validated['ai_model_id'])
+                    : $this->modelService->getDefaultModel();
+
+                if (! $model) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لا يوجد موديل AI متاح',
+                    ], 400);
+                }
+
+                $data = $this->docService->generateDocumentationPage(
+                    $validated['topic'],
+                    $model,
+                    $wizardOptions
+                );
+            }
 
             $data = $this->cleanUtf8Data($data);
 

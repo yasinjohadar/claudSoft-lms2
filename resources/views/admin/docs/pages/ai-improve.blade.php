@@ -17,6 +17,9 @@
             <div>
                 <h4 class="mb-0">فحص المستند وتعديله بالذكاء الاصطناعي</h4>
                 <p class="mb-0 text-muted">يُرسل النظام <strong>محتوى المصدر بالكامل</strong> إلى النموذج دفعة واحدة. اكتب <strong>تعليمات محددة</strong> لتطبيقها على كل الأقسام (حذف، إعادة هيكلة، توحيد المصطلحات، تقليل التكرار…) ثم اضغط «تحسين المحتوى» وراجع النتيجة قبل الحفظ.</p>
+                @if(!empty($useLaravelAiEngine))
+                    <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK»؛ يُفضّل اختيار موديل بقدرة docs.refine عند الافتراضي.</p>
+                @endif
             </div>
             <div class="ms-auto d-flex flex-wrap gap-2">
                 <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary">قائمة الصفحات</a>
@@ -52,13 +55,24 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label">موديل AI</label>
-                                <select id="ai_model_id" class="form-select">
-                                    <option value="">الافتراضي</option>
-                                    @foreach($models as $model)
-                                    <option value="{{ $model->id }}">{{ $model->name }}</option>
-                                    @endforeach
-                                </select>
+                                @if(!empty($useLaravelAiEngine))
+                                    <label class="form-label">موديل Laravel AI SDK</label>
+                                    <select id="laravel_ai_model_id" class="form-select">
+                                        <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
+                                        @foreach($laravelAiModels as $lmodel)
+                                            <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                @else
+                                    <label class="form-label">موديل AI</label>
+                                    <select id="ai_model_id" class="form-select">
+                                        <option value="">الافتراضي</option>
+                                        @foreach($models as $model)
+                                        <option value="{{ $model->id }}">{{ $model->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">الأسلوب</label>
@@ -235,6 +249,7 @@
 @include('admin.docs.partials.tinymce-doc')
 <script>
 (function () {
+    const useLaravelAiEngine = @json(!empty($useLaravelAiEngine));
     const refineUrl = @json(route('admin.docs.ai-pages.refine'));
     const csrf = @json(csrf_token());
     const parentPages = @json($parentPagesJson);
@@ -344,7 +359,12 @@
         const payload = {
             source_html: sourceHtml,
             user_notes: document.getElementById('user_notes').value.trim() || null,
-            ai_model_id: document.getElementById('ai_model_id').value || null,
+            ai_model_id: useLaravelAiEngine ? null : (document.getElementById('ai_model_id') ? document.getElementById('ai_model_id').value || null : null),
+            laravel_ai_model_id: (function () {
+                if (!useLaravelAiEngine) return null;
+                const el = document.getElementById('laravel_ai_model_id');
+                return el ? (el.value || null) : null;
+            })(),
             tone: document.getElementById('tone').value,
             language: document.getElementById('language').value,
             update_excerpt: document.getElementById('update_excerpt').checked,

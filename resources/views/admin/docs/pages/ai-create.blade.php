@@ -17,6 +17,9 @@
             <div>
                 <h4 class="mb-0">توليد صفحة توثيق بالذكاء الاصطناعي</h4>
                 <p class="mb-0 text-muted">نفس آلية توليد المدونة: إعدادات ثم توليد ثم مراجعة وحفظ</p>
+                @if(!empty($useLaravelAiEngine))
+                    <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK» (قدرة docs.refine مفضّلة عند الاختيار الافتراضي).</p>
+                @endif
             </div>
             <div class="ms-auto d-flex gap-2">
                 <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary">قائمة الصفحات</a>
@@ -48,13 +51,24 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">موديل AI</label>
-                                    <select id="ai_model_id" class="form-select">
-                                        <option value="">الافتراضي</option>
-                                        @foreach($models as $model)
-                                        <option value="{{ $model->id }}">{{ $model->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if(!empty($useLaravelAiEngine))
+                                        <label class="form-label">موديل Laravel AI SDK</label>
+                                        <select id="laravel_ai_model_id" class="form-select">
+                                            <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
+                                            @foreach($laravelAiModels as $lmodel)
+                                                <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                    @else
+                                        <label class="form-label">موديل AI</label>
+                                        <select id="ai_model_id" class="form-select">
+                                            <option value="">الافتراضي</option>
+                                            @foreach($models as $model)
+                                            <option value="{{ $model->id }}">{{ $model->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">طول المحتوى</label>
@@ -197,6 +211,7 @@
 @include('admin.docs.partials.tinymce-doc')
 <script>
 (function () {
+    const useLaravelAiEngine = @json(!empty($useLaravelAiEngine));
     const parentPages = @json($parentPagesJson);
 
     function refreshParentOptions() {
@@ -279,7 +294,12 @@
 
             const payload = {
                 topic: topic,
-                ai_model_id: document.getElementById('ai_model_id').value || null,
+                ai_model_id: useLaravelAiEngine ? null : (document.getElementById('ai_model_id') ? document.getElementById('ai_model_id').value || null : null),
+                laravel_ai_model_id: (function () {
+                    if (!useLaravelAiEngine) return null;
+                    const el = document.getElementById('laravel_ai_model_id');
+                    return el ? (el.value || null) : null;
+                })(),
                 content_length: document.getElementById('content_length').value,
                 tone: document.getElementById('tone').value,
                 language: document.getElementById('language').value,

@@ -101,6 +101,20 @@
                                                 </div>
                                             @endif
                                         </div>
+                                        <div class="col-12 mb-3">
+                                            <hr class="my-2">
+                                            <label class="form-label fw-semibold">إشعارات تقارير الدراسة (AI)</label>
+                                            <select name="study_report_delivery" class="form-select" style="max-width: 28rem;">
+                                                <option value="both" {{ ($settings['study_report_delivery'] ?? 'both') === 'both' ? 'selected' : '' }}>البريد وواتساب معاً (افتراضي)</option>
+                                                <option value="email" {{ ($settings['study_report_delivery'] ?? '') === 'email' ? 'selected' : '' }}>البريد الإلكتروني فقط</option>
+                                                <option value="whatsapp" {{ ($settings['study_report_delivery'] ?? '') === 'whatsapp' ? 'selected' : '' }}>واتساب فقط — يُضاف البريد تلقائياً إن لم يتوفر رقم للطالب</option>
+                                            </select>
+                                            <small class="text-muted d-block mt-1">تُرسل عند إصدار تقرير دراسة جديد للطالب (قاعدة الإشعارات + البريد و/أو واتساب حسب الاختيار).</small>
+                                            <div class="alert alert-warning small mt-2 mb-0">
+                                                <strong>Meta Cloud API:</strong> الرسائل النصية خارج نافذة المحادثة قد تتطلب <strong>قوالباً معتمدة</strong>؛ للنص الحر غالباً أنسب <strong>WhatsApp Web</strong> أو <strong>Custom API</strong> حسب إعدادك.
+                                                <br><strong>رقم الطالب:</strong> يُشتق من كود الدولة والهاتف في الملف الشخصي. <strong>عامل الطابور</strong> مطلوب لتسليم رسائل واتساب.
+                                            </div>
+                                        </div>
                                         <script>
                                             function handleProviderChange(provider) {
                                                 var metaSettings = document.getElementById('meta-settings');

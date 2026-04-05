@@ -2,21 +2,26 @@
 
 namespace App\Services\Ai;
 
+use App\Ai\Agents\QuestionGenerationPlainAgent;
 use App\Models\AIQuestionGeneration;
+use App\Models\Course;
+use App\Models\LaravelAiModel;
+use App\Models\Lesson;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
-use App\Models\Lesson;
-use App\Models\User;
-use App\Models\Course;
+use App\Services\AiNew\LaravelAiPromptRunner;
+use App\Services\AiNew\LaravelAiProviderManager;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AIQuestionGenerationService
 {
     public function __construct(
         private AIModelService $modelService,
-        private AIPromptService $promptService
+        private AIPromptService $promptService,
+        private LaravelAiProviderManager $providerManager,
+        private LaravelAiPromptRunner $promptRunner,
     ) {}
 
     /**
@@ -25,7 +30,7 @@ class AIQuestionGenerationService
     public function generateFromLesson(Lesson $lesson, array $options = []): AIQuestionGeneration
     {
         $content = $lesson->description ?? $lesson->title;
-        
+
         // جمع محتوى إضافي من الدرس
         if ($lesson->attachments) {
             // يمكن إضافة محتوى من المرفقات
@@ -50,26 +55,44 @@ class AIQuestionGenerationService
     public function generateFromText(string $text, array $options = []): AIQuestionGeneration
     {
         $user = $options['user'] ?? auth()->user();
-        $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
+        $laraModel = $options['laravel_model'] ?? null;
 
-        if (!$model) {
-            throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
+        if ($laraModel instanceof LaravelAiModel) {
+            $generation = AIQuestionGeneration::create([
+                'user_id' => $user->id,
+                'course_id' => $options['course_id'] ?? null,
+                'lesson_id' => $options['lesson_id'] ?? null,
+                'source_type' => $options['source_type'] ?? 'manual_text',
+                'source_content' => $text,
+                'question_type' => $options['question_type'] ?? 'mixed',
+                'number_of_questions' => $options['number_of_questions'] ?? 5,
+                'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                'ai_model_id' => null,
+                'laravel_ai_model_id' => $laraModel->id,
+                'status' => 'pending',
+            ]);
+        } else {
+            $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
+
+            if (! $model) {
+                throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
+            }
+
+            $generation = AIQuestionGeneration::create([
+                'user_id' => $user->id,
+                'course_id' => $options['course_id'] ?? null,
+                'lesson_id' => $options['lesson_id'] ?? null,
+                'source_type' => $options['source_type'] ?? 'manual_text',
+                'source_content' => $text,
+                'question_type' => $options['question_type'] ?? 'mixed',
+                'number_of_questions' => $options['number_of_questions'] ?? 5,
+                'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                'ai_model_id' => $model->id,
+                'laravel_ai_model_id' => null,
+                'status' => 'pending',
+            ]);
         }
 
-        $generation = AIQuestionGeneration::create([
-            'user_id' => $user->id,
-            'course_id' => $options['course_id'] ?? null,
-            'lesson_id' => $options['lesson_id'] ?? null,
-            'source_type' => $options['source_type'] ?? 'manual_text',
-            'source_content' => $text,
-            'question_type' => $options['question_type'] ?? 'mixed',
-            'number_of_questions' => $options['number_of_questions'] ?? 5,
-            'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
-            'ai_model_id' => $model->id,
-            'status' => 'pending',
-        ]);
-
-        // معالجة التوليد (يمكن أن تكون async)
         $this->processGeneration($generation);
 
         return $generation;
@@ -90,14 +113,26 @@ class AIQuestionGenerationService
      */
     public function processGeneration(AIQuestionGeneration $generation): array
     {
-        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
         set_time_limit(180);
-        
+
+        if ($generation->laravel_ai_model_id) {
+            $laraModel = $generation->laravelAiModel ?? LaravelAiModel::query()->find($generation->laravel_ai_model_id);
+            if (! $laraModel || ! $laraModel->is_active) {
+                $generation->update([
+                    'status' => 'failed',
+                    'error_message' => 'موديل Laravel AI غير متاح أو غير نشط.',
+                ]);
+                throw new \Exception('موديل Laravel AI غير متاح أو غير نشط.');
+            }
+
+            return $this->processGenerationWithLaravelSdk($generation, $laraModel);
+        }
+
         $generation->update(['status' => 'processing']);
 
         try {
             $model = $generation->model;
-            if (!$model) {
+            if (! $model) {
                 throw new \Exception('الموديل غير موجود');
             }
 
@@ -115,7 +150,7 @@ class AIQuestionGenerationService
             // زيادة العدد لضمان عدم قطع الاستجابة
             $requiredTokens = max(4000, $generation->number_of_questions * 800);
             $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
-            
+
             Log::info('Question generation tokens calculation', [
                 'generation_id' => $generation->id,
                 'required_questions' => $generation->number_of_questions,
@@ -123,29 +158,29 @@ class AIQuestionGenerationService
                 'max_tokens' => $maxTokens,
                 'model_max_tokens' => $model->max_tokens,
             ]);
-            
+
             // التحقق من API Key
             $apiKey = $model->getDecryptedApiKey();
-            if (!$apiKey) {
+            if (! $apiKey) {
                 throw new \Exception('API Key غير موجود للموديل المحدد. يرجى إعداد API Key أولاً.');
             }
-            
+
             Log::info('Starting question generation API call', [
                 'generation_id' => $generation->id,
                 'model_id' => $model->id,
                 'model_name' => $model->name,
                 'provider' => $model->provider,
-                'has_api_key' => !empty($apiKey),
+                'has_api_key' => ! empty($apiKey),
                 'prompt_length' => strlen($prompt),
             ]);
-            
+
             // إرسال الطلب
             $provider = AIProviderFactory::create($model);
             $response = $provider->generateText($prompt, [
                 'max_tokens' => $maxTokens,
                 'temperature' => 0.7, // درجة حرارة معتدلة للتنوع مع الدقة
             ]);
-            
+
             Log::info('Question generation API response', [
                 'generation_id' => $generation->id,
                 'response_length' => strlen($response ?? ''),
@@ -153,7 +188,7 @@ class AIQuestionGenerationService
                 'last_error' => $provider->getLastError(),
             ]);
 
-            if (!$response || empty($response)) {
+            if (! $response || empty($response)) {
                 // محاولة الحصول على معلومات أكثر من آخر خطأ
                 $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
                 throw new \Exception($lastError);
@@ -172,16 +207,16 @@ class AIQuestionGenerationService
 
             // التحقق من صحة الأسئلة
             $validatedQuestions = $this->validateGeneratedQuestions($questions);
-            
+
             // التحقق من العدد المطلوب
             $requiredCount = $generation->number_of_questions;
             $actualCount = count($validatedQuestions);
             $warningMessage = null;
-            
+
             if ($actualCount < $requiredCount) {
                 $missingCount = $requiredCount - $actualCount;
                 $warningMessage = "تم توليد {$actualCount} سؤال فقط من {$requiredCount} المطلوبة. ({$missingCount} سؤال مفقود)";
-                
+
                 Log::warning('Question generation incomplete', [
                     'generation_id' => $generation->id,
                     'required' => $requiredCount,
@@ -196,14 +231,96 @@ class AIQuestionGenerationService
                 'status' => 'completed',
                 'generated_questions' => $validatedQuestions,
                 'prompt' => $prompt,
-                'tokens_used' => $provider->estimateTokens($prompt . $response),
-                'cost' => $model->getCost($provider->estimateTokens($prompt . $response)),
+                'tokens_used' => $provider->estimateTokens($prompt.$response),
+                'cost' => $model->getCost($provider->estimateTokens($prompt.$response)),
                 'error_message' => $warningMessage, // نستخدم error_message لحفظ التحذير
             ]);
 
             return $validatedQuestions;
         } catch (\Exception $e) {
-            Log::error('Error processing question generation: ' . $e->getMessage(), [
+            Log::error('Error processing question generation: '.$e->getMessage(), [
+                'generation_id' => $generation->id,
+            ]);
+
+            $generation->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function processGenerationWithLaravelSdk(AIQuestionGeneration $generation, LaravelAiModel $laraModel): array
+    {
+        $generation->update(['status' => 'processing']);
+
+        try {
+            $prompt = $this->promptService->getQuestionGenerationPrompt(
+                $generation->source_content,
+                [
+                    'question_type' => $generation->question_type,
+                    'number_of_questions' => $generation->number_of_questions,
+                    'difficulty_level' => $generation->difficulty_level,
+                ]
+            );
+
+            Log::info('Question generation (Laravel AI SDK) starting', [
+                'generation_id' => $generation->id,
+                'laravel_ai_model_id' => $laraModel->id,
+                'prompt_length' => strlen($prompt),
+            ]);
+
+            $response = $this->providerManager->runWithModel($laraModel, function () use ($laraModel, $prompt) {
+                return $this->promptRunner->runPlain($laraModel, new QuestionGenerationPlainAgent, $prompt, 180);
+            });
+
+            $responseText = trim((string) $response->text);
+            if ($responseText === '') {
+                throw new \Exception('لم يُرجع الموديل أي نص. جرّب موديلاً آخر أو زد max_tokens في إعدادات موديل Laravel AI.');
+            }
+
+            Log::info('Question generation (Laravel AI SDK) response', [
+                'generation_id' => $generation->id,
+                'response_length' => strlen($responseText),
+                'preview' => mb_substr($responseText, 0, 500),
+            ]);
+
+            $questions = $this->parseGeneratedQuestions($responseText);
+            $validatedQuestions = $this->validateGeneratedQuestions($questions);
+
+            $requiredCount = $generation->number_of_questions;
+            $actualCount = count($validatedQuestions);
+            $warningMessage = null;
+
+            if ($actualCount < $requiredCount) {
+                $missingCount = $requiredCount - $actualCount;
+                $warningMessage = "تم توليد {$actualCount} سؤال فقط من {$requiredCount} المطلوبة. ({$missingCount} سؤال مفقود)";
+
+                Log::warning('Question generation incomplete (Laravel AI SDK)', [
+                    'generation_id' => $generation->id,
+                    'required' => $requiredCount,
+                    'actual' => $actualCount,
+                    'missing' => $missingCount,
+                ]);
+            }
+
+            $tokensUsed = ($response->usage->promptTokens ?? 0) + ($response->usage->completionTokens ?? 0);
+
+            $generation->update([
+                'status' => 'completed',
+                'generated_questions' => $validatedQuestions,
+                'tokens_used' => $tokensUsed,
+                'cost' => 0,
+                'error_message' => $warningMessage,
+            ]);
+
+            return $validatedQuestions;
+        } catch (\Exception $e) {
+            Log::error('Error processing question generation (Laravel AI SDK): '.$e->getMessage(), [
                 'generation_id' => $generation->id,
             ]);
 
@@ -219,7 +336,7 @@ class AIQuestionGenerationService
     /**
      * حفظ الأسئلة المولدة
      */
-    public function saveGeneratedQuestions(AIQuestionGeneration $generation, array $selectedIndices = null): Collection
+    public function saveGeneratedQuestions(AIQuestionGeneration $generation, ?array $selectedIndices = null): Collection
     {
         if ($generation->status !== 'completed') {
             throw new \Exception('التوليد لم يكتمل بعد');
@@ -229,7 +346,7 @@ class AIQuestionGenerationService
         $savedQuestions = collect();
 
         // إذا تم تحديد indices، احفظ فقط المحددة
-        if ($selectedIndices !== null && !empty($selectedIndices)) {
+        if ($selectedIndices !== null && ! empty($selectedIndices)) {
             $filteredQuestions = [];
             foreach ($questions as $index => $questionData) {
                 if (in_array($index, $selectedIndices)) {
@@ -247,13 +364,13 @@ class AIQuestionGenerationService
             'short_answer' => 4,      // short_answer
             'essay' => 5,             // essay
         ];
-        
+
         DB::beginTransaction();
         try {
             foreach ($questions as $questionData) {
                 $type = $questionData['type'] ?? 'single_choice';
                 $questionTypeId = $questionTypeMap[$type] ?? 1;
-                
+
                 $question = QuestionBank::create([
                     'course_id' => $generation->course_id,
                     'question_type_id' => $questionTypeId,
@@ -295,16 +412,16 @@ class AIQuestionGenerationService
             }
 
             DB::commit();
-            
+
             Log::info('Questions saved successfully', [
                 'generation_id' => $generation->id,
                 'saved_count' => $savedQuestions->count(),
             ]);
-            
+
             return $savedQuestions;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error saving generated questions: ' . $e->getMessage(), [
+            Log::error('Error saving generated questions: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
@@ -319,7 +436,7 @@ class AIQuestionGenerationService
         $validated = [];
 
         foreach ($questions as $question) {
-            if (!isset($question['question']) || empty($question['question'])) {
+            if (! isset($question['question']) || empty($question['question'])) {
                 continue;
             }
 
@@ -348,26 +465,27 @@ class AIQuestionGenerationService
         ]);
 
         // محاولة إصلاح encoding issues
-        if (!mb_check_encoding($response, 'UTF-8')) {
+        if (! mb_check_encoding($response, 'UTF-8')) {
             $response = mb_convert_encoding($response, 'UTF-8', 'auto');
             Log::info('Fixed encoding issues in response');
         }
-        
+
         // تنظيف الرد من markdown code blocks
         $cleanedResponse = $response;
-        
+
         // إزالة ```json و ``` من البداية والنهاية
         $cleanedResponse = preg_replace('/^```(?:json)?\s*/i', '', trim($cleanedResponse));
         $cleanedResponse = preg_replace('/\s*```$/i', '', $cleanedResponse);
-        
+
         // إزالة أي BOM أو characters غريبة
         $cleanedResponse = preg_replace('/^\xEF\xBB\xBF/', '', $cleanedResponse);
         $cleanedResponse = trim($cleanedResponse);
-        
+
         // محاولة 1: تحليل JSON مباشرة
         $decoded = json_decode($cleanedResponse, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             Log::info('JSON parsed successfully (direct)', ['count' => count($decoded)]);
+
             return $decoded;
         }
 
@@ -375,9 +493,10 @@ class AIQuestionGenerationService
         if (preg_match('/\[\s*\{.*?\}\s*\]/s', $cleanedResponse, $matches)) {
             $jsonString = $matches[0];
             $decoded = json_decode($jsonString, true);
-            
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 Log::info('JSON parsed successfully (regex array)', ['count' => count($decoded)]);
+
                 return $decoded;
             }
         }
@@ -389,27 +508,30 @@ class AIQuestionGenerationService
         if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
             $jsonString = substr($cleanedResponse, $jsonStart, $jsonEnd - $jsonStart + 1);
             $decoded = json_decode($jsonString, true);
-            
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 Log::info('JSON parsed successfully (manual extraction)', ['count' => count($decoded)]);
+
                 return $decoded;
             }
         }
 
         // محاولة 4: البحث عن JSON object واحد
         if (preg_match('/\{[^{}]*"question"[^{}]*\}/s', $cleanedResponse, $matches)) {
-            $decoded = json_decode('[' . $matches[0] . ']', true);
-            
+            $decoded = json_decode('['.$matches[0].']', true);
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 Log::info('JSON parsed successfully (single object)', ['count' => count($decoded)]);
+
                 return $decoded;
             }
         }
 
         // محاولة 5: تحليل نص غير JSON (fallback)
         $questions = $this->parseTextBasedQuestions($cleanedResponse);
-        if (!empty($questions)) {
+        if (! empty($questions)) {
             Log::info('Questions parsed from text format', ['count' => count($questions)]);
+
             return $questions;
         }
 
@@ -427,7 +549,7 @@ class AIQuestionGenerationService
     private function parseTextBasedQuestions(string $text): array
     {
         $questions = [];
-        
+
         // البحث عن أنماط مثل "1. سؤال" أو "السؤال 1:"
         $patterns = [
             '/(?:سؤال|السؤال|Question)\s*(\d+)[:\.\)]\s*(.+?)(?=(?:سؤال|السؤال|Question)\s*\d+|$)/is',
@@ -449,8 +571,8 @@ class AIQuestionGenerationService
                         ];
                     }
                 }
-                
-                if (!empty($questions)) {
+
+                if (! empty($questions)) {
                     break;
                 }
             }
@@ -459,4 +581,3 @@ class AIQuestionGenerationService
         return $questions;
     }
 }
-

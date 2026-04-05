@@ -1,0 +1,199 @@
+@extends('admin.layouts.master')
+
+@section('page-title')
+    تعديل موديل Laravel AI SDK
+@stop
+
+@section('content')
+<div class="main-content app-content">
+    <div class="container-fluid">
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+            <div class="my-auto">
+                <h5 class="page-title fs-21 mb-1">تعديل: {{ $model->name }}</h5>
+            </div>
+            <div>
+                <a href="{{ route('admin.ai-sdk.models.index') }}" class="btn btn-secondary btn-sm">رجوع</a>
+            </div>
+        </div>
+
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <form action="{{ route('admin.ai-sdk.models.update', $model) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+                            <div class="mb-3">
+                                <label class="form-label">الاسم <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" value="{{ old('name', $model->name) }}" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lai_provider">المزود <span class="text-danger">*</span></label>
+                                    <select name="provider" id="lai_provider" class="form-select" required>
+                                        @foreach($providers as $k => $label)
+                                            <option value="{{ $k }}" @selected(old('provider', $model->provider) === $k)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="lai_model">معرف الموديل <span class="text-danger">*</span></label>
+                                    <input type="text" name="model" id="lai_model" class="form-control" value="{{ old('model', $model->model) }}" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="lai_api_key">مفتاح API</label>
+                                <div class="input-group">
+                                    <input type="password" name="api_key" id="lai_api_key" class="form-control" placeholder="اتركه فارغاً للإبقاء على المفتاح الحالي" autocomplete="new-password">
+                                    <button type="button" class="btn btn-outline-primary" id="lai_test_connection_btn">
+                                        <i class="fas fa-vial me-1"></i> اختبار الاتصال
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">إن تركت المفتاح فارغاً، يُختبر الاتصال باستخدام المفتاح المحفوظ حالياً.</small>
+                                <div id="lai_test_result" class="mt-2"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="lai_base_url">Base URL</label>
+                                <input type="text" name="base_url" id="lai_base_url" class="form-control" value="{{ old('base_url', $model->base_url) }}">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">الأولوية</label>
+                                    <input type="number" name="priority" class="form-control" value="{{ old('priority', $model->priority) }}" min="0">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" for="lai_max_tokens">حد رموز الإكمال (max_tokens)</label>
+                                    <input type="number" name="max_tokens" id="lai_max_tokens" class="form-control" value="{{ old('max_tokens', $model->max_tokens) }}" min="1" max="200000" required>
+                                    <small class="text-muted">أقصى رموز للمخرجات في طلب واحد؛ زِد القيمة للمحتوى الطويل (مع حدود المزود).</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">temperature</label>
+                                    <input type="number" name="temperature" class="form-control" value="{{ old('temperature', $model->temperature) }}" step="0.01" min="0" max="2" required>
+                                </div>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="is_active" value="1" class="form-check-input" id="is_active" @checked(old('is_active', $model->is_active))>
+                                <label class="form-check-label" for="is_active">نشط</label>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">القدرات</label>
+                                <div class="row">
+                                    @php $sel = old('capabilities', $model->capabilities ?? []); @endphp
+                                    @foreach($capabilities as $key => $label)
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="capabilities[]" value="{{ $key }}" id="cap_{{ $key }}"
+                                                    @checked(is_array($sel) && in_array($key, $sel, true))>
+                                                <label class="form-check-label" for="cap_{{ $key }}">{{ $label }}</label>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">تحديث</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@stop
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('lai_test_connection_btn');
+    const resultEl = document.getElementById('lai_test_result');
+    if (!btn || !resultEl) return;
+
+    const testSavedUrl = @json(route('admin.ai-sdk.models.test', $model));
+    const testTempUrl = @json(route('admin.ai-sdk.models.test-temp'));
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+    function showResult(success, message, ms) {
+        const msLine = (ms != null) ? '<br>وقت الاستجابة: ' + ms + ' ms' : '';
+        if (success) {
+            resultEl.innerHTML = '<div class="alert alert-success alert-dismissible fade show" role="alert"><strong>نجح الاختبار</strong><br>' +
+                message + msLine + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+        } else {
+            resultEl.innerHTML = '<div class="alert alert-danger alert-dismissible fade show" role="alert"><strong>فشل الاختبار</strong><br>' +
+                message + msLine + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+        }
+    }
+
+    btn.addEventListener('click', function() {
+        const provider = document.getElementById('lai_provider')?.value || '';
+        const model = document.getElementById('lai_model')?.value?.trim() || '';
+        const apiKey = document.getElementById('lai_api_key')?.value || '';
+        const baseUrl = document.getElementById('lai_base_url')?.value?.trim() || '';
+
+        if (!provider) {
+            resultEl.innerHTML = '<div class="alert alert-warning alert-dismissible fade show" role="alert"><strong>تنبيه:</strong> اختر المزود<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+            return;
+        }
+        if (!model) {
+            resultEl.innerHTML = '<div class="alert alert-warning alert-dismissible fade show" role="alert"><strong>تنبيه:</strong> أدخل معرف الموديل<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+            return;
+        }
+
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الاختبار...';
+        resultEl.innerHTML = '';
+
+        const useTemp = apiKey.trim().length > 0;
+        const url = useTemp ? testTempUrl : testSavedUrl;
+        const options = {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        };
+
+        if (useTemp) {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify({
+                provider: provider,
+                model: model,
+                api_key: apiKey,
+                base_url: baseUrl || null
+            });
+        }
+
+        fetch(url, options)
+        .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+        .then(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            const data = res.data;
+            const ms = data.response_time_ms != null ? data.response_time_ms : data.latency_ms;
+            if (res.ok && data.success) {
+                showResult(true, data.message || 'الاتصال ناجح.', ms);
+            } else {
+                let msg = (data && data.message) ? data.message : 'فشل الطلب';
+                if (data && data.errors) {
+                    msg = Object.values(data.errors).flat().join(' ');
+                }
+                showResult(false, msg, ms);
+            }
+        })
+        .catch(function(e) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            resultEl.innerHTML = '<div class="alert alert-danger alert-dismissible fade show" role="alert"><strong>خطأ شبكة</strong><br>' + (e.message || 'تعذر الاتصال') + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+        });
+    });
+});
+</script>
+@endsection

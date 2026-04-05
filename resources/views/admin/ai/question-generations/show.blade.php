@@ -107,7 +107,10 @@
                             <tr>
                                 <td class="text-muted">الموديل:</td>
                                 <td>
-                                    @if($generation->model)
+                                    @if($generation->laravelAiModel)
+                                        <span class="badge bg-info text-dark">{{ $generation->laravelAiModel->name }}</span>
+                                        <small class="text-muted d-block">Laravel AI SDK</small>
+                                    @elseif($generation->model)
                                         <span class="badge bg-dark">{{ $generation->model->name }}</span>
                                     @else
                                         <span class="text-muted">-</span>

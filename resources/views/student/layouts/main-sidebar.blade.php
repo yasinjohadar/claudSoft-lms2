@@ -72,6 +72,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - تقارير الدراسة -->
+                        <li class="slide {{ request()->routeIs('student.study-reports.*', 'student.progress.ai-reports.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.study-reports.index') }}" class="side-menu__item {{ request()->routeIs('student.study-reports.*', 'student.progress.ai-reports.*') ? 'active' : '' }}">
+                                <i class="fas fa-file-alt side-menu__icon"></i>
+                                <span class="side-menu__label">تقارير الدراسة</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - الموارد الخارجية -->
                         <li class="slide {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">
                             <a href="{{ route('student.external-resources.index') }}" class="side-menu__item {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">
@@ -356,6 +365,22 @@
                     // Invalid URL, skip
                 }
             });
+
+            // تقارير الدراسة: الصفحات تحت /study-reports أو progress/.../ai-reports
+            if (/\/student\/study-reports(\/|$)/.test(currentPath) || /\/student\/progress\/.*\/ai-reports/.test(currentPath) || /\/student\/progress\/ai-reports\//.test(currentPath)) {
+                sidebarLinks.forEach(function(link) {
+                    const href = link.getAttribute('href');
+                    if (!href || href === '#' || href === 'javascript:void(0);') {
+                        return;
+                    }
+                    try {
+                        const linkUrl = new URL(link.href, window.location.origin);
+                        if (/\/student\/study-reports\/?$/.test(linkUrl.pathname)) {
+                            bestMatch = link;
+                        }
+                    } catch (e) {}
+                });
+            }
 
             // Activate the best matching link
             if (bestMatch) {

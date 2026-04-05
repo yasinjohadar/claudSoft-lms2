@@ -287,4 +287,82 @@ class QuestionBank extends Model
     {
         return $this->course_id === null;
     }
+
+    /**
+     * ملء الفراغات من بنك الأسئلة: الخيارات الصحيحة في question_options (is_correct + option_order).
+     *
+     * @return array{blank_count: int, correct_count: int, all_filled: bool}
+     */
+    public function summarizeFillBlanksFromOptions(array $studentAnswer): array
+    {
+        $normalized = [];
+        foreach ($studentAnswer as $key => $value) {
+            $normalized[(int) $key] = $value;
+        }
+
+        $blankCount = substr_count((string) $this->question_text, '[[blank]]');
+        if ($blankCount < 1) {
+            return ['blank_count' => 0, 'correct_count' => 0, 'all_filled' => false];
+        }
+
+        $correctOptions = $this->options()
+            ->where('is_correct', true)
+            ->orderBy('option_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($correctOptions->isEmpty()) {
+            return ['blank_count' => $blankCount, 'correct_count' => 0, 'all_filled' => false];
+        }
+
+        $byOrder = $correctOptions->groupBy('option_order');
+        $correctCount = 0;
+        $allFilled = true;
+
+        for ($i = 0; $i < $blankCount; $i++) {
+            if (! array_key_exists($i, $normalized) || $normalized[$i] === '' || $normalized[$i] === null) {
+                $allFilled = false;
+
+                continue;
+            }
+
+            $alts = $byOrder->get($i + 1, collect());
+            if ($alts->isEmpty() && $blankCount === 1 && $i === 0) {
+                $alts = $correctOptions;
+            }
+            if ($alts->isEmpty()) {
+                continue;
+            }
+
+            $acceptable = $alts->pluck('option_text')
+                ->map(fn ($t) => trim(mb_strtolower((string) $t)))
+                ->unique()
+                ->values()
+                ->all();
+
+            $studentText = trim(mb_strtolower((string) $normalized[$i]));
+
+            if (in_array($studentText, $acceptable, true)) {
+                $correctCount++;
+            }
+        }
+
+        return [
+            'blank_count' => $blankCount,
+            'correct_count' => $correctCount,
+            'all_filled' => $allFilled,
+        ];
+    }
+
+    /**
+     * تصحيح صارم لملء الفراغات (وحدات / عندما يجب ملء كل الفراغات بشكل صحيح).
+     */
+    public function matchesFillBlanksAnswer(array $studentAnswer): bool
+    {
+        $s = $this->summarizeFillBlanksFromOptions($studentAnswer);
+
+        return $s['blank_count'] > 0
+            && $s['all_filled']
+            && $s['correct_count'] === $s['blank_count'];
+    }
 }

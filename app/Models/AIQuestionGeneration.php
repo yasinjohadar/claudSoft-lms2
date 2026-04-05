@@ -22,6 +22,7 @@ class AIQuestionGeneration extends Model
         'number_of_questions',
         'difficulty_level',
         'ai_model_id',
+        'laravel_ai_model_id',
         'status',
         'generated_questions',
         'tokens_used',
@@ -107,5 +108,9 @@ class AIQuestionGeneration extends Model
     {
         return $this->belongsTo(AIModel::class, 'ai_model_id');
     }
-}
 
+    public function laravelAiModel(): BelongsTo
+    {
+        return $this->belongsTo(LaravelAiModel::class, 'laravel_ai_model_id');
+    }
+}

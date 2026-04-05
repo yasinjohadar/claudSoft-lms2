@@ -10,6 +10,9 @@
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">توليد أسئلة تلقائياً</h5>
+                @if(!empty($useLaravelAiEngine))
+                    <p class="mb-0 text-muted small"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديل من «موديلات Laravel AI SDK» (قدرة questions.generate عند الافتراضي).</p>
+                @endif
             </div>
             <div>
                 <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
@@ -94,13 +97,23 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="ai_model_id" class="form-label">موديل AI (اختياري)</label>
-                                    <select class="form-select" id="ai_model_id" name="ai_model_id">
-                                        <option value="">استخدام الموديل الافتراضي</option>
-                                        @foreach($models as $model)
-                                            <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if(!empty($useLaravelAiEngine))
+                                        <label for="laravel_ai_model_id" class="form-label">موديل Laravel AI SDK (اختياري)</label>
+                                        <select class="form-select" id="laravel_ai_model_id" name="laravel_ai_model_id">
+                                            <option value="">افتراضي (أولوية + قدرة questions.generate)</option>
+                                            @foreach($laravelAiModels as $lmodel)
+                                                <option value="{{ $lmodel->id }}" {{ (string) old('laravel_ai_model_id') === (string) $lmodel->id ? 'selected' : '' }}>{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <label for="ai_model_id" class="form-label">موديل AI (اختياري)</label>
+                                        <select class="form-select" id="ai_model_id" name="ai_model_id">
+                                            <option value="">استخدام الموديل الافتراضي</option>
+                                            @foreach($models as $model)
+                                                <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
                             </div>
 

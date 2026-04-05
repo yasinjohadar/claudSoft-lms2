@@ -473,15 +473,18 @@
                         </li>
 
                         <!-- الذكاء الاصطناعي -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.ai.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'active' : '' }}">
                                 <i class="fas fa-robot side-menu__icon"></i>
                                 <span class="side-menu__label">الذكاء الاصطناعي</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.ai.*') ? 'display: block;' : '' }}">
+                            <ul class="slide-menu child1 {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('admin.ai.models.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.models.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.models.*') ? 'active' : '' }}">موديلات AI</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai-sdk.models.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai-sdk.models.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai-sdk.models.*') ? 'active' : '' }}">موديلات Laravel AI SDK</a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.question-generations.*') ? 'active' : '' }}">توليد الأسئلة</a>
@@ -494,6 +497,9 @@
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.ai.student-feedback.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.student-feedback.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.student-feedback.*') ? 'active' : '' }}">ملاحظات الطلاب</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.ai.student-progress-reports.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.student-progress-reports.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.student-progress-reports.*') ? 'active' : '' }}">تقارير الدراسة (AI)</a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.ai.settings.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.ai.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.ai.settings.*') ? 'active' : '' }}">الإعدادات</a>
