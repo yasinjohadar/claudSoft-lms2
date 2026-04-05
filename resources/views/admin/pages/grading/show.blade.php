@@ -14,7 +14,7 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">تصحيح: {{ $attempt->quiz->title }}</h5>
+                    <h5 class="page-title fs-21 mb-1">تصحيح: {{ $attempt->quiz?->title ?? 'اختبار محذوف' }}</h5>
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
@@ -38,8 +38,8 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <p class="mb-2"><strong>الاسم:</strong> {{ $attempt->student->name }}</p>
-                                    <p class="mb-2"><strong>البريد الإلكتروني:</strong> {{ $attempt->student->email }}</p>
+                                    <p class="mb-2"><strong>الاسم:</strong> {{ $attempt->student?->name ?? '—' }}</p>
+                                    <p class="mb-2"><strong>البريد الإلكتروني:</strong> {{ $attempt->student?->email ?? '—' }}</p>
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-2"><strong>المحاولة رقم:</strong> #{{ $attempt->attempt_number }}</p>

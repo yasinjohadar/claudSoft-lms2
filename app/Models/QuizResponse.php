@@ -710,6 +710,10 @@ class QuizResponse extends Model
         }
 
         $question = $this->question;
+        if ($question === null) {
+            return [false, 0];
+        }
+
         $usesBankOptions = $question->options()->where('is_correct', true)->exists();
 
         if ($usesBankOptions) {

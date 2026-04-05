@@ -170,16 +170,22 @@
                                                     <i class="fas fa-user"></i>
                                                 </div>
                                                 <div>
-                                                    <span class="fw-semibold">{{ $attempt->student->name }}</span>
+                                                    <span class="fw-semibold">{{ $attempt->student?->name ?? '—' }}</span>
                                                     <br>
-                                                    <small class="text-muted">{{ $attempt->student->email }}</small>
+                                                    <small class="text-muted">{{ $attempt->student?->email ?? '—' }}</small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="fw-semibold">{{ $attempt->quiz->title }}</span>
-                                            <br>
-                                            <small class="badge bg-primary-transparent">{{ $attempt->quiz->course->title }}</small>
+                                            @if($attempt->quiz)
+                                                <span class="fw-semibold">{{ $attempt->quiz->title }}</span>
+                                                <br>
+                                                <small class="badge bg-primary-transparent">{{ $attempt->quiz->course?->title ?? '—' }}</small>
+                                            @else
+                                                <span class="fw-semibold text-muted">اختبار محذوف</span>
+                                                <br>
+                                                <small class="badge bg-secondary-transparent">—</small>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="badge bg-secondary-transparent">#{{ $attempt->attempt_number }}</span>

@@ -315,7 +315,8 @@ class QuestionBank extends Model
             return ['blank_count' => $blankCount, 'correct_count' => 0, 'all_filled' => false];
         }
 
-        $byOrder = $correctOptions->groupBy('option_order');
+        // مفاتيح رقمية صريحة (تفادي اختلاف string/int من قاعدة البيانات مع Collection::get)
+        $byOrder = $correctOptions->groupBy(fn ($o) => (int) $o->option_order);
         $correctCount = 0;
         $allFilled = true;
 
@@ -335,12 +336,12 @@ class QuestionBank extends Model
             }
 
             $acceptable = $alts->pluck('option_text')
-                ->map(fn ($t) => trim(mb_strtolower((string) $t)))
+                ->map(fn ($t) => self::normalizeFillBlankCompareString((string) $t))
                 ->unique()
                 ->values()
                 ->all();
 
-            $studentText = trim(mb_strtolower((string) $normalized[$i]));
+            $studentText = self::normalizeFillBlankCompareString((string) $normalized[$i]);
 
             if (in_array($studentText, $acceptable, true)) {
                 $correctCount++;
@@ -364,5 +365,19 @@ class QuestionBank extends Model
         return $s['blank_count'] > 0
             && $s['all_filled']
             && $s['correct_count'] === $s['blank_count'];
+    }
+
+    /**
+     * مقارنة نص الفراغ بدون الاعتماد على mbstring إن لم يكن مفعّلاً على السيرفر.
+     */
+    private static function normalizeFillBlankCompareString(string $value): string
+    {
+        $value = trim($value);
+
+        if (function_exists('mb_strtolower')) {
+            return mb_strtolower($value);
+        }
+
+        return strtolower($value);
     }
 }
