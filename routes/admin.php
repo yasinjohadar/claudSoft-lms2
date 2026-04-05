@@ -351,6 +351,7 @@ Route::prefix('admin')
         // Quiz Grading
         Route::prefix('grading')->name('grading.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\QuizGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}/pdf', [\App\Http\Controllers\Admin\QuizGradingController::class, 'downloadAttemptPdf'])->name('attempt-pdf');
             Route::get('/{attemptId}', [\App\Http\Controllers\Admin\QuizGradingController::class, 'show'])->name('show');
             Route::post('/responses/{responseId}/grade', [\App\Http\Controllers\Admin\QuizGradingController::class, 'gradeResponse'])->name('grade-response');
             Route::post('/bulk-grade', [\App\Http\Controllers\Admin\QuizGradingController::class, 'gradeBulk'])->name('bulk-grade');
