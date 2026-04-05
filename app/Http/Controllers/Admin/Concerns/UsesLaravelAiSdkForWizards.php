@@ -25,4 +25,21 @@ trait UsesLaravelAiSdkForWizards
 
         return LaravelAiModel::query()->where('is_active', true)->exists();
     }
+
+    /**
+     * تجاوز محرك المعالج لكل طلب: laravel_ai أو legacy؛ وإلا السلوك الافتراضي من الإعدادات.
+     *
+     * @param  'blog_engine'|'docs_engine'|'questions_engine'|'reports_engine'  $featureEngineKey
+     */
+    protected function resolveWizardAiEngine(?string $requestedEngine, string $featureEngineKey): bool
+    {
+        if ($requestedEngine === 'laravel_ai') {
+            return true;
+        }
+        if ($requestedEngine === 'legacy') {
+            return false;
+        }
+
+        return $this->wizardUsesLaravelAiSdk($featureEngineKey);
+    }
 }

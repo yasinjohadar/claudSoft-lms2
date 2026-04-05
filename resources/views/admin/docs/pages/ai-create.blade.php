@@ -17,7 +17,9 @@
             <div>
                 <h4 class="mb-0">توليد صفحة توثيق بالذكاء الاصطناعي</h4>
                 <p class="mb-0 text-muted">نفس آلية توليد المدونة: إعدادات ثم توليد ثم مراجعة وحفظ</p>
-                @if(!empty($useLaravelAiEngine))
+                @if(!empty($docsEngineChoiceAvailable))
+                    <p class="mb-0 mt-1"><span class="badge bg-secondary">محركان</span> يمكنك اختيار <strong>Laravel AI SDK</strong> أو <strong>موديلات بنك الموديلات القديمة</strong> لكل عملية توليد.</p>
+                @elseif(!empty($useLaravelAiEngine))
                     <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK» (قدرة docs.refine مفضّلة عند الاختيار الافتراضي).</p>
                 @endif
             </div>
@@ -51,23 +53,45 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    @if(!empty($useLaravelAiEngine))
-                                        <label class="form-label">موديل Laravel AI SDK</label>
-                                        <select id="laravel_ai_model_id" class="form-select">
-                                            <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
-                                            @foreach($laravelAiModels as $lmodel)
-                                                <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
-                                            @endforeach
-                                        </select>
-                                        <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                    @if(!empty($docsEngineChoiceAvailable))
+                                        <label class="form-label">محرك التوثيق</label>
+                                        <div class="mb-2">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_laravel_ai" value="laravel_ai" {{ !empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="docs_engine_laravel_ai">Laravel AI SDK</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_legacy" value="legacy" {{ empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="docs_engine_legacy">موديلات قديمة (بنك الموديلات)</label>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @if($models->isEmpty() && $laravelAiModels->isEmpty())
+                                        <div class="alert alert-warning mb-0 small">لا يوجد موديل نشط في كلا النظامين. أضف موديلاً من «إدارة موديلات AI» أو «موديلات Laravel AI SDK».</div>
                                     @else
-                                        <label class="form-label">موديل AI</label>
-                                        <select id="ai_model_id" class="form-select">
-                                            <option value="">الافتراضي</option>
-                                            @foreach($models as $model)
-                                            <option value="{{ $model->id }}">{{ $model->name }}</option>
-                                            @endforeach
-                                        </select>
+                                        @if(!empty($docsEngineChoiceAvailable) || ($laravelAiModels->isNotEmpty() && $models->isEmpty()))
+                                            <div id="docs_engine_laravel_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && empty($useLaravelAiEngine) ? 'display:none' : '' }}">
+                                                <label class="form-label">موديل Laravel AI SDK</label>
+                                                <select id="laravel_ai_model_id" class="form-select" @if($laravelAiModels->isEmpty()) disabled @endif>
+                                                    <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
+                                                    @foreach($laravelAiModels as $lmodel)
+                                                        <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                            </div>
+                                        @endif
+                                        @if(!empty($docsEngineChoiceAvailable) || ($models->isNotEmpty() && $laravelAiModels->isEmpty()))
+                                            <div id="docs_engine_legacy_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && !empty($useLaravelAiEngine) ? 'display:none' : '' }}">
+                                                <label class="form-label">موديل AI (بنك الموديلات)</label>
+                                                <select id="ai_model_id" class="form-select" @if($models->isEmpty()) disabled @endif>
+                                                    <option value="">الافتراضي</option>
+                                                    @foreach($models as $model)
+                                                        <option value="{{ $model->id }}">{{ $model->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
                                     @endif
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -211,8 +235,18 @@
 @include('admin.docs.partials.tinymce-doc')
 <script>
 (function () {
-    const useLaravelAiEngine = @json(!empty($useLaravelAiEngine));
+    const useLaravelAiEngineDefault = @json(!empty($useLaravelAiEngine));
+    const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
     const parentPages = @json($parentPagesJson);
+
+    function syncDocsEngineModelVisibility() {
+        if (!docsEngineChoiceAvailable) return;
+        const laravelChecked = document.getElementById('docs_engine_laravel_ai')?.checked;
+        const wL = document.getElementById('docs_engine_laravel_wrap');
+        const wG = document.getElementById('docs_engine_legacy_wrap');
+        if (wL) wL.style.display = laravelChecked ? '' : 'none';
+        if (wG) wG.style.display = laravelChecked ? 'none' : '';
+    }
 
     function refreshParentOptions() {
         const catId = document.getElementById('doc_category_id').value;
@@ -235,6 +269,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         refreshParentOptions();
         document.getElementById('doc_category_id').addEventListener('change', refreshParentOptions);
+        syncDocsEngineModelVisibility();
+        document.querySelectorAll('input[name="docs_engine"]').forEach(function (el) {
+            el.addEventListener('change', syncDocsEngineModelVisibility);
+        });
     });
 
     function slugify(t) {
@@ -292,14 +330,18 @@
             btnText.textContent = 'جاري التوليد...';
             spinner.classList.add('active');
 
+            let engine = useLaravelAiEngineDefault ? 'laravel_ai' : 'legacy';
+            if (docsEngineChoiceAvailable) {
+                const r = document.querySelector('input[name="docs_engine"]:checked');
+                if (r) engine = r.value;
+            }
+            const laravelEl = document.getElementById('laravel_ai_model_id');
+            const legacyEl = document.getElementById('ai_model_id');
             const payload = {
                 topic: topic,
-                ai_model_id: useLaravelAiEngine ? null : (document.getElementById('ai_model_id') ? document.getElementById('ai_model_id').value || null : null),
-                laravel_ai_model_id: (function () {
-                    if (!useLaravelAiEngine) return null;
-                    const el = document.getElementById('laravel_ai_model_id');
-                    return el ? (el.value || null) : null;
-                })(),
+                docs_engine: docsEngineChoiceAvailable ? engine : undefined,
+                ai_model_id: engine === 'legacy' ? (legacyEl ? (legacyEl.value || null) : null) : null,
+                laravel_ai_model_id: engine === 'laravel_ai' ? (laravelEl ? (laravelEl.value || null) : null) : null,
                 content_length: document.getElementById('content_length').value,
                 tone: document.getElementById('tone').value,
                 language: document.getElementById('language').value,

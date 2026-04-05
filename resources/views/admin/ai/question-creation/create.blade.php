@@ -10,7 +10,9 @@
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">إنشاء أسئلة بالذكاء الاصطناعي</h5>
-                @if(!empty($useLaravelAiEngine))
+                @if(!empty($questionsEngineChoiceAvailable))
+                    <p class="mb-0 mt-1 text-muted small"><span class="badge bg-secondary">محركان</span> يمكنك اختيار <strong>Laravel AI SDK</strong> أو <strong>موديلات بنك الموديلات القديمة</strong> لكل عملية إنشاء.</p>
+                @elseif(!empty($useLaravelAiEngine))
                     <p class="mb-0 text-muted small"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديل من «موديلات Laravel AI SDK» (قدرة questions.generate عند الافتراضي).</p>
                 @endif
             </div>
@@ -156,23 +158,50 @@
                                 </div>
                             </div>
 
+                            @php
+                                $selectedQuestionsEngine = old('questions_engine', $useLaravelAiEngine ? 'laravel_ai' : 'legacy');
+                                $questionsEngineIsLaravel = ($selectedQuestionsEngine === 'laravel_ai');
+                            @endphp
                             <div class="mb-3">
-                                @if(!empty($useLaravelAiEngine))
-                                    <label for="laravel_ai_model_id" class="form-label">موديل Laravel AI SDK (اختياري)</label>
-                                    <select class="form-select" id="laravel_ai_model_id" name="laravel_ai_model_id">
-                                        <option value="">افتراضي (أولوية + قدرة questions.generate)</option>
-                                        @foreach($laravelAiModels as $lmodel)
-                                            <option value="{{ $lmodel->id }}" {{ (string) old('laravel_ai_model_id') === (string) $lmodel->id ? 'selected' : '' }}>{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
-                                        @endforeach
-                                    </select>
+                                @if(!empty($questionsEngineChoiceAvailable))
+                                    <label class="form-label">محرك إنشاء الأسئلة</label>
+                                    <div class="mb-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="questions_engine" id="questions_engine_laravel_ai" value="laravel_ai" {{ $questionsEngineIsLaravel ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="questions_engine_laravel_ai">Laravel AI SDK</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="questions_engine" id="questions_engine_legacy" value="legacy" {{ ! $questionsEngineIsLaravel ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="questions_engine_legacy">موديلات قديمة (بنك الموديلات)</label>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if($models->isEmpty() && $laravelAiModels->isEmpty())
+                                    <div class="alert alert-warning mb-0 small">لا يوجد موديل نشط في كلا النظامين. أضف موديلاً من «إدارة موديلات AI» أو «موديلات Laravel AI SDK».</div>
                                 @else
-                                    <label for="ai_model_id" class="form-label">موديل AI (اختياري)</label>
-                                    <select class="form-select" id="ai_model_id" name="ai_model_id">
-                                        <option value="">استخدام الموديل الافتراضي</option>
-                                        @foreach($models as $model)
-                                            <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if(!empty($questionsEngineChoiceAvailable) || ($laravelAiModels->isNotEmpty() && $models->isEmpty()))
+                                        <div id="questions_engine_laravel_wrap" class="questions-engine-model-wrap" style="{{ !empty($questionsEngineChoiceAvailable) && ! $questionsEngineIsLaravel ? 'display:none' : '' }}">
+                                            <label for="laravel_ai_model_id" class="form-label">موديل Laravel AI SDK (اختياري)</label>
+                                            <select class="form-select" id="laravel_ai_model_id" name="laravel_ai_model_id" @if($laravelAiModels->isEmpty()) disabled @endif>
+                                                <option value="">افتراضي (أولوية + قدرة questions.generate)</option>
+                                                @foreach($laravelAiModels as $lmodel)
+                                                    <option value="{{ $lmodel->id }}" {{ (string) old('laravel_ai_model_id') === (string) $lmodel->id ? 'selected' : '' }}>{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
+                                                @endforeach
+                                            </select>
+                                            <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                        </div>
+                                    @endif
+                                    @if(!empty($questionsEngineChoiceAvailable) || ($models->isNotEmpty() && $laravelAiModels->isEmpty()))
+                                        <div id="questions_engine_legacy_wrap" class="questions-engine-model-wrap" style="{{ !empty($questionsEngineChoiceAvailable) && $questionsEngineIsLaravel ? 'display:none' : '' }}">
+                                            <label for="ai_model_id" class="form-label">موديل AI (بنك الموديلات، اختياري)</label>
+                                            <select class="form-select" id="ai_model_id" name="ai_model_id" @if($models->isEmpty()) disabled @endif>
+                                                <option value="">استخدام الموديل الافتراضي</option>
+                                                @foreach($models as $model)
+                                                    <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>{{ $model->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
 
@@ -195,6 +224,22 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const questionsEngineChoiceAvailable = @json(!empty($questionsEngineChoiceAvailable));
+
+    function syncQuestionsEngineModelVisibility() {
+        if (!questionsEngineChoiceAvailable) return;
+        const laravelChecked = document.getElementById('questions_engine_laravel_ai')?.checked;
+        const wL = document.getElementById('questions_engine_laravel_wrap');
+        const wG = document.getElementById('questions_engine_legacy_wrap');
+        if (wL) wL.style.display = laravelChecked ? '' : 'none';
+        if (wG) wG.style.display = laravelChecked ? 'none' : '';
+    }
+
+    syncQuestionsEngineModelVisibility();
+    document.querySelectorAll('input[name="questions_engine"]').forEach(function (el) {
+        el.addEventListener('change', syncQuestionsEngineModelVisibility);
+    });
+
     const sourceType = document.getElementById('source_type');
     const lessonNameBlock = document.getElementById('lesson_name_block');
     const lessonSelectBlock = document.getElementById('lesson_select_block');
@@ -294,6 +339,14 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             questionTypesError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return false;
+        }
+        if (questionsEngineChoiceAvailable) {
+            const laravelRadio = document.getElementById('questions_engine_laravel_ai');
+            const laravelChecked = laravelRadio && laravelRadio.checked;
+            const selL = document.getElementById('laravel_ai_model_id');
+            const selG = document.getElementById('ai_model_id');
+            if (selL) selL.disabled = !laravelChecked;
+            if (selG) selG.disabled = laravelChecked;
         }
     });
 });

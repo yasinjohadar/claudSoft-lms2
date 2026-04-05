@@ -46,9 +46,8 @@ class AIDocumentationPageController extends Controller
         ])->values()->all();
 
         $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
-        $laravelAiModels = $useLaravelAiEngine
-            ? LaravelAiModel::query()->activeOrdered()->get()
-            : collect();
+        $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
+        $docsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
 
         return view('admin.docs.pages.ai-create', compact(
             'categories',
@@ -57,6 +56,7 @@ class AIDocumentationPageController extends Controller
             'parentPagesJson',
             'useLaravelAiEngine',
             'laravelAiModels',
+            'docsEngineChoiceAvailable',
         ));
     }
 
@@ -88,9 +88,8 @@ class AIDocumentationPageController extends Controller
             ])->values()->all();
 
         $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
-        $laravelAiModels = $useLaravelAiEngine
-            ? LaravelAiModel::query()->activeOrdered()->get()
-            : collect();
+        $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
+        $docsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
 
         return view('admin.docs.pages.ai-improve', compact(
             'models',
@@ -100,6 +99,7 @@ class AIDocumentationPageController extends Controller
             'parentPagesJson',
             'useLaravelAiEngine',
             'laravelAiModels',
+            'docsEngineChoiceAvailable',
         ));
     }
 
@@ -110,6 +110,7 @@ class AIDocumentationPageController extends Controller
             'user_notes' => 'nullable|string|max:5000',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
+            'docs_engine' => 'nullable|in:laravel_ai,legacy',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
             'update_excerpt' => 'boolean',
@@ -123,7 +124,15 @@ class AIDocumentationPageController extends Controller
                 'update_excerpt' => $validated['update_excerpt'] ?? false,
             ];
 
-            if ($this->wizardUsesLaravelAiSdk('docs_engine')) {
+            $requestedEngine = $validated['docs_engine'] ?? null;
+            if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد موديل Laravel AI نشط. أضف موديلاً من لوحة «موديلات Laravel AI SDK» أو اختر المحرك القديم.',
+                ], 400);
+            }
+
+            if ($this->resolveWizardAiEngine($requestedEngine, 'docs_engine')) {
                 $laraModel = null;
                 if (! empty($validated['laravel_ai_model_id'])) {
                     $laraModel = LaravelAiModel::query()
@@ -204,6 +213,7 @@ class AIDocumentationPageController extends Controller
             'topic' => 'required|string|max:500',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
+            'docs_engine' => 'nullable|in:laravel_ai,legacy',
             'content_length' => 'required|in:short,medium,long',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
@@ -234,7 +244,15 @@ class AIDocumentationPageController extends Controller
                 'generate_meta' => $validated['generate_meta'] ?? true,
             ];
 
-            if ($this->wizardUsesLaravelAiSdk('docs_engine')) {
+            $requestedEngine = $validated['docs_engine'] ?? null;
+            if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد موديل Laravel AI نشط. أضف موديلاً من لوحة «موديلات Laravel AI SDK» أو اختر المحرك القديم.',
+                ], 400);
+            }
+
+            if ($this->resolveWizardAiEngine($requestedEngine, 'docs_engine')) {
                 $laraModel = null;
                 if (! empty($validated['laravel_ai_model_id'])) {
                     $laraModel = LaravelAiModel::query()
@@ -354,4 +372,5 @@ class AIDocumentationPageController extends Controller
 
         return array_values(array_unique($forbidden));
     }
+
 }

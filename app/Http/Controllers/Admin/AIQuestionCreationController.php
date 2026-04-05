@@ -46,9 +46,8 @@ class AIQuestionCreationController extends Controller
         ];
 
         $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('questions_engine');
-        $laravelAiModels = $useLaravelAiEngine
-            ? LaravelAiModel::query()->activeOrdered()->get()
-            : collect();
+        $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
+        $questionsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
 
         $quiz = null;
         if ($request->filled('quiz_id')) {
@@ -72,6 +71,7 @@ class AIQuestionCreationController extends Controller
             'quiz',
             'useLaravelAiEngine',
             'laravelAiModels',
+            'questionsEngineChoiceAvailable',
         ));
     }
 
@@ -105,6 +105,7 @@ class AIQuestionCreationController extends Controller
             'difficulty_level' => 'required|in:easy,medium,hard,mixed',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
+            'questions_engine' => 'nullable|in:laravel_ai,legacy',
             'quiz_id' => 'nullable|exists:quizzes,id',
         ], [
             'source_type.required' => 'نوع المصدر مطلوب',
@@ -119,7 +120,14 @@ class AIQuestionCreationController extends Controller
         ]);
 
         try {
-            $useLaravel = $this->wizardUsesLaravelAiSdk('questions_engine');
+            $requestedEngine = $validated['questions_engine'] ?? null;
+            if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
+                return redirect()->back()
+                    ->with('error', 'لا يوجد موديل Laravel AI نشط. أضف موديلاً من لوحة «موديلات Laravel AI SDK» أو اختر المحرك القديم.')
+                    ->withInput();
+            }
+
+            $useLaravel = $this->resolveWizardAiEngine($requestedEngine, 'questions_engine');
             $legacyModel = null;
             $laraModel = null;
 
