@@ -327,8 +327,8 @@
                                         <i class="fas fa-redo me-2"></i>إعادة التصحيح التلقائي
                                     </button>
                                 </form>
-                                <a href="{{ route('grading.attempt-pdf', $attempt->id) }}" class="btn btn-outline-danger w-100" target="_blank" rel="noopener noreferrer">
-                                    <i class="fas fa-file-pdf me-2"></i>تحميل التقرير PDF
+                                <a href="{{ route('grading.attempt-report', $attempt->id) }}" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-file-alt me-2"></i>تقرير الإجابات
                                 </a>
                                 <hr>
                                 <a href="{{ route('grading.index') }}" class="btn btn-secondary">

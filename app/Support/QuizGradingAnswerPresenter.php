@@ -74,30 +74,122 @@ class QuizGradingAnswerPresenter
         return implode(' | ', $parts);
     }
 
-    private function studentMultipleChoiceSingleOrTrueFalse(QuizResponse $response, QuestionBank $question): string
+    /**
+     * نفس ترتيب مصادر gradeTrueFalse / gradeMultipleChoiceSingle في QuizResponse (لا نستخدم !empty على answer لأن false صالحة).
+     *
+     * @return mixed|null
+     */
+    private function extractMcSingleOrTrueFalseRaw(QuizResponse $response): mixed
     {
-        $selectedOptionId = null;
-        if (! empty($response->selected_option_ids)) {
-            $selectedOptionId = is_array($response->selected_option_ids)
-                ? ($response->selected_option_ids[0] ?? null)
-                : $response->selected_option_ids;
-        } elseif (! empty($response->response_data)) {
-            $responseData = $this->asArray($response->response_data);
-            $answer = $responseData['answer'] ?? null;
-            if ($answer !== null) {
-                $selectedOptionId = is_array($answer) ? ($answer[0] ?? null) : $answer;
+        $answer = null;
+
+        if (! empty($response->response_data) && is_array($response->response_data)) {
+            $answer = $response->response_data['answer'] ?? null;
+            if (is_array($answer) && $answer !== []) {
+                $answer = array_values($answer)[0] ?? null;
             }
-        } elseif (! empty($response->response_text)) {
-            $selectedOptionId = $response->response_text;
         }
 
-        if (! $selectedOptionId) {
+        if ($answer === null && ! empty($response->selected_option_ids)) {
+            $answer = is_array($response->selected_option_ids)
+                ? ($response->selected_option_ids[0] ?? null)
+                : $response->selected_option_ids;
+        }
+
+        if ($answer === null && $response->response_text !== null && trim((string) $response->response_text) !== '') {
+            $answer = $response->response_text;
+        }
+
+        return $answer;
+    }
+
+    /**
+     * عرض إجابة صح/خطأ بما يتوافق مع QuizResponse::gradeTrueFalse (يشمل answer المنطقي false وسلسلة "false").
+     */
+    private function formatStudentTrueFalseAnswer(mixed $answer, QuestionBank $question): string
+    {
+        if ($answer === null) {
             return self::NO_ANSWER;
+        }
+        if (is_string($answer) && trim($answer) === '') {
+            return self::NO_ANSWER;
+        }
+        if (is_array($answer)) {
+            $answer = array_values($answer)[0] ?? null;
+            if ($answer === null || (is_string($answer) && trim($answer) === '')) {
+                return self::NO_ANSWER;
+            }
+        }
+
+        $options = $question->options;
+        $answerValue = null;
+
+        if (is_numeric($answer)) {
+            $selectedOption = $options->find((int) $answer) ?? $options->find($answer);
+            if ($selectedOption) {
+                $optionText = strtolower(trim(strip_tags($selectedOption->option_text)));
+                $answerValue = ($optionText === 'صح' || $optionText === 'true' || $optionText === '1' || $optionText === 'صحيح') ? 'true' : 'false';
+            }
+        } elseif (is_bool($answer)) {
+            $answerValue = $answer ? 'true' : 'false';
+        } else {
+            $answerStr = strtolower(trim(strip_tags((string) $answer)));
+            if ($answerStr === 'صح' || $answerStr === 'true' || $answerStr === '1' || $answerStr === 'صحيح') {
+                $answerValue = 'true';
+            } elseif ($answerStr === 'خطأ' || $answerStr === 'false' || $answerStr === '0') {
+                $answerValue = 'false';
+            }
+        }
+
+        if ($answerValue === null) {
+            return self::NO_ANSWER;
+        }
+
+        foreach ($options as $option) {
+            $t = strtolower(trim(strip_tags($option->option_text)));
+            $optVal = ($t === 'صح' || $t === 'true' || $t === '1' || $t === 'صحيح') ? 'true' : 'false';
+            if ($optVal === $answerValue) {
+                return $this->stripOptionText($option->option_text);
+            }
+        }
+
+        return $answerValue === 'true' ? 'صح' : 'خطأ';
+    }
+
+    private function studentMultipleChoiceSingleOrTrueFalse(QuizResponse $response, QuestionBank $question): string
+    {
+        $raw = $this->extractMcSingleOrTrueFalseRaw($response);
+
+        $type = $question->questionType->name ?? '';
+        if ($type === 'true_false') {
+            return $this->formatStudentTrueFalseAnswer($raw, $question);
+        }
+
+        if ($raw === null) {
+            return self::NO_ANSWER;
+        }
+        if (is_string($raw) && trim($raw) === '') {
+            return self::NO_ANSWER;
+        }
+
+        if (is_bool($raw)) {
+            return $this->formatStudentTrueFalseAnswer($raw, $question);
+        }
+
+        $selectedOptionId = is_array($raw) ? ($raw[0] ?? null) : $raw;
+        if ($selectedOptionId === null || $selectedOptionId === '') {
+            return self::NO_ANSWER;
+        }
+
+        if (is_numeric($selectedOptionId)) {
+            $selectedOption = $question->options->find((int) $selectedOptionId) ?? $question->options->find($selectedOptionId);
+
+            return $selectedOption ? $this->stripOptionText($selectedOption->option_text) : self::NO_ANSWER;
         }
 
         $selectedOption = $question->options->find($selectedOptionId);
 
-        return $selectedOption ? $this->stripOptionText($selectedOption->option_text) : self::NO_ANSWER;
+        return $selectedOption ? $this->stripOptionText($selectedOption->option_text) : (string) $selectedOptionId;
     }
 
     private function studentMultipleChoiceMultiple(QuizResponse $response, QuestionBank $question): string

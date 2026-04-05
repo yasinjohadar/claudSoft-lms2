@@ -8,10 +8,8 @@ use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Models\QuizAnalytics;
 use App\Support\QuizGradingAnswerPresenter;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class QuizGradingController extends Controller
 {
@@ -228,9 +226,9 @@ class QuizGradingController extends Controller
     }
 
     /**
-     * تحميل تقرير تصحيح المحاولة بصيغة PDF.
+     * تقرير HTML لإجابات المحاولة (سؤال، إجابة الطالب، الإجابة الصحيحة، الدرجات).
      */
-    public function downloadAttemptPdf($attemptId)
+    public function attemptReport($attemptId)
     {
         $attempt = QuizAttempt::with([
             'quiz',
@@ -241,25 +239,20 @@ class QuizGradingController extends Controller
         ])->findOrFail($attemptId);
 
         if (! in_array($attempt->status, ['submitted', 'graded'], true)) {
-            abort(403, 'لا يمكن تصدير تقرير لمحاولة لم يتم تسليمها.');
+            return redirect()->route('grading.index')
+                ->withErrors(['error' => 'لا يمكن عرض تقرير محاولة لم يتم تسليمها بعد']);
         }
 
+        $responses = $attempt->responses
+            ->sortBy([
+                ['answer_order', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+
         $presenter = app(QuizGradingAnswerPresenter::class);
-        $responses = $attempt->responses->sortBy([
-            ['answer_order', 'asc'],
-            ['id', 'asc'],
-        ])->values();
 
-        $slug = Str::slug($attempt->student?->name ?? 'student', '_') ?: 'student';
-        $filename = 'grading_attempt_'.$attempt->id.'_'.$slug.'.pdf';
-
-        $pdf = Pdf::loadView('admin.pages.grading.attempt-report-pdf', [
-            'attempt' => $attempt,
-            'responses' => $responses,
-            'presenter' => $presenter,
-        ]);
-
-        return $pdf->download($filename);
+        return view('admin.pages.grading.attempt-report', compact('attempt', 'responses', 'presenter'));
     }
 
     /**
