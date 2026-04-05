@@ -464,8 +464,14 @@ class QuizGradingController extends Controller
             $regradedCount = 0;
             $skippedCount = 0;
 
-            // Regrade all auto-gradable responses
+            // Regrade all auto-gradable responses (يشمل fill_blanks بالمنطق الحالي في QuizResponse::autoGrade)
             foreach ($attempt->responses as $response) {
+                if ($response->question === null) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
                 $questionType = $response->question->questionType->name ?? '';
 
                 // Skip essay and short_answer (require manual grading)

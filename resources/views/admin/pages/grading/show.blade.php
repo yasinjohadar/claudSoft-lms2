@@ -59,6 +59,7 @@
                                 $questionNumber = $index + 1;
                             @endphp
 
+                            @if($question)
                             <div class="card custom-card mb-4">
                                 <div class="card-header">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -378,6 +379,69 @@
                                     </div>
                                 </div>
                             </div>
+                            @else
+                            <div class="card custom-card mb-4 border border-warning">
+                                <div class="card-header bg-warning-transparent">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div>
+                                            <h6 class="card-title mb-0">
+                                                <span class="badge bg-primary me-2">سؤال {{ $questionNumber }}</span>
+                                                <span class="badge bg-warning text-dark">سؤال محذوف من البنك</span>
+                                            </h6>
+                                            <small class="text-muted">معرّف السؤال المحفوظ: {{ $response->question_id }}</small>
+                                        </div>
+                                        <span class="badge bg-secondary">الدرجة القصوى: {{ $response->max_score }}</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6 class="fw-bold mb-2">إجابة الطالب (عرض خام):</h6>
+                                        <div class="p-3 bg-light rounded small">
+                                            @if($response->response_text)
+                                                <p class="mb-2">{{ $response->response_text }}</p>
+                                            @endif
+                                            @if($response->response_data)
+                                                <pre class="mb-0 text-wrap">{{ is_array($response->response_data) ? json_encode($response->response_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : $response->response_data }}</pre>
+                                            @endif
+                                            @if(!$response->response_text && !$response->response_data)
+                                                <span class="text-muted">لا توجد بيانات إجابة</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-1 p-3 bg-warning-transparent rounded">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold">الدرجة المحصلة <span class="text-danger">*</span></label>
+                                            <input type="number"
+                                                   class="form-control score-input"
+                                                   name="score_{{ $response->id }}"
+                                                   data-response-id="{{ $response->id }}"
+                                                   data-max-score="{{ $response->max_score }}"
+                                                   min="0"
+                                                   max="{{ $response->max_score }}"
+                                                   step="0.5"
+                                                   value="{{ old('score_' . $response->id, $response->score_obtained) }}"
+                                                   required>
+                                            <small class="text-muted">الحد الأقصى: {{ $response->max_score }}</small>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-bold">الملاحظات (اختياري)</label>
+                                            <textarea class="form-control feedback-input"
+                                                      name="feedback_{{ $response->id }}"
+                                                      data-response-id="{{ $response->id }}"
+                                                      rows="2"
+                                                      placeholder="أضف ملاحظات للطالب...">{{ old('feedback_' . $response->id, $response->feedback) }}</textarea>
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="button"
+                                                    class="btn btn-success btn-sm save-response-btn"
+                                                    data-response-id="{{ $response->id }}">
+                                                <i class="fas fa-save me-1"></i>حفظ التصحيح
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         @endforeach
 
                     </form>
@@ -404,8 +468,8 @@
                                         <tbody>
                                             @foreach($attempt->responses()->where('auto_graded', true)->get() as $response)
                                                 <tr>
-                                                    <td>{{ Str::limit($response->question->question_text, 50) }}</td>
-                                                    <td><span class="badge bg-info-transparent">{{ $response->questionType->display_name }}</span></td>
+                                                    <td>{{ Str::limit($response->question?->question_text ?? 'سؤال محذوف من البنك', 50) }}</td>
+                                                    <td><span class="badge bg-info-transparent">{{ $response->questionType?->display_name ?? $response->question?->questionType?->display_name ?? '—' }}</span></td>
                                                     <td><span class="badge bg-secondary">{{ $response->score_obtained }}/{{ $response->max_score }}</span></td>
                                                     <td>
                                                         @if($response->is_correct)

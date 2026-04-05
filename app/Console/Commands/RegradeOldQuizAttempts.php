@@ -76,6 +76,12 @@ class RegradeOldQuizAttempts extends Command
                 $skippedResponseCount = 0;
 
                 foreach ($attempt->responses as $response) {
+                    if ($response->question === null) {
+                        $skippedResponseCount++;
+
+                        continue;
+                    }
+
                     $questionType = $response->question->questionType->name ?? '';
 
                     // Skip essay and short_answer (require manual grading)
