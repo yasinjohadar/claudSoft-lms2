@@ -126,10 +126,16 @@ class AppServiceProvider extends ServiceProvider
             $lastUsedAt = config('sanctum.last_used_at', true);
             $provider = $config['provider'] ?? null;
 
-            return new RequestGuard(
-                new \Laravel\Sanctum\Guard($auth, $expiration, $provider, $lastUsedAt),
-                $app['request'],
-                $auth->createUserProvider($provider)
+            // مطابق لـ SanctumServiceProvider: تحديث مرجع الطلب على كل طلب حتى يُقرأ Bearer بعد حقن الوسيط.
+            return tap(
+                new RequestGuard(
+                    new \Laravel\Sanctum\Guard($auth, $expiration, $provider, $lastUsedAt),
+                    $app['request'],
+                    $auth->createUserProvider($provider)
+                ),
+                static function (RequestGuard $guard) use ($app): void {
+                    $app->refresh('request', $guard, 'setRequest');
+                }
             );
         });
     }

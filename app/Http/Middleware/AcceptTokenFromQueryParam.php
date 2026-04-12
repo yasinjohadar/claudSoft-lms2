@@ -38,6 +38,14 @@ class AcceptTokenFromQueryParam
             return $next($request);
         }
 
+        if (str_starts_with(strtolower($token), 'bearer ')) {
+            $token = trim(substr($token, 7));
+        }
+
+        if ($token === '') {
+            return $next($request);
+        }
+
         $request->headers->set('Authorization', 'Bearer '.$token);
 
         return $next($request);
