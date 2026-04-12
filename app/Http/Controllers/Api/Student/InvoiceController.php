@@ -10,6 +10,7 @@ use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
  * API للطالب: فواتيري ومدفوعاتي (JSON للتطبيق).
@@ -329,5 +330,28 @@ class InvoiceController extends Controller
             'refunded' => 'مستردة',
             default => $status,
         };
+    }
+
+    /**
+     * صفحة HTML للطباعة من WebView (?token= مدعوم عبر auth.query_token).
+     */
+    public function printInvoice(Request $request, string $id): View
+    {
+        $invoice = Invoice::query()
+            ->with(['items.campEnrollment.camp', 'payments.paymentMethod'])
+            ->where('student_id', $request->user()->id)
+            ->findOrFail($id);
+
+        return view('api.student.invoice-print', ['invoice' => $invoice]);
+    }
+
+    public function printPayment(Request $request, string $id): View
+    {
+        $payment = Payment::query()
+            ->with(['invoice.student', 'invoice.items.campEnrollment.camp', 'paymentMethod'])
+            ->where('student_id', $request->user()->id)
+            ->findOrFail($id);
+
+        return view('api.student.payment-print', ['payment' => $payment]);
     }
 }

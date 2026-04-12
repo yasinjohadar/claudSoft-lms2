@@ -36,6 +36,23 @@ use App\Http\Controllers\Student\StudentWorkController;
 use App\Http\Controllers\Student\TrainingCampController;
 use Illuminate\Support\Facades\Route;
 
+/*
+| مسارات التعلم: Sanctum + ?token= للـ WebView (لا تعتمد على كوكيز الجلسة وحدها).
+| بقية لوحة الطالب: جلسة الويب المعتادة (middleware auth).
+*/
+Route::prefix('student/learn')
+    ->middleware(['auth.query_token', 'auth:sanctum', 'role:student'])
+    ->name('student.learn.')
+    ->group(function () {
+        Route::get('/courses/{courseId}', [CourseLearningController::class, 'show'])->name('course');
+        Route::get('/courses/{courseId}/continue', [CourseController::class, 'learn'])->name('continue');
+        Route::get('/modules/{moduleId}', [CourseLearningController::class, 'showModule'])->name('module');
+        Route::post('/modules/{moduleId}/mark-complete', [CourseLearningController::class, 'markAsComplete'])->name('module.mark-complete');
+        Route::post('/modules/{moduleId}/mark-incomplete', [CourseLearningController::class, 'markAsIncomplete'])->name('module.mark-incomplete');
+        Route::post('/modules/{moduleId}/track-video-progress', [CourseLearningController::class, 'trackVideoProgress'])->name('module.track-video');
+        Route::get('/modules/{moduleId}/download-resource', [CourseLearningController::class, 'downloadResource'])->name('module.download-resource');
+    });
+
 Route::prefix('student')
     ->middleware(['auth', 'role:student'])
     ->group(function () {
@@ -82,25 +99,6 @@ Route::prefix('student')
             Route::get('/{id}/preview', [CourseController::class, 'show'])->name('show'); // Preview course before enrollment
             Route::post('/{id}/enroll', [CourseController::class, 'enroll'])->name('enroll'); // Enroll in course
             Route::delete('/{id}/unenroll', [CourseController::class, 'unenroll'])->name('unenroll'); // Unenroll from course
-        });
-
-        // Course Learning (صفحة التعلم - Learning Page)
-        Route::prefix('learn')->name('student.learn.')->group(function () {
-            Route::get('/courses/{courseId}', [CourseLearningController::class, 'show'])->name('course'); // Main learning page
-            Route::get('/courses/{courseId}/continue', [CourseController::class, 'learn'])->name('continue'); // Continue learning from last point
-
-            // Module Content Display
-            Route::get('/modules/{moduleId}', [CourseLearningController::class, 'showModule'])->name('module'); // Show module content
-
-            // Mark as Complete - زر "تم الإنجاز" ✅
-            Route::post('/modules/{moduleId}/mark-complete', [CourseLearningController::class, 'markAsComplete'])->name('module.mark-complete');
-            Route::post('/modules/{moduleId}/mark-incomplete', [CourseLearningController::class, 'markAsIncomplete'])->name('module.mark-incomplete');
-
-            // Video Progress Tracking
-            Route::post('/modules/{moduleId}/track-video-progress', [CourseLearningController::class, 'trackVideoProgress'])->name('module.track-video');
-
-            // Resource Download
-            Route::get('/modules/{moduleId}/download-resource', [CourseLearningController::class, 'downloadResource'])->name('module.download-resource');
         });
 
         // General (external) resources library — نطاق عام

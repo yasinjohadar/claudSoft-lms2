@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.query_token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
             'auth.token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
             'log.student.api' => \App\Http\Middleware\LogStudentApiRequests::class,
+            'optional.sanctum' => \App\Http\Middleware\OptionalSanctumAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,

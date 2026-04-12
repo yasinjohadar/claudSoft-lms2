@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\Student;
 
+use App\Events\N8nWebhookEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Services\AccessControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,8 +19,7 @@ use Illuminate\Support\Facades\Log;
 class CourseController extends Controller
 {
     /**
-     * كتالوج الكورسات: كل الكورسات المنشورة والمرئية (للعرض في Flutter حتى لو لم يكن الطالب مسجّلاً).
-     * يتضمّن is_enrolled و enrollment إن كان الطالب مسجّلاً في الكورس.
+     * كتالوج الكورسات المنشورة: متاح بدون توكن؛ مع Bearer لطالب يُعرض التسجيل والتقدم.
      */
     public function catalog(Request $request): JsonResponse
     {
@@ -30,6 +31,15 @@ class CourseController extends Controller
 
         try {
             $user = $request->user();
+            $enrollments = collect();
+
+            if ($user && $user->hasRole('student')) {
+                $enrollments = CourseEnrollment::query()
+                    ->where('student_id', $user->id)
+                    ->whereIn('enrollment_status', ['active', 'completed'])
+                    ->get()
+                    ->keyBy('course_id');
+            }
 
             $courses = Course::query()
                 ->published()
@@ -38,39 +48,11 @@ class CourseController extends Controller
                 ->orderBy('id')
                 ->get(['id', 'title', 'slug', 'description', 'short_description', 'image', 'level', 'language', 'duration_in_hours', 'is_free', 'sort_order']);
 
-            $enrollments = CourseEnrollment::query()
-                ->where('student_id', $user->id)
-                ->whereIn('enrollment_status', ['active', 'completed'])
-                ->get()
-                ->keyBy('course_id');
-
             $list = $courses->map(function (Course $course) use ($enrollments) {
-            $enrollment = $enrollments->get($course->id);
-            $item = [
-                'id' => (int) $course->id,
-                'title' => (string) $course->title,
-                'slug' => (string) $course->slug,
-                'description' => $course->description !== null ? (string) $course->description : null,
-                'short_description' => $course->short_description !== null ? (string) $course->short_description : null,
-                'image' => $course->image ? url($course->image) : null,
-                'level' => $course->level !== null ? (string) $course->level : null,
-                'language' => $course->language !== null ? (string) $course->language : null,
-                'duration_in_hours' => $course->duration_in_hours !== null ? (float) $course->duration_in_hours : null,
-                'is_free' => (bool) $course->is_free,
-                'sort_order' => $course->sort_order !== null ? (int) $course->sort_order : null,
-                'is_enrolled' => (bool) $enrollment,
-                'enrollment' => null,
-            ];
-            if ($enrollment) {
-                $item['enrollment'] = [
-                    'enrollment_id' => (int) $enrollment->id,
-                    'enrollment_status' => (string) $enrollment->enrollment_status,
-                    'completion_percentage' => (float) $enrollment->completion_percentage,
-                    'last_accessed_at' => $enrollment->last_accessed_at?->toIso8601String(),
-                ];
-            }
-            return $item;
-        })->values();
+                $enrollment = $enrollments->get($course->id);
+
+                return $this->catalogCoursePayload($course, $enrollment);
+            })->values();
 
             Log::channel('single')->info('[Student API] catalog: success', [
                 'courses_count' => $list->count(),
@@ -90,6 +72,73 @@ class CourseController extends Controller
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * تفاصيل كورس واحد من الكتالوج (نفس شكل عنصر القائمة في data).
+     */
+    public function catalogShow(Request $request, int $id): JsonResponse
+    {
+        $course = Course::query()
+            ->published()
+            ->visible()
+            ->whereKey($id)
+            ->first(['id', 'title', 'slug', 'description', 'short_description', 'image', 'level', 'language', 'duration_in_hours', 'is_free', 'sort_order']);
+
+        if (!$course) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الكورس غير موجود أو غير متاح.',
+            ], 404);
+        }
+
+        $enrollment = null;
+        $user = $request->user();
+        if ($user && $user->hasRole('student')) {
+            $enrollment = CourseEnrollment::query()
+                ->where('student_id', $user->id)
+                ->where('course_id', $course->id)
+                ->whereIn('enrollment_status', ['active', 'completed'])
+                ->first();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->catalogCoursePayload($course, $enrollment),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function catalogCoursePayload(Course $course, ?CourseEnrollment $enrollment): array
+    {
+        $item = [
+            'id' => (int) $course->id,
+            'title' => (string) $course->title,
+            'slug' => (string) $course->slug,
+            'description' => $course->description !== null ? (string) $course->description : null,
+            'short_description' => $course->short_description !== null ? (string) $course->short_description : null,
+            'image' => $course->image ? url($course->image) : null,
+            'level' => $course->level !== null ? (string) $course->level : null,
+            'language' => $course->language !== null ? (string) $course->language : null,
+            'duration_in_hours' => $course->duration_in_hours !== null ? (float) $course->duration_in_hours : null,
+            'is_free' => (bool) $course->is_free,
+            'sort_order' => $course->sort_order !== null ? (int) $course->sort_order : null,
+            'is_enrolled' => (bool) $enrollment,
+            'enrollment' => null,
+        ];
+
+        if ($enrollment) {
+            $item['enrollment'] = [
+                'enrollment_id' => (int) $enrollment->id,
+                'enrollment_status' => (string) $enrollment->enrollment_status,
+                'completion_percentage' => (float) $enrollment->completion_percentage,
+                'last_accessed_at' => $enrollment->last_accessed_at?->toIso8601String(),
+            ];
+        }
+
+        return $item;
     }
 
     /**
@@ -265,5 +314,161 @@ class CourseController extends Controller
                 'courses' => $courses,
             ],
         ]);
+    }
+
+    public function enroll(Request $request, int $id): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($id);
+            $student = $request->user();
+
+            if (! $course->is_published || ! $course->is_visible) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الكورس غير متاح للتسجيل',
+                ], 422);
+            }
+
+            $existing = CourseEnrollment::where('course_id', $course->id)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أنت مسجل بالفعل في هذا الكورس',
+                ], 422);
+            }
+
+            if ($course->enrollment_type === 'invite_only') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الكورس يتطلب دعوة للتسجيل',
+                ], 422);
+            }
+
+            if ($course->max_students) {
+                $count = $course->enrollments()->where('enrollment_status', 'active')->count();
+                if ($count >= $course->max_students) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'الكورس مكتمل العدد',
+                    ], 422);
+                }
+            }
+
+            if ($course->enrollment_start_date && now() < $course->enrollment_start_date) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لم يبدأ التسجيل بعد',
+                ], 422);
+            }
+
+            if ($course->enrollment_end_date && now() > $course->enrollment_end_date) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'انتهى وقت التسجيل',
+                ], 422);
+            }
+
+            $enrollmentStatus = $course->enrollment_type === 'by_approval' ? 'pending' : 'active';
+
+            $enrollment = CourseEnrollment::create([
+                'course_id' => $course->id,
+                'student_id' => $student->id,
+                'enrollment_date' => now(),
+                'enrollment_status' => $enrollmentStatus,
+                'enrolled_by' => $student->id,
+                'completion_percentage' => 0,
+            ]);
+
+            DB::commit();
+
+            if ($enrollmentStatus === 'active') {
+                event(new N8nWebhookEvent('student.enrolled', [
+                    'student_id' => $enrollment->student_id,
+                    'student_name' => $student->name,
+                    'student_email' => $student->email,
+                    'course_id' => $enrollment->course_id,
+                    'course_title' => $course->title,
+                    'enrollment_id' => $enrollment->id,
+                    'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
+                    'enrolled_by' => $enrollment->enrolled_by,
+                ]));
+            }
+
+            $message = $enrollmentStatus === 'pending'
+                ? 'تم إرسال طلب التسجيل بنجاح. في انتظار الموافقة'
+                : 'تم التسجيل في الكورس بنجاح';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'enrollment_status' => $enrollmentStatus,
+                    'enrollment_id' => $enrollment->id,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::channel('single')->error('[Student API] enroll failed', ['e' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء التسجيل',
+            ], 500);
+        }
+    }
+
+    public function unenroll(Request $request, int $id): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            $course = Course::findOrFail($id);
+            $student = $request->user();
+
+            $enrollment = CourseEnrollment::where('course_id', $course->id)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if (! $enrollment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أنت غير مسجل في هذا الكورس',
+                ], 404);
+            }
+
+            if ($enrollment->enrollment_status === 'completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يمكن إلغاء التسجيل من كورس مكتمل',
+                ], 422);
+            }
+
+            $enrollment->delete();
+            DB::commit();
+
+            event(new N8nWebhookEvent('student.unenrolled', [
+                'student_id' => $student->id,
+                'student_name' => $student->name,
+                'student_email' => $student->email,
+                'course_id' => $course->id,
+                'course_title' => $course->title,
+                'unenrolled_at' => now()->toIso8601String(),
+            ]));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إلغاء التسجيل من الكورس',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إلغاء التسجيل',
+            ], 500);
+        }
     }
 }

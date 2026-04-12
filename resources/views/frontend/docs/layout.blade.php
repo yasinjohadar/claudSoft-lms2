@@ -131,6 +131,44 @@
             initCodeBlocks();
         }
     </script>
+    {{-- إبقاء ?token= على روابط /docs للتنقل داخل WebView (Flutter) --}}
+    <script>
+        (function () {
+            function appendTokenToDocsLinks() {
+                var params = new URLSearchParams(window.location.search);
+                var token = params.get('token');
+                if (!token) {
+                    return;
+                }
+                document.querySelectorAll('a[href]').forEach(function (a) {
+                    try {
+                        var href = a.getAttribute('href');
+                        if (!href || href.charAt(0) === '#' || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) {
+                            return;
+                        }
+                        var u = new URL(href, window.location.origin);
+                        if (u.pathname.indexOf('/docs') !== 0) {
+                            return;
+                        }
+                        if (u.searchParams.has('token')) {
+                            return;
+                        }
+                        u.searchParams.set('token', token);
+                        if (href.indexOf('://') === -1) {
+                            a.setAttribute('href', u.pathname + u.search + u.hash);
+                        } else {
+                            a.setAttribute('href', u.toString());
+                        }
+                    } catch (e) { /* ignore */ }
+                });
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', appendTokenToDocsLinks);
+            } else {
+                appendTokenToDocsLinks();
+            }
+        })();
+    </script>
     @stack('scripts')
 </body>
 
