@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\WhatsAppWebWebhookController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
 use App\Http\Controllers\Api\Student\CourseController as StudentCourseController;
+use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
 use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
 
 /*
@@ -37,6 +38,11 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('catalog', [StudentCourseController::class, 'catalog'])->name('catalog');
         // الكورسات المرتبطة بالطالب مع الأقسام والدروس/الفيديوهات
         Route::get('courses', [StudentCourseController::class, 'index'])->name('courses.index');
+        // فواتيري ومدفوعاتي
+        Route::get('invoices', [StudentInvoiceApiController::class, 'invoices'])->name('invoices.index');
+        Route::get('invoices/{id}', [StudentInvoiceApiController::class, 'invoice'])->name('invoices.show');
+        Route::get('payments', [StudentInvoiceApiController::class, 'payments'])->name('payments.index');
+        Route::get('payments/{id}', [StudentInvoiceApiController::class, 'payment'])->name('payments.show');
     });
 });
 
