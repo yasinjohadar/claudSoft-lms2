@@ -3,6 +3,7 @@
 namespace App\Services\Api;
 
 use App\Events\QuizCompleted;
+use App\Models\CourseModule;
 use App\Models\QuestionBank;
 use App\Models\Quiz;
 use App\Models\QuizAnalytics;
@@ -10,6 +11,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\User;
+use App\Services\Api\StudentModuleProgressApiService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -248,11 +250,47 @@ class StudentQuizApiService
 
             DB::commit();
             $attempt->refresh();
+            $this->syncQuizModuleCompletion($attempt, $user);
 
             return $attempt;
         } catch (\Throwable $e) {
             DB::rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * يحدّث تقدم الكورس: يحدد وحدة الـ quiz كمكتملة (مثل «تم الإنجاز» من الويب).
+     */
+    protected function syncQuizModuleCompletion(QuizAttempt $attempt, User $user): void
+    {
+        try {
+            $attempt->loadMissing('quiz');
+            $quiz = $attempt->quiz;
+            if (! $quiz) {
+                return;
+            }
+
+            $module = CourseModule::query()
+                ->where('course_id', $quiz->course_id)
+                ->where('module_type', 'quiz')
+                ->where('modulable_id', $quiz->id)
+                ->where(function ($q) {
+                    $q->where('modulable_type', Quiz::class)
+                        ->orWhere('modulable_type', 'App\\Models\\Quiz');
+                })
+                ->first();
+
+            if (! $module) {
+                return;
+            }
+
+            app(StudentModuleProgressApiService::class)->markModuleComplete($user, (int) $module->id);
+        } catch (\Throwable $e) {
+            Log::warning('[Quiz API] syncQuizModuleCompletion failed', [
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -304,6 +342,11 @@ class StudentQuizApiService
             $analytics->recalculate();
 
             DB::commit();
+            $attempt->refresh();
+            $student = User::find($attempt->student_id);
+            if ($student) {
+                $this->syncQuizModuleCompletion($attempt, $student);
+            }
 
             return true;
         } catch (\Throwable $e) {

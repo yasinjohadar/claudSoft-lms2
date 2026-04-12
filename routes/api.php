@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Student\ExternalResourceApiController as StudentExt
 use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
 use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
 use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
+use App\Http\Controllers\Api\Student\ModuleProgressApiController as StudentModuleProgressApiController;
 use App\Http\Controllers\Api\Student\QuizApiController as StudentQuizApiController;
 
 /*
@@ -53,6 +54,9 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('courses/{courseId}/progress', [StudentCourseProgressApiController::class, 'progress'])->name('courses.progress');
         Route::post('courses/{id}/enroll', [StudentCourseController::class, 'enroll'])->name('courses.enroll');
         Route::delete('courses/{id}/enroll', [StudentCourseController::class, 'unenroll'])->name('courses.unenroll');
+
+        Route::post('modules/{moduleId}/mark-complete', [StudentModuleProgressApiController::class, 'markComplete'])->name('modules.mark-complete');
+        Route::post('modules/{moduleId}/mark-incomplete', [StudentModuleProgressApiController::class, 'markIncomplete'])->name('modules.mark-incomplete');
 
         Route::get('external-resources', [StudentExternalResourceApiController::class, 'index'])->name('external-resources.index');
 
