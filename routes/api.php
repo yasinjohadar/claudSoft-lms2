@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Student\ExternalResourceApiController as StudentExt
 use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
 use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
 use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
+use App\Http\Controllers\Api\Student\QuizApiController as StudentQuizApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,14 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::post('notifications/mark-all-read', [StudentNotificationApiController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::get('notifications', [StudentNotificationApiController::class, 'index'])->name('notifications.index');
         Route::post('notifications/{id}/mark-read', [StudentNotificationApiController::class, 'markRead'])->name('notifications.mark-read');
+
+        Route::prefix('quizzes')->name('quizzes.')->group(function () {
+            Route::get('{id}/preview', [StudentQuizApiController::class, 'preview'])->name('preview');
+            Route::post('{id}/start', [StudentQuizApiController::class, 'start'])->name('start');
+            Route::get('attempts/{attempt}', [StudentQuizApiController::class, 'showAttempt'])->name('attempts.show');
+            Route::post('attempts/{attempt}/answer', [StudentQuizApiController::class, 'saveAnswer'])->name('attempts.answer');
+            Route::post('attempts/{attempt}/submit', [StudentQuizApiController::class, 'submit'])->name('attempts.submit');
+        });
     });
 });
 

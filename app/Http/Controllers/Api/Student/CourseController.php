@@ -270,6 +270,28 @@ class CourseController extends Controller
                             $content['resource_url'] = $modulable->resource_url !== null ? (string) $modulable->resource_url : null;
                             $content['display_mode'] = $modulable->display_mode !== null ? (string) $modulable->display_mode : 'external';
                         }
+                        if ($modulable instanceof \App\Models\Quiz) {
+                            $quiz = $modulable;
+                            $quiz->loadMissing('settings');
+                            $studentId = (int) $user->id;
+                            $content['quiz_id'] = (int) $quiz->id;
+                            $content['course_id'] = (int) $quiz->course_id;
+                            $content['quiz_type'] = $quiz->quiz_type !== null ? (string) $quiz->quiz_type : null;
+                            $content['time_limit_minutes'] = $quiz->time_limit;
+                            $content['max_score'] = (float) $quiz->max_score;
+                            $content['passing_grade'] = (float) $quiz->passing_grade;
+                            $content['attempts_allowed'] = $quiz->attempts_allowed;
+                            $content['question_count'] = $quiz->getQuestionCount();
+                            $content['is_available'] = $quiz->isAvailable();
+                            $content['requires_password'] = (bool) ($quiz->settings && $quiz->settings->requiresPassword());
+                            $content['can_attempt'] = $quiz->canAttempt($studentId);
+                            $content['remaining_attempts'] = $quiz->getRemainingAttempts($studentId);
+                            $currentAttempt = $quiz->attempts()
+                                ->where('student_id', $studentId)
+                                ->where('status', 'in_progress')
+                                ->first();
+                            $content['current_attempt_id'] = $currentAttempt ? (int) $currentAttempt->id : null;
+                        }
                         $item['content'] = $content;
                     }
 
