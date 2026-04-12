@@ -16,6 +16,8 @@
 
 راجع القسم 4 (كتالوج الكورسات) أدناه لتفاصيل الطلب والاستجابة. إن احتجت أمثلة جاهزة لـ Flutter (Dio/Http) انظر [docs/FLUTTER_CATALOG_CALL.md](FLUTTER_CATALOG_CALL.md).
 
+**WebView — صفحات التوثيق `/docs`:** إذا فتحت `https://YOUR_DOMAIN/docs/...` من WebView بدون كوكيز جلسة، يمكن تمرير نفس توكن Sanctum كمعامل **`?token=`** (يُحوَّل داخلياً إلى `Authorization: Bearer`). التفاصيل والتحذيرات الأمنية: [docs/WEBVIEW_DOCS_TOKEN.md](WEBVIEW_DOCS_TOKEN.md).
+
 ---
 
 ## متطلبات التشغيل
@@ -222,6 +224,8 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxx
 
 يعيد الكورسات التي **سجّل فيها الطالب فقط** مع الأقسام والوحدات (دروس/فيديو). إن كانت القائمة فارغة فاستخدم `/api/student/catalog` لعرض كل الكورسات.
 
+**توثيق تفصيلي لبنية `sections` → `lessons` → `content` (HTML، فيديو، موارد):** [docs/API_STUDENT_COURSES.md](API_STUDENT_COURSES.md).
+
 | البند | القيمة |
 |--------|--------|
 | **Method** | `GET` |
@@ -333,7 +337,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxx
 | POST | `/api/student/logout` | Bearer | إبطال التوكن |
 | GET | `/api/student/me` | Bearer | بيانات المستخدم الحالي (مختصرة) |
 | GET | `/api/student/profile` | Bearer | **بروفايل الطالب الكامل** (كل البيانات — انظر `docs/API_STUDENT_PROFILE.md`) |
-| GET | `/api/student/courses` | Bearer | كورسات الطالب + أقسام + دروس/فيديوهات |
+| GET | `/api/student/courses` | Bearer | كورسات الطالب + أقسام + دروس/فيديوهات — تفاصيل JSON: [API_STUDENT_COURSES.md](API_STUDENT_COURSES.md) |
 
 **الهيدر للمسارات المحمية:**
 ```

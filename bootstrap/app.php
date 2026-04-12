@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
        $middleware->alias([
+            'auth.token' => \App\Http\Middleware\AcceptTokenFromUrl::class,
             'log.student.api' => \App\Http\Middleware\LogStudentApiRequests::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
