@@ -57,8 +57,8 @@ Route::prefix('blog')->name('frontend.blog.')->group(function () {
 
 
 // Documentation — للمستخدمين المسجّلين فقط؛ نفس تصميم public/docs/css/style.css
-// auth.token: ?token= للـ WebView (Flutter) يحقن Bearer قبل Sanctum؛ الجلسة تبقى مدعومة عبر auth:sanctum + guard web
-Route::middleware(['auth.token', 'auth:sanctum'])->group(function () {
+// auth.query_token: ?token= للـ WebView (Flutter) يحقن Bearer قبل Sanctum؛ الجلسة تبقى مدعومة عبر auth:sanctum + guard web
+Route::middleware(['auth.query_token', 'auth:sanctum'])->group(function () {
     Route::prefix('docs')->name('frontend.docs.')->group(function () {
         Route::get('/', [DocumentationController::class, 'index'])->name('index');
         Route::get('/{categorySlug}/{pagePath?}', [DocumentationController::class, 'show'])

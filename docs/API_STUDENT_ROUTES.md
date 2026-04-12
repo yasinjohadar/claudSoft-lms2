@@ -16,7 +16,7 @@
 
 راجع القسم 4 (كتالوج الكورسات) أدناه لتفاصيل الطلب والاستجابة. إن احتجت أمثلة جاهزة لـ Flutter (Dio/Http) انظر [docs/FLUTTER_CATALOG_CALL.md](FLUTTER_CATALOG_CALL.md).
 
-**WebView — صفحات التوثيق `/docs`:** إذا فتحت `https://YOUR_DOMAIN/docs/...` من WebView بدون كوكيز جلسة، يمكن تمرير نفس توكن Sanctum كمعامل **`?token=`** (يُحوَّل داخلياً إلى `Authorization: Bearer`). التفاصيل والتحذيرات الأمنية: [docs/WEBVIEW_DOCS_TOKEN.md](WEBVIEW_DOCS_TOKEN.md).
+**WebView — صفحات التوثيق `/docs`:** إذا فتحت `https://YOUR_DOMAIN/docs/...` من WebView بدون كوكيز جلسة، يمكن تمرير نفس توكن Sanctum كمعامل **`?token=`** (middleware `auth.query_token` يحوّله إلى `Authorization: Bearer`). **رمّز التوكن في الرابط** (مثلاً `|` → `%7C`) عبر `Uri` في Flutter. التفاصيل: [docs/WEBVIEW_DOCS_TOKEN.md](WEBVIEW_DOCS_TOKEN.md).
 
 ---
 
