@@ -134,6 +134,12 @@
     {{-- إبقاء ?token= على روابط /docs للتنقل داخل WebView (Flutter) --}}
     <script>
         (function () {
+            function pathIsUnderDocs(path) {
+                if (path.indexOf('/docs') === 0) {
+                    return true;
+                }
+                return /^\/[a-z]{2}(-[a-z]{2})?\/docs(\/|$)/i.test(path);
+            }
             function appendTokenToDocsLinks() {
                 var params = new URLSearchParams(window.location.search);
                 var token = params.get('token');
@@ -147,7 +153,7 @@
                             return;
                         }
                         var u = new URL(href, window.location.origin);
-                        if (u.pathname.indexOf('/docs') !== 0) {
+                        if (!pathIsUnderDocs(u.pathname)) {
                             return;
                         }
                         if (u.searchParams.has('token')) {

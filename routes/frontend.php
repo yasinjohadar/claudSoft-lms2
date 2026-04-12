@@ -57,7 +57,8 @@ Route::prefix('blog')->name('frontend.blog.')->group(function () {
 
 
 // Documentation — للمستخدمين المسجّلين فقط؛ نفس تصميم public/docs/css/style.css
-// auth.query_token: ?token= للـ WebView (Flutter) يحقن Bearer قبل Sanctum؛ الجلسة تبقى مدعومة عبر auth:sanctum + guard web
+// auth.query_token: ?token= للـ WebView (Flutter) يحقن Authorization: Bearer قبل auth:sanctum (نفس توكن Sanctum من التطبيق).
+// الجلسة عبر الكوكيز ما زالت مدعومة للمتصفح؛ طلبات Bearer لا تحتاج SANCTUM_STATEFUL_DOMAINS.
 Route::middleware(['auth.query_token', 'auth:sanctum'])->group(function () {
     Route::prefix('docs')->name('frontend.docs.')->group(function () {
         Route::get('/', [DocumentationController::class, 'index'])->name('index');
