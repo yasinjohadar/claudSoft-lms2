@@ -96,6 +96,7 @@ class StudentQuizApiService
                 'option_text' => (string) $opt->option_text,
                 'option_order' => (int) $opt->option_order,
                 'option_image' => $opt->option_image ? (string) $opt->option_image : null,
+                'feedback' => $opt->feedback ? (string) $opt->feedback : null,
             ];
         })->values()->all();
 
