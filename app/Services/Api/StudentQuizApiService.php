@@ -162,6 +162,11 @@ class StudentQuizApiService
             $response->update([
                 'response_data' => ['answer' => $map],
             ]);
+        } elseif ($questionType === 'matching') {
+            // matching answer is a Map<int, String> from Flutter, sent as Map<String, String>
+            $response->update([
+                'response_data' => is_array($answer) ? $answer : ['answer' => $answer],
+            ]);
         } else {
             $response->update([
                 'response_data' => is_array($answer) ? $answer : ['answer' => $answer],

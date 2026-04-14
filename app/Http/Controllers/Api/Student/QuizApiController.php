@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\Student;
 
+use App\Events\QuizStarted;
+use App\Events\StudentActivityTracked;
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -36,6 +38,12 @@ class QuizApiController extends Controller
         if (! $quiz->isAvailable()) {
             return response()->json(['success' => false, 'message' => 'الاختبار غير متاح حالياً.'], 403);
         }
+
+        StudentActivityTracked::dispatch($user, 'student.quiz.previewed', [
+            'quiz_id' => $quiz->id,
+            'course_id' => $quiz->course_id,
+            'quiz_title' => $quiz->title,
+        ]);
 
         $studentId = (int) $user->id;
         $currentAttempt = $quiz->attempts()
@@ -163,6 +171,8 @@ class QuizApiController extends Controller
             }
 
             DB::commit();
+
+            QuizStarted::dispatch($user, $quiz, (int) $attempt->id, (int) $attempt->attempt_number);
 
             return response()->json([
                 'success' => true,
@@ -326,6 +336,70 @@ class QuizApiController extends Controller
                 'grade_status' => $attempt->grade_status,
                 'time_spent_seconds' => (int) $attempt->time_spent,
                 'question_results' => $questionResults,
+            ],
+        ]);
+    }
+
+    /**
+     * Get all quiz attempts for the authenticated user.
+     * GET /api/student/quizzes/attempts
+     */
+    public function myAttempts(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $studentId = (int) $user->id;
+
+        $perPage = (int) $request->input('per_page', 20);
+        $status = $request->input('status'); // completed, in_progress
+        $result = $request->input('result'); // passed, failed
+
+        $query = QuizAttempt::with(['quiz.course'])
+            ->where('student_id', $studentId)
+            ->whereHas('quiz')
+            ->orderBy('started_at', 'desc');
+
+        if ($status === 'completed') {
+            $query->where('status', 'completed');
+        } elseif ($status === 'in_progress') {
+            $query->where('status', 'in_progress');
+        }
+
+        if ($result === 'passed') {
+            $query->where('passed', true);
+        } elseif ($result === 'failed') {
+            $query->where('passed', false);
+        }
+
+        $attempts = $query->paginate($perPage);
+
+        $items = $attempts->items();
+        $formatted = array_map(function ($attempt) {
+            return [
+                'id' => (int) $attempt->id,
+                'quiz_id' => (int) $attempt->quiz_id,
+                'quiz_title' => $attempt->quiz?->title ?? '',
+                'course_id' => $attempt->quiz?->course_id ? (int) $attempt->quiz->course_id : null,
+                'course_title' => $attempt->quiz?->course?->title ?? '',
+                'status' => (string) $attempt->status,
+                'passed' => (bool) $attempt->passed,
+                'total_score' => (float) $attempt->total_score,
+                'max_score' => (float) $attempt->max_score,
+                'percentage_score' => (float) $attempt->percentage_score,
+                'started_at' => $attempt->started_at?->toIso8601String(),
+                'completed_at' => $attempt->completed_at?->toIso8601String(),
+                'time_spent' => $attempt->time_spent,
+            ];
+        }, $items);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'items' => $formatted,
+                'total' => $attempts->total(),
+                'per_page' => $attempts->perPage(),
+                'current_page' => $attempts->currentPage(),
+                'last_page' => $attempts->lastPage(),
+                'has_more' => $attempts->hasMorePages(),
             ],
         ]);
     }

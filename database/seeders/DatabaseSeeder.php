@@ -129,6 +129,11 @@ class DatabaseSeeder extends Seeder
         $this->call(DocumentationSeeder::class);
         $this->command->info('');
 
+        // 22. قوالب نظام الإشعارات الموحد
+        $this->command->info('📍 المرحلة 22: إضافة قوالب Notification Hub');
+        $this->call(NotificationTemplateSeeder::class);
+        $this->command->info('');
+
         $this->command->info('✨ تم إكمال عملية ملء قاعدة البيانات بنجاح!');
         $this->command->info('📊 الإحصائيات النهائية:');
         $this->command->info('   - 20 كورس تقني');

@@ -361,10 +361,7 @@ class AccessControlService
                 return $restriction->restriction_id == $student->id;
 
             case 'group':
-                // Check if student is member of the group
-                return $student->courseGroupMemberships()
-                    ->where('group_id', $restriction->restriction_id)
-                    ->exists();
+                return $this->hasActiveGroupMembership($student, (int) $restriction->restriction_id);
 
             case 'role':
                 // Check if student has the role
@@ -377,6 +374,19 @@ class AccessControlService
             default:
                 return false;
         }
+    }
+
+    /**
+     * Restriction group membership must come from an active group.
+     */
+    protected function hasActiveGroupMembership(User $student, int $groupId): bool
+    {
+        return $student->courseGroupMemberships()
+            ->where('group_id', $groupId)
+            ->whereHas('group', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->exists();
     }
 
     /**

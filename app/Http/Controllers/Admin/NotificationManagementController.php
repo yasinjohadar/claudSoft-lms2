@@ -3,20 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CourseEnrollment;
+use App\Models\CourseGroup;
 use App\Models\User;
 use App\Models\Course;
-use App\Models\Group;
-use App\Services\Gamification\NotificationService;
+use App\Services\Notifications\NotificationHubService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class NotificationManagementController extends Controller
 {
-    protected NotificationService $notificationService;
+    protected NotificationHubService $notificationHubService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationHubService $notificationHubService)
     {
-        $this->notificationService = $notificationService;
+        $this->notificationHubService = $notificationHubService;
     }
 
     /**
@@ -67,19 +68,15 @@ class NotificationManagementController extends Controller
         try {
             $student = User::findOrFail($validated['student_id']);
 
-            $this->notificationService->send(
-                user: $student,
-                type: $validated['type'],
-                title: $validated['title'],
-                message: $validated['message'],
-                icon: $validated['icon'] ?? '📢',
-                actionUrl: $validated['action_url'] ?? null,
-                metadata: [
-                    'sent_by' => auth()->user()->name,
-                    'sent_by_id' => auth()->id(),
-                    'sent_at' => now()->toDateTimeString(),
-                ]
-            );
+            $this->notificationHubService->sendToUser($student, 'admin.custom', [
+                'title' => $validated['title'],
+                'body' => $validated['message'],
+                'type' => $validated['type'],
+                'icon' => $validated['icon'] ?? '📢',
+                'action_url' => $validated['action_url'] ?? null,
+                'sent_by' => auth()->user()->name,
+                'sent_by_id' => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -115,27 +112,24 @@ class NotificationManagementController extends Controller
         try {
             $course = Course::findOrFail($validated['course_id']);
 
-            // Get all enrolled students
-            $students = $course->students; // Assuming relationship exists
+            $students = User::query()->whereIn('id', CourseEnrollment::query()
+                ->where('course_id', $course->id)
+                ->where('enrollment_status', 'active')
+                ->pluck('student_id'))->get();
 
             $sentCount = 0;
             foreach ($students as $student) {
-                $this->notificationService->send(
-                    user: $student,
-                    type: $validated['type'],
-                    title: $validated['title'],
-                    message: $validated['message'],
-                    icon: $validated['icon'] ?? '📢',
-                    actionUrl: $validated['action_url'] ?? null,
-                    relatedType: Course::class,
-                    relatedId: $course->id,
-                    metadata: [
-                        'course_name' => $course->title,
-                        'sent_by' => auth()->user()->name,
-                        'sent_by_id' => auth()->id(),
-                        'sent_at' => now()->toDateTimeString(),
-                    ]
-                );
+                $this->notificationHubService->sendToUser($student, 'admin.custom', [
+                    'title' => $validated['title'],
+                    'body' => $validated['message'],
+                    'type' => $validated['type'],
+                    'icon' => $validated['icon'] ?? '📢',
+                    'action_url' => $validated['action_url'] ?? null,
+                    'course_name' => $course->title,
+                    'course_id' => $course->id,
+                    'sent_by' => auth()->user()->name,
+                    'sent_by_id' => auth()->id(),
+                ]);
                 $sentCount++;
             }
 
@@ -171,29 +165,22 @@ class NotificationManagementController extends Controller
         ]);
 
         try {
-            $group = Group::findOrFail($validated['group_id']);
-
-            // Get all students in the group
-            $students = $group->students; // Assuming relationship exists
+            $group = CourseGroup::findOrFail($validated['group_id']);
+            $students = $group->students()->get();
 
             $sentCount = 0;
             foreach ($students as $student) {
-                $this->notificationService->send(
-                    user: $student,
-                    type: $validated['type'],
-                    title: $validated['title'],
-                    message: $validated['message'],
-                    icon: $validated['icon'] ?? '📢',
-                    actionUrl: $validated['action_url'] ?? null,
-                    relatedType: Group::class,
-                    relatedId: $group->id,
-                    metadata: [
-                        'group_name' => $group->name,
-                        'sent_by' => auth()->user()->name,
-                        'sent_by_id' => auth()->id(),
-                        'sent_at' => now()->toDateTimeString(),
-                    ]
-                );
+                $this->notificationHubService->sendToUser($student, 'admin.custom', [
+                    'title' => $validated['title'],
+                    'body' => $validated['message'],
+                    'type' => $validated['type'],
+                    'icon' => $validated['icon'] ?? '📢',
+                    'action_url' => $validated['action_url'] ?? null,
+                    'group_name' => $group->name,
+                    'group_id' => $group->id,
+                    'sent_by' => auth()->user()->name,
+                    'sent_by_id' => auth()->id(),
+                ]);
                 $sentCount++;
             }
 
@@ -233,20 +220,16 @@ class NotificationManagementController extends Controller
 
             $sentCount = 0;
             foreach ($students as $student) {
-                $this->notificationService->send(
-                    user: $student,
-                    type: $validated['type'],
-                    title: $validated['title'],
-                    message: $validated['message'],
-                    icon: $validated['icon'] ?? '📢',
-                    actionUrl: $validated['action_url'] ?? null,
-                    metadata: [
-                        'broadcast' => true,
-                        'sent_by' => auth()->user()->name,
-                        'sent_by_id' => auth()->id(),
-                        'sent_at' => now()->toDateTimeString(),
-                    ]
-                );
+                $this->notificationHubService->sendToUser($student, 'admin.custom', [
+                    'title' => $validated['title'],
+                    'body' => $validated['message'],
+                    'type' => $validated['type'],
+                    'icon' => $validated['icon'] ?? '📢',
+                    'action_url' => $validated['action_url'] ?? null,
+                    'broadcast' => true,
+                    'sent_by' => auth()->user()->name,
+                    'sent_by_id' => auth()->id(),
+                ]);
                 $sentCount++;
             }
 
@@ -305,7 +288,7 @@ class NotificationManagementController extends Controller
     {
         $search = $request->get('search', '');
 
-        $groups = Group::where('name', 'LIKE', "%{$search}%")
+        $groups = CourseGroup::where('name', 'LIKE', "%{$search}%")
             ->limit(10)
             ->get(['id', 'name']);
 

@@ -19,6 +19,8 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
+        "laravel-echo": "^2.3.4",
+        "pusher-js": "^8.5.0",
         "tinymce": "^8.2.2"
     }
 }

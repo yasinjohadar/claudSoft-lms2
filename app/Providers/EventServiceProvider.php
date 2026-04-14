@@ -10,7 +10,11 @@ use App\Events\LessonCompleted;
 
 // Assessment Events
 use App\Events\QuizCompleted;
+use App\Events\QuizStarted;
 use App\Events\AssignmentSubmitted;
+use App\Events\AssignmentAvailable;
+use App\Events\AssignmentGraded;
+use App\Events\StudentActivityTracked;
 
 // Payment Events
 use App\Events\InvoiceCreated;
@@ -32,6 +36,7 @@ use App\Events\N8nWebhookEvent;
 use App\Listeners\CourseNotificationListener;
 use App\Listeners\AssessmentNotificationListener;
 use App\Listeners\PaymentNotificationListener;
+use App\Listeners\StudentActionNotificationListener;
 use App\Listeners\Gamification\SendNotificationListener;
 use App\Listeners\Gamification\CheckBadgesListener;
 use App\Listeners\N8nWebhookListener;
@@ -48,21 +53,37 @@ class EventServiceProvider extends ServiceProvider
         // Course & Lesson Events
         CourseCompleted::class => [
             CourseNotificationListener::class . '@handleCourseCompleted',
+            StudentActionNotificationListener::class . '@handleCourseCompleted',
             IssueCertificateOnCompletion::class,
             CheckBadgesListener::class,
         ],
         LessonCompleted::class => [
             CourseNotificationListener::class . '@handleLessonCompleted',
+            StudentActionNotificationListener::class . '@handleLessonCompleted',
             CheckBadgesListener::class,
         ],
 
         // Assessment Events
         QuizCompleted::class => [
             AssessmentNotificationListener::class . '@handleQuizCompleted',
+            StudentActionNotificationListener::class . '@handleQuizCompleted',
             CheckBadgesListener::class,
+        ],
+        QuizStarted::class => [
+            StudentActionNotificationListener::class . '@handleQuizStarted',
         ],
         AssignmentSubmitted::class => [
             AssessmentNotificationListener::class . '@handleAssignmentSubmitted',
+            StudentActionNotificationListener::class . '@handleAssignmentSubmitted',
+        ],
+        AssignmentAvailable::class => [
+            StudentActionNotificationListener::class . '@handleAssignmentAvailable',
+        ],
+        AssignmentGraded::class => [
+            StudentActionNotificationListener::class . '@handleAssignmentGraded',
+        ],
+        StudentActivityTracked::class => [
+            StudentActionNotificationListener::class . '@handleActivityTracked',
         ],
 
         // Payment Events

@@ -9,6 +9,7 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Notifications\ResetPasswordNotification;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -312,6 +313,22 @@ class User extends Authenticatable
     public function gamificationNotifications()
     {
         return $this->hasMany(GamificationNotification::class);
+    }
+
+    /**
+     * Device tokens used for mobile push notifications (FCM/APNs).
+     */
+    public function notificationDeviceTokens(): HasMany
+    {
+        return $this->hasMany(NotificationDeviceToken::class);
+    }
+
+    /**
+     * Per-event preferences for notification channels.
+     */
+    public function notificationHubPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationUserPreference::class);
     }
 
     /**

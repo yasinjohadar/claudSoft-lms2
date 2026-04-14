@@ -52,6 +52,7 @@ use App\Http\Controllers\Admin\LaravelAiModelController;
 use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\ModuleCompletionReportController;
 use App\Http\Controllers\Admin\N8nWebhookController;
+use App\Http\Controllers\Admin\NotificationHubAdminController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ReminderController;
@@ -564,6 +565,20 @@ Route::prefix('admin')
             Route::get('/api/students', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getStudents'])->name('api.students');
             Route::get('/api/courses', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getCourses'])->name('api.courses');
             Route::get('/api/groups', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getGroups'])->name('api.groups');
+        });
+
+        Route::prefix('notification-hub')->name('admin.notification-hub.')->group(function () {
+            Route::get('/settings', [NotificationHubAdminController::class, 'settings'])->name('settings.get');
+            Route::post('/settings', [NotificationHubAdminController::class, 'updateSettings'])->name('settings.update');
+            Route::post('/events/toggle', [NotificationHubAdminController::class, 'updateEventToggle'])->name('events.toggle');
+
+            Route::get('/templates', [NotificationHubAdminController::class, 'templates'])->name('templates.index');
+            Route::post('/templates', [NotificationHubAdminController::class, 'storeTemplate'])->name('templates.store');
+            Route::put('/templates/{id}', [NotificationHubAdminController::class, 'updateTemplate'])->name('templates.update');
+            Route::delete('/templates/{id}', [NotificationHubAdminController::class, 'deleteTemplate'])->name('templates.delete');
+
+            Route::post('/send-segmented', [NotificationHubAdminController::class, 'sendSegmented'])->name('send.segmented');
+            Route::get('/logs', [NotificationHubAdminController::class, 'logs'])->name('logs.index');
         });
 
         // ========== Email Settings Routes ==========

@@ -371,6 +371,14 @@
                                     if (lastNotificationId !== notification.id) {
                                         lastNotificationId = notification.id;
 
+                                        if (typeof window.showStudentToastWidget === 'function') {
+                                            window.showStudentToastWidget({
+                                                title: notification.title,
+                                                body: notification.message,
+                                                type: notification.type,
+                                            });
+                                        }
+
                                         // Show browser notification
                                         showBrowserNotification(
                                             notification.title,

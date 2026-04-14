@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\AssignmentAvailable;
+use App\Events\AssignmentGraded;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
@@ -180,6 +182,14 @@ class AssignmentController extends Controller
 
                 DB::commit();
 
+                if ($assignment->is_published && $assignment->is_visible) {
+                    $studentIds = \App\Models\CourseEnrollment::query()
+                        ->where('course_id', $assignment->course_id)
+                        ->where('enrollment_status', 'active')
+                        ->pluck('student_id');
+                    AssignmentAvailable::dispatch($assignment, $studentIds);
+                }
+
                 // التوجيه: إذا جاء من قسم، نرجع للكورس، وإلا للقائمة
                 if ($request->filled('section_id')) {
                     $section = CourseSection::find($request->section_id);
@@ -328,6 +338,14 @@ class AssignmentController extends Controller
 
             $assignment->update($validated);
 
+            if ($assignment->is_published && $assignment->is_visible) {
+                $studentIds = \App\Models\CourseEnrollment::query()
+                    ->where('course_id', $assignment->course_id)
+                    ->where('enrollment_status', 'active')
+                    ->pluck('student_id');
+                AssignmentAvailable::dispatch($assignment, $studentIds);
+            }
+
             return redirect()->route('assignments.show', $assignment->id)
                 ->with('success', 'تم تحديث الواجب بنجاح');
 
@@ -405,6 +423,8 @@ class AssignmentController extends Controller
             'graded_by' => auth()->id(),
             'graded_at' => now(),
         ]);
+
+        AssignmentGraded::dispatch($submission->fresh(['student', 'assignment']));
 
         return back()->with('success', 'تم تقييم الواجب بنجاح');
     }

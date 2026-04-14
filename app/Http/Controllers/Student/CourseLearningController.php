@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Events\LessonCompleted;
 use App\Events\CourseCompleted;
 use App\Events\N8nWebhookEvent;
+use App\Events\StudentActivityTracked;
 
 class CourseLearningController extends Controller
 {
@@ -26,6 +27,7 @@ class CourseLearningController extends Controller
     {
         try {
             $student = auth()->user();
+            $accessControl = new AccessControlService();
             $course = Course::with([
                 'sections' => function($q) {
                     $q->visible()->orderBy('sort_order');
@@ -46,6 +48,34 @@ class CourseLearningController extends Controller
                     ->route('student.courses.index')
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
             }
+
+            $courseAccess = $accessControl->canAccessCourse($course, $student);
+            if (!($courseAccess['can_access'] ?? false)) {
+                return redirect()
+                    ->route('student.courses.index')
+                    ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
+            }
+
+            $accessibleSections = collect();
+            foreach ($course->sections as $section) {
+                $sectionAccess = $accessControl->canAccessSection($section, $student);
+                if (!($sectionAccess['can_access'] ?? false)) {
+                    continue;
+                }
+
+                $accessibleModules = $section->modules->filter(function ($module) use ($accessControl, $student) {
+                    $moduleAccess = $accessControl->canAccessModule($module, $student);
+                    return (bool) ($moduleAccess['can_access'] ?? false);
+                })->values();
+
+                $section->setRelation('modules', $accessibleModules);
+
+                if ($accessibleModules->isNotEmpty()) {
+                    $accessibleSections->push($section);
+                }
+            }
+
+            $course->setRelation('sections', $accessibleSections->values());
 
             // Update last accessed
             $enrollment->touchLastAccessed();
@@ -161,6 +191,13 @@ class CourseLearningController extends Controller
             // Check if module is completed
             $completion = $module->completions->first();
             $isCompleted = $completion && $completion->completion_status === 'completed';
+
+            StudentActivityTracked::dispatch($student, 'student.module.viewed', [
+                'module_id' => $module->id,
+                'module_title' => $module->title,
+                'module_type' => $module->module_type,
+                'course_id' => $module->course_id,
+            ]);
 
             // Get all completed modules for the course
             $completedModules = [];
@@ -402,6 +439,11 @@ class CourseLearningController extends Controller
 
             // Auto-complete if watched >= 90%
             $percentage = ($validated['current_time'] / $validated['duration']) * 100;
+            StudentActivityTracked::dispatch($student, 'student.video.progress', [
+                'module_id' => $module->id,
+                'course_id' => $module->course_id,
+                'progress_percentage' => round($percentage, 2),
+            ]);
             if ($percentage >= 90 && $completion->completion_status !== 'completed') {
                 $completion->update([
                     'completion_status' => 'completed',

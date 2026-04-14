@@ -198,13 +198,11 @@ class CourseController extends Controller
                                         $accessibleModules->push($module);
                                     }
                                 } catch (\Throwable $e) {
-                                    // Log error but continue (fail-safe)
+                                    // Log error and hide the module to avoid accidental bypass.
                                     Log::channel('single')->warning('[Student API] AccessControlService error for module', [
                                         'module_id' => $module->id,
                                         'error' => $e->getMessage(),
                                     ]);
-                                    // Include module if access check fails (fail-safe)
-                                    $accessibleModules->push($module);
                                 }
                             }
                             // Preserve sort order
@@ -213,27 +211,25 @@ class CourseController extends Controller
                             $accessibleSections->push($section);
                         }
                     } catch (\Throwable $e) {
-                        // Log error but continue (fail-safe)
+                        // Log error and hide the section to avoid accidental bypass.
                         Log::channel('single')->warning('[Student API] AccessControlService error for section', [
                             'section_id' => $section->id,
                             'error' => $e->getMessage(),
                         ]);
-                        // Include section if access check fails (fail-safe)
-                        $accessibleSections->push($section);
                     }
                 }
                 // Preserve sort order for sections
                 $accessibleSections = $accessibleSections->sortBy('sort_order')->sortBy('order_index')->values();
                 $course->setRelation('sections', $accessibleSections);
             } catch (\Throwable $e) {
-                // Log error but continue with all sections (fail-safe)
+                // Log error and return course without sections to avoid accidental bypass.
                 Log::channel('single')->error('[Student API] AccessControlService error for course', [
                     'course_id' => $course->id,
                     'error' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                 ]);
-                // Keep all sections if access control fails (fail-safe)
+                $course->setRelation('sections', collect());
             }
 
             $sections = $course->sections->map(function ($section) use ($user) {
