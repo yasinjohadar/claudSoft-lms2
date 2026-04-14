@@ -316,6 +316,13 @@
                 </div>
             @endif
 
+            @if (session('warning'))
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-circle me-2"></i>تنبيه:</strong> {{ session('warning') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <form action="{{ route('courses.update', $course->id) }}" method="POST" enctype="multipart/form-data" id="courseForm">
                 @csrf
                 @method('PUT')
@@ -441,9 +448,9 @@
                                 <i class="fas fa-clock me-1 text-info"></i>
                                 مدة الكورس (بالساعات)
                             </label>
-                            <input type="number" name="duration_hours" class="form-control @error('duration_hours') is-invalid @enderror"
-                                   min="0" value="{{ old('duration_hours', $course->duration_hours) }}" placeholder="0">
-                            @error('duration_hours')
+                            <input type="number" name="duration_in_hours" class="form-control @error('duration_in_hours') is-invalid @enderror"
+                                   min="0" value="{{ old('duration_in_hours', $course->duration_in_hours) }}" placeholder="0">
+                            @error('duration_in_hours')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

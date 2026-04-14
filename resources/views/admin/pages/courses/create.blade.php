@@ -24,6 +24,12 @@
 
             <!-- Alerts -->
             @include('admin.components.alerts')
+            @if (session('warning'))
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-circle me-2"></i>تنبيه:</strong> {{ session('warning') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
 
             <form action="{{ route('courses.store') }}" method="POST" enctype="multipart/form-data" id="courseForm">
                 @csrf

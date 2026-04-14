@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\Storage\StorageHelperService;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class CourseController extends Controller
 {
@@ -153,6 +154,7 @@ class CourseController extends Controller
         ]);
 
         DB::beginTransaction();
+        $imageUploadWarning = null;
         try {
             // Generate slug
             $validated['slug'] = Str::slug($validated['title']);
@@ -167,7 +169,22 @@ class CourseController extends Controller
 
             // Handle image upload
             if ($request->hasFile('image')) {
-                $validated['image'] = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
+                $storedPath = $this->uploadCourseImageWithFallback($request->file('image'));
+                if ($storedPath) {
+                    $validated['image'] = $storedPath;
+                } else {
+                    unset($validated['image']);
+                    $imageUploadWarning = 'تم الحفظ ولكن لم يتم حفظ الصورة.';
+                    Log::warning('Course image upload failed during create', [
+                        'course_id' => null,
+                        'disk' => 'public',
+                        'path' => 'courses/images',
+                        'original_file_name' => $request->file('image')->getClientOriginalName(),
+                        'mime' => $request->file('image')->getClientMimeType(),
+                        'size' => $request->file('image')->getSize(),
+                        'user_id' => auth()->id(),
+                    ]);
+                }
             }
 
             // Set created_by
@@ -181,9 +198,13 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()
+            $redirect = redirect()
                 ->route('courses.show', $course->id)
                 ->with('success', 'تم إنشاء الكورس بنجاح');
+            if ($imageUploadWarning) {
+                $redirect->with('warning', $imageUploadWarning);
+            }
+            return $redirect;
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -309,6 +330,7 @@ class CourseController extends Controller
     public function update(Request $request, $id)
     {
         $course = Course::findOrFail($id);
+        $imageUploadWarning = null;
 
         $validated = $request->validate([
             'category_id' => 'required|exists:course_categories,id',
@@ -350,7 +372,7 @@ class CourseController extends Controller
 
             // Handle image upload (same logic as store)
             if ($request->hasFile('image')) {
-                $storedPath = $this->storageHelper->storeUploadedFile('public', 'courses/images', $request->file('image'), 'image');
+                $storedPath = $this->uploadCourseImageWithFallback($request->file('image'));
                 if ($storedPath) {
                     // Delete old image only after successful upload
                     if ($course->image) {
@@ -358,8 +380,17 @@ class CourseController extends Controller
                     }
                     $validated['image'] = $storedPath;
                 } else {
-                    // عدم الكتابة في القاعدة عند فشل الرفع، وإزالة كائن الملف من validated
                     unset($validated['image']);
+                    $imageUploadWarning = 'تم الحفظ ولكن لم يتم حفظ الصورة.';
+                    Log::warning('Course image upload failed during update', [
+                        'course_id' => $course->id,
+                        'disk' => 'public',
+                        'path' => 'courses/images',
+                        'original_file_name' => $request->file('image')->getClientOriginalName(),
+                        'mime' => $request->file('image')->getClientMimeType(),
+                        'size' => $request->file('image')->getSize(),
+                        'user_id' => auth()->id(),
+                    ]);
                 }
             }
 
@@ -388,9 +419,13 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()
+            $redirect = redirect()
                 ->route('courses.show', $course->id)
                 ->with('success', 'تم تحديث الكورس بنجاح');
+            if ($imageUploadWarning) {
+                $redirect->with('warning', $imageUploadWarning);
+            }
+            return $redirect;
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -444,6 +479,42 @@ class CourseController extends Controller
                 ->back()
                 ->with('error', 'حدث خطأ أثناء حذف الكورس: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Upload course image with dynamic storage then local fallback.
+     */
+    protected function uploadCourseImageWithFallback($file): string|false
+    {
+        try {
+            // Primary for local/dev reliability: save to local public disk first.
+            $localPath = Storage::disk('public')->putFile('courses/images', $file);
+            if ($localPath) {
+                Log::info('Course image uploaded to local public storage', [
+                    'disk' => 'public',
+                    'path' => $localPath,
+                    'original_file_name' => $file->getClientOriginalName(),
+                ]);
+                return $localPath;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Course image local upload failed, trying dynamic storage', [
+                'error' => $e->getMessage(),
+                'original_file_name' => $file->getClientOriginalName(),
+            ]);
+        }
+
+        // Secondary attempt: dynamic storage mapping (CDN/remote).
+        $dynamicPath = $this->storageHelper->storeUploadedFile('public', 'courses/images', $file, 'image');
+        if ($dynamicPath) {
+            return $dynamicPath;
+        }
+
+        Log::error('Course image upload failed on local and dynamic storage', [
+            'original_file_name' => $file->getClientOriginalName(),
+        ]);
+
+        return false;
     }
 
     /**
