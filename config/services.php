@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'token' => env('WHATSAPP_TOKEN'),
+        'base_url' => env('WHATSAPP_WAPI_BASE_URL', 'https://wapi.flaxxa.com/api/v1'),
+        'timeout' => (int) env('WHATSAPP_WAPI_TIMEOUT', 60),
+        'max_attachment_kb' => (int) env('WHATSAPP_MAX_ATTACHMENT_KB', 5120),
+        'rate_limit_per_minute' => (int) env('WHATSAPP_WAPI_RATE_LIMIT', 30),
+    ],
+
 ];

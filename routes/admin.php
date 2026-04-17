@@ -29,6 +29,8 @@ use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationPageController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\FlaxxaWapiController;
+use App\Http\Controllers\Admin\FlaxxaWapiSettingsController;
 use App\Http\Controllers\Admin\FrontendCourseController;
 use App\Http\Controllers\Admin\Gamification\AchievementController as AdminAchievementController;
 use App\Http\Controllers\Admin\Gamification\AnalyticsController as AdminAnalyticsController;
@@ -65,6 +67,7 @@ use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\VideoController;
+use App\Http\Controllers\Admin\WapiTemplateController;
 use App\Http\Controllers\Admin\WebhookManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -966,6 +969,27 @@ Route::prefix('admin')
             Route::put('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'update'])->name('update');
             Route::delete('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'destroy'])->name('destroy');
             Route::get('/{whatsapp_template}/json', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'getTemplate'])->name('get');
+        });
+
+        // Flaxxa WAPI (مزود wapi.flaxxa.com)
+        Route::prefix('flaxxa-wapi')->name('admin.flaxxa-wapi.')->group(function () {
+            Route::get('/', function () {
+                return redirect()->route('admin.flaxxa-wapi.messages.index');
+            })->name('home');
+            Route::get('settings', [FlaxxaWapiSettingsController::class, 'index'])->name('settings.index');
+            Route::post('settings', [FlaxxaWapiSettingsController::class, 'update'])->name('settings.update');
+            Route::post('settings/test-connection', [FlaxxaWapiSettingsController::class, 'testConnection'])->name('settings.test-connection');
+            Route::get('messages', [FlaxxaWapiController::class, 'messagesIndex'])->name('messages.index');
+            Route::get('messages/{wapiMessage}', [FlaxxaWapiController::class, 'messageShow'])->name('messages.show');
+            Route::post('messages/{wapiMessage}/check-status', [FlaxxaWapiController::class, 'messageCheckStatus'])->name('messages.check-status');
+            Route::get('send/message', [FlaxxaWapiController::class, 'sendMessageForm'])->name('send.message');
+            Route::post('send/message', [FlaxxaWapiController::class, 'sendMessage'])->name('send.message.store');
+            Route::get('send/template', [FlaxxaWapiController::class, 'sendTemplateForm'])->name('send.template');
+            Route::post('send/template', [FlaxxaWapiController::class, 'sendTemplate'])->name('send.template.store');
+            Route::get('send/campaign', [FlaxxaWapiController::class, 'sendCampaignForm'])->name('send.campaign');
+            Route::post('send/campaign', [FlaxxaWapiController::class, 'sendCampaign'])->name('send.campaign.store');
+            Route::post('templates/sync-from-provider', [WapiTemplateController::class, 'syncFromProvider'])->name('templates.sync');
+            Route::resource('templates', WapiTemplateController::class)->except(['show'])->parameters(['templates' => 'wapiTemplate']);
         });
 
         // WhatsApp Web Routes

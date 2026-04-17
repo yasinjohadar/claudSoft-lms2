@@ -56,6 +56,9 @@ class WhatsAppSettingsService
             'max_delay' => (int) ($settings['max_delay'] ?? 5),
             // إشعار تقرير الدراسة: email | whatsapp | both
             'study_report_delivery' => $settings['study_report_delivery'] ?? 'both',
+            // Flaxxa WAPI (لوحة الإدارة — يُفضّل على .env عند التعيين)
+            'wapi_token' => $this->decryptIfEncrypted($settings['wapi_token'] ?? ''),
+            'wapi_base_url' => $settings['wapi_base_url'] ?? '',
         ];
     }
 
@@ -66,7 +69,7 @@ class WhatsAppSettingsService
     {
         foreach ($newSettings as $key => $value) {
             // Encrypt sensitive fields
-            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token']) && ! empty($value)) {
+            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token', 'wapi_token']) && ! empty($value)) {
                 $value = Crypt::encryptString($value);
             }
 
@@ -140,6 +143,8 @@ class WhatsAppSettingsService
             'min_delay' => '2',
             'max_delay' => '5',
             'study_report_delivery' => 'both',
+            'wapi_token' => '',
+            'wapi_base_url' => '',
         ];
 
         foreach ($defaults as $key => $value) {

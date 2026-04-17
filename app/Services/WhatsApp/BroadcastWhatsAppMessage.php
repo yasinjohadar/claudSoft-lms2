@@ -2,10 +2,10 @@
 
 namespace App\Services\WhatsApp;
 
-use App\Models\User;
 use App\Models\Course;
 use App\Models\CourseGroup;
-use App\Models\CourseEnrollment;
+use App\Models\User;
+use App\Support\WapiPhoneNormalizer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -24,12 +24,12 @@ class BroadcastWhatsAppMessage
     protected function getEffectivePhone(User $user): string
     {
         $phone = $user->full_phone
-            ?? (trim(($user->country_code ?? '') . ($user->phone ?? '')))
+            ?? (trim(($user->country_code ?? '').($user->phone ?? '')))
             ?: ($user->phone ?? '');
 
         $phone = preg_replace('/\s+/', '', $phone ?? '');
         if ($phone !== '' && strpos($phone, '+') !== 0) {
-            $phone = '+' . ltrim($phone, '0');
+            $phone = '+'.ltrim($phone, '0');
         }
 
         return $phone;
@@ -41,17 +41,24 @@ class BroadcastWhatsAppMessage
      */
     protected function hasValidPhone(User $user): bool
     {
+        return $this->normalizedPhoneDigitsForWapi($user) !== null;
+    }
+
+    /**
+     * أرقام فقط مناسبة لـ Flaxxa WAPI (E.164 بدون +) أو null إن كان الرقم غير صالح.
+     */
+    public function normalizedPhoneDigitsForWapi(User $user): ?string
+    {
         $phone = $this->getEffectivePhone($user);
         if ($phone === '') {
-            return false;
+            return null;
         }
-        // Strict E.164
-        if (preg_match('/^\+[1-9][0-9]{1,14}$/', $phone)) {
-            return true;
+        $normalized = WapiPhoneNormalizer::normalize($phone);
+        if (! WapiPhoneNormalizer::isValidE164Digits($normalized)) {
+            return null;
         }
-        // Relaxed: digits only (after stripping + and spaces) between 10 and 15
-        $digitsOnly = preg_replace('/\D/', '', $phone);
-        return strlen($digitsOnly) >= 10 && strlen($digitsOnly) <= 15;
+
+        return $normalized;
     }
 
     /**
@@ -72,7 +79,7 @@ class BroadcastWhatsAppMessage
                 })
                 ->where(function ($q) {
                     $q->whereNotNull('phone')->where('phone', '!=', '')
-                      ->orWhereNotNull('full_phone')->where('full_phone', '!=', '');
+                        ->orWhereNotNull('full_phone')->where('full_phone', '!=', '');
                 });
 
             $beforePhoneFilter = $query->get();
@@ -84,7 +91,7 @@ class BroadcastWhatsAppMessage
 
             $filtered = $beforePhoneFilter->filter(function ($user) {
                 $valid = $this->hasValidPhone($user);
-                if (!$valid) {
+                if (! $valid) {
                     Log::channel('whatsapp')->debug('getStudentsByCriteria: user excluded by phone', [
                         'user_id' => $user->id,
                         'phone' => $user->phone,
@@ -93,6 +100,7 @@ class BroadcastWhatsAppMessage
                         'effective' => $this->getEffectivePhone($user),
                     ]);
                 }
+
                 return $valid;
             })->values();
 
@@ -112,7 +120,7 @@ class BroadcastWhatsAppMessage
                 ->where('phone', '!=', '')
                 ->whereHas('courseEnrollments', function ($q) use ($courseId) {
                     $q->where('course_id', $courseId)
-                      ->where('enrollment_status', 'active');
+                        ->where('enrollment_status', 'active');
                 });
 
             $beforePhoneFilter = $query->get();
@@ -127,6 +135,7 @@ class BroadcastWhatsAppMessage
         }
 
         Log::channel('whatsapp')->debug('getStudentsByCriteria: no course_id or group_id, returning empty');
+
         return collect();
     }
 
@@ -147,13 +156,13 @@ class BroadcastWhatsAppMessage
         ];
 
         // Get course from student's enrollment if not provided
-        if (!$course && !$group) {
+        if (! $course && ! $group) {
             // Try to get the first active enrollment's course
             $enrollment = $student->courseEnrollments()
                 ->with('course')
                 ->where('enrollment_status', 'active')
                 ->first();
-            
+
             if ($enrollment && $enrollment->course) {
                 $course = $enrollment->course;
             }
@@ -164,12 +173,12 @@ class BroadcastWhatsAppMessage
         }
 
         // Get group from student's memberships if not provided
-        if (!$group) {
+        if (! $group) {
             // Try to get first group membership
             $membership = $student->courseGroupMemberships()
                 ->with('group')
                 ->first();
-            
+
             if ($membership && $membership->group) {
                 $group = $membership->group;
             }
@@ -186,4 +195,3 @@ class BroadcastWhatsAppMessage
         );
     }
 }
-

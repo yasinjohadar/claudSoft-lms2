@@ -1,20 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\N8nWebhookController;
-use App\Http\Controllers\Api\WhatsAppWebhookController;
-use App\Http\Controllers\Api\WhatsAppWebWebhookController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
 use App\Http\Controllers\Api\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Api\Student\CourseProgressApiController as StudentCourseProgressApiController;
 use App\Http\Controllers\Api\Student\ExternalResourceApiController as StudentExternalResourceApiController;
-use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
-use App\Http\Controllers\Api\Student\NotificationHubController as StudentNotificationHubApiController;
-use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
-use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
-use App\Http\Controllers\Api\Student\ModuleProgressApiController as StudentModuleProgressApiController;
-use App\Http\Controllers\Api\Student\QuizApiController as StudentQuizApiController;
 use App\Http\Controllers\Api\Student\Gamification\AchievementApiController as StudentAchievementApiController;
 use App\Http\Controllers\Api\Student\Gamification\BadgeApiController as StudentBadgeApiController;
 use App\Http\Controllers\Api\Student\Gamification\ChallengeApiController as StudentChallengeApiController;
@@ -22,6 +12,17 @@ use App\Http\Controllers\Api\Student\Gamification\LeaderboardApiController as St
 use App\Http\Controllers\Api\Student\Gamification\PointsApiController as StudentPointsApiController;
 use App\Http\Controllers\Api\Student\Gamification\ShopApiController as StudentShopApiController;
 use App\Http\Controllers\Api\Student\Gamification\StreakApiController as StudentStreakApiController;
+use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
+use App\Http\Controllers\Api\Student\ModuleProgressApiController as StudentModuleProgressApiController;
+use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
+use App\Http\Controllers\Api\Student\NotificationHubController as StudentNotificationHubApiController;
+use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
+use App\Http\Controllers\Api\Student\QuizApiController as StudentQuizApiController;
+use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\WhatsAppController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebWebhookController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -123,6 +124,17 @@ Route::prefix('student')->name('api.student.')->group(function () {
         });
     });
 });
+
+// Flaxxa WAPI (Sanctum + admin)
+Route::prefix('wapi/whatsapp')
+    ->name('api.wapi.whatsapp.')
+    ->middleware(['auth:sanctum', 'role:admin', 'throttle:wapi-send'])
+    ->group(function () {
+        Route::post('send-message', [WhatsAppController::class, 'sendMessage'])->name('send-message');
+        Route::post('send-template', [WhatsAppController::class, 'sendTemplate'])->name('send-template');
+        Route::post('send-campaign', [WhatsAppController::class, 'sendCampaign'])->name('send-campaign');
+        Route::post('preview-template', [WhatsAppController::class, 'previewTemplate'])->name('preview-template');
+    });
 
 // Webhook Routes (Public - no auth required, but signature verification)
 Route::prefix('webhooks')->name('api.webhooks.')->group(function () {

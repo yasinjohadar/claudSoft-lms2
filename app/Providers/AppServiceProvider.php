@@ -6,11 +6,14 @@ use App\Models\ContactSetting;
 use App\Notifications\Channels\WhatsAppChannel;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Auth\RequestGuard;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +33,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         require_once app_path('Helpers/MixedBidiHelper.php');
+
+        RateLimiter::for('wapi-send', function (Request $request) {
+            $perMinute = (int) config('services.whatsapp.rate_limit_per_minute', 30);
+
+            return Limit::perMinute(max(1, $perMinute))->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
 
         $this->registerSanctumDriverIfNeeded();
 
