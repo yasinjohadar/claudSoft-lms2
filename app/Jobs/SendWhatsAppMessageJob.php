@@ -99,21 +99,29 @@ class SendWhatsAppMessageJob implements ShouldQueue
 
             throw $e;
         } catch (\Exception $e) {
+            $safeMessage = $this->toSingleLineError($e->getMessage());
+
             // Update message with error
             $this->message->update([
                 'status' => WhatsAppMessage::STATUS_FAILED,
                 'error' => [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'message' => $safeMessage,
                 ],
             ]);
 
             Log::channel('whatsapp')->error('Exception sending WhatsApp message', [
                 'message_id' => $this->message->id,
-                'error' => $e->getMessage(),
+                'error' => $safeMessage,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;
         }
+    }
+
+    private function toSingleLineError(string $message): string
+    {
+        $parts = preg_split('/\R+/', trim($message));
+        return (string) ($parts[0] ?? 'حدث خطأ غير متوقع أثناء الإرسال.');
     }
 }

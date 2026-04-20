@@ -59,6 +59,12 @@ class WhatsAppMessageController extends Controller
         return $msg;
     }
 
+    private function toSingleLineError(string $message): string
+    {
+        $parts = preg_split('/\R+/', trim($message));
+        return (string) ($parts[0] ?? 'حدث خطأ غير متوقع أثناء الإرسال.');
+    }
+
     /**
      * Display messages list
      */
@@ -312,20 +318,21 @@ class WhatsAppMessageController extends Controller
                            ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
                            ->withInput();
         } catch (\Exception $e) {
+            $safeMessage = $this->toSingleLineError($e->getMessage());
+
             // Update message with error if message was created
             if (isset($message) && $message->id) {
                 $message->update([
                     'status' => WhatsAppMessage::STATUS_FAILED,
                     'error' => [
-                        'message' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
+                        'message' => $safeMessage,
                     ],
                 ]);
             }
 
             Log::channel('whatsapp')->error('Exception sending WhatsApp message', [
                 'message_id' => $message->id ?? null,
-                'error' => $e->getMessage(),
+                'error' => $safeMessage,
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -333,18 +340,19 @@ class WhatsAppMessageController extends Controller
                            ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
                            ->withInput();
         } catch (\Throwable $e) {
+            $safeMessage = $this->toSingleLineError($e->getMessage());
+
             if (isset($message) && !empty($message->id)) {
                 $message->update([
                     'status' => WhatsAppMessage::STATUS_FAILED,
                     'error' => [
-                        'message' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
+                        'message' => $safeMessage,
                     ],
                 ]);
             }
             Log::channel('whatsapp')->error('Throwable sending WhatsApp message', [
                 'message_id' => isset($message) ? $message->id : null,
-                'error' => $e->getMessage(),
+                'error' => $safeMessage,
                 'trace' => $e->getTraceAsString(),
             ]);
             return redirect()->back()
@@ -676,19 +684,20 @@ class WhatsAppMessageController extends Controller
             return redirect()->back()
                 ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e));
         } catch (\Exception $e) {
+            $safeMessage = $this->toSingleLineError($e->getMessage());
+
             // Update message with error
             $message->update([
                 'status' => WhatsAppMessage::STATUS_FAILED,
                 'error' => [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'message' => $safeMessage,
                     'retried_at' => now()->toIso8601String(),
                 ],
             ]);
 
             Log::channel('whatsapp')->error('Exception sending WhatsApp message (retry)', [
                 'message_id' => $message->id,
-                'error' => $e->getMessage(),
+                'error' => $safeMessage,
                 'trace' => $e->getTraceAsString(),
             ]);
 
