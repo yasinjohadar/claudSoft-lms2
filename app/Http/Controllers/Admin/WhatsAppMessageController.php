@@ -499,21 +499,27 @@ class WhatsAppMessageController extends Controller
                         'error_message' => $firstSendError->getMessage(),
                     ]);
                 }
-                $broadcast->update(['status' => WhatsAppBroadcast::STATUS_FAILED]);
-                throw $firstSendError;
-            }
-
-            // First send succeeded: update first recipient and broadcast counts
-            $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
-                ->where('user_id', $firstStudent->id)
-                ->first();
-            if ($firstRecipient) {
-                $firstRecipient->update([
-                    'status' => WhatsAppBroadcastRecipient::STATUS_SENT,
-                    'sent_at' => now(),
+                $broadcast->increment('failed_count');
+                Log::channel('whatsapp')->warning('First broadcast recipient failed; continuing with remaining recipients', [
+                    'broadcast_id' => $broadcast->id,
+                    'user_id' => $firstStudent->id,
+                    'error' => $firstSendError->getMessage(),
                 ]);
             }
-            $broadcast->increment('sent_count');
+
+            // If first send succeeded: update first recipient and broadcast counts
+            if (!isset($firstSendError)) {
+                $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
+                    ->where('user_id', $firstStudent->id)
+                    ->first();
+                if ($firstRecipient) {
+                    $firstRecipient->update([
+                        'status' => WhatsAppBroadcastRecipient::STATUS_SENT,
+                        'sent_at' => now(),
+                    ]);
+                }
+                $broadcast->increment('sent_count');
+            }
 
             $delaySettings = $this->settingsService->getDelaySettings();
             $baseDelay = $delaySettings['delay_between_messages'];
@@ -542,11 +548,15 @@ class WhatsAppMessageController extends Controller
             }
 
             if ($students->count() === 1) {
-                $broadcast->update(['status' => WhatsAppBroadcast::STATUS_COMPLETED]);
+                $broadcast->refresh();
+                $status = $broadcast->sent_count > 0
+                    ? WhatsAppBroadcast::STATUS_COMPLETED
+                    : WhatsAppBroadcast::STATUS_FAILED;
+                $broadcast->update(['status' => $status]);
             }
 
             return redirect()->route('admin.whatsapp-messages.broadcasts.show', $broadcast)
-                ->with('success', 'تم بدء إرسال ' . $students->count() . ' رسالة جماعية. يمكنك متابعة التقرير في هذه الصفحة.');
+                ->with('success', 'تم بدء إرسال ' . $students->count() . ' رسالة جماعية. سيتم تجاوز الأرقام غير الصالحة ومتابعة الإرسال. يمكنك متابعة التقرير في هذه الصفحة.');
         } catch (\Throwable $e) {
             Log::error('Error sending broadcast message: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
