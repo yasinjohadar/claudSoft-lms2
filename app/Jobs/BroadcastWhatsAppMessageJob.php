@@ -19,8 +19,8 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $tries = 3;
-    public $backoff = [30, 60, 120]; // 30 seconds, 1 minute, 2 minutes
+    /** One attempt: failures are recorded per-recipient; retries would duplicate sends and inflate failed_count. */
+    public $tries = 1;
 
     /**
      * Create a new job instance.
@@ -128,8 +128,7 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
-            // Re-throw to trigger retry mechanism
-            throw $e;
+            // Do not rethrow: recipient is already marked failed; avoids queue FAIL spam and duplicate retries.
         } finally {
             // Update status to completed if all messages are sent (refresh to get latest counts)
             $this->broadcast->refresh();

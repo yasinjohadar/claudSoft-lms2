@@ -6,7 +6,7 @@ use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppMessage;
 use App\Support\WhatsAppRecipientNormalizer;
-use Illuminate\Support\Facades\Log;
+use App\Services\WhatsApp\WhatsAppOutboundSendService;
 
 class SendWhatsAppMessage
 {
@@ -64,12 +64,12 @@ class SendWhatsAppMessage
             'status' => WhatsAppMessage::STATUS_QUEUED,
         ]);
 
-        $job = new SendWhatsAppMessageJob($message, [
+        // Direct send: do not queue SendWhatsAppMessageJob (avoids duplicate queue logs / retries vs report).
+        app(WhatsAppOutboundSendService::class)->send($message, [
             'type' => 'text',
             'text' => $text,
             'preview_url' => $previewUrl,
         ]);
-        \Illuminate\Support\Facades\Bus::dispatchSync($job);
 
         return $message->fresh();
     }
