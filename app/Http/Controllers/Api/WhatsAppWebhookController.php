@@ -58,8 +58,9 @@ class WhatsAppWebhookController extends Controller
         $settings = $this->settingsService->getSettings();
         $strictSignature = $settings['strict_signature'] ?? true;
         
-        // Verify signature if strict mode is enabled
-        if ($strictSignature) {
+        // Meta-style signature verification in strict mode.
+        // For custom_api providers (e.g. Wasender), allow bearer-token fallback auth.
+        if ($strictSignature && $this->isMetaStylePayload($request->json()->all())) {
             $appSecret = $settings['app_secret'] ?? '';
             if (!empty($appSecret) && !SignatureVerifier::verifyFromRequest($signature, $rawBody, $appSecret, $strictSignature)) {
                 Log::channel('whatsapp')->warning('Invalid webhook signature', [
@@ -67,6 +68,11 @@ class WhatsAppWebhookController extends Controller
                 ]);
                 return response('Invalid signature', 401);
             }
+        } elseif (!$this->verifyCustomApiWebhookToken($request, $settings)) {
+            Log::channel('whatsapp')->warning('Custom API webhook authorization failed', [
+                'ip' => $request->ip(),
+            ]);
+            return response('Unauthorized', 401);
         }
 
         try {
@@ -114,6 +120,12 @@ class WhatsAppWebhookController extends Controller
      */
     protected function generateEventId(array $payload): string
     {
+        // Custom provider fast-path (Wasender-like)
+        $customEventId = $payload['event_id'] ?? $payload['id'] ?? data_get($payload, 'data.id') ?? data_get($payload, 'data.message_id');
+        if (!empty($customEventId)) {
+            return hash('sha256', 'custom|' . (string) $customEventId);
+        }
+
         // Use entry ID + change field + message/status ID + timestamp
         $entry = $payload['entry'][0] ?? [];
         $change = $entry['changes'][0] ?? [];
@@ -137,5 +149,31 @@ class WhatsAppWebhookController extends Controller
         }
 
         return hash('sha256', implode('|', $parts));
+    }
+
+    protected function isMetaStylePayload(array $payload): bool
+    {
+        return isset($payload['entry']) && is_array($payload['entry']);
+    }
+
+    protected function verifyCustomApiWebhookToken(Request $request, array $settings): bool
+    {
+        $customApiKey = (string) ($settings['custom_api_key'] ?? '');
+        if ($customApiKey === '') {
+            // Backward-compatible: if no token configured, allow (not recommended).
+            return true;
+        }
+
+        $bearer = $request->bearerToken();
+        if (is_string($bearer) && hash_equals($customApiKey, $bearer)) {
+            return true;
+        }
+
+        $headerToken = (string) $request->header('X-Webhook-Token', '');
+        if ($headerToken !== '' && hash_equals($customApiKey, $headerToken)) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -77,11 +77,14 @@ class BroadcastWhatsAppMessageJob implements ShouldQueue
                 $this->broadcast->update(['status' => WhatsAppBroadcast::STATUS_PROCESSING]);
             }
 
-            // Send message
-            if ($this->type === 'template') {
-                $sendService->sendText($phone, $this->message);
-            } else {
-                $sendService->sendText($phone, $this->message);
+            // Send synchronously inside broadcast job so recipient status reflects real provider result.
+            // Using queued send here creates a second async job and can mark recipient as sent prematurely.
+            $outboundMessage = $sendService->sendTextSync($phone, $this->message);
+
+            if ($outboundMessage->status !== \App\Models\WhatsAppMessage::STATUS_SENT) {
+                throw new Exception(
+                    data_get($outboundMessage->error, 'message', 'فشل إرسال الرسالة للمستلم.')
+                );
             }
 
             // Update recipient record to sent

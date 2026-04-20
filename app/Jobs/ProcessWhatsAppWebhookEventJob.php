@@ -31,7 +31,7 @@ class ProcessWhatsAppWebhookEventJob implements ShouldQueue
     public function handle(WebhookParser $parser): void
     {
         try {
-            $payload = $webhookEvent->payload;
+            $payload = $this->webhookEvent->payload;
             $parsed = $parser->parse($payload);
 
             // Process inbound messages
@@ -72,16 +72,24 @@ class ProcessWhatsAppWebhookEventJob implements ShouldQueue
         $contact = WhatsAppContact::findOrCreateByWaId($messageDTO->from);
         $contact->updateLastSeen();
 
-        // Create message record
-        $message = WhatsAppMessage::create([
-            'direction' => WhatsAppMessage::DIRECTION_INBOUND,
-            'contact_id' => $contact->id,
-            'meta_message_id' => $messageDTO->messageId,
-            'type' => $messageDTO->type,
-            'body' => $messageDTO->textBody,
-            'status' => WhatsAppMessage::STATUS_DELIVERED, // Inbound messages are considered delivered
-            'payload' => $messageDTO->metadata,
-        ]);
+        // Avoid duplicate inbound record creation on webhook retries
+        $message = WhatsAppMessage::firstOrCreate(
+            [
+                'direction' => WhatsAppMessage::DIRECTION_INBOUND,
+                'meta_message_id' => $messageDTO->messageId,
+            ],
+            [
+                'contact_id' => $contact->id,
+                'type' => $messageDTO->type,
+                'body' => $messageDTO->textBody,
+                'status' => WhatsAppMessage::STATUS_DELIVERED,
+                'payload' => $messageDTO->metadata,
+            ]
+        );
+
+        if (!$message->wasRecentlyCreated) {
+            return;
+        }
 
         // Dispatch event
         event(new WhatsAppMessageReceived($message));
@@ -114,6 +122,10 @@ class ProcessWhatsAppWebhookEventJob implements ShouldQueue
             'delivered' => WhatsAppMessage::STATUS_DELIVERED,
             'read' => WhatsAppMessage::STATUS_READ,
             'failed' => WhatsAppMessage::STATUS_FAILED,
+            'message_sent' => WhatsAppMessage::STATUS_SENT,
+            'message_delivered' => WhatsAppMessage::STATUS_DELIVERED,
+            'message_read' => WhatsAppMessage::STATUS_READ,
+            'message_failed' => WhatsAppMessage::STATUS_FAILED,
         ];
 
         $newStatus = $statusMap[strtolower($statusDTO->status)] ?? WhatsAppMessage::STATUS_SENT;

@@ -57,7 +57,30 @@ Then verify:
 claude mcp list
 ```
 
-## 5) Production/server MCP checklist
+## 5) Advanced Webhook setup (delivery/read + inbound)
+
+Set Wasender webhook URL to:
+
+```text
+https://YOUR_DOMAIN/api/webhooks/whatsapp
+```
+
+### Security
+- Send `Authorization: Bearer <CUSTOM_API_KEY>` in webhook request headers.
+- Fallback header is also supported: `X-Webhook-Token: <CUSTOM_API_KEY>`.
+- If `custom_api_key` is empty, webhook is accepted (not recommended in production).
+
+### Supported event mapping
+- Inbound messages -> stored as `inbound` in `whatsapp_messages`.
+- Status updates -> mapped to `sent`, `delivered`, `read`, `failed`.
+- Duplicate webhook retries are safely ignored using idempotency (`event_id` hash).
+
+### Notes
+- Keep webhook endpoint public over HTTPS.
+- The system supports Meta style payloads and Wasender/custom payload variants.
+- Full technical details are logged to `whatsapp` log channel; DB keeps clean status fields.
+
+## 6) Production/server MCP checklist
 
 - Keep token in server secrets manager or protected env variable.
 - Never commit tokens to repository.
@@ -65,7 +88,7 @@ claude mcp list
 - Rotate token periodically.
 - Run a smoke test call after deployment.
 
-## 6) Quick verification checklist
+## 7) Quick verification checklist
 
 1. Send individual message using valid number.
 2. Send individual message using invalid number (expect friendly validation error).
