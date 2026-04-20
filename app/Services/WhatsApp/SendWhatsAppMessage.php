@@ -5,6 +5,7 @@ namespace App\Services\WhatsApp;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppMessage;
+use App\Support\WhatsAppRecipientNormalizer;
 use Illuminate\Support\Facades\Log;
 
 class SendWhatsAppMessage
@@ -21,8 +22,11 @@ class SendWhatsAppMessage
      */
     public function sendText(string $to, string $text, bool $previewUrl = false): WhatsAppMessage
     {
+        $provider = $this->settingsService->getSettings()['whatsapp_provider'] ?? 'meta';
+        $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
+
         // Find or create contact
-        $contact = WhatsAppContact::findOrCreateByWaId($to);
+        $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
 
         // Create message record with queued status
         $message = WhatsAppMessage::create([
@@ -49,7 +53,9 @@ class SendWhatsAppMessage
      */
     public function sendTextSync(string $to, string $text, bool $previewUrl = false): WhatsAppMessage
     {
-        $contact = WhatsAppContact::findOrCreateByWaId($to);
+        $provider = $this->settingsService->getSettings()['whatsapp_provider'] ?? 'meta';
+        $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
+        $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
         $message = WhatsAppMessage::create([
             'direction' => WhatsAppMessage::DIRECTION_OUTBOUND,
             'contact_id' => $contact->id,
@@ -77,8 +83,11 @@ class SendWhatsAppMessage
         string $language = 'ar',
         array $components = []
     ): WhatsAppMessage {
+        $provider = $this->settingsService->getSettings()['whatsapp_provider'] ?? 'meta';
+        $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
+
         // Find or create contact
-        $contact = WhatsAppContact::findOrCreateByWaId($to);
+        $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
 
         // Create message record with queued status
         $message = WhatsAppMessage::create([
@@ -114,8 +123,11 @@ class SendWhatsAppMessage
         string $filename,
         ?string $caption = null
     ): WhatsAppMessage {
+        $provider = $this->settingsService->getSettings()['whatsapp_provider'] ?? 'meta';
+        $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
+
         // Find or create contact
-        $contact = WhatsAppContact::findOrCreateByWaId($to);
+        $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
 
         // Create message record with queued status
         $message = WhatsAppMessage::create([

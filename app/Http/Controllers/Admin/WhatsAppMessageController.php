@@ -17,6 +17,7 @@ use App\Jobs\BroadcastWhatsAppMessageJob;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Support\WhatsAppRecipientNormalizer;
 use App\Exceptions\WhatsAppApiException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,6 +51,11 @@ class WhatsAppMessageController extends Controller
             ], $context));
             return 'فشل إرسال الرسالة عبر واتساب ويب. جرّب إعادة ربط واتساب ويب أو المحاولة لاحقاً.';
         }
+
+        if (stripos($msg, 'provided jid does not exist') !== false || stripos($msg, 'jid') !== false) {
+            return 'فشل الإرسال: صيغة المستلم غير صحيحة أو الرقم/المجموعة غير موجودة على واتساب.';
+        }
+
         return $msg;
     }
 
@@ -184,7 +190,7 @@ class WhatsAppMessageController extends Controller
     {
         $validated = $request->validate([
             'student_id' => 'nullable|exists:users,id',
-            'to' => 'required_without:student_id|string|regex:/^\+[1-9]\d{1,14}$/',
+            'to' => 'required_without:student_id|string|max:255',
             'type' => 'required|in:text,template',
             'message' => 'required_if:type,text|nullable|string|max:4096',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
@@ -192,7 +198,7 @@ class WhatsAppMessageController extends Controller
         ], [
             'student_id.exists' => 'الطالب المحدد غير موجود',
             'to.required_without' => 'رقم الهاتف مطلوب إذا لم يتم اختيار طالب',
-            'to.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+            'to.max' => 'حقل المستلم طويل جداً',
             'type.required' => 'نوع الرسالة مطلوب',
             'message.required_if' => 'نص الرسالة مطلوب',
             'template_name.required_if' => 'اسم القالب مطلوب',
@@ -225,8 +231,12 @@ class WhatsAppMessageController extends Controller
                 }
             }
 
-            // Find or create contact
-            $contact = WhatsAppContact::findOrCreateByWaId($phone);
+            // Get provider settings and send message directly (synchronous)
+            $settings = $this->settingsService->getSettings();
+            $provider = $settings['whatsapp_provider'] ?? 'meta';
+            $config = $this->settingsService->getProviderConfig();
+            $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $phone);
+            $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
 
             // Create message record
             $message = WhatsAppMessage::create([
@@ -242,25 +252,20 @@ class WhatsAppMessageController extends Controller
                 ] : null,
             ]);
 
-            // Get provider settings and send message directly (synchronous)
-            $settings = $this->settingsService->getSettings();
-            $provider = $settings['whatsapp_provider'] ?? 'meta';
-            $config = $this->settingsService->getProviderConfig();
-
             // Create provider instance
             $providerInstance = WhatsAppProviderFactory::create($provider, $config);
 
             // Send message directly
             if ($validated['type'] === 'template') {
                 $response = $providerInstance->sendTemplate(
-                    $phone,
+                    $normalizedRecipient,
                     $validated['template_name'],
                     $validated['language'] ?? 'ar',
                     []
                 );
             } else {
                 $response = $providerInstance->sendText(
-                    $phone,
+                    $normalizedRecipient,
                     $messageText,
                     false
                 );
@@ -279,7 +284,7 @@ class WhatsAppMessageController extends Controller
             Log::channel('whatsapp')->info('WhatsApp message sent successfully (direct)', [
                 'message_id' => $message->id,
                 'meta_message_id' => $response->metaMessageId,
-                'to' => $phone,
+                'to' => $normalizedRecipient,
             ]);
 
             return redirect()->route('admin.whatsapp-messages.show', $message)
@@ -399,7 +404,7 @@ class WhatsAppMessageController extends Controller
             ],
             'group_id' => 'nullable|exists:course_groups,id',
             // Individual field
-            'to' => 'required_if:send_type,individual|nullable|string|regex:/^\+[1-9]\d{1,14}$/',
+            'to' => 'required_if:send_type,individual|nullable|string|max:255',
         ], [
             'send_type.required' => 'نوع الإرسال مطلوب',
             'type.required' => 'نوع الرسالة مطلوب',
@@ -471,17 +476,18 @@ class WhatsAppMessageController extends Controller
             $provider = $settings['whatsapp_provider'] ?? 'meta';
             $config = $this->settingsService->getProviderConfig();
             $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+            $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $phone);
 
             try {
                 if ($validated['type'] === 'template') {
                     $providerInstance->sendTemplate(
-                        $phone,
+                        $normalizedRecipient,
                         $validated['template_name'],
                         $validated['language'] ?? 'ar',
                         []
                     );
                 } else {
-                    $providerInstance->sendText($phone, $firstMessage, false);
+                    $providerInstance->sendText($normalizedRecipient, $firstMessage, false);
                 }
             } catch (\Throwable $firstSendError) {
                 $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
@@ -598,6 +604,7 @@ class WhatsAppMessageController extends Controller
             $settings = $this->settingsService->getSettings();
             $provider = $settings['whatsapp_provider'] ?? 'meta';
             $config = $this->settingsService->getProviderConfig();
+            $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
 
             // Create provider instance
             $providerInstance = WhatsAppProviderFactory::create($provider, $config);
@@ -606,14 +613,14 @@ class WhatsAppMessageController extends Controller
             if ($message->type === WhatsAppMessage::TYPE_TEMPLATE) {
                 $payload = $message->payload ?? [];
                 $response = $providerInstance->sendTemplate(
-                    $to,
+                    $normalizedRecipient,
                     $payload['template_name'] ?? $message->body,
                     $payload['language'] ?? 'ar',
                     $payload['components'] ?? []
                 );
             } else {
                 $response = $providerInstance->sendText(
-                    $to,
+                    $normalizedRecipient,
                     $message->body ?? '',
                     false
                 );
@@ -633,7 +640,7 @@ class WhatsAppMessageController extends Controller
             Log::channel('whatsapp')->info('WhatsApp message sent successfully (retry)', [
                 'message_id' => $message->id,
                 'meta_message_id' => $response->metaMessageId,
-                'to' => $to,
+                'to' => $normalizedRecipient,
             ]);
 
             return redirect()->back()

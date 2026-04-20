@@ -283,6 +283,33 @@
                                                       placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'>{{ old('custom_api_headers', is_array($settings['custom_api_headers'] ?? []) ? json_encode($settings['custom_api_headers'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : ($settings['custom_api_headers'] ?? '{}')) }}</textarea>
                                             <small class="text-muted">أدخل headers كـ JSON object</small>
                                         </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check form-switch mt-4">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="custom_api_preflight_enabled"
+                                                       id="custom_api_preflight_enabled"
+                                                       value="1"
+                                                       {{ ($settings['custom_api_preflight_enabled'] ?? false) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="custom_api_preflight_enabled">
+                                                    تفعيل فحص الرقم قبل الإرسال
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">يمنع الإرسال إذا الرقم غير موجود على واتساب (عند توفر endpoint).</small>
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Preflight Check URL</label>
+                                            <input type="url"
+                                                   class="form-control"
+                                                   name="custom_api_preflight_url"
+                                                   id="custom_api_preflight_url"
+                                                   value="{{ old('custom_api_preflight_url', $settings['custom_api_preflight_url'] ?? '') }}"
+                                                   placeholder="https://wasenderapi.com/api/check-number">
+                                            @error('custom_api_preflight_url')
+                                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                            @enderror
+                                        </div>
                                     </div>
                                 </div>
                             </div>

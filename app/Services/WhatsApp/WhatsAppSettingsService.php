@@ -44,6 +44,8 @@ class WhatsAppSettingsService
             'custom_api_key' => $this->decryptIfEncrypted($settings['custom_api_key'] ?? ''),
             'custom_api_method' => $settings['custom_api_method'] ?? 'POST',
             'custom_api_headers' => $this->parseHeaders($settings['custom_api_headers'] ?? '{}'),
+            'custom_api_preflight_enabled' => filter_var($settings['custom_api_preflight_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'custom_api_preflight_url' => $settings['custom_api_preflight_url'] ?? '',
             // WhatsApp Web settings (normalize URL: no leading/trailing slashes)
             'whatsapp_web_service_url' => $this->normalizeServiceUrl($settings['whatsapp_web_service_url'] ?? 'http://localhost:3000'),
             'whatsapp_web_api_token' => $this->decryptIfEncrypted($settings['whatsapp_web_api_token'] ?? ''),
@@ -132,6 +134,8 @@ class WhatsAppSettingsService
             'custom_api_key' => '',
             'custom_api_method' => 'POST',
             'custom_api_headers' => '{}',
+            'custom_api_preflight_enabled' => false,
+            'custom_api_preflight_url' => '',
             // WhatsApp Web settings
             'whatsapp_web_service_url' => 'http://localhost:3000',
             'whatsapp_web_api_token' => '',
@@ -168,6 +172,8 @@ class WhatsAppSettingsService
                 'api_key' => $settings['custom_api_key'],
                 'api_method' => $settings['custom_api_method'],
                 'headers' => $settings['custom_api_headers'],
+                'preflight_enabled' => $settings['custom_api_preflight_enabled'],
+                'preflight_url' => $settings['custom_api_preflight_url'],
             ];
         }
 

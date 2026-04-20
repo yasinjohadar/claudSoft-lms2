@@ -78,6 +78,8 @@ class WhatsAppSettingsController extends Controller
             'max_delay' => 'nullable|integer|min:1|max:10',
             'custom_api_method' => 'nullable|string|in:GET,POST',
             'custom_api_headers' => 'nullable|string|max:1000',
+            'custom_api_preflight_enabled' => 'nullable',
+            'custom_api_preflight_url' => 'nullable|string|url|max:500',
             'study_report_delivery' => 'nullable|string|in:email,whatsapp,both',
         ], [
             'whatsapp_provider.required' => 'نوع المزود مطلوب',
@@ -101,6 +103,7 @@ class WhatsAppSettingsController extends Controller
             $validated['auto_reply'] = $request->has('auto_reply') ? '1' : '0';
             $validated['auto_reply_use_ai'] = $request->has('auto_reply_use_ai') ? '1' : '0';
             $validated['random_delay_enabled'] = $request->has('random_delay_enabled') ? '1' : '0';
+            $validated['custom_api_preflight_enabled'] = $request->has('custom_api_preflight_enabled') ? '1' : '0';
 
             if (empty($validated['auto_reply_ai_model_id'])) {
                 $validated['auto_reply_ai_model_id'] = '';
@@ -164,6 +167,8 @@ class WhatsAppSettingsController extends Controller
                     'api_key' => $customApiKey,
                     'api_method' => $request->input('custom_api_method', $settings['custom_api_method'] ?? 'POST'),
                     'headers' => $this->parseHeaders($request->input('custom_api_headers', $settings['custom_api_headers'] ?? [])),
+                    'preflight_enabled' => filter_var($request->input('custom_api_preflight_enabled', $settings['custom_api_preflight_enabled'] ?? false), FILTER_VALIDATE_BOOLEAN),
+                    'preflight_url' => $request->input('custom_api_preflight_url', $settings['custom_api_preflight_url'] ?? ''),
                 ];
             } elseif ($provider === 'whatsapp_web') {
                 $nodejsUrl = $request->input('whatsapp_web_service_url', $settings['whatsapp_web_service_url'] ?? 'http://localhost:3000');

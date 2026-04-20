@@ -43,4 +43,11 @@ return [
         'rate_limit_per_minute' => (int) env('WHATSAPP_WAPI_RATE_LIMIT', 30),
     ],
 
+    'wasender' => [
+        'base_url' => env('WASENDER_BASE_URL', 'https://www.wasenderapi.com/api'),
+        'api_key' => env('WASENDER_API_KEY'),
+        'mcp_url' => env('WASENDER_MCP_URL', 'https://wasenderapi.com/mcp'),
+        'mcp_personal_access_token' => env('WASENDER_MCP_PERSONAL_ACCESS_TOKEN'),
+    ],
+
 ];

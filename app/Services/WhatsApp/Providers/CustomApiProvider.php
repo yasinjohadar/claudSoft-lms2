@@ -4,6 +4,7 @@ namespace App\Services\WhatsApp\Providers;
 
 use App\DTOs\WhatsApp\SendMessageResponseDTO;
 use App\Services\WhatsApp\WhatsAppProviderService;
+use App\Support\WhatsAppRecipientNormalizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +14,8 @@ class CustomApiProvider implements WhatsAppProviderService
     protected string $apiKey;
     protected string $method;
     protected array $headers;
+    protected bool $preflightEnabled;
+    protected ?string $preflightUrl;
 
     public function __construct(array $config)
     {
@@ -20,6 +23,8 @@ class CustomApiProvider implements WhatsAppProviderService
         $this->apiKey = $config['api_key'] ?? '';
         $this->method = strtoupper($config['api_method'] ?? 'POST');
         $this->headers = $config['headers'] ?? [];
+        $this->preflightEnabled = (bool) ($config['preflight_enabled'] ?? false);
+        $this->preflightUrl = $config['preflight_url'] ?? null;
     }
 
     /**
@@ -84,6 +89,9 @@ class CustomApiProvider implements WhatsAppProviderService
     protected function sendRequest(array $payload): SendMessageResponseDTO
     {
         try {
+            $payload['to'] = WhatsAppRecipientNormalizer::normalizeForCustomApi((string) ($payload['to'] ?? ''));
+            $this->runPreflightIfConfigured($payload['to']);
+
             $headers = array_merge([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
@@ -116,6 +124,7 @@ class CustomApiProvider implements WhatsAppProviderService
                 $errorData = $response->json();
                 $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'Unknown error';
                 $errorCode = $errorData['code'] ?? $response->status();
+                $friendlyError = $this->humanizeProviderError($errorMessage);
 
                 Log::channel('whatsapp')->error('Custom API error', [
                     'status' => $response->status(),
@@ -123,7 +132,7 @@ class CustomApiProvider implements WhatsAppProviderService
                     'to' => $payload['to'] ?? '',
                 ]);
 
-                throw new \Exception("Custom API error: {$errorMessage}", (int) $errorCode);
+                throw new \Exception("Custom API error: {$friendlyError}", (int) $errorCode);
             }
         } catch (\Exception $e) {
             Log::channel('whatsapp')->error('Exception sending Custom API message', [
@@ -219,6 +228,70 @@ class CustomApiProvider implements WhatsAppProviderService
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
             ];
         }
+    }
+
+    protected function runPreflightIfConfigured(string $to): void
+    {
+        if (! $this->preflightEnabled || empty($this->preflightUrl)) {
+            return;
+        }
+
+        if (WhatsAppRecipientNormalizer::isLikelyGroupRecipient($to)) {
+            return;
+        }
+
+        $headers = array_merge([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Accept' => 'application/json',
+        ], $this->headers);
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders($headers)
+                ->get($this->preflightUrl, ['phone' => $to]);
+
+            if (! $response->successful()) {
+                Log::channel('whatsapp')->warning('Custom API preflight unavailable, continuing send', [
+                    'status' => $response->status(),
+                    'to' => $to,
+                ]);
+
+                return;
+            }
+
+            $json = $response->json();
+            $exists = (bool) ($json['exists'] ?? $json['is_whatsapp'] ?? $json['registered'] ?? true);
+            if (! $exists) {
+                throw new \Exception('الرقم غير مسجل على واتساب.');
+            }
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'الرقم غير مسجل على واتساب.') {
+                throw $e;
+            }
+
+            Log::channel('whatsapp')->warning('Custom API preflight check failed, continuing send', [
+                'reason' => $e->getMessage(),
+                'to' => $to,
+            ]);
+        }
+    }
+
+    protected function humanizeProviderError(string $errorMessage): string
+    {
+        $normalized = mb_strtolower($errorMessage);
+        if (str_contains($normalized, 'provided jid does not exist')) {
+            return 'صيغة المستلم غير صحيحة أو الرقم/المجموعة غير موجودة على واتساب.';
+        }
+
+        if (str_contains($normalized, 'jid')) {
+            return 'صيغة JID غير صالحة. استخدم رقمًا صحيحًا أو JID مجموعة صحيحًا.';
+        }
+
+        if (str_contains($normalized, 'unauthorized') || str_contains($normalized, 'invalid token')) {
+            return 'فشل التحقق من صلاحية API. تحقق من المفتاح في الإعدادات.';
+        }
+
+        return $errorMessage;
     }
 }
 

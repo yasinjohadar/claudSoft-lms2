@@ -6,6 +6,7 @@ use App\Exceptions\WhatsAppApiException;
 use App\Models\WhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Support\WhatsAppRecipientNormalizer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -32,12 +33,11 @@ class SendWhatsAppMessageJob implements ShouldQueue
     {
         try {
             $contact = $this->message->contact;
-            $to = $contact->wa_id;
-
             // Get provider settings
             $settings = $settingsService->getSettings();
             $provider = $settings['whatsapp_provider'] ?? 'meta';
             $config = $settingsService->getProviderConfig();
+            $to = WhatsAppRecipientNormalizer::normalize($provider, $contact->wa_id);
 
             // Create provider instance
             $providerInstance = WhatsAppProviderFactory::create($provider, $config);
