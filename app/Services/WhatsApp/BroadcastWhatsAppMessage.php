@@ -5,6 +5,7 @@ namespace App\Services\WhatsApp;
 use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\User;
+use App\Support\UserPhoneCountryValidator;
 use App\Support\WapiPhoneNormalizer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -41,6 +42,10 @@ class BroadcastWhatsAppMessage
      */
     protected function hasValidPhone(User $user): bool
     {
+        if (! UserPhoneCountryValidator::isConsistent($user)) {
+            return false;
+        }
+
         return $this->normalizedPhoneDigitsForWapi($user) !== null;
     }
 

@@ -17,7 +17,8 @@ class NotificationTemplateSeeder extends Seeder
             ['student.assignment.available', 'database', 'ar', 'واجب جديد', 'واجب متاح الآن', 'الواجب {{assignment_title}} أصبح متاحاً.'],
             ['student.assignment.submitted', 'database', 'ar', 'تسليم واجب', 'تم استلام تسليمك', 'تم تسليم واجب {{assignment_title}} بنجاح.'],
             ['student.assignment.graded', 'database', 'ar', 'تم التقييم', 'تقييم واجب', 'تم تقييم واجب {{assignment_title}} بدرجة {{grade}}.'],
-            ['student.activity.tracked', 'database', 'ar', 'نشاط جديد', 'تم تسجيل نشاطك', 'نشاط: {{activity_key}}.'],
+            // عناوين/نصوص فارغة حتى تُستخدم defaults من config + NotificationHubFallbackCopy (لا تُعرض مفتاح activity_key خام)
+            ['student.activity.tracked', 'database', 'ar', 'نشاط تعليمي', '', ''],
             ['admin.custom', 'database', 'ar', 'إشعار إداري', '{{title}}', '{{body}}'],
         ];
 

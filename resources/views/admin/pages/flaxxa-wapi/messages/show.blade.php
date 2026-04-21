@@ -25,6 +25,26 @@
 
         @include('admin.pages.flaxxa-wapi._nav')
 
+        @php($msgType = $message->type?->value)
+        <div class="alert alert-info border-0 mb-3" role="alert">
+            <i class="ri-information-line me-2"></i>
+            حالة السجل هنا تعكس <strong>استجابة واجهة Flaxxa</strong> (قبول الطلب أو رفضه)، وليست تأكيداً يدوياً من التطبيق بأن الرسالة وصلت للجهاز.
+            @if($msgType === 'template')
+                <span class="d-block mt-2 small">
+                    <strong>قالب معتمد:</strong> هذه الرسائل مخصّصة للبدء خارج المحادثة و<strong>لا تحتاج</strong> أن يكون المستلم قد راسلك خلال 24 ساعة.
+                    إن ظهر لديك «مقبول API» ولا تصل الرسالة، فالمشكلة غالباً في المزود أو WhatsApp (رمز الدولة، اسم القالب ولغة القالب مطابقة لما في Meta، عدد/نوع المتغيرات، حظر الرقم، أو حالة التسليم) — راجع الاستجابة JSON وزر «تحقّق من حالة التوصيل» أو لوحة Flaxxa.
+                </span>
+            @elseif($msgType === 'message')
+                <span class="d-block mt-2 small">
+                    <strong>نص حر:</strong> التسليم يتأثر بنافذة المحادثة (غالباً آخر 24 ساعة) وفق سياسة واتساب — انظر الملاحظة في أسفل الصفحة.
+                </span>
+            @else
+                <span class="d-block mt-2 small">
+                    التسليم الفعلي يعتمد على إعدادات المزود والرقم والحظر — راجع زر «تحقّق من حالة التوصيل» أو لوحة Flaxxa، وليس من إشعارات مركز الإشعارات وحده.
+                </span>
+            @endif
+        </div>
+
         <div class="row">
             <div class="col-lg-6">
                 <div class="card custom-card mb-3">
@@ -36,7 +56,15 @@
                             <dt class="col-sm-4">النوع</dt>
                             <dd class="col-sm-8">{{ $message->type?->value }}</dd>
                             <dt class="col-sm-4">الحالة</dt>
-                            <dd class="col-sm-8"><strong>{{ $message->status?->value }}</strong></dd>
+                            <dd class="col-sm-8">
+                                @if($message->status)
+                                    <span class="badge {{ $message->status->badgeClass() }} me-1">{{ $message->status->badgeTextAr() }}</span>
+                                    <small class="text-muted d-block mt-1">{{ $message->status->labelAr() }}</small>
+                                @else
+                                    —
+                                @endif
+                                <small class="text-muted d-block mt-1"><code>{{ $message->status?->value }}</code></small>
+                            </dd>
                             <dt class="col-sm-4">أنشئ في</dt>
                             <dd class="col-sm-8">{{ $message->created_at }}</dd>
                         </dl>

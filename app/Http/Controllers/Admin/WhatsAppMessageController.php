@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\WhatsAppApiException;
 use App\Http\Controllers\Controller;
+use App\Jobs\BroadcastWhatsAppMessageJob;
+use App\Models\Course;
+use App\Models\CourseGroup;
 use App\Models\User;
-use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppBroadcast;
 use App\Models\WhatsAppBroadcastRecipient;
 use App\Models\WhatsAppContact;
+use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppMessageTemplate;
-use App\Models\Course;
-use App\Models\CourseGroup;
-use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
-use App\Jobs\BroadcastWhatsAppMessageJob;
-use App\Jobs\SendWhatsAppMessageJob;
+use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Support\UserPhoneCountryValidator;
 use App\Support\WhatsAppRecipientNormalizer;
-use App\Exceptions\WhatsAppApiException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +49,7 @@ class WhatsAppMessageController extends Controller
                 'exception_trace' => $e->getTraceAsString(),
                 'exception_code' => $e->getCode(),
             ], $context));
+
             return 'فشل إرسال الرسالة عبر واتساب ويب. جرّب إعادة ربط واتساب ويب أو المحاولة لاحقاً.';
         }
 
@@ -62,6 +63,7 @@ class WhatsAppMessageController extends Controller
     private function toSingleLineError(string $message): string
     {
         $parts = preg_split('/\R+/', trim($message));
+
         return (string) ($parts[0] ?? 'حدث خطأ غير متوقع أثناء الإرسال.');
     }
 
@@ -101,10 +103,10 @@ class WhatsAppMessageController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('body', 'like', "%{$search}%")
-                  ->orWhereHas('contact', function ($contactQuery) use ($search) {
-                      $contactQuery->where('wa_id', 'like', "%{$search}%")
-                                   ->orWhere('name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('contact', function ($contactQuery) use ($search) {
+                        $contactQuery->where('wa_id', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -119,6 +121,7 @@ class WhatsAppMessageController extends Controller
     public function show(WhatsAppMessage $message)
     {
         $message->load('contact');
+
         return view('admin.pages.whatsapp-messages.show', compact('message'));
     }
 
@@ -148,22 +151,22 @@ class WhatsAppMessageController extends Controller
                 try {
                     $query->students();
                 } catch (\Exception $e) {
-                    Log::warning('Error in students scope: ' . $e->getMessage());
+                    Log::warning('Error in students scope: '.$e->getMessage());
                 }
             }
 
             // Filter by phone
             $query->whereNotNull('phone')
-                  ->where('phone', '!=', '');
+                ->where('phone', '!=', '');
 
             // Search
             if ($request->filled('search')) {
                 $search = $request->input('search');
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('email', 'like', '%' . $search . '%')
-                      ->orWhere('phone', 'like', '%' . $search . '%');
-                      
+                    $q->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%');
+
                     if (is_numeric($search)) {
                         $q->orWhere('id', $search);
                     }
@@ -181,10 +184,11 @@ class WhatsAppMessageController extends Controller
 
             return response()->json($students);
         } catch (\Exception $e) {
-            Log::error('Error searching students: ' . $e->getMessage(), [
+            Log::error('Error searching students: '.$e->getMessage(), [
                 'exception' => $e,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -217,17 +221,27 @@ class WhatsAppMessageController extends Controller
             $messageText = $validated['message'] ?? '';
 
             // If student_id is provided, get student and use their phone
-            if (!empty($validated['student_id'])) {
+            if (! empty($validated['student_id'])) {
                 $student = User::findOrFail($validated['student_id']);
-                if (!$student->phone) {
+                if (! UserPhoneCountryValidator::isConsistent($student)) {
                     return redirect()->back()
-                                   ->with('error', 'الطالب المحدد لا يملك رقم هاتف مسجل.')
-                                   ->withInput();
+                        ->with('error', 'رقم هاتف الطالب غير متطابق مع رمز الدولة أو غير صالح. يرجى تصحيحه من ملف الطالب.')
+                        ->withInput();
                 }
-                $phone = $student->phone;
+                $phone = $student->full_phone
+                    ?? (trim(($student->country_code ?? '').($student->phone ?? '')))
+                    ?: ($student->phone ?? '');
+                if ($phone === '') {
+                    return redirect()->back()
+                        ->with('error', 'الطالب المحدد لا يملك رقم هاتف مسجل.')
+                        ->withInput();
+                }
+                if (strpos($phone, '+') !== 0) {
+                    $phone = '+'.ltrim($phone, '0');
+                }
 
                 // Replace placeholders if message is text type
-                if ($validated['type'] === 'text' && !empty($messageText)) {
+                if ($validated['type'] === 'text' && ! empty($messageText)) {
                     $messageText = $this->broadcastService->replacePlaceholders(
                         $messageText,
                         $student,
@@ -294,7 +308,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->route('admin.whatsapp-messages.show', $message)
-                           ->with('success', 'تم إرسال الرسالة بنجاح!');
+                ->with('success', 'تم إرسال الرسالة بنجاح!');
         } catch (WhatsAppApiException $e) {
             // Update message with error if message was created
             if (isset($message) && $message->id) {
@@ -315,8 +329,8 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                           ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
-                           ->withInput();
+                ->with('error', 'فشل إرسال الرسالة: '.$this->getWhatsAppErrorMessage($e))
+                ->withInput();
         } catch (\Exception $e) {
             $safeMessage = $this->toSingleLineError($e->getMessage());
 
@@ -337,12 +351,12 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
-                           ->withInput();
+                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: '.$this->getWhatsAppErrorMessage($e))
+                ->withInput();
         } catch (\Throwable $e) {
             $safeMessage = $this->toSingleLineError($e->getMessage());
 
-            if (isset($message) && !empty($message->id)) {
+            if (isset($message) && ! empty($message->id)) {
                 $message->update([
                     'status' => WhatsAppMessage::STATUS_FAILED,
                     'error' => [
@@ -355,9 +369,10 @@ class WhatsAppMessageController extends Controller
                 'error' => $safeMessage,
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->back()
-                           ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e))
-                           ->withInput();
+                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: '.$this->getWhatsAppErrorMessage($e))
+                ->withInput();
         }
     }
 
@@ -406,7 +421,7 @@ class WhatsAppMessageController extends Controller
             'language' => 'required_if:type,template|nullable|string|max:10',
             // Broadcast: عند اختيار مجموعة يُرسل لأعضاء المجموعة فقط (الكورس اختياري)
             'course_id' => [
-                Rule::requiredIf(fn () => $request->input('send_type') === 'broadcast' && !$request->input('group_id')),
+                Rule::requiredIf(fn () => $request->input('send_type') === 'broadcast' && ! $request->input('group_id')),
                 'nullable',
                 'exists:courses,id',
             ],
@@ -475,9 +490,9 @@ class WhatsAppMessageController extends Controller
                 $course,
                 $group
             );
-            $phone = $firstStudent->full_phone ?? (($firstStudent->country_code ?? '') . ($firstStudent->phone ?? '')) ?: $firstStudent->phone;
+            $phone = $firstStudent->full_phone ?? (($firstStudent->country_code ?? '').($firstStudent->phone ?? '')) ?: $firstStudent->phone;
             if (strpos($phone, '+') !== 0) {
-                $phone = '+' . ltrim($phone, '0');
+                $phone = '+'.ltrim($phone, '0');
             }
 
             $settings = $this->settingsService->getSettings();
@@ -516,7 +531,7 @@ class WhatsAppMessageController extends Controller
             }
 
             // If first send succeeded: update first recipient and broadcast counts
-            if (!isset($firstSendError)) {
+            if (! isset($firstSendError)) {
                 $firstRecipient = WhatsAppBroadcastRecipient::where('broadcast_id', $broadcast->id)
                     ->where('user_id', $firstStudent->id)
                     ->first();
@@ -564,13 +579,14 @@ class WhatsAppMessageController extends Controller
             }
 
             return redirect()->route('admin.whatsapp-messages.broadcasts.show', $broadcast)
-                ->with('success', 'تم بدء إرسال ' . $students->count() . ' رسالة جماعية. سيتم تجاوز الأرقام غير الصالحة ومتابعة الإرسال. يمكنك متابعة التقرير في هذه الصفحة.');
+                ->with('success', 'تم بدء إرسال '.$students->count().' رسالة جماعية. سيتم تجاوز الأرقام غير الصالحة ومتابعة الإرسال. يمكنك متابعة التقرير في هذه الصفحة.');
         } catch (\Throwable $e) {
-            Log::error('Error sending broadcast message: ' . $e->getMessage(), [
+            Log::error('Error sending broadcast message: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()->back()
-                ->with('error', 'فشل إرسال الرسالة الجماعية: ' . $this->getWhatsAppErrorMessage($e))
+                ->with('error', 'فشل إرسال الرسالة الجماعية: '.$this->getWhatsAppErrorMessage($e))
                 ->withInput();
         }
     }
@@ -604,14 +620,14 @@ class WhatsAppMessageController extends Controller
     {
         try {
             // Only allow retry for queued or failed messages
-            if (!in_array($message->status, [WhatsAppMessage::STATUS_QUEUED, WhatsAppMessage::STATUS_FAILED])) {
+            if (! in_array($message->status, [WhatsAppMessage::STATUS_QUEUED, WhatsAppMessage::STATUS_FAILED])) {
                 return redirect()->back()
-                    ->with('error', 'لا يمكن إعادة إرسال هذه الرسالة. الحالة الحالية: ' . $message->status);
+                    ->with('error', 'لا يمكن إعادة إرسال هذه الرسالة. الحالة الحالية: '.$message->status);
             }
 
             // Load contact relationship
             $message->load('contact');
-            if (!$message->contact) {
+            if (! $message->contact) {
                 return redirect()->back()
                     ->with('error', 'المستقبل غير موجود.');
             }
@@ -682,7 +698,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'فشل إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e));
+                ->with('error', 'فشل إرسال الرسالة: '.$this->getWhatsAppErrorMessage($e));
         } catch (\Exception $e) {
             $safeMessage = $this->toSingleLineError($e->getMessage());
 
@@ -702,7 +718,7 @@ class WhatsAppMessageController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: ' . $this->getWhatsAppErrorMessage($e));
+                ->with('error', 'حدث خطأ أثناء إرسال الرسالة: '.$this->getWhatsAppErrorMessage($e));
         }
     }
 }

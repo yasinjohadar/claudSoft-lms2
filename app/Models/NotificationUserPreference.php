@@ -15,6 +15,7 @@ class NotificationUserPreference extends Model
         'fcm_enabled',
         'mail_enabled',
         'whatsapp_enabled',
+        'whatsapp_wapi_enabled',
         'meta',
     ];
 
@@ -24,6 +25,7 @@ class NotificationUserPreference extends Model
         'fcm_enabled' => 'boolean',
         'mail_enabled' => 'boolean',
         'whatsapp_enabled' => 'boolean',
+        'whatsapp_wapi_enabled' => 'boolean',
         'meta' => 'array',
     ];
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\CourseGroupCoursesSynced;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseGroup;
@@ -29,8 +30,8 @@ class CourseGroupController extends Controller
             $course = Course::findOrFail($courseId);
 
             $query = CourseGroup::with(['courses', 'creator'])
-                                ->withCount('members')
-                ->whereHas('courses', function($q) use ($courseId) {
+                ->withCount('members')
+                ->whereHas('courses', function ($q) use ($courseId) {
                     $q->where('courses.id', $courseId);
                 });
 
@@ -47,9 +48,9 @@ class CourseGroupController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
@@ -62,7 +63,7 @@ class CourseGroupController extends Controller
 
             return view('admin.course-groups.index', compact('groups', 'course'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل المجموعات: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل المجموعات: '.$e->getMessage());
         }
     }
 
@@ -77,7 +78,7 @@ class CourseGroupController extends Controller
 
             return view('admin.pages.groups.create', compact('course', 'courses'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: '.$e->getMessage());
         }
     }
 
@@ -122,16 +123,18 @@ class CourseGroupController extends Controller
 
             DB::commit();
 
+            event(new CourseGroupCoursesSynced($group->fresh(['courses']), array_map('intval', $courseIds)));
+
             return redirect()
                 ->route('courses.enrollments.group', $courseId)
-                ->with('success', 'تم إنشاء المجموعة بنجاح وربطها بـ ' . count($courseIds) . ' كورس');
+                ->with('success', 'تم إنشاء المجموعة بنجاح وربطها بـ '.count($courseIds).' كورس');
         } catch (\Exception $e) {
             DB::rollBack();
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء إنشاء المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء المجموعة: '.$e->getMessage());
         }
     }
 
@@ -145,10 +148,10 @@ class CourseGroupController extends Controller
                 'courses',
                 'creator',
                 'leaders',
-                'groupEnrollments'
+                'groupEnrollments',
             ])
-            ->withCount('members')
-            ->findOrFail($id);
+                ->withCount('members')
+                ->findOrFail($id);
 
             // Get the course - use provided courseId if valid, otherwise use first course from group
             $course = null;
@@ -156,7 +159,7 @@ class CourseGroupController extends Controller
                 try {
                     $course = Course::findOrFail($courseId);
                     // Verify that this course is actually associated with the group
-                    if (!$group->courses->contains('id', $courseId)) {
+                    if (! $group->courses->contains('id', $courseId)) {
                         $course = null;
                     }
                 } catch (\Exception $e) {
@@ -165,7 +168,7 @@ class CourseGroupController extends Controller
             }
 
             // If no valid course found, try to get first course from group
-            if (!$course && $group->courses->count() > 0) {
+            if (! $course && $group->courses->count() > 0) {
                 $course = $group->courses->first();
             }
 
@@ -208,7 +211,7 @@ class CourseGroupController extends Controller
                 if ($latestSession && $latestSession->last_activity) {
                     $lastActivityTimestamp = $latestSession->last_activity;
                     $lastActivityByUserId[$userId] = \Carbon\Carbon::createFromTimestamp($lastActivityTimestamp);
-                    
+
                     // Check if user is online (last activity within 5 minutes)
                     if ($lastActivityTimestamp >= $fiveMinutesAgo) {
                         $onlineUserIds[] = $userId;
@@ -222,17 +225,17 @@ class CourseGroupController extends Controller
             // Search filter
             if ($request->filled('search')) {
                 $search = $request->search;
-                $membersQuery->whereHas('student', function($q) use ($search) {
+                $membersQuery->whereHas('student', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
             // Filter by other group membership
             if ($request->filled('other_group_id')) {
                 $otherGroupId = $request->other_group_id;
-                $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($otherGroupId) {
+                $membersQuery->whereHas('student.courseGroupMemberships', function ($q) use ($otherGroupId) {
                     $q->where('group_id', $otherGroupId);
                 });
             }
@@ -242,14 +245,14 @@ class CourseGroupController extends Controller
                 $groupsCount = $request->groups_count;
                 if ($groupsCount === '0') {
                     // Students with no other groups
-                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function($q) use ($group) {
+                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function ($q) use ($group) {
                         $q->where('group_id', '!=', $group->id);
                     });
                 } else {
                     // Students with specific number of other groups
                     $operator = '>=';
-                    $count = (int)$groupsCount;
-                    $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($group) {
+                    $count = (int) $groupsCount;
+                    $membersQuery->whereHas('student.courseGroupMemberships', function ($q) use ($group) {
                         $q->where('group_id', '!=', $group->id);
                     }, $operator, $count);
                 }
@@ -259,7 +262,7 @@ class CourseGroupController extends Controller
             if ($request->filled('online_status')) {
                 if ($request->online_status === 'online') {
                     // Only show online members
-                    if (!empty($onlineUserIds)) {
+                    if (! empty($onlineUserIds)) {
                         $membersQuery->whereIn('student_id', $onlineUserIds);
                     } else {
                         // No online users, return empty result
@@ -267,7 +270,7 @@ class CourseGroupController extends Controller
                     }
                 } elseif ($request->online_status === 'offline') {
                     // Only show offline members
-                    if (!empty($onlineUserIds)) {
+                    if (! empty($onlineUserIds)) {
                         $membersQuery->whereNotIn('student_id', $onlineUserIds);
                     }
                     // If no online users, all members are offline, so no filter needed
@@ -376,13 +379,13 @@ class CourseGroupController extends Controller
             $trainingCampsForModal = $this->activeTrainingCampsForModal();
 
             // Load other groups for each student member
-            $members->each(function($member) use ($group) {
+            $members->each(function ($member) use ($group) {
                 if ($member->student) {
                     $member->student->load([
-                        'courseGroupMemberships' => function($query) use ($group) {
+                        'courseGroupMemberships' => function ($query) use ($group) {
                             $query->where('group_id', '!=', $group->id);
                         },
-                        'courseGroupMemberships.group'
+                        'courseGroupMemberships.group',
                     ]);
                 }
             });
@@ -419,7 +422,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
-                ->with('error', 'حدث خطأ أثناء تحميل المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعة: '.$e->getMessage());
         }
     }
 
@@ -431,15 +434,15 @@ class CourseGroupController extends Controller
         try {
             $course = Course::findOrFail($courseId);
             $group = CourseGroup::with('courses')
-                                ->withCount('members')
-                                ->findOrFail($id);
+                ->withCount('members')
+                ->findOrFail($id);
             $courses = Course::all();
 
             return view('admin.pages.groups.edit', compact('course', 'group', 'courses'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.groups.index', $courseId)
-                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: '.$e->getMessage());
         }
     }
 
@@ -480,10 +483,10 @@ class CourseGroupController extends Controller
             // Prepare sync data with visibility settings
             $syncData = [];
             $courseVisibility = $request->input('course_visibility', []);
-            
-            foreach ($courseIds as $courseId) {
-                $syncData[$courseId] = [
-                    'is_visible' => isset($courseVisibility[$courseId]) && $courseVisibility[$courseId] == '1'
+
+            foreach ($courseIds as $linkedCourseId) {
+                $syncData[$linkedCourseId] = [
+                    'is_visible' => isset($courseVisibility[$linkedCourseId]) && $courseVisibility[$linkedCourseId] == '1',
                 ];
             }
 
@@ -496,16 +499,16 @@ class CourseGroupController extends Controller
             // Sync visibility requirements
             // Always delete existing requirements first
             $group->visibilityRequirements()->delete();
-            
+
             // If visibility_required_groups is provided and not empty, create new requirements
             if ($request->has('visibility_required_groups')) {
                 $requiredGroupIds = $request->input('visibility_required_groups', []);
-                
+
                 // Filter out empty values and self-reference
-                $requiredGroupIds = array_filter($requiredGroupIds, function($id) use ($group) {
-                    return !empty($id) && $id != $group->id;
+                $requiredGroupIds = array_filter($requiredGroupIds, function ($id) use ($group) {
+                    return ! empty($id) && $id != $group->id;
                 });
-                
+
                 // Create new requirements
                 foreach ($requiredGroupIds as $requiredGroupId) {
                     \App\Models\CourseGroupVisibilityRequirement::create([
@@ -518,16 +521,21 @@ class CourseGroupController extends Controller
 
             DB::commit();
 
+            $addedCourseIds = array_values(array_diff($courseIds, $oldCourseIds));
+            if ($addedCourseIds !== []) {
+                event(new CourseGroupCoursesSynced($group->fresh(['courses']), array_map('intval', $addedCourseIds)));
+            }
+
             return redirect()
                 ->route('courses.groups.show', [$courseId, $group->id])
-                ->with('success', 'تم تحديث المجموعة بنجاح وربطها بـ ' . count($courseIds) . ' كورس');
+                ->with('success', 'تم تحديث المجموعة بنجاح وربطها بـ '.count($courseIds).' كورس');
         } catch (\Exception $e) {
             DB::rollBack();
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء تحديث المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث المجموعة: '.$e->getMessage());
         }
     }
 
@@ -566,7 +574,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف المجموعة: '.$e->getMessage());
         }
     }
 
@@ -611,7 +619,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إضافة العضو: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إضافة العضو: '.$e->getMessage());
         }
     }
 
@@ -633,9 +641,9 @@ class CourseGroupController extends Controller
             // Filter by name or email
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -644,7 +652,7 @@ class CourseGroupController extends Controller
                 $query->where('created_at', '>=', $request->enrolled_from);
             }
             if ($request->filled('enrolled_to')) {
-                $query->where('created_at', '<=', $request->enrolled_to . ' 23:59:59');
+                $query->where('created_at', '<=', $request->enrolled_to.' 23:59:59');
             }
 
             // Filter by status
@@ -658,7 +666,7 @@ class CourseGroupController extends Controller
 
             // Filter by course enrollment (students enrolled in specific courses)
             if ($request->filled('enrolled_in_course')) {
-                $query->whereHas('enrollments', function($q) use ($request) {
+                $query->whereHas('enrollments', function ($q) use ($request) {
                     $q->where('course_id', $request->enrolled_in_course);
                 });
             }
@@ -684,7 +692,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل الصفحة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الصفحة: '.$e->getMessage());
         }
     }
 
@@ -719,6 +727,7 @@ class CourseGroupController extends Controller
                 // Check if student is already a member
                 if ($group->hasMember($student)) {
                     $skippedCount++;
+
                     continue;
                 }
 
@@ -732,8 +741,8 @@ class CourseGroupController extends Controller
             if ($skippedCount > 0) {
                 $message .= " (تم تخطي {$skippedCount} عضو موجود بالفعل)";
             }
-            if (!empty($errors)) {
-                $message .= ". " . implode('. ', $errors);
+            if (! empty($errors)) {
+                $message .= '. '.implode('. ', $errors);
             }
 
             return redirect()
@@ -744,7 +753,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إضافة الأعضاء: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إضافة الأعضاء: '.$e->getMessage());
         }
     }
 
@@ -758,7 +767,7 @@ class CourseGroupController extends Controller
             $group = CourseGroup::findOrFail($groupId);
             $student = User::findOrFail($memberId);
 
-            if (!$group->hasMember($student)) {
+            if (! $group->hasMember($student)) {
                 return redirect()
                     ->back()
                     ->with('error', 'الطالب ليس عضواً في هذه المجموعة');
@@ -776,7 +785,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إزالة العضو: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إزالة العضو: '.$e->getMessage());
         }
     }
 
@@ -801,25 +810,27 @@ class CourseGroupController extends Controller
                 try {
                     $student = User::findOrFail($memberId);
 
-                    if (!$group->hasMember($student)) {
+                    if (! $group->hasMember($student)) {
                         $skippedCount++;
+
                         continue;
                     }
 
                     $group->removeMember($student);
                     $removedCount++;
                 } catch (\Exception $e) {
-                    $errors[] = "خطأ في إزالة العضو ID: {$memberId} - " . $e->getMessage();
+                    $errors[] = "خطأ في إزالة العضو ID: {$memberId} - ".$e->getMessage();
                 }
             }
 
             DB::commit();
 
             if ($removedCount === 0) {
-                $message = "لم يتم إزالة أي عضو";
+                $message = 'لم يتم إزالة أي عضو';
                 if ($skippedCount > 0) {
                     $message .= " (تم تخطي {$skippedCount} عضو غير موجود في المجموعة)";
                 }
+
                 return redirect()
                     ->back()
                     ->with('warning', $message);
@@ -827,16 +838,16 @@ class CourseGroupController extends Controller
 
             $message = "✅ تم فك الارتباط بنجاح! تم إزالة {$removedCount} عضو من المجموعة";
             if ($removedCount > 1) {
-                $message .= " وتم إلغاء تسجيلهم من الكورسات المرتبطة بهذه المجموعة";
+                $message .= ' وتم إلغاء تسجيلهم من الكورسات المرتبطة بهذه المجموعة';
             } else {
-                $message .= " وتم إلغاء تسجيله من الكورسات المرتبطة بهذه المجموعة";
+                $message .= ' وتم إلغاء تسجيله من الكورسات المرتبطة بهذه المجموعة';
             }
-            
+
             if ($skippedCount > 0) {
                 $message .= " (تم تخطي {$skippedCount} عضو غير موجود في المجموعة)";
             }
-            if (!empty($errors)) {
-                $message .= ". " . implode('. ', $errors);
+            if (! empty($errors)) {
+                $message .= '. '.implode('. ', $errors);
             }
 
             return redirect()
@@ -847,7 +858,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إزالة الأعضاء: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إزالة الأعضاء: '.$e->getMessage());
         }
     }
 
@@ -869,7 +880,7 @@ class CourseGroupController extends Controller
                 ->where('student_id', $validated['student_id'])
                 ->first();
 
-            if (!$member) {
+            if (! $member) {
                 return redirect()
                     ->back()
                     ->with('error', 'العضو غير موجود في المجموعة');
@@ -887,7 +898,7 @@ class CourseGroupController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث دور العضو: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث دور العضو: '.$e->getMessage());
         }
     }
 
@@ -898,7 +909,7 @@ class CourseGroupController extends Controller
     {
         try {
             $group = CourseGroup::findOrFail($id);
-            $group->is_visible = !$group->is_visible;
+            $group->is_visible = ! $group->is_visible;
             $group->save();
 
             $status = $group->is_visible ? 'مرئية' : 'مخفية';
@@ -909,7 +920,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث حالة الظهور: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث حالة الظهور: '.$e->getMessage());
         }
     }
 
@@ -920,7 +931,7 @@ class CourseGroupController extends Controller
     {
         try {
             $group = CourseGroup::findOrFail($id);
-            $group->is_active = !$group->is_active;
+            $group->is_active = ! $group->is_active;
             $group->save();
 
             $status = $group->is_active ? 'نشطة' : 'غير نشطة';
@@ -931,7 +942,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث الحالة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث الحالة: '.$e->getMessage());
         }
     }
 
@@ -942,23 +953,23 @@ class CourseGroupController extends Controller
     {
         try {
             $query = CourseGroup::with(['courses', 'creator'])
-                                ->withCount('members');
+                ->withCount('members');
 
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhereHas('courses', function($cq) use ($search) {
-                          $cq->where('title', 'like', "%{$search}%");
-                      });
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhereHas('courses', function ($cq) use ($search) {
+                            $cq->where('title', 'like', "%{$search}%");
+                        });
                 });
             }
 
             // Filter by course
             if ($request->filled('course_id')) {
-                $query->whereHas('courses', function($q) use ($request) {
+                $query->whereHas('courses', function ($q) use ($request) {
                     $q->where('courses.id', $request->course_id);
                 });
             }
@@ -993,7 +1004,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.dashboard')
-                ->with('error', 'حدث خطأ أثناء تحميل المجموعات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعات: '.$e->getMessage());
         }
     }
 
@@ -1004,11 +1015,12 @@ class CourseGroupController extends Controller
     {
         try {
             $courses = Course::select('id', 'title', 'code')->orderBy('title')->get();
+
             return view('admin.pages.groups.select-course', compact('courses'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
-                ->with('error', 'حدث خطأ أثناء تحميل الكورسات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الكورسات: '.$e->getMessage());
         }
     }
 
@@ -1018,7 +1030,7 @@ class CourseGroupController extends Controller
     public function createWithCourse(Request $request)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id'
+            'course_id' => 'required|exists:courses,id',
         ]);
 
         $courseId = $request->input('course_id');
@@ -1042,9 +1054,10 @@ class CourseGroupController extends Controller
                 if (request()->expectsJson() || request()->ajax()) {
                     return response()->json([
                         'success' => false,
-                        'message' => "لا يمكن حذف المجموعة لوجود {$membersCount} عضو فيها"
+                        'message' => "لا يمكن حذف المجموعة لوجود {$membersCount} عضو فيها",
                     ], 400);
                 }
+
                 return redirect()
                     ->route('groups.all')
                     ->with('error', "لا يمكن حذف المجموعة لوجود {$membersCount} عضو فيها");
@@ -1062,7 +1075,7 @@ class CourseGroupController extends Controller
             if (request()->expectsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'تم حذف المجموعة بنجاح'
+                    'message' => 'تم حذف المجموعة بنجاح',
                 ]);
             }
 
@@ -1071,21 +1084,21 @@ class CourseGroupController extends Controller
                 ->with('success', 'تم حذف المجموعة بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error deleting group: ' . $e->getMessage(), [
+            \Log::error('Error deleting group: '.$e->getMessage(), [
                 'group_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             if (request()->expectsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage()
+                    'message' => 'حدث خطأ أثناء حذف المجموعة: '.$e->getMessage(),
                 ], 500);
             }
 
             return redirect()
                 ->route('groups.all')
-                ->with('error', 'حدث خطأ أثناء حذف المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف المجموعة: '.$e->getMessage());
         }
     }
 
@@ -1099,10 +1112,10 @@ class CourseGroupController extends Controller
                 'courses',
                 'creator',
                 'leaders',
-                'groupEnrollments'
+                'groupEnrollments',
             ])
-            ->withCount('members')
-            ->findOrFail($id);
+                ->withCount('members')
+                ->findOrFail($id);
 
             // Get first course if available, otherwise null
             $course = $group->courses->first();
@@ -1122,17 +1135,17 @@ class CourseGroupController extends Controller
             // Search filter
             if ($request->filled('search')) {
                 $search = $request->search;
-                $membersQuery->whereHas('student', function($q) use ($search) {
+                $membersQuery->whereHas('student', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
             // Filter by other group membership
             if ($request->filled('other_group_id')) {
                 $otherGroupId = $request->other_group_id;
-                $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($otherGroupId) {
+                $membersQuery->whereHas('student.courseGroupMemberships', function ($q) use ($otherGroupId) {
                     $q->where('group_id', $otherGroupId);
                 });
             }
@@ -1142,14 +1155,14 @@ class CourseGroupController extends Controller
                 $groupsCount = $request->groups_count;
                 if ($groupsCount === '0') {
                     // Students with no other groups
-                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function($q) use ($group) {
+                    $membersQuery->whereDoesntHave('student.courseGroupMemberships', function ($q) use ($group) {
                         $q->where('group_id', '!=', $group->id);
                     });
                 } else {
                     // Students with specific number of other groups
                     $operator = '>=';
-                    $count = (int)$groupsCount;
-                    $membersQuery->whereHas('student.courseGroupMemberships', function($q) use ($group) {
+                    $count = (int) $groupsCount;
+                    $membersQuery->whereHas('student.courseGroupMemberships', function ($q) use ($group) {
                         $q->where('group_id', '!=', $group->id);
                     }, $operator, $count);
                 }
@@ -1237,13 +1250,13 @@ class CourseGroupController extends Controller
             $trainingCampsForModal = $this->activeTrainingCampsForModal();
 
             // Load other groups for each student member
-            $members->each(function($member) use ($group) {
+            $members->each(function ($member) use ($group) {
                 if ($member->student) {
                     $member->student->load([
-                        'courseGroupMemberships' => function($query) use ($group) {
+                        'courseGroupMemberships' => function ($query) use ($group) {
                             $query->where('group_id', '!=', $group->id);
                         },
-                        'courseGroupMemberships.group'
+                        'courseGroupMemberships.group',
                     ]);
                 }
             });
@@ -1280,7 +1293,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
-                ->with('error', 'حدث خطأ أثناء تحميل المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعة: '.$e->getMessage());
         }
     }
 
@@ -1291,9 +1304,9 @@ class CourseGroupController extends Controller
     {
         try {
             $group = CourseGroup::with('courses')
-                                ->withCount('members')
-                                ->findOrFail($id);
-            
+                ->withCount('members')
+                ->findOrFail($id);
+
             // Get first course if available
             $course = $group->courses->first();
             $courses = Course::all();
@@ -1302,7 +1315,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('groups.all')
-                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: '.$e->getMessage());
         }
     }
 
@@ -1314,7 +1327,7 @@ class CourseGroupController extends Controller
         try {
             $course = Course::findOrFail($courseId);
             $group = CourseGroup::with(['courses', 'creator'])
-                ->whereHas('courses', function($q) use ($courseId) {
+                ->whereHas('courses', function ($q) use ($courseId) {
                     $q->where('courses.id', $courseId);
                 })
                 ->findOrFail($groupId);
@@ -1346,10 +1359,10 @@ class CourseGroupController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->whereHas('student', function($q) use ($search) {
+                $query->whereHas('student', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
@@ -1407,7 +1420,7 @@ class CourseGroupController extends Controller
             return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount', 'otherGroupsByStudentId'));
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: '.$e->getMessage());
         }
     }
 
@@ -1450,8 +1463,9 @@ class CourseGroupController extends Controller
                 ->with('success', 'تم قبول طلب الانضمام وإضافة الطالب للمجموعة بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء قبول طلب الانضمام: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء قبول طلب الانضمام: '.$e->getMessage());
         }
     }
 
@@ -1473,7 +1487,7 @@ class CourseGroupController extends Controller
             }
 
             // Check if request is already processed
-            if (!$membershipRequest->isPending()) {
+            if (! $membershipRequest->isPending()) {
                 return redirect()->back()
                     ->with('error', 'تم معالجة هذا الطلب مسبقاً');
             }
@@ -1492,8 +1506,9 @@ class CourseGroupController extends Controller
                 ->with('success', 'تم رفض طلب الانضمام بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء رفض طلب الانضمام: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء رفض طلب الانضمام: '.$e->getMessage());
         }
     }
 
@@ -1530,7 +1545,7 @@ class CourseGroupController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء حذف طلب الانضمام: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف طلب الانضمام: '.$e->getMessage());
         }
     }
 
@@ -1555,7 +1570,7 @@ class CourseGroupController extends Controller
 
             foreach ($requestIds as $requestId) {
                 $membershipRequest = GroupMembershipRequest::find($requestId);
-                if (!$membershipRequest || $membershipRequest->group_id != $groupId) {
+                if (! $membershipRequest || $membershipRequest->group_id != $groupId) {
                     continue;
                 }
                 $membershipRequest->forceDelete();
@@ -1575,7 +1590,7 @@ class CourseGroupController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء حذف الطلبات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف الطلبات: '.$e->getMessage());
         }
     }
 
@@ -1610,20 +1625,22 @@ class CourseGroupController extends Controller
                     if ($membershipRequest->group_id != $groupId) {
                         $failedCount++;
                         $errors[] = "طلب #{$requestId} غير مرتبط بهذه المجموعة";
+
                         continue;
                     }
 
                     // Check if request is already processed
-                    if (!$membershipRequest->isPending()) {
+                    if (! $membershipRequest->isPending()) {
                         $failedCount++;
                         $errors[] = "طلب #{$requestId} تم معالجته مسبقاً";
+
                         continue;
                     }
 
                     // Check if group is full
                     if ($group->isFull()) {
                         $failedCount++;
-                        $errors[] = "المجموعة ممتلئة - لا يمكن قبول المزيد من الطلبات";
+                        $errors[] = 'المجموعة ممتلئة - لا يمكن قبول المزيد من الطلبات';
                         break; // Stop processing if group is full
                     }
 
@@ -1632,7 +1649,7 @@ class CourseGroupController extends Controller
                     $successCount++;
                 } catch (\Exception $e) {
                     $failedCount++;
-                    $errors[] = "خطأ في طلب #{$requestId}: " . $e->getMessage();
+                    $errors[] = "خطأ في طلب #{$requestId}: ".$e->getMessage();
                     Log::error('Failed to approve membership request', [
                         'request_id' => $requestId,
                         'error' => $e->getMessage(),
@@ -1652,8 +1669,9 @@ class CourseGroupController extends Controller
                 ->with('errors', $errors);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء قبول الطلبات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء قبول الطلبات: '.$e->getMessage());
         }
     }
 
@@ -1695,7 +1713,7 @@ class CourseGroupController extends Controller
                     $successCount++;
                 } catch (\Exception $e) {
                     $failedCount++;
-                    $errors[] = "خطأ في طلب #{$membershipRequest->id}: " . $e->getMessage();
+                    $errors[] = "خطأ في طلب #{$membershipRequest->id}: ".$e->getMessage();
                     Log::error('Failed to approve membership request', [
                         'request_id' => $membershipRequest->id,
                         'error' => $e->getMessage(),
@@ -1715,8 +1733,9 @@ class CourseGroupController extends Controller
                 ->with('errors', $errors);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء قبول جميع الطلبات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء قبول جميع الطلبات: '.$e->getMessage());
         }
     }
 
@@ -1775,7 +1794,7 @@ class CourseGroupController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'message' => 'حدث خطأ: '.$e->getMessage(),
             ], 500);
         }
 
@@ -1821,7 +1840,7 @@ class CourseGroupController extends Controller
         if ($validated['amount'] > $invoice->remaining_amount) {
             return response()->json([
                 'success' => false,
-                'message' => 'المبلغ المدخل أكبر من المبلغ المتبقي ($' . number_format((float) $invoice->remaining_amount, 2) . ')',
+                'message' => 'المبلغ المدخل أكبر من المبلغ المتبقي ($'.number_format((float) $invoice->remaining_amount, 2).')',
             ], 422);
         }
 
@@ -1851,7 +1870,7 @@ class CourseGroupController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تسجيل الدفعة: ' . $e->getMessage(),
+                'message' => 'حدث خطأ أثناء تسجيل الدفعة: '.$e->getMessage(),
             ], 500);
         }
     }

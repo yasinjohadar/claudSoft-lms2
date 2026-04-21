@@ -10,6 +10,8 @@ use App\Events\LessonCompleted;
 use App\Events\QuizCompleted;
 use App\Events\QuizStarted;
 use App\Events\StudentActivityTracked;
+use App\Models\CourseModule;
+use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Notifications\NotificationHubService;
 
@@ -21,11 +23,38 @@ class StudentActionNotificationListener
 
     public function handleLessonCompleted(LessonCompleted $event): void
     {
-        $this->hub->sendToUser($event->user, 'student.lesson.completed', [
-            'student_name' => $event->user->name,
-            'lesson_title' => $event->lesson->title ?? 'الدرس',
-            'course_id' => $event->lesson->course_id ?? null,
-        ]);
+        $payload = $event->lesson;
+
+        if ($payload instanceof CourseModule) {
+            $module = $payload->loadMissing('course');
+            $lessonId = ($module->module_type === 'lesson' && $module->modulable_type === Lesson::class)
+                ? $module->modulable_id
+                : $module->id;
+            $this->hub->sendToUser($event->user, 'student.lesson.completed', [
+                'student_name' => $event->user->name,
+                'lesson_title' => $module->title ?? 'الدرس',
+                'lesson_id' => $lessonId,
+                'module_id' => $module->id,
+                'module_title' => $module->title,
+                'course_id' => $module->course_id,
+                'course_title' => $module->course->title ?? null,
+            ]);
+
+            return;
+        }
+
+        if ($payload instanceof Lesson) {
+            $lesson = $payload->loadMissing('module');
+            $module = $lesson->module;
+            $this->hub->sendToUser($event->user, 'student.lesson.completed', [
+                'student_name' => $event->user->name,
+                'lesson_title' => $lesson->title ?? 'الدرس',
+                'lesson_id' => $lesson->id,
+                'module_id' => $module?->id,
+                'module_title' => $module?->title,
+                'course_id' => $module?->course_id,
+            ]);
+        }
     }
 
     public function handleCourseCompleted(CourseCompleted $event): void

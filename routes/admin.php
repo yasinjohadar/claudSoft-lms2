@@ -67,6 +67,7 @@ use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\VideoController;
+use App\Http\Controllers\Admin\WapiAutomationRuleController;
 use App\Http\Controllers\Admin\WapiTemplateController;
 use App\Http\Controllers\Admin\WebhookManagementController;
 use Illuminate\Support\Facades\Route;
@@ -988,6 +989,15 @@ Route::prefix('admin')
             Route::post('send/template', [FlaxxaWapiController::class, 'sendTemplate'])->name('send.template.store');
             Route::get('send/campaign', [FlaxxaWapiController::class, 'sendCampaignForm'])->name('send.campaign');
             Route::post('send/campaign', [FlaxxaWapiController::class, 'sendCampaign'])->name('send.campaign.store');
+            Route::prefix('automation')->name('automation.')->group(function () {
+                Route::get('/', [WapiAutomationRuleController::class, 'index'])->name('index');
+                Route::get('/create', [WapiAutomationRuleController::class, 'create'])->name('create');
+                Route::post('/', [WapiAutomationRuleController::class, 'store'])->name('store');
+                Route::get('/{wapiAutomationRule}/edit', [WapiAutomationRuleController::class, 'edit'])->name('edit');
+                Route::put('/{wapiAutomationRule}', [WapiAutomationRuleController::class, 'update'])->name('update');
+                Route::delete('/{wapiAutomationRule}', [WapiAutomationRuleController::class, 'destroy'])->name('destroy');
+                Route::post('/{wapiAutomationRule}/test', [WapiAutomationRuleController::class, 'testSend'])->name('test');
+            });
             Route::post('templates/sync-from-provider', [WapiTemplateController::class, 'syncFromProvider'])->name('templates.sync');
             Route::resource('templates', WapiTemplateController::class)->except(['show'])->parameters(['templates' => 'wapiTemplate']);
         });

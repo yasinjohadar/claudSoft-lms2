@@ -2,45 +2,48 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-
-// Course & Lesson Events
-use App\Events\CourseCompleted;
-use App\Events\LessonCompleted;
-
-// Assessment Events
-use App\Events\QuizCompleted;
-use App\Events\QuizStarted;
-use App\Events\AssignmentSubmitted;
 use App\Events\AssignmentAvailable;
+// Course & Lesson Events
 use App\Events\AssignmentGraded;
-use App\Events\StudentActivityTracked;
-
-// Payment Events
-use App\Events\InvoiceCreated;
-use App\Events\PaymentReceived;
-
-// Gamification Events
-use App\Events\Gamification\BadgeEarned;
+use App\Events\AssignmentSubmitted;
+// Assessment Events
+use App\Events\CourseCompleted;
+use App\Events\CourseGroupCoursesSynced;
 use App\Events\Gamification\AchievementUnlocked;
-use App\Events\Gamification\LevelUp;
-use App\Events\Gamification\PointsEarned;
-use App\Events\Gamification\StreakUpdated;
+use App\Events\Gamification\BadgeEarned;
 use App\Events\Gamification\ChallengeCompleted;
 use App\Events\Gamification\LeaderboardRankChanged;
-
-// n8n Webhook Events
+// Payment Events
+use App\Events\Gamification\LevelUp;
+use App\Events\Gamification\PointsEarned;
+// Gamification Events
+use App\Events\Gamification\StreakUpdated;
+use App\Events\InvoiceCreated;
+use App\Events\LessonBecameVisible;
+use App\Events\LessonCompleted;
 use App\Events\N8nWebhookEvent;
-
+use App\Events\PaymentReceived;
+use App\Events\QuizCompleted;
+// n8n Webhook Events
+use App\Events\QuizStarted;
+use App\Events\StudentActivityTracked;
+use App\Events\StudentEnrolledInCourse;
+use App\Listeners\AssessmentNotificationListener;
 // Listeners
 use App\Listeners\CourseNotificationListener;
-use App\Listeners\AssessmentNotificationListener;
+use App\Listeners\Gamification\CheckBadgesListener;
+use App\Listeners\Gamification\SendNotificationListener;
+use App\Listeners\IssueCertificateOnCompletion;
+use App\Listeners\N8nWebhookListener;
 use App\Listeners\PaymentNotificationListener;
 use App\Listeners\StudentActionNotificationListener;
-use App\Listeners\Gamification\SendNotificationListener;
-use App\Listeners\Gamification\CheckBadgesListener;
-use App\Listeners\N8nWebhookListener;
-use App\Listeners\IssueCertificateOnCompletion;
+use App\Listeners\WapiAutomation\SendWapiOnCourseCompleted;
+use App\Listeners\WapiAutomation\SendWapiOnCourseGroupCoursesSynced;
+use App\Listeners\WapiAutomation\SendWapiOnLessonBecameVisible;
+use App\Listeners\WapiAutomation\SendWapiOnLessonCompleted;
+use App\Listeners\WapiAutomation\SendWapiOnQuizCompleted;
+use App\Listeners\WapiAutomation\SendWapiOnStudentEnrolledInCourse;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -52,46 +55,49 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         // Course & Lesson Events
         CourseCompleted::class => [
-            CourseNotificationListener::class . '@handleCourseCompleted',
-            StudentActionNotificationListener::class . '@handleCourseCompleted',
+            CourseNotificationListener::class.'@handleCourseCompleted',
+            StudentActionNotificationListener::class.'@handleCourseCompleted',
+            SendWapiOnCourseCompleted::class,
             IssueCertificateOnCompletion::class,
             CheckBadgesListener::class,
         ],
         LessonCompleted::class => [
-            CourseNotificationListener::class . '@handleLessonCompleted',
-            StudentActionNotificationListener::class . '@handleLessonCompleted',
+            CourseNotificationListener::class.'@handleLessonCompleted',
+            StudentActionNotificationListener::class.'@handleLessonCompleted',
+            SendWapiOnLessonCompleted::class,
             CheckBadgesListener::class,
         ],
 
         // Assessment Events
         QuizCompleted::class => [
-            AssessmentNotificationListener::class . '@handleQuizCompleted',
-            StudentActionNotificationListener::class . '@handleQuizCompleted',
+            AssessmentNotificationListener::class.'@handleQuizCompleted',
+            StudentActionNotificationListener::class.'@handleQuizCompleted',
+            SendWapiOnQuizCompleted::class,
             CheckBadgesListener::class,
         ],
         QuizStarted::class => [
-            StudentActionNotificationListener::class . '@handleQuizStarted',
+            StudentActionNotificationListener::class.'@handleQuizStarted',
         ],
         AssignmentSubmitted::class => [
-            AssessmentNotificationListener::class . '@handleAssignmentSubmitted',
-            StudentActionNotificationListener::class . '@handleAssignmentSubmitted',
+            AssessmentNotificationListener::class.'@handleAssignmentSubmitted',
+            StudentActionNotificationListener::class.'@handleAssignmentSubmitted',
         ],
         AssignmentAvailable::class => [
-            StudentActionNotificationListener::class . '@handleAssignmentAvailable',
+            StudentActionNotificationListener::class.'@handleAssignmentAvailable',
         ],
         AssignmentGraded::class => [
-            StudentActionNotificationListener::class . '@handleAssignmentGraded',
+            StudentActionNotificationListener::class.'@handleAssignmentGraded',
         ],
         StudentActivityTracked::class => [
-            StudentActionNotificationListener::class . '@handleActivityTracked',
+            StudentActionNotificationListener::class.'@handleActivityTracked',
         ],
 
         // Payment Events
         InvoiceCreated::class => [
-            PaymentNotificationListener::class . '@handleInvoiceCreated',
+            PaymentNotificationListener::class.'@handleInvoiceCreated',
         ],
         PaymentReceived::class => [
-            PaymentNotificationListener::class . '@handlePaymentReceived',
+            PaymentNotificationListener::class.'@handlePaymentReceived',
         ],
 
         // Gamification Events - already handled by SendNotificationListener
@@ -120,6 +126,18 @@ class EventServiceProvider extends ServiceProvider
         // n8n Webhook Events
         N8nWebhookEvent::class => [
             N8nWebhookListener::class,
+        ],
+
+        StudentEnrolledInCourse::class => [
+            SendWapiOnStudentEnrolledInCourse::class,
+        ],
+
+        LessonBecameVisible::class => [
+            SendWapiOnLessonBecameVisible::class,
+        ],
+
+        CourseGroupCoursesSynced::class => [
+            SendWapiOnCourseGroupCoursesSynced::class,
         ],
     ];
 

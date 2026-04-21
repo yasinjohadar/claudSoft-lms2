@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Student;
 
+use App\Rules\PhoneMatchesCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,13 +41,14 @@ class UpdateProfileRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:20',
-                'regex:/^([0-9\s\-\+\(\)]*)$/'
+                'regex:/^([0-9\s\-\+\(\)]*)$/',
+                new PhoneMatchesCountryCode,
             ],
             'national_id' => [
                 'nullable',
                 'string',
                 'max:20',
-                Rule::unique('users', 'national_id')->ignore($userId)
+                Rule::unique('users', 'national_id')->ignore($userId),
             ],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'gender' => ['nullable', 'string', 'in:male,female'],
@@ -56,7 +58,7 @@ class UpdateProfileRequest extends FormRequest
                 'nullable',
                 'image',
                 'mimes:jpeg,jpg,png,gif',
-                'max:2048' // 2MB
+                'max:2048', // 2MB
             ],
         ];
     }

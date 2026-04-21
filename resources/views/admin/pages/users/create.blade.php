@@ -122,7 +122,7 @@
 
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="{{ route('users.store') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('users.store') }}" enctype="multipart/form-data" data-phone-ajax-validate>
                         @csrf
 
                         <div class="row g-3">
@@ -206,6 +206,7 @@
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                                 <small class="text-muted">للواتساب</small>
+                                <div class="small mt-1 phone-country-ajax-feedback" data-phone-ajax-feedback aria-live="polite"></div>
                             </div>
 
                             <div class="col-md-6">
@@ -421,4 +422,5 @@
             }
         });
     </script>
+    @include('components.phone-country-ajax-script')
 @stop

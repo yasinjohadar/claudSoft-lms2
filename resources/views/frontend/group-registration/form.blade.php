@@ -134,7 +134,7 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" id="registrationForm" data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                        <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" id="registrationForm" data-phone-ajax-validate data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
                             @csrf
 
                             <!-- الاسم -->
@@ -202,6 +202,7 @@
                                     @enderror
                                 </div>
                             </div>
+                            <div class="mt-1 small phone-country-ajax-feedback" data-phone-ajax-feedback aria-live="polite"></div>
 
                             <!-- الجنسية -->
                             <div class="mb-3">
@@ -642,4 +643,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+@include('components.phone-country-ajax-script')
 @endpush

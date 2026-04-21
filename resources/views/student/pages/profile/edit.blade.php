@@ -51,7 +51,7 @@
             </div>
         </div>
 
-        <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data" data-phone-ajax-validate>
             @csrf
             @method('PUT')
 
@@ -107,6 +107,7 @@
                                             <small class="text-muted">بدون 0 في البداية</small>
                                         </div>
                                     </div>
+                                    <div class="small mt-1 phone-country-ajax-feedback" data-phone-ajax-feedback aria-live="polite"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">رقم الهوية</label>
@@ -312,5 +313,6 @@ $(function() {
     }
 });
 </script>
+@include('components.phone-country-ajax-script')
 @endpush
 @stop

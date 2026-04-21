@@ -561,13 +561,14 @@
                                                             @forelse($section->modules->where('is_visible', true) as $module)
                                                                 @php
                                                                     $canAccess = $enrollment || $module->is_preview;
-                                                                    $moduleUrl = $canAccess ? route('student.learn.module', $module->id) : '#';
+                                                                    $moduleUrl = $canAccess ? route('student.learn.module', ['moduleId' => $module->id]) : '#';
                                                                 @endphp
 
                                                                 @if($canAccess)
                                                                     <a href="{{ $moduleUrl }}"
-                                                                       class="d-flex align-items-center justify-content-between p-3 mb-2 border rounded hover-shadow text-decoration-none"
-                                                                       style="transition: all 0.3s ease;">
+                                                                       class="d-flex align-items-center justify-content-between p-3 mb-2 border rounded hover-shadow text-decoration-none position-relative"
+                                                                       style="transition: all 0.3s ease; z-index: 2;"
+                                                                       @if($moduleUrl !== '#') title="فتح الدرس" @endif>
                                                                 @else
                                                                     <div class="d-flex align-items-center justify-content-between p-3 mb-2 border rounded opacity-75"
                                                                          style="cursor: not-allowed;">

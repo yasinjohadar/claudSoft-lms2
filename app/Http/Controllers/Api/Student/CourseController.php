@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Student;
 
 use App\Events\N8nWebhookEvent;
+use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
@@ -85,7 +86,7 @@ class CourseController extends Controller
             ->whereKey($id)
             ->first(['id', 'title', 'slug', 'description', 'short_description', 'image', 'level', 'language', 'duration_in_hours', 'is_free', 'sort_order']);
 
-        if (!$course) {
+        if (! $course) {
             return response()->json([
                 'success' => false,
                 'message' => 'الكورس غير موجود أو غير متاح.',
@@ -147,7 +148,7 @@ class CourseController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $accessControl = new AccessControlService();
+        $accessControl = new AccessControlService;
 
         $enrollments = CourseEnrollment::query()
             ->where('student_id', $user->id)
@@ -178,7 +179,7 @@ class CourseController extends Controller
 
         $courses = $enrollments->map(function (CourseEnrollment $enrollment) use ($user, $accessControl) {
             $course = $enrollment->course;
-            if (!$course) {
+            if (! $course) {
                 return null;
             }
 
@@ -414,6 +415,7 @@ class CourseController extends Controller
                     'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
                     'enrolled_by' => $enrollment->enrolled_by,
                 ]));
+                event(new StudentEnrolledInCourse($student, $course, $enrollment));
             }
 
             $message = $enrollmentStatus === 'pending'

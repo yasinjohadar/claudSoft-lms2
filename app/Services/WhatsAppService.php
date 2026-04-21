@@ -577,9 +577,44 @@ class WhatsAppService
             if (isset($json['error']) || isset($json['errors'])) {
                 return WapiMessageStatus::Failed;
             }
-            if (isset($json['message_id']) || isset($json['id']) || isset($json['success'])) {
-                $success = $json['success'] ?? true;
-                if ($success === false) {
+
+            $success = $json['success'] ?? null;
+            if ($success === false) {
+                return WapiMessageStatus::Failed;
+            }
+
+            $topStatus = $json['status'] ?? null;
+            if (is_string($topStatus) && in_array(strtolower($topStatus), ['failed', 'error', 'rejected'], true)) {
+                return WapiMessageStatus::Failed;
+            }
+
+            $messages = data_get($json, 'messages');
+            if (is_array($messages)) {
+                foreach ($messages as $m) {
+                    if (! is_array($m)) {
+                        continue;
+                    }
+                    if (! empty($m['errors'])) {
+                        return WapiMessageStatus::Failed;
+                    }
+                    $st = $m['message_status'] ?? $m['status'] ?? null;
+                    if (is_string($st) && str_contains(strtolower($st), 'fail')) {
+                        return WapiMessageStatus::Failed;
+                    }
+                }
+            }
+
+            $dataMessageId = data_get($json, 'data.message_id') ?? data_get($json, 'data.id');
+            if (is_string($dataMessageId) && $dataMessageId !== '') {
+                if (($json['success'] ?? true) === false) {
+                    return WapiMessageStatus::Failed;
+                }
+
+                return WapiMessageStatus::Sent;
+            }
+
+            if (isset($json['message_id']) || isset($json['id']) || array_key_exists('success', $json)) {
+                if (($json['success'] ?? true) === false) {
                     return WapiMessageStatus::Failed;
                 }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\LessonBecameVisible;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use Illuminate\Http\Request;
@@ -17,24 +18,24 @@ class LessonController extends Controller
     {
         try {
             // Check if module_id is provided
-            if (!$request->filled('module')) {
+            if (! $request->filled('module')) {
                 return redirect()->route('lessons.all');
             }
 
             $module = \App\Models\CourseModule::with(['section.course'])->findOrFail($request->module);
 
             $query = Lesson::with(['module', 'creator', 'updater'])
-                ->whereHas('module', function($q) use ($module) {
+                ->whereHas('module', function ($q) use ($module) {
                     $q->where('id', $module->id);
                 });
 
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('content', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('content', 'like', "%{$search}%");
                 });
             }
 
@@ -58,7 +59,7 @@ class LessonController extends Controller
 
             return view('admin.pages.lessons.index', compact('lessons', 'module', 'totalDuration'));
         } catch (\Exception $e) {
-            return redirect()->route('admin.dashboard')->with('error', 'حدث خطأ أثناء تحميل الدروس: ' . $e->getMessage());
+            return redirect()->route('admin.dashboard')->with('error', 'حدث خطأ أثناء تحميل الدروس: '.$e->getMessage());
         }
     }
 
@@ -69,7 +70,7 @@ class LessonController extends Controller
     {
         try {
             $module = null;
-            
+
             // Get module if provided
             if ($request->filled('module')) {
                 $module = \App\Models\CourseModule::with(['section.course'])->find($request->module);
@@ -77,7 +78,7 @@ class LessonController extends Controller
 
             return view('admin.pages.lessons.create', compact('module'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: '.$e->getMessage());
         }
     }
 
@@ -139,7 +140,7 @@ class LessonController extends Controller
             DB::rollBack();
 
             // Delete uploaded files if exists
-            if (!empty($attachmentsPaths)) {
+            if (! empty($attachmentsPaths)) {
                 foreach ($attachmentsPaths as $attachment) {
                     Storage::disk('public')->delete($attachment['path']);
                 }
@@ -148,7 +149,7 @@ class LessonController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء إنشاء الدرس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء الدرس: '.$e->getMessage());
         }
     }
 
@@ -172,7 +173,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('lessons.all')
-                ->with('error', 'حدث خطأ أثناء تحميل الدرس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الدرس: '.$e->getMessage());
         }
     }
 
@@ -188,7 +189,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('lessons.all')
-                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: '.$e->getMessage());
         }
     }
 
@@ -277,6 +278,7 @@ class LessonController extends Controller
                 ->with('success', 'تم تحديث الدرس بنجاح');
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
                 ->withErrors($e->errors())
@@ -284,13 +286,13 @@ class LessonController extends Controller
                 ->with('error', 'يرجى التحقق من البيانات المدخلة');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating lesson: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Error updating lesson: '.$e->getMessage());
+            \Log::error('Stack trace: '.$e->getTraceAsString());
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء تحديث الدرس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث الدرس: '.$e->getMessage());
         }
     }
 
@@ -337,7 +339,7 @@ class LessonController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء حذف الدرس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف الدرس: '.$e->getMessage());
         }
     }
 
@@ -357,7 +359,7 @@ class LessonController extends Controller
 
             foreach ($validated['order'] as $item) {
                 Lesson::where('id', $item['id'])
-                    ->whereHas('module', function($q) use ($moduleId) {
+                    ->whereHas('module', function ($q) use ($moduleId) {
                         $q->where('id', $moduleId);
                     })
                     ->update(['sort_order' => $item['order']]);
@@ -367,15 +369,15 @@ class LessonController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إعادة ترتيب الدروس بنجاح'
+                'message' => 'تم إعادة ترتيب الدروس بنجاح',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error reordering lessons: ' . $e->getMessage());
+            \Log::error('Error reordering lessons: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إعادة الترتيب: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء إعادة الترتيب: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -391,7 +393,7 @@ class LessonController extends Controller
 
             // Create duplicate
             $newLesson = $originalLesson->replicate();
-            $newLesson->title = $originalLesson->title . ' (نسخة)';
+            $newLesson->title = $originalLesson->title.' (نسخة)';
             $newLesson->is_published = false;
             $newLesson->created_by = auth()->id();
             $newLesson->updated_by = null;
@@ -401,7 +403,7 @@ class LessonController extends Controller
                 $newAttachments = [];
                 foreach ($originalLesson->attachments as $attachment) {
                     if (Storage::disk('public')->exists($attachment['path'])) {
-                        $newPath = 'lessons/attachments/' . uniqid() . '_' . basename($attachment['path']);
+                        $newPath = 'lessons/attachments/'.uniqid().'_'.basename($attachment['path']);
                         Storage::disk('public')->copy($attachment['path'], $newPath);
                         $newAttachments[] = [
                             'path' => $newPath,
@@ -426,7 +428,7 @@ class LessonController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء نسخ الدرس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء نسخ الدرس: '.$e->getMessage());
         }
     }
 
@@ -437,7 +439,7 @@ class LessonController extends Controller
     {
         try {
             $lesson = Lesson::findOrFail($id);
-            $lesson->is_published = !$lesson->is_published;
+            $lesson->is_published = ! $lesson->is_published;
             $lesson->updated_by = auth()->id();
             $lesson->save();
 
@@ -449,7 +451,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث حالة النشر: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث حالة النشر: '.$e->getMessage());
         }
     }
 
@@ -460,9 +462,14 @@ class LessonController extends Controller
     {
         try {
             $lesson = Lesson::findOrFail($id);
-            $lesson->is_visible = !$lesson->is_visible;
+            $wasVisible = (bool) $lesson->is_visible;
+            $lesson->is_visible = ! $lesson->is_visible;
             $lesson->updated_by = auth()->id();
             $lesson->save();
+
+            if ($lesson->is_visible && ! $wasVisible) {
+                event(new LessonBecameVisible($lesson->fresh()));
+            }
 
             $status = $lesson->is_visible ? 'مرئي' : 'مخفي';
 
@@ -472,7 +479,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحديث الظهور: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث الظهور: '.$e->getMessage());
         }
     }
 
@@ -484,7 +491,7 @@ class LessonController extends Controller
         try {
             $lesson = Lesson::findOrFail($id);
 
-            if (!isset($lesson->attachments[$index])) {
+            if (! isset($lesson->attachments[$index])) {
                 return redirect()
                     ->back()
                     ->with('error', 'المرفق غير موجود');
@@ -492,7 +499,7 @@ class LessonController extends Controller
 
             $attachment = $lesson->attachments[$index];
 
-            if (!Storage::disk('public')->exists($attachment['path'])) {
+            if (! Storage::disk('public')->exists($attachment['path'])) {
                 return redirect()
                     ->back()
                     ->with('error', 'الملف غير موجود');
@@ -502,7 +509,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل المرفق: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل المرفق: '.$e->getMessage());
         }
     }
 
@@ -517,18 +524,18 @@ class LessonController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhereHas('module.section.course', function($cq) use ($search) {
-                          $cq->where('title', 'like', "%{$search}%");
-                      });
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhereHas('module.section.course', function ($cq) use ($search) {
+                            $cq->where('title', 'like', "%{$search}%");
+                        });
                 });
             }
 
             // Filter by course
             if ($request->filled('course_id')) {
-                $query->whereHas('module.section', function($q) use ($request) {
+                $query->whereHas('module.section', function ($q) use ($request) {
                     $q->where('course_id', $request->course_id);
                 });
             }
@@ -563,7 +570,7 @@ class LessonController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.dashboard')
-                ->with('error', 'حدث خطأ أثناء تحميل الدروس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الدروس: '.$e->getMessage());
         }
     }
 }

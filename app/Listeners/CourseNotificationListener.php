@@ -4,6 +4,8 @@ namespace App\Listeners;
 
 use App\Events\CourseCompleted;
 use App\Events\LessonCompleted;
+use App\Models\CourseModule;
+use App\Models\Lesson;
 use App\Services\Gamification\NotificationService;
 use Illuminate\Support\Facades\Log;
 
@@ -62,8 +64,31 @@ class CourseNotificationListener
     {
         try {
             $user = $event->user;
-            $lesson = $event->lesson;
-            $courseId = $lesson->module->course_id ?? null;
+            $payload = $event->lesson;
+
+            if ($payload instanceof CourseModule) {
+                $courseId = $payload->course_id;
+                $title = $payload->title;
+                $relatedType = CourseModule::class;
+                $relatedId = $payload->id;
+                $metadataLessonKey = ($payload->module_type === 'lesson' && $payload->modulable_type === Lesson::class)
+                    ? $payload->modulable_id
+                    : $payload->id;
+            } elseif ($payload instanceof Lesson) {
+                $lesson = $payload->loadMissing('module');
+                $courseId = $lesson->module->course_id ?? null;
+                $title = $lesson->title;
+                $relatedType = Lesson::class;
+                $relatedId = $lesson->id;
+                $metadataLessonKey = $lesson->id;
+            } else {
+                Log::warning('LessonCompleted: unexpected payload type', [
+                    'type' => is_object($payload) ? $payload::class : gettype($payload),
+                ]);
+
+                return;
+            }
+
             $actionUrl = $courseId ? route('student.learn.course', ['courseId' => $courseId]) : null;
 
             // إرسال إشعار إتمام الدرس
@@ -71,27 +96,27 @@ class CourseNotificationListener
                 user: $user,
                 type: 'lesson_completed',
                 title: 'أكملت درساً جديداً! ✅',
-                message: "رائع! أكملت درس \"{$lesson->title}\". استمر في التقدم!",
+                message: "رائع! أكملت درس \"{$title}\". استمر في التقدم!",
                 icon: '📖',
                 actionUrl: $actionUrl,
-                relatedType: get_class($lesson),
-                relatedId: $lesson->id,
+                relatedType: $relatedType,
+                relatedId: $relatedId,
                 metadata: [
-                    'lesson_id' => $lesson->id,
-                    'lesson_title' => $lesson->title,
+                    'lesson_id' => $metadataLessonKey,
+                    'lesson_title' => $title,
                     'completed_at' => now()->toDateTimeString(),
                 ]
             );
 
             Log::info('Lesson completion notification sent', [
                 'user_id' => $user->id,
-                'lesson_id' => $lesson->id,
+                'lesson_id' => $metadataLessonKey,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to send lesson completion notification', [
                 'error' => $e->getMessage(),
                 'user_id' => $event->user->id ?? null,
-                'lesson_id' => $event->lesson->id ?? null,
+                'lesson_id' => is_object($event->lesson) ? $event->lesson->id ?? null : null,
             ]);
         }
     }

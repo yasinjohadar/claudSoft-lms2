@@ -27,6 +27,10 @@
         <div class="alert alert-info border-0" role="alert">
             <i class="ri-information-line me-2"></i>
             تأكد من تعيين <code>WHATSAPP_TOKEN</code> في ملف البيئة وتشغيل <strong>queue worker</strong> لمعالجة الإرسال.
+            <span class="d-block mt-2 small">
+                عمود <strong>«مقبول API»</strong> يعني أن المزود قبل الطلب (HTTP ناجح + مُعرّف رسالة إن وُجد)، وليس ضماناً بأن الرسالة ظهرت على هاتف المستلم — راجع زر «تحقّق من حالة التوصيل» في تفاصيل السجل أو لوحة Flaxxa.
+                <span class="d-block mt-1">إرسال <strong>قالب معتمد</strong> لا يتطلّب نافذة 24 ساعة؛ إذا كان نوع السجل «قالب» ولا يصل شيء للهاتف فالسبب خارج هذا العمود (مطابقة القالب/المتغيرات، الرقم، حظر، أو تأخير عند المزود).</span>
+            </span>
         </div>
 
         <div class="card mb-3">
@@ -46,8 +50,8 @@
                         <select name="status" class="form-select">
                             <option value="">الكل</option>
                             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>قيد الانتظار</option>
-                            <option value="sent" {{ request('status') === 'sent' ? 'selected' : '' }}>مرسل</option>
-                            <option value="sent_pending_confirmation" {{ request('status') === 'sent_pending_confirmation' ? 'selected' : '' }}>مرسل (بانتظار تأكيد)</option>
+                            <option value="sent" {{ request('status') === 'sent' ? 'selected' : '' }}>مقبول من المزود (API)</option>
+                            <option value="sent_pending_confirmation" {{ request('status') === 'sent_pending_confirmation' ? 'selected' : '' }}>رد غير واضح</option>
                             <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>فشل</option>
                         </select>
                     </div>
@@ -102,17 +106,10 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @php $s = $m->status?->value ?? ''; @endphp
-                                        @if($s === 'failed')
-                                            <span class="badge bg-danger">فشل</span>
-                                        @elseif($s === 'sent')
-                                            <span class="badge bg-success">مرسل</span>
-                                        @elseif($s === 'sent_pending_confirmation')
-                                            <span class="badge bg-warning text-dark">بانتظار تأكيد</span>
-                                        @elseif($s === 'pending')
-                                            <span class="badge bg-secondary">قيد الانتظار</span>
+                                        @if($m->status)
+                                            <span class="badge {{ $m->status->badgeClass() }}" title="{{ $m->status->labelAr() }}">{{ $m->status->badgeTextAr() }}</span>
                                         @else
-                                            <span class="badge bg-light text-dark">{{ $s }}</span>
+                                            <span class="badge bg-light text-dark">—</span>
                                         @endif
                                     </td>
                                     <td>{{ $m->created_at?->format('Y-m-d H:i') }}</td>

@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers\Student;
 
+use App\Events\CourseCompleted;
+use App\Events\LessonCompleted;
+use App\Events\N8nWebhookEvent;
+use App\Events\StudentActivityTracked;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
-use App\Models\CourseModule;
 use App\Models\CourseEnrollment;
+use App\Models\CourseModule;
 use App\Models\ModuleCompletion;
-use App\Models\SectionCompletion;
 use App\Models\Resource;
+use App\Models\SectionCompletion;
 use App\Services\AccessControlService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Events\LessonCompleted;
-use App\Events\CourseCompleted;
-use App\Events\N8nWebhookEvent;
-use App\Events\StudentActivityTracked;
 
 class CourseLearningController extends Controller
 {
@@ -27,15 +27,15 @@ class CourseLearningController extends Controller
     {
         try {
             $student = auth()->user();
-            $accessControl = new AccessControlService();
+            $accessControl = new AccessControlService;
             $course = Course::with([
-                'sections' => function($q) {
+                'sections' => function ($q) {
                     $q->visible()->orderBy('sort_order');
                 },
-                'sections.modules' => function($q) {
+                'sections.modules' => function ($q) {
                     $q->visible()->orderBy('sort_order');
                 },
-                'sections.modules.modulable'
+                'sections.modules.modulable',
             ])->findOrFail($courseId);
 
             // Check if student is enrolled
@@ -43,14 +43,14 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$enrollment || !$enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->isActive()) {
                 return redirect()
                     ->route('student.courses.index')
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
             }
 
             $courseAccess = $accessControl->canAccessCourse($course, $student);
-            if (!($courseAccess['can_access'] ?? false)) {
+            if (! ($courseAccess['can_access'] ?? false)) {
                 return redirect()
                     ->route('student.courses.index')
                     ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
@@ -59,12 +59,13 @@ class CourseLearningController extends Controller
             $accessibleSections = collect();
             foreach ($course->sections as $section) {
                 $sectionAccess = $accessControl->canAccessSection($section, $student);
-                if (!($sectionAccess['can_access'] ?? false)) {
+                if (! ($sectionAccess['can_access'] ?? false)) {
                     continue;
                 }
 
                 $accessibleModules = $section->modules->filter(function ($module) use ($accessControl, $student) {
                     $moduleAccess = $accessControl->canAccessModule($module, $student);
+
                     return (bool) ($moduleAccess['can_access'] ?? false);
                 })->values();
 
@@ -106,7 +107,7 @@ class CourseLearningController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('student.courses.my-courses')
-                ->with('error', 'حدث خطأ أثناء تحميل الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الكورس: '.$e->getMessage());
         }
     }
 
@@ -117,38 +118,38 @@ class CourseLearningController extends Controller
     {
         try {
             $student = auth()->user();
-            $accessControl = new AccessControlService();
-            
+            $accessControl = new AccessControlService;
+
             $module = CourseModule::with([
                 'course',
-                'course.sections' => function($q) {
+                'course.sections' => function ($q) {
                     $q->visible()->orderBy('sort_order');
                 },
                 'course.sections.course',
-                'course.sections.modules' => function($q) {
+                'course.sections.modules' => function ($q) {
                     $q->visible()->orderBy('sort_order');
                 },
                 'course.sections.modules.section',
-                'course.sections.modules.accessRestrictions' => function($q) {
+                'course.sections.modules.accessRestrictions' => function ($q) {
                     $q->where('restriction_type', 'group')
-                      ->where('access_type', 'allow');
+                        ->where('access_type', 'allow');
                 },
                 'course.sections.modules.accessRestrictions.group',
-                'course.sections.accessRestrictions' => function($q) {
+                'course.sections.accessRestrictions' => function ($q) {
                     $q->where('restriction_type', 'group')
-                      ->where('access_type', 'allow');
+                        ->where('access_type', 'allow');
                 },
                 'course.sections.accessRestrictions.group',
                 'section',
                 'modulable',
-                'completions' => function($q) use ($student) {
+                'completions' => function ($q) use ($student) {
                     $q->where('student_id', $student->id);
-                }
+                },
             ])->findOrFail($moduleId);
 
             // Check module access using AccessControlService
             $moduleAccess = $accessControl->canAccessModule($module, $student);
-            if (!$moduleAccess['can_access']) {
+            if (! $moduleAccess['can_access']) {
                 return redirect()
                     ->route('student.courses.show', $module->course_id)
                     ->with('error', $moduleAccess['reason'] ?? 'هذا الدرس غير متاح حالياً');
@@ -167,6 +168,7 @@ class CourseLearningController extends Controller
             // Filter sections based on access restrictions
             $module->course->sections = $module->course->sections->filter(function ($section) use ($accessControl, $student) {
                 $access = $accessControl->canAccessSection($section, $student);
+
                 return $access['can_access'];
             })->values(); // Reindex collection
 
@@ -174,6 +176,7 @@ class CourseLearningController extends Controller
             $module->course->sections->each(function ($section) use ($accessControl, $student) {
                 $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
                     $access = $accessControl->canAccessModule($mod, $student);
+
                     return $access['can_access'];
                 })->values(); // Reindex collection
             });
@@ -192,11 +195,13 @@ class CourseLearningController extends Controller
             $completion = $module->completions->first();
             $isCompleted = $completion && $completion->completion_status === 'completed';
 
+            $module->loadMissing('course');
             StudentActivityTracked::dispatch($student, 'student.module.viewed', [
                 'module_id' => $module->id,
                 'module_title' => $module->title,
                 'module_type' => $module->module_type,
                 'course_id' => $module->course_id,
+                'course_title' => $module->course->title ?? '',
             ]);
 
             // Get all completed modules for the course
@@ -230,7 +235,7 @@ class CourseLearningController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل المحتوى: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل المحتوى: '.$e->getMessage());
         }
     }
 
@@ -249,7 +254,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$enrollment || !$enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->isActive()) {
                 DB::rollBack();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -298,7 +303,7 @@ class CourseLearningController extends Controller
             // Check if course is fully completed and dispatch event
             if ($courseCompletion >= 100) {
                 CourseCompleted::dispatch(auth()->user(), $module->course);
-                
+
                 // Dispatch n8n webhook event for course completion
                 event(new N8nWebhookEvent('course.completed', [
                     'student_id' => auth()->id(),
@@ -331,11 +336,11 @@ class CourseLearningController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ: ' . $e->getMessage(),
+                    'message' => 'حدث خطأ: '.$e->getMessage(),
                 ], 422);
             }
 
-            return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -354,7 +359,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$enrollment || !$enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->isActive()) {
                 DB::rollBack();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -400,11 +405,11 @@ class CourseLearningController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ: ' . $e->getMessage(),
+                    'message' => 'حدث خطأ: '.$e->getMessage(),
                 ], 422);
             }
 
-            return redirect()->back()->with('error', 'حدث خطأ: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -433,15 +438,18 @@ class CourseLearningController extends Controller
                         'current_time' => $validated['current_time'],
                         'duration' => $validated['duration'],
                         'percentage' => ($validated['current_time'] / $validated['duration']) * 100,
-                    ]
+                    ],
                 ]
             );
 
             // Auto-complete if watched >= 90%
             $percentage = ($validated['current_time'] / $validated['duration']) * 100;
+            $module->loadMissing('course');
             StudentActivityTracked::dispatch($student, 'student.video.progress', [
                 'module_id' => $module->id,
+                'module_title' => $module->title,
                 'course_id' => $module->course_id,
+                'course_title' => $module->course->title ?? '',
                 'progress_percentage' => round($percentage, 2),
             ]);
             if ($percentage >= 90 && $completion->completion_status !== 'completed') {
@@ -457,13 +465,13 @@ class CourseLearningController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث التقدم'
+                'message' => 'تم تحديث التقدم',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage()
+                'message' => 'حدث خطأ: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -482,7 +490,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$enrollment || !$enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->isActive()) {
                 return redirect()
                     ->back()
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
@@ -496,7 +504,7 @@ class CourseLearningController extends Controller
 
             $resource = $module->modulable;
 
-            if (!$resource->allow_download) {
+            if (! $resource->allow_download) {
                 return redirect()
                     ->back()
                     ->with('error', 'التحميل غير مسموح لهذا الملف');
@@ -511,7 +519,7 @@ class CourseLearningController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء التحميل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء التحميل: '.$e->getMessage());
         }
     }
 
@@ -522,7 +530,7 @@ class CourseLearningController extends Controller
     {
         $modulable = $module->modulable;
 
-        if (!$modulable) {
+        if (! $modulable) {
             return null;
         }
 
@@ -571,7 +579,7 @@ class CourseLearningController extends Controller
     {
         $section = \App\Models\CourseSection::with('modules')->find($sectionId);
 
-        if (!$section) {
+        if (! $section) {
             return;
         }
 
@@ -584,9 +592,9 @@ class CourseLearningController extends Controller
         $completedModules = ModuleCompletion::whereIn('module_id',
             $section->modules()->where('is_required', true)->pluck('course_modules.id')
         )
-        ->where('student_id', $studentId)
-        ->where('completion_status', 'completed')
-        ->count();
+            ->where('student_id', $studentId)
+            ->where('completion_status', 'completed')
+            ->count();
 
         $percentage = ($completedModules / $totalModules) * 100;
 
@@ -613,6 +621,7 @@ class CourseLearningController extends Controller
 
         if ($enrollment) {
             $enrollment->calculateCompletionPercentage();
+
             return $enrollment->completion_percentage ?? 0;
         }
 

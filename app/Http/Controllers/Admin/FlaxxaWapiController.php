@@ -8,6 +8,7 @@ use App\Models\CourseGroup;
 use App\Models\User;
 use App\Models\WapiMessage;
 use App\Models\WapiTemplate;
+use App\Services\Flaxxa\FlaxxaTemplateVariableResolver;
 use App\Services\WapiOutboundDispatcher;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppSettingsService;
@@ -26,7 +27,8 @@ class FlaxxaWapiController extends Controller
     public function __construct(
         private WapiOutboundDispatcher $dispatcher,
         private BroadcastWhatsAppMessage $broadcastWhatsApp,
-        private WhatsAppSettingsService $whatsappSettings
+        private WhatsAppSettingsService $whatsappSettings,
+        private FlaxxaTemplateVariableResolver $flaxxaVariables
     ) {}
 
     public function messagesIndex(Request $request): View
@@ -349,16 +351,7 @@ class FlaxxaWapiController extends Controller
         ?Course $course,
         ?CourseGroup $group
     ): array {
-        $h = array_map(
-            fn ($v) => $this->broadcastWhatsApp->replacePlaceholders((string) $v, $student, $course, $group),
-            $headerVars
-        );
-        $b = array_map(
-            fn ($v) => $this->broadcastWhatsApp->replacePlaceholders((string) $v, $student, $course, $group),
-            $bodyVars
-        );
-
-        return [$h, $b];
+        return $this->flaxxaVariables->resolveArrays($headerVars, $bodyVars, $student, $course, $group, []);
     }
 
     private function duplicateWapiTempFile(string $relativePath): string

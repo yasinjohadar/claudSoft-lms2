@@ -5,4 +5,5 @@
     <a href="{{ route('admin.flaxxa-wapi.send.template') }}" class="btn btn-sm {{ request()->routeIs('admin.flaxxa-wapi.send.template') ? 'btn-primary' : 'btn-outline-primary' }}">إرسال قالب</a>
     <a href="{{ route('admin.flaxxa-wapi.send.campaign') }}" class="btn btn-sm {{ request()->routeIs('admin.flaxxa-wapi.send.campaign') ? 'btn-primary' : 'btn-outline-primary' }}">حملة</a>
     <a href="{{ route('admin.flaxxa-wapi.templates.index') }}" class="btn btn-sm {{ request()->routeIs('admin.flaxxa-wapi.templates.*') ? 'btn-secondary' : 'btn-outline-secondary' }}">قوالب Flaxxa</a>
+    <a href="{{ route('admin.flaxxa-wapi.automation.index') }}" class="btn btn-sm {{ request()->routeIs('admin.flaxxa-wapi.automation.*') ? 'btn-dark' : 'btn-outline-dark' }}">أتمتة الأحداث</a>
 </div>

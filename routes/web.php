@@ -1,12 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\PhoneCountryAjaxValidationController;
+use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+
+Route::post('/ajax/validate-phone-country', PhoneCountryAjaxValidationController::class)
+    ->middleware('throttle:120,1')
+    ->name('validate.phone-country');
 
 Route::get('/', function () {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -27,7 +31,7 @@ Route::get('/', function () {
 })->middleware('auth');
 
 Route::get('/dashboard', function () {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -62,8 +66,6 @@ Route::middleware('auth')->group(function () {
         ->name('admin.stop-impersonate');
 });
 
-
-
 // مسار toggle-status بدون middleware check.user.active
 Route::middleware(['auth'])->group(function () {
     Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
@@ -74,17 +76,17 @@ Route::post('toggle-user-status/{id}', [UserController::class, 'toggleStatus'])-
 
 // Route لعرض صور المدونة (حل بديل إذا لم يعمل storage link)
 Route::get('/storage/blog/images/{filename}', function ($filename) {
-    $path = storage_path('app/public/blog/images/' . $filename);
-    
-    if (!file_exists($path)) {
+    $path = storage_path('app/public/blog/images/'.$filename);
+
+    if (! file_exists($path)) {
         abort(404, 'الصورة غير موجودة');
     }
-    
+
     $mimeType = mime_content_type($path);
-    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+    if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
         abort(403, 'نوع الملف غير مسموح');
     }
-    
+
     return response()->file($path, [
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',
@@ -93,17 +95,17 @@ Route::get('/storage/blog/images/{filename}', function ($filename) {
 
 // Route لعرض صور الكورسات (حل بديل إذا لم يعمل storage link)
 Route::get('/storage/courses/images/{filename}', function ($filename) {
-    $path = storage_path('app/public/courses/images/' . $filename);
-    
-    if (!file_exists($path)) {
+    $path = storage_path('app/public/courses/images/'.$filename);
+
+    if (! file_exists($path)) {
         abort(404, 'الصورة غير موجودة');
     }
-    
+
     $mimeType = mime_content_type($path);
-    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+    if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
         abort(403, 'نوع الملف غير مسموح');
     }
-    
+
     return response()->file($path, [
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',
@@ -112,17 +114,17 @@ Route::get('/storage/courses/images/{filename}', function ($filename) {
 
 // Route لعرض صور الكورسات المصغرة (thumbnails) - حل بديل إذا لم يعمل storage link
 Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
-    $path = storage_path('app/public/courses/thumbnails/' . $filename);
-    
-    if (!file_exists($path)) {
+    $path = storage_path('app/public/courses/thumbnails/'.$filename);
+
+    if (! file_exists($path)) {
         abort(404, 'الصورة غير موجودة');
     }
-    
+
     $mimeType = mime_content_type($path);
-    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
+    if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])) {
         abort(403, 'نوع الملف غير مسموح');
     }
-    
+
     return response()->file($path, [
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',

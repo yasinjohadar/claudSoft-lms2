@@ -13,6 +13,9 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 
+// libphonenumber: fallback when Composer autoload omits giggsey packages
+require_once __DIR__.'/../app/Helpers/LibPhoneAutoload.php';
+
 // Ensure Sanctum HasApiTokens is loaded (fixes "Trait not found" when autoload order varies)
 $sanctumTrait = __DIR__.'/../vendor/laravel/sanctum/src/HasApiTokens.php';
 if (file_exists($sanctumTrait)) {

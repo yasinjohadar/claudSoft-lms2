@@ -3,6 +3,16 @@
     <span class="arrow"><i class="las la-angle-double-up"></i></span>
 </div>
 <div id="responsive-overlay"></div>
+{{-- لا يمنع النقر عندما تكون الطبقة غير مفعّلة (كانت تُغطي المحتوى أحياناً مع visibility:hidden --}}
+<style>
+    #responsive-overlay:not(.active) {
+        pointer-events: none !important;
+    }
+
+    #responsive-overlay.active {
+        pointer-events: auto;
+    }
+</style>
 <!-- Scroll To Top -->
 
 <!-- jQuery -->

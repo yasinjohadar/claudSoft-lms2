@@ -5,13 +5,15 @@ namespace App\Services;
 use App\Models\GroupRegistration;
 use App\Models\GroupRegistrationSetting;
 use App\Models\WhatsAppMessageTemplate;
+use App\Services\Flaxxa\WapiAutomationService;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use Illuminate\Support\Facades\Log;
 
 class RegistrationWhatsAppService
 {
     public function __construct(
-        private SendWhatsAppMessage $whatsAppService
+        private SendWhatsAppMessage $whatsAppService,
+        private WapiAutomationService $wapiAutomation
     ) {}
 
     /**
@@ -20,10 +22,11 @@ class RegistrationWhatsAppService
     public function sendWelcomeWhatsAppForGroup(GroupRegistration $registration): bool
     {
         try {
-            if (!$registration->phone || !$registration->full_phone) {
+            if (! $registration->phone || ! $registration->full_phone) {
                 Log::warning('Cannot send WhatsApp: phone number missing', [
                     'registration_id' => $registration->id,
                 ]);
+
                 return false;
             }
 
@@ -31,8 +34,20 @@ class RegistrationWhatsAppService
             $settings = GroupRegistrationSetting::where('group_id', $group->id)->first();
 
             // احترام خيار "إرسال رسالة واتساب ترحيبية" من إعدادات المجموعة
-            if ($settings && !$settings->send_welcome_whatsapp) {
+            if ($settings && ! $settings->send_welcome_whatsapp) {
                 return false;
+            }
+
+            // قالب Flaxxa المعتمد (Meta) عند وجود توكن وقاعدة أتمتة نشطة لـ group.registration.submitted
+            if ($this->wapiAutomation->isTokenConfigured()
+                && $this->wapiAutomation->dispatchForGroupRegistration($registration)) {
+                $registration->update([
+                    'whatsapp_sent' => true,
+                    'whatsapp_sent_at' => now(),
+                    'whatsapp_error' => null,
+                ]);
+
+                return true;
             }
 
             // الحصول على القالب: أولاً قالب إعدادات المجموعة، ثم قالب محفوظ (slug welcome_group)، ثم الافتراضي
@@ -63,7 +78,7 @@ class RegistrationWhatsAppService
             // إرسال الرسالة فوراً (بدون الاعتماد على قائمة الانتظار) حتى تصل للمستخدم مباشرة
             $phone = $registration->full_phone;
             if (strpos($phone, '+') !== 0) {
-                $phone = '+' . $phone;
+                $phone = '+'.$phone;
             }
             $this->whatsAppService->sendTextSync($phone, $message);
 

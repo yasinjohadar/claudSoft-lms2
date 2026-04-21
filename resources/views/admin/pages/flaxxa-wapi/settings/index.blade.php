@@ -35,6 +35,10 @@
                             يتم تخزين التوكن بشكل <strong>مشفّر</strong> في قاعدة البيانات. إن وُجد توكن هنا، يُستخدم بدلاً من متغير البيئة
                             <code>WHATSAPP_TOKEN</code>. يترك حقل التوكن <strong>فارغاً</strong> إذا أردت الإبقاء على التوكن المحفوظ دون تغيير.
                         </p>
+                        <p class="text-muted mb-4 small border-start border-primary border-3 ps-3">
+                            <strong>هوية المرسل (Flaxxa WAPI):</strong> طلبات القوالب والرسائل تُرسل مع الحقل <code>token</code> فقط؛ أي أن الرقم أو حساب الواتساب الظاهر للمستلم هو
+                            <strong>الجلسة المرتبطة بهذا التوكن</strong> في لوحة Flaxxa، وليس حقل «مرسل افتراضي» منفصل في هذه الشاشة (ذلك الحقل يخص مسار Meta آخر إن وُجد).
+                        </p>
 
                         <form action="{{ route('admin.flaxxa-wapi.settings.update') }}" method="POST">
                             @csrf

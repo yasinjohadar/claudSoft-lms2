@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
+        "giggsey/libphonenumber-for-php": "^9.0",
         "intervention/image": "^3.11",
         "laravel/ai": "^0.4.3",
         "laravel/framework": "^12.0",

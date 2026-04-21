@@ -22,6 +22,7 @@ class NotificationHubAdminController extends Controller
             'channel_fcm_enabled',
             'channel_mail_enabled',
             'channel_whatsapp_enabled',
+            'channel_whatsapp_wapi_enabled',
             'events_enabled_default',
         ];
 
@@ -41,6 +42,7 @@ class NotificationHubAdminController extends Controller
             'channel_fcm_enabled' => ['nullable', 'boolean'],
             'channel_mail_enabled' => ['nullable', 'boolean'],
             'channel_whatsapp_enabled' => ['nullable', 'boolean'],
+            'channel_whatsapp_wapi_enabled' => ['nullable', 'boolean'],
             'events_enabled_default' => ['nullable', 'boolean'],
         ]);
 
@@ -165,7 +167,7 @@ class NotificationHubAdminController extends Controller
             'enrollment_status' => ['nullable', Rule::in(['active', 'completed', 'pending', 'suspended'])],
             'data' => ['nullable', 'array'],
             'channels' => ['nullable', 'array'],
-            'channels.*' => [Rule::in(['database', 'realtime', 'fcm', 'mail', 'whatsapp'])],
+            'channels.*' => [Rule::in(['database', 'realtime', 'fcm', 'mail', 'whatsapp', 'whatsapp_wapi'])],
         ]);
 
         $users = $resolver->resolve($validated);

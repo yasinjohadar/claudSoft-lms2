@@ -10,6 +10,7 @@ use App\Models\NotificationTemplate;
 use App\Models\NotificationUserPreference;
 use App\Models\User;
 use App\Notifications\HubDatabaseNotification;
+use App\Services\Flaxxa\WapiAutomationService;
 
 class NotificationHubService
 {
@@ -78,6 +79,23 @@ class NotificationHubService
             SendFcmNotificationJob::dispatch($user->id, $eventKey, $fcmPayload, $notificationId);
         }
 
+        if (in_array('whatsapp_wapi', $resolvedChannels, true)) {
+            app(WapiAutomationService::class)->dispatchFromNotificationHub($eventKey, $user, $data);
+
+            NotificationDeliveryLog::create([
+                'user_id' => $user->id,
+                'database_notification_id' => $notificationId,
+                'event_key' => $eventKey,
+                'channel' => 'whatsapp_wapi',
+                'status' => 'queued',
+                'payload' => array_merge($data, [
+                    'event_key' => $eventKey,
+                    'hub_note_ar' => 'تمت جدولة إرسال واتساب Flaxxa؛ التسليم الفعلي يراجع في سجل Flaxxa وليس مضموناً من هذا السطر.',
+                ]),
+                'sent_at' => null,
+            ]);
+        }
+
         return [
             'notification_id' => $notificationId,
             'channels' => $resolvedChannels,
@@ -85,7 +103,7 @@ class NotificationHubService
     }
 
     /**
-     * @param array<int, User> $users
+     * @param  array<int, User>  $users
      */
     public function sendToUsers(iterable $users, string $eventKey, array $data = [], ?array $requestedChannels = null): int
     {
@@ -103,6 +121,9 @@ class NotificationHubService
     protected function resolveChannels(User $user, string $eventKey, ?array $requestedChannels): array
     {
         $defaultChannels = ['database', 'realtime', 'fcm'];
+        if ($this->settings->channelEnabled('whatsapp_wapi')) {
+            $defaultChannels[] = 'whatsapp_wapi';
+        }
         $channels = $requestedChannels ?: $defaultChannels;
 
         $channels = array_values(array_filter($channels, fn ($channel) => $this->settings->channelEnabled($channel)));
@@ -145,12 +166,19 @@ class NotificationHubService
                 ->first();
         }
 
-        $titleTemplate = $template?->title_template ?? ($data['title'] ?? $eventKey);
-        $bodyTemplate = $template?->body_template ?? ($data['body'] ?? '');
+        $titleTemplate = $template?->title_template;
+        if ($titleTemplate === null || $titleTemplate === '') {
+            $titleTemplate = $data['title'] ?? NotificationHubFallbackCopy::titleTemplate($eventKey, $data);
+        }
+
+        $bodyTemplate = $template?->body_template;
+        if ($bodyTemplate === null || $bodyTemplate === '') {
+            $bodyTemplate = $data['body'] ?? NotificationHubFallbackCopy::bodyTemplate($eventKey, $data);
+        }
 
         return [
-            'title' => $this->renderer->render($titleTemplate, $data),
-            'body' => $this->renderer->render($bodyTemplate, $data),
+            'title' => $this->renderer->render((string) $titleTemplate, $data),
+            'body' => $this->renderer->render((string) $bodyTemplate, $data),
             'data' => $data,
             'locale' => $locale,
         ];
