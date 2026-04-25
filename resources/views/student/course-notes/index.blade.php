@@ -249,17 +249,58 @@ document.getElementById('courseFilter').addEventListener('change', function() {
 document.getElementById('courseSelect').addEventListener('change', function() {
     const courseId = this.value;
     const lessonSelect = document.getElementById('lessonSelect');
+    const lessonsUrlTemplate = `{{ route('student.course-notes.lessons', ['courseId' => '__COURSE_ID__']) }}`;
 
-    if (courseId) {
-        fetch(`/api/courses/${courseId}/lessons`)
-            .then(response => response.json())
-            .then(lessons => {
-                lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-                lessons.forEach(lesson => {
-                    lessonSelect.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
-                });
+    const resetLessons = function (placeholder = 'اختر الدرس') {
+        lessonSelect.innerHTML = `<option value="">${placeholder}</option>`;
+    };
+
+    if (!courseId) {
+        resetLessons();
+        return;
+    }
+
+    resetLessons('جاري تحميل الدروس...');
+
+    const lessonsUrl = lessonsUrlTemplate.replace('__COURSE_ID__', courseId);
+    fetch(lessonsUrl, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+    })
+        .then(async response => {
+            if (!response.ok) {
+                let message = 'تعذر تحميل الدروس';
+                try {
+                    const payload = await response.json();
+                    message = payload.message || message;
+                } catch (e) {
+                    // تجاهل فشل parsing
+                }
+                throw new Error(message);
+            }
+            return response.json();
+        })
+        .then(lessons => {
+            resetLessons();
+            if (!Array.isArray(lessons) || lessons.length === 0) {
+                resetLessons('لا توجد دروس متاحة لهذا الكورس');
+                return;
+            }
+            lessons.forEach(lesson => {
+                lessonSelect.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
             });
-    } else {
+        })
+        .catch(() => {
+            resetLessons('تعذر تحميل الدروس');
+        });
+});
+
+document.getElementById('createCourseNoteModal').addEventListener('hidden.bs.modal', function () {
+    const lessonSelect = document.getElementById('lessonSelect');
+    if (lessonSelect) {
         lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
     }
 });

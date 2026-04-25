@@ -96,6 +96,75 @@ class User extends Authenticatable
     }
 
     /**
+     * Build student profile completion metrics used across student views.
+     *
+     * @return array{
+     *     percentage:int,
+     *     completed:int,
+     *     total:int,
+     *     missing_count:int,
+     *     missing_fields:array<int,string>
+     * }
+     */
+    public function getProfileCompletionDataAttribute(): array
+    {
+        $requiredFields = [
+            'name_ar' => 'الاسم بالعربية',
+            'name' => 'الاسم بالإنجليزية',
+            'email' => 'البريد الإلكتروني',
+            'phone' => 'رقم الهاتف',
+            'date_of_birth' => 'تاريخ الميلاد',
+            'gender' => 'الجنس',
+            'nationality_id' => 'الدولة',
+            'city' => 'المدينة',
+            'address' => 'العنوان',
+        ];
+
+        $missingFields = [];
+        foreach ($requiredFields as $field => $label) {
+            if (!$this->isProfileFieldCompleted($field)) {
+                $missingFields[] = $label;
+            }
+        }
+
+        $total = count($requiredFields);
+        $missingCount = count($missingFields);
+        $completed = $total - $missingCount;
+        $percentage = (int) round(($completed / max($total, 1)) * 100);
+
+        return [
+            'percentage' => $percentage,
+            'completed' => $completed,
+            'total' => $total,
+            'missing_count' => $missingCount,
+            'missing_fields' => $missingFields,
+        ];
+    }
+
+    public function getProfileCompletionPercentageAttribute(): int
+    {
+        return $this->profile_completion_data['percentage'];
+    }
+
+    private function isProfileFieldCompleted(string $field): bool
+    {
+        if ($field === 'phone') {
+            $hasCountryAndPhone = !empty($this->country_code) && !empty($this->phone);
+            $hasFullPhone = !empty(trim((string) ($this->full_phone ?? '')));
+
+            return $hasCountryAndPhone || $hasFullPhone;
+        }
+
+        $value = $this->{$field} ?? null;
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        return !is_null($value);
+    }
+
+    /**
      * Get all course enrollments for this user (student).
      */
     public function courseEnrollments()

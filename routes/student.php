@@ -354,6 +354,7 @@ Route::prefix('student')
         // Course Notes Routes (ملاحظات الكورسات)
         Route::prefix('course-notes')->name('student.course-notes.')->group(function () {
             Route::get('/', [CourseNoteController::class, 'index'])->name('index');
+            Route::get('/course/{courseId}/lessons', [CourseNoteController::class, 'lessons'])->name('lessons');
             Route::post('/', [CourseNoteController::class, 'store'])->name('store');
             Route::put('/{courseNote}', [CourseNoteController::class, 'update'])->name('update');
             Route::delete('/{courseNote}', [CourseNoteController::class, 'destroy'])->name('destroy');

@@ -52,6 +52,7 @@ class UpdateProfileRequest extends FormRequest
             ],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'gender' => ['nullable', 'string', 'in:male,female'],
+            'city' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'nationality_id' => ['nullable', 'exists:nationalities,id'],
             'photo' => [
@@ -79,6 +80,7 @@ class UpdateProfileRequest extends FormRequest
             'national_id' => 'رقم الهوية',
             'date_of_birth' => 'تاريخ الميلاد',
             'gender' => 'الجنس',
+            'city' => 'المدينة',
             'address' => 'العنوان',
             'nationality_id' => 'الجنسية',
             'photo' => 'الصورة الشخصية',

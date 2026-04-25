@@ -63,6 +63,7 @@ class StudentProfileController extends Controller
             $student->national_id = $request->input('national_id');
             $student->date_of_birth = $request->input('date_of_birth');
             $student->gender = $request->input('gender');
+            $student->city = $request->input('city');
             $student->address = $request->input('address');
             $student->nationality_id = $request->input('nationality_id');
 

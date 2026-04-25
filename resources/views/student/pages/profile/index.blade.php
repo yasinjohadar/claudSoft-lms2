@@ -100,6 +100,34 @@
         border-radius: 20px;
         font-weight: 600;
     }
+
+    .completion-card {
+        border: 1px solid #e9d9a2;
+        background: linear-gradient(135deg, #fff9e7 0%, #fff4d3 100%);
+    }
+
+    .completion-pill {
+        background: #ffc107;
+        color: #2e2300;
+        border-radius: 999px;
+        font-weight: 700;
+        padding: 0.3rem 0.75rem;
+        line-height: 1;
+    }
+
+    .completion-progress {
+        height: 10px;
+        background: #f0e2b2;
+    }
+
+    .completion-progress .progress-bar {
+        background: #f0ad00;
+    }
+
+    .completion-missing-list {
+        color: #6d5a1f;
+        font-size: 0.9rem;
+    }
 </style>
 @endpush
 
@@ -172,6 +200,41 @@
                             <p class="mb-0"><i class="fa fa-phone me-2"></i>{{ $student->phone }}</p>
                         @endif
                     </div>
+                </div>
+            </div>
+
+            @php
+                $profileCompletion = $student->profile_completion_data;
+            @endphp
+            <div class="card completion-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fa fa-tasks me-2"></i>اكتمال الملف الشخصي</h5>
+                    <span class="completion-pill">{{ $profileCompletion['percentage'] }}%</span>
+                </div>
+                <div class="card-body">
+                    <div class="progress completion-progress mb-2">
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ $profileCompletion['percentage'] }}%;"
+                             aria-valuenow="{{ $profileCompletion['percentage'] }}"
+                             aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="mb-0 text-muted">
+                        تم إكمال {{ $profileCompletion['completed'] }} من أصل {{ $profileCompletion['total'] }} حقول.
+                        @if($profileCompletion['missing_count'] > 0)
+                            المتبقي: {{ $profileCompletion['missing_count'] }} حقول.
+                        @endif
+                    </p>
+                    @if($profileCompletion['missing_count'] > 0)
+                        @php
+                            $missingPreview = array_slice($profileCompletion['missing_fields'], 0, 3);
+                        @endphp
+                        <div class="completion-missing-list mt-2">
+                            الحقول الناقصة: {{ implode('، ', $missingPreview) }}
+                            @if($profileCompletion['missing_count'] > count($missingPreview))
+                                ... والمزيد
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -266,6 +329,17 @@
                                             @else
                                                 غير محدد
                                             @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fa fa-city text-primary me-2"></i>المدينة
+                                        </div>
+                                        <div class="info-value {{ $student->city ? '' : 'empty' }}">
+                                            {{ $student->city ?? 'غير محدد' }}
                                         </div>
                                     </div>
                                 </div>

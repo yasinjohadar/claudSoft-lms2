@@ -149,6 +149,11 @@
                                     </div>
                                     @error('nationality_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">المدينة</label>
+                                    <input type="text" class="form-control @error('city') is-invalid @enderror" name="city" value="{{ old('city', $student->city) }}" placeholder="أدخل المدينة">
+                                    @error('city')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
                                 <div class="col-12">
                                     <label class="form-label">العنوان</label>
                                     <textarea class="form-control @error('address') is-invalid @enderror" name="address" rows="3">{{ old('address', $student->address) }}</textarea>

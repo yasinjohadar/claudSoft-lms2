@@ -19,11 +19,6 @@
                     </ol>
                 </nav>
             </div>
-            <div class="d-flex my-xl-auto right-content align-items-center">
-                <a href="{{ route('student.courses.index') }}" class="btn btn-primary">
-                    <i class="fas fa-search me-2"></i>تصفح الكورسات
-                </a>
-            </div>
         </div>
 
         <!-- Alerts -->
@@ -174,11 +169,19 @@
                         <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-4">
                             <div class="card custom-card">
                                 <div class="position-relative">
-                                    @if($course && $course->thumbnail)
-                                        <img src="{{ course_image_url($course->thumbnail) }}"
+                                    @php
+                                        $courseImage = $course->thumbnail ?? $course->image ?? null;
+                                    @endphp
+                                    @if($course && $courseImage)
+                                        <img src="{{ course_image_url($courseImage) }}"
                                              alt="{{ $course->title }}"
                                              class="card-img-top"
-                                             style="height: 200px; object-fit: cover;">
+                                             style="height: 200px; object-fit: cover;"
+                                             onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center"
+                                             style="height: 200px; display: none;">
+                                            <i class="fas fa-graduation-cap fa-4x text-white opacity-50"></i>
+                                        </div>
                                     @else
                                         <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center"
                                              style="height: 200px;">

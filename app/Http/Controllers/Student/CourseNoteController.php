@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\CourseNote;
 use App\Models\Course;
+use App\Models\CourseModule;
+use App\Models\Lesson;
 use Illuminate\Http\Request;
 
 class CourseNoteController extends Controller
@@ -96,5 +98,39 @@ class CourseNoteController extends Controller
             ->get();
 
         return view('student.course-notes.by-course', compact('notes', 'course'));
+    }
+
+    public function lessons($courseId)
+    {
+        $course = Course::findOrFail($courseId);
+
+        $isEnrolled = $course->enrollments()
+            ->where('student_id', auth()->id())
+            ->exists();
+
+        if (! $isEnrolled) {
+            return response()->json(['message' => 'غير مصرح لك بعرض دروس هذا الكورس'], 403);
+        }
+
+        // جلب IDs الدروس بشكل مرن لأن بعض البيانات القديمة لا تعتمد module_type فقط.
+        $lessonIds = CourseModule::where('course_id', $courseId)
+            ->whereNotNull('modulable_id')
+            ->where(function ($query) {
+                $query->where('module_type', 'lesson')
+                    ->orWhere('modulable_type', Lesson::class)
+                    ->orWhere('modulable_type', 'LIKE', '%Lesson');
+            })
+            ->orderBy('sort_order')
+            ->pluck('modulable_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $lessons = Lesson::whereIn('id', $lessonIds)
+            ->select('id', 'title')
+            ->orderBy('title', 'asc')
+            ->get();
+
+        return response()->json($lessons);
     }
 }

@@ -32,6 +32,9 @@
         if (technical) {
             return 'تعذر التحقق من الرقم الآن. حاول مرة أخرى، أو تأكد أن الرقم يطابق الدولة المختارة.';
         }
+        if (/too many attempts|throttle|429/i.test(s)) {
+            return 'تم تنفيذ محاولات تحقق كثيرة خلال وقت قصير. يمكنك المتابعة بالحفظ الآن.';
+        }
         return s;
     }
 
@@ -55,7 +58,12 @@
                     if (!r.ok) {
                         var firstErr = body.errors && body.errors[Object.keys(body.errors)[0]];
                         var raw = Array.isArray(firstErr) ? firstErr[0] : (body.message || 'خطأ في الطلب.');
-                        done(null, { valid: false, message: humanizePhoneMessage(raw) });
+                        done(null, {
+                            valid: false,
+                            message: humanizePhoneMessage(raw),
+                            status: r.status,
+                            rate_limited: r.status === 429
+                        });
                         return;
                     }
                     if (body && body.message) {
@@ -81,6 +89,11 @@
     }
 
     function bindForm(form) {
+        if (form.getAttribute('data-phone-ajax-bound') === '1') {
+            return;
+        }
+        form.setAttribute('data-phone-ajax-bound', '1');
+
         var countryEl = form.querySelector('select[name="country_code"]');
         var phoneEl = form.querySelector('input[name="phone"]');
         if (!countryEl || !phoneEl) return;
@@ -100,20 +113,31 @@
         }
 
         var reqId = 0;
+        var lastKey = '';
 
         function runLive() {
             var id = ++reqId;
             var cc = (countryEl.value || '').trim();
             var ph = (phoneEl.value || '').trim();
+            var key = cc + '|' + ph;
             if (cc === '' && ph === '') {
                 setFeedback(feedback, '', null);
+                lastKey = '';
                 return;
             }
+            if (key === lastKey) {
+                return;
+            }
+            lastKey = key;
             setFeedback(feedback, 'جاري التحقق…', 'loading');
             validateJson(countryEl, phoneEl, function (err, data) {
                 if (id !== reqId) return;
                 if (err) {
                     setFeedback(feedback, 'تعذر التحقق من الرقم.', 'err');
+                    return;
+                }
+                if (data.rate_limited) {
+                    setFeedback(feedback, data.message || 'يمكنك المتابعة بالحفظ.', 'loading');
                     return;
                 }
                 if (data.valid) {
@@ -124,13 +148,11 @@
             });
         }
 
-        var debounced = debounce(runLive, 400);
+        var debounced = debounce(runLive, 900);
         phoneEl.addEventListener('input', debounced);
-        phoneEl.addEventListener('blur', function () {
-            runLive();
-        });
+        phoneEl.addEventListener('blur', debounced);
         countryEl.addEventListener('change', function () {
-            runLive();
+            debounced();
         });
 
         if (typeof jQuery !== 'undefined') {
@@ -158,6 +180,16 @@
                 if (err) {
                     setFeedback(feedback, 'تعذر التحقق من الرقم.', 'err');
                     alert('تعذر التحقق من الرقم. حاول مرة أخرى.');
+                    return;
+                }
+                if (data.rate_limited) {
+                    setFeedback(feedback, data.message || 'يمكنك المتابعة بالحفظ.', 'loading');
+                    if (typeof form.requestSubmit === 'function') {
+                        form.setAttribute('data-phone-ajax-bypass', '1');
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
                     return;
                 }
                 if (data.valid) {
