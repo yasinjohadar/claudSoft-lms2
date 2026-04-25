@@ -177,9 +177,9 @@
                                              alt="{{ $course->title }}"
                                              class="card-img-top"
                                              style="height: 200px; object-fit: cover;"
-                                             onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center"
-                                             style="height: 200px; display: none;">
+                                             onerror="this.onerror=null; this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
+                                        <div class="card-img-top bg-primary-gradient align-items-center justify-content-center d-none"
+                                             style="height: 200px;">
                                             <i class="fas fa-graduation-cap fa-4x text-white opacity-50"></i>
                                         </div>
                                     @else
