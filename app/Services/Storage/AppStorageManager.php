@@ -38,37 +38,39 @@ class AppStorageManager
             ->where('is_active', true)
             ->first();
 
-        if (!$mapping || !$mapping->primaryStorage) {
-            // Fallback: try to find ANY active storage config to use
-            $anyActiveStorage = AppStorageConfig::where('is_active', true)
-                ->orderBy('priority', 'desc')
-                ->first();
-            
-            if ($anyActiveStorage) {
-                try {
-                    Log::info("Using fallback active storage for disk {$diskName}", [
-                        'storage_name' => $anyActiveStorage->name,
-                        'driver' => $anyActiveStorage->driver,
-                    ]);
-                    return AppStorageFactory::create($anyActiveStorage->fresh());
-                } catch (\Exception $e) {
-                    Log::error("Failed to create fallback disk: " . $e->getMessage());
-                }
+        if ($mapping && $mapping->primaryStorage) {
+            try {
+                return AppStorageFactory::create($mapping->primaryStorage);
+            } catch (\Exception $e) {
+                Log::error("Failed to create disk {$diskName} from mapping: " . $e->getMessage());
             }
-            
-            // Last fallback: local storage
-            Log::warning("No active storage found for disk {$diskName}, using local storage");
-            return Storage::disk('public');
         }
 
-        try {
-            // استخدام fresh() لضمان قراءة القيمة المحدثة من قاعدة البيانات
-            $freshStorage = $mapping->primaryStorage->fresh();
-            return AppStorageFactory::create($freshStorage);
-        } catch (\Exception $e) {
-            Log::error("Failed to create disk {$diskName}: " . $e->getMessage());
-            return Storage::disk('public');
+        // Fallback: try to find ANY active storage config to use
+        // This ensures profile photos use the same cloud storage as courses/blog
+        $anyActiveStorage = AppStorageConfig::where('is_active', true)
+            ->orderBy('priority', 'desc')
+            ->first();
+        
+        if ($anyActiveStorage) {
+            try {
+                Log::info("Using fallback active storage for disk {$diskName}", [
+                    'storage_id' => $anyActiveStorage->id,
+                    'storage_name' => $anyActiveStorage->name,
+                    'driver' => $anyActiveStorage->driver,
+                ]);
+                
+                return AppStorageFactory::create($anyActiveStorage);
+            } catch (\Exception $e) {
+                Log::error("Failed to create fallback disk for {$diskName}: " . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
         }
+        
+        // Last fallback: local storage
+        Log::warning("No active cloud storage found for disk {$diskName}, using local storage");
+        return Storage::disk('public');
     }
 
     /**
@@ -258,8 +260,7 @@ class AppStorageManager
             $storageConfig = null;
             
             if ($mapping && $mapping->primaryStorage) {
-                // استخدام fresh() لضمان قراءة القيمة الجديدة من قاعدة البيانات
-                $storageConfig = $mapping->primaryStorage->fresh();
+                $storageConfig = $mapping->primaryStorage;
             } else {
                 // Fallback: use any active storage config
                 $storageConfig = AppStorageConfig::where('is_active', true)

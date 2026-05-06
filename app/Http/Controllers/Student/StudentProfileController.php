@@ -79,6 +79,11 @@ class StudentProfileController extends Controller
             // Upload via dynamic storage (S3 if configured, fallback to local)
             try {
                 $storage = $this->storageHelper->getDisk('public');
+                
+                Log::info('StudentProfileController: Storage disk obtained', [
+                    'storage_class' => get_class($storage),
+                ]);
+                
                 $fileContent = file_get_contents($file->getRealPath());
                 
                 if ($fileContent === false) {

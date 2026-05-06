@@ -14,13 +14,24 @@ class AppStorageFactory
      */
     public static function create(AppStorageConfig $config): \Illuminate\Contracts\Filesystem\Filesystem
     {
-        // استخدام fresh() لضمان قراءة القيمة المحدثة من قاعدة البيانات
-        $freshConfig = $config->fresh();
+        $driverConfig = $config->getDecryptedConfig();
         
-        $driverConfig = $freshConfig->getDecryptedConfig();
-        $diskName = 'app_storage_' . $freshConfig->id . '_' . md5(json_encode($driverConfig));
+        if (empty($driverConfig)) {
+            Log::warning("AppStorageFactory: Empty decrypted config", [
+                'config_id' => $config->id,
+                'driver' => $config->driver,
+            ]);
+        }
         
-        $diskConfig = match($freshConfig->driver) {
+        $diskName = 'app_storage_' . $config->id . '_' . md5(json_encode($driverConfig));
+        
+        Log::info("AppStorageFactory: Creating disk", [
+            'disk_name' => $diskName,
+            'driver' => $config->driver,
+            'config_keys' => array_keys($driverConfig),
+        ]);
+        
+        $diskConfig = match($config->driver) {
             'local' => self::getLocalConfig($driverConfig),
             's3' => self::getS3Config($driverConfig),
             'google_drive' => self::getGoogleDriveConfig($driverConfig),
@@ -32,16 +43,20 @@ class AppStorageFactory
             'backblaze' => self::getBackblazeConfig($driverConfig),
             'cloudflare_r2' => self::getCloudflareR2Config($driverConfig),
             'bunny' => self::getBunnyConfig($driverConfig),
-            default => throw new \Exception("نوع التخزين غير مدعوم: {$freshConfig->driver}"),
+            default => throw new \Exception("نوع التخزين غير مدعوم: {$config->driver}"),
         };
 
         // إضافة CDN URL إذا كان موجوداً
-        if ($freshConfig->cdn_url) {
-            $diskConfig['url'] = rtrim($freshConfig->cdn_url, '/');
+        if ($config->cdn_url) {
+            $diskConfig['url'] = rtrim($config->cdn_url, '/');
         }
 
         // تسجيل الـ disk ديناميكياً
         Config::set("filesystems.disks.{$diskName}", $diskConfig);
+
+        Log::info("AppStorageFactory: Disk created successfully", [
+            'disk_name' => $diskName,
+        ]);
 
         return Storage::disk($diskName);
     }
