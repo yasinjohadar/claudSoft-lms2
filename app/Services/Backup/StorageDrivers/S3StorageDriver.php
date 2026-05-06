@@ -26,8 +26,11 @@ class S3StorageDriver implements BackupStorageInterface
             'bucket' => $config['bucket'] ?? '',
             'url' => $config['url'] ?? null,
             'endpoint' => $config['endpoint'] ?? null,
-            'use_path_style_endpoint' => $config['use_path_style'] ?? false,
+            'use_path_style_endpoint' => filter_var($config['use_path_style'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'throw' => false,
+            'http' => [
+                'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+            ],
         ]);
     }
 

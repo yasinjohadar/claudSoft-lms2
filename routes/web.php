@@ -74,9 +74,29 @@ Route::middleware(['auth'])->group(function () {
 // مسار بديل للتجربة
 Route::post('toggle-user-status/{id}', [UserController::class, 'toggleStatus'])->name('users.toggle-status-alt');
 
-// Route لعرض صور المدونة (حل بديل إذا لم يعمل storage link)
-Route::get('/storage/blog/images/{filename}', function ($filename) {
-    $path = storage_path('app/public/blog/images/'.$filename);
+// Route لعرض صور الكورسات المصغرة (thumbnails) - يخدم من S3 أو التخزين المحلي
+Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
+    // أولاً: محاولة جلب من التخزين الديناميكي (S3)
+    try {
+        $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+        $disk = $storageHelper->getDisk('course_thumbnails');
+        $filePath = 'courses/thumbnails/' . $filename;
+        
+        if ($disk->exists($filePath)) {
+            $content = $disk->get($filePath);
+            $mimeType = $disk->mimeType($filePath) ?: 'image/png';
+            
+            return response($content, 200, [
+                'Content-Type' => $mimeType,
+                'Cache-Control' => 'public, max-age=31536000',
+            ]);
+        }
+    } catch (\Exception $e) {
+        // Fallback إلى التخزين المحلي
+    }
+    
+    // Fallback: التخزين المحلي
+    $path = storage_path('app/public/courses/thumbnails/'.$filename);
 
     if (! file_exists($path)) {
         abort(404, 'الصورة غير موجودة');
@@ -91,10 +111,30 @@ Route::get('/storage/blog/images/{filename}', function ($filename) {
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',
     ]);
-})->where('filename', '[a-zA-Z0-9._-]+')->name('blog.image');
+})->where('filename', '[a-zA-Z0-9._-]+')->name('course.thumbnail');
 
-// Route لعرض صور الكورسات (حل بديل إذا لم يعمل storage link)
+// Route لعرض صور الكورسات - يخدم من S3 أو التخزين المحلي
 Route::get('/storage/courses/images/{filename}', function ($filename) {
+    // أولاً: محاولة جلب من التخزين الديناميكي (S3)
+    try {
+        $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+        $disk = $storageHelper->getDisk('course_thumbnails');
+        $filePath = 'courses/images/' . $filename;
+        
+        if ($disk->exists($filePath)) {
+            $content = $disk->get($filePath);
+            $mimeType = $disk->mimeType($filePath) ?: 'image/png';
+            
+            return response($content, 200, [
+                'Content-Type' => $mimeType,
+                'Cache-Control' => 'public, max-age=31536000',
+            ]);
+        }
+    } catch (\Exception $e) {
+        // Fallback إلى التخزين المحلي
+    }
+    
+    // Fallback: التخزين المحلي
     $path = storage_path('app/public/courses/images/'.$filename);
 
     if (! file_exists($path)) {
@@ -112,9 +152,29 @@ Route::get('/storage/courses/images/{filename}', function ($filename) {
     ]);
 })->where('filename', '[a-zA-Z0-9._-]+')->name('course.image');
 
-// Route لعرض صور الكورسات المصغرة (thumbnails) - حل بديل إذا لم يعمل storage link
-Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
-    $path = storage_path('app/public/courses/thumbnails/'.$filename);
+// Route لعرض صور المدونة - يخدم من S3 أو التخزين المحلي
+Route::get('/storage/blog/images/{filename}', function ($filename) {
+    // أولاً: محاولة جلب من التخزين الديناميكي (S3)
+    try {
+        $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+        $disk = $storageHelper->getDisk('blog_images');
+        $filePath = 'blog/images/' . $filename;
+        
+        if ($disk->exists($filePath)) {
+            $content = $disk->get($filePath);
+            $mimeType = $disk->mimeType($filePath) ?: 'image/png';
+            
+            return response($content, 200, [
+                'Content-Type' => $mimeType,
+                'Cache-Control' => 'public, max-age=31536000',
+            ]);
+        }
+    } catch (\Exception $e) {
+        // Fallback إلى التخزين المحلي
+    }
+    
+    // Fallback: التخزين المحلي
+    $path = storage_path('app/public/blog/images/'.$filename);
 
     if (! file_exists($path)) {
         abort(404, 'الصورة غير موجودة');
@@ -129,7 +189,7 @@ Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
         'Content-Type' => $mimeType,
         'Cache-Control' => 'public, max-age=31536000',
     ]);
-})->where('filename', '[a-zA-Z0-9._-]+')->name('course.thumbnail');
+})->where('filename', '[a-zA-Z0-9._-]+')->name('blog.image');
 
 // Session tracking routes
 Route::middleware('auth')->group(function () {

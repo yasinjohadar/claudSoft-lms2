@@ -8,7 +8,6 @@ use App\Http\Requests\Student\ChangePasswordRequest;
 use App\Models\Nationality;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\Storage\StorageHelperService;
@@ -73,12 +72,26 @@ class StudentProfileController extends Controller
 
             // Handle photo upload
             if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+
                 Log::info('StudentProfileController: Photo upload started', [
                     'student_id' => $student->id,
-                    'file_name' => $request->file('photo')->getClientOriginalName(),
-                    'file_size' => $request->file('photo')->getSize(),
-                    'file_mime' => $request->file('photo')->getMimeType(),
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                    'file_mime' => $file->getMimeType(),
+                    'file_path' => $file->getRealPath(),
                 ]);
+
+                // Validate file size (2MB max)
+                if ($file->getSize() > 2 * 1024 * 1024) {
+                    throw new \Exception('حجم الصورة كبير جداً. الحد الأقصى: 2MB');
+                }
+
+                // Validate file type
+                $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!in_array($file->getMimeType(), $allowedMimes)) {
+                    throw new \Exception('صيغة الصورة غير مدعومة. الصيغ المدعومة: JPG, PNG, GIF, WebP');
+                }
 
                 // Delete old photo if exists
                 if ($student->photo) {
@@ -94,82 +107,90 @@ class StudentProfileController extends Controller
                             'old_photo_path' => $student->photo,
                             'error' => $deleteException->getMessage(),
                         ]);
-                        // لا نوقف العملية إذا فشل حذف الصورة القديمة
                     }
                 }
 
-                // Store new photo using dynamic storage
-                $photoPath = null;
-                $uploadError = null;
+                // Generate unique filename
+                $extension = $file->getClientOriginalExtension();
+                $fileName = 'student_' . $student->id . '_' . time() . '.' . $extension;
+                $photoPath = 'profile-photos/' . $fileName;
 
+                Log::info('StudentProfileController: Attempting S3 upload', [
+                    'photo_path' => $photoPath,
+                    'file_size' => $file->getSize(),
+                ]);
+
+                // Upload to S3 via dynamic storage
                 try {
-                    $photoPath = $this->storageHelper->storeUploadedFile('public', 'profile-photos', $request->file('photo'), 'image');
+                    $storage = $this->storageHelper->getDisk('public');
+                    $fileContent = file_get_contents($file->getRealPath());
                     
-                    if ($photoPath) {
-                        Log::info('StudentProfileController: Photo uploaded successfully via dynamic storage', [
+                    if ($fileContent === false) {
+                        throw new \Exception('فشل في قراءة ملف الصورة');
+                    }
+
+                    Log::info('StudentProfileController: File content read successfully', [
+                        'content_size' => strlen($fileContent),
+                    ]);
+
+                    $result = $storage->put($photoPath, $fileContent, 'public');
+
+                    Log::info('StudentProfileController: Storage put result', [
+                        'result' => $result,
+                    ]);
+
+                    if ($result) {
+                        Log::info('StudentProfileController: Photo uploaded successfully to S3', [
                             'photo_path' => $photoPath,
                         ]);
 
-                        // Validate that file actually exists
-                        if (!$this->storageHelper->fileExists('public', $photoPath)) {
-                            Log::error('StudentProfileController: Photo path returned but file does not exist', [
+                        // Verify file exists
+                        if ($this->storageHelper->fileExists('public', $photoPath)) {
+                            $student->photo = $photoPath;
+                            Log::info('StudentProfileController: Photo path saved to student model', [
                                 'photo_path' => $photoPath,
                             ]);
-                            $photoPath = null;
-                            $uploadError = 'تم رفع الصورة لكن الملف غير موجود';
+
+                            // Track storage usage
+                            try {
+                                $mapping = \App\Models\StorageDiskMapping::where('disk_name', 'public')
+                                    ->where('is_active', true)
+                                    ->first();
+                                
+                                if ($mapping && $mapping->primaryStorage) {
+                                    $analyticsService = app(\App\Services\Storage\AppStorageAnalyticsService::class);
+                                    $analyticsService->trackStorageUsage($mapping->primaryStorage, $file->getSize(), 'profile-photo');
+                                    $analyticsService->trackBandwidth($mapping->primaryStorage, 'upload', $file->getSize(), 'profile-photo');
+                                }
+                            } catch (\Exception $trackingException) {
+                                Log::warning('StudentProfileController: Failed to track storage usage', [
+                                    'error' => $trackingException->getMessage(),
+                                ]);
+                            }
+                        } else {
+                            Log::error('StudentProfileController: File does not exist after upload', [
+                                'photo_path' => $photoPath,
+                            ]);
+                            throw new \Exception('تم رفع الصورة لكن الملف غير موجود في التخزين');
                         }
                     } else {
-                        Log::warning('StudentProfileController: Dynamic storage returned false, trying fallback');
-                        $uploadError = 'فشل رفع الصورة عبر التخزين الديناميكي';
+                        Log::error('StudentProfileController: Storage put returned false', [
+                            'photo_path' => $photoPath,
+                        ]);
+                        throw new \Exception('فشل في رفع الصورة إلى التخزين السحابي');
                     }
                 } catch (\Exception $uploadException) {
-                    Log::error('StudentProfileController: Exception during dynamic storage upload', [
+                    Log::error('StudentProfileController: S3 upload failed', [
                         'error' => $uploadException->getMessage(),
                         'trace' => $uploadException->getTraceAsString(),
                     ]);
-                    $uploadError = 'خطأ في رفع الصورة: ' . $uploadException->getMessage();
+                    throw new \Exception('فشل في رفع الصورة: ' . $uploadException->getMessage());
                 }
-
-                // Fallback to direct Storage::disk('public') if dynamic storage failed
-                if (!$photoPath) {
-                    try {
-                        Log::info('StudentProfileController: Attempting fallback to Storage::disk("public")');
-                        $photoPath = $request->file('photo')->store('profile-photos', 'public');
-                        
-                        if ($photoPath) {
-                            Log::info('StudentProfileController: Photo uploaded successfully via fallback', [
-                                'photo_path' => $photoPath,
-                            ]);
-
-                            // Validate that file actually exists
-                            if (!Storage::disk('public')->exists($photoPath)) {
-                                Log::error('StudentProfileController: Fallback photo path returned but file does not exist', [
-                                    'photo_path' => $photoPath,
-                                ]);
-                                throw new \Exception('تم رفع الصورة لكن الملف غير موجود');
-                            }
-                        } else {
-                            throw new \Exception('فشل في رفع الصورة عبر التخزين المحلي');
-                        }
-                    } catch (\Exception $fallbackException) {
-                        Log::error('StudentProfileController: Fallback storage also failed', [
-                            'error' => $fallbackException->getMessage(),
-                            'original_error' => $uploadError,
-                        ]);
-                        throw new \Exception('فشل في رفع الصورة. ' . ($uploadError ?? $fallbackException->getMessage()));
-                    }
-                }
-
-                // Set photo path if upload was successful
-                if ($photoPath) {
-                    $student->photo = $photoPath;
-                    Log::info('StudentProfileController: Photo path saved to student profile', [
-                        'student_id' => $student->id,
-                        'photo_path' => $photoPath,
-                    ]);
-                } else {
-                    throw new \Exception('فشل في رفع الصورة. يرجى المحاولة مرة أخرى.');
-                }
+            } else {
+                Log::info('StudentProfileController: No photo file in request', [
+                    'has_file' => $request->hasFile('photo'),
+                    'all_files' => $request->allFiles(),
+                ]);
             }
 
             $student->save();
@@ -181,6 +202,12 @@ class StudentProfileController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::error('StudentProfileController: Update failed', [
+                'student_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء تحديث الملف الشخصي: ' . $e->getMessage())

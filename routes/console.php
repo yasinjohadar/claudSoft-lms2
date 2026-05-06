@@ -49,3 +49,18 @@ Schedule::command('backup:cleanup-expired')
     ->daily()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Weekly Student Reports Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+Schedule::command('reports:weekly-generate')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('reports:weekly-close-overdue')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

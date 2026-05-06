@@ -58,7 +58,7 @@ class UpdateProfileRequest extends FormRequest
             'photo' => [
                 'nullable',
                 'image',
-                'mimes:jpeg,jpg,png,gif',
+                'mimes:jpeg,jpg,png,gif,webp',
                 'max:2048', // 2MB
             ],
         ];

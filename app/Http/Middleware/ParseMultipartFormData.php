@@ -22,11 +22,37 @@ class ParseMultipartFormData
         if (in_array($request->method(), ['PUT', 'PATCH']) &&
             str_contains($request->header('Content-Type', ''), 'multipart/form-data')) {
 
-            // Parse the raw input stream
-            $this->parseMultipartFormData($request);
+            // Skip if request has files - let PHP handle file uploads normally
+            if (!empty($_FILES) || $request->files->count() > 0) {
+                // Only parse text fields, don't interfere with file uploads
+                $this->parseMultipartTextFields($request);
+            } else {
+                // Parse the raw input stream for text-only requests
+                $this->parseMultipartFormData($request);
+            }
         }
 
         return $next($request);
+    }
+
+    /**
+     * Parse only text fields from multipart/form-data without interfering with files
+     */
+    private function parseMultipartTextFields(Request $request): void
+    {
+        // Get text fields from the request input
+        // Files are already handled by PHP's $_FILES
+        $input = $request->input();
+        
+        // Merge any missing fields that might not have been parsed
+        // This handles the _method field and other text inputs
+        if (isset($_POST)) {
+            foreach ($_POST as $key => $value) {
+                if (!$request->has($key)) {
+                    $request->merge([$key => $value]);
+                }
+            }
+        }
     }
 
     /**
@@ -69,6 +95,11 @@ class ParseMultipartFormData
             }
 
             [$headers, $content] = $sections;
+
+            // Skip file uploads (they have filename in Content-Disposition)
+            if (preg_match('/filename="[^"]*"/', $headers)) {
+                continue;
+            }
 
             // Parse the field name from Content-Disposition header
             if (preg_match('/name="([^"]*)"/', $headers, $nameMatch)) {

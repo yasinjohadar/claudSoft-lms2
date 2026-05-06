@@ -34,13 +34,22 @@
                     </ol>
                 </nav>
             </div>
-            <div class="d-flex">
-                <a href="{{ route('admin.user-sessions.statistics') }}" class="btn btn-primary me-2">
+            <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+                <a href="{{ route('admin.user-sessions.statistics') }}" class="btn btn-primary btn-wave">
                     <i class="fas fa-chart-bar me-1"></i>الإحصائيات
                 </a>
-                <a href="{{ route('admin.user-sessions.active') }}" class="btn btn-success">
+                <a href="{{ route('admin.user-sessions.active') }}" class="btn btn-success btn-wave">
                     <i class="fas fa-circle me-1"></i>الجلسات النشطة
                 </a>
+                <button type="button" class="btn btn-danger btn-wave" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
+                    <i class="fas fa-trash-alt me-1"></i>حذف الكل
+                </button>
+                <button type="button" class="btn btn-warning btn-wave" data-bs-toggle="modal" data-bs-target="#deleteCompletedModal">
+                    <i class="fas fa-check-double me-1"></i>حذف المكتملة
+                </button>
+                <button type="button" class="btn btn-secondary btn-wave" data-bs-toggle="modal" data-bs-target="#deleteDisconnectedModal">
+                    <i class="fas fa-plug me-1"></i>حذف المنفصلة
+                </button>
             </div>
         </div>
 
@@ -185,6 +194,32 @@
             </div>
         </div>
 
+        <!-- Bulk Action Bar -->
+        <div class="card d-none" id="bulkActionBar">
+            <div class="card-body py-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <span class="me-3 fw-semibold">
+                            <span id="selectedCount">0</span> جلسة محددة
+                        </span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary btn-wave" onclick="selectAll()">
+                                <i class="fas fa-check-double me-1"></i>تحديد الكل
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-wave" onclick="deselectAll()">
+                                <i class="fas fa-times me-1"></i>إلغاء التحديد
+                            </button>
+                        </div>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-danger btn-wave" onclick="bulkDeleteSelected()">
+                            <i class="fas fa-trash-alt me-1"></i>حذف المحدد
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Sessions Table -->
         <div class="card">
             <div class="card-header">
@@ -192,97 +227,106 @@
             </div>
             <div class="card-body">
                 @if($sessions->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>المستخدم</th>
-                                    <th>تاريخ البدء</th>
-                                    <th>تاريخ الانتهاء</th>
-                                    <th>المدة</th>
-                                    <th>الجهاز</th>
-                                    <th>الموقع</th>
-                                    <th>الحالة</th>
-                                    <th>الأنشطة</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($sessions as $session)
+                    <form id="bulkDeleteForm" action="{{ route('admin.user-sessions.bulk-delete') }}" method="POST">
+                        @csrf
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap">
+                                <thead>
                                     <tr>
-                                        <td>{{ $sessions->firstItem() + $loop->index }}</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                @if($session->user)
-                                                    @if($session->user->avatar)
-                                                        <img src="{{ asset('storage/' . $session->user->avatar) }}" 
-                                                             alt="{{ $session->user->name }}" 
-                                                             class="avatar avatar-sm rounded-circle me-2">
-                                                    @else
-                                                        <div class="avatar avatar-sm rounded-circle bg-primary-transparent me-2">
-                                                            <span class="fw-bold">{{ substr($session->user->name, 0, 1) }}</span>
-                                                        </div>
-                                                    @endif
-                                                    <div>
-                                                        <strong>{{ $session->user->name }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">{{ $session->user->email }}</small>
-                                                    </div>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {{ $session->started_at->format('Y-m-d H:i') }}
-                                        </td>
-                                        <td>
-                                            {{ $session->ended_at ? $session->ended_at->format('Y-m-d H:i') : '-' }}
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info-transparent text-info">
-                                                {{ $session->duration_formatted }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small>{{ $session->device_info }}</small>
-                                            @if($session->ip_address)
-                                                <br>
-                                                <small class="text-muted">{{ $session->ip_address }}</small>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <small>{{ $session->location_formatted }}</small>
-                                        </td>
-                                        <td>
-                                            @if($session->status == 'active')
-                                                <span class="badge bg-success">نشطة</span>
-                                            @elseif($session->status == 'completed')
-                                                <span class="badge bg-info">مكتملة</span>
-                                            @elseif($session->status == 'disconnected')
-                                                <span class="badge bg-warning">منفصلة</span>
-                                            @else
-                                                <span class="badge bg-secondary">انتهت</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-primary-transparent text-primary">
-                                                {{ $session->activities_count }} نشاط
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('admin.user-sessions.show', $session->id) }}" 
-                                               class="btn btn-sm btn-outline-primary" 
-                                               title="عرض التفاصيل">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
+                                        <th width="40">
+                                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                                        </th>
+                                        <th>#</th>
+                                        <th>المستخدم</th>
+                                        <th>تاريخ البدء</th>
+                                        <th>تاريخ الانتهاء</th>
+                                        <th>المدة</th>
+                                        <th>الجهاز</th>
+                                        <th>الموقع</th>
+                                        <th>الحالة</th>
+                                        <th>الأنشطة</th>
+                                        <th>الإجراءات</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach($sessions as $session)
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" class="form-check-input session-checkbox" value="{{ $session->id }}" onchange="updateBulkActionBar()">
+                                            </td>
+                                            <td>{{ $sessions->firstItem() + $loop->index }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if($session->user)
+                                                        @if($session->user->avatar)
+                                                            <img src="{{ asset('storage/' . $session->user->avatar) }}" 
+                                                                 alt="{{ $session->user->name }}" 
+                                                                 class="avatar avatar-sm rounded-circle me-2">
+                                                        @else
+                                                            <div class="avatar avatar-sm rounded-circle bg-primary-transparent me-2">
+                                                                <span class="fw-bold">{{ substr($session->user->name, 0, 1) }}</span>
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            <strong>{{ $session->user->name }}</strong>
+                                                            <br>
+                                                            <small class="text-muted">{{ $session->user->email }}</small>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {{ $session->started_at->format('Y-m-d H:i') }}
+                                            </td>
+                                            <td>
+                                                {{ $session->ended_at ? $session->ended_at->format('Y-m-d H:i') : '-' }}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info-transparent text-info">
+                                                    {{ $session->duration_formatted }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small>{{ $session->device_info }}</small>
+                                                @if($session->ip_address)
+                                                    <br>
+                                                    <small class="text-muted">{{ $session->ip_address }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <small>{{ $session->location_formatted }}</small>
+                                            </td>
+                                            <td>
+                                                @if($session->status == 'active')
+                                                    <span class="badge bg-success">نشطة</span>
+                                                @elseif($session->status == 'completed')
+                                                    <span class="badge bg-info">مكتملة</span>
+                                                @elseif($session->status == 'disconnected')
+                                                    <span class="badge bg-warning">منفصلة</span>
+                                                @else
+                                                    <span class="badge bg-secondary">انتهت</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary-transparent text-primary">
+                                                    {{ $session->activities_count }} نشاط
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('admin.user-sessions.show', $session->id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" 
+                                                   title="عرض التفاصيل">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
 
                     <!-- Pagination -->
                     <div class="mt-4">
@@ -298,4 +342,162 @@
         </div>
     </div>
 </div>
-@stop
+
+<!-- Delete All Modal -->
+<div class="modal fade" id="deleteAllModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>تحذير: حذف جميع الجلسات</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.user-sessions.delete-all') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>هذا الإجراء لا يمكن التراجع عنه!</strong>
+                    </div>
+                    <p>سيتم حذف <strong>جميع الجلسات</strong> المسجلة في النظام ({{ number_format($stats['total']) }} جلسة).</p>
+                    <p class="mb-0">هل أنت متأكد من هذا الإجراء؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('هل أنت متأكد تماماً؟ سيتم حذف جميع الجلسات نهائياً!')">
+                        <i class="fas fa-trash-alt me-1"></i>نعم، حذف الكل
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Completed Sessions Modal -->
+<div class="modal fade" id="deleteCompletedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-check-double me-2"></i>حذف الجلسات المكتملة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.user-sessions.delete-completed') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <p>حذف الجلسات المكتملة (التي انتهت بشكل طبيعي).</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">حذف الجلسات المكتملة أقدم من (بالأيام):</label>
+                        <input type="number" name="days" class="form-control" value="0" min="0" max="365">
+                        <small class="text-muted">اتركه 0 لحذف جميع الجلسات المكتملة، أو حدد عدد أيام لحذف الأقدم فقط</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('هل أنت متأكد من حذف الجلسات المكتملة؟')">
+                        <i class="fas fa-trash-alt me-1"></i>حذف الجلسات المكتملة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Disconnected Sessions Modal -->
+<div class="modal fade" id="deleteDisconnectedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="fas fa-plug me-2"></i>حذف الجلسات المنفصلة والمنتهية</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.user-sessions.delete-disconnected') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <p>سيتم حذف جميع الجلسات التي حالتها:</p>
+                    <ul>
+                        <li><span class="badge bg-warning">منفصلة</span> (disconnected)</li>
+                        <li><span class="badge bg-secondary">انتهت</span> (timeout)</li>
+                    </ul>
+                    <p class="mb-0">هل أنت متأكد من هذا الإجراء؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-secondary" onclick="return confirm('هل أنت متأكد من حذف الجلسات المنفصلة والمنتهية؟')">
+                        <i class="fas fa-trash-alt me-1"></i>حذف الجلسات المنفصلة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@push('scripts')
+<script>
+function toggleSelectAll(source) {
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = source.checked;
+    });
+    updateBulkActionBar();
+}
+
+function selectAll() {
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    document.getElementById('selectAllCheckbox').checked = true;
+    updateBulkActionBar();
+}
+
+function deselectAll() {
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAllCheckbox').checked = false;
+    updateBulkActionBar();
+}
+
+function updateBulkActionBar() {
+    const checkboxes = document.querySelectorAll('.session-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkActionBar = document.getElementById('bulkActionBar');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    selectedCount.textContent = count;
+    
+    if (count > 0) {
+        bulkActionBar.classList.remove('d-none');
+    } else {
+        bulkActionBar.classList.add('d-none');
+    }
+}
+
+function bulkDeleteSelected() {
+    const checkboxes = document.querySelectorAll('.session-checkbox:checked');
+    const count = checkboxes.length;
+    
+    if (count === 0) {
+        alert('يرجى تحديد جلسة واحدة على الأقل');
+        return;
+    }
+    
+    if (!confirm(`هل أنت متأكد من حذف ${count} جلسة؟`)) {
+        return;
+    }
+    
+    const form = document.getElementById('bulkDeleteForm');
+    checkboxes.forEach(checkbox => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'session_ids[]';
+        input.value = checkbox.value;
+        form.appendChild(input);
+    });
+    
+    form.submit();
+}
+</script>
+@endpush

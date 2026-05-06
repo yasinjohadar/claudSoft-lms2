@@ -321,4 +321,89 @@ class UserSessionController extends Controller
                 ->with('error', 'حدث خطأ أثناء تحميل الإحصائيات: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Bulk delete selected sessions.
+     */
+    public function bulkDelete(Request $request)
+    {
+        try {
+            $request->validate([
+                'session_ids' => 'required|array|min:1',
+                'session_ids.*' => 'integer|exists:user_sessions,id',
+            ]);
+
+            $count = UserSession::whereIn('id', $request->session_ids)->count();
+            UserSession::whereIn('id', $request->session_ids)->delete();
+
+            return back()->with('success', "تم حذف {$count} جلسة بنجاح.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الجلسات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete all sessions.
+     */
+    public function deleteAll()
+    {
+        try {
+            $count = UserSession::count();
+            UserSession::truncate();
+
+            return back()->with('success', "تم حذف جميع الجلسات بنجاح. ({$count} جلسة)");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف جميع الجلسات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete completed/old sessions.
+     */
+    public function deleteCompleted(Request $request)
+    {
+        try {
+            $request->validate([
+                'days' => 'nullable|integer|min:0|max:365',
+            ]);
+
+            $days = $request->days ?? 0;
+
+            if ($days > 0) {
+                $cutoffDate = now()->subDays($days);
+                $count = UserSession::where('status', 'completed')
+                    ->where('ended_at', '<', $cutoffDate)
+                    ->count();
+                UserSession::where('status', 'completed')
+                    ->where('ended_at', '<', $cutoffDate)
+                    ->delete();
+            } else {
+                $count = UserSession::where('status', 'completed')->count();
+                UserSession::where('status', 'completed')->delete();
+            }
+
+            $message = $days > 0
+                ? "تم حذف {$count} جلسة مكتملة أقدم من {$days} يوم."
+                : "تم حذف جميع الجلسات المكتملة بنجاح. ({$count} جلسة)";
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الجلسات المكتملة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete disconnected/timeout sessions.
+     */
+    public function deleteDisconnected()
+    {
+        try {
+            $count = UserSession::whereIn('status', ['disconnected', 'timeout'])->count();
+            UserSession::whereIn('status', ['disconnected', 'timeout'])->delete();
+
+            return back()->with('success', "تم حذف الجلسات المنفصلة والمنتهية بنجاح. ({$count} جلسة)");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الجلسات المنفصلة: ' . $e->getMessage());
+        }
+    }
 }

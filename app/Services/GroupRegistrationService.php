@@ -192,12 +192,7 @@ class GroupRegistrationService
             'phone' => $registration->phone,
             'country_code' => $registration->country_code,
             'full_phone' => $registration->full_phone,
-            'nationality_id' => $registration->nationality_id,
-            'date_of_birth' => $registration->date_of_birth,
-            'gender' => $registration->gender,
-            'address' => $registration->address,
-            // 'city' => $registration->city, // عمود city غير موجود في جدول users
-            'password' => Hash::make('claud@4soft123@#'), // كلمة مرور افتراضية للمستخدمين المنشأين من التسجيل
+            'password' => Hash::make('claud@4soft123@#'),
             'is_active' => true,
         ];
 

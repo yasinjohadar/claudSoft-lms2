@@ -159,7 +159,10 @@ class StorageServiceProvider extends ServiceProvider
                 'region' => $config['region'] ?? 'us-east-1',
                 'bucket' => $config['bucket'] ?? '',
                 'endpoint' => $config['endpoint'] ?? null,
-                'use_path_style_endpoint' => $config['use_path_style'] ?? false,
+                'use_path_style_endpoint' => filter_var($config['use_path_style'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'http' => [
+                    'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                ],
             ],
             'google_drive' => [
                 'driver' => 'google',

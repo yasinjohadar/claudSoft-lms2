@@ -267,4 +267,82 @@ class UserDeviceController extends Controller
             return back()->with('error', 'حدث خطأ أثناء تحديث اسم الجهاز: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Bulk delete selected devices.
+     */
+    public function bulkDelete(Request $request)
+    {
+        try {
+            $request->validate([
+                'device_ids' => 'required|array|min:1',
+                'device_ids.*' => 'integer|exists:user_devices,id',
+            ]);
+
+            $count = UserDevice::whereIn('id', $request->device_ids)->count();
+            UserDevice::whereIn('id', $request->device_ids)->delete();
+
+            return back()->with('success', "تم حذف {$count} جهاز بنجاح.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الأجهزة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete all devices (with confirmation).
+     */
+    public function deleteAll()
+    {
+        try {
+            $count = UserDevice::count();
+            UserDevice::truncate();
+
+            return back()->with('success', "تم حذف جميع الأجهزة بنجاح. ({$count} جهاز)");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف جميع الأجهزة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete old devices (inactive for X days).
+     */
+    public function deleteOld(Request $request)
+    {
+        try {
+            $request->validate([
+                'days' => 'required|integer|min:1|max:365',
+            ]);
+
+            $days = $request->days;
+            $cutoffDate = now()->subDays($days);
+
+            $count = UserDevice::where('last_used_at', '<', $cutoffDate)->count();
+            UserDevice::where('last_used_at', '<', $cutoffDate)->delete();
+
+            return back()->with('success', "تم حذف {$count} جهاز غير نشط لأكثر من {$days} يوم.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الأجهزة القديمة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete inactive devices (never used or very low activity).
+     */
+    public function deleteInactive(Request $request)
+    {
+        try {
+            $request->validate([
+                'max_logins' => 'nullable|integer|min:0|max:100',
+            ]);
+
+            $maxLogins = $request->max_logins ?? 1;
+
+            $count = UserDevice::where('total_logins', '<=', $maxLogins)->count();
+            UserDevice::where('total_logins', '<=', $maxLogins)->delete();
+
+            return back()->with('success', "تم حذف {$count} جهاز غير نشط (أقل من {$maxLogins} تسجيل دخول).");
+        } catch (\Exception $e) {
+            return back()->with('error', 'حدث خطأ أثناء حذف الأجهزة غير النشطة: ' . $e->getMessage());
+        }
+    }
 }

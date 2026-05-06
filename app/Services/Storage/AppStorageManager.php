@@ -39,7 +39,21 @@ class AppStorageManager
             ->first();
 
         if (!$mapping || !$mapping->primaryStorage) {
-            // Fallback to default public disk
+            // Fallback إلى disk mapping الافتراضي 'public' (السحابة)
+            $defaultMapping = StorageDiskMapping::where('disk_name', 'public')
+                ->where('is_active', true)
+                ->with('primaryStorage')
+                ->first();
+            
+            if ($defaultMapping && $defaultMapping->primaryStorage) {
+                try {
+                    return AppStorageFactory::create($defaultMapping->primaryStorage->fresh());
+                } catch (\Exception $e) {
+                    Log::error("Failed to create default cloud disk: " . $e->getMessage());
+                }
+            }
+            
+            // آخر حل: التخزين المحلي
             return Storage::disk('public');
         }
 
@@ -246,6 +260,23 @@ class AppStorageManager
                     $bunnyUrl = $this->getBunnyUrl($storageConfig, $path);
                     if (!empty($bunnyUrl)) {
                         return $bunnyUrl;
+                    }
+                }
+                
+                // معالجة خاصة لـ S3 والمحركات المشتقة منه - استخدام Pre-signed URL
+                if ($storageConfig && in_array($storageConfig->driver, ['s3', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'])) {
+                    $storageDisk = $this->getDisk($disk);
+                    try {
+                        return $storageDisk->temporaryUrl($path, now()->addHours(24));
+                    } catch (\Exception $e) {
+                        Log::warning("Failed to generate pre-signed URL for disk {$disk}: " . $e->getMessage());
+                        // Fallback إلى الرابط المباشر
+                        $decryptedConfig = $storageConfig->getDecryptedConfig();
+                        $endpoint = $decryptedConfig['endpoint'] ?? null;
+                        $bucket = $decryptedConfig['bucket'] ?? '';
+                        if ($endpoint && $bucket) {
+                            return rtrim($endpoint, '/') . '/' . $bucket . '/' . ltrim($path, '/');
+                        }
                     }
                 }
                 

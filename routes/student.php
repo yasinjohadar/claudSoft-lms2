@@ -32,6 +32,7 @@ use App\Http\Controllers\Student\StudentCourseAiReportController;
 use App\Http\Controllers\Student\StudentDashboardController;
 use App\Http\Controllers\Student\StudentFeedbackController;
 use App\Http\Controllers\Student\StudentProfileController;
+use App\Http\Controllers\Student\StudentWeeklyReportController;
 use App\Http\Controllers\Student\StudentWorkController;
 use App\Http\Controllers\Student\TrainingCampController;
 use Illuminate\Support\Facades\Route;
@@ -337,6 +338,15 @@ Route::prefix('student')
         Route::prefix('feedback')->name('student.feedback.')->group(function () {
             Route::get('/', [StudentFeedbackController::class, 'index'])->name('index');
             Route::get('/{feedback}', [StudentFeedbackController::class, 'show'])->name('show');
+        });
+
+        // Weekly Reports Routes (التقارير الأسبوعية)
+        Route::prefix('weekly-reports')->name('student.weekly-reports.')->group(function () {
+            Route::get('/', [StudentWeeklyReportController::class, 'index'])->name('index');
+            Route::get('/{report}', [StudentWeeklyReportController::class, 'show'])->name('show');
+            Route::put('/{report}/save', [StudentWeeklyReportController::class, 'save'])->name('save');
+            Route::put('/{report}/submit', [StudentWeeklyReportController::class, 'submit'])->name('submit');
+            Route::get('/courses/{course}/lessons', [StudentWeeklyReportController::class, 'lessons'])->name('lessons');
         });
 
         // Notes Routes (المفكرة الشخصية)

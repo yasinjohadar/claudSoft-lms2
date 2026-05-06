@@ -13,6 +13,7 @@ use App\Models\LaravelAiModel;
 use App\Services\Ai\AIBlogPostService;
 use App\Services\Ai\AIModelService;
 use App\Services\AiNew\LaravelAiBlogService;
+use App\Services\Storage\StorageHelperService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,8 @@ class AIBlogPostController extends Controller
 
     public function __construct(
         private AIBlogPostService $blogPostService,
-        private AIModelService $modelService
+        private AIModelService $modelService,
+        private StorageHelperService $storageHelper
     ) {}
 
     /**
@@ -264,7 +266,10 @@ class AIBlogPostController extends Controller
 
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
-                $validated['featured_image'] = $request->file('featured_image')->store('blog/images', 'public');
+                $featuredImagePath = $this->storageHelper->storeUploadedFile('blog_images', 'blog/images', $request->file('featured_image'), 'image');
+                if ($featuredImagePath) {
+                    $validated['featured_image'] = $featuredImagePath;
+                }
             }
 
             // Set published_at if status is published and not set

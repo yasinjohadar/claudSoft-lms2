@@ -193,16 +193,40 @@
                                 $photoPath = $student->photo ?? null;
                                 $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
                             @endphp
-                            @if($photoUrl)
-                                <img src="{{ $photoUrl }}" class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
-                            @else
-                                <div class="bg-light rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 150px; height: 150px;">
-                                    <i class="fa fa-camera fa-3x text-muted"></i>
+
+                            <div class="position-relative d-inline-block mb-3">
+                                <div id="photo-preview-container" class="position-relative">
+                                    @if($photoUrl)
+                                        <img id="profile-photo-preview" src="{{ $photoUrl }}" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--(--clr-primary, #0d6efd));">
+                                    @else
+                                        <div id="profile-photo-placeholder" class="bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border: 3px dashed #ccc;">
+                                            <i class="fa fa-camera fa-3x text-muted"></i>
+                                        </div>
+                                    @endif
                                 </div>
-                            @endif
-                            <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo" accept="image/*">
-                            <small class="text-muted d-block mt-1">الحد الأقصى: 2MB</small>
-                            @error('photo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+
+                                @if($photoUrl)
+                                    <form action="{{ route('student.profile.delete-photo') }}" method="POST" class="position-absolute top-0 start-100 translate-middle" style="margin-top: 5px; margin-right: -10px;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm rounded-circle" style="width: 32px; height: 32px;" onclick="return confirm('هل أنت متأكد من حذف الصورة الشخصية؟')" title="حذف الصورة">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+
+                            <div class="mt-2">
+                                <label for="photo-input" class="btn btn-sm btn-outline-primary mb-2">
+                                    <i class="fa fa-upload me-1"></i>اختيار صورة جديدة
+                                </label>
+                                <input type="file" id="photo-input" class="form-control d-none @error('photo') is-invalid @enderror" name="photo" accept="image/*" onchange="previewPhoto(this)">
+                                @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+
+                            <small class="text-muted d-block mt-1">الصيغ المدعومة: JPG, PNG, GIF, WebP</small>
+                            <small class="text-muted d-block">الحد الأقصى: 2MB</small>
+                            <small class="text-muted d-block">الحجم المثالي: 300×300 بكسل</small>
                         </div>
                     </div>
                 </div>
@@ -253,6 +277,43 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('حجم الصورة كبير جداً. الحد الأقصى: 2MB');
+            input.value = '';
+            return;
+        }
+        
+        // Validate file type
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('صيغة الصورة غير مدعومة. الصيغ المدعومة: JPG, PNG, GIF, WebP');
+            input.value = '';
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var previewContainer = document.getElementById('photo-preview-container');
+            if (previewContainer) {
+                var existingImg = document.getElementById('profile-photo-preview');
+                var existingPlaceholder = document.getElementById('profile-photo-placeholder');
+                
+                if (existingImg) {
+                    existingImg.src = e.target.result;
+                } else if (existingPlaceholder) {
+                    existingPlaceholder.outerHTML = '<img id="profile-photo-preview" src="' + e.target.result + '" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--clr-primary, #0d6efd);">';
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
 $(function() {
     var flagUrlTemplate = $('#student_country_code_select').attr('data-flag-url') || 'https://flagcdn.com/w20/{iso}.png';
 

@@ -61,6 +61,11 @@ class AppStorageController extends Controller
             $driver = $validated['driver'];
             $configData = $request->input('config', []);
 
+            // تحويل use_path_style إلى boolean
+            if (array_key_exists('use_path_style', $configData)) {
+                $configData['use_path_style'] = filter_var($configData['use_path_style'], FILTER_VALIDATE_BOOLEAN);
+            }
+
             // للتخزين المحلي: يمكن أن يكون config فارغاً، نضع قيمة افتراضية للمسار
             if ($driver === 'local') {
                 if (empty($configData)) {
@@ -159,6 +164,11 @@ class AppStorageController extends Controller
         try {
             $driver = $validated['driver'];
             $configData = $request->input('config', []);
+
+            // تحويل use_path_style إلى boolean
+            if (array_key_exists('use_path_style', $configData)) {
+                $configData['use_path_style'] = filter_var($configData['use_path_style'], FILTER_VALIDATE_BOOLEAN);
+            }
 
             // دمج config مع القيم القديمة (للحفاظ على passwords)
             $oldConfig = $config->getDecryptedConfig();
@@ -329,8 +339,11 @@ class AppStorageController extends Controller
                     'bucket' => $configData['bucket'] ?? '',
                     'url' => $configData['url'] ?? null,
                     'endpoint' => $configData['endpoint'] ?? null,
-                    'use_path_style_endpoint' => $configData['use_path_style'] ?? false,
-                    'throw' => false,
+                    'use_path_style_endpoint' => filter_var($configData['use_path_style'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'throw' => true,
+                    'http' => [
+                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                    ],
                 ],
                 'cloudflare_r2' => [
                     'driver' => 's3',
@@ -340,7 +353,10 @@ class AppStorageController extends Controller
                     'bucket' => $configData['bucket'] ?? '',
                     'endpoint' => "https://{$configData['account_id']}.r2.cloudflarestorage.com",
                     'use_path_style_endpoint' => true,
-                    'throw' => false,
+                    'throw' => true,
+                    'http' => [
+                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                    ],
                 ],
                 'digitalocean' => [
                     'driver' => 's3',
@@ -350,7 +366,10 @@ class AppStorageController extends Controller
                     'bucket' => $configData['bucket'] ?? '',
                     'endpoint' => 'https://' . ($configData['region'] ?? 'nyc3') . '.digitaloceanspaces.com',
                     'use_path_style_endpoint' => true,
-                    'throw' => false,
+                    'throw' => true,
+                    'http' => [
+                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                    ],
                 ],
                 'wasabi' => [
                     'driver' => 's3',
@@ -360,7 +379,10 @@ class AppStorageController extends Controller
                     'bucket' => $configData['bucket'] ?? '',
                     'endpoint' => 'https://s3.' . ($configData['region'] ?? 'us-east-1') . '.wasabisys.com',
                     'use_path_style_endpoint' => true,
-                    'throw' => false,
+                    'throw' => true,
+                    'http' => [
+                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                    ],
                 ],
                 'backblaze' => [
                     'driver' => 's3',
@@ -370,7 +392,10 @@ class AppStorageController extends Controller
                     'bucket' => $configData['bucket'] ?? '',
                     'endpoint' => 'https://s3.' . ($configData['region'] ?? 'us-west-000') . '.backblazeb2.com',
                     'use_path_style_endpoint' => true,
-                    'throw' => false,
+                    'throw' => true,
+                    'http' => [
+                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
+                    ],
                 ],
                 'bunny' => [
                     'driver' => 'bunnycdn',

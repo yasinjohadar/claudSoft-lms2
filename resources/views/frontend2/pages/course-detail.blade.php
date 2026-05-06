@@ -539,6 +539,7 @@
 @endif
 
 <style>
+/* ========== Light Mode (Default) ========== */
 .course-preview {
     border-radius: 10px;
     overflow: hidden;
@@ -695,40 +696,19 @@
     transition: all 0.3s ease;
 }
 
-.share-btn.facebook {
-    background: #3b5998;
-}
-
-.share-btn.twitter {
-    background: #1da1f2;
-}
-
-.share-btn.whatsapp {
-    background: #25d366;
-}
-
-.share-btn.telegram {
-    background: #0088cc;
-}
-
-.share-btn.linkedin {
-    background: #0077b5;
-}
-
-.share-btn.copy {
-    background: #95a5a6;
-    border: none;
-    cursor: pointer;
-}
+.share-btn.facebook { background: #3b5998; }
+.share-btn.twitter { background: #1da1f2; }
+.share-btn.whatsapp { background: #25d366; }
+.share-btn.telegram { background: #0088cc; }
+.share-btn.linkedin { background: #0077b5; }
+.share-btn.copy { background: #95a5a6; border: none; cursor: pointer; }
 
 .share-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.share-btn.copied {
-    background: #27ae60 !important;
-}
+.share-btn.copied { background: #27ae60 !important; }
 
 /* Curriculum Section */
 .curriculum-stats {
@@ -741,9 +721,7 @@
     color: #555;
 }
 
-.curriculum-stats i {
-    margin-left: 5px;
-}
+.curriculum-stats i { margin-left: 5px; }
 
 .curriculum-accordion .accordion-item {
     border: 1px solid #e0e0e0;
@@ -814,9 +792,7 @@
     border-bottom: 1px solid #f0f0f0;
 }
 
-.lesson-item:last-child {
-    border-bottom: none;
-}
+.lesson-item:last-child { border-bottom: none; }
 
 .lesson-info {
     display: flex;
@@ -831,9 +807,7 @@
     flex: 1;
 }
 
-.lesson-icon-title i {
-    font-size: 16px;
-}
+.lesson-icon-title i { font-size: 16px; }
 
 .lesson-title {
     color: #2c3e50;
@@ -854,9 +828,7 @@
     gap: 5px;
 }
 
-.lesson-lock {
-    color: #95a5a6;
-}
+.lesson-lock { color: #95a5a6; }
 
 /* Reviews Section */
 .rating-summary {
@@ -865,9 +837,7 @@
     border-radius: 10px;
 }
 
-.overall-rating {
-    padding: 20px;
-}
+.overall-rating { padding: 20px; }
 
 .rating-number {
     font-size: 4rem;
@@ -876,17 +846,10 @@
     line-height: 1;
 }
 
-.rating-stars {
-    font-size: 1.5rem;
-}
+.rating-stars { font-size: 1.5rem; }
+.rating-count { font-size: 14px; }
 
-.rating-count {
-    font-size: 14px;
-}
-
-.rating-bars {
-    padding: 10px 0;
-}
+.rating-bars { padding: 10px 0; }
 
 .rating-bar-item {
     display: flex;
@@ -912,18 +875,14 @@
     font-size: 13px;
 }
 
-.reviews-list {
-    margin-top: 30px;
-}
+.reviews-list { margin-top: 30px; }
 
 .review-item {
     padding: 25px 0;
     border-bottom: 1px solid #e9ecef;
 }
 
-.review-item:last-child {
-    border-bottom: none;
-}
+.review-item:last-child { border-bottom: none; }
 
 .review-header {
     display: flex;
@@ -965,9 +924,7 @@
     font-weight: 600;
 }
 
-.reviewer-details {
-    flex: 1;
-}
+.reviewer-details { flex: 1; }
 
 .reviewer-name {
     margin: 0;
@@ -989,13 +946,8 @@
     font-size: 14px;
 }
 
-.review-rating i {
-    font-size: 16px;
-}
-
-.review-date {
-    font-size: 12px;
-}
+.review-rating i { font-size: 16px; }
+.review-date { font-size: 12px; }
 
 .review-content p {
     color: #555;
@@ -1014,8 +966,93 @@
     margin-top: 10px;
 }
 
-.featured-badge-review i {
-    margin-left: 5px;
+.featured-badge-review i { margin-left: 5px; }
+
+/* ========== Dark Mode Overrides ========== */
+[data-theme="dark"] .course-section,
+[data-theme="dark"] .price-card,
+[data-theme="dark"] .share-card {
+    background: #111627;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .section-title {
+    color: #e2e8f0;
+    border-bottom-color: var(--clr-primary);
+}
+
+[data-theme="dark"] .section-content,
+[data-theme="dark"] .includes-list li,
+[data-theme="dark"] .review-content p {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .curriculum-stats,
+[data-theme="dark"] .section-description,
+[data-theme="dark"] .rating-summary {
+    background: #0f1322;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .curriculum-accordion .accordion-item {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #0d111f;
+}
+
+[data-theme="dark"] .curriculum-accordion .accordion-button {
+    background: #151a2e;
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .curriculum-accordion .accordion-button:not(.collapsed) {
+    background: var(--clr-primary);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .lesson-item { border-bottom-color: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .lesson-title { color: #e2e8f0; }
+[data-theme="dark"] .lesson-details { color: #94a3b8; }
+[data-theme="dark"] .lesson-lock { color: #64748b; }
+
+[data-theme="dark"] .price { color: #f8fafc; }
+[data-theme="dark"] .course-includes h5 {
+    color: #e2e8f0;
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .rating-bar-item .progress {
+    background: #1e293b;
+}
+
+[data-theme="dark"] .review-item { border-bottom-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .reviewer-name { color: #f1f5f9; }
+[data-theme="dark"] .reviewer-position { color: #94a3b8; }
+
+[data-theme="dark"] .star-label { color: #cbd5e1; }
+[data-theme="dark"] .rating-percentage { color: #94a3b8; }
+
+[data-theme="dark"] .article-meta-line span { color: #cbd5e1 !important; }
+[data-theme="dark"] .article-meta-line i { opacity: 0.8; }
+
+[data-theme="dark"] .btn-outline-warning {
+    border-color: #eab308;
+    color: #eab308;
+}
+[data-theme="dark"] .btn-outline-warning:hover {
+    background: #eab308;
+    color: #0f172a;
+}
+
+/* Hover Effects */
+[data-theme="dark"] .price-card:hover,
+[data-theme="dark"] .share-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .lesson-item:hover {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 /* Responsive */
@@ -1028,49 +1065,33 @@
 }
 
 @media (max-width: 768px) {
-    .section-title {
-        font-size: 1.2rem;
-    }
-
+    .section-title { font-size: 1.2rem; }
     .curriculum-stats {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-
     .section-header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-
     .lesson-info {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-
     .lesson-details {
         width: 100%;
         justify-content: space-between;
     }
-
-    .rating-summary {
-        padding: 20px;
-    }
-
-    .rating-number {
-        font-size: 3rem;
-    }
-
+    .rating-summary { padding: 20px; }
+    .rating-number { font-size: 3rem; }
     .review-header {
         flex-direction: column;
         gap: 15px;
     }
-
-    .review-rating {
-        align-self: flex-start;
-    }
+    .review-rating { align-self: flex-start; }
 }
 </style>
 

@@ -8,12 +8,20 @@ use App\Models\FrontendCourseCategory;
 use App\Models\FrontendCourseSection;
 use App\Models\FrontendCourseLesson;
 use App\Models\User;
+use App\Services\Storage\StorageHelperService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class FrontendCourseController extends Controller
 {
+    protected StorageHelperService $storageHelper;
+
+    public function __construct(StorageHelperService $storageHelper)
+    {
+        $this->storageHelper = $storageHelper;
+    }
+
     /**
      * Display a listing of the courses.
      */
@@ -85,7 +93,10 @@ class FrontendCourseController extends Controller
 
             // Handle thumbnail upload
             if ($request->hasFile('thumbnail')) {
-                $validated['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+                $thumbnailPath = $this->storageHelper->storeUploadedFile('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
+                if ($thumbnailPath) {
+                    $validated['thumbnail'] = $thumbnailPath;
+                }
             }
 
             // Set published_at if status is published
@@ -159,9 +170,12 @@ class FrontendCourseController extends Controller
             if ($request->hasFile('thumbnail')) {
                 // Delete old thumbnail if exists
                 if ($frontendCourse->thumbnail) {
-                    \Storage::disk('public')->delete($frontendCourse->thumbnail);
+                    $this->storageHelper->deleteFile('course_thumbnails', $frontendCourse->thumbnail);
                 }
-                $validated['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+                $thumbnailPath = $this->storageHelper->storeUploadedFile('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
+                if ($thumbnailPath) {
+                    $validated['thumbnail'] = $thumbnailPath;
+                }
             }
 
             // Set published_at if status changed to published
@@ -196,7 +210,7 @@ class FrontendCourseController extends Controller
         try {
             // Delete thumbnail if exists
             if ($frontendCourse->thumbnail) {
-                \Storage::disk('public')->delete($frontendCourse->thumbnail);
+                $this->storageHelper->deleteFile('course_thumbnails', $frontendCourse->thumbnail);
             }
 
             $frontendCourse->delete();

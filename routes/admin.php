@@ -62,6 +62,8 @@ use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\StudentCourseAiReportController;
+use App\Http\Controllers\Admin\StudentWeeklyReportController as AdminStudentWeeklyReportController;
+use App\Http\Controllers\Admin\StudentWeeklyReportScheduleController as AdminStudentWeeklyReportScheduleController;
 use App\Http\Controllers\Admin\StudentWorkController;
 use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
@@ -1025,6 +1027,10 @@ Route::prefix('admin')
             Route::get('/statistics', [\App\Http\Controllers\Admin\UserSessionController::class, 'statistics'])->name('statistics');
             Route::get('/user/{userId}', [\App\Http\Controllers\Admin\UserSessionController::class, 'userSessions'])->name('user');
             Route::get('/{id}', [\App\Http\Controllers\Admin\UserSessionController::class, 'show'])->name('show');
+            Route::post('/bulk-delete', [\App\Http\Controllers\Admin\UserSessionController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/delete-all', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteAll'])->name('delete-all');
+            Route::post('/delete-completed', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteCompleted'])->name('delete-completed');
+            Route::post('/delete-disconnected', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteDisconnected'])->name('delete-disconnected');
         });
 
         // ========== User Devices Routes ==========
@@ -1037,6 +1043,10 @@ Route::prefix('admin')
             Route::post('/{id}/trust', [UserDeviceController::class, 'trust'])->name('trust');
             Route::post('/{id}/untrust', [UserDeviceController::class, 'untrust'])->name('untrust');
             Route::put('/{id}/device-name', [UserDeviceController::class, 'updateDeviceName'])->name('update-name');
+            Route::post('/bulk-delete', [UserDeviceController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/delete-all', [UserDeviceController::class, 'deleteAll'])->name('delete-all');
+            Route::post('/delete-old', [UserDeviceController::class, 'deleteOld'])->name('delete-old');
+            Route::post('/delete-inactive', [UserDeviceController::class, 'deleteInactive'])->name('delete-inactive');
         });
 
         // ===============================================
@@ -1101,6 +1111,26 @@ Route::prefix('admin')
             Route::get('/{mapping}/edit', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'edit'])->name('edit');
             Route::put('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'update'])->name('update');
             Route::delete('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'destroy'])->name('destroy');
+        });
+
+        // Weekly Student Reports
+        Route::prefix('weekly-reports')->name('admin.weekly-reports.')->group(function () {
+            Route::get('/schedules/list', [AdminStudentWeeklyReportScheduleController::class, 'index'])->name('schedules.index');
+            Route::post('/schedules', [AdminStudentWeeklyReportScheduleController::class, 'store'])->name('schedules.store');
+            Route::post('/schedules/{schedule}/toggle', [AdminStudentWeeklyReportScheduleController::class, 'toggle'])->name('schedules.toggle');
+            Route::get('/groups-overview', [AdminStudentWeeklyReportController::class, 'groupsOverview'])->name('groups-overview');
+
+            Route::get('/', [AdminStudentWeeklyReportController::class, 'index'])->name('index');
+            Route::get('/create', [AdminStudentWeeklyReportController::class, 'create'])->name('create');
+            Route::post('/', [AdminStudentWeeklyReportController::class, 'store'])->name('store');
+            Route::get('/{weeklyReport}', [AdminStudentWeeklyReportController::class, 'show'])->name('show');
+            Route::put('/{weeklyReport}/feedback', [AdminStudentWeeklyReportController::class, 'feedback'])->name('feedback');
+        });
+
+        Route::prefix('database-info')->name('admin.database-info.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'index'])->name('index');
+            Route::post('/optimize/{table}', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'optimize'])->name('optimize');
+            Route::post('/analyze/{table}', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'analyze'])->name('analyze');
         });
 
     });

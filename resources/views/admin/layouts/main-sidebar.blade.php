@@ -472,6 +472,14 @@
                             </ul>
                         </li>
 
+                        <!-- التقارير الأسبوعية -->
+                        <li class="slide {{ request()->routeIs('admin.weekly-reports.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.weekly-reports.index') }}" class="side-menu__item {{ request()->routeIs('admin.weekly-reports.*') ? 'active' : '' }}">
+                                <i class="fas fa-calendar-week side-menu__icon"></i>
+                                <span class="side-menu__label">التقارير الأسبوعية</span>
+                            </a>
+                        </li>
+
                         <!-- الذكاء الاصطناعي -->
                         <li class="slide has-sub {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'active' : '' }}">
@@ -584,13 +592,13 @@
                         </li>
 
                         <!-- الإعدادات -->
-                        <li class="slide has-sub {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
                                 <i class="ri-settings-3-line side-menu__icon"></i>
                                 <span class="side-menu__label">الإعدادات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}" style="{{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') ? 'display: block;' : '' }}">
+                            <ul class="slide-menu child1 {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}" style="{{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                                     <a href="{{ route('roles.index') }}" class="side-menu__item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                                         <i class="fas fa-user-shield me-2"></i>الصلاحيات
@@ -768,6 +776,12 @@
                                             <a href="{{ route('storage-disk-mappings.index') }}" class="side-menu__item {{ request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">ربط الأقراص</a>
                                         </li>
                                     </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.database-info.index') }}" class="side-menu__item {{ request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
+                                        <i class="ri-database-2-line me-2"></i>معلومات قاعدة البيانات
+                                    </a>
                                 </li>
                             </ul>
                         </li>

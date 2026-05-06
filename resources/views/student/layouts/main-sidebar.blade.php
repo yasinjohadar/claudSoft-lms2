@@ -81,6 +81,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - التقارير الأسبوعية -->
+                        <li class="slide {{ request()->routeIs('student.weekly-reports.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.weekly-reports.index') }}" class="side-menu__item {{ request()->routeIs('student.weekly-reports.*') ? 'active' : '' }}">
+                                <i class="fas fa-calendar-week side-menu__icon"></i>
+                                <span class="side-menu__label">التقارير الأسبوعية</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - الموارد الخارجية -->
                         <li class="slide {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">
                             <a href="{{ route('student.external-resources.index') }}" class="side-menu__item {{ request()->routeIs('student.external-resources.*') ? 'active' : '' }}">

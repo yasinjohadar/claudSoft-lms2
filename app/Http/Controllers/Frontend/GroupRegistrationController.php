@@ -7,7 +7,6 @@ use App\Models\CourseGroup;
 use App\Models\GroupRegistration;
 use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
-use App\Models\Nationality;
 use App\Models\User;
 use App\Services\GroupRegistrationService;
 use Illuminate\Http\Request;
@@ -32,18 +31,7 @@ class GroupRegistrationController extends Controller
             abort(404, 'التسجيل غير متاح لهذه المجموعة');
         }
 
-        $arabNationalityNames = [
-            'سعودي', 'مصري', 'إماراتي', 'كويتي', 'قطري', 'بحريني', 'عماني', 'أردني', 'فلسطيني',
-            'لبناني', 'سوري', 'عراقي', 'يمني', 'ليبي', 'تونسي', 'جزائري', 'مغربي', 'موريتاني',
-            'سوداني', 'صومالي', 'جيبوتي', 'قمري',
-        ];
-        $nationalities = Nationality::whereIn('name', $arabNationalityNames)
-            ->orderBy('name')
-            ->get()
-            ->unique('name')
-            ->values();
-
-        return view('frontend.group-registration.form', compact('group', 'nationalities', 'settings'));
+        return view('frontend.group-registration.form', compact('group', 'settings'));
     }
 
     /**
@@ -79,8 +67,6 @@ class GroupRegistrationController extends Controller
             'email' => [
                 'required',
                 'email',
-                // التحقق فقط من group_registrations لنفس المجموعة
-                // السماح بإعادة التسجيل في group_registrations إذا كان هناك طلب مرفوض
                 $hasRejectedRequest 
                     ? Rule::unique('group_registrations', 'email')->ignore($existingRegistration->id ?? null)->where(function ($query) use ($group) {
                         return $query->where('group_id', $group->id);
@@ -91,23 +77,13 @@ class GroupRegistrationController extends Controller
             ],
             'phone' => 'required|string|max:20',
             'country_code' => ['required', 'string', 'max:8', \Illuminate\Validation\Rule::in(config('country_codes.allowed_codes'))],
-            'nationality_id' => 'nullable|exists:nationalities,id',
             'date_of_birth' => 'nullable|date|before:today',
-            'gender' => 'nullable|in:male,female',
-            'address' => 'nullable|string|max:500',
-            'city' => 'nullable|string|max:100',
-            'notes' => 'nullable|string|max:1000',
-            'additional_info' => 'nullable|string|max:1000',
-            'special_requirements' => 'nullable|string|max:1000',
             'commitment_to_training' => 'required|in:yes,no',
             'has_sufficient_time' => 'required|in:yes,no',
             'has_computer' => 'required|in:yes,no',
             'computer_experience_level' => 'required|in:none,beginner,intermediate,good,advanced',
             'programming_experience' => 'required|in:none,beginner,intermediate,expert',
-            'computer_programming_background' => 'required|string|max:1000',
             'education_level' => 'required|string|max:255',
-            'education_major' => 'required|string|max:255',
-            'current_job' => 'required|string|max:255',
             'interested_in_bootcamp' => 'required|in:yes,no',
         ];
         
@@ -129,14 +105,8 @@ class GroupRegistrationController extends Controller
             'computer_experience_level.in' => 'قيمة غير صحيحة لمستوى خبرة الحاسوب',
             'programming_experience.required' => 'يجب اختيار مستوى خبرتك بالبرمجة',
             'programming_experience.in' => 'قيمة غير صحيحة لمستوى خبرة البرمجة',
-            'computer_programming_background.required' => 'نبذة عن خبرتك بالحاسوب والبرمجة مطلوبة',
-            'computer_programming_background.max' => 'نبذة عن خبرتك يجب أن تكون أقل من 1000 حرف',
             'education_level.required' => 'آخر مرحلة دراسية مطلوبة',
             'education_level.max' => 'آخر مرحلة دراسية يجب أن تكون أقل من 255 حرف',
-            'education_major.required' => 'التخصص الدراسي مطلوب',
-            'education_major.max' => 'التخصص الدراسي يجب أن يكون أقل من 255 حرف',
-            'current_job.required' => 'العمل الحالي مطلوب',
-            'current_job.max' => 'العمل الحالي يجب أن يكون أقل من 255 حرف',
             'interested_in_bootcamp.required' => 'يجب الإجابة على سؤال الاهتمام بالمعسكر التدريبي',
             'interested_in_bootcamp.in' => 'قيمة غير صحيحة لسؤال الاهتمام بالمعسكر التدريبي',
         ];

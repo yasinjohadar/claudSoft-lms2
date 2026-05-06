@@ -6,23 +6,59 @@
     <style>
         .registration-page-section {
             background: var(--clr-bg);
+            padding-top: 140px !important;
+            padding-bottom: 30px !important;
         }
         .registration-form-wrapper {
-            padding: 28px;
+            padding: 4px 8px;
+            margin-top: 20px;
+        }
+        .registration-page-section.section-padding {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        .glass-panel {
+            margin-top: 0 !important;
+        }
+        .registration-form-wrapper {
+            padding: 4px 8px;
         }
         .registration-title {
-            line-height: 1.5;
+            line-height: 1.2;
+            font-size: 1.1rem !important;
+            margin-bottom: 4px !important;
         }
         .registration-subtitle {
             color: var(--clr-text-secondary);
-            margin-bottom: 22px;
-            font-size: 0.95rem;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
         }
         .registration-hero-logo {
-            max-height: 62px;
+            max-height: 70px;
             width: auto;
             display: block;
-            margin: 0 auto 10px;
+            margin: 0 auto 8px;
+        }
+        .registration-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .registration-header .registration-title {
+            text-align: center;
+            font-size: 1.3rem !important;
+            font-weight: bold;
+            line-height: 1.6;
+            margin-bottom: 0;
+        }
+        .registration-subtitle {
+            color: var(--clr-text-secondary);
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            text-align: center;
         }
         .registration-section-card {
             border: 1px solid var(--clr-border);
@@ -32,9 +68,14 @@
         }
         .registration-section-card .card-header {
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 12px !important;
+        }
+        .registration-section-card .card-header h5 {
+            font-size: 0.95rem !important;
         }
         .registration-section-card .card-body {
             background: rgba(255, 255, 255, 0.02);
+            padding: 8px !important;
         }
         .form-check {
             padding-right: 1.75em;
@@ -68,18 +109,76 @@
         }
         .country-code-select,
         .country-code-select option {
-            font-size: 1.05rem;
+            font-size: 1rem;
+        }
+        .compact-form .form-control,
+        .compact-form .form-select {
+            padding: 4px 10px;
+            font-size: 0.85rem;
+        }
+        .compact-form .form-label {
+            font-size: 0.8rem !important;
+            margin-bottom: 1px !important;
+        }
+        .compact-form .mb-3 {
+            margin-bottom: 0.35rem !important;
+        }
+        .compact-form .card {
+            margin-bottom: 0.35rem !important;
+        }
+        .compact-form hr {
+            margin: 0.35rem 0 !important;
+        }
+        .compact-form .text-center.mb-2 {
+            margin-bottom: 0.25rem !important;
+        }
+        .compact-form .row.mb-3 {
+            margin-bottom: 0.35rem !important;
+        }
+        .compact-form .btn-lg {
+            padding: 6px 16px;
+            font-size: 0.9rem;
+        }
+        .compact-form .form-check-label {
+            font-size: 0.85rem;
+        }
+        .compact-form .small,
+        .compact-form small {
+            font-size: 0.75rem !important;
+        }
+        .page-banner-contact-minimal {
+            padding: 50px 0 !important;
+            min-height: auto !important;
+        }
+        .page-banner-contact-minimal .page-banner-content {
+            padding: 0 !important;
+        }
+        .page-banner-contact-minimal .page-banner-icon {
+            font-size: 1.5rem !important;
+            margin-bottom: 5px !important;
+        }
+        .page-banner-contact-minimal .page-banner-title {
+            font-size: 1.3rem !important;
+            margin-bottom: 5px !important;
+            line-height: 1.3 !important;
+        }
+        .page-banner-contact-minimal .page-banner-desc {
+            font-size: 0.85rem !important;
+            margin-bottom: 5px !important;
+        }
+        .page-banner-contact-minimal .page-banner-breadcrumb {
+            font-size: 0.8rem !important;
         }
         @media (max-width: 768px) {
             .registration-title {
-                line-height: 1.85;
+                line-height: 1.5;
             }
             #registrationForm .form-label {
-                font-size: 1.02rem;
+                font-size: 0.9rem !important;
                 font-weight: 600;
             }
             .registration-form-wrapper {
-                padding: 18px;
+                padding: 6px 8px;
             }
         }
     </style>
@@ -88,40 +187,18 @@
 @section('title', 'التسجيل في ' . ($settings->diploma_name ?? 'دبلوم البرمجة') . ' - الدفعة (' . $group->name . ')')
 
 @section('content')
-    <section class="page-banner page-banner-contact">
-        <div class="page-banner-overlay"></div>
-        <div class="container position-relative">
-            <div class="page-banner-content animate-on-scroll">
-                <div class="page-banner-icon"><i class="fas fa-user-plus"></i></div>
-                <h1 class="page-banner-title">التسجيل في <span>{{ $group->name }}</span></h1>
-                <p class="page-banner-desc">{{ $settings->diploma_name ?? 'دبلوم البرمجة' }}</p>
-                <nav class="page-banner-breadcrumb" aria-label="breadcrumb">
-                    <a href="{{ route('frontend.home') }}">الرئيسية</a>
-                    <span class="page-banner-sep">/</span>
-                    <span>التسجيل الجماعي</span>
-                </nav>
-            </div>
-        </div>
-        <div class="page-banner-shape"></div>
-    </section>
-
-    <section class="section-padding registration-page-section">
-        <div class="container">
-            <div class="row justify-content-center g-4">
+    <section class="section-padding registration-page-section" style="padding-top: 130px !important;">
+        <div class="container" style="padding-top: 10px;">
+            <div class="row justify-content-center g-1">
                 <div class="col-lg-10">
-                    <div class="glass-panel registration-form-wrapper animate-on-scroll">
-                        <div class="text-center mb-4 pb-3 border-bottom">
-                            <a href="{{ url('/') }}" class="d-inline-block text-decoration-none">
-                                <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="registration-hero-logo">
-                                <h2 class="h5 mb-0 mt-2">كلاودسوفت التعليمية</h2>
-                            </a>
+                    <div class="glass-panel registration-form-wrapper compact-form">
+                        <div class="registration-header">
+                            <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="registration-hero-logo">
+                            <h1 class="registration-title">
+                                التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
+                            </h1>
                         </div>
-
-                        <h4 class="registration-title fw-bold mb-2">
-                            <i class="fas fa-user-plus me-2"></i>
-                            التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }} - الدفعة ({{ $group->name }})
-                        </h4>
-                        <p class="registration-subtitle">يرجى تعبئة جميع الحقول المطلوبة بدقة لضمان مراجعة طلبك بسرعة.</p>
+                        <p class="registration-subtitle">يرجى تعبئة جميع الحقول المطلوبة بدقة.</p>
 
                         @if($errors->any())
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -204,94 +281,12 @@
                             </div>
                             <div class="mt-1 small phone-country-ajax-feedback" data-phone-ajax-feedback aria-live="polite"></div>
 
-                            <!-- الجنسية -->
+                            <!-- تاريخ الميلاد -->
                             <div class="mb-3">
-                                <label class="form-label">الجنسية</label>
-                                <div class="d-flex align-items-center gap-2">
-                                    <select name="nationality_id" id="nationality_id_select" class="form-select nationality-select-with-flag @error('nationality_id') is-invalid @enderror"
-                                            data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
-                                        <option value="">اختر الجنسية</option>
-                                        @foreach($nationalities as $nationality)
-                                            @php
-                                                $isoMap = config('country_codes.nationality_iso', []);
-                                                $displayMap = config('country_codes.nationality_display', []);
-                                                $iso = $isoMap[$nationality->name] ?? '';
-                                                $displayText = $displayMap[$nationality->name] ?? $nationality->name;
-                                            @endphp
-                                            <option value="{{ $nationality->id }}" data-flag-iso="{{ $iso }}" {{ old('nationality_id') == $nationality->id ? 'selected' : '' }}>
-                                                {{ $displayText }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                @error('nationality_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <!-- تاريخ الميلاد والجنس -->
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">تاريخ الميلاد</label>
-                                    <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" 
-                                           value="{{ old('date_of_birth') }}" max="{{ date('Y-m-d') }}">
-                                    @error('date_of_birth')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">الجنس</label>
-                                    <select name="gender" class="form-select @error('gender') is-invalid @enderror">
-                                        <option value="">اختر الجنس</option>
-                                        <option value="male" {{ old('gender') == 'male' ? 'selected' : '' }}>ذكر</option>
-                                        <option value="female" {{ old('gender') == 'female' ? 'selected' : '' }}>أنثى</option>
-                                    </select>
-                                    @error('gender')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <!-- العنوان والمدينة -->
-                            <div class="row mb-3">
-                                <div class="col-md-8">
-                                    <label class="form-label">العنوان</label>
-                                    <input type="text" name="address" class="form-control @error('address') is-invalid @enderror" 
-                                           value="{{ old('address') }}">
-                                    @error('address')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">المدينة</label>
-                                    <input type="text" name="city" class="form-control @error('city') is-invalid @enderror" 
-                                           value="{{ old('city') }}">
-                                    @error('city')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">ملاحظات</label>
-                                <textarea name="notes" class="form-control @error('notes') is-invalid @enderror" rows="3">{{ old('notes') }}</textarea>
-                                @error('notes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">معلومات إضافية</label>
-                                <textarea name="additional_info" class="form-control @error('additional_info') is-invalid @enderror" rows="3">{{ old('additional_info') }}</textarea>
-                                @error('additional_info')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">متطلبات خاصة</label>
-                                <textarea name="special_requirements" class="form-control @error('special_requirements') is-invalid @enderror" rows="3">{{ old('special_requirements') }}</textarea>
-                                @error('special_requirements')
+                                <label class="form-label">تاريخ الميلاد</label>
+                                <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror" 
+                                       value="{{ old('date_of_birth') }}" max="{{ date('Y-m-d') }}">
+                                @error('date_of_birth')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -455,15 +450,6 @@
                                             <div class="text-danger small mt-1">{{ $message }}</div>
                                         @enderror
                                     </div>
-
-                                    <!-- نبذة عن الخبرة -->
-                                    <div class="mb-3">
-                                        <label class="form-label required">نبذة عن خبرتك بالحاسوب والبرمجة</label>
-                                        <textarea name="computer_programming_background" class="form-control @error('computer_programming_background') is-invalid @enderror" rows="4" required>{{ old('computer_programming_background') }}</textarea>
-                                        @error('computer_programming_background')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
                                 </div>
                             </div>
 
@@ -477,7 +463,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-12 mb-3">
                                             <label class="form-label required">آخر مرحلة دراسية حاصل عليها</label>
                                             <input type="text" name="education_level" class="form-control @error('education_level') is-invalid @enderror" 
                                                    value="{{ old('education_level') }}" required>
@@ -485,22 +471,6 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label required">التخصص الدراسي</label>
-                                            <input type="text" name="education_major" class="form-control @error('education_major') is-invalid @enderror" 
-                                                   value="{{ old('education_major') }}" required>
-                                            @error('education_major')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label required">العمل الحالي</label>
-                                        <input type="text" name="current_job" class="form-control @error('current_job') is-invalid @enderror" 
-                                               value="{{ old('current_job') }}" required>
-                                        @error('current_job')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
                                     </div>
                                 </div>
                             </div>
@@ -585,39 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!state.id) return state.text;
                 var iso = $(state.element).data('iso') || 'sa';
                 var url = flagUrlTemplate.replace('{iso}', iso.toLowerCase());
-                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
-                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
-                $span.append(document.createTextNode(state.text));
-                return $span;
-            }
-        });
-    }
-
-    // Select2 للجنسية: نفس القائمة العلوية 100% (علم + اسم الدولة + الرمز + · + ISO)
-    var $nationalitySelect = $('#nationality_id_select');
-    if ($nationalitySelect.length) {
-        var natFlagUrl = $nationalitySelect.attr('data-flag-url') || flagUrlTemplate;
-        $nationalitySelect.select2({
-            placeholder: 'اختر الجنسية',
-            allowClear: false,
-            dir: 'rtl',
-            width: '100%',
-            theme: 'bootstrap-5',
-            templateResult: function(state) {
-                if (!state.id) return state.text;
-                var iso = $(state.element).data('flag-iso') || '';
-                if (!iso) return state.text;
-                var url = natFlagUrl.replace('{iso}', iso.toLowerCase());
-                var $span = $('<span class="d-flex align-items-center gap-2"></span>');
-                $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
-                $span.append(document.createTextNode(state.text));
-                return $span;
-            },
-            templateSelection: function(state) {
-                if (!state.id) return state.text;
-                var iso = $(state.element).data('flag-iso') || '';
-                if (!iso) return state.text;
-                var url = natFlagUrl.replace('{iso}', iso.toLowerCase());
                 var $span = $('<span class="d-flex align-items-center gap-2"></span>');
                 $span.append($('<img src="' + url + '" alt="" style="width:20px;height:15px;object-fit:cover;border-radius:0;">'));
                 $span.append(document.createTextNode(state.text));

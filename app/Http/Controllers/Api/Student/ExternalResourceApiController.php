@@ -6,10 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Resource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Storage\StorageHelperService;
 use Illuminate\Support\Facades\Storage;
 
 class ExternalResourceApiController extends Controller
 {
+    protected StorageHelperService $storageHelper;
+
+    public function __construct(StorageHelperService $storageHelper)
+    {
+        $this->storageHelper = $storageHelper;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = min(max((int) $request->input('per_page', 12), 1), 50);
@@ -61,17 +69,21 @@ class ExternalResourceApiController extends Controller
             }
         }
 
-        if ($resource->file_path && Storage::disk('public')->exists($resource->file_path)) {
+        if ($resource->file_path && $this->storageHelper->fileExists('public', $resource->file_path)) {
             if ($resource->allow_download) {
                 $resource->incrementDownloadCount();
 
-                return Storage::disk('public')->download(
+                return $this->storageHelper->disk('public')->download(
                     $resource->file_path,
                     $resource->file_name ?: basename($resource->file_path)
                 );
             }
 
             if (in_array($resource->resource_type, ['pdf', 'image'], true)) {
+                $url = $this->storageHelper->getFileUrl('public', $resource->file_path);
+                if (!empty($url)) {
+                    return redirect()->away($url);
+                }
                 return redirect()->away(asset('storage/'.$resource->file_path));
             }
 
