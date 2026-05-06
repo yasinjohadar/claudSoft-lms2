@@ -46,11 +46,20 @@ class AppStorageManager
             }
         }
 
-        // Fallback: try to find ANY active storage config to use
+        // Fallback: try to find ANY active CLOUD storage config to use
         // This ensures profile photos use the same cloud storage as courses/blog
+        // We explicitly exclude 'local' driver to prefer cloud storage
         $anyActiveStorage = AppStorageConfig::where('is_active', true)
+            ->where('driver', '!=', 'local')
             ->orderBy('priority', 'desc')
             ->first();
+        
+        // If no cloud storage found, try any active storage (including local)
+        if (!$anyActiveStorage) {
+            $anyActiveStorage = AppStorageConfig::where('is_active', true)
+                ->orderBy('priority', 'desc')
+                ->first();
+        }
         
         if ($anyActiveStorage) {
             try {
@@ -262,10 +271,18 @@ class AppStorageManager
             if ($mapping && $mapping->primaryStorage) {
                 $storageConfig = $mapping->primaryStorage;
             } else {
-                // Fallback: use any active storage config
+                // Fallback: prefer cloud storage over local
                 $storageConfig = AppStorageConfig::where('is_active', true)
+                    ->where('driver', '!=', 'local')
                     ->orderBy('priority', 'desc')
                     ->first();
+                
+                // If no cloud storage found, try any active storage
+                if (!$storageConfig) {
+                    $storageConfig = AppStorageConfig::where('is_active', true)
+                        ->orderBy('priority', 'desc')
+                        ->first();
+                }
                 
                 if ($storageConfig) {
                     Log::info("Using fallback active storage for URL generation", [

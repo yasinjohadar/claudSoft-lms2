@@ -172,6 +172,51 @@ if (!function_exists('student_profile_photo_url')) {
         // Clean the path
         $photoPath = ltrim($photoPath, '/');
 
+        // Try dynamic storage system
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            
+            // Get the disk (will use cloud storage if available)
+            $disk = $storageHelper->getDisk('public');
+            
+            // Check if file exists on the active storage
+            if ($disk->exists($photoPath)) {
+                // Try to get URL through the storage manager
+                $url = $storageHelper->getFileUrl('public', $photoPath);
+                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                    return $url;
+                }
+                
+                // If URL generation failed but file exists, generate URL manually
+                $url = $disk->url($photoPath);
+                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                    return $url;
+                }
+            }
+        } catch (\Exception $e) {
+            // Continue to fallback
+        }
+
+        // Fallback: check if file exists in local storage
+        $localPath = storage_path('app/public/' . $photoPath);
+        if (file_exists($localPath)) {
+            return asset('storage/' . $photoPath);
+        }
+
+        // Last fallback: return asset URL (might work if storage:link exists)
+        return asset('storage/' . $photoPath);
+    }
+}
+        }
+
+        // If already a full URL, return as-is
+        if (filter_var($photoPath, FILTER_VALIDATE_URL)) {
+            return $photoPath;
+        }
+
+        // Clean the path
+        $photoPath = ltrim($photoPath, '/');
+
         // Try dynamic storage system (S3 or any active storage)
         try {
             $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
