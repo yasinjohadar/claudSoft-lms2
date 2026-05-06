@@ -39,21 +39,25 @@ class AppStorageManager
             ->first();
 
         if (!$mapping || !$mapping->primaryStorage) {
-            // Fallback إلى disk mapping الافتراضي 'public' (السحابة)
-            $defaultMapping = StorageDiskMapping::where('disk_name', 'public')
-                ->where('is_active', true)
-                ->with('primaryStorage')
+            // Fallback: try to find ANY active storage config to use
+            $anyActiveStorage = AppStorageConfig::where('is_active', true)
+                ->orderBy('priority', 'desc')
                 ->first();
             
-            if ($defaultMapping && $defaultMapping->primaryStorage) {
+            if ($anyActiveStorage) {
                 try {
-                    return AppStorageFactory::create($defaultMapping->primaryStorage->fresh());
+                    Log::info("Using fallback active storage for disk {$diskName}", [
+                        'storage_name' => $anyActiveStorage->name,
+                        'driver' => $anyActiveStorage->driver,
+                    ]);
+                    return AppStorageFactory::create($anyActiveStorage->fresh());
                 } catch (\Exception $e) {
-                    Log::error("Failed to create default cloud disk: " . $e->getMessage());
+                    Log::error("Failed to create fallback disk: " . $e->getMessage());
                 }
             }
             
-            // آخر حل: التخزين المحلي
+            // Last fallback: local storage
+            Log::warning("No active storage found for disk {$diskName}, using local storage");
             return Storage::disk('public');
         }
 
@@ -251,12 +255,28 @@ class AppStorageManager
                 ->where('is_active', true)
                 ->first();
 
+            $storageConfig = null;
+            
             if ($mapping && $mapping->primaryStorage) {
                 // استخدام fresh() لضمان قراءة القيمة الجديدة من قاعدة البيانات
                 $storageConfig = $mapping->primaryStorage->fresh();
+            } else {
+                // Fallback: use any active storage config
+                $storageConfig = AppStorageConfig::where('is_active', true)
+                    ->orderBy('priority', 'desc')
+                    ->first();
                 
+                if ($storageConfig) {
+                    Log::info("Using fallback active storage for URL generation", [
+                        'disk' => $disk,
+                        'storage_name' => $storageConfig->name,
+                    ]);
+                }
+            }
+            
+            if ($storageConfig) {
                 // معالجة خاصة لـ Bunny Storage - استخدام CDN URL مباشرة
-                if ($storageConfig && $storageConfig->driver === 'bunny') {
+                if ($storageConfig->driver === 'bunny') {
                     $bunnyUrl = $this->getBunnyUrl($storageConfig, $path);
                     if (!empty($bunnyUrl)) {
                         return $bunnyUrl;
@@ -264,7 +284,7 @@ class AppStorageManager
                 }
                 
                 // معالجة خاصة لـ S3 والمحركات المشتقة منه - استخدام Pre-signed URL
-                if ($storageConfig && in_array($storageConfig->driver, ['s3', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'])) {
+                if (in_array($storageConfig->driver, ['s3', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'])) {
                     $storageDisk = $this->getDisk($disk);
                     try {
                         return $storageDisk->temporaryUrl($path, now()->addHours(24));
@@ -281,7 +301,7 @@ class AppStorageManager
                 }
                 
                 // للمحركات الأخرى - استخدام cdn_url إذا موجود
-                if ($storageConfig && !empty($storageConfig->cdn_url)) {
+                if (!empty($storageConfig->cdn_url)) {
                     $cdnUrl = rtrim($storageConfig->cdn_url, '/');
                     return $cdnUrl . '/' . ltrim($path, '/');
                 }
@@ -293,12 +313,9 @@ class AppStorageManager
             
             // إذا كان URL فارغاً أو غير صالح، حاول مرة أخرى من CDN URL
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-                if ($mapping && $mapping->primaryStorage) {
-                    $freshStorage = $mapping->primaryStorage->fresh();
-                    if ($freshStorage && $freshStorage->cdn_url) {
-                        $cdnUrl = rtrim($freshStorage->cdn_url, '/');
-                        $url = $cdnUrl . '/' . ltrim($path, '/');
-                    }
+                if ($storageConfig && $storageConfig->cdn_url) {
+                    $cdnUrl = rtrim($storageConfig->cdn_url, '/');
+                    $url = $cdnUrl . '/' . ltrim($path, '/');
                 }
             }
             

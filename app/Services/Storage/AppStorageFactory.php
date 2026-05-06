@@ -73,7 +73,7 @@ class AppStorageFactory
             'url' => $config['url'] ?? null,
             'endpoint' => $config['endpoint'] ?? null,
             'use_path_style_endpoint' => filter_var($config['use_path_style'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'throw' => false,
+            'throw' => true,
         ];
     }
 

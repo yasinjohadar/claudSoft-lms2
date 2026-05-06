@@ -169,12 +169,28 @@ if (!function_exists('student_profile_photo_url')) {
             return $photoPath;
         }
 
-        // Try dynamic storage system (S3)
+        // Clean the path
+        $photoPath = ltrim($photoPath, '/');
+
+        // Try dynamic storage system (S3 or any active storage)
         try {
             $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
-            if ($storageHelper->fileExists('public', $photoPath)) {
+            
+            // Try to get the disk (will fallback to any active storage if 'public' mapping doesn't exist)
+            $disk = $storageHelper->getDisk('public');
+            
+            // Check if file exists on the active storage
+            if ($disk->exists($photoPath)) {
+                // Try to get URL through the storage manager
                 $url = $storageHelper->getFileUrl('public', $photoPath);
-                if (!empty($url)) {
+                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                    return $url;
+                }
+                
+                // If URL generation failed but file exists, generate URL manually
+                // This handles cases where the storage doesn't have a CDN URL configured
+                $url = $disk->url($photoPath);
+                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
                     return $url;
                 }
             }
@@ -182,7 +198,13 @@ if (!function_exists('student_profile_photo_url')) {
             // Continue to fallback
         }
 
-        // Fallback to local storage
-        return asset('storage/' . ltrim($photoPath, '/'));
+        // Fallback: check if file exists in local storage
+        $localPath = storage_path('app/public/' . $photoPath);
+        if (file_exists($localPath)) {
+            return asset('storage/' . $photoPath);
+        }
+
+        // Last fallback: return asset URL (might work if storage:link exists)
+        return asset('storage/' . $photoPath);
     }
 }

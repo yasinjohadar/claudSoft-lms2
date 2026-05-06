@@ -51,6 +51,7 @@ class StudentProfileController extends Controller
                 'file_name' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
                 'file_mime' => $file->getMimeType(),
+                'real_path' => $file->getRealPath(),
             ]);
 
             // Delete old photo if exists
@@ -75,7 +76,7 @@ class StudentProfileController extends Controller
             $fileName = 'student_' . $student->id . '_' . time() . '.' . $extension;
             $photoPath = 'profile-photos/' . $fileName;
 
-            // Upload via dynamic storage
+            // Upload via dynamic storage (S3 if configured, fallback to local)
             try {
                 $storage = $this->storageHelper->getDisk('public');
                 $fileContent = file_get_contents($file->getRealPath());
@@ -84,11 +85,37 @@ class StudentProfileController extends Controller
                     throw new \Exception('فشل في قراءة ملف الصورة');
                 }
 
+                Log::info('StudentProfileController: Attempting storage upload', [
+                    'photo_path' => $photoPath,
+                    'content_size' => strlen($fileContent),
+                    'storage_class' => get_class($storage),
+                ]);
+
                 $result = $storage->put($photoPath, $fileContent, 'public');
 
-                if ($result && $this->storageHelper->fileExists('public', $photoPath)) {
+                Log::info('StudentProfileController: Storage put result', [
+                    'result' => $result ? 'true' : 'false',
+                ]);
+
+                // Verify file exists
+                $fileExists = false;
+                try {
+                    $fileExists = $this->storageHelper->fileExists('public', $photoPath);
+                } catch (\Exception $e) {
+                    Log::warning('StudentProfileController: fileExists check failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    // If check fails, assume success if put returned true
+                    $fileExists = $result;
+                }
+
+                if ($result && $fileExists) {
                     $student->photo = $photoPath;
                     $student->save();
+
+                    Log::info('StudentProfileController: Photo saved successfully', [
+                        'photo_path' => $photoPath,
+                    ]);
 
                     // Track storage usage
                     try {
@@ -112,6 +139,11 @@ class StudentProfileController extends Controller
                     return redirect()->back()
                         ->with('success', 'تم تحديث الصورة الشخصية بنجاح');
                 } else {
+                    Log::error('StudentProfileController: Upload verification failed', [
+                        'put_result' => $result ? 'true' : 'false',
+                        'file_exists' => $fileExists ? 'true' : 'false',
+                        'photo_path' => $photoPath,
+                    ]);
                     throw new \Exception('فشل في رفع الصورة إلى التخزين');
                 }
             } catch (\Exception $uploadException) {
