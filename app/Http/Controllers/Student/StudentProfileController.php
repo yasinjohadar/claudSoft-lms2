@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use App\Services\Storage\StorageHelperService;
 
 class StudentProfileController extends Controller
@@ -20,6 +21,125 @@ class StudentProfileController extends Controller
     {
         $this->storageHelper = $storageHelper;
     }
+    /**
+     * Upload only the profile photo (separate from full profile update)
+     */
+    public function uploadPhoto(Request $request)
+    {
+        try {
+            $request->validate([
+                'photo' => [
+                    'required',
+                    'image',
+                    'mimes:jpeg,jpg,png,gif,webp',
+                    'max:2048',
+                ],
+            ], [
+                'photo.required' => 'يرجى اختيار صورة',
+                'photo.image' => 'الملف يجب أن يكون صورة',
+                'photo.mimes' => 'الصورة يجب أن تكون بصيغة: jpeg, jpg, png, gif, webp',
+                'photo.max' => 'حجم الصورة يجب ألا يتجاوز 2 ميجابايت',
+            ]);
+
+            DB::beginTransaction();
+
+            $student = auth()->user();
+            $file = $request->file('photo');
+
+            Log::info('StudentProfileController: Photo upload started', [
+                'student_id' => $student->id,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'file_mime' => $file->getMimeType(),
+            ]);
+
+            // Delete old photo if exists
+            if ($student->photo) {
+                try {
+                    if ($this->storageHelper->fileExists('public', $student->photo)) {
+                        $this->storageHelper->deleteFile('public', $student->photo);
+                        Log::info('StudentProfileController: Old photo deleted', [
+                            'old_photo_path' => $student->photo,
+                        ]);
+                    }
+                } catch (\Exception $deleteException) {
+                    Log::warning('StudentProfileController: Failed to delete old photo', [
+                        'old_photo_path' => $student->photo,
+                        'error' => $deleteException->getMessage(),
+                    ]);
+                }
+            }
+
+            // Generate unique filename
+            $extension = $file->getClientOriginalExtension();
+            $fileName = 'student_' . $student->id . '_' . time() . '.' . $extension;
+            $photoPath = 'profile-photos/' . $fileName;
+
+            // Upload via dynamic storage
+            try {
+                $storage = $this->storageHelper->getDisk('public');
+                $fileContent = file_get_contents($file->getRealPath());
+                
+                if ($fileContent === false) {
+                    throw new \Exception('فشل في قراءة ملف الصورة');
+                }
+
+                $result = $storage->put($photoPath, $fileContent, 'public');
+
+                if ($result && $this->storageHelper->fileExists('public', $photoPath)) {
+                    $student->photo = $photoPath;
+                    $student->save();
+
+                    // Track storage usage
+                    try {
+                        $mapping = \App\Models\StorageDiskMapping::where('disk_name', 'public')
+                            ->where('is_active', true)
+                            ->first();
+                        
+                        if ($mapping && $mapping->primaryStorage) {
+                            $analyticsService = app(\App\Services\Storage\AppStorageAnalyticsService::class);
+                            $analyticsService->trackStorageUsage($mapping->primaryStorage, $file->getSize(), 'profile-photo');
+                            $analyticsService->trackBandwidth($mapping->primaryStorage, 'upload', $file->getSize(), 'profile-photo');
+                        }
+                    } catch (\Exception $trackingException) {
+                        Log::warning('StudentProfileController: Failed to track storage usage', [
+                            'error' => $trackingException->getMessage(),
+                        ]);
+                    }
+
+                    DB::commit();
+
+                    return redirect()->back()
+                        ->with('success', 'تم تحديث الصورة الشخصية بنجاح');
+                } else {
+                    throw new \Exception('فشل في رفع الصورة إلى التخزين');
+                }
+            } catch (\Exception $uploadException) {
+                Log::error('StudentProfileController: Photo upload failed', [
+                    'error' => $uploadException->getMessage(),
+                    'trace' => $uploadException->getTraceAsString(),
+                ]);
+                throw new \Exception('فشل في رفع الصورة: ' . $uploadException->getMessage());
+            }
+        } catch (ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('StudentProfileController: Photo upload failed', [
+                'student_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفع الصورة: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
     /**
      * Display the student's profile.
      */

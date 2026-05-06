@@ -69,6 +69,7 @@ Route::prefix('student')
             Route::get('/', [StudentProfileController::class, 'index'])->name('index');
             Route::get('/edit', [StudentProfileController::class, 'edit'])->name('edit');
             Route::put('/update', [StudentProfileController::class, 'update'])->name('update');
+            Route::post('/upload-photo', [StudentProfileController::class, 'uploadPhoto'])->name('upload-photo');
             Route::put('/change-password', [StudentProfileController::class, 'changePassword'])->name('change-password');
             Route::delete('/delete-photo', [StudentProfileController::class, 'deletePhoto'])->name('delete-photo');
         });
