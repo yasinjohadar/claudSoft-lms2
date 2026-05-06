@@ -271,10 +271,26 @@ class AppStorageController extends Controller
             $request->validate([
                 'driver' => 'required|string',
                 'config' => 'required|array',
+                'config_id' => 'nullable|integer|exists:app_storage_configs,id',
             ]);
 
             $driver = $request->input('driver');
             $configData = $request->input('config');
+            $configId = $request->input('config_id');
+
+            // إذا كان هناك config_id (صفحة التعديل)، ندمج الإعدادات القديمة للحفاظ على كلمات المرور
+            if ($configId) {
+                $existingConfig = AppStorageConfig::find($configId);
+                if ($existingConfig) {
+                    $oldConfig = $existingConfig->getDecryptedConfig();
+                    foreach ($oldConfig as $key => $value) {
+                        // إذا كان الحقل الجديد فارغاً وكان حساساً، نأخذ القيمة القديمة
+                        if (empty($configData[$key]) && (str_contains($key, 'password') || str_contains($key, 'secret') || str_contains($key, 'key') || str_contains($key, 'token'))) {
+                            $configData[$key] = $value;
+                        }
+                    }
+                }
+            }
 
             // تنظيف وtrim للـ credentials (خاصة لـ Bunny Storage)
             if ($driver === 'bunny') {
@@ -341,9 +357,6 @@ class AppStorageController extends Controller
                     'endpoint' => $configData['endpoint'] ?? null,
                     'use_path_style_endpoint' => filter_var($configData['use_path_style'] ?? false, FILTER_VALIDATE_BOOLEAN),
                     'throw' => true,
-                    'http' => [
-                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
-                    ],
                 ],
                 'cloudflare_r2' => [
                     'driver' => 's3',
@@ -354,9 +367,6 @@ class AppStorageController extends Controller
                     'endpoint' => "https://{$configData['account_id']}.r2.cloudflarestorage.com",
                     'use_path_style_endpoint' => true,
                     'throw' => true,
-                    'http' => [
-                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
-                    ],
                 ],
                 'digitalocean' => [
                     'driver' => 's3',
@@ -367,9 +377,6 @@ class AppStorageController extends Controller
                     'endpoint' => 'https://' . ($configData['region'] ?? 'nyc3') . '.digitaloceanspaces.com',
                     'use_path_style_endpoint' => true,
                     'throw' => true,
-                    'http' => [
-                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
-                    ],
                 ],
                 'wasabi' => [
                     'driver' => 's3',
@@ -380,9 +387,6 @@ class AppStorageController extends Controller
                     'endpoint' => 'https://s3.' . ($configData['region'] ?? 'us-east-1') . '.wasabisys.com',
                     'use_path_style_endpoint' => true,
                     'throw' => true,
-                    'http' => [
-                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
-                    ],
                 ],
                 'backblaze' => [
                     'driver' => 's3',
@@ -393,9 +397,6 @@ class AppStorageController extends Controller
                     'endpoint' => 'https://s3.' . ($configData['region'] ?? 'us-west-000') . '.backblazeb2.com',
                     'use_path_style_endpoint' => true,
                     'throw' => true,
-                    'http' => [
-                        'verify' => 'C:\MAMP\bin\php\php8.3.1\cacert.pem',
-                    ],
                 ],
                 'bunny' => [
                     'driver' => 'bunnycdn',

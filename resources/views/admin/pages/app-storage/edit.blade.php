@@ -326,7 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     driver: driver,
-                    config: configData
+                    config: configData,
+                    config_id: {{ $config->id }}
                 })
             })
             .then(response => response.json())
