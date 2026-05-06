@@ -46,20 +46,10 @@ class AppStorageManager
             }
         }
 
-        // Fallback: try to find ANY active CLOUD storage config to use
-        // This ensures profile photos use the same cloud storage as courses/blog
-        // We explicitly exclude 'local' driver to prefer cloud storage
+        // Fallback: try to find ANY active storage config to use
         $anyActiveStorage = AppStorageConfig::where('is_active', true)
-            ->where('driver', '!=', 'local')
             ->orderBy('priority', 'desc')
             ->first();
-        
-        // If no cloud storage found, try any active storage (including local)
-        if (!$anyActiveStorage) {
-            $anyActiveStorage = AppStorageConfig::where('is_active', true)
-                ->orderBy('priority', 'desc')
-                ->first();
-        }
         
         if ($anyActiveStorage) {
             try {
@@ -78,7 +68,7 @@ class AppStorageManager
         }
         
         // Last fallback: local storage
-        Log::warning("No active cloud storage found for disk {$diskName}, using local storage");
+        Log::warning("No active storage found for disk {$diskName}, using local storage");
         return Storage::disk('public');
     }
 
