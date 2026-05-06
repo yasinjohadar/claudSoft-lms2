@@ -221,10 +221,14 @@
                             <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data" id="photo-upload-form">
                                 @csrf
                                 @method('PUT')
+                                <input type="hidden" name="name" id="photo-hidden-name">
+                                <input type="hidden" name="name_ar" id="photo-hidden-name-ar">
+                                <input type="hidden" name="country_code" id="photo-hidden-country-code">
+                                <input type="hidden" name="phone" id="photo-hidden-phone">
                                 <label for="photo-input" class="btn btn-sm btn-outline-primary mb-2">
                                     <i class="fa fa-upload me-1"></i>اختيار صورة جديدة
                                 </label>
-                                <input type="file" id="photo-input" class="form-control d-none @error('photo') is-invalid @enderror" name="photo" accept="image/*" onchange="document.getElementById('photo-upload-form').submit()">
+                                <input type="file" id="photo-input" class="form-control d-none @error('photo') is-invalid @enderror" name="photo" accept="image/*" onchange="submitPhotoForm()">
                                 @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </form>
                         </div>
@@ -281,41 +285,31 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-function previewPhoto(input) {
-    if (input.files && input.files[0]) {
-        var file = input.files[0];
-        
-        // Validate file size (2MB max)
-        if (file.size > 2 * 1024 * 1024) {
-            alert('حجم الصورة كبير جداً. الحد الأقصى: 2MB');
-            input.value = '';
-            return;
-        }
-        
-        // Validate file type
-        var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-            alert('صيغة الصورة غير مدعومة. الصيغ المدعومة: JPG, PNG, GIF, WebP');
-            input.value = '';
-            return;
-        }
-        
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            var previewContainer = document.getElementById('photo-preview-container');
-            if (previewContainer) {
-                var existingImg = document.getElementById('profile-photo-preview');
-                var existingPlaceholder = document.getElementById('profile-photo-placeholder');
-                
-                if (existingImg) {
-                    existingImg.src = e.target.result;
-                } else if (existingPlaceholder) {
-                    existingPlaceholder.outerHTML = '<img id="profile-photo-preview" src="' + e.target.result + '" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--clr-primary, #0d6efd);">';
-                }
-            }
-        };
-        reader.readAsDataURL(file);
+function submitPhotoForm() {
+    var input = document.getElementById('photo-input');
+    if (!input.files || !input.files[0]) return;
+    
+    var file = input.files[0];
+    
+    if (file.size > 2 * 1024 * 1024) {
+        alert('حجم الصورة كبير جداً. الحد الأقصى: 2MB');
+        input.value = '';
+        return;
     }
+    
+    var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        alert('صيغة الصورة غير مدعومة. الصيغ المدعومة: JPG, PNG, GIF, WebP');
+        input.value = '';
+        return;
+    }
+    
+    document.getElementById('photo-hidden-name').value = document.querySelector('input[name="name"]')?.value || '';
+    document.getElementById('photo-hidden-name-ar').value = document.querySelector('input[name="name_ar"]')?.value || '';
+    document.getElementById('photo-hidden-country-code').value = document.querySelector('select[name="country_code"]')?.value || '';
+    document.getElementById('photo-hidden-phone').value = document.querySelector('input[name="phone"]')?.value || '';
+    
+    document.getElementById('photo-upload-form').submit();
 }
 
 $(function() {
