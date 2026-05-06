@@ -51,17 +51,17 @@
             </div>
         </div>
 
-        <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data" data-phone-ajax-validate>
-            @csrf
-            @method('PUT')
+        <div class="row">
+            <div class="col-xl-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fa fa-user me-2"></i>البيانات الأساسية</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data" data-phone-ajax-validate>
+                            @csrf
+                            @method('PUT')
 
-            <div class="row">
-                <div class="col-xl-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fa fa-user me-2"></i>البيانات الأساسية</h5>
-                        </div>
-                        <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">الاسم بالعربية</label>
@@ -179,59 +179,63 @@
                                 </button>
                                 <a href="{{ route('student.profile.index') }}" class="btn btn-secondary">إلغاء</a>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-4">
-                    <div class="card" id="photo-section">
-                        <div class="card-header">
-                            <h5><i class="fa fa-image me-2"></i>الصورة الشخصية</h5>
-                        </div>
-                        <div class="card-body text-center">
-                            @php
-                                $photoPath = $student->photo ?? null;
-                                $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
-                            @endphp
-
-                            <div class="position-relative d-inline-block mb-3">
-                                <div id="photo-preview-container" class="position-relative">
-                                    @if($photoUrl)
-                                        <img id="profile-photo-preview" src="{{ $photoUrl }}" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--(--clr-primary, #0d6efd));">
-                                    @else
-                                        <div id="profile-photo-placeholder" class="bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border: 3px dashed #ccc;">
-                                            <i class="fa fa-camera fa-3x text-muted"></i>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                @if($photoUrl)
-                                    <form action="{{ route('student.profile.delete-photo') }}" method="POST" class="position-absolute top-0 start-100 translate-middle" style="margin-top: 5px; margin-right: -10px;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm rounded-circle" style="width: 32px; height: 32px;" onclick="return confirm('هل أنت متأكد من حذف الصورة الشخصية؟')" title="حذف الصورة">
-                                            <i class="fa fa-times"></i>
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-
-                            <div class="mt-2">
-                                <label for="photo-input" class="btn btn-sm btn-outline-primary mb-2">
-                                    <i class="fa fa-upload me-1"></i>اختيار صورة جديدة
-                                </label>
-                                <input type="file" id="photo-input" class="form-control d-none @error('photo') is-invalid @enderror" name="photo" accept="image/*" onchange="previewPhoto(this)">
-                                @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-
-                            <small class="text-muted d-block mt-1">الصيغ المدعومة: JPG, PNG, GIF, WebP</small>
-                            <small class="text-muted d-block">الحد الأقصى: 2MB</small>
-                            <small class="text-muted d-block">الحجم المثالي: 300×300 بكسل</small>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
-        </form>
+
+            <div class="col-xl-4">
+                <div class="card" id="photo-section">
+                    <div class="card-header">
+                        <h5><i class="fa fa-image me-2"></i>الصورة الشخصية</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        @php
+                            $photoPath = $student->photo ?? null;
+                            $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+                        @endphp
+
+                        <div class="position-relative d-inline-block mb-3">
+                            <div id="photo-preview-container" class="position-relative">
+                                @if($photoUrl)
+                                    <img id="profile-photo-preview" src="{{ $photoUrl }}" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--(--clr-primary, #0d6efd));">
+                                @else
+                                    <div id="profile-photo-placeholder" class="bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border: 3px dashed #ccc;">
+                                        <i class="fa fa-camera fa-3x text-muted"></i>
+                                    </div>
+                                @endif
+                            </div>
+
+                            @if($photoUrl)
+                                <form action="{{ route('student.profile.delete-photo') }}" method="POST" class="position-absolute top-0 start-100 translate-middle" style="margin-top: 5px; margin-right: -10px;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger btn-sm rounded-circle" style="width: 32px; height: 32px;" onclick="return confirm('هل أنت متأكد من حذف الصورة الشخصية؟')" title="حذف الصورة">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+
+                        <div class="mt-2">
+                            <form action="{{ route('student.profile.update') }}" method="POST" enctype="multipart/form-data" id="photo-upload-form">
+                                @csrf
+                                @method('PUT')
+                                <label for="photo-input" class="btn btn-sm btn-outline-primary mb-2">
+                                    <i class="fa fa-upload me-1"></i>اختيار صورة جديدة
+                                </label>
+                                <input type="file" id="photo-input" class="form-control d-none @error('photo') is-invalid @enderror" name="photo" accept="image/*" onchange="document.getElementById('photo-upload-form').submit()">
+                                @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </form>
+                        </div>
+
+                        <small class="text-muted d-block mt-1">الصيغ المدعومة: JPG, PNG, GIF, WebP</small>
+                        <small class="text-muted d-block">الحد الأقصى: 2MB</small>
+                        <small class="text-muted d-block">الحجم المثالي: 300×300 بكسل</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row">
             <div class="col-xl-8">
