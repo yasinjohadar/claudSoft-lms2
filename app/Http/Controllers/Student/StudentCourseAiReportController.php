@@ -32,7 +32,18 @@ class StudentCourseAiReportController extends Controller
             ->orderBy('title')
             ->get(['id', 'title']);
 
-        return view('student.study-reports.index', compact('reports', 'enrolledCourses'));
+        $stats = [
+            'total_reports' => StudentCourseAiReport::where('student_id', $userId)->count(),
+            'courses' => $enrolledCourses->count(),
+            'recent' => StudentCourseAiReport::where('student_id', $userId)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->count(),
+            'courses_with_reports' => StudentCourseAiReport::where('student_id', $userId)
+                ->distinct('course_id')
+                ->count('course_id'),
+        ];
+
+        return view('student.study-reports.index', compact('reports', 'enrolledCourses', 'stats'));
     }
 
     public function index(Request $request, Course $course): View

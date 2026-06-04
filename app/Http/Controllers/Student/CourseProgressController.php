@@ -119,7 +119,7 @@ class CourseProgressController extends Controller
 
             // Get all enrollments
             $enrollments = $student->courseEnrollments()
-                ->with('course')
+                ->with(['course.instructor'])
                 ->get();
 
             // Calculate statistics for each course

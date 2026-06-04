@@ -4,107 +4,48 @@
     الموارد الخارجية
 @stop
 
-@section('css')
-<style>
-    .external-resource-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border-radius: 12px;
-    }
-    .external-resource-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    }
-    [data-theme-mode="dark"] .external-resource-card:hover {
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-    }
-    #external-resources-results.is-loading {
-        opacity: 0.55;
-        pointer-events: none;
-    }
-</style>
-@stop
-
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content student-external-resources-page">
     <div class="container-fluid">
 
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">الموارد الخارجية</h5>
-                <nav class="mt-2">
+        @include('student.components.alerts')
+
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div>
+                <h4 class="student-my-courses-welcome__title mb-1">الموارد الخارجية</h4>
+                <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
                         <li class="breadcrumb-item active">الموارد الخارجية</li>
                     </ol>
                 </nav>
             </div>
-            <div class="d-flex align-items-center gap-2 my-2 my-xl-0">
-                <span class="badge bg-primary-transparent text-primary fs-12" id="external-resources-count">
+            <div class="mt-3 mt-md-0">
+                <span class="badge bg-primary-transparent fs-12 px-3 py-2" id="external-resources-count">
                     {{ $resources->total() }} مورد
                 </span>
             </div>
         </div>
 
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('student.pages.external-resources.partials.external-resources-stats', ['stats' => $stats])
 
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <div class="card custom-card">
-                    <div class="card-header border-0 pb-0">
-                        <div class="card-title mb-0">
-                            <i class="ri-filter-3-line me-2 text-primary"></i>تصفية النتائج
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <form id="external-resources-filters" class="row g-3 align-items-end">
-                            <div class="col-lg-4 col-md-6">
-                                <label class="form-label">بحث</label>
-                                <input type="search" name="search" id="erf-search" class="form-control" placeholder="عنوان، وصف، اسم ملف…" value="{{ request('search') }}">
-                            </div>
-                            <div class="col-lg-2 col-md-6">
-                                <label class="form-label">نوع المورد</label>
-                                <select name="resource_type" id="erf-type" class="form-select">
-                                    <option value="">الكل</option>
-                                    @foreach(\App\Models\Resource::resourceTypeOptions() as $key => $label)
-                                        <option value="{{ $key }}" {{ request('resource_type') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-lg-2 col-md-6">
-                                <label class="form-label">التصنيف</label>
-                                <select name="classification" id="erf-classification" class="form-select">
-                                    <option value="">الكل</option>
-                                    @foreach(\App\Models\Resource::classificationOptions() as $key => $label)
-                                        <option value="{{ $key }}" {{ request('classification') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-lg-2 col-md-6">
-                                <label class="form-label">الترتيب</label>
-                                <select name="sort" id="erf-sort" class="form-select">
-                                    <option value="latest" {{ request('sort', 'latest') === 'latest' ? 'selected' : '' }}>الأحدث</option>
-                                    <option value="title" {{ request('sort') === 'title' ? 'selected' : '' }}>العنوان (أ-ي)</option>
-                                </select>
-                            </div>
-                            <div class="col-lg-2 col-md-6 d-flex gap-2">
-                                <button type="button" class="btn btn-light flex-grow-1" id="erf-reset">
-                                    <i class="ri-refresh-line me-1"></i>إعادة تعيين
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+        @include('student.pages.external-resources.partials.external-resources-filters')
+
+        <div class="card custom-card student-quizzes-panel">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="avatar avatar-sm bg-primary-transparent">
+                        <i class="fe fe-book-open text-primary"></i>
+                    </span>
+                    <h6 class="card-title mb-0">مكتبة الموارد</h6>
+                </div>
+
+                <div id="external-resources-results">
+                    @include('student.pages.external-resources.partials.grid', ['resources' => $resources])
                 </div>
             </div>
         </div>
 
-        <div id="external-resources-results">
-            @include('student.pages.external-resources.partials.grid', ['resources' => $resources])
-        </div>
     </div>
 </div>
 @stop
@@ -114,9 +55,30 @@
 (function () {
     const resultsEl = document.getElementById('external-resources-results');
     const countEl = document.getElementById('external-resources-count');
-    const form = document.getElementById('external-resources-filters');
+    const filteredCountEl = document.getElementById('external-resources-filtered-count');
     const indexUrl = @json(route('student.external-resources.index'));
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    function formatNumber(value) {
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+    }
+
+    function animateCount(el, target) {
+        if (!el) return;
+        var duration = 600;
+        var start = performance.now();
+        function step(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = formatNumber(target * eased);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        animateCount(el, parseFloat(el.dataset.countup || '0'));
+    });
 
     function buildParams(page) {
         const params = new URLSearchParams();
@@ -151,13 +113,14 @@
             })
             .then(function (data) {
                 resultsEl.innerHTML = data.html;
-                if (data.meta && countEl) {
-                    countEl.textContent = data.meta.total + ' مورد';
+                if (data.meta) {
+                    if (countEl) countEl.textContent = data.meta.total + ' مورد';
+                    animateCount(filteredCountEl, data.meta.total);
                 }
                 bindPagination();
             })
             .catch(function () {
-                resultsEl.innerHTML = '<div class="alert alert-danger">تعذر تحميل النتائج. حاول مرة أخرى.</div>';
+                resultsEl.innerHTML = '<div class="alert alert-danger mb-0">تعذر تحميل النتائج. حاول مرة أخرى.</div>';
             })
             .finally(function () {
                 resultsEl.classList.remove('is-loading');

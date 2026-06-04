@@ -5,82 +5,96 @@
 @stop
 
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content student-study-reports-page">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">تقارير الدراسة (AI)</h5>
-                <nav>
+
+        @include('student.components.alerts')
+
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div>
+                <h4 class="student-my-courses-welcome__title mb-1">تقارير الدراسة (AI)</h4>
+                <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
                         <li class="breadcrumb-item active">تقارير الدراسة</li>
                     </ol>
                 </nav>
             </div>
-        </div>
-
-        <div class="alert alert-info small">
-            هنا تجد كل التقارير الصادرة لك. يمكنك أيضاً فتح صفحة التقارير لكل كورس من القائمة أدناه.
-        </div>
-
-        @if($enrolledCourses->isNotEmpty())
-        <div class="card custom-card mb-4">
-            <div class="card-header">
-                <span class="fw-semibold">وصول سريع حسب الكورس</span>
+            <div class="mt-3 mt-md-0">
+                <a href="{{ route('student.progress.overview') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-trending-up me-1"></i>تقدمي في الكورسات
+                </a>
             </div>
+        </div>
+
+        @include('student.study-reports.partials.study-reports-stats', ['stats' => $stats])
+
+        <div class="student-study-reports-info mb-4">
+            <i class="fe fe-info"></i>
+            <p class="mb-0">هنا تجد كل التقارير الصادرة لك. يمكنك أيضاً فتح صفحة التقارير لكل كورس من القائمة أدناه.</p>
+        </div>
+
+        @include('student.study-reports.partials.study-reports-quick-links', ['enrolledCourses' => $enrolledCourses])
+
+        <div class="card custom-card student-quizzes-panel">
             <div class="card-body">
-                <div class="row g-2">
-                    @foreach($enrolledCourses as $c)
-                        <div class="col-md-6 col-lg-4">
-                            <a href="{{ route('student.progress.ai-reports.index', $c) }}" class="btn btn-outline-primary btn-sm w-100 text-start text-truncate" title="{{ $c->title }}">
-                                <i class="fas fa-graduation-cap me-1"></i>{{ $c->title }}
-                            </a>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-primary-transparent">
+                            <i class="fe fe-list text-primary"></i>
+                        </span>
+                        <h6 class="card-title mb-0">كل التقارير</h6>
+                    </div>
+                </div>
+
+                @include('student.study-reports.partials.study-reports-table', ['reports' => $reports])
+
+                <div class="row g-3 d-lg-none">
+                    @forelse($reports as $index => $report)
+                        @include('student.study-reports.partials.study-reports-card', [
+                            'report' => $report,
+                            'index' => $index,
+                        ])
+                    @empty
+                        <div class="col-12">
+                            @include('student.study-reports.partials.study-reports-empty')
                         </div>
-                    @endforeach
+                    @endforelse
                 </div>
-            </div>
-        </div>
-        @endif
 
-        <div class="card custom-card">
-            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span class="fw-semibold">كل التقارير</span>
-                <a href="{{ route('student.progress.overview') }}" class="btn btn-sm btn-light">تقدمي في الكورسات</a>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>الكورس</th>
-                                <th>المجموعة</th>
-                                <th>التاريخ</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($reports as $r)
-                                <tr>
-                                    <td>{{ $r->course?->title ?? '—' }}</td>
-                                    <td>{{ $r->courseGroup?->name ?? '—' }}</td>
-                                    <td class="text-muted small">{{ $r->created_at?->format('Y-m-d H:i') }}</td>
-                                    <td>
-                                        <a href="{{ route('student.progress.ai-reports.show', $r) }}" class="btn btn-sm btn-primary">عرض التقرير</a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">لا توجد تقارير دراسة بعد. عند إصدار المدرّس لتقرير سيظهر هنا، وستصلك إشعار.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
                 @if($reports->hasPages())
-                    <div class="mt-3">{{ $reports->links() }}</div>
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $reports->links() }}
+                    </div>
                 @endif
             </div>
         </div>
+
     </div>
 </div>
+@stop
+
+@section('scripts')
+<script>
+    (function () {
+        function formatNumber(value) {
+            return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+        }
+
+        document.querySelectorAll('[data-countup]').forEach(function (el) {
+            var target = parseFloat(el.dataset.countup || '0');
+            var duration = 800;
+            var start = performance.now();
+
+            function step(now) {
+                var progress = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = formatNumber(target * eased);
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    })();
+</script>
 @stop

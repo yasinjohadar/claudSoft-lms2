@@ -178,14 +178,28 @@ class TrainingCampController extends Controller
     /**
      * Display student's enrollments.
      */
-    public function myEnrollments()
+    public function myEnrollments(Request $request)
     {
-        $enrollments = CampEnrollment::with(['camp.category'])
-            ->where('student_id', Auth::id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $studentId = Auth::id();
+        $query = CampEnrollment::with(['camp.category'])
+            ->where('student_id', $studentId)
+            ->orderBy('created_at', 'desc');
 
-        return view('student.pages.training-camps.my-enrollments', compact('enrollments'));
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $enrollments = $query->paginate(10)->withQueryString();
+
+        $baseQuery = CampEnrollment::where('student_id', $studentId);
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
+            'approved' => (clone $baseQuery)->where('status', 'approved')->count(),
+            'unpaid' => (clone $baseQuery)->where('payment_status', 'unpaid')->count(),
+        ];
+
+        return view('student.pages.training-camps.my-enrollments', compact('enrollments', 'stats'));
     }
 
     /**

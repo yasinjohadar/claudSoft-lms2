@@ -91,7 +91,10 @@ class CourseController extends Controller
         try {
             $student = auth()->user();
 
-            $query = $student->courseEnrollments()->with(['course.category', 'course.sections']);
+            $query = $student->courseEnrollments()->with([
+                'course.category',
+                'course' => fn ($q) => $q->withCount(['sections', 'modules']),
+            ]);
 
             // Filter by status
             if ($request->filled('status')) {

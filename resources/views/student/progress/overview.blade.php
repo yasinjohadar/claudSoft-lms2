@@ -5,202 +5,129 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
+<div class="main-content app-content student-progress-overview-page">
+    <div class="container-fluid">
 
-            <!-- Alerts -->
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
+        @include('student.components.alerts')
 
-            @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">تقدمي في الكورسات</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item active">تقدمي في الكورسات</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-
-            <!-- Overall Statistics -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-primary-transparent me-3">
-                                    <i class="fas fa-book fs-20 text-primary"></i>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-0">إجمالي الكورسات</p>
-                                    <h4 class="mb-0">{{ $stats['total_courses'] }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-success-transparent me-3">
-                                    <i class="fas fa-check-circle fs-20 text-success"></i>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-0">كورسات مكتملة</p>
-                                    <h4 class="mb-0">{{ $stats['completed_courses'] }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-warning-transparent me-3">
-                                    <i class="fas fa-play-circle fs-20 text-warning"></i>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-0">كورسات نشطة</p>
-                                    <h4 class="mb-0">{{ $stats['active_courses'] }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-info-transparent me-3">
-                                    <i class="fas fa-percentage fs-20 text-info"></i>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-0">متوسط التقدم</p>
-                                    <h4 class="mb-0">{{ number_format($stats['average_progress'], 1) }}%</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Courses Progress List -->
-            @if(count($coursesProgress) > 0)
-                <div class="row">
-                    @foreach($coursesProgress as $progress)
-                        <div class="col-xl-6 col-lg-12">
-                            <div class="card custom-card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-start justify-content-between mb-3">
-                                        <div class="flex-grow-1">
-                                            <h6 class="fw-semibold mb-1">
-                                                <a href="{{ route('student.courses.show', $progress['course']->id) }}"
-                                                   class="text-dark">
-                                                    {{ $progress['course']->title }}
-                                                </a>
-                                            </h6>
-                                            <p class="text-muted mb-2 fs-12">
-                                                <i class="fas fa-user me-1"></i>{{ $progress['course']->instructor->name ?? 'غير محدد' }}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            @switch($progress['status'])
-                                                @case('completed')
-                                                    <span class="badge bg-success">مكتمل</span>
-                                                    @break
-                                                @case('active')
-                                                    <span class="badge bg-primary">نشط</span>
-                                                    @break
-                                                @case('suspended')
-                                                    <span class="badge bg-warning">معلق</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge bg-secondary">{{ $progress['status'] }}</span>
-                                            @endswitch
-                                        </div>
-                                    </div>
-
-                                    <!-- Progress Bar -->
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted fs-12">نسبة الإكمال</span>
-                                            <span class="fw-semibold">{{ number_format($progress['completion_percentage'], 1) }}%</span>
-                                        </div>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-primary"
-                                                 role="progressbar"
-                                                 style="width: {{ $progress['completion_percentage'] }}%"
-                                                 aria-valuenow="{{ $progress['completion_percentage'] }}"
-                                                 aria-valuemin="0"
-                                                 aria-valuemax="100">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Course Info -->
-                                    <div class="d-flex justify-content-between align-items-center border-top pt-3">
-                                        <div class="text-muted fs-12">
-                                            @if($progress['last_accessed'])
-                                                <i class="fas fa-clock me-1"></i>
-                                                آخر دخول: {{ $progress['last_accessed']->diffForHumans() }}
-                                            @else
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                لم يتم الدخول بعد
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <a href="{{ route('student.progress.show', $progress['course']->id) }}"
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-chart-line me-1"></i>عرض التفاصيل
-                                            </a>
-                                            @if($progress['enrollment']->certificate_issued)
-                                                <a href="{{ route('student.progress.certificate', $progress['course']->id) }}"
-                                                   class="btn btn-sm btn-success ms-1">
-                                                    <i class="fas fa-certificate me-1"></i>الشهادة
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="card custom-card">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-book-open fs-50 text-muted mb-3 opacity-25"></i>
-                        <h5 class="mb-2">لم تسجل في أي كورس بعد</h5>
-                        <p class="text-muted">ابدأ رحلتك التعليمية بالتسجيل في كورس</p>
-                        <a href="{{ route('student.courses.index') }}" class="btn btn-primary">
-                            <i class="fas fa-search me-2"></i>تصفح الكورسات
-                        </a>
-                    </div>
-                </div>
-            @endif
-
+        <div class="my-4 student-my-courses-welcome">
+            <h4 class="student-my-courses-welcome__title mb-1">تقدمي في الكورسات</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item active">تقدمي في الكورسات</li>
+                </ol>
+            </nav>
         </div>
+
+        @include('student.progress.partials.overview-stats', ['stats' => $stats])
+
+        @php
+            $currentStatus = request('status', 'all');
+            $filteredProgress = collect($coursesProgress)->when(
+                $currentStatus !== 'all',
+                fn ($items) => $items->where('status', $currentStatus)
+            );
+            $filters = [
+                ['key' => 'all', 'label' => 'الكل', 'icon' => 'fe-grid', 'params' => []],
+                ['key' => 'active', 'label' => 'نشطة', 'icon' => 'fe-play', 'params' => ['status' => 'active']],
+                ['key' => 'completed', 'label' => 'مكتملة', 'icon' => 'fe-check-circle', 'params' => ['status' => 'completed']],
+                ['key' => 'suspended', 'label' => 'معلقة', 'icon' => 'fe-pause', 'params' => ['status' => 'suspended']],
+            ];
+        @endphp
+
+        <div class="card custom-card student-my-courses-panel">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="avatar avatar-sm bg-primary-transparent">
+                        <i class="fe fe-trending-up text-primary"></i>
+                    </span>
+                    <h6 class="card-title mb-0">تقدم الكورسات</h6>
+                </div>
+
+                @if(count($coursesProgress) > 0)
+                    <div class="student-my-courses-filters mb-4">
+                        @foreach ($filters as $filter)
+                            <a href="{{ route('student.progress.overview', $filter['params']) }}"
+                               class="student-my-courses-filter {{ $currentStatus === $filter['key'] || ($filter['key'] === 'all' && !request('status')) ? 'is-active' : '' }}">
+                                <i class="fe {{ $filter['icon'] }}"></i>
+                                <span>{{ $filter['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div class="row g-4">
+                    @forelse($filteredProgress as $index => $progress)
+                        @include('student.progress.partials.overview-course-card', [
+                            'progress' => $progress,
+                            'index' => $index,
+                        ])
+                    @empty
+                        <div class="col-12">
+                            @if(count($coursesProgress) > 0)
+                                <div class="student-my-courses-empty text-center py-5">
+                                    <div class="student-my-courses-empty__icon mb-4">
+                                        <i class="fe fe-filter"></i>
+                                    </div>
+                                    <h4 class="mb-2">لا توجد كورسات بهذا التصنيف</h4>
+                                    <p class="text-muted mb-4">جرّب تصفية أخرى أو اعرض جميع الكورسات.</p>
+                                    <a href="{{ route('student.progress.overview') }}" class="btn btn-outline-primary rounded-pill px-4">
+                                        <i class="fe fe-grid me-2"></i>عرض الكل
+                                    </a>
+                                </div>
+                            @else
+                                <div class="student-my-courses-empty text-center py-5">
+                                    <div class="student-my-courses-empty__icon mb-4">
+                                        <i class="fe fe-book-open"></i>
+                                    </div>
+                                    <h4 class="mb-2">لم تسجل في أي كورس بعد</h4>
+                                    <p class="text-muted mb-4">ابدأ رحلتك التعليمية بالتسجيل في كورس</p>
+                                    <a href="{{ route('student.courses.index') }}" class="btn btn-primary rounded-pill px-4">
+                                        <i class="fe fe-search me-2"></i>تصفح الكورسات
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
     </div>
+</div>
 @stop
 
-@section('script')
+@section('scripts')
 <script>
-    // Add any additional JavaScript if needed
+    (function () {
+        function formatNumber(value, decimals) {
+            if (decimals) {
+                return new Intl.NumberFormat('ar-EG', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                }).format(value);
+            }
+            return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+        }
+
+        document.querySelectorAll('[data-countup]').forEach(function (el) {
+            var target = parseFloat(el.dataset.countup || '0');
+            var isPercent = el.dataset.countupSuffix === '%';
+            var decimals = el.dataset.countupDecimals === '1';
+            var duration = 800;
+            var start = performance.now();
+
+            function step(now) {
+                var progress = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                var value = formatNumber(target * eased, decimals);
+                el.textContent = isPercent ? value + '%' : value;
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    })();
 </script>
 @stop

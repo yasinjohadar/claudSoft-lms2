@@ -44,6 +44,31 @@ class QuizAttemptController extends Controller
             $query->where('quiz_type', $request->quiz_type);
         }
 
+        $filteredQuizzes = (clone $query)->get();
+        $filteredIds = $filteredQuizzes->pluck('id');
+
+        $stats = [
+            'total' => Quiz::whereIn('course_id', $enrolledCourseIds)
+                ->where('is_published', true)
+                ->where('is_visible', true)
+                ->available()
+                ->count(),
+            'filtered' => $filteredQuizzes->count(),
+            'can_attempt' => $filteredQuizzes->filter(fn ($quiz) => $quiz->canAttempt($studentId))->count(),
+            'attempted' => $filteredIds->isEmpty() ? 0 : QuizAttempt::where('student_id', $studentId)
+                ->whereIn('quiz_id', $filteredIds)
+                ->distinct()
+                ->count('quiz_id'),
+        ];
+
+        $courses = \App\Models\Course::whereIn('id',
+            Quiz::whereIn('course_id', $enrolledCourseIds)
+                ->where('is_published', true)
+                ->where('is_visible', true)
+                ->distinct()
+                ->pluck('course_id')
+        )->orderBy('title')->get(['id', 'title']);
+
         $quizzes = $query->paginate(15);
 
         // Add attempt information for each quiz
@@ -64,7 +89,7 @@ class QuizAttemptController extends Controller
             return $quiz;
         });
 
-        return view('student.pages.quizzes.index', compact('quizzes'));
+        return view('student.pages.quizzes.index', compact('quizzes', 'courses', 'stats'));
     }
 
     /**

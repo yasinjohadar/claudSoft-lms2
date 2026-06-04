@@ -126,21 +126,10 @@ class QuizReviewController extends Controller
     {
         $studentId = auth()->id();
 
-        // Get all analytics for the student
         $analytics = QuizAnalytics::where('student_id', $studentId)
             ->with(['quiz', 'course'])
             ->get();
 
-        // Overall performance metrics
-        $overallMetrics = [
-            'total_quizzes' => $analytics->count(),
-            'average_score' => $analytics->avg('average_percentage'),
-            'best_score' => $analytics->max('best_percentage'),
-            'total_time' => $analytics->sum('total_time_spent'),
-            'average_improvement' => $analytics->avg('improvement_rate'),
-        ];
-
-        // Get all strengths and weaknesses
         $allStrengths = [];
         $allWeaknesses = [];
 
@@ -153,7 +142,6 @@ class QuizReviewController extends Controller
             }
         }
 
-        // Aggregate strengths
         $strengthsByType = [];
         foreach ($allStrengths as $strength) {
             $type = $strength['type'] ?? 'unknown';
@@ -171,20 +159,23 @@ class QuizReviewController extends Controller
             $strengthsByType[$type]['max_score'] += $strength['max_score'] ?? 0;
         }
 
-        // Calculate percentages for strengths
         foreach ($strengthsByType as &$strength) {
             $strength['percentage'] = $strength['max_score'] > 0
                 ? ($strength['total_score'] / $strength['max_score']) * 100
                 : 0;
         }
+        unset($strength);
 
-        // Sort and get top 5 strengths
         $topStrengths = collect($strengthsByType)
             ->sortByDesc('percentage')
             ->take(5)
-            ->values();
+            ->values()
+            ->map(fn ($item) => [
+                'name' => $item['display_name'] ?? $item['type'] ?? 'غير محدد',
+                'category' => $item['type'] ?? '',
+                'accuracy' => round($item['percentage'] ?? 0, 1),
+            ]);
 
-        // Aggregate weaknesses
         $weaknessesByType = [];
         foreach ($allWeaknesses as $weakness) {
             $type = $weakness['type'] ?? 'unknown';
@@ -202,30 +193,43 @@ class QuizReviewController extends Controller
             $weaknessesByType[$type]['max_score'] += $weakness['max_score'] ?? 0;
         }
 
-        // Calculate percentages for weaknesses
         foreach ($weaknessesByType as &$weakness) {
             $weakness['percentage'] = $weakness['max_score'] > 0
                 ? ($weakness['total_score'] / $weakness['max_score']) * 100
                 : 0;
         }
+        unset($weakness);
 
-        // Sort and get top 5 weaknesses
         $topWeaknesses = collect($weaknessesByType)
             ->sortBy('percentage')
             ->take(5)
-            ->values();
+            ->values()
+            ->map(fn ($item) => [
+                'name' => $item['display_name'] ?? $item['type'] ?? 'غير محدد',
+                'category' => $item['type'] ?? '',
+                'accuracy' => round($item['percentage'] ?? 0, 1),
+            ]);
 
-        // Performance by course
-        $performanceByCourse = $analytics->groupBy('course_id')->map(function($courseAnalytics) {
+        $performanceByCourse = $analytics->groupBy('course_id')->map(function ($courseAnalytics) use ($studentId) {
+            $course = $courseAnalytics->first()->course;
+            $courseId = $course?->id;
+
+            $attemptsQuery = QuizAttempt::where('student_id', $studentId)
+                ->where('is_completed', true)
+                ->when($courseId, fn ($q) => $q->whereHas('quiz', fn ($q2) => $q2->where('course_id', $courseId)));
+
+            $attemptCount = (clone $attemptsQuery)->count();
+            $passedCount = (clone $attemptsQuery)->where('passed', true)->count();
+
             return [
-                'course' => $courseAnalytics->first()->course,
-                'average_score' => $courseAnalytics->avg('average_percentage'),
+                'name' => $course?->title ?? 'غير محدد',
+                'attempts' => $attemptCount,
+                'average_score' => round($courseAnalytics->avg('average_percentage') ?? 0, 1),
+                'pass_rate' => $attemptCount > 0 ? round(($passedCount / $attemptCount) * 100, 1) : 0,
                 'quizzes_taken' => $courseAnalytics->count(),
-                'total_time' => $courseAnalytics->sum('total_time_spent'),
             ];
         })->values();
 
-        // Progress over time
         $progressOverTime = QuizAttempt::where('student_id', $studentId)
             ->where('is_completed', true)
             ->selectRaw('DATE(started_at) as date, AVG(percentage_score) as avg_score')
@@ -233,6 +237,22 @@ class QuizReviewController extends Controller
             ->orderBy('date')
             ->limit(30)
             ->get();
+
+        $completedAttempts = QuizAttempt::where('student_id', $studentId)->where('is_completed', true);
+        $totalAttempts = (clone $completedAttempts)->count();
+        $passedAttempts = (clone $completedAttempts)->where('passed', true)->count();
+        $avgTimeSeconds = (clone $completedAttempts)->avg('time_spent');
+
+        $overallMetrics = [
+            'total_quizzes' => $analytics->count(),
+            'average_score' => round($analytics->avg('average_percentage') ?? 0, 1),
+            'best_score' => round($analytics->max('best_percentage') ?? 0, 1),
+            'pass_rate' => $totalAttempts > 0 ? round(($passedAttempts / $totalAttempts) * 100, 1) : 0,
+            'average_time' => $avgTimeSeconds ? (int) round($avgTimeSeconds / 60) : 0,
+            'total_attempts' => $totalAttempts,
+            'total_time' => $analytics->sum('total_time_spent'),
+            'average_improvement' => round($analytics->avg('improvement_rate') ?? 0, 1),
+        ];
 
         return view('student.pages.quizzes.analytics', compact(
             'analytics',

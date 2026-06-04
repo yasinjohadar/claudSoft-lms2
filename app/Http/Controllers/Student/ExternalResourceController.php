@@ -16,6 +16,16 @@ class ExternalResourceController extends Controller
     {
         $resources = $this->filteredQuery($request)->paginate(12)->withQueryString();
 
+        $baseQuery = Resource::query()->forStudentExternalLibrary();
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'links' => (clone $baseQuery)->where(function ($q) {
+                $q->where('resource_source', 'url')->orWhere('resource_type', 'external_sites');
+            })->count(),
+            'files' => (clone $baseQuery)->whereNotNull('file_path')->count(),
+            'filtered' => $resources->total(),
+        ];
+
         if ($request->ajax() || $request->wantsJson()) {
             $html = view('student.pages.external-resources.partials.grid', compact('resources'))->render();
 
@@ -31,7 +41,7 @@ class ExternalResourceController extends Controller
             ]);
         }
 
-        return view('student.pages.external-resources.index', compact('resources'));
+        return view('student.pages.external-resources.index', compact('resources', 'stats'));
     }
 
     public function access(Resource $resource)

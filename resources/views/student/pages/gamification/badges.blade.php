@@ -5,83 +5,130 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <h4 class="mb-0">شاراتي</h4>
-            </div>
+<div class="main-content app-content student-badges-page">
+    <div class="container-fluid">
 
-            <!-- الشارات المكتسبة -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-medal me-2 text-success"></i>الشارات المكتسبة ({{ count($earnedBadges ?? []) }})</h5>
+        @include('student.components.alerts')
+
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div>
+                <h4 class="student-my-courses-welcome__title mb-1">شاراتي</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
+                        <li class="breadcrumb-item active">شاراتي</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="mt-3 mt-md-0">
+                <a href="{{ route('gamification.dashboard') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
+                </a>
+            </div>
+        </div>
+
+        @include('student.pages.gamification.partials.badges-stats', ['stats' => $stats])
+
+        <div class="card custom-card student-quizzes-panel mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="avatar avatar-sm bg-success-transparent">
+                        <i class="fe fe-award text-success"></i>
+                    </span>
+                    <h6 class="card-title mb-0">الشارات المكتسبة ({{ count($earnedBadges ?? []) }})</h6>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        @forelse($earnedBadges ?? [] as $item)
+
+                @if(count($earnedBadges ?? []) > 0)
+                    <div class="row g-4">
+                        @foreach($earnedBadges as $index => $item)
                             @php
                                 $badge = $item->badge ?? $item;
                                 $awardedAt = $item->awarded_at ?? optional($item->pivot)->awarded_at ?? null;
-                                $points = $badge->points_value ?? $badge->points_reward ?? 0;
                             @endphp
-                            <div class="col-lg-3 col-md-4 col-6 mb-4">
-                                <div class="card border-0 shadow-sm text-center h-100">
-                                    <div class="card-body">
-                                        <div class="fs-1 mb-2">{{ $badge->icon ?? '🏅' }}</div>
-                                        <h6 class="fw-bold">{{ $badge->name }}</h6>
-                                        <p class="small text-muted mb-2">{{ $badge->description }}</p>
-                                        <span class="badge bg-success">+{{ $points }} نقطة</span>
-                                        <p class="small text-muted mt-2 mb-0">
-                                            <i class="fas fa-calendar-check me-1"></i>
-                                            {{ $awardedAt ? $awardedAt->format('Y/m/d') : '—' }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <p class="text-muted text-center py-4">لم تحصل على شارات بعد. استمر في التعلم!</p>
-                            </div>
-                        @endforelse
+                            @include('student.pages.gamification.partials.badge-card', [
+                                'badge' => $badge,
+                                'isEarned' => true,
+                                'awardedAt' => $awardedAt,
+                                'progress' => ['progress' => 100],
+                                'index' => $index,
+                            ])
+                        @endforeach
                     </div>
-                </div>
-            </div>
-
-            <!-- جميع الشارات -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-list me-2 text-muted"></i>جميع الشارات</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        @forelse($allBadges ?? [] as $badge)
-                            <div class="col-lg-3 col-md-4 col-6 mb-4">
-                                <div class="card border-0 shadow-sm text-center h-100" style="opacity: {{ ($badge->is_earned ?? false) ? '1' : '0.7' }};">
-                                    <div class="card-body">
-                                        <div class="fs-1 mb-2" style="{{ ($badge->is_earned ?? false) ? '' : 'filter: grayscale(100%);' }}">{{ $badge->icon ?? '🏅' }}</div>
-                                        <h6 class="fw-bold">{{ $badge->name ?? 'شارة' }}</h6>
-                                        <p class="small text-muted mb-2">{{ $badge->description ?? '' }}</p>
-                                        <span class="badge {{ ($badge->is_earned ?? false) ? 'bg-success' : 'bg-secondary' }}">+{{ $badge->points_value ?? 0 }} نقطة</span>
-                                        @if($badge->is_earned ?? false)
-                                            <p class="small text-success mt-2 mb-0">
-                                                <i class="fas fa-check-circle me-1"></i>تم الحصول عليه
-                                            </p>
-                                        @else
-                                            <p class="small text-muted mt-2 mb-0">
-                                                <i class="fas fa-lock me-1"></i>غير مكتسب
-                                            </p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <p class="text-muted text-center py-4">لا توجد شارات متاحة حالياً</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
+                @else
+                    @include('student.pages.gamification.partials.badges-empty', [
+                        'title' => 'لم تحصل على شارات بعد',
+                        'message' => 'استمر في التعلم لكسب أول شارة!',
+                    ])
+                @endif
             </div>
         </div>
+
+        <div class="card custom-card student-quizzes-panel">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="avatar avatar-sm bg-primary-transparent">
+                        <i class="fe fe-grid text-primary"></i>
+                    </span>
+                    <h6 class="card-title mb-0">جميع الشارات</h6>
+                </div>
+
+                @include('student.pages.gamification.partials.badges-filters')
+
+                @if(count($allBadges ?? []) > 0)
+                    <div class="row g-4">
+                        @foreach($allBadges as $index => $badge)
+                            @include('student.pages.gamification.partials.badge-card', [
+                                'badge' => $badge,
+                                'isEarned' => $badge->is_earned ?? false,
+                                'progress' => $badge->progress ?? ['progress' => 0],
+                                'index' => $index,
+                            ])
+                        @endforeach
+                    </div>
+                @else
+                    @include('student.pages.gamification.partials.badges-empty', [
+                        'title' => 'لا توجد شارات مطابقة',
+                        'message' => 'جرّب تغيير الفلتر أو عد لاحقاً.',
+                    ])
+                @endif
+            </div>
+        </div>
+
     </div>
+</div>
+@stop
+
+@section('scripts')
+<script>
+    (function () {
+        function formatNumber(value, decimals) {
+            if (decimals) {
+                return new Intl.NumberFormat('ar-EG', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                }).format(value);
+            }
+            return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+        }
+
+        document.querySelectorAll('[data-countup]').forEach(function (el) {
+            var target = parseFloat(el.dataset.countup || '0');
+            var isPercent = el.dataset.countupSuffix === '%';
+            var decimals = el.dataset.countupDecimals === '1';
+            var duration = 800;
+            var start = performance.now();
+
+            function step(now) {
+                var progress = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                var value = formatNumber(target * eased, decimals);
+                el.textContent = isPercent ? value + '%' : value;
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    })();
+</script>
 @stop

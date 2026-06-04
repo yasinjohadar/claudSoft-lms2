@@ -5,118 +5,57 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content student-quiz-review-page">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('student.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ $attempt->quiz->title }} - المحاولة #{{ $attempt->attempt_number }}</h5>
-                    <nav>
+            <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+                <div class="min-w-0">
+                    <h4 class="student-quizzes-welcome__title mb-1 text-truncate">
+                        {{ $attempt->quiz->title }} — المحاولة #{{ $attempt->attempt_number }}
+                    </h4>
+                    <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('student.quizzes.index') }}">الاختبارات</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('student.quizzes.review.index') }}">اختباراتي</a></li>
                             <li class="breadcrumb-item active">مراجعة المحاولة</li>
                         </ol>
                     </nav>
                 </div>
                 <div class="mt-3 mt-md-0">
-                    <a href="{{ route('student.quizzes.review.download-report', $attempt->id) }}" class="btn btn-secondary">
-                        <i class="fas fa-download me-2"></i>تحميل التقرير
+                    <a href="{{ route('student.quizzes.review.download-report', $attempt->id) }}" class="btn btn-outline-primary rounded-pill">
+                        <i class="fe fe-download me-1"></i>تحميل التقرير
                     </a>
                 </div>
             </div>
 
-            <!-- Results Summary -->
-            <div class="row mb-4">
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-{{ $attempt->passed ? 'success' : 'danger' }}-transparent me-3">
-                                    <i class="fas fa-{{ $attempt->passed ? 'check-circle' : 'times-circle' }} fs-24"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">النتيجة النهائية</p>
-                                    <h4 class="mb-0 fw-bold text-{{ $attempt->passed ? 'success' : 'danger' }}">
-                                        {{ number_format($attempt->percentage_score, 1) }}%
-                                    </h4>
-                                    <small class="text-muted">{{ $attempt->passed ? 'ناجح' : 'راسب' }}</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-primary-transparent me-3">
-                                    <i class="fas fa-star fs-24"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">الدرجة المحصلة</p>
-                                    <h4 class="mb-0 fw-bold">{{ number_format($attempt->total_score, 1) }}</h4>
-                                    <small class="text-muted">من {{ $attempt->max_score }}</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-success-transparent me-3">
-                                    <i class="fas fa-check fs-24"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">الإجابات الصحيحة</p>
-                                    <h4 class="mb-0 fw-bold">{{ $stats['correct'] }}</h4>
-                                    <small class="text-muted">من {{ $stats['total_questions'] }}</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg bg-info-transparent me-3">
-                                    <i class="fas fa-clock fs-24"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">الوقت المستغرق</p>
-                                    <h4 class="mb-0 fw-bold">{{ $attempt->getTimeSpentHumanReadable() }}</h4>
-                                    <small class="text-muted">
-                                        {{ $attempt->quiz->time_limit ? 'من ' . $attempt->quiz->time_limit . ' دقيقة' : '' }}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            @include('student.pages.quizzes.partials.review-show-stats', [
+                'attempt' => $attempt,
+                'stats' => $stats,
+            ])
 
-            <!-- Feedback -->
             @if($attempt->feedback)
-                <div class="alert alert-info mb-4">
-                    <h6 class="alert-heading">
-                        <i class="fas fa-comment me-2"></i>ملاحظات المدرس
-                    </h6>
-                    <p class="mb-0">{!! mixed_bidi_html($attempt->feedback) !!}</p>
+                <div class="card custom-card student-quiz-review-feedback mb-4">
+                    <div class="card-body">
+                        <h6 class="fw-semibold mb-2">
+                            <i class="fe fe-message-square me-2 text-primary"></i>ملاحظات المدرس
+                        </h6>
+                        <p class="mb-0 text-muted">{!! mixed_bidi_html($attempt->feedback) !!}</p>
+                    </div>
                 </div>
             @endif
 
-            <!-- Questions Review: كل سؤال في بطاقة مستقلة -->
-            <div class="quiz-review-questions-section">
-                <h5 class="fs-18 fw-semibold mb-3 d-flex align-items-center">
-                    <i class="fas fa-list me-2 text-primary"></i>مراجعة الأسئلة والإجابات
-                </h5>
+            <div class="card custom-card student-quizzes-panel student-quiz-review-questions-panel mb-4">
+                <div class="card-header border-0 pb-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-primary-transparent">
+                            <i class="fe fe-list text-primary"></i>
+                        </span>
+                        <h6 class="card-title mb-0">مراجعة الأسئلة والإجابات</h6>
+                    </div>
+                </div>
+                <div class="card-body pt-3 quiz-review-questions-section">
                     @foreach($orderedResponses as $index => $response)
                         @if($response)
                             @php
@@ -124,32 +63,29 @@
                                 $questionNumber = $index + 1;
                             @endphp
 
-                            <div class="card custom-card question-review-card mb-4">
+                            <div class="card custom-card question-review-card student-quiz-review-question mb-3">
                                 <div class="card-body">
-                                <!-- Question Header -->
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div>
-                                        <h6 class="fw-bold">
-                                            <span class="badge bg-primary me-2">سؤال {{ $questionNumber }}</span>
-                                            <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
-                                        </h6>
+                                <div class="student-quiz-review-question__header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="badge bg-primary-transparent">سؤال {{ $questionNumber }}</span>
+                                        <span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span>
                                     </div>
-                                    <div class="text-end">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
                                         @if($response->is_correct)
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>صحيح
+                                            <span class="badge bg-success-transparent">
+                                                <i class="fe fe-check-circle me-1"></i>صحيح
                                             </span>
                                         @elseif($response->is_correct === false)
-                                            <span class="badge bg-danger">
-                                                <i class="fas fa-times-circle me-1"></i>خطأ
+                                            <span class="badge bg-danger-transparent">
+                                                <i class="fe fe-x-circle me-1"></i>خطأ
                                             </span>
                                         @else
-                                            <span class="badge bg-warning">
-                                                <i class="fas fa-clock me-1"></i>قيد التصحيح
+                                            <span class="badge bg-warning-transparent">
+                                                <i class="fe fe-clock me-1"></i>قيد التصحيح
                                             </span>
                                         @endif
                                         @if($response->score_obtained !== null)
-                                            <span class="badge bg-secondary ms-2">
+                                            <span class="badge bg-secondary-transparent">
                                                 {{ number_format($response->score_obtained, 1) }} / {{ $response->max_score }}
                                             </span>
                                         @endif
@@ -168,9 +104,9 @@
                                 </div>
 
                                 <!-- Student Answer -->
-                                <div class="mb-3">
-                                    <p class="text-muted mb-2"><strong>إجابتك:</strong></p>
-                                    <div class="p-3 bg-light rounded">
+                                <div class="student-quiz-review-block mb-3">
+                                    <p class="student-quiz-review-block__label mb-2">إجابتك</p>
+                                    <div class="quiz-review-answer-box">
                                         @if($question->questionType->name == 'true_false')
                                             @php
                                                 // Get student answer value
@@ -256,7 +192,7 @@
                                                 }
                                             @endphp
                                             @if($fillBlanksAnswer && is_array($fillBlanksAnswer) && !empty($savedAnswers))
-                                                <div class="p-3 bg-white rounded border">
+                                                <div class="quiz-review-answer-box quiz-review-answer-box--inline">
                                                     @foreach($parts as $index => $part)
                                                         <span>{!! mixed_bidi_html($part) !!}</span>
                                                         @if($index < count($parts) - 1)
@@ -441,11 +377,11 @@
 
                                 <!-- Correct Answer (if allowed) -->
                                 @if($attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay']))
-                                    <div class="mb-3">
-                                        <p class="text-success mb-2">
-                                            <strong><i class="fas fa-lightbulb me-1"></i>الإجابة الصحيحة:</strong>
+                                    <div class="student-quiz-review-block mb-3">
+                                        <p class="student-quiz-review-block__label text-success mb-2">
+                                            <i class="fe fe-zap me-1"></i>الإجابة الصحيحة
                                         </p>
-                                        <div class="p-3 bg-success-transparent rounded border border-success">
+                                        <div class="quiz-review-answer-box quiz-review-answer-box--correct">
                                             @if($question->questionType->name == 'multiple_choice_single')
                                                 @php
                                                     $correctOptions = collect();
@@ -572,7 +508,7 @@
                                                 @endphp
                                                 
                                                 @if(!empty($correctAnswers))
-                                                    <div class="p-3 bg-white rounded border">
+                                                    <div class="quiz-review-answer-box quiz-review-answer-box--inline">
                                                         @foreach($parts as $index => $part)
                                                             <span>{!! mixed_bidi_html($part) !!}</span>
                                                             @if($index < count($parts) - 1)
@@ -749,7 +685,7 @@
                                                 @endphp
                                                 
                                                 @if($correctAnswer)
-                                                    <div class="p-3 bg-white rounded border">
+                                                    <div class="quiz-review-answer-box quiz-review-answer-box--inline">
                                                         <strong>الإجابة الصحيحة:</strong> {!! mixed_bidi_html(is_scalar($correctAnswer) ? (string) $correctAnswer : json_encode($correctAnswer, JSON_UNESCAPED_UNICODE)) !!}
                                                     </div>
                                                 @else
@@ -772,9 +708,9 @@
 
                                 <!-- Explanation -->
                                 @if($question->explanation)
-                                    <div class="alert alert-info mb-0">
-                                        <h6 class="alert-heading">
-                                            <i class="fas fa-info-circle me-2"></i>شرح الإجابة
+                                    <div class="student-quiz-review-explanation">
+                                        <h6 class="student-quiz-review-explanation__title">
+                                            <i class="fe fe-info me-2"></i>شرح الإجابة
                                         </h6>
                                         <p class="mb-0">{!! mixed_bidi_html($question->explanation) !!}</p>
                                     </div>
@@ -782,9 +718,9 @@
 
                                 <!-- Feedback -->
                                 @if($response->feedback)
-                                    <div class="alert alert-warning mt-3 mb-0">
-                                        <h6 class="alert-heading">
-                                            <i class="fas fa-comment me-2"></i>ملاحظات المصحح
+                                    <div class="student-quiz-review-explanation student-quiz-review-explanation--warning mt-3 mb-0">
+                                        <h6 class="student-quiz-review-explanation__title">
+                                            <i class="fe fe-message-circle me-2"></i>ملاحظات المصحح
                                         </h6>
                                         <p class="mb-0">{!! mixed_bidi_html($response->feedback) !!}</p>
                                     </div>
@@ -793,23 +729,23 @@
                             </div>
                         @endif
                     @endforeach
+                </div>
             </div>
 
-            <!-- Actions -->
-            <div class="card custom-card mt-4">
+            <div class="card custom-card student-quizzes-panel mt-2">
                 <div class="card-body">
                     <div class="d-flex justify-content-between flex-wrap gap-2">
-                        <a href="{{ route('student.quizzes.show', $attempt->quiz_id) }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right me-2"></i>العودة للاختبار
+                        <a href="{{ route('student.quizzes.review.index') }}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fe fe-arrow-right me-1"></i>العودة لاختباراتي
                         </a>
-                        <div>
+                        <div class="d-flex flex-wrap gap-2">
                             @if($attempt->quiz->canAttempt(auth()->id()))
-                                <a href="{{ route('student.quizzes.show', $attempt->quiz_id) }}" class="btn btn-primary">
-                                    <i class="fas fa-redo me-2"></i>محاولة جديدة
+                                <a href="{{ route('student.quizzes.show', $attempt->quiz_id) }}" class="btn btn-primary rounded-pill">
+                                    <i class="fe fe-refresh-cw me-1"></i>محاولة جديدة
                                 </a>
                             @endif
-                            <button type="button" class="btn btn-success" onclick="markAsCompleted()">
-                                <i class="fas fa-check-circle me-2"></i>تم الإنجاز ✅
+                            <button type="button" class="btn btn-success rounded-pill" onclick="markAsCompleted()">
+                                <i class="fe fe-check-circle me-1"></i>تم الإنجاز
                             </button>
                         </div>
                     </div>
@@ -822,6 +758,36 @@
 
 @section('scripts')
 <script>
+    (function () {
+        function formatNumber(value, decimals) {
+            if (decimals) {
+                return new Intl.NumberFormat('ar-EG', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                }).format(value);
+            }
+            return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+        }
+
+        document.querySelectorAll('[data-countup]').forEach(function (el) {
+            var target = parseFloat(el.dataset.countup || '0');
+            var isPercent = el.dataset.countupSuffix === '%';
+            var decimals = el.dataset.countupDecimals === '1';
+            var duration = 800;
+            var start = performance.now();
+
+            function step(now) {
+                var progress = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                var value = formatNumber(target * eased, decimals);
+                el.textContent = isPercent ? value + '%' : value;
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    })();
+
 function markAsCompleted() {
     if (!confirm('هل تريد وضع علامة "تم الإنجاز" على هذا الاختبار؟')) {
         return;
