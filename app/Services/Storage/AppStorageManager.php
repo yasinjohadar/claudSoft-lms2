@@ -293,32 +293,42 @@ class AppStorageManager
                 
                 // معالجة خاصة لـ S3 والمحركات المشتقة منه
                 if (in_array($storageConfig->driver, ['s3', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'])) {
-                    if (! empty($storageConfig->cdn_url)) {
+                    $delivery = config('filesystems.image_delivery', 'proxy');
+                    $storageDisk = $this->getDisk($disk);
+
+                    if ($delivery === 'cdn' && ! empty($storageConfig->cdn_url)) {
                         return rtrim($storageConfig->cdn_url, '/') . '/' . ltrim($path, '/');
                     }
 
-                    $storageDisk = $this->getDisk($disk);
-
-                    try {
-                        $directUrl = $storageDisk->url($path);
-                        if (! empty($directUrl) && filter_var($directUrl, FILTER_VALIDATE_URL)) {
-                            return $directUrl;
+                    if ($delivery !== 'proxy') {
+                        try {
+                            $signedUrl = $storageDisk->temporaryUrl($path, now()->addDays(7));
+                            if (! empty($signedUrl) && filter_var($signedUrl, FILTER_VALIDATE_URL)) {
+                                return $signedUrl;
+                            }
+                        } catch (\Exception $e) {
+                            Log::debug("Pre-signed URL failed for disk {$disk}: " . $e->getMessage());
                         }
-                    } catch (\Exception $e) {
-                        Log::debug("Direct URL failed for disk {$disk}: " . $e->getMessage());
+
+                        try {
+                            $directUrl = $storageDisk->url($path);
+                            if (! empty($directUrl) && filter_var($directUrl, FILTER_VALIDATE_URL)) {
+                                return $directUrl;
+                            }
+                        } catch (\Exception $e) {
+                            Log::debug("Direct URL failed for disk {$disk}: " . $e->getMessage());
+                        }
+
+                        if (! empty($storageConfig->cdn_url)) {
+                            return rtrim($storageConfig->cdn_url, '/') . '/' . ltrim($path, '/');
+                        }
                     }
 
-                    try {
-                        return $storageDisk->temporaryUrl($path, now()->addHours(24));
-                    } catch (\Exception $e) {
-                        Log::warning("Failed to generate pre-signed URL for disk {$disk}: " . $e->getMessage());
-                        // Fallback إلى الرابط المباشر
-                        $decryptedConfig = $storageConfig->getDecryptedConfig();
-                        $endpoint = $decryptedConfig['endpoint'] ?? null;
-                        $bucket = $decryptedConfig['bucket'] ?? '';
-                        if ($endpoint && $bucket) {
-                            return rtrim($endpoint, '/') . '/' . $bucket . '/' . ltrim($path, '/');
-                        }
+                    $decryptedConfig = $storageConfig->getDecryptedConfig();
+                    $endpoint = $decryptedConfig['endpoint'] ?? null;
+                    $bucket = $decryptedConfig['bucket'] ?? '';
+                    if ($endpoint && $bucket) {
+                        return rtrim($endpoint, '/') . '/' . $bucket . '/' . ltrim($path, '/');
                     }
                 }
                 

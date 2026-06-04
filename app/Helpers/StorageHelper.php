@@ -19,6 +19,123 @@ if (!function_exists('storage_url')) {
     }
 }
 
+if (!function_exists('storage_proxy_image_url')) {
+    /**
+     * Build an app URL that proxies the file from S3/local storage.
+     */
+    function storage_proxy_image_url(?string $imagePath, array $disks = []): ?string
+    {
+        if (empty($imagePath)) {
+            return null;
+        }
+
+        if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
+            $parsedPath = parse_url($imagePath, PHP_URL_PATH);
+            $imagePath = is_string($parsedPath) ? ltrim($parsedPath, '/') : '';
+            if ($imagePath === '') {
+                return null;
+            }
+        }
+
+        $imagePath = ltrim($imagePath, '/');
+        $imagePath = preg_replace('#^storage/#', '', $imagePath);
+        $filename = basename($imagePath);
+
+        if (str_starts_with($imagePath, 'blog/images/')) {
+            return route('blog.image', ['filename' => $filename]);
+        }
+
+        if (str_starts_with($imagePath, 'courses/thumbnails/')) {
+            return route('course.thumbnail', ['filename' => $filename]);
+        }
+
+        if (str_starts_with($imagePath, 'courses/images/')) {
+            return route('course.image', ['filename' => $filename]);
+        }
+
+        if (! str_contains($imagePath, '/')) {
+            if (in_array('blog_images', $disks, true)) {
+                return route('blog.image', ['filename' => $filename]);
+            }
+
+            if (in_array('course_thumbnails', $disks, true)) {
+                return route('course.thumbnail', ['filename' => $filename]);
+            }
+
+            if (in_array('public', $disks, true)) {
+                return route('course.image', ['filename' => $filename]);
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('serve_storage_image_response')) {
+    /**
+     * Stream an image from dynamic storage disks, with local fallback.
+     *
+     * @param  array<int, string>  $diskCandidates
+     */
+    function serve_storage_image_response(array $diskCandidates, string $filePath, string $localRelativePath)
+    {
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+
+            foreach ($diskCandidates as $diskName) {
+                try {
+                    $disk = $storageHelper->getDisk($diskName);
+                    $content = $disk->get($filePath);
+
+                    if ($content !== false && $content !== '') {
+                        $mimeType = 'image/jpeg';
+
+                        try {
+                            $mimeType = $disk->mimeType($filePath) ?: $mimeType;
+                        } catch (\Exception $e) {
+                            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                            $mimeType = match ($extension) {
+                                'png' => 'image/png',
+                                'gif' => 'image/gif',
+                                'webp' => 'image/webp',
+                                'svg' => 'image/svg+xml',
+                                default => $mimeType,
+                            };
+                        }
+
+                        return response($content, 200, [
+                            'Content-Type' => $mimeType,
+                            'Cache-Control' => 'public, max-age=31536000, immutable',
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        } catch (\Exception $e) {
+            // fall through to local file
+        }
+
+        $path = storage_path('app/public/' . ltrim($localRelativePath, '/'));
+
+        if (! file_exists($path)) {
+            abort(404, 'الصورة غير موجودة');
+        }
+
+        $mimeType = mime_content_type($path);
+        if (! in_array($mimeType, $allowedMimeTypes, true)) {
+            abort(403, 'نوع الملف غير مسموح');
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+}
+
 if (!function_exists('resolve_storage_image_url')) {
     /**
      * Resolve a stored image path to a public URL (S3/CDN or local).
@@ -32,46 +149,69 @@ if (!function_exists('resolve_storage_image_url')) {
             return $defaultUrl;
         }
 
+        $delivery = config('filesystems.image_delivery', 'proxy');
+
+        $normalizedPath = $imagePath;
         if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
-            return $imagePath;
+            if ($delivery === 'cdn') {
+                return $imagePath;
+            }
+
+            $parsedPath = parse_url($imagePath, PHP_URL_PATH);
+            $normalizedPath = is_string($parsedPath) ? ltrim($parsedPath, '/') : $imagePath;
+        } else {
+            $normalizedPath = ltrim($imagePath, '/');
+            $normalizedPath = preg_replace('#^storage/#', '', $normalizedPath);
         }
 
-        $imagePath = ltrim($imagePath, '/');
-        $imagePath = preg_replace('#^storage/#', '', $imagePath);
+        if ($delivery === 'proxy') {
+            $proxyUrl = storage_proxy_image_url($normalizedPath, $disks);
+            if ($proxyUrl) {
+                return $proxyUrl;
+            }
+        }
 
         $pathsToTry = array_values(array_unique(array_filter([
-            $imagePath,
-            ! str_contains($imagePath, '/') ? 'courses/thumbnails/' . $imagePath : null,
-            ! str_contains($imagePath, '/') ? 'courses/images/' . $imagePath : null,
+            $normalizedPath,
+            ! str_contains($normalizedPath, '/') ? 'blog/images/' . $normalizedPath : null,
+            ! str_contains($normalizedPath, '/') ? 'courses/thumbnails/' . $normalizedPath : null,
+            ! str_contains($normalizedPath, '/') ? 'courses/images/' . $normalizedPath : null,
         ])));
 
-        try {
-            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+        if ($delivery !== 'proxy') {
+            try {
+                $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
 
-            foreach ($disks as $disk) {
-                foreach ($pathsToTry as $path) {
-                    $url = $storageHelper->getFileUrl($disk, $path);
-                    if (! empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-                        return $url;
-                    }
-
-                    try {
-                        $url = $storageHelper->getDisk($disk)->url($path);
+                foreach ($disks as $disk) {
+                    foreach ($pathsToTry as $path) {
+                        $url = $storageHelper->getFileUrl($disk, $path);
                         if (! empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
                             return $url;
                         }
-                    } catch (\Exception $e) {
-                        // try next path / disk
+
+                        try {
+                            $url = $storageHelper->getDisk($disk)->url($path);
+                            if (! empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                                return $url;
+                            }
+                        } catch (\Exception $e) {
+                            // try next path / disk
+                        }
                     }
                 }
+            } catch (\Exception $e) {
+                // fall through
             }
-        } catch (\Exception $e) {
-            // fall through to local / default
         }
 
-        $localPath = storage_path('app/public/' . $imagePath);
+        $proxyUrl = storage_proxy_image_url($normalizedPath, $disks);
+        if ($proxyUrl) {
+            return $proxyUrl;
+        }
+
+        $localPath = storage_path('app/public/' . $normalizedPath);
         if (file_exists($localPath)) {
-            return asset('storage/' . $imagePath);
+            return asset('storage/' . $normalizedPath);
         }
 
         return $defaultUrl;

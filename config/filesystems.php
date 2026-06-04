@@ -77,4 +77,18 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public Image Delivery
+    |--------------------------------------------------------------------------
+    |
+    | How stored images (S3/CDN) are exposed in HTML:
+    | - proxy  : serve via Laravel routes (/storage/blog/images/...) — most reliable
+    | - signed : pre-signed S3 URLs (offloads bandwidth, URLs expire)
+    | - cdn    : use cdn_url from storage config (requires working CDN)
+    |
+    */
+
+    'image_delivery' => env('STORAGE_IMAGE_DELIVERY', 'proxy'),
+
 ];
