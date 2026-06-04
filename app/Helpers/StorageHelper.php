@@ -19,6 +19,65 @@ if (!function_exists('storage_url')) {
     }
 }
 
+if (!function_exists('resolve_storage_image_url')) {
+    /**
+     * Resolve a stored image path to a public URL (S3/CDN or local).
+     * Does not require fileExists — S3 HeadObject may fail while the object is still readable.
+     *
+     * @param  array<int, string>  $disks
+     */
+    function resolve_storage_image_url(array $disks, ?string $imagePath, string $defaultUrl): string
+    {
+        if (empty($imagePath)) {
+            return $defaultUrl;
+        }
+
+        if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
+            return $imagePath;
+        }
+
+        $imagePath = ltrim($imagePath, '/');
+        $imagePath = preg_replace('#^storage/#', '', $imagePath);
+
+        $pathsToTry = array_values(array_unique(array_filter([
+            $imagePath,
+            ! str_contains($imagePath, '/') ? 'courses/thumbnails/' . $imagePath : null,
+            ! str_contains($imagePath, '/') ? 'courses/images/' . $imagePath : null,
+        ])));
+
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+
+            foreach ($disks as $disk) {
+                foreach ($pathsToTry as $path) {
+                    $url = $storageHelper->getFileUrl($disk, $path);
+                    if (! empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                        return $url;
+                    }
+
+                    try {
+                        $url = $storageHelper->getDisk($disk)->url($path);
+                        if (! empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                            return $url;
+                        }
+                    } catch (\Exception $e) {
+                        // try next path / disk
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // fall through to local / default
+        }
+
+        $localPath = storage_path('app/public/' . $imagePath);
+        if (file_exists($localPath)) {
+            return asset('storage/' . $imagePath);
+        }
+
+        return $defaultUrl;
+    }
+}
+
 if (!function_exists('blog_image_url')) {
     /**
      * Get the URL for a blog post featured image
@@ -29,43 +88,11 @@ if (!function_exists('blog_image_url')) {
      */
     function blog_image_url($imagePath)
     {
-        if (empty($imagePath)) {
-            return asset('frontend/assets/images/placeholder.jpg');
-        }
-
-        // If already a full URL (S3 URL), return as-is
-        if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
-            return $imagePath;
-        }
-
-        // Clean the path
-        $imagePath = ltrim($imagePath, '/');
-
-        // Try dynamic storage system (S3) first
-        try {
-            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
-            
-            // Try blog_images disk first
-            if ($storageHelper->fileExists('blog_images', $imagePath)) {
-                $url = $storageHelper->getFileUrl('blog_images', $imagePath);
-                if (!empty($url)) {
-                    return $url;
-                }
-            }
-            
-            // Try public disk as fallback
-            if ($storageHelper->fileExists('public', $imagePath)) {
-                $url = $storageHelper->getFileUrl('public', $imagePath);
-                if (!empty($url)) {
-                    return $url;
-                }
-            }
-        } catch (\Exception $e) {
-            // Continue to fallback
-        }
-
-        // Fallback to local storage
-        return asset('storage/' . $imagePath);
+        return resolve_storage_image_url(
+            ['blog_images', 'public'],
+            $imagePath,
+            asset('frontend/assets/images/placeholder.jpg')
+        );
     }
 }
 
@@ -79,43 +106,11 @@ if (!function_exists('course_image_url')) {
      */
     function course_image_url($imagePath)
     {
-        if (empty($imagePath)) {
-            return asset('frontend/assets/img/default-course.jpg');
-        }
-
-        // If already a full URL (S3 URL), return as-is
-        if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
-            return $imagePath;
-        }
-
-        // Clean the path
-        $imagePath = ltrim($imagePath, '/');
-
-        // Try dynamic storage system (S3) first
-        try {
-            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
-            
-            // Try course_thumbnails disk first
-            if ($storageHelper->fileExists('course_thumbnails', $imagePath)) {
-                $url = $storageHelper->getFileUrl('course_thumbnails', $imagePath);
-                if (!empty($url)) {
-                    return $url;
-                }
-            }
-            
-            // Try public disk as fallback
-            if ($storageHelper->fileExists('public', $imagePath)) {
-                $url = $storageHelper->getFileUrl('public', $imagePath);
-                if (!empty($url)) {
-                    return $url;
-                }
-            }
-        } catch (\Exception $e) {
-            // Continue to fallback
-        }
-
-        // Fallback to local storage
-        return asset('storage/' . $imagePath);
+        return resolve_storage_image_url(
+            ['course_thumbnails', 'public'],
+            $imagePath,
+            asset('frontend/assets/img/default-course.jpg')
+        );
     }
 }
 

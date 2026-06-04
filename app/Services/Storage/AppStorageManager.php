@@ -291,9 +291,23 @@ class AppStorageManager
                     }
                 }
                 
-                // معالجة خاصة لـ S3 والمحركات المشتقة منه - استخدام Pre-signed URL
+                // معالجة خاصة لـ S3 والمحركات المشتقة منه
                 if (in_array($storageConfig->driver, ['s3', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'])) {
+                    if (! empty($storageConfig->cdn_url)) {
+                        return rtrim($storageConfig->cdn_url, '/') . '/' . ltrim($path, '/');
+                    }
+
                     $storageDisk = $this->getDisk($disk);
+
+                    try {
+                        $directUrl = $storageDisk->url($path);
+                        if (! empty($directUrl) && filter_var($directUrl, FILTER_VALIDATE_URL)) {
+                            return $directUrl;
+                        }
+                    } catch (\Exception $e) {
+                        Log::debug("Direct URL failed for disk {$disk}: " . $e->getMessage());
+                    }
+
                     try {
                         return $storageDisk->temporaryUrl($path, now()->addHours(24));
                     } catch (\Exception $e) {
