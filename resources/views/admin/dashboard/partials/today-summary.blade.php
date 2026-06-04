@@ -15,14 +15,14 @@
         </div>
         <div class="card-body pt-3">
             @foreach ($todayRows as $index => $row)
-                <div class="dashboard-stat-row dashboard-stagger-item" style="--stagger-delay: {{ $index * 60 }}ms">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="avatar avatar-sm bg-{{ $row['color'] }}-transparent">
+                <div class="dashboard-stat-row dashboard-stagger-item d-flex align-items-center justify-content-between gap-3" style="--stagger-delay: {{ $index * 60 }}ms">
+                    <div class="d-flex align-items-center gap-3 min-w-0">
+                        <span class="avatar avatar-sm bg-{{ $row['color'] }}-transparent flex-shrink-0">
                             <i class="fe {{ $row['icon'] }} text-{{ $row['color'] }}"></i>
                         </span>
-                        <span class="flex-fill fs-13">{{ $row['label'] }}</span>
-                        <span class="fw-semibold fs-15" data-countup="{{ $row['value'] }}">0</span>
+                        <span class="fs-13 text-truncate">{{ $row['label'] }}</span>
                     </div>
+                    <span class="fw-semibold fs-15 flex-shrink-0 ms-2" data-countup="{{ $row['value'] }}">0</span>
                 </div>
             @endforeach
         </div>

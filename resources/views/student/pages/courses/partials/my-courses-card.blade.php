@@ -15,23 +15,17 @@
 <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ ($index ?? 0) * 50 }}ms">
     <article class="student-course-card h-100">
         <div class="student-course-card__media">
+            <div class="student-course-card__placeholder {{ $course && $courseImage ? 'student-course-card__placeholder--under' : '' }}">
+                <span class="student-course-card__placeholder-icon">
+                    <i class="fe fe-book-open"></i>
+                </span>
+            </div>
             @if($course && $courseImage)
                 <img src="{{ course_image_url($courseImage) }}"
                      alt="{{ $course->title }}"
                      class="student-course-card__img"
                      loading="lazy"
-                     onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
-                <div class="student-course-card__placeholder d-none">
-                    <span class="student-course-card__placeholder-icon">
-                        <i class="fe fe-book-open"></i>
-                    </span>
-                </div>
-            @else
-                <div class="student-course-card__placeholder">
-                    <span class="student-course-card__placeholder-icon">
-                        <i class="fe fe-book-open"></i>
-                    </span>
-                </div>
+                     onerror="this.style.display='none'">
             @endif
             <span class="student-course-card__badge bg-{{ $status['class'] }}-transparent text-{{ $status['class'] }}">
                 <i class="fe {{ $status['icon'] }} me-1"></i>{{ $status['label'] }}

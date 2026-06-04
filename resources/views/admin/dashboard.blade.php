@@ -24,5 +24,5 @@
 @stop
 
 @push('dashboard-scripts')
-    <script src="{{ asset('assets/js/admin-dashboard.js') }}" defer></script>
+    <script src="{{ asset('assets/js/admin-dashboard.js') }}?v={{ @filemtime(public_path('assets/js/admin-dashboard.js')) ?: '1' }}" defer></script>
 @endpush
