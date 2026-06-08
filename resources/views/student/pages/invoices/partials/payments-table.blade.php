@@ -49,10 +49,21 @@
                             @include('student.pages.invoices.partials.payments-status-badge', ['payment' => $payment])
                         </td>
                         <td class="text-end pe-4">
-                            <a href="{{ route('student.payments.show', $payment->id) }}"
-                               class="btn btn-sm btn-primary rounded-pill">
-                                <i class="fe fe-file-text me-1"></i>الإيصال
-                            </a>
+                            <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                @if($payment->has_receipt)
+                                    <a href="{{ route('student.payments.receipt', $payment->id) }}"
+                                       class="btn btn-sm btn-outline-primary rounded-pill"
+                                       target="_blank">
+                                        <i class="fe fe-paperclip me-1"></i>الإيصال
+                                    </a>
+                                @endif
+                                @if($payment->status === 'completed')
+                                    <a href="{{ route('student.payments.show', $payment->id) }}"
+                                       class="btn btn-sm btn-primary rounded-pill">
+                                        <i class="fe fe-file-text me-1"></i>التفاصيل
+                                    </a>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty

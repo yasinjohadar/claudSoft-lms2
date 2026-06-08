@@ -51,6 +51,23 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function pendingPayment()
+    {
+        return $this->hasOne(Payment::class)->where('status', 'pending')->latestOfMany();
+    }
+
+    public function hasPendingPayment(): bool
+    {
+        return $this->payments()->where('status', 'pending')->exists();
+    }
+
+    public function canAcceptStudentPayment(): bool
+    {
+        return $this->remaining_amount > 0
+            && in_array($this->status, ['issued', 'partial'], true)
+            && ! $this->hasPendingPayment();
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

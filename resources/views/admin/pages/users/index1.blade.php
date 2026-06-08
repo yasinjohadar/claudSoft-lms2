@@ -170,7 +170,7 @@
                                         </tr>
 
                                         @include('admin.pages.users.delete')
-                                        @include('admin.pages.users.change_password')
+                                        {{-- change password modal moved to index.blade.php shared modal --}}
                                     @empty
                                         <tr>
                                             <td colspan="8" class="text-center text-danger fw-bold">لا توجد بيانات متاحة

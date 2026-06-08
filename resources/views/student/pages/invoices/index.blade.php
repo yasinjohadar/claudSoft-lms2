@@ -56,6 +56,10 @@
             </div>
         </div>
 
+        @if(isset($paymentMethods) && $paymentMethods->count() > 0)
+            @include('student.pages.invoices.partials.index-submit-payment-modal', ['paymentMethods' => $paymentMethods])
+        @endif
+
     </div>
 </div>
 @stop
@@ -63,6 +67,34 @@
 @section('scripts')
 <script>
     (function () {
+        document.querySelectorAll('.js-open-pay-modal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var invoiceId = btn.dataset.invoiceId;
+                var invoiceNumber = btn.dataset.invoiceNumber;
+                var remaining = btn.dataset.remaining;
+
+                var form = document.getElementById('indexSubmitPaymentForm');
+                var modalEl = document.getElementById('indexSubmitPaymentModal');
+
+                if (!form || !modalEl) {
+                    return;
+                }
+
+                form.action = '{{ url('student/invoices') }}/' + invoiceId + '/pay';
+                document.getElementById('indexPayInvoiceNumber').textContent = invoiceNumber || '';
+                document.getElementById('indexPayRemaining').textContent = remaining || '0.00';
+
+                var amountInput = document.getElementById('index_payment_amount');
+                if (amountInput) {
+                    amountInput.value = remaining || '';
+                    amountInput.max = remaining || '';
+                }
+
+                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            });
+        });
+
         function formatNumber(value, decimals) {
             if (decimals) {
                 return new Intl.NumberFormat('en-US', {

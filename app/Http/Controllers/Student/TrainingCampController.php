@@ -22,8 +22,17 @@ class TrainingCampController extends Controller
             ->where('end_date', '>=', now()->startOfDay());
 
         // Filter by category
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+        if ($request->filled('category_id') || $request->filled('category')) {
+            $query->where('category_id', $request->input('category_id', $request->input('category')));
+        }
+
+        // Filter by camp timing
+        if ($request->filled('status')) {
+            if ($request->status === 'upcoming') {
+                $query->upcoming();
+            } elseif ($request->status === 'ongoing') {
+                $query->ongoing();
+            }
         }
 
         // Filter by price range
@@ -49,6 +58,13 @@ class TrainingCampController extends Controller
         $sortOrder = $request->get('order', 'asc');
         $query->orderBy($sortBy, $sortOrder);
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'upcoming' => (clone $query)->where('start_date', '>', now())->count(),
+            'ongoing' => (clone $query)->where('start_date', '<=', now())->where('end_date', '>=', now())->count(),
+            'featured' => (clone $query)->where('is_featured', true)->count(),
+        ];
+
         $camps = $query->paginate(12);
         $categories = CourseCategory::active()->ordered()->get();
 
@@ -60,7 +76,7 @@ class TrainingCampController extends Controller
                 ->toArray();
         }
 
-        return view('student.pages.training-camps.index', compact('camps', 'categories', 'userEnrollments'));
+        return view('student.pages.training-camps.index', compact('camps', 'categories', 'userEnrollments', 'stats'));
     }
 
     /**

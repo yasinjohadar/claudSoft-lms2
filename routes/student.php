@@ -87,9 +87,11 @@ Route::prefix('student')
         Route::prefix('invoices')->name('student.invoices.')->group(function () {
             Route::get('/', [InvoiceController::class, 'index'])->name('index');
             Route::get('/{id}', [InvoiceController::class, 'show'])->name('show');
+            Route::post('/{id}/pay', [InvoiceController::class, 'submitPayment'])->name('pay');
         });
 
         Route::get('/payments', [InvoiceController::class, 'payments'])->name('student.payments.index');
+        Route::get('/payments/{id}/receipt', [InvoiceController::class, 'downloadReceipt'])->name('student.payments.receipt');
         Route::get('/payments/{id}', [InvoiceController::class, 'showPayment'])->name('student.payments.show');
 
         // ========== Course Learning Routes ==========

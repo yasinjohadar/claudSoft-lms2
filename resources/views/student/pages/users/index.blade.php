@@ -220,7 +220,7 @@
                                                 </tr>
 
                                                 @include('admin.pages.users.delete')
-                                                @include('admin.pages.users.change_password')
+                                                @include('student.pages.users.change_password')
                                             @empty
                                                 <tr>
                                                     <td colspan="8" class="text-center text-danger fw-bold">لا توجد

@@ -55,9 +55,24 @@
                             </div>
                         </td>
                         <td class="text-end pe-4">
-                            <a href="{{ route('student.invoices.show', $invoice->id) }}" class="btn btn-sm btn-primary rounded-pill">
-                                <i class="fe fe-eye me-1"></i>التفاصيل
-                            </a>
+                            <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                @if($invoice->canAcceptStudentPayment() && isset($paymentMethods) && $paymentMethods->count() > 0)
+                                    <button type="button"
+                                            class="btn btn-sm btn-success rounded-pill js-open-pay-modal"
+                                            data-invoice-id="{{ $invoice->id }}"
+                                            data-invoice-number="{{ $invoice->invoice_number }}"
+                                            data-remaining="{{ number_format($invoice->remaining_amount, 2, '.', '') }}">
+                                        <i class="fe fe-credit-card me-1"></i>سداد
+                                    </button>
+                                @elseif($invoice->hasPendingPayment())
+                                    <span class="badge bg-warning-transparent fs-11">
+                                        <i class="fe fe-clock me-1"></i>قيد المراجعة
+                                    </span>
+                                @endif
+                                <a href="{{ route('student.invoices.show', $invoice->id) }}" class="btn btn-sm btn-primary rounded-pill">
+                                    <i class="fe fe-eye me-1"></i>التفاصيل
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 @empty

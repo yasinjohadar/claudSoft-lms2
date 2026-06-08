@@ -7,11 +7,16 @@ use App\Models\Payment;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\TrainingCamp;
+use App\Services\Finance\StudentPaymentSubmissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        protected StudentPaymentSubmissionService $paymentSubmissionService
+    ) {}
     /**
      * Display a listing of payments.
      */
@@ -209,6 +214,67 @@ class PaymentController extends Controller
             ->findOrFail($id);
 
         return view('admin.pages.payments.show', compact('payment'));
+    }
+
+    /**
+     * Approve a pending student payment submission.
+     */
+    public function approve(string $id)
+    {
+        $payment = Payment::findOrFail($id);
+
+        try {
+            $this->paymentSubmissionService->approve($payment, auth()->user());
+
+            return redirect()
+                ->route('payments.show', $payment->id)
+                ->with('success', 'تمت الموافقة على الدفعة وتسجيلها في حساب الطالب.');
+        } catch (InvalidArgumentException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a pending student payment submission.
+     */
+    public function reject(Request $request, string $id)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        $payment = Payment::findOrFail($id);
+
+        try {
+            $this->paymentSubmissionService->reject($payment, auth()->user(), $request->rejection_reason);
+
+            return redirect()
+                ->route('payments.show', $payment->id)
+                ->with('success', 'تم رفض طلب الدفع.');
+        } catch (InvalidArgumentException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Stream payment receipt file for admin review.
+     */
+    public function downloadReceipt(string $id)
+    {
+        $payment = Payment::findOrFail($id);
+
+        if (! $payment->receipt_path) {
+            abort(404, 'لا يوجد إيصال مرفق');
+        }
+
+        $disk = $payment->receipt_disk ?: StudentPaymentSubmissionService::RECEIPT_DISK;
+        $filename = basename($payment->receipt_path);
+
+        return serve_storage_file_response([$disk, 'public'], $payment->receipt_path, $filename);
     }
 
     /**

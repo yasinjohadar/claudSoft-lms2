@@ -45,6 +45,10 @@
                 </nav>
             </div>
             <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+                @include('student.pages.invoices.partials.submit-payment-button', [
+                    'invoice' => $invoice,
+                    'paymentMethods' => $paymentMethods ?? collect(),
+                ])
                 <a href="{{ route('student.invoices.index') }}" class="btn btn-outline-secondary rounded-pill">
                     <i class="fe fe-arrow-right me-1"></i>العودة للفواتير
                 </a>
@@ -64,6 +68,13 @@
                 @include('student.pages.invoices.partials.show-payments-sidebar', ['invoice' => $invoice])
             </div>
         </div>
+
+        @if(isset($paymentMethods) && $invoice->canAcceptStudentPayment())
+            @include('student.pages.invoices.partials.submit-payment-modal', [
+                'invoice' => $invoice,
+                'paymentMethods' => $paymentMethods,
+            ])
+        @endif
 
     </div>
 </div>

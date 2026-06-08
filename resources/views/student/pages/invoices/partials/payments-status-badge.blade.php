@@ -1,8 +1,8 @@
 @php
     $statusMap = [
         'completed' => ['class' => 'success', 'icon' => 'fe-check-circle', 'label' => 'مكتملة'],
-        'pending' => ['class' => 'warning', 'icon' => 'fe-clock', 'label' => 'قيد الانتظار'],
-        'failed' => ['class' => 'danger', 'icon' => 'fe-x-circle', 'label' => 'فاشلة'],
+        'pending' => ['class' => 'warning', 'icon' => 'fe-clock', 'label' => 'قيد المراجعة'],
+        'failed' => ['class' => 'danger', 'icon' => 'fe-x-circle', 'label' => 'مرفوضة'],
         'cancelled' => ['class' => 'secondary', 'icon' => 'fe-slash', 'label' => 'ملغاة'],
         'refunded' => ['class' => 'secondary', 'icon' => 'fe-rotate-ccw', 'label' => 'مستردة'],
     ];

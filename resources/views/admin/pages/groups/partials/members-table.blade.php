@@ -20,7 +20,7 @@
 @endif
 @if($members && $members->isNotEmpty())
     <div class="table-responsive">
-        <table class="table table-hover text-nowrap">
+        <table class="table table-hover text-nowrap dashboard-table mb-0">
             <thead>
                 <tr>
                     <th width="50">
@@ -249,12 +249,14 @@
         <p class="text-muted small mb-0">جرّب تغيير معايير البحث أو <a href="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}">إعادة التعيين</a>.</p>
     </div>
 @else
-    <div class="text-center py-5">
-        <i class="fas fa-users fa-5x text-muted mb-4 opacity-25"></i>
-        <h4 class="text-muted mb-3">لا يوجد أعضاء</h4>
-        <p class="text-muted">ابدأ بإضافة أعضاء إلى هذه المجموعة</p>
+    <div class="group-show-empty">
+        <div class="group-show-empty__icon">
+            <i class="fe fe-users"></i>
+        </div>
+        <h4 class="group-show-empty__title">لا يوجد أعضاء</h4>
+        <p class="text-muted mb-0">ابدأ بإضافة أعضاء إلى هذه المجموعة</p>
         <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-            <i class="fas fa-user-plus me-2"></i>إضافة عضو
+            <i class="fe fe-user-plus me-1"></i>إضافة عضو
         </button>
     </div>
 @endif

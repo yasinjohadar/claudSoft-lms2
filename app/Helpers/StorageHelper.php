@@ -136,6 +136,91 @@ if (!function_exists('serve_storage_image_response')) {
     }
 }
 
+if (!function_exists('serve_storage_file_response')) {
+    /**
+     * Stream a file (image or PDF) from dynamic storage disks, with local fallback.
+     *
+     * @param  array<int, string>  $diskCandidates
+     */
+    function serve_storage_file_response(array $diskCandidates, string $filePath, ?string $downloadName = null)
+    {
+        $allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'application/pdf',
+        ];
+
+        try {
+            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+
+            foreach ($diskCandidates as $diskName) {
+                try {
+                    $disk = $storageHelper->getDisk($diskName);
+                    $content = $disk->get($filePath);
+
+                    if ($content !== false && $content !== '') {
+                        $mimeType = 'application/octet-stream';
+
+                        try {
+                            $mimeType = $disk->mimeType($filePath) ?: $mimeType;
+                        } catch (\Exception $e) {
+                            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                            $mimeType = match ($extension) {
+                                'png' => 'image/png',
+                                'gif' => 'image/gif',
+                                'webp' => 'image/webp',
+                                'jpg', 'jpeg' => 'image/jpeg',
+                                'pdf' => 'application/pdf',
+                                default => $mimeType,
+                            };
+                        }
+
+                        if (! in_array($mimeType, $allowedMimeTypes, true)) {
+                            abort(403, 'نوع الملف غير مسموح');
+                        }
+
+                        $headers = [
+                            'Content-Type' => $mimeType,
+                            'Cache-Control' => 'private, max-age=3600',
+                        ];
+
+                        if ($downloadName) {
+                            $headers['Content-Disposition'] = 'inline; filename="' . $downloadName . '"';
+                        }
+
+                        return response($content, 200, $headers);
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        } catch (\Exception $e) {
+            // fall through to local file
+        }
+
+        $path = storage_path('app/public/' . ltrim($filePath, '/'));
+
+        if (! file_exists($path)) {
+            abort(404, 'الملف غير موجود');
+        }
+
+        $mimeType = mime_content_type($path);
+        if (! in_array($mimeType, $allowedMimeTypes, true)) {
+            abort(403, 'نوع الملف غير مسموح');
+        }
+
+        $headers = ['Content-Type' => $mimeType];
+
+        if ($downloadName) {
+            $headers['Content-Disposition'] = 'inline; filename="' . $downloadName . '"';
+        }
+
+        return response()->file($path, $headers);
+    }
+}
+
 if (!function_exists('resolve_storage_image_url')) {
     /**
      * Resolve a stored image path to a public URL (S3/CDN or local).

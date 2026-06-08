@@ -1,16 +1,16 @@
 <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-        <thead class="table-light">
+    <table class="table table-hover text-nowrap dashboard-table admin-users-table mb-0">
+        <thead>
             <tr>
-                <th scope="col" style="width: 40px;">#</th>
-                <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
-                <th scope="col" style="min-width: 200px;">البريد</th>
-                <th scope="col" style="min-width: 120px;">الهاتف</th>
-                <th scope="col" style="min-width: 130px;">اخر دخول</th>
-                <th scope="col" style="min-width: 150px;">الأدوار</th>
-                <th scope="col" style="min-width: 110px;">الحالة</th>
-                <th scope="col" style="min-width: 120px;">الحالة النشطة</th>
-                <th scope="col" style="min-width: 200px;">العمليات</th>
+                <th scope="col" style="width: 48px;">#</th>
+                <th scope="col">المستخدم</th>
+                <th scope="col">البريد</th>
+                <th scope="col">الهاتف</th>
+                <th scope="col">آخر دخول</th>
+                <th scope="col">الأدوار</th>
+                <th scope="col">الاتصال</th>
+                <th scope="col">التفعيل</th>
+                <th scope="col" style="width: 120px;">الإجراءات</th>
             </tr>
         </thead>
         <tbody>
@@ -18,136 +18,198 @@
                 @php
                     $userSessions = $sessions->get($user->id);
                     $lastSession = $userSessions ? $userSessions->first() : null;
+                    $initial = mb_strtoupper(mb_substr($user->name, 0, 1));
+                    $displayPhone = $user->full_phone
+                        ?? (($user->country_code && $user->phone) ? $user->country_code . $user->phone : null)
+                        ?? $user->phone;
+                    $linkUrl = $user->whatsapp_url ?? ($displayPhone ? 'tel:' . preg_replace('/[^0-9+]/', '', $displayPhone) : null);
                 @endphp
-                <tr>
-                    <th scope="row">{{ $loop->iteration }}</th>
+                <tr class="admin-users-table__row">
+                    <td>{{ $loop->iteration + ($users->currentPage() - 1) * $users->perPage() }}</td>
 
                     <td>
-                        <a href="{{ route('users.show', $user->id) }}" class="text-decoration-none">
-                            {{ $user->name }}
-                        </a>
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <div class="admin-users-table__avatar flex-shrink-0">
+                                @if($user->avatar)
+                                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}">
+                                @elseif($user->photo)
+                                    <img src="{{ asset('storage/' . $user->photo) }}" alt="{{ $user->name }}">
+                                @else
+                                    <span>{{ $initial }}</span>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                <a href="{{ route('users.show', $user->id) }}"
+                                   class="fw-semibold text-decoration-none d-block text-truncate admin-users-table__name">
+                                    {{ $user->name }}
+                                </a>
+                                @if($user->name_ar)
+                                    <small class="text-muted d-block text-truncate">{{ $user->name_ar }}</small>
+                                @endif
+                            </div>
+                        </div>
                     </td>
 
                     <td>
                         @if ($user->email)
-                            <button type="button" class="btn btn-sm btn-outline-secondary copy-email-btn me-1"
-                                data-email="{{ $user->email }}" title="نسخ البريد">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                            <a href="mailto:{{ $user->email }}" class="text-primary text-decoration-none"
-                                title="إرسال بريد إلكتروني">
-                                {{ $user->email }}
-                            </a>
+                            <div class="d-flex align-items-center gap-1 min-w-0">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1 copy-email-btn flex-shrink-0"
+                                    data-email="{{ $user->email }}" title="نسخ البريد">
+                                    <i class="fe fe-copy"></i>
+                                </button>
+                                <a href="mailto:{{ $user->email }}" class="text-truncate text-decoration-none" title="إرسال بريد">
+                                    {{ $user->email }}
+                                </a>
+                            </div>
                         @else
-                            -
+                            <span class="text-muted">—</span>
                         @endif
                     </td>
 
                     <td>
-                        @php
-                            $displayPhone =
-                                $user->full_phone ?? ($user->country_code && $user->phone ? $user->country_code . $user->phone : null) ?? $user->phone;
-                            $linkUrl = $user->whatsapp_url ?? ($displayPhone ? 'tel:' . preg_replace('/[^0-9+]/', '', $displayPhone) : null);
-                        @endphp
                         @if ($displayPhone)
                             @if ($linkUrl)
                                 <a href="{{ $linkUrl }}" target="_blank" rel="noopener noreferrer"
-                                    class="text-success text-decoration-none"
-                                    title="{{ $user->whatsapp_url ? 'فتح WhatsApp' : 'اتصال' }}">
-                                    <i class="fab fa-whatsapp me-1"></i>{{ $displayPhone }}
+                                   class="text-success text-decoration-none d-inline-flex align-items-center gap-1"
+                                   title="{{ $user->whatsapp_url ? 'فتح WhatsApp' : 'اتصال' }}">
+                                    <i class="fab fa-whatsapp"></i>
+                                    <span>{{ $displayPhone }}</span>
                                 </a>
                             @else
-                                <i class="fab fa-whatsapp me-1 text-success"></i>{{ $displayPhone }}
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="fab fa-whatsapp text-success"></i>{{ $displayPhone }}
+                                </span>
                             @endif
                         @else
-                            -
+                            <span class="text-muted">—</span>
                         @endif
                     </td>
 
                     <td>
                         @if ($lastSession)
-                            {{ \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->diffForHumans() }}
+                            <span class="d-inline-flex align-items-center gap-1 small text-muted">
+                                <i class="fe fe-clock"></i>
+                                {{ \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->diffForHumans() }}
+                            </span>
                         @else
-                            لا توجد جلسات
+                            <span class="text-muted small">لا توجد جلسات</span>
                         @endif
                     </td>
 
                     <td>
-                        @foreach ($user->getRoleNames() as $role)
-                            <span class="badge bg-primary me-1">{{ $role }}</span>
-                        @endforeach
+                        <div class="d-flex flex-wrap gap-1">
+                            @forelse ($user->getRoleNames() as $role)
+                                <span class="group-show-chip group-show-chip--sm">{{ $role }}</span>
+                            @empty
+                                <span class="text-muted">—</span>
+                            @endforelse
+                        </div>
                     </td>
 
                     <td>
                         @if ($user->is_connected)
-                            <span class="badge bg-success">متصل</span>
+                            <span class="admin-users-online-badge">
+                                <span class="admin-users-online-dot admin-users-online-dot--active"></span>
+                                متصل
+                            </span>
                         @else
-                            <span class="badge bg-secondary">غير متصل</span>
+                            <span class="admin-users-online-badge admin-users-online-badge--offline">
+                                <span class="admin-users-online-dot"></span>
+                                غير متصل
+                            </span>
                         @endif
                     </td>
 
                     <td>
-                        <button class="btn btn-sm {{ $user->is_active ? 'btn-success' : 'btn-secondary' }}"
-                            data-bs-toggle="modal" data-bs-target="#toggleStatus{{ $user->id }}" title="تغيير الحالة">
-                            <i class="fas fa-power-off me-1"></i>
+                        <button type="button"
+                            class="admin-users-status-chip {{ $user->is_active ? 'admin-users-status-chip--active' : 'admin-users-status-chip--inactive' }}"
+                            data-bs-toggle="modal" data-bs-target="#toggleStatus{{ $user->id }}"
+                            title="تغيير حالة التفعيل">
+                            <i class="fe fe-power"></i>
                             {{ $user->is_active ? 'نشط' : 'غير نشط' }}
                         </button>
                     </td>
 
                     <td>
-                        <button type="button"
-                            class="btn btn-outline-secondary btn-sm me-1 js-open-admin-notes"
-                            data-notes-url="{{ route('admin.users.admin-notes', $user) }}"
-                            data-user-name="{{ $user->name }}"
-                            title="عرض الملاحظات الإدارية">
-                            <i class="fas fa-sticky-note"></i>
-                        </button>
-                        @if($user->hasRole('student'))
-                            <a class="btn btn-primary btn-sm me-1" href="{{ route('admin.users.courses', $user->id) }}"
-                                title="عرض الكورسات">
-                                <i class="fas fa-book"></i>
+                        <div class="d-flex align-items-center gap-1">
+                            <a class="btn btn-sm btn-info-light" href="{{ route('users.edit', $user->id) }}" title="تعديل">
+                                <i class="fe fe-edit-2"></i>
                             </a>
-                            @if($user->is_active)
-                                <button type="button" class="btn btn-success btn-sm me-1 impersonate-btn"
-                                    data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}"
-                                    title="الدخول كطالب في تبويب جديد">
-                                    <i class="fas fa-user-secret"></i>
+
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm btn-primary-light"
+                                        data-bs-toggle="dropdown" aria-expanded="false" title="المزيد">
+                                    <i class="fe fe-more-horizontal"></i>
                                 </button>
-                            @endif
-                            @if($user->hasRole('student'))
-                                <a href="{{ route('users.student-details', $user->id) }}" class="btn btn-info btn-sm me-1"
-                                    title="عرض تفاصيل الطالب والمجموعات">
-                                    <i class="fas fa-users"></i>
-                                </a>
-                            @endif
-                        @endif
-                        <a class="btn btn-info btn-sm me-1" href="{{ route('users.edit', $user->id) }}"
-                            title="تعديل المستخدم">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </a>
-                        <a class="btn btn-danger btn-sm me-1" data-bs-toggle="modal"
-                            data-bs-target="#delete{{ $user->id }}" title="حذف المستخدم">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </a>
-                        <a href="#" class="btn btn-warning btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#change_password{{ $user->id }}" title="تعديل كلمة السر">
-                            <i class="fa-solid fa-key"></i>
-                        </a>
+                                <ul class="dropdown-menu dropdown-menu-end admin-users-dropdown shadow-sm">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('users.show', $user->id) }}">
+                                            <i class="fe fe-user me-2"></i>عرض الملف
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item js-open-change-password"
+                                            data-user-id="{{ $user->id }}"
+                                            data-user-name="{{ $user->name }}"
+                                            data-update-url="{{ route('users.update-password', $user) }}">
+                                            <i class="fe fe-key me-2"></i>تغيير كلمة المرور
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item js-open-admin-notes"
+                                            data-notes-url="{{ route('admin.users.admin-notes', $user) }}"
+                                            data-user-name="{{ $user->name }}">
+                                            <i class="fe fe-file-text me-2"></i>الملاحظات الإدارية
+                                        </button>
+                                    </li>
+                                    @if($user->hasRole('student'))
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('admin.users.courses', $user->id) }}">
+                                                <i class="fe fe-book me-2"></i>كورسات الطالب
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('users.student-details', $user->id) }}">
+                                                <i class="fe fe-users me-2"></i>المجموعات والتفاصيل
+                                            </a>
+                                        </li>
+                                        @if($user->is_active)
+                                            <li>
+                                                <button type="button" class="dropdown-item impersonate-btn"
+                                                    data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}">
+                                                    <i class="fe fe-log-in me-2"></i>الدخول كطالب
+                                                </button>
+                                            </li>
+                                        @endif
+                                    @endif
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger"
+                                                data-bs-toggle="modal" data-bs-target="#delete{{ $user->id }}">
+                                            <i class="fe fe-trash-2 me-2"></i>حذف المستخدم
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </td>
                 </tr>
-
-                @include('admin.pages.users.delete')
-                @include('admin.pages.users.change_password')
-                @include('admin.pages.users.toggle_status')
             @empty
                 <tr>
-                    <td colspan="8" class="text-center text-danger fw-bold">لا توجد بيانات متاحة</td>
+                    <td colspan="9">
+                        <div class="group-show-empty py-5">
+                            <i class="fe fe-users group-show-empty__icon"></i>
+                            <h5 class="group-show-empty__title">لا يوجد مستخدمون</h5>
+                            <p class="group-show-empty__desc mb-0">جرّب تعديل الفلاتر أو أنشئ مستخدماً جديداً.</p>
+                        </div>
+                    </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
+</div>
 
-    <div class="mt-3">
-        {{ $users->withQueryString()->links() }}
-    </div>
+<div class="d-flex justify-content-center mt-4">
+    {{ $users->withQueryString()->links() }}
 </div>

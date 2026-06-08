@@ -22,11 +22,17 @@ class Payment extends Model
         'notes',
         'received_by',
         'reference',
+        'receipt_path',
+        'receipt_disk',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_reason',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'payment_date' => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
 
     // Relationships
@@ -48,6 +54,11 @@ class Payment extends Model
     public function receivedBy()
     {
         return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function reviewedBy()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     // Scopes
@@ -118,14 +129,15 @@ class Payment extends Model
 
     public function cancel($reason = null)
     {
+        $wasCompleted = $this->status === 'completed';
+
         $this->status = 'cancelled';
         if ($reason) {
             $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . "سبب الإلغاء: " . $reason;
         }
         $this->save();
 
-        // Update invoice amounts
-        if ($this->invoice) {
+        if ($wasCompleted && $this->invoice) {
             $this->invoice->paid_amount -= $this->amount;
             $this->invoice->remaining_amount = $this->invoice->total_amount - $this->invoice->paid_amount;
 
@@ -136,8 +148,6 @@ class Payment extends Model
             }
 
             $this->invoice->save();
-            
-            // Update related camp enrollments
             $this->invoice->updateRelatedCampEnrollments();
         }
 
@@ -146,14 +156,15 @@ class Payment extends Model
 
     public function refund($reason = null)
     {
+        $wasCompleted = $this->status === 'completed';
+
         $this->status = 'refunded';
         if ($reason) {
             $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . "سبب الاسترداد: " . $reason;
         }
         $this->save();
 
-        // Update invoice amounts
-        if ($this->invoice) {
+        if ($wasCompleted && $this->invoice) {
             $this->invoice->paid_amount -= $this->amount;
             $this->invoice->remaining_amount = $this->invoice->total_amount - $this->invoice->paid_amount;
 
@@ -164,8 +175,6 @@ class Payment extends Model
             }
 
             $this->invoice->save();
-            
-            // Update related camp enrollments
             $this->invoice->updateRelatedCampEnrollments();
         }
 
@@ -204,5 +213,21 @@ class Payment extends Model
     public function getFormattedAmountAttribute()
     {
         return '$' . number_format($this->amount, 2);
+    }
+
+    public function getHasReceiptAttribute(): bool
+    {
+        return ! empty($this->receipt_path);
+    }
+
+    public function getIsReceiptImageAttribute(): bool
+    {
+        if (! $this->receipt_path) {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo($this->receipt_path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
     }
 }

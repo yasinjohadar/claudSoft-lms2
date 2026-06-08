@@ -7,23 +7,18 @@
             <h6 class="card-title mb-0">المدفوعات</h6>
         </div>
 
+        @if($invoice->hasPendingPayment())
+            <div class="alert alert-warning small mb-3">
+                <i class="fe fe-clock me-1"></i>
+                <strong>طلب دفع قيد المراجعة.</strong>
+                سيتم إشعارك عند الموافقة أو الرفض.
+            </div>
+        @endif
+
         @if($invoice->payments->count() > 0)
             <div class="student-invoice-payments-list">
-                @foreach($invoice->payments as $payment)
-                    <div class="student-invoice-payment-item">
-                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                            <span class="student-invoice-payment-item__number">{{ $payment->payment_number }}</span>
-                            <strong class="text-success">${{ number_format($payment->amount, 2) }}</strong>
-                        </div>
-                        <p class="student-invoice-payment-item__meta mb-1">
-                            <i class="fe fe-calendar me-1"></i>{{ $payment->payment_date->format('Y-m-d') }}
-                        </p>
-                        @if($payment->paymentMethod)
-                            <p class="student-invoice-payment-item__meta mb-0">
-                                <i class="fe fe-credit-card me-1"></i>{{ $payment->paymentMethod->name }}
-                            </p>
-                        @endif
-                    </div>
+                @foreach($invoice->payments->sortByDesc('created_at') as $payment)
+                    @include('student.pages.invoices.partials.payment-item', ['payment' => $payment])
                 @endforeach
             </div>
         @else
@@ -37,7 +32,7 @@
     </div>
 </div>
 
-@if($invoice->remaining_amount > 0 && $invoice->status !== 'cancelled')
+@if($invoice->remaining_amount > 0 && $invoice->status !== 'cancelled' && ! $invoice->hasPendingPayment())
     <div class="student-invoice-show-alert mt-3">
         <i class="fe fe-alert-triangle"></i>
         <div>

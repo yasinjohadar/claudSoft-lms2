@@ -5,50 +5,6 @@
 @stop
 
 @section('css')
-<style>
-    .member-card {
-        border-radius: 10px;
-        border: 1px solid #e9ecef;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s;
-    }
-    .member-card:hover {
-        border-color: #667eea;
-        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.1);
-    }
-    .member-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-    .group-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    /* Remove Member Modal Styles */
-    [id^="removeMemberModal"] .modal-content {
-        border: none;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-    [id^="removeMemberModal"] .avatar-xl {
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    [id^="removeMemberModal"] .fs-24 {
-        font-size: 2rem;
-    }
-    [id^="removeMemberModal"] .bg-danger-transparent {
-        background-color: rgba(220, 53, 69, 0.1);
-    }
-</style>
 @stop
 
 @section('content')
@@ -95,229 +51,49 @@
                 </div>
             @endif
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">تفاصيل المجموعة</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('groups.all') }}">المجموعات</a></li>
-                            @if($course)
-                                <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
-                                <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ $course->title }}</a></li>
-                            @endif
-                            <li class="breadcrumb-item active">{{ $group->name }}</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-
-            <!-- Group Header -->
-            <div class="group-header">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h3 class="mb-2">{{ $group->name }}</h3>
-                        @if($group->description)
-                            <p class="mb-0" style="opacity: 0.9;">{{ $group->description }}</p>
-                        @endif
-                    </div>
-                    <div class="col-md-4 text-end">
+            <!-- Breadcrumb -->
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('groups.all') }}">المجموعات</a></li>
                         @if($course)
-                            <a href="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}" class="btn btn-info me-2">
-                                <i class="fas fa-user-plus me-2"></i>طلبات الانضمام
-                                @php
-                                    $pendingCount = $group->pendingRequests()->count();
-                                @endphp
-                                @if($pendingCount > 0)
-                                    <span class="badge bg-danger">{{ $pendingCount }}</span>
-                                @endif
-                            </a>
-                            @php
-                                $registrationSettings = \App\Models\GroupRegistrationSetting::where('group_id', $group->id)->first();
-                            @endphp
-                            @if($registrationSettings && $registrationSettings->is_registration_enabled)
-                                <a href="{{ route('frontend.group-registration.create', $group->id) }}" target="_blank" class="btn btn-success me-2">
-                                    <i class="fas fa-link me-2"></i>رابط التسجيل
-                                </a>
-                            @endif
-                            <a href="{{ route('admin.group-registration-settings.index', $group->id) }}" class="btn btn-warning me-2">
-                                <i class="fas fa-cog me-2"></i>إعدادات التسجيل
-                            </a>
-                            <a href="{{ route('courses.groups.edit', [$course->id, $group->id]) }}" class="btn btn-light me-2">
-                                <i class="fas fa-edit me-2"></i>تعديل
-                            </a>
-                        @else
-                            @php
-                                $firstCourse = $group->courses->first();
-                            @endphp
-                            @if($firstCourse)
-                                <a href="{{ route('courses.groups.membership-requests', [$firstCourse->id, $group->id]) }}" class="btn btn-info me-2">
-                                    <i class="fas fa-user-plus me-2"></i>طلبات الانضمام
-                                    @php
-                                        $pendingCount = $group->pendingRequests()->count();
-                                    @endphp
-                                    @if($pendingCount > 0)
-                                        <span class="badge bg-danger">{{ $pendingCount }}</span>
-                                    @endif
-                                </a>
-                            @endif
-                            <a href="{{ route('groups.edit', $group->id) }}" class="btn btn-light me-2">
-                                <i class="fas fa-edit me-2"></i>تعديل
-                            </a>
+                            <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ $course->title }}</a></li>
                         @endif
-                        <form action="{{ route('groups.delete', $group->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذه المجموعة؟');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash me-2"></i>حذف
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                        <li class="breadcrumb-item active">{{ $group->name }}</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">عدد الأعضاء</p>
-                                    <h3 class="mb-0">{{ $stats['total_members'] ?? 0 }}@if($group->max_members) / {{ $group->max_members }}@endif</h3>
-                                </div>
-                                <div class="avatar avatar-lg bg-primary-transparent">
-                                    <i class="fas fa-users fs-3"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">الكورسات المرتبطة</p>
-                                    <h3 class="mb-0">{{ $group->courses->count() }}</h3>
-                                </div>
-                                <div class="avatar avatar-lg bg-success-transparent">
-                                    <i class="fas fa-book fs-3"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">الحالة</p>
-                                    <span class="badge {{ $group->is_active ? 'bg-success' : 'bg-secondary' }} fs-6">
-                                        {{ $group->is_active ? 'نشطة' : 'غير نشطة' }}
-                                    </span>
-                                </div>
-                                <div class="avatar avatar-lg bg-info-transparent">
-                                    <i class="fas fa-power-off fs-3"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">الرؤية</p>
-                                    <span class="badge {{ $group->is_visible ? 'bg-info' : 'bg-secondary' }} fs-6">
-                                        {{ $group->is_visible ? 'مرئية' : 'مخفية' }}
-                                    </span>
-                                    <br>
-                                    <span class="badge {{ $group->is_visible_for_students ?? true ? 'bg-success' : 'bg-warning' }} fs-6 mt-1">
-                                        {{ ($group->is_visible_for_students ?? true) ? 'ظاهرة للطلاب' : 'مخفية عن الطلاب' }}
-                                    </span>
-                                </div>
-                                <div class="avatar avatar-lg bg-warning-transparent">
-                                    <i class="fas fa-eye fs-3"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            @include('admin.pages.groups.partials.show-hero', ['group' => $group, 'course' => $course])
 
-            <!-- Visibility Requirements Info -->
-            @php
-                $visibilityRequirements = $group->visibilityRequirements()->with('requiredGroup')->get();
-            @endphp
-            @if($visibilityRequirements->isNotEmpty())
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">
-                                    <i class="fas fa-eye me-2"></i>
-                                    شروط الظهور للطلاب
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-2">
-                                    <strong>هذه المجموعة تظهر فقط لأعضاء المجموعات التالية:</strong>
-                                </p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    @foreach($visibilityRequirements as $requirement)
-                                        @if($requirement->requiredGroup)
-                                            <span class="badge bg-primary fs-6">
-                                                {{ $requirement->requiredGroup->name }}
-                                            </span>
-                                        @endif
-                                    @endforeach
-                                </div>
-                                <small class="text-muted mt-2 d-block">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    الطلاب الذين ليسوا أعضاءً في أي من هذه المجموعات لن يتمكنوا من رؤية هذه المجموعة.
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @elseif($group->allow_membership_requests && $group->is_visible_for_students)
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>تنبيه:</strong> لم يتم تحديد أي مجموعات مطلوبة للظهور. هذه المجموعة <strong>مخفية عن جميع الطلاب</strong> حالياً.
-                            <br>
-                            <small>قم بتعديل المجموعة وحدد "المجموعات المطلوبة للظهور" لإظهارها للطلاب المنتمين لتلك المجموعات.</small>
-                        </div>
-                    </div>
-                </div>
-            @endif
+            @include('admin.pages.groups.partials.show-stats', ['group' => $group, 'stats' => $stats])
+
+            @include('admin.pages.groups.partials.show-visibility', ['group' => $group])
 
             <div class="row">
-                <!-- Members List -->
                 <div class="col-lg-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="card-title mb-0">أعضاء المجموعة ({{ $stats['total_members'] ?? 0 }})</h6>
-                            <div>
-                                <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                                    <i class="fas fa-user-plus me-2"></i>إضافة عضو
+                    <div class="card custom-card group-show-members-card dashboard-fade-in">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <h6 class="group-show-members-card__title mb-0">
+                                أعضاء المجموعة
+                                <span class="group-show-members-card__count">{{ $stats['total_members'] ?? 0 }}</span>
+                            </h6>
+                            <div class="group-show-member-actions">
+                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                                    <i class="fe fe-user-plus me-1"></i>إضافة عضو
                                 </button>
-                                <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addBulkMembersModal">
-                                    <i class="fas fa-users me-2"></i>إضافة سريعة
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addBulkMembersModal">
+                                    <i class="fe fe-users me-1"></i>إضافة سريعة
                                 </button>
-                                <a href="{{ route('groups.bulk-enroll-page', $group->id) }}" class="btn btn-info btn-sm">
-                                    <i class="fas fa-filter me-2"></i>إضافة متقدمة
+                                <a href="{{ route('groups.bulk-enroll-page', $group->id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fe fe-filter me-1"></i>إضافة متقدمة
                                 </a>
                             </div>
                         </div>
-                        
-                        <!-- Bulk Actions Bar -->
-                        <div class="card-body border-bottom bg-light" id="bulkActionsBar" style="display: none;">
+
+                        <div class="group-show-bulk-bar" id="bulkActionsBar" style="display: none;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <span class="fw-bold text-primary" id="selectedCount">0</span>
@@ -335,8 +111,7 @@
                         </div>
 
                         <div class="card-body">
-                            <!-- Search and Filter Form -->
-                            <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="mb-4" id="groupMembersFilterForm">
+                            <form method="GET" action="{{ $course ? route('courses.groups.show', [$course->id, $group->id]) : route('groups.show', $group->id) }}" class="group-show-filters" id="groupMembersFilterForm">
                                 <div class="row g-3 align-items-end">
                                     <div class="col-md-2">
                                         <label class="form-label">البحث</label>
@@ -663,6 +438,27 @@
 
 @section('script')
 <script>
+    function animateGroupShowCountup(el, target, duration) {
+        const start = performance.now();
+        const from = 0;
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(from + (target - from) * eased);
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    document.querySelectorAll('[data-countup]').forEach(function(el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        if (!isNaN(target)) {
+            animateGroupShowCountup(el, target, 900);
+        }
+    });
+
     // Scroll to top to show alert message
     if (document.querySelector('.alert')) {
         window.scrollTo({ top: 0, behavior: 'smooth' });

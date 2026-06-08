@@ -4,267 +4,308 @@
     إيصال الدفع {{ $payment->payment_number }}
 @stop
 
-@section('css')
+@section('styles')
 <style>
     @media print {
-        /* إخفاء جميع عناصر لوحة التحكم */
-        .main-sidebar,
+        .no-print,
         .app-sidebar,
-        .sidebar,
-        .main-header,
         .app-header,
-        .header,
-        .navbar,
-        .breadcrumb,
         .page-header-breadcrumb,
-        .btn,
-        button,
-        nav,
-        aside,
-        .main-footer,
-        .footer {
+        .group-show-hero,
+        .group-show-actions,
+        .student-receipt-stats {
             display: none !important;
-            visibility: hidden !important;
-        }
-
-        /* إظهار محتوى الإيصال فقط */
-        .main-content,
-        .container-fluid,
-        .card,
-        .receipt-content {
-            visibility: visible !important;
-            display: block !important;
-        }
-
-        /* إخفاء الأزرار في محتوى الإيصال */
-        .card .btn,
-        .card button,
-        .page-header-breadcrumb {
-            display: none !important;
-        }
-
-        /* تحسين تنسيق الطباعة */
-        @page {
-            margin: 1cm;
-            size: A4;
         }
 
         body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
+            background: #fff !important;
         }
 
-        .main-content {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-        }
-
+        .main-content,
         .container-fluid {
+            margin: 0 !important;
             padding: 0 !important;
-            max-width: 100% !important;
         }
 
-        .card {
-            border: none !important;
+        .student-receipt-doc {
             box-shadow: none !important;
-            margin: 0 !important;
+            border: 1px solid #ddd !important;
+        }
+
+        @page {
+            margin: 1cm;
+            size: A4;
         }
     }
 </style>
 @stop
 
 @section('content')
-    <div class="main-content app-content">
+    @php
+        $statusColors = [
+            'pending' => 'bg-warning-transparent text-warning',
+            'completed' => 'bg-success-transparent text-success',
+            'failed' => 'bg-danger-transparent text-danger',
+            'cancelled' => 'bg-secondary-transparent text-secondary',
+            'refunded' => 'bg-info-transparent text-info',
+        ];
+        $statusLabels = [
+            'pending' => 'معلقة',
+            'completed' => 'مكتملة',
+            'failed' => 'فاشلة',
+            'cancelled' => 'ملغاة',
+            'refunded' => 'مستردة',
+        ];
+    @endphp
+
+    <div class="main-content app-content student-payment-receipt-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إيصال الدفع</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('student.payments.index') }}">مدفوعاتي</a></li>
-                            <li class="breadcrumb-item active">{{ $payment->payment_number }}</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <button onclick="window.print()" class="btn btn-primary">
-                        <i class="bi bi-printer me-1"></i>طباعة الإيصال
-                    </button>
-                    <a href="{{ route('student.payments.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-right me-1"></i>رجوع
-                    </a>
+            <div class="my-4 page-header-breadcrumb no-print">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('student.payments.index') }}">مدفوعاتي</a></li>
+                        <li class="breadcrumb-item active">{{ $payment->payment_number }}</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in mb-4 no-print">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-file-text me-1"></i>
+                            إيصال الدفع
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">{{ $payment->payment_number }}</h2>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge {{ $statusColors[$payment->status] ?? 'bg-secondary-transparent text-secondary' }}">
+                                {{ $statusLabels[$payment->status] ?? $payment->status }}
+                            </span>
+                            @if($payment->payment_date)
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-calendar me-1"></i>{{ $payment->payment_date->format('Y-m-d') }}
+                                </span>
+                            @endif
+                            @if($payment->paymentMethod)
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-credit-card me-1"></i>{{ $payment->paymentMethod->name }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <button type="button" onclick="window.print()"
+                                    class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-printer"></i></span>
+                                <span class="group-show-action__text">طباعة الإيصال</span>
+                            </button>
+                            <a href="{{ route('student.payments.index') }}"
+                               class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">رجوع</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Receipt Card -->
+            <div class="row g-3 dashboard-fade-in mb-4 student-receipt-stats no-print">
+                <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12">
+                    <div class="card admin-stats-card admin-stats-card--green">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="admin-stats-card__icon-wrap">
+                                <i class="fe fe-dollar-sign admin-stats-card__icon"></i>
+                            </div>
+                            <div class="admin-stats-card__content flex-fill min-w-0">
+                                <p class="admin-stats-card__label mb-1">المبلغ المدفوع</p>
+                                <h3 class="admin-stats-card__value mb-1"
+                                    data-countup="{{ round($payment->amount, 2) }}"
+                                    data-countup-prefix="$"
+                                    data-countup-decimals="2">0</h3>
+                                <p class="admin-stats-card__sub mb-0">في هذه الدفعة</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if($payment->invoice)
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12">
+                        <div class="card admin-stats-card admin-stats-card--blue">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <div class="admin-stats-card__icon-wrap">
+                                    <i class="fe fe-file-text admin-stats-card__icon"></i>
+                                </div>
+                                <div class="admin-stats-card__content flex-fill min-w-0">
+                                    <p class="admin-stats-card__label mb-1">إجمالي الفاتورة</p>
+                                    <h3 class="admin-stats-card__value mb-1"
+                                        data-countup="{{ round($payment->invoice->total_amount, 2) }}"
+                                        data-countup-prefix="$"
+                                        data-countup-decimals="2">0</h3>
+                                    <p class="admin-stats-card__sub mb-0">{{ $payment->invoice->invoice_number }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12">
+                        <div class="card admin-stats-card admin-stats-card--orange">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <div class="admin-stats-card__icon-wrap">
+                                    <i class="fe fe-alert-circle admin-stats-card__icon"></i>
+                                </div>
+                                <div class="admin-stats-card__content flex-fill min-w-0">
+                                    <p class="admin-stats-card__label mb-1">المبلغ المتبقي</p>
+                                    <h3 class="admin-stats-card__value mb-1"
+                                        data-countup="{{ round($payment->invoice->remaining_amount, 2) }}"
+                                        data-countup-prefix="$"
+                                        data-countup-decimals="2">0</h3>
+                                    <p class="admin-stats-card__sub mb-0">بعد هذه الدفعة</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
             <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="card shadow-lg border-0" id="receipt">
-                        <!-- Receipt Header -->
-                        <div class="card-header bg-success text-white text-center py-4">
-                            <h3 class="mb-1">إيصال دفع</h3>
-                            <h5 class="mb-0">أكاديمية كلاودسوفت</h5>
+                <div class="col-xl-9 col-lg-10">
+                    <div class="card custom-card group-show-members-card dashboard-fade-in student-receipt-doc" id="receipt">
+                        <div class="student-receipt-doc__header text-center py-4 px-3 border-bottom">
+                            <p class="text-muted fs-12 mb-1 text-uppercase letter-spacing-1">أكاديمية كلاودسوفت</p>
+                            <h3 class="mb-2 fw-bold">إيصال دفع</h3>
+                            <span class="badge {{ $statusColors[$payment->status] ?? 'bg-secondary-transparent text-secondary' }}">
+                                {{ $statusLabels[$payment->status] ?? $payment->status }}
+                            </span>
                         </div>
 
-                        <div class="card-body p-4">
-                            <!-- Payment Status Badge -->
-                            <div class="text-center mb-4">
-                                @php
-                                    $statusColors = [
-                                        'pending' => 'bg-warning text-dark',
-                                        'completed' => 'bg-success',
-                                        'failed' => 'bg-danger',
-                                        'cancelled' => 'bg-secondary',
-                                        'refunded' => 'bg-info'
-                                    ];
-                                    $statusLabels = [
-                                        'pending' => 'معلقة',
-                                        'completed' => 'مكتملة',
-                                        'failed' => 'فاشلة',
-                                        'cancelled' => 'ملغاة',
-                                        'refunded' => 'مستردة'
-                                    ];
-                                @endphp
-                                <span class="badge {{ $statusColors[$payment->status] ?? 'bg-secondary' }} fs-5 px-4 py-2">
-                                    {{ $statusLabels[$payment->status] ?? $payment->status }}
-                                </span>
-                            </div>
-
-                            <!-- Payment Amount -->
-                            <div class="text-center bg-light rounded p-4 mb-4">
+                        <div class="card-body p-4 p-md-5">
+                            <div class="student-receipt-doc__amount text-center mb-4">
                                 <p class="text-muted mb-2">المبلغ المدفوع</p>
-                                <h1 class="text-success fw-bold mb-0">${{ number_format($payment->amount, 2) }}</h1>
+                                <h1 class="text-success fw-bold mb-0"
+                                    data-countup="{{ round($payment->amount, 2) }}"
+                                    data-countup-prefix="$"
+                                    data-countup-decimals="2">0</h1>
                             </div>
 
-                            <!-- Payment Details -->
-                            <div class="row mb-4">
+                            <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="text-muted small">رقم الإيصال</label>
-                                        <p class="fw-bold mb-0">{{ $payment->payment_number }}</p>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="text-muted small">تاريخ الدفع</label>
-                                        <p class="fw-bold mb-0">{{ $payment->payment_date->format('Y-m-d') }}</p>
-                                    </div>
-                                    @if($payment->paymentMethod)
-                                        <div class="mb-3">
-                                            <label class="text-muted small">طريقة الدفع</label>
-                                            <p class="fw-bold mb-0">
-                                                <i class="bi bi-credit-card me-1"></i>{{ $payment->paymentMethod->name }}
-                                            </p>
-                                        </div>
-                                    @endif
-                                </div>
+                                    <dl class="row mb-0">
+                                        <dt class="col-sm-5 text-muted fw-normal">رقم الإيصال</dt>
+                                        <dd class="col-sm-7 fw-semibold mb-2">{{ $payment->payment_number }}</dd>
 
+                                        <dt class="col-sm-5 text-muted fw-normal">تاريخ الدفع</dt>
+                                        <dd class="col-sm-7 mb-2">{{ $payment->payment_date->format('Y-m-d') }}</dd>
+
+                                        @if($payment->paymentMethod)
+                                            <dt class="col-sm-5 text-muted fw-normal">طريقة الدفع</dt>
+                                            <dd class="col-sm-7 mb-0">
+                                                <i class="fe fe-credit-card me-1 text-muted"></i>{{ $payment->paymentMethod->name }}
+                                            </dd>
+                                        @endif
+                                    </dl>
+                                </div>
                                 <div class="col-md-6">
-                                    @if($payment->invoice)
-                                        <div class="mb-3">
-                                            <label class="text-muted small">رقم الفاتورة</label>
-                                            <p class="fw-bold mb-0">
-                                                <a href="{{ route('student.invoices.show', $payment->invoice_id) }}" class="text-primary">
+                                    <dl class="row mb-0">
+                                        @if($payment->invoice)
+                                            <dt class="col-sm-5 text-muted fw-normal">رقم الفاتورة</dt>
+                                            <dd class="col-sm-7 mb-2">
+                                                <a href="{{ route('student.invoices.show', $payment->invoice_id) }}"
+                                                   class="fw-semibold text-primary text-decoration-none no-print-link">
                                                     {{ $payment->invoice->invoice_number }}
                                                 </a>
-                                            </p>
-                                        </div>
-                                    @endif
-                                    @if($payment->reference_number)
-                                        <div class="mb-3">
-                                            <label class="text-muted small">رقم المرجع</label>
-                                            <p class="fw-bold mb-0">{{ $payment->reference_number }}</p>
-                                        </div>
-                                    @endif
-                                    <div class="mb-3">
-                                        <label class="text-muted small">الطالب</label>
-                                        <p class="fw-bold mb-0">{{ Auth::user()->name }}</p>
-                                    </div>
+                                            </dd>
+                                        @endif
+
+                                        @if($payment->reference_number)
+                                            <dt class="col-sm-5 text-muted fw-normal">رقم المرجع</dt>
+                                            <dd class="col-sm-7 mb-2">{{ $payment->reference_number }}</dd>
+                                        @endif
+
+                                        <dt class="col-sm-5 text-muted fw-normal">الطالب</dt>
+                                        <dd class="col-sm-7 mb-0">{{ Auth::user()->name }}</dd>
+                                    </dl>
                                 </div>
                             </div>
 
-                            <!-- Invoice Items (if available) -->
                             @if($payment->invoice && $payment->invoice->items->count() > 0)
-                                <hr class="my-4">
-                                <h6 class="fw-bold mb-3">تفاصيل الفاتورة</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>البند</th>
-                                                <th class="text-end">المبلغ</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($payment->invoice->items as $item)
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-3">تفاصيل الفاتورة</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0 dashboard-table student-invoice-show-table">
+                                            <thead>
                                                 <tr>
-                                                    <td>
-                                                        {{ $item->description }}
-                                                        @if($item->campEnrollment && $item->campEnrollment->camp)
-                                                            <br><small class="text-muted">
-                                                                <i class="bi bi-patch-check me-1"></i>{{ $item->campEnrollment->camp->name }}
-                                                            </small>
-                                                        @endif
-                                                    </td>
-                                                    <td class="text-end">${{ number_format($item->total_price, 2) }}</td>
+                                                    <th class="ps-3">البند</th>
+                                                    <th class="text-end pe-3">المبلغ</th>
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                        <tfoot class="border-top">
-                                            <tr>
-                                                <td><strong>إجمالي الفاتورة:</strong></td>
-                                                <td class="text-end"><strong>${{ number_format($payment->invoice->total_amount, 2) }}</strong></td>
-                                            </tr>
-                                            <tr class="table-success">
-                                                <td><strong>المبلغ المدفوع سابقاً:</strong></td>
-                                                <td class="text-end"><strong>${{ number_format($payment->invoice->paid_amount - $payment->amount, 2) }}</strong></td>
-                                            </tr>
-                                            <tr class="table-info">
-                                                <td><strong>هذه الدفعة:</strong></td>
-                                                <td class="text-end"><strong>${{ number_format($payment->amount, 2) }}</strong></td>
-                                            </tr>
-                                            <tr class="table-warning">
-                                                <td><strong>المبلغ المتبقي:</strong></td>
-                                                <td class="text-end"><strong>${{ number_format($payment->invoice->remaining_amount, 2) }}</strong></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($payment->invoice->items as $item)
+                                                    <tr>
+                                                        <td class="ps-3">
+                                                            <strong class="d-block">{{ $item->description }}</strong>
+                                                            @if($item->campEnrollment && $item->campEnrollment->camp)
+                                                                <span class="group-show-chip group-show-chip--sm mt-1">
+                                                                    {{ $item->campEnrollment->camp->name }}
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-end pe-3 fw-semibold">${{ number_format($item->total_price, 2) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="student-invoice-show-table__total">
+                                                    <td class="ps-3"><strong>إجمالي الفاتورة</strong></td>
+                                                    <td class="text-end pe-3 fw-bold">${{ number_format($payment->invoice->total_amount, 2) }}</td>
+                                                </tr>
+                                                <tr class="student-invoice-show-table__paid">
+                                                    <td class="ps-3"><strong>مدفوع سابقاً</strong></td>
+                                                    <td class="text-end pe-3 fw-bold text-success">${{ number_format($payment->invoice->paid_amount - $payment->amount, 2) }}</td>
+                                                </tr>
+                                                <tr class="student-invoice-show-table__remaining">
+                                                    <td class="ps-3"><strong>هذه الدفعة</strong></td>
+                                                    <td class="text-end pe-3 fw-bold text-primary">${{ number_format($payment->amount, 2) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="ps-3"><strong>المبلغ المتبقي</strong></td>
+                                                    <td class="text-end pe-3 fw-bold text-danger">${{ number_format($payment->invoice->remaining_amount, 2) }}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 </div>
                             @endif
 
                             @if($payment->notes)
-                                <hr class="my-4">
-                                <div class="alert alert-info mb-0">
+                                <div class="alert alert-info mb-3">
+                                    <i class="fe fe-info me-2"></i>
                                     <strong>ملاحظات:</strong> {{ $payment->notes }}
                                 </div>
                             @endif
 
                             @if($payment->cancellation_reason)
-                                <hr class="my-4">
-                                <div class="alert alert-danger mb-0">
+                                <div class="alert alert-danger mb-3">
+                                    <i class="fe fe-x-circle me-2"></i>
                                     <strong>سبب الإلغاء:</strong> {{ $payment->cancellation_reason }}
                                 </div>
                             @endif
 
                             @if($payment->refund_reason)
-                                <hr class="my-4">
-                                <div class="alert alert-warning mb-0">
+                                <div class="alert alert-warning mb-3">
+                                    <i class="fe fe-rotate-ccw me-2"></i>
                                     <strong>سبب الاسترداد:</strong> {{ $payment->refund_reason }}
                                 </div>
                             @endif
 
-                            <!-- Receipt Footer -->
-                            <hr class="my-4">
-                            <div class="text-center text-muted small">
+                            <div class="text-center text-muted small border-top pt-4 mt-2">
                                 <p class="mb-1">تم إنشاء هذا الإيصال في: {{ $payment->created_at->format('Y-m-d H:i:s') }}</p>
-                                <p class="mb-0">هذا إيصال رسمي من أكاديمية كلاودسوفت</p>
+                                <p class="mb-0">إيصال رسمي من أكاديمية كلاودسوفت</p>
                             </div>
                         </div>
 
-                        <!-- Signature Area (for print) -->
-                        <div class="card-footer bg-light text-center d-print-block d-none">
-                            <div class="row mt-5">
+                        <div class="card-footer bg-transparent border-top d-none d-print-block text-center py-5">
+                            <div class="row">
                                 <div class="col-6">
                                     <div class="border-top border-dark d-inline-block px-5 pt-2">
                                         <small>توقيع الطالب</small>
@@ -285,90 +326,36 @@
     </div>
 @stop
 
-@section('styles')
-<style>
-    @media print {
-        /* إخفاء جميع عناصر لوحة التحكم */
-        .main-sidebar,
-        .app-sidebar,
-        .sidebar,
-        .main-header,
-        .app-header,
-        .header,
-        .navbar,
-        .page-header-breadcrumb,
-        .breadcrumb,
-        .btn,
-        button,
-        nav,
-        aside,
-        .main-footer,
-        .footer,
-        #loader,
-        .switcher-wrapper,
-        .impersonation-banner {
-            display: none !important;
-            visibility: hidden !important;
+@push('scripts')
+<script>
+(function () {
+    function formatNumber(value, decimals) {
+        if (decimals) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(value);
         }
-
-        /* إخفاء الـ container padding */
-        .container-fluid {
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        /* إظهار محتوى الإيصال فقط */
-        body {
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .page {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .main-content {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-        }
-
-        /* تحسين تنسيق الإيصال */
-        .card {
-            border: 2px solid #000 !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-
-        .row {
-            margin: 0 !important;
-        }
-
-        .col-lg-8 {
-            flex: 0 0 100% !important;
-            max-width: 100% !important;
-            padding: 0 !important;
-        }
-
-        /* إظهار signature area عند الطباعة */
-        .card-footer.d-print-block {
-            display: block !important;
-        }
-
-        /* تحسين @page */
-        @page {
-            margin: 1cm;
-            size: A4;
-        }
-
-        /* إخفاء الروابط */
-        a[href]:after {
-            content: "" !important;
-        }
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
     }
-</style>
-@stop
+
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        const prefix = el.dataset.countupPrefix || '';
+        const suffix = el.dataset.countupSuffix || '';
+        const decimals = el.dataset.countupDecimals === '2';
+        const duration = 900;
+        const start = performance.now();
+
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = prefix + formatNumber(target * eased, decimals) + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+    });
+})();
+</script>
+@endpush

@@ -8,41 +8,73 @@
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إدارة المدفوعات</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item active">المدفوعات</li>
-                        </ol>
-                    </nav>
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fe fe-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('payments.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>تسجيل دفعة جديدة
-                    </a>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fe fe-alert-circle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">المدفوعات</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-dollar-sign me-1"></i>
+                            إدارة المدفوعات
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">التحصيل والمدفوعات</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            متابعة الدفعات المكتملة والمعلقة والمستردة، مع إحصائيات التحصيل والمتبقي.
+                        </p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions group-show-actions--single">
+                            <a href="{{ route('payments.create') }}"
+                               class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">تسجيل دفعة جديدة</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4" id="paymentsStatsContainer">
+            <div id="paymentsStatsContainer" class="mb-4">
                 @include('admin.pages.payments.partials.stats', ['stats' => $stats])
             </div>
 
-            <!-- Filters -->
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('payments.index') }}" id="paymentsFilterForm">
-                        <div class="row g-2">
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية المدفوعات</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث برقم الدفعة أو فلتر حسب الحالة والمعسكر والتاريخ.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form method="GET" action="{{ route('payments.index') }}" id="paymentsFilterForm" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">رقم الدفعة</label>
+                                <label class="form-label" for="paymentsSearchInput">رقم الدفعة</label>
                                 <input type="text" name="payment_number" id="paymentsSearchInput" class="form-control"
                                        value="{{ request('payment_number') }}" placeholder="البحث برقم الدفعة">
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">الحالة</label>
-                                <select name="status" class="form-select">
+                                <label class="form-label" for="paymentsStatus">الحالة</label>
+                                <select name="status" id="paymentsStatus" class="form-select">
                                     <option value="">جميع الحالات</option>
                                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>معلقة</option>
                                     <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>مكتملة</option>
@@ -52,8 +84,8 @@
                                 </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">حالة السداد</label>
-                                <select name="payment_status" class="form-select">
+                                <label class="form-label" for="paymentsPaymentStatus">حالة السداد</label>
+                                <select name="payment_status" id="paymentsPaymentStatus" class="form-select">
                                     <option value="">جميع الحالات</option>
                                     <option value="fully_paid" {{ request('payment_status') == 'fully_paid' ? 'selected' : '' }}>كامل</option>
                                     <option value="partially_paid" {{ request('payment_status') == 'partially_paid' ? 'selected' : '' }}>جزئي</option>
@@ -61,8 +93,8 @@
                                 </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">المعسكر</label>
-                                <select name="camp_id" class="form-select">
+                                <label class="form-label" for="paymentsCampId">المعسكر</label>
+                                <select name="camp_id" id="paymentsCampId" class="form-select">
                                     <option value="">جميع المعسكرات</option>
                                     @foreach($camps as $camp)
                                         <option value="{{ $camp->id }}" {{ (string) request('camp_id') === (string) $camp->id ? 'selected' : '' }}>
@@ -72,19 +104,19 @@
                                 </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">من تاريخ</label>
-                                <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
+                                <label class="form-label" for="paymentsFromDate">من تاريخ</label>
+                                <input type="date" name="from_date" id="paymentsFromDate" class="form-control" value="{{ request('from_date') }}">
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label">إلى تاريخ</label>
-                                <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
+                                <label class="form-label" for="paymentsToDate">إلى تاريخ</label>
+                                <input type="date" name="to_date" id="paymentsToDate" class="form-control" value="{{ request('to_date') }}">
                             </div>
                             <div class="col-12">
-                                <button type="submit" class="btn btn-primary" id="paymentsSearchBtn">
-                                    <i class="fas fa-search me-1"></i>بحث
+                                <button type="submit" class="btn btn-primary btn-sm" id="paymentsSearchBtn">
+                                    <i class="fe fe-search me-1"></i>بحث
                                 </button>
-                                <a href="{{ route('payments.index') }}" class="btn btn-secondary" id="paymentsResetBtn">
-                                    <i class="fas fa-redo me-1"></i>إعادة تعيين
+                                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary btn-sm" id="paymentsResetBtn">
+                                    <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
                                 </a>
                             </div>
                         </div>
@@ -92,15 +124,17 @@
                 </div>
             </div>
 
-            <!-- Payments Table -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">قائمة المدفوعات</div>
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة المدفوعات
+                        <span class="group-show-members-card__count">{{ $payments->total() }}</span>
+                    </h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body pt-3">
                     <div id="paymentsFilterFeedback" class="small text-muted mb-2"></div>
                     <div class="table-responsive">
-                        <table class="table table-bordered text-nowrap">
+                        <table class="table table-hover text-nowrap dashboard-table mb-0">
                             <thead>
                                 <tr>
                                     <th>رقم الدفعة</th>
@@ -122,7 +156,7 @@
                         </table>
                     </div>
 
-                    <div class="mt-3" id="paymentsPagination">
+                    <div class="d-flex justify-content-center mt-4" id="paymentsPagination">
                         {{ $payments->links() }}
                     </div>
                 </div>
@@ -131,8 +165,7 @@
         </div>
     </div>
 
-    <!-- Cancel Modal -->
-    <div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="cancelForm" method="POST">
@@ -146,8 +179,8 @@
                             <label class="form-label">سبب الإلغاء</label>
                             <textarea name="cancellation_reason" class="form-control" rows="3" required></textarea>
                         </div>
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        <div class="alert alert-warning mb-0">
+                            <i class="fe fe-alert-triangle me-2"></i>
                             سيتم إلغاء هذه الدفعة ولن يتم احتسابها في الفاتورة
                         </div>
                     </div>
@@ -160,8 +193,7 @@
         </div>
     </div>
 
-    <!-- Refund Modal -->
-    <div class="modal fade" id="refundModal" tabindex="-1">
+    <div class="modal fade" id="refundModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="refundForm" method="POST">
@@ -175,8 +207,8 @@
                             <label class="form-label">سبب الاسترداد</label>
                             <textarea name="refund_reason" class="form-control" rows="3" required></textarea>
                         </div>
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        <div class="alert alert-warning mb-0">
+                            <i class="fe fe-alert-triangle me-2"></i>
                             سيتم استرداد المبلغ وخصمه من رصيد الفاتورة المدفوع
                         </div>
                     </div>
@@ -190,7 +222,7 @@
     </div>
 @stop
 
-@section('scripts')
+@section('script')
 <script>
     function confirmCancel(paymentId) {
         const form = document.getElementById('cancelForm');
@@ -204,7 +236,41 @@
         new bootstrap.Modal(document.getElementById('refundModal')).show();
     }
 
+    function formatCountupNumber(value, withDecimals) {
+        if (withDecimals) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(value);
+        }
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+    }
+
+    function initPaymentsCountup(container) {
+        const root = container || document;
+        root.querySelectorAll('[data-countup]').forEach(function (el) {
+            const target = parseFloat(el.dataset.countup || '0');
+            const prefix = el.dataset.countupPrefix || '';
+            const suffix = el.dataset.countupSuffix || '';
+            const decimals = el.dataset.countupDecimals === '2' ? 2 : (el.dataset.countupDecimals === '1' ? 1 : 0);
+            const duration = 800;
+            const start = performance.now();
+
+            function step(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const value = formatCountupNumber(target * eased, decimals > 0);
+                el.textContent = prefix + value + suffix;
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        initPaymentsCountup(document);
+
         const form = document.getElementById('paymentsFilterForm');
         if (!form) return;
 
@@ -236,9 +302,9 @@
                 const response = await fetch(targetUrl, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
                     },
-                    signal: activeController.signal
+                    signal: activeController.signal,
                 });
 
                 if (!response.ok) throw new Error('Failed request');
@@ -246,6 +312,7 @@
 
                 if (statsContainer && data.stats) {
                     statsContainer.innerHTML = data.stats;
+                    initPaymentsCountup(statsContainer);
                 }
                 tableBody.innerHTML = data.table || '';
                 paginationContainer.innerHTML = data.pagination || '';

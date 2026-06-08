@@ -24,8 +24,25 @@
             @endif
         </div>
 
-        <a href="{{ route('student.payments.show', $payment->id) }}" class="btn btn-primary rounded-pill w-100 mt-3">
-            <i class="fe fe-file-text me-1"></i>عرض الإيصال
-        </a>
+        @if($payment->status === 'failed' && $payment->rejection_reason)
+            <p class="text-danger small mb-2">
+                <i class="fe fe-alert-circle me-1"></i>{{ $payment->rejection_reason }}
+            </p>
+        @endif
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            @if($payment->has_receipt)
+                <a href="{{ route('student.payments.receipt', $payment->id) }}"
+                   class="btn btn-outline-primary rounded-pill flex-fill"
+                   target="_blank">
+                    <i class="fe fe-paperclip me-1"></i>الإيصال المرفوع
+                </a>
+            @endif
+            @if($payment->status === 'completed')
+                <a href="{{ route('student.payments.show', $payment->id) }}" class="btn btn-primary rounded-pill flex-fill">
+                    <i class="fe fe-file-text me-1"></i>تفاصيل الدفعة
+                </a>
+            @endif
+        </div>
     </article>
 </div>

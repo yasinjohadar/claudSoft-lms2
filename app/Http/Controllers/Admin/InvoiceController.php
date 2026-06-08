@@ -65,8 +65,10 @@ class InvoiceController extends Controller
 
         $statsQuery = clone $query;
         $stats = [
+            'total_count' => (clone $statsQuery)->count(),
             'paid_amount' => (float) (clone $statsQuery)->sum('paid_amount'),
             'unpaid_amount' => (float) (clone $statsQuery)->sum('remaining_amount'),
+            'overdue_count' => (clone $statsQuery)->overdue()->count(),
         ];
 
         $invoices = $query->paginate(20);
@@ -78,7 +80,8 @@ class InvoiceController extends Controller
             return response()->json([
                 'stats' => view('admin.pages.invoices.partials.stats', compact('stats'))->render(),
                 'table' => view('admin.pages.invoices.partials.table', compact('invoices'))->render(),
-                'pagination' => $invoices->hasPages() ? $invoices->links()->render() : ''
+                'modals' => view('admin.pages.invoices.partials.table-modals', compact('invoices'))->render(),
+                'pagination' => $invoices->hasPages() ? $invoices->links()->render() : '',
             ]);
         }
 

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -29,7 +30,7 @@ class UserController extends Controller
 
         $this->middleware('permission:user-list')->only('index');
         $this->middleware('permission:user-create')->only(['create', 'store']);
-        $this->middleware('permission:user-edit')->only(['edit', 'update']);
+        $this->middleware('permission:user-edit')->only(['edit', 'update', 'updatePassword']);
         $this->middleware('permission:user-delete')->only('destroy');
         $this->middleware('permission:user-show')->only('show');
     }
@@ -66,21 +67,30 @@ class UserController extends Controller
         }
 
         // تنفيذ الاستعلام
+        $stats = [
+            'total' => (clone $usersQuery)->count(),
+            'active' => (clone $usersQuery)->where('is_active', true)->count(),
+            'online' => (clone $usersQuery)->where('is_connected', true)->count(),
+            'students' => (clone $usersQuery)->role('student')->count(),
+        ];
+
         $users = $usersQuery->paginate(10);
 
         if ($request->ajax()) {
-            $tableHtml = view('admin.pages.users._users_table', [
-                'users' => $users,
-                'sessions' => $sessions,
-            ])->render();
-
             return response()->json([
-                'table_html' => $tableHtml,
+                'table_html' => view('admin.pages.users._users_table', [
+                    'users' => $users,
+                    'sessions' => $sessions,
+                ])->render(),
+                'modals_html' => view('admin.pages.users._users_modals', [
+                    'users' => $users,
+                ])->render(),
+                'stats_html' => view('admin.pages.users.partials.stats', compact('stats'))->render(),
                 'count' => $users->total(),
             ]);
         }
 
-        return view('admin.pages.users.index', compact('users', 'roles', 'sessions'));
+        return view('admin.pages.users.index', compact('users', 'roles', 'sessions', 'stats'));
     }
 
     /**
@@ -392,17 +402,27 @@ class UserController extends Controller
 
     public function updatePassword(Request $request, User $user)
     {
-        $request->validate([
-            'password' => 'required|string|min:8|confirmed',
+        $validated = $request->validate([
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                Password::min(12)->mixedCase()->numbers()->symbols(),
+            ],
         ], [
             'password.required' => 'كلمة المرور مطلوبة',
-            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
         ]);
 
         $user->update([
-            'password' => Hash::make($request->password),
+            'password' => $validated['password'],
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'تم تحديث كلمة المرور بنجاح',
+            ]);
+        }
 
         return redirect()->route('users.index')->with('success', 'تم تحديث كلمة المرور بنجاح');
     }

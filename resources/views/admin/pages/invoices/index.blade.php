@@ -4,205 +4,170 @@
     الفواتير
 @stop
 
-@section('css')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<style>
-    .invoice-status-badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
-    }
-    .overdue-badge {
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .select2-container--default .select2-selection--single {
-        height: 38px;
-        border: 1px solid #ced4da;
-        border-radius: 0.375rem;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 36px;
-        padding-right: 10px;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px;
-    }
-    .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-    }
-    .table {
-        width: 100%;
-        min-width: 100%;
-        table-layout: auto;
-    }
-    .table thead th {
-        white-space: nowrap;
-    }
-    .table tbody td {
-        white-space: nowrap;
-    }
-    /* Filters styling */
-    #filters-form .form-label {
-        font-size: 0.875rem;
-        margin-bottom: 0.25rem;
-    }
-    #filters-form .form-control,
-    #filters-form .form-select {
-        font-size: 0.875rem;
-    }
-</style>
-@stop
-
 @section('content')
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-check-circle me-2"></i>نجح!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-exclamation-circle me-2"></i>خطأ!</strong> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إدارة الفواتير</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">الفواتير</li>
-                        </ol>
-                    </nav>
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fe fe-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
-                <div class="mt-3 mt-md-0 d-flex gap-2">
-                    <a href="{{ route('invoices.due-overdue') }}" class="btn btn-outline-warning">
-                        <i class="fas fa-hourglass-half me-2"></i>المستحقة والمتأخرة
-                    </a>
-                    <a href="{{ route('invoices.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>إنشاء فاتورة جديدة
-                    </a>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fe fe-alert-circle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
+            @endif
+
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">الفواتير</li>
+                    </ol>
+                </nav>
             </div>
 
-            <div class="row mb-4" id="invoices-stats-container">
-                @include('admin.pages.invoices.partials.stats', ['stats' => $stats])
-            </div>
-
-            <!-- Start::row-1 -->
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">قائمة الفواتير</div>
-                        </div>
-
-                        <div class="card-header py-3">
-                            <form id="filters-form" action="{{ route('invoices.index') }}" method="GET">
-                                <div class="d-flex flex-wrap gap-2 align-items-end">
-                                    <div style="flex: 1; min-width: 150px;">
-                                        <label class="form-label mb-1">بحث</label>
-                                        <input type="text" name="search" id="search" class="form-control form-control-sm"
-                                               placeholder="رقم الفاتورة أو الطالب..." value="{{ request('search') }}">
-                                    </div>
-                                    <div style="flex: 1; min-width: 120px;">
-                                        <label class="form-label mb-1">الحالة</label>
-                                        <select name="status" id="status" class="form-select form-select-sm">
-                                            <option value="">الكل</option>
-                                            <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
-                                            <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>صادرة</option>
-                                            <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>جزئياً</option>
-                                            <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>مدفوعة</option>
-                                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
-                                            <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
-                                        </select>
-                                    </div>
-                                    <div style="flex: 1; min-width: 140px;">
-                                        <label class="form-label mb-1">المعسكر</label>
-                                        <select name="camp_id" id="camp_id" class="form-select form-select-sm">
-                                            <option value="">الكل</option>
-                                            @foreach($trainingCamps as $camp)
-                                                <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
-                                                    {{ $camp->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div style="flex: 1; min-width: 130px;">
-                                        <label class="form-label mb-1">من تاريخ</label>
-                                        <input type="date" name="from_date" id="from_date" class="form-control form-control-sm"
-                                               value="{{ request('from_date') }}">
-                                    </div>
-                                    <div style="flex: 1; min-width: 130px;">
-                                        <label class="form-label mb-1">إلى تاريخ</label>
-                                        <input type="date" name="to_date" id="to_date" class="form-control form-control-sm"
-                                               value="{{ request('to_date') }}">
-                                    </div>
-                                    <div style="min-width: 100px;">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="overdue" value="1"
-                                                   id="overdueCheck" {{ request('overdue') ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="overdueCheck">
-                                                متأخرة
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div style="min-width: 100px;">
-                                        <label class="form-label mb-1 d-block">&nbsp;</label>
-                                        <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm w-100">
-                                            <i class="fas fa-redo me-1"></i>إعادة تعيين
-                                        </a>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th scope="col" style="width: 50px;">#</th>
-                                            <th scope="col">رقم الفاتورة</th>
-                                            <th scope="col">الطالب</th>
-                                            <th scope="col">المعسكر المرتبط</th>
-                                            <th scope="col">تاريخ الإصدار</th>
-                                            <th scope="col">الاستحقاق</th>
-                                            <th scope="col">المبلغ الإجمالي</th>
-                                            <th scope="col">المدفوع</th>
-                                            <th scope="col">المتبقي</th>
-                                            <th scope="col">الحالة</th>
-                                            <th scope="col">العمليات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="invoices-table-body">
-                                        @include('admin.pages.invoices.partials.table')
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div id="invoices-pagination" class="d-flex justify-content-center mt-4">
-                                @if($invoices->hasPages())
-                                    {{ $invoices->links() }}
-                                @endif
-                            </div>
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-7">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-file-text me-1"></i>
+                            إدارة الفواتير
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">الفواتير والتحصيل</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            متابعة الفواتير، المبالغ المسددة والمتبقية، والفواتير المتأخرة من لوحة واحدة.
+                        </p>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="group-show-actions">
+                            <a href="{{ route('invoices.due-overdue') }}"
+                               class="group-show-action group-show-action--warning">
+                                <span class="group-show-action__icon"><i class="fe fe-clock"></i></span>
+                                <span class="group-show-action__text">المستحقة والمتأخرة</span>
+                            </a>
+                            <a href="{{ route('invoices.create') }}"
+                               class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إنشاء فاتورة جديدة</span>
+                            </a>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div id="invoices-stats-container" class="mb-4">
+                @include('admin.pages.invoices.partials.stats', ['stats' => $stats])
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية الفواتير</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث برقم الفاتورة أو الطالب، أو فلتر حسب الحالة والمعسكر والتاريخ.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form id="filters-form" action="{{ route('invoices.index') }}" method="GET" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="search">بحث</label>
+                                <input type="text" name="search" id="search" class="form-control"
+                                       placeholder="رقم الفاتورة أو الطالب..." value="{{ request('search') }}">
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="status">الحالة</label>
+                                <select name="status" id="status" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
+                                    <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>صادرة</option>
+                                    <option value="partial" {{ request('status') == 'partial' ? 'selected' : '' }}>جزئياً</option>
+                                    <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>مدفوعة</option>
+                                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
+                                    <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="camp_id">المعسكر</label>
+                                <select name="camp_id" id="camp_id" class="form-select">
+                                    <option value="">الكل</option>
+                                    @foreach($trainingCamps as $camp)
+                                        <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
+                                            {{ $camp->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="from_date">من تاريخ</label>
+                                <input type="date" name="from_date" id="from_date" class="form-control"
+                                       value="{{ request('from_date') }}">
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="to_date">إلى تاريخ</label>
+                                <input type="date" name="to_date" id="to_date" class="form-control"
+                                       value="{{ request('to_date') }}">
+                            </div>
+                            <div class="col-xl-1 col-lg-2 col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="overdue" value="1"
+                                           id="overdueCheck" {{ request('overdue') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="overdueCheck">متأخرة</label>
+                                </div>
+                            </div>
+                            <div class="col-xl-12 col-lg-12">
+                                <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة الفواتير
+                        <span class="group-show-members-card__count">{{ $invoices->total() }}</span>
+                    </h6>
+                </div>
+                <div class="card-body pt-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover text-nowrap dashboard-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 50px;">#</th>
+                                    <th scope="col">رقم الفاتورة</th>
+                                    <th scope="col">الطالب</th>
+                                    <th scope="col">المعسكر المرتبط</th>
+                                    <th scope="col">تاريخ الإصدار</th>
+                                    <th scope="col">الاستحقاق</th>
+                                    <th scope="col">المبلغ الإجمالي</th>
+                                    <th scope="col">المدفوع</th>
+                                    <th scope="col">المتبقي</th>
+                                    <th scope="col">الحالة</th>
+                                    <th scope="col">العمليات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-table-body">
+                                @include('admin.pages.invoices.partials.table')
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="invoices-pagination" class="d-flex justify-content-center mt-4">
+                        @if($invoices->hasPages())
+                            {{ $invoices->links() }}
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div id="invoices-modals-container">
+                @include('admin.pages.invoices.partials.table-modals')
             </div>
 
         </div>
@@ -210,85 +175,131 @@
 @stop
 
 @section('script')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(document).ready(function() {
-        // No Select2 - using native select for simplicity
-
+    (function () {
         let filterTimeout;
         let isLoading = false;
 
-        // Function to load invoices via AJAX
-        function loadInvoices(page = 1) {
-            if (isLoading) return;
-            
-            isLoading = true;
-            const tableBody = $('#invoices-table-body');
-            const pagination = $('#invoices-pagination');
-            const statsContainer = $('#invoices-stats-container');
-            
-            // Show loading indicator
-            tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
+        function formatCountupNumber(value, withDecimals) {
+            if (withDecimals) {
+                return new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }).format(value);
+            }
+            return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+        }
 
-            const formData = {
-                search: $('#search').val(),
-                status: $('#status').val(),
-                camp_id: $('#camp_id').val(),
-                from_date: $('#from_date').val(),
-                to_date: $('#to_date').val(),
-                overdue: $('#overdueCheck').is(':checked') ? '1' : '',
-                page: page
-            };
+        function initInvoiceCountup(container) {
+            const root = container || document;
+            root.querySelectorAll('[data-countup]').forEach(function (el) {
+                const target = parseFloat(el.dataset.countup || '0');
+                const prefix = el.dataset.countupPrefix || '';
+                const suffix = el.dataset.countupSuffix || '';
+                const decimals = el.dataset.countupDecimals === '2' ? 2 : (el.dataset.countupDecimals === '1' ? 1 : 0);
+                const duration = 800;
+                const start = performance.now();
 
-            $.ajax({
-                url: '{{ route("invoices.index") }}',
-                method: 'GET',
-                data: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                success: function(response) {
-                    if (response.stats) {
-                        statsContainer.html(response.stats);
-                    }
-                    tableBody.html(response.table);
-                    pagination.html(response.pagination || '');
-                    isLoading = false;
-                },
-                error: function(xhr) {
-                    console.error('Error loading invoices:', xhr);
-                    tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
-                    isLoading = false;
+                function step(now) {
+                    const progress = Math.min((now - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const value = formatCountupNumber(target * eased, decimals > 0);
+                    el.textContent = prefix + value + suffix;
+                    if (progress < 1) requestAnimationFrame(step);
                 }
+
+                requestAnimationFrame(step);
             });
         }
 
-        // Handle filter changes with debounce for search
-        $('#search').on('keyup', function() {
-            clearTimeout(filterTimeout);
-            filterTimeout = setTimeout(function() {
-                loadInvoices(1);
-            }, 500);
-        });
+        function loadInvoices(page = 1) {
+            if (isLoading) return;
 
-        // Handle other filter changes immediately
-        $('#status, #camp_id, #from_date, #to_date, #overdueCheck').on('change', function() {
-            loadInvoices(1);
-        });
+            isLoading = true;
+            const tableBody = document.getElementById('invoices-table-body');
+            const pagination = document.getElementById('invoices-pagination');
+            const statsContainer = document.getElementById('invoices-stats-container');
+            const modalsContainer = document.getElementById('invoices-modals-container');
 
-        // Handle pagination clicks
-        $(document).on('click', '.pagination a', function(e) {
-            e.preventDefault();
-            const url = $(this).attr('href');
-            const page = new URL(url).searchParams.get('page') || 1;
-            loadInvoices(page);
-        });
+            tableBody.innerHTML = '<tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>';
 
-        // Auto-hide alerts
-        setTimeout(function() {
-            $('.alert').fadeOut('slow');
-        }, 5000);
-    });
+            const params = new URLSearchParams({
+                search: document.getElementById('search').value,
+                status: document.getElementById('status').value,
+                camp_id: document.getElementById('camp_id').value,
+                from_date: document.getElementById('from_date').value,
+                to_date: document.getElementById('to_date').value,
+                overdue: document.getElementById('overdueCheck').checked ? '1' : '',
+                page: String(page),
+            });
+
+            fetch('{{ route("invoices.index") }}?' + params.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.stats) {
+                        statsContainer.innerHTML = data.stats;
+                        initInvoiceCountup(statsContainer);
+                    }
+                    tableBody.innerHTML = data.table;
+                    pagination.innerHTML = data.pagination || '';
+                    if (modalsContainer && data.modals) {
+                        modalsContainer.innerHTML = data.modals;
+                    }
+                })
+                .catch(function () {
+                    tableBody.innerHTML = '<tr><td colspan="11" class="text-center py-5"><div class="alert alert-danger mb-0">حدث خطأ أثناء تحميل الفواتير</div></td></tr>';
+                })
+                .finally(function () {
+                    isLoading = false;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initInvoiceCountup(document);
+
+            const searchInput = document.getElementById('search');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function () {
+                    clearTimeout(filterTimeout);
+                    filterTimeout = setTimeout(function () {
+                        loadInvoices(1);
+                    }, 500);
+                });
+            }
+
+            ['status', 'camp_id', 'from_date', 'to_date', 'overdueCheck'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', function () {
+                        loadInvoices(1);
+                    });
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                const link = e.target.closest('#invoices-pagination .pagination a');
+                if (!link) return;
+                e.preventDefault();
+                const url = new URL(link.href);
+                const page = url.searchParams.get('page') || '1';
+                loadInvoices(page);
+            });
+
+            setTimeout(function () {
+                document.querySelectorAll('.alert').forEach(function (alert) {
+                    alert.classList.remove('show');
+                });
+            }, 5000);
+        });
+    })();
 </script>
 @stop

@@ -36,6 +36,19 @@ class StudentDashboardController extends Controller
             'completed' => $enrollments->where('completion_percentage', '>=', 100)->count(),
         ];
 
-        return view('student.dashboard', compact('questionModuleStats', 'courseStats'));
+        $inProgressCourses = $enrollments
+            ->filter(function ($enrollment) {
+                $progress = (float) ($enrollment->completion_percentage ?? 0);
+                return $progress > 0 && $progress < 100;
+            })
+            ->sortByDesc('updated_at')
+            ->take(5)
+            ->values();
+
+        return view('student.dashboard', compact(
+            'questionModuleStats',
+            'courseStats',
+            'inProgressCourses',
+        ));
     }
 }
