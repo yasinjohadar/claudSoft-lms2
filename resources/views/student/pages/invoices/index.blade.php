@@ -80,7 +80,7 @@
                     return;
                 }
 
-                form.action = '{{ url('student/invoices') }}/' + invoiceId + '/pay';
+                form.action = @json(route('student.invoices.pay', ['id' => '__INVOICE_ID__'])).replace('__INVOICE_ID__', invoiceId);
                 document.getElementById('indexPayInvoiceNumber').textContent = invoiceNumber || '';
                 document.getElementById('indexPayRemaining').textContent = remaining || '0.00';
 

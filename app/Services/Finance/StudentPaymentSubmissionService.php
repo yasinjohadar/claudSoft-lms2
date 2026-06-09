@@ -34,7 +34,7 @@ class StudentPaymentSubmissionService
 
     public function submit(Invoice $invoice, User $student, array $data, UploadedFile $receipt): Payment
     {
-        if ($invoice->student_id !== $student->id) {
+        if ((int) $invoice->student_id !== (int) $student->id) {
             throw new InvalidArgumentException('هذه الفاتورة لا تخصك.');
         }
 

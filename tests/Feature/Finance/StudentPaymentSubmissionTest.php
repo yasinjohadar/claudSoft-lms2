@@ -256,6 +256,33 @@ class StudentPaymentSubmissionTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_submit_succeeds_when_student_id_is_string_from_database(): void
+    {
+        $this->mockReceiptUpload();
+
+        $student = $this->studentUser();
+        $method = $this->paymentMethod();
+        $invoice = $this->invoiceFor($student);
+        $invoice->setRawAttributes(array_merge($invoice->getAttributes(), [
+            'student_id' => (string) $student->id,
+        ]));
+
+        $payment = app(StudentPaymentSubmissionService::class)->submit(
+            $invoice,
+            $student,
+            [
+                'amount' => 50,
+                'payment_date' => now()->toDateString(),
+                'payment_method_id' => $method->id,
+                'notes' => null,
+            ],
+            UploadedFile::fake()->image('receipt.jpg')
+        );
+
+        $this->assertSame('pending', $payment->status);
+        $this->assertSame($invoice->id, $payment->invoice_id);
+    }
+
     public function test_service_approve_throws_for_non_pending_payment(): void
     {
         $student = $this->studentUser();
