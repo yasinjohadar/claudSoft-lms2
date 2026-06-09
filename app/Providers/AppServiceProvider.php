@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\ContactSetting;
+use App\Services\Finance\StudentDueInvoicesAlertService;
 use App\Notifications\Channels\WhatsAppChannel;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Auth\RequestGuard;
@@ -58,6 +59,17 @@ class AppServiceProvider extends ServiceProvider
         View::composer('frontend2.layouts.footer', function ($view) {
             $contactSettings = ContactSetting::getSettings();
             $view->with('contactSettings', $contactSettings);
+        });
+
+        View::composer('student.layouts.master', function ($view) {
+            if (! auth()->check()) {
+                return;
+            }
+
+            $alert = app(StudentDueInvoicesAlertService::class)
+                ->forUser(auth()->user());
+
+            $view->with('dueInvoicesAlert', $alert);
         });
 
         // Initialize WhatsApp settings defaults

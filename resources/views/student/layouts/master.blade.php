@@ -92,6 +92,82 @@
                 width: 100%;
             }
         }
+
+        .due-invoices-banner {
+            position: relative;
+            background: linear-gradient(135deg, #ffe8e8 0%, #ffd6d6 100%);
+            border: 1px solid #f5a8a8;
+            border-radius: 14px;
+            padding: 0.875rem 2.5rem 0.875rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .due-invoices-close {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+        }
+
+        .due-invoices-main {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .due-invoices-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.375rem;
+        }
+
+        .due-invoices-title {
+            color: #8b1a1a;
+            font-weight: 700;
+        }
+
+        .due-invoices-count {
+            background: #dc3545;
+            color: #fff;
+            border-radius: 999px;
+            padding: 0.15rem 0.6rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .due-invoices-subtitle {
+            color: #9b2c2c;
+            font-size: 0.88rem;
+        }
+
+        .due-invoices-cta {
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        @media (min-width: 992px) {
+            .due-invoices-wrapper.app-content {
+                min-height: auto;
+                margin-block-start: 0.5rem;
+                margin-block-end: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .due-invoices-banner {
+                flex-direction: column;
+                align-items: stretch;
+                padding-top: 2.25rem;
+            }
+
+            .due-invoices-cta {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -126,6 +202,10 @@
         <div class="container-fluid mt-3">
             @include('student.components.alerts')
         </div>
+
+        @if(!empty($dueInvoicesAlert))
+            @include('student.components.due-invoices-banner', ['alert' => $dueInvoicesAlert])
+        @endif
 
         @php
             $profileCompletion = auth()->check() ? auth()->user()->profile_completion_data : null;
