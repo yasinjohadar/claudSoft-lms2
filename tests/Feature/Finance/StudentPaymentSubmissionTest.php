@@ -18,16 +18,20 @@ class StudentPaymentSubmissionTest extends TestCase
 {
     use DatabaseTransactions;
 
-    protected function defineEnvironment($app): void
+    public function createApplication()
     {
+        $app = parent::createApplication();
+
         $app['config']->set('database.default', 'mysql');
         $app['config']->set('database.connections.mysql.database', 'claudsoft_platform');
+
+        return $app;
     }
 
     private function mockReceiptUpload(string $path = 'payments/receipts/2026/1/receipt.jpg'): void
     {
         $this->mock(StorageHelperService::class, function ($mock) use ($path) {
-            $mock->shouldReceive('storeUploadedFile')
+            $mock->shouldReceive('storeUploadedFileWithFailover')
                 ->andReturn($path);
         });
     }
@@ -106,7 +110,7 @@ class StudentPaymentSubmissionTest extends TestCase
         $this->assertNotNull($payment);
         $this->assertSame('pending', $payment->status);
         $this->assertNotNull($payment->receipt_path);
-        $this->assertSame('public', $payment->receipt_disk);
+        $this->assertSame(StudentPaymentSubmissionService::RECEIPT_DISK, $payment->receipt_disk);
     }
 
     public function test_student_cannot_submit_when_pending_payment_exists(): void
@@ -157,7 +161,7 @@ class StudentPaymentSubmissionTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('amount');
-        $this->assertSame(0, Payment::query()->count());
+        $this->assertSame(0, Payment::query()->where('invoice_id', $invoice->id)->count());
     }
 
     public function test_admin_can_approve_pending_payment_and_update_invoice(): void

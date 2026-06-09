@@ -6,9 +6,11 @@ use App\Models\AppStorageConfig;
 use App\Models\StorageDiskMapping;
 use App\Services\Storage\AppStorageFactory;
 use App\Services\Storage\AppStorageAnalyticsService;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Contracts\Filesystem\Filesystem;
 
 class AppStorageManager
 {
@@ -169,6 +171,114 @@ class AppStorageManager
         }
 
         throw new \Exception("All storage options failed for disk: {$disk}");
+    }
+
+    /**
+     * رفع ملف مع Auto-failover (S3 ثم Local لـ payment_receipts أو عند وجود mapping).
+     */
+    public function storeUploadedFileWithFailover(
+        string $disk,
+        string $directory,
+        UploadedFile $file,
+        ?string $fileType = null
+    ): ?string {
+        $storages = $this->resolveFailoverStorages($disk);
+
+        if ($storages->isEmpty()) {
+            try {
+                $storage = $this->getDisk($disk);
+                $storedPath = $storage->putFile($directory, $file);
+
+                return $storedPath ?: null;
+            } catch (\Exception $e) {
+                Log::error("Storage uploaded file failed for disk {$disk}: " . $e->getMessage());
+
+                return null;
+            }
+        }
+
+        foreach ($storages as $storageConfig) {
+            try {
+                $storage = AppStorageFactory::create($storageConfig);
+                $storedPath = $storage->putFile($directory, $file);
+
+                if ($storedPath) {
+                    $this->trackUploadedFile($disk, $storedPath, $file->getSize(), $fileType, $storageConfig);
+                    Log::info("Uploaded file stored for disk {$disk}", [
+                        'storage' => $storageConfig->name,
+                        'path' => $storedPath,
+                    ]);
+
+                    return $storedPath;
+                }
+            } catch (\Exception $e) {
+                Log::warning("Uploaded file storage failed: {$storageConfig->name} - " . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{content: string, mime_type: string}|null
+     */
+    public function retrieveWithFailover(string $disk, string $path): ?array
+    {
+        foreach ($this->resolveFailoverStorages($disk) as $storageConfig) {
+            try {
+                $storage = AppStorageFactory::create($storageConfig);
+                $content = $storage->get($path);
+
+                if ($content !== false && $content !== '') {
+                    $this->trackStorage($disk, $path, $content, null, 'download', $storageConfig);
+
+                    return [
+                        'content' => $content,
+                        'mime_type' => $this->resolveMimeType($storage, $path),
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::debug("Retrieve failed on {$storageConfig->name} for disk {$disk}: " . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    public function resolveFailoverStorages(string $disk): Collection
+    {
+        $mapping = StorageDiskMapping::where('disk_name', $disk)
+            ->where('is_active', true)
+            ->first();
+
+        if ($mapping && $mapping->primaryStorage) {
+            return collect([$mapping->primaryStorage])
+                ->merge($mapping->getFallbackStorages())
+                ->filter();
+        }
+
+        if ($disk === 'payment_receipts') {
+            $chain = AppStorageConfig::where('is_active', true)
+                ->where('driver', 's3')
+                ->orderByDesc('priority')
+                ->get();
+
+            $local = AppStorageConfig::where('is_active', true)
+                ->where('driver', 'local')
+                ->orderByDesc('priority')
+                ->first();
+
+            if ($local) {
+                $chain = $chain->push($local);
+            }
+
+            return $chain->filter();
+        }
+
+        return collect();
     }
 
     /**
@@ -427,6 +537,39 @@ class AppStorageManager
         } catch (\Exception $e) {
             Log::error("Storage move failed for disk {$disk}: " . $e->getMessage());
             return false;
+        }
+    }
+
+    private function resolveMimeType(Filesystem $storage, string $path): string
+    {
+        try {
+            return $storage->mimeType($path) ?: 'application/octet-stream';
+        } catch (\Exception $e) {
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+            return match ($extension) {
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'pdf' => 'application/pdf',
+                default => 'application/octet-stream',
+            };
+        }
+    }
+
+    private function trackUploadedFile(
+        string $disk,
+        string $path,
+        int $bytes,
+        ?string $fileType,
+        AppStorageConfig $storage
+    ): void {
+        try {
+            $this->analyticsService->trackStorageUsage($storage, $bytes, $fileType);
+            $this->analyticsService->trackBandwidth($storage, 'upload', $bytes, $fileType);
+        } catch (\Exception $e) {
+            Log::warning("Failed to track uploaded file usage for disk {$disk}: " . $e->getMessage());
         }
     }
 

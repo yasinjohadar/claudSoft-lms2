@@ -274,7 +274,11 @@ class PaymentController extends Controller
         $disk = $payment->receipt_disk ?: StudentPaymentSubmissionService::RECEIPT_DISK;
         $filename = basename($payment->receipt_path);
 
-        return serve_storage_file_response([$disk, 'public'], $payment->receipt_path, $filename);
+        return serve_storage_file_response(
+            [$disk, StudentPaymentSubmissionService::RECEIPT_DISK, 'public'],
+            $payment->receipt_path,
+            $filename
+        );
     }
 
     /**

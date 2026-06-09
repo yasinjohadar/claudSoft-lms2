@@ -12,7 +12,7 @@ use InvalidArgumentException;
 
 class StudentPaymentSubmissionService
 {
-    public const RECEIPT_DISK = 'public';
+    public const RECEIPT_DISK = 'payment_receipts';
 
     public function __construct(
         protected StorageHelperService $storageHelper
@@ -61,7 +61,7 @@ class StudentPaymentSubmissionService
         }
 
         $uploadPath = 'payments/receipts/' . date('Y') . '/' . $student->id;
-        $storedPath = $this->storageHelper->storeUploadedFile(
+        $storedPath = $this->storageHelper->storeUploadedFileWithFailover(
             self::RECEIPT_DISK,
             $uploadPath,
             $receipt,

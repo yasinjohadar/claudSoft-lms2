@@ -64,6 +64,42 @@ class StorageHelperService
     }
 
     /**
+     * رفع ملف مع تجربة S3 ثم التخزين المحلي عند الحاجة.
+     */
+    public function storeUploadedFileWithFailover(string $disk, string $path, $file, ?string $fileType = null): ?string
+    {
+        try {
+            return $this->storageManager->storeUploadedFileWithFailover($disk, $path, $file, $fileType);
+        } catch (\Exception $e) {
+            Log::error('StorageHelperService: Failed to store uploaded file with failover', [
+                'disk' => $disk,
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array{content: string, mime_type: string}|null
+     */
+    public function retrieveFileWithFailover(string $disk, string $path): ?array
+    {
+        try {
+            return $this->storageManager->retrieveWithFailover($disk, $path);
+        } catch (\Exception $e) {
+            Log::error('StorageHelperService: Failed to retrieve file with failover', [
+                'disk' => $disk,
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * الحصول على URL للملف
      * 
      * @param string $disk

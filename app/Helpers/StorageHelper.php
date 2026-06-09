@@ -154,8 +154,34 @@ if (!function_exists('serve_storage_file_response')) {
 
         try {
             $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $seenDisks = [];
 
             foreach ($diskCandidates as $diskName) {
+                if (in_array($diskName, $seenDisks, true)) {
+                    continue;
+                }
+                $seenDisks[] = $diskName;
+
+                $failoverResult = $storageHelper->retrieveFileWithFailover($diskName, $filePath);
+                if ($failoverResult) {
+                    $mimeType = $failoverResult['mime_type'];
+
+                    if (! in_array($mimeType, $allowedMimeTypes, true)) {
+                        abort(403, 'نوع الملف غير مسموح');
+                    }
+
+                    $headers = [
+                        'Content-Type' => $mimeType,
+                        'Cache-Control' => 'private, max-age=3600',
+                    ];
+
+                    if ($downloadName) {
+                        $headers['Content-Disposition'] = 'inline; filename="' . $downloadName . '"';
+                    }
+
+                    return response($failoverResult['content'], 200, $headers);
+                }
+
                 try {
                     $disk = $storageHelper->getDisk($diskName);
                     $content = $disk->get($filePath);
