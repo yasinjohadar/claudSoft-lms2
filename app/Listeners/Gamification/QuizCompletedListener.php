@@ -3,6 +3,7 @@
 namespace App\Listeners\Gamification;
 
 use App\Events\QuizCompleted;
+use App\Services\Gamification\BadgeService;
 use App\Services\Gamification\GamificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -13,13 +14,17 @@ class QuizCompletedListener implements ShouldQueue
     use InteractsWithQueue;
 
     protected GamificationService $gamificationService;
+    protected BadgeService $badgeService;
 
     /**
      * Create the event listener.
      */
-    public function __construct(GamificationService $gamificationService)
-    {
+    public function __construct(
+        GamificationService $gamificationService,
+        BadgeService $badgeService
+    ) {
         $this->gamificationService = $gamificationService;
+        $this->badgeService = $badgeService;
     }
 
     /**
@@ -50,6 +55,8 @@ class QuizCompletedListener implements ShouldQueue
                     'xp_awarded' => $result['xp_awarded'],
                 ]);
             }
+
+            $this->badgeService->checkAllBadgesWithCascade($event->user);
         } catch (\Exception $e) {
             Log::error("Gamification: Failed to handle quiz completion", [
                 'user_id' => $event->user->id,

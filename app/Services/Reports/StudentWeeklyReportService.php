@@ -2,15 +2,334 @@
 
 namespace App\Services\Reports;
 
+use App\Models\Course;
+use App\Models\CourseGroup;
 use App\Models\CourseModule;
 use App\Models\StudentWeeklyReport;
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class StudentWeeklyReportService
 {
+    public function applyAdminFilters(Builder $query, ?int $courseId, ?int $groupId): Builder
+    {
+        if ($courseId > 0) {
+            $query->where('target_course_id', $courseId);
+        }
+
+        if ($groupId > 0) {
+            $query->where('target_group_id', $groupId);
+        }
+
+        return $query;
+    }
+
+    public function applyAdminStatusFilter(Builder $query, ?string $status): Builder
+    {
+        $allowedStatuses = [
+            StudentWeeklyReport::STATUS_DRAFT,
+            StudentWeeklyReport::STATUS_SUBMITTED,
+            StudentWeeklyReport::STATUS_REVIEWED,
+            StudentWeeklyReport::STATUS_CLOSED,
+        ];
+
+        if ($status && in_array($status, $allowedStatuses, true)) {
+            $query->where('status', $status);
+        }
+
+        return $query;
+    }
+
+    public function buildAllReportsAdminQuery(?int $courseId = null, ?int $groupId = null, ?string $status = null): Builder
+    {
+        $query = StudentWeeklyReport::query()
+            ->with([
+                'student:id,name,name_ar,email,phone,country_code,full_phone',
+                'targetCourse:id,title',
+                'targetGroup:id,name',
+                'createdByAdmin:id,name,name_ar',
+            ])
+            ->latest('id');
+
+        $this->applyAdminFilters($query, $courseId, $groupId);
+        $this->applyAdminStatusFilter($query, $status);
+
+        return $query;
+    }
+
+    public function getAllReportsForAdmin(
+        ?int $courseId = null,
+        ?int $groupId = null,
+        ?string $status = null,
+        int $perPage = 20
+    ): \Illuminate\Contracts\Pagination\LengthAwarePaginator {
+        return $this->buildAllReportsAdminQuery($courseId, $groupId, $status)->paginate($perPage);
+    }
+
+    public function getAllReportsStatusCounts(?int $courseId = null, ?int $groupId = null): array
+    {
+        $query = StudentWeeklyReport::query();
+        $this->applyAdminFilters($query, $courseId, $groupId);
+
+        $counts = $query
+            ->select('status', DB::raw('COUNT(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return [
+            'total' => (int) $counts->sum(),
+            'draft' => (int) ($counts[StudentWeeklyReport::STATUS_DRAFT] ?? 0),
+            'submitted' => (int) ($counts[StudentWeeklyReport::STATUS_SUBMITTED] ?? 0),
+            'reviewed' => (int) ($counts[StudentWeeklyReport::STATUS_REVIEWED] ?? 0),
+            'closed' => (int) ($counts[StudentWeeklyReport::STATUS_CLOSED] ?? 0),
+        ];
+    }
+
+    public function getAdminCreatedReportsQuery(?int $courseId = null, ?int $groupId = null): Builder
+    {
+        $query = StudentWeeklyReport::query()
+            ->adminCreated()
+            ->with([
+                'student:id,name,name_ar,email,phone,country_code,full_phone',
+                'targetCourse:id,title',
+                'targetGroup:id,name',
+                'createdByAdmin:id,name,name_ar',
+            ])
+            ->latest('created_at')
+            ->latest('id');
+
+        return $this->applyAdminFilters($query, $courseId, $groupId);
+    }
+
+    public function getAdminCreatedBatchByKey(string $batchKey): ?array
+    {
+        $reports = $this->getAdminCreatedReportsQuery()
+            ->get()
+            ->filter(fn (StudentWeeklyReport $report) => $this->adminCreatedBatchKey($report) === $batchKey);
+
+        if ($reports->isEmpty()) {
+            return null;
+        }
+
+        return $this->formatAdminCreatedBatch($reports);
+    }
+
+    public function filterAdminCreatedBatchStudents(array $batch, ?string $search = null, ?string $status = null): array
+    {
+        $reports = $batch['student_reports'];
+
+        if ($status && in_array($status, [
+            StudentWeeklyReport::STATUS_DRAFT,
+            StudentWeeklyReport::STATUS_SUBMITTED,
+            StudentWeeklyReport::STATUS_REVIEWED,
+            StudentWeeklyReport::STATUS_CLOSED,
+        ], true)) {
+            $reports = $reports->filter(fn (StudentWeeklyReport $report) => $report->status === $status);
+        }
+
+        $search = is_string($search) ? trim($search) : '';
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $reports = $reports->filter(function (StudentWeeklyReport $report) use ($needle) {
+                $student = $report->student;
+                $haystack = mb_strtolower(implode(' ', array_filter([
+                    $student->name ?? '',
+                    $student->name_ar ?? '',
+                    $student->email ?? '',
+                ])));
+
+                return str_contains($haystack, $needle);
+            });
+        }
+
+        $filteredReports = $reports->values();
+
+        return array_merge($batch, [
+            'student_reports' => $filteredReports,
+            'filtered_count' => $filteredReports->count(),
+            'is_filtered' => $search !== '' || ($status !== null && $status !== ''),
+        ]);
+    }
+
+    public function getAdminCreatedReportBatches(
+        ?int $courseId = null,
+        ?int $groupId = null,
+        int $perPage = 15,
+        ?int $page = null
+    ): \Illuminate\Contracts\Pagination\LengthAwarePaginator {
+        $query = StudentWeeklyReport::query()
+            ->adminCreated()
+            ->with([
+                'targetCourse:id,title',
+                'targetGroup:id,name',
+                'createdByAdmin:id,name,name_ar',
+            ])
+            ->latest('created_at')
+            ->latest('id');
+
+        $this->applyAdminFilters($query, $courseId, $groupId);
+        $reports = $query->get();
+
+        $batches = $reports
+            ->groupBy(fn (StudentWeeklyReport $report) => $this->adminCreatedBatchKey($report))
+            ->map(fn (Collection $groupReports) => $this->formatAdminCreatedBatchSummary($groupReports))
+            ->sortByDesc('created_at')
+            ->values();
+
+        $page = $page ?? (int) request()->input('page', 1);
+        $total = $batches->count();
+        $items = $batches->slice(($page - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+    }
+
+    public function getAdminCreatedBatchStats(?int $courseId = null, ?int $groupId = null): array
+    {
+        $reports = $this->getAdminCreatedReportsQuery($courseId, $groupId)->get();
+        $batches = $reports->groupBy(fn (StudentWeeklyReport $report) => $this->adminCreatedBatchKey($report));
+
+        $submittedStatuses = [
+            StudentWeeklyReport::STATUS_SUBMITTED,
+            StudentWeeklyReport::STATUS_REVIEWED,
+        ];
+
+        return [
+            'batches_count' => $batches->count(),
+            'students_count' => $reports->count(),
+            'submitted_count' => $reports->whereIn('status', $submittedStatuses)->count(),
+            'pending_count' => $reports->whereNull('submitted_at')
+                ->whereIn('status', [StudentWeeklyReport::STATUS_DRAFT, StudentWeeklyReport::STATUS_CLOSED])
+                ->count(),
+        ];
+    }
+
+    public function getAdminFilterOptions(?int $courseId = null): array
+    {
+        $courseIds = StudentWeeklyReport::query()
+            ->whereNotNull('target_course_id')
+            ->distinct()
+            ->pluck('target_course_id');
+
+        $courses = Course::query()
+            ->whereIn('id', $courseIds)
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        $groupQuery = CourseGroup::query()
+            ->whereIn('id', function ($query) {
+                $query->select('target_group_id')
+                    ->from('student_weekly_reports')
+                    ->whereNotNull('target_group_id')
+                    ->distinct();
+            })
+            ->with(['courses:id']);
+
+        if ($courseId > 0) {
+            $groupQuery->whereHas('courses', fn ($query) => $query->where('courses.id', $courseId));
+        }
+
+        $groups = $groupQuery->orderBy('name')->get(['id', 'name']);
+
+        return [
+            'courses' => $courses,
+            'groups' => $groups,
+        ];
+    }
+
+    public function getSubmittedReportsForAdmin(?int $courseId = null, ?int $groupId = null): Collection
+    {
+        $query = StudentWeeklyReport::query()
+            ->submitted()
+            ->with([
+                'student:id,name,name_ar',
+                'targetCourse:id,title',
+                'targetGroup:id,name',
+            ])
+            ->latest('submitted_at')
+            ->latest('id');
+
+        return $this->applyAdminFilters($query, $courseId, $groupId)->get();
+    }
+
+    public function getPendingReportsForAdmin(?int $courseId = null, ?int $groupId = null): Collection
+    {
+        $query = StudentWeeklyReport::query()
+            ->notSubmitted()
+            ->with([
+                'student:id,name,name_ar',
+                'targetCourse:id,title',
+                'targetGroup:id,name',
+            ])
+            ->latest('due_at')
+            ->latest('id');
+
+        return $this->applyAdminFilters($query, $courseId, $groupId)->get();
+    }
+
+    public function getGroupsOverviewData(?int $courseId = null, ?int $groupId = null): array
+    {
+        $groupsQuery = CourseGroup::query()
+            ->whereHas('courses')
+            ->orderBy('name');
+
+        if ($groupId > 0) {
+            $groupsQuery->where('id', $groupId);
+        } elseif ($courseId > 0) {
+            $groupsQuery->whereHas('courses', fn ($query) => $query->where('courses.id', $courseId));
+        }
+
+        $groups = $groupsQuery->get(['id', 'name']);
+
+        $reportsQuery = StudentWeeklyReport::query()
+            ->with(['student:id,name,name_ar', 'targetGroup:id,name'])
+            ->whereNotNull('target_group_id');
+
+        $this->applyAdminFilters($reportsQuery, $courseId, $groupId);
+
+        $reportsByGroup = $reportsQuery
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('target_group_id');
+
+        $groupsData = $groups->map(function (CourseGroup $group) use ($reportsByGroup) {
+            $reports = collect($reportsByGroup->get($group->id, []));
+            $submittedReports = $reports
+                ->filter(fn (StudentWeeklyReport $report) => in_array($report->status, [
+                    StudentWeeklyReport::STATUS_SUBMITTED,
+                    StudentWeeklyReport::STATUS_REVIEWED,
+                ], true))
+                ->sortByDesc(fn (StudentWeeklyReport $report) => $report->submitted_at ?? $report->updated_at)
+                ->values();
+
+            return [
+                'group' => $group,
+                'total_reports_count' => $reports->count(),
+                'submitted_reports_count' => $submittedReports->count(),
+                'submitted_reports' => $submittedReports,
+            ];
+        })->filter(fn (array $item) => $item['total_reports_count'] > 0)->values();
+
+        $totalCreatedReports = $groupsData->sum('total_reports_count');
+        $totalSubmittedReports = $groupsData->sum('submitted_reports_count');
+
+        return [
+            'groupsData' => $groupsData,
+            'totalCreatedReports' => $totalCreatedReports,
+            'totalSubmittedReports' => $totalSubmittedReports,
+            'totalPendingReports' => max(0, $totalCreatedReports - $totalSubmittedReports),
+        ];
+    }
+
     public function resolveStudentsByCourseAndGroup(int $courseId, int $groupId): Collection
     {
         if ($courseId <= 0 || $groupId <= 0) {
@@ -38,6 +357,94 @@ class StudentWeeklyReportService
             })
             ->orderBy('name')
             ->get();
+    }
+
+    public function resolveCoursesForStudentReport(int $studentId, StudentWeeklyReport $report): Collection
+    {
+        if (!empty($report->target_course_id)) {
+            return Course::query()
+                ->where('id', (int) $report->target_course_id)
+                ->orderBy('title')
+                ->get(['id', 'title']);
+        }
+
+        $courseIds = DB::table('course_group_members')
+            ->join('course_group_courses', 'course_group_members.group_id', '=', 'course_group_courses.group_id')
+            ->where('course_group_members.student_id', $studentId)
+            ->distinct()
+            ->pluck('course_group_courses.course_id');
+
+        return Course::query()
+            ->whereIn('id', $courseIds)
+            ->orderBy('title')
+            ->get(['id', 'title']);
+    }
+
+    public function isCourseAllowedForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): bool
+    {
+        if ($courseId <= 0) {
+            return false;
+        }
+
+        return $this->resolveCoursesForStudentReport($studentId, $report)
+            ->pluck('id')
+            ->contains($courseId);
+    }
+
+    public function groupSelectedLessonsByCourse(StudentWeeklyReport $report): Collection
+    {
+        return $report->selectedLessons
+            ->groupBy('course_id')
+            ->map(function (Collection $items, $courseId) {
+                return [
+                    'course_id' => (int) $courseId,
+                    'module_ids' => $items->pluck('module_id')->filter()->values()->all(),
+                ];
+            })
+            ->values();
+    }
+
+    public function flattenLessonsPayload(array $lessons): array
+    {
+        $flattened = [];
+
+        foreach ($lessons as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $courseId = (int) ($entry['course_id'] ?? 0);
+            if ($courseId <= 0) {
+                continue;
+            }
+
+            if (!empty($entry['module_id'])) {
+                $flattened[] = [
+                    'course_id' => $courseId,
+                    'module_id' => (int) $entry['module_id'],
+                ];
+                continue;
+            }
+
+            $moduleIds = $entry['module_ids'] ?? [];
+            if (!is_array($moduleIds)) {
+                continue;
+            }
+
+            foreach ($moduleIds as $moduleId) {
+                $moduleId = (int) $moduleId;
+                if ($moduleId <= 0) {
+                    continue;
+                }
+
+                $flattened[] = [
+                    'course_id' => $courseId,
+                    'module_id' => $moduleId,
+                ];
+            }
+        }
+
+        return $flattened;
     }
 
     public function createManualReport(
@@ -78,7 +485,7 @@ class StudentWeeklyReportService
                     $courseId = (int) ($entry['course_id'] ?? 0);
                     $moduleId = (int) ($entry['module_id'] ?? 0);
 
-                    if (!$this->isModuleAllowedForStudent((int) $report->student_id, $courseId, $moduleId)) {
+                    if (!$this->isModuleAllowedForStudent($report, $courseId, $moduleId)) {
                         throw ValidationException::withMessages([
                             'lessons' => 'تم اختيار درس غير متاح لهذا الطالب.',
                         ]);
@@ -100,6 +507,18 @@ class StudentWeeklyReportService
 
     public function submitReport(StudentWeeklyReport $report, array $payload): StudentWeeklyReport
     {
+        if ($report->wasSubmittedByStudent()) {
+            throw ValidationException::withMessages([
+                'report' => 'تم إرسال هذا التقرير مسبقاً ولا يمكن إرساله مجدداً.',
+            ]);
+        }
+
+        if (!$report->isEditableByStudent()) {
+            throw ValidationException::withMessages([
+                'report' => 'لا يمكن إرسال هذا التقرير في حالته الحالية.',
+            ]);
+        }
+
         $report = $this->saveStudentReport($report, $payload);
 
         $report->update([
@@ -135,31 +554,31 @@ class StudentWeeklyReportService
 
     private function assertStudentCanEdit(StudentWeeklyReport $report): void
     {
-        if ($report->status === StudentWeeklyReport::STATUS_CLOSED || ($report->due_at && $report->due_at->isPast())) {
+        if (!$report->isEditableByStudent()) {
+            $message = $report->wasSubmittedByStudent()
+                ? 'تم إرسال التقرير مسبقاً ولا يمكن تعديله أو إرساله مجدداً.'
+                : 'هذا التقرير مغلق ولا يمكن تعديله.';
+
             throw ValidationException::withMessages([
-                'report' => 'هذا التقرير مغلق ولا يمكن تعديله.',
+                'report' => $message,
             ]);
         }
     }
 
-    private function isModuleAllowedForStudent(int $studentId, int $courseId, int $moduleId): bool
+    private function isModuleAllowedForStudent(StudentWeeklyReport $report, int $courseId, int $moduleId): bool
     {
         if ($courseId <= 0 || $moduleId <= 0) {
             return false;
         }
 
-        $isEnrolled = DB::table('course_enrollments')
-            ->where('student_id', $studentId)
-            ->where('course_id', $courseId)
-            ->exists();
-
-        if (!$isEnrolled) {
+        if (!$this->isCourseAllowedForStudentReport((int) $report->student_id, $report, $courseId)) {
             return false;
         }
 
         return CourseModule::query()
             ->where('id', $moduleId)
             ->where('course_id', $courseId)
+            ->whereNull('deleted_at')
             ->exists();
     }
 
@@ -172,6 +591,60 @@ class StudentWeeklyReportService
         }
 
         return $module->modulable_id ? (int) $module->modulable_id : null;
+    }
+
+    private function adminCreatedBatchKey(StudentWeeklyReport $report): string
+    {
+        return implode('::', [
+            $report->report_title,
+            (int) ($report->target_course_id ?? 0),
+            (int) ($report->target_group_id ?? 0),
+            (int) ($report->created_by_admin_id ?? 0),
+            optional($report->due_at)->format('Y-m-d H:i:s') ?? '',
+            $report->created_at->format('Y-m-d H:i'),
+        ]);
+    }
+
+    private function formatAdminCreatedBatchSummary(Collection $reports): array
+    {
+        return array_merge($this->buildAdminCreatedBatchMeta($reports), [
+            'student_reports' => collect(),
+        ]);
+    }
+
+    private function formatAdminCreatedBatch(Collection $reports): array
+    {
+        $studentReports = $reports
+            ->sortBy(fn (StudentWeeklyReport $report) => $report->student->name_ar ?? $report->student->name ?? '')
+            ->values();
+
+        return array_merge($this->buildAdminCreatedBatchMeta($reports), [
+            'student_reports' => $studentReports,
+        ]);
+    }
+
+    private function buildAdminCreatedBatchMeta(Collection $reports): array
+    {
+        $first = $reports->first();
+        $submittedStatuses = [
+            StudentWeeklyReport::STATUS_SUBMITTED,
+            StudentWeeklyReport::STATUS_REVIEWED,
+        ];
+
+        return [
+            'key' => $this->adminCreatedBatchKey($first),
+            'report_title' => $first->report_title,
+            'target_course' => $first->targetCourse,
+            'target_group' => $first->targetGroup,
+            'created_by_admin' => $first->createdByAdmin,
+            'due_at' => $first->due_at,
+            'created_at' => $reports->min('created_at'),
+            'students_count' => $reports->count(),
+            'submitted_count' => $reports->whereIn('status', $submittedStatuses)->count(),
+            'pending_count' => $reports->filter(fn (StudentWeeklyReport $report) => $report->submitted_at === null
+                && in_array($report->status, [StudentWeeklyReport::STATUS_DRAFT, StudentWeeklyReport::STATUS_CLOSED], true)
+            )->count(),
+        ];
     }
 }
 

@@ -31,7 +31,6 @@ use App\Events\StudentEnrolledInCourse;
 use App\Listeners\AssessmentNotificationListener;
 // Listeners
 use App\Listeners\CourseNotificationListener;
-use App\Listeners\Gamification\CheckBadgesListener;
 use App\Listeners\Gamification\SendNotificationListener;
 use App\Listeners\IssueCertificateOnCompletion;
 use App\Listeners\N8nWebhookListener;
@@ -59,13 +58,11 @@ class EventServiceProvider extends ServiceProvider
             StudentActionNotificationListener::class.'@handleCourseCompleted',
             SendWapiOnCourseCompleted::class,
             IssueCertificateOnCompletion::class,
-            CheckBadgesListener::class,
         ],
         LessonCompleted::class => [
             CourseNotificationListener::class.'@handleLessonCompleted',
             StudentActionNotificationListener::class.'@handleLessonCompleted',
             SendWapiOnLessonCompleted::class,
-            CheckBadgesListener::class,
         ],
 
         // Assessment Events
@@ -73,7 +70,6 @@ class EventServiceProvider extends ServiceProvider
             AssessmentNotificationListener::class.'@handleQuizCompleted',
             StudentActionNotificationListener::class.'@handleQuizCompleted',
             SendWapiOnQuizCompleted::class,
-            CheckBadgesListener::class,
         ],
         QuizStarted::class => [
             StudentActionNotificationListener::class.'@handleQuizStarted',

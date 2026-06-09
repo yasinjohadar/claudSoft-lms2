@@ -63,5 +63,40 @@ class StudentWeeklyReport extends Model
     {
         return $this->hasMany(StudentWeeklyReportLesson::class);
     }
+
+    public function isEditableByStudent(): bool
+    {
+        if (in_array($this->status, [self::STATUS_SUBMITTED, self::STATUS_REVIEWED, self::STATUS_CLOSED], true)) {
+            return false;
+        }
+
+        if ($this->due_at && $this->due_at->isPast()) {
+            return false;
+        }
+
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function wasSubmittedByStudent(): bool
+    {
+        return in_array($this->status, [self::STATUS_SUBMITTED, self::STATUS_REVIEWED], true)
+            || $this->submitted_at !== null;
+    }
+
+    public function scopeSubmitted($query)
+    {
+        return $query->whereIn('status', [self::STATUS_SUBMITTED, self::STATUS_REVIEWED]);
+    }
+
+    public function scopeNotSubmitted($query)
+    {
+        return $query->whereNull('submitted_at')
+            ->whereIn('status', [self::STATUS_DRAFT, self::STATUS_CLOSED]);
+    }
+
+    public function scopeAdminCreated($query)
+    {
+        return $query->whereNotNull('created_by_admin_id');
+    }
 }
 

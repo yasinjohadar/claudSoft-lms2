@@ -346,10 +346,10 @@ Route::prefix('student')
         // Weekly Reports Routes (التقارير الأسبوعية)
         Route::prefix('weekly-reports')->name('student.weekly-reports.')->group(function () {
             Route::get('/', [StudentWeeklyReportController::class, 'index'])->name('index');
+            Route::get('/courses/{course}/lessons', [StudentWeeklyReportController::class, 'lessons'])->name('lessons');
             Route::get('/{report}', [StudentWeeklyReportController::class, 'show'])->name('show');
             Route::put('/{report}/save', [StudentWeeklyReportController::class, 'save'])->name('save');
             Route::put('/{report}/submit', [StudentWeeklyReportController::class, 'submit'])->name('submit');
-            Route::get('/courses/{course}/lessons', [StudentWeeklyReportController::class, 'lessons'])->name('lessons');
         });
 
         // Notes Routes (المفكرة الشخصية)

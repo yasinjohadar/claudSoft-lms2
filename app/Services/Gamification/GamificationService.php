@@ -214,6 +214,11 @@ class GamificationService
             ])
         );
 
+        if ($result['success']) {
+            $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
+            $stats->increment('quizzes_completed');
+        }
+
         // منح شارة خاصة للدرجة الكاملة
         if ($percentage == 100) {
             $this->handlePerfectScore($user, $quizId);
@@ -261,7 +266,7 @@ class GamificationService
             'xp' => 75,
         ]);
 
-        return $this->awardReward(
+        $result = $this->awardReward(
             $user,
             $config['points'],
             $config['xp'],
@@ -271,6 +276,13 @@ class GamificationService
             $assignmentId,
             $metadata
         );
+
+        if ($result['success']) {
+            $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
+            $stats->increment('assignments_submitted');
+        }
+
+        return $result;
     }
 
     /**

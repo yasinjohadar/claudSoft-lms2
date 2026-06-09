@@ -18,6 +18,11 @@ class StudentWeeklyReportScheduleController extends Controller
             ->latest('id')
             ->paginate(20);
 
+        $scheduleStats = [
+            'total' => StudentWeeklyReportSchedule::query()->count(),
+            'active' => StudentWeeklyReportSchedule::query()->where('is_active', true)->count(),
+        ];
+
         $courses = Course::query()
             ->whereHas('groups')
             ->orderBy('title')
@@ -28,7 +33,7 @@ class StudentWeeklyReportScheduleController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('admin.weekly-reports.schedules', compact('schedules', 'courses', 'groups'));
+        return view('admin.weekly-reports.schedules', compact('schedules', 'courses', 'groups', 'scheduleStats'));
     }
 
     public function store(Request $request)

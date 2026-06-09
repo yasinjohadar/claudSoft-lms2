@@ -3,42 +3,101 @@
 @section('page-title', 'جدولة التقارير الأسبوعية')
 
 @section('content')
+@php
+    $weekdayLabels = [
+        0 => 'الأحد',
+        1 => 'الاثنين',
+        2 => 'الثلاثاء',
+        3 => 'الأربعاء',
+        4 => 'الخميس',
+        5 => 'الجمعة',
+        6 => 'السبت',
+    ];
+    $activeSchedules = $scheduleStats['active'] ?? 0;
+    $totalSchedules = $scheduleStats['total'] ?? $schedules->total();
+@endphp
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="my-4">
-            <h5>جدولة التقارير الأسبوعية</h5>
+
+        @include('admin.components.alerts')
+
+        @include('admin.weekly-reports.partials.breadcrumb', ['current' => 'جدولة التقارير'])
+
+        <div class="group-show-hero dashboard-fade-in mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-calendar me-1"></i>
+                        التقارير الأسبوعية
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">جدولة التقارير</h2>
+                    <p class="group-show-hero__desc mb-0">
+                        إعداد جداول تلقائية لإنشاء تقارير أسبوعية لمجموعات محددة في أيام ومواعيد ثابتة.
+                    </p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="group-show-actions group-show-actions--single">
+                        <a href="{{ route('admin.weekly-reports.create') }}"
+                           class="group-show-action group-show-action--primary">
+                            <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                            <span class="group-show-action__text">إنشاء تقرير يدوي</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
+        @php
+            $kpiCards = [
+                [
+                    'variant' => 'blue',
+                    'icon' => 'fe-calendar',
+                    'label' => 'إجمالي الجداول',
+                    'value' => $totalSchedules,
+                    'sub' => 'جدولات مسجّلة في النظام',
+                ],
+                [
+                    'variant' => 'green',
+                    'icon' => 'fe-play-circle',
+                    'label' => 'جداول نشطة',
+                    'value' => $activeSchedules,
+                    'sub' => 'تعمل حالياً',
+                ],
+            ];
+        @endphp
 
-        <div class="card custom-card mb-3">
-            <div class="card-body">
-                <form method="POST" action="{{ route('admin.weekly-reports.schedules.store') }}">
+        <div id="weeklyReportsStats" class="mb-4">
+            @include('admin.weekly-reports.partials.stats', ['kpiCards' => $kpiCards])
+        </div>
+
+        @include('admin.weekly-reports.partials.quick-nav', ['navActive' => 'schedules'])
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">إنشاء جدولة جديدة</h4>
+                <p class="fs-12 text-muted mb-0">حدّد الكورس والمجموعة ويوم ووقت استحقاق التقرير.</p>
+            </div>
+            <div class="card-body pt-3">
+                <form method="POST" action="{{ route('admin.weekly-reports.schedules.store') }}" class="group-show-filters mb-0">
                     @csrf
-                    <div class="row g-3">
-                        <div class="col-md-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-xl-3 col-lg-4 col-md-6">
                             <label class="form-label">اسم الجدولة</label>
-                            <input type="text" name="name" class="form-control" required>
+                            <input type="text" name="name" class="form-control" placeholder="مثال: تقرير أسبوعي - React" required>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
                             <label class="form-label">اليوم</label>
                             <select name="weekday" class="form-select" required>
-                                <option value="0">الأحد</option>
-                                <option value="1">الاثنين</option>
-                                <option value="2">الثلاثاء</option>
-                                <option value="3">الأربعاء</option>
-                                <option value="4">الخميس</option>
-                                <option value="5">الجمعة</option>
-                                <option value="6">السبت</option>
+                                @foreach($weekdayLabels as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
                             <label class="form-label">وقت الاستحقاق</label>
                             <input type="time" name="due_time" class="form-control" value="23:00" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-xl-2 col-lg-4 col-md-6">
                             <label class="form-label">الكورس</label>
                             <select name="target_course_id" id="target_course_id" class="form-select" required>
                                 <option value="">اختر الكورس</option>
@@ -47,7 +106,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-xl-2 col-lg-4 col-md-6">
                             <label class="form-label">المجموعة</label>
                             <select name="target_group_id" id="target_group_id" class="form-select" required>
                                 <option value="">اختر المجموعة</option>
@@ -58,23 +117,31 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-xl-1 col-lg-12 col-md-6">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fe fe-plus me-1"></i>إنشاء
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-primary mt-3">إنشاء جدولة</button>
                 </form>
             </div>
         </div>
 
-        <div class="card custom-card">
-            <div class="card-body">
+        <div class="card custom-card group-show-members-card dashboard-fade-in">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">الجداول الحالية</h4>
+                <p class="fs-12 text-muted mb-0">جميع جداول التقارير الأسبوعية ومواعيد التشغيل القادمة.</p>
+            </div>
+            <div class="card-body pt-3">
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-hover align-middle mb-0">
                         <thead>
                         <tr>
                             <th>الاسم</th>
                             <th>الكورس</th>
                             <th>المجموعة</th>
                             <th>اليوم</th>
-                            <th>next_run_at</th>
+                            <th>التشغيل القادم</th>
                             <th>الحالة</th>
                             <th></th>
                         </tr>
@@ -82,26 +149,48 @@
                         <tbody>
                         @forelse($schedules as $schedule)
                             <tr>
-                                <td>{{ $schedule->name }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ $schedule->name }}</div>
+                                </td>
                                 <td>{{ $schedule->targetCourse?->title ?? '-' }}</td>
                                 <td>{{ $schedule->targetGroup?->name ?? '-' }}</td>
-                                <td>{{ $schedule->weekday }}</td>
-                                <td>{{ $schedule->next_run_at?->format('Y-m-d H:i') }}</td>
-                                <td>{{ $schedule->is_active ? 'نشطة' : 'متوقفة' }}</td>
+                                <td>{{ $weekdayLabels[$schedule->weekday] ?? $schedule->weekday }}</td>
+                                <td>{{ $schedule->next_run_at?->format('Y-m-d H:i') ?? '-' }}</td>
+                                <td>
+                                    @if($schedule->is_active)
+                                        <span class="badge bg-success-transparent text-success">نشطة</span>
+                                    @else
+                                        <span class="badge bg-secondary-transparent text-secondary">متوقفة</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <form method="POST" action="{{ route('admin.weekly-reports.schedules.toggle', $schedule) }}">
                                         @csrf
-                                        <button class="btn btn-sm btn-outline-primary">تبديل</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            {{ $schedule->is_active ? 'إيقاف' : 'تفعيل' }}
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="text-center">لا توجد جدولات.</td></tr>
+                            <tr>
+                                <td colspan="7">
+                                    @include('admin.weekly-reports.partials.empty-state', [
+                                        'icon' => 'fe-calendar',
+                                        'title' => 'لا توجد جدولات',
+                                        'description' => 'أنشئ جدولة جديدة لتوليد تقارير أسبوعية تلقائياً.',
+                                    ])
+                                </td>
+                            </tr>
                         @endforelse
                         </tbody>
                     </table>
                 </div>
-                {{ $schedules->links() }}
+                @if($schedules->hasPages())
+                    <div class="mt-3">
+                        {{ $schedules->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -147,3 +236,4 @@
 </script>
 @endpush
 
+@include('admin.weekly-reports.partials.countup-script')

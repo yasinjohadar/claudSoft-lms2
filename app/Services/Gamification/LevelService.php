@@ -2,6 +2,7 @@
 
 namespace App\Services\Gamification;
 
+use App\Events\Gamification\LevelUp;
 use App\Models\User;
 use App\Models\UserStat;
 use App\Models\ExperienceLevel;
@@ -147,8 +148,7 @@ class LevelService
         // جوائز الترقية
         $this->awardLevelUpRewards($user, $newLevel);
 
-        // إطلاق حدث الترقية (سيتم استخدامه لاحقاً)
-        // event(new UserLeveledUp($user, $oldLevel, $newLevel));
+        event(new LevelUp($user, $oldLevel, $newLevel));
 
         Log::info("User Leveled Up", [
             'user_id' => $user->id,
@@ -198,21 +198,8 @@ class LevelService
      */
     protected function checkAndAwardLevelBadges(User $user, int $level): void
     {
-        // شارات المستويات المميزة
-        $levelMilestones = [
-            10 => 'level-10-badge',
-            25 => 'level-25-badge',
-            50 => 'level-50-badge',
-        ];
-
-        if (isset($levelMilestones[$level])) {
-            // سيتم ربطها مع BadgeService لاحقاً
-            Log::info("Level milestone reached", [
-                'user_id' => $user->id,
-                'level' => $level,
-                'badge_slug' => $levelMilestones[$level],
-            ]);
-        }
+        $badgeService = app(BadgeService::class);
+        $badgeService->checkAllBadgesWithCascade($user);
     }
 
     /**

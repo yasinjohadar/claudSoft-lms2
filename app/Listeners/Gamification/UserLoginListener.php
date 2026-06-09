@@ -3,6 +3,7 @@
 namespace App\Listeners\Gamification;
 
 use Illuminate\Auth\Events\Login;
+use App\Services\Gamification\BadgeService;
 use App\Services\Gamification\GamificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -13,13 +14,17 @@ class UserLoginListener implements ShouldQueue
     use InteractsWithQueue;
 
     protected GamificationService $gamificationService;
+    protected BadgeService $badgeService;
 
     /**
      * Create the event listener.
      */
-    public function __construct(GamificationService $gamificationService)
-    {
+    public function __construct(
+        GamificationService $gamificationService,
+        BadgeService $badgeService
+    ) {
         $this->gamificationService = $gamificationService;
+        $this->badgeService = $badgeService;
     }
 
     /**
@@ -42,6 +47,8 @@ class UserLoginListener implements ShouldQueue
                     'multiplier' => $result['multiplier'],
                 ]);
             }
+
+            $this->badgeService->checkAllBadgesWithCascade($event->user);
         } catch (\Exception $e) {
             Log::error("Gamification: Failed to handle user login", [
                 'user_id' => $event->user?->id,

@@ -109,6 +109,7 @@ class GamificationServiceProvider extends ServiceProvider
         // عند الحصول على شارة
         Event::listen(BadgeEarned::class, [
             SendNotificationListener::class,
+            CheckBadgesListener::class,
             CheckAchievementsListener::class,
             SocialActivityListener::class,
         ]);

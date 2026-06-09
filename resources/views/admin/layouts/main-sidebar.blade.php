@@ -22,6 +22,37 @@
                     </div>
                     <ul class="main-menu">
 
+                        @php
+                            $internalCoursesActive = request()->routeIs('courses.*');
+                            $frontendCoursesActive = request()->routeIs('admin.frontend-courses.*');
+                            $coursesSectionActive = $internalCoursesActive
+                                || $frontendCoursesActive
+                                || request()->routeIs('course-categories.*', 'lessons.all', 'videos.*', 'resources.*');
+                            $assessmentsActive = request()->routeIs(
+                                'assignments.*',
+                                'quizzes.*',
+                                'admin.question-module-grading.*',
+                                'question-bank.*',
+                                'question-pools.*',
+                                'quiz-analytics.*'
+                            );
+                            $enrollmentSectionActive = request()->routeIs(
+                                'enrollments.all',
+                                'training-camps.*',
+                                'groups.all',
+                                'admin.group-registrations.*',
+                                'admin.group-registration-settings.*'
+                            );
+                            $financeActive = request()->routeIs('invoices.*', 'payments.*');
+                            $communicationActive = request()->routeIs(
+                                'admin.notifications.*',
+                                'admin.reminders.*',
+                                'admin.calendar.*'
+                            );
+                            $contentActive = request()->routeIs('admin.blog.*', 'admin.docs.*', 'admin.faqs.*');
+                            $gamificationActive = request()->routeIs('admin.gamification.*');
+                        @endphp
+
                         <li class="slide">
                             <a href="{{ route('frontend.home') }}" target="_blank" rel="noopener noreferrer" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -37,232 +68,241 @@
                             </a>
                         </li>
 
-                        <!-- التعليم -->
-                        <!-- التصنيفات -->
-                        <li class="slide {{ request()->routeIs('course-categories.*') ? 'active' : '' }}">
-                            <a href="{{ route('course-categories.index') }}" class="side-menu__item {{ request()->routeIs('course-categories.*') ? 'active' : '' }}">
-                                <i class="fas fa-th-large side-menu__icon"></i>
-                                <span class="side-menu__label">التصنيفات</span>
-                            </a>
-                        </li>
-
-                        <!-- الكورسات الداخلية -->
-                        <li class="slide has-sub {{ request()->routeIs('courses.*') && !request()->routeIs('frontend-courses.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('courses.*') && !request()->routeIs('frontend-courses.*') ? 'active' : '' }}">
-                                <i class="fas fa-book side-menu__icon"></i>
-                                <span class="side-menu__label">الكورسات الداخلية</span>
+                        <!-- إدارة الكورسات والمحتوى -->
+                        <li class="slide has-sub {{ $coursesSectionActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $coursesSectionActive ? 'active' : '' }}">
+                                <i class="fas fa-graduation-cap side-menu__icon"></i>
+                                <span class="side-menu__label">إدارة الكورسات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('courses.*') && !request()->routeIs('frontend-courses.*') ? 'active' : '' }}" style="{{ request()->routeIs('courses.*') && !request()->routeIs('frontend-courses.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('courses.index') ? 'active' : '' }}">
-                                    <a href="{{ route('courses.index') }}" class="side-menu__item {{ request()->routeIs('courses.index') ? 'active' : '' }}">جميع الكورسات</a>
+                            <ul class="slide-menu child1 {{ $coursesSectionActive ? 'active' : '' }}" style="{{ $coursesSectionActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">إدارة الكورسات</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('courses.create') ? 'active' : '' }}">
-                                    <a href="{{ route('courses.create') }}" class="side-menu__item {{ request()->routeIs('courses.create') ? 'active' : '' }}">إضافة كورس جديد</a>
-                                </li>
-                            </ul>
-                        </li>
 
-                        <!-- كورسات الواجهة الأمامية -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.frontend-courses.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.*') ? 'active' : '' }}">
-                                <i class="fas fa-laptop-code side-menu__icon"></i>
-                                <span class="side-menu__label">كورسات الواجهة الأمامية</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.frontend-courses.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.frontend-courses.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.frontend-courses.index') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.frontend-courses.index') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.index') ? 'active' : '' }}">
-                                        <i class="ri-list-check me-2"></i>جميع الكورسات
+                                <li class="slide has-sub {{ $internalCoursesActive ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ $internalCoursesActive ? 'active' : '' }}">
+                                        <i class="fas fa-book me-2"></i>الكورسات الداخلية
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ $internalCoursesActive ? 'active' : '' }}" style="{{ $internalCoursesActive ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('courses.index') ? 'active' : '' }}">
+                                            <a href="{{ route('courses.index') }}" class="side-menu__item {{ request()->routeIs('courses.index') ? 'active' : '' }}">جميع الكورسات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('courses.create') ? 'active' : '' }}">
+                                            <a href="{{ route('courses.create') }}" class="side-menu__item {{ request()->routeIs('courses.create') ? 'active' : '' }}">إضافة كورس جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ $frontendCoursesActive ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ $frontendCoursesActive ? 'active' : '' }}">
+                                        <i class="fas fa-laptop-code me-2"></i>كورسات الواجهة الأمامية
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ $frontendCoursesActive ? 'active' : '' }}" style="{{ $frontendCoursesActive ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.frontend-courses.index') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.frontend-courses.index') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.index') ? 'active' : '' }}">جميع الكورسات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.frontend-courses.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.frontend-courses.create') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.create') ? 'active' : '' }}">إضافة كورس جديد</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.frontend-courses.ai.create') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">توليد كورس بالذكاء الاصطناعي</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('course-categories.*') ? 'active' : '' }}">
+                                    <a href="{{ route('course-categories.index') }}" class="side-menu__item {{ request()->routeIs('course-categories.*') ? 'active' : '' }}">
+                                        <i class="fas fa-th-large me-2"></i>التصنيفات
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.frontend-courses.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.frontend-courses.create') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.create') ? 'active' : '' }}">
-                                        <i class="ri-add-circle-line me-2"></i>إضافة كورس جديد
+
+                                <li class="slide {{ request()->routeIs('lessons.all') ? 'active' : '' }}">
+                                    <a href="{{ route('lessons.all') }}" class="side-menu__item {{ request()->routeIs('lessons.all') ? 'active' : '' }}">
+                                        <i class="fas fa-book-reader me-2"></i>الدروس
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.frontend-courses.ai.create') }}" class="side-menu__item {{ request()->routeIs('admin.frontend-courses.ai.create') ? 'active' : '' }}">
-                                        <i class="fas fa-robot me-2"></i>توليد كورس بالذكاء الاصطناعي
+
+                                <li class="slide has-sub {{ request()->routeIs('videos.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('videos.*') ? 'active' : '' }}">
+                                        <i class="fas fa-video me-2"></i>مكتبة الفيديوهات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('videos.*') ? 'active' : '' }}" style="{{ request()->routeIs('videos.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('videos.index') ? 'active' : '' }}">
+                                            <a href="{{ route('videos.index') }}" class="side-menu__item {{ request()->routeIs('videos.index') ? 'active' : '' }}">جميع الفيديوهات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('videos.create') ? 'active' : '' }}">
+                                            <a href="{{ route('videos.create') }}" class="side-menu__item {{ request()->routeIs('videos.create') ? 'active' : '' }}">إضافة فيديو جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('resources.*') ? 'active' : '' }}">
+                                    <a href="{{ route('resources.index') }}" class="side-menu__item {{ request()->routeIs('resources.*') ? 'active' : '' }}">
+                                        <i class="fas fa-folder me-2"></i>مكتبة الموارد
                                     </a>
                                 </li>
                             </ul>
                         </li>
 
-                        <!-- الدروس -->
-                        <li class="slide {{ request()->routeIs('lessons.all') ? 'active' : '' }}">
-                            <a href="{{ route('lessons.all') }}" class="side-menu__item {{ request()->routeIs('lessons.all') ? 'active' : '' }}">
-                                <i class="fas fa-book-reader side-menu__icon"></i>
-                                <span class="side-menu__label">الدروس</span>
-                            </a>
-                        </li>
-
-                        <!-- الواجبات -->
-                        <li class="slide has-sub {{ request()->routeIs('assignments.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('assignments.*') ? 'active' : '' }}">
-                                <i class="fas fa-tasks side-menu__icon"></i>
-                                <span class="side-menu__label">الواجبات</span>
+                        <!-- الاختبارات والواجبات -->
+                        <li class="slide has-sub {{ $assessmentsActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $assessmentsActive ? 'active' : '' }}">
+                                <i class="fas fa-clipboard-check side-menu__icon"></i>
+                                <span class="side-menu__label">الاختبارات والواجبات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('assignments.*') ? 'active' : '' }}" style="{{ request()->routeIs('assignments.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('assignments.index') ? 'active' : '' }}">
-                                    <a href="{{ route('assignments.index') }}" class="side-menu__item {{ request()->routeIs('assignments.index') ? 'active' : '' }}">جميع الواجبات</a>
+                            <ul class="slide-menu child1 {{ $assessmentsActive ? 'active' : '' }}" style="{{ $assessmentsActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الاختبارات والواجبات</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('assignments.create') ? 'active' : '' }}">
-                                    <a href="{{ route('assignments.create') }}" class="side-menu__item {{ request()->routeIs('assignments.create') ? 'active' : '' }}">إضافة واجب جديد</a>
+
+                                <li class="slide has-sub {{ request()->routeIs('assignments.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('assignments.*') ? 'active' : '' }}">
+                                        <i class="fas fa-tasks me-2"></i>الواجبات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('assignments.*') ? 'active' : '' }}" style="{{ request()->routeIs('assignments.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('assignments.index') ? 'active' : '' }}">
+                                            <a href="{{ route('assignments.index') }}" class="side-menu__item {{ request()->routeIs('assignments.index') ? 'active' : '' }}">جميع الواجبات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('assignments.create') ? 'active' : '' }}">
+                                            <a href="{{ route('assignments.create') }}" class="side-menu__item {{ request()->routeIs('assignments.create') ? 'active' : '' }}">إضافة واجب جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ request()->routeIs('quizzes.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('quizzes.*') ? 'active' : '' }}">
+                                        <i class="fas fa-clipboard-list me-2"></i>الاختبارات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('quizzes.*') ? 'active' : '' }}" style="{{ request()->routeIs('quizzes.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('quizzes.index') ? 'active' : '' }}">
+                                            <a href="{{ route('quizzes.index') }}" class="side-menu__item {{ request()->routeIs('quizzes.index') ? 'active' : '' }}">جميع الاختبارات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">
+                                            <a href="{{ route('quizzes.create') }}" class="side-menu__item {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">إضافة اختبار جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.question-module-grading.index') }}" class="side-menu__item {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
+                                        <i class="fas fa-check-circle me-2"></i>تصحيح اختبارات الكورسات
+                                    </a>
+                                </li>
+
+                                <li class="slide has-sub {{ request()->routeIs('question-bank.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('question-bank.*') ? 'active' : '' }}">
+                                        <i class="fas fa-question-circle me-2"></i>بنك الأسئلة
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('question-bank.*') ? 'active' : '' }}" style="{{ request()->routeIs('question-bank.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('question-bank.index') ? 'active' : '' }}">
+                                            <a href="{{ route('question-bank.index') }}" class="side-menu__item {{ request()->routeIs('question-bank.index') ? 'active' : '' }}">جميع الأسئلة</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('question-bank.create') ? 'active' : '' }}">
+                                            <a href="{{ route('question-bank.create') }}" class="side-menu__item {{ request()->routeIs('question-bank.create') ? 'active' : '' }}">إضافة سؤال جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('question-pools.*') ? 'active' : '' }}">
+                                    <a href="{{ route('question-pools.index') }}" class="side-menu__item {{ request()->routeIs('question-pools.*') ? 'active' : '' }}">
+                                        <i class="fas fa-layer-group me-2"></i>مجموعات الأسئلة
+                                    </a>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('quiz-analytics.*') ? 'active' : '' }}">
+                                    <a href="{{ route('quiz-analytics.index') }}" class="side-menu__item {{ request()->routeIs('quiz-analytics.*') ? 'active' : '' }}">
+                                        <i class="fas fa-chart-pie me-2"></i>تحليلات الاختبارات
+                                    </a>
                                 </li>
                             </ul>
                         </li>
 
-                        <!-- الاختبارات -->
-                        <li class="slide has-sub {{ request()->routeIs('quizzes.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('quizzes.*') ? 'active' : '' }}">
-                                <i class="fas fa-clipboard-list side-menu__icon"></i>
-                                <span class="side-menu__label">الاختبارات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('quizzes.*') ? 'active' : '' }}" style="{{ request()->routeIs('quizzes.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('quizzes.index') ? 'active' : '' }}">
-                                    <a href="{{ route('quizzes.index') }}" class="side-menu__item {{ request()->routeIs('quizzes.index') ? 'active' : '' }}">جميع الاختبارات</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">
-                                    <a href="{{ route('quizzes.create') }}" class="side-menu__item {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">إضافة اختبار جديد</a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- تصحيح اختبارات الكورسات -->
-                        <li class="slide {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.question-module-grading.index') }}" class="side-menu__item {{ request()->routeIs('admin.question-module-grading.*') ? 'active' : '' }}">
-                                <i class="fas fa-check-circle side-menu__icon"></i>
-                                <span class="side-menu__label">تصحيح اختبارات الكورسات</span>
-                            </a>
-                        </li>
-
-                        <!-- بنك الأسئلة -->
-                        <li class="slide has-sub {{ request()->routeIs('question-bank.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('question-bank.*') ? 'active' : '' }}">
-                                <i class="fas fa-question-circle side-menu__icon"></i>
-                                <span class="side-menu__label">بنك الأسئلة</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('question-bank.*') ? 'active' : '' }}" style="{{ request()->routeIs('question-bank.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('question-bank.index') ? 'active' : '' }}">
-                                    <a href="{{ route('question-bank.index') }}" class="side-menu__item {{ request()->routeIs('question-bank.index') ? 'active' : '' }}">جميع الأسئلة</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('question-bank.create') ? 'active' : '' }}">
-                                    <a href="{{ route('question-bank.create') }}" class="side-menu__item {{ request()->routeIs('question-bank.create') ? 'active' : '' }}">إضافة سؤال جديد</a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- مجموعات الأسئلة -->
-                        <li class="slide {{ request()->routeIs('question-pools.*') ? 'active' : '' }}">
-                            <a href="{{ route('question-pools.index') }}" class="side-menu__item">
-                                <i class="fas fa-layer-group side-menu__icon"></i>
-                                <span class="side-menu__label">مجموعات الأسئلة</span>
-                            </a>
-                        </li>
-
-                        <!-- تحليلات الاختبارات -->
-                        <li class="slide {{ request()->routeIs('quiz-analytics.*') ? 'active' : '' }}">
-                            <a href="{{ route('quiz-analytics.index') }}" class="side-menu__item">
-                                <i class="fas fa-chart-pie side-menu__icon"></i>
-                                <span class="side-menu__label">تحليلات الاختبارات</span>
-                            </a>
-                        </li>
-
-                        <!-- مكتبة الفيديوهات -->
-                        <li class="slide has-sub {{ request()->routeIs('videos.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('videos.*') ? 'active' : '' }}">
-                                <i class="fas fa-video side-menu__icon"></i>
-                                <span class="side-menu__label">مكتبة الفيديوهات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('videos.*') ? 'active' : '' }}" style="{{ request()->routeIs('videos.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('videos.index') ? 'active' : '' }}">
-                                    <a href="{{ route('videos.index') }}" class="side-menu__item {{ request()->routeIs('videos.index') ? 'active' : '' }}">جميع الفيديوهات</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('videos.create') ? 'active' : '' }}">
-                                    <a href="{{ route('videos.create') }}" class="side-menu__item {{ request()->routeIs('videos.create') ? 'active' : '' }}">إضافة فيديو جديد</a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- مكتبة الموارد -->
-                        <li class="slide {{ request()->routeIs('resources.*') ? 'active' : '' }}">
-                            <a href="{{ route('resources.index') }}" class="side-menu__item {{ request()->routeIs('resources.*') ? 'active' : '' }}">
-                                <i class="fas fa-folder side-menu__icon"></i>
-                                <span class="side-menu__label">مكتبة الموارد</span>
-                            </a>
-                        </li>
-
-                        <!-- الانضمامات -->
-                        <li class="slide {{ request()->routeIs('enrollments.all') ? 'active' : '' }}">
-                            <a href="{{ route('enrollments.all') }}" class="side-menu__item {{ request()->routeIs('enrollments.all') ? 'active' : '' }}">
+                        <!-- التسجيل والمجموعات -->
+                        <li class="slide has-sub {{ $enrollmentSectionActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $enrollmentSectionActive ? 'active' : '' }}">
                                 <i class="fas fa-user-graduate side-menu__icon"></i>
-                                <span class="side-menu__label">الانضمامات</span>
-                            </a>
-                        </li>
-
-                        <!-- المعسكرات -->
-                        <li class="slide has-sub {{ request()->routeIs('training-camps.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('training-camps.*') ? 'active' : '' }}">
-                                <i class="fas fa-campground side-menu__icon"></i>
-                                <span class="side-menu__label">المعسكرات التدريبية</span>
+                                <span class="side-menu__label">التسجيل والمجموعات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('training-camps.*') ? 'active' : '' }}" style="{{ request()->routeIs('training-camps.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('training-camps.index') ? 'active' : '' }}">
-                                    <a href="{{ route('training-camps.index') }}" class="side-menu__item {{ request()->routeIs('training-camps.index') ? 'active' : '' }}">جميع المعسكرات</a>
+                            <ul class="slide-menu child1 {{ $enrollmentSectionActive ? 'active' : '' }}" style="{{ $enrollmentSectionActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">التسجيل والمجموعات</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('training-camps.enrollments') ? 'active' : '' }}">
-                                    <a href="{{ route('training-camps.enrollments') }}" class="side-menu__item {{ request()->routeIs('training-camps.enrollments') ? 'active' : '' }}">طلبات التسجيل</a>
-                                </li>
-                            </ul>
-                        </li>
 
-                        <!-- المجموعات -->
-                        <li class="slide {{ request()->routeIs('groups.all') ? 'active' : '' }}">
-                            <a href="{{ route('groups.all') }}" class="side-menu__item {{ request()->routeIs('groups.all') ? 'active' : '' }}">
-                                <i class="fas fa-users-cog side-menu__icon"></i>
-                                <span class="side-menu__label">المجموعات</span>
-                            </a>
-                        </li>
-
-                        <!-- تسجيلات المجموعات -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}">
-                                <i class="fas fa-users side-menu__icon"></i>
-                                <span class="side-menu__label">تسجيلات المجموعات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.group-registrations.index') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">
-                                        <i class="fas fa-list me-2"></i>جميع التسجيلات
+                                <li class="slide {{ request()->routeIs('enrollments.all') ? 'active' : '' }}">
+                                    <a href="{{ route('enrollments.all') }}" class="side-menu__item {{ request()->routeIs('enrollments.all') ? 'active' : '' }}">
+                                        <i class="fas fa-user-check me-2"></i>الانضمامات
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.group-registrations.whatsapp-report') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">
-                                        <i class="ri-whatsapp-line me-2"></i>تقارير رسائل الواتساب
+
+                                <li class="slide has-sub {{ request()->routeIs('training-camps.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('training-camps.*') ? 'active' : '' }}">
+                                        <i class="fas fa-campground me-2"></i>المعسكرات التدريبية
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('training-camps.*') ? 'active' : '' }}" style="{{ request()->routeIs('training-camps.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('training-camps.index') ? 'active' : '' }}">
+                                            <a href="{{ route('training-camps.index') }}" class="side-menu__item {{ request()->routeIs('training-camps.index') ? 'active' : '' }}">جميع المعسكرات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('training-camps.enrollments') ? 'active' : '' }}">
+                                            <a href="{{ route('training-camps.enrollments') }}" class="side-menu__item {{ request()->routeIs('training-camps.enrollments') ? 'active' : '' }}">طلبات التسجيل</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('groups.all') ? 'active' : '' }}">
+                                    <a href="{{ route('groups.all') }}" class="side-menu__item {{ request()->routeIs('groups.all') ? 'active' : '' }}">
+                                        <i class="fas fa-users-cog me-2"></i>المجموعات
+                                    </a>
+                                </li>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}">
+                                        <i class="fas fa-users me-2"></i>تسجيلات المجموعات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.group-registrations.*') || request()->routeIs('admin.group-registration-settings.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.group-registrations.index') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.index') || request()->routeIs('admin.group-registrations.show') ? 'active' : '' }}">جميع التسجيلات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.group-registrations.whatsapp-report') }}" class="side-menu__item {{ request()->routeIs('admin.group-registrations.whatsapp-report') ? 'active' : '' }}">تقارير رسائل الواتساب</a>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
                         </li>
 
                         <!-- المالية -->
-                        <li class="slide {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                            <a href="{{ route('invoices.index') }}" class="side-menu__item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                                <i class="fas fa-file-invoice-dollar side-menu__icon"></i>
-                                <span class="side-menu__label">الفواتير</span>
+                        <li class="slide has-sub {{ $financeActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $financeActive ? 'active' : '' }}">
+                                <i class="fas fa-wallet side-menu__icon"></i>
+                                <span class="side-menu__label">المالية</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                        </li>
-                        <li class="slide {{ request()->routeIs('payments.*') ? 'active' : '' }}">
-                            <a href="{{ route('payments.index') }}" class="side-menu__item {{ request()->routeIs('payments.*') ? 'active' : '' }}">
-                                <i class="fas fa-money-bill-wave side-menu__icon"></i>
-                                <span class="side-menu__label">المدفوعات</span>
-                            </a>
+                            <ul class="slide-menu child1 {{ $financeActive ? 'active' : '' }}" style="{{ $financeActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المالية</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                                    <a href="{{ route('invoices.index') }}" class="side-menu__item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>الفواتير
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                    <a href="{{ route('payments.index') }}" class="side-menu__item {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                        <i class="fas fa-money-bill-wave me-2"></i>المدفوعات
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
 
                         <!-- المستخدمون -->
@@ -323,52 +363,60 @@
                             </a>
                         </li>
 
-                        <!-- الإشعارات -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.notifications.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
+                        <!-- التواصل والجدولة -->
+                        <li class="slide has-sub {{ $communicationActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $communicationActive ? 'active' : '' }}">
                                 <i class="fas fa-bell side-menu__icon"></i>
-                                <span class="side-menu__label">الإشعارات</span>
+                                <span class="side-menu__label">التواصل والجدولة</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.notifications.index') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">إرسال إشعار</a>
+                            <ul class="slide-menu child1 {{ $communicationActive ? 'active' : '' }}" style="{{ $communicationActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">التواصل والجدولة</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.notifications.history') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.notifications.history') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.history') ? 'active' : '' }}">السجل</a>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.notifications.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.notifications.*') ? 'active' : '' }}">
+                                        <i class="fas fa-bell me-2"></i>الإشعارات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.notifications.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.notifications.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.notifications.index') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.index') ? 'active' : '' }}">إرسال إشعار</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.notifications.history') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.notifications.history') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.history') ? 'active' : '' }}">السجل</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.notifications.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">الإحصائيات</a>
+                                        </li>
+                                    </ul>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.notifications.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">الإحصائيات</a>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.reminders.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.reminders.*') ? 'active' : '' }}">
+                                        <i class="ri-notification-badge-line me-2"></i>التذكيرات
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.reminders.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.reminders.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.reminders.index') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.reminders.index') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.index') ? 'active' : '' }}">جميع التذكيرات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.reminders.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.reminders.create') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.create') ? 'active' : '' }}">إرسال تذكير جديد</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.reminders.statistics') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.reminders.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.statistics') ? 'active' : '' }}">الإحصائيات</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
+                                        <i class="ri-calendar-line me-2"></i>التقويم والمواعيد
+                                    </a>
                                 </li>
                             </ul>
-                        </li>
-
-                        <!-- التذكيرات -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.reminders.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <i class="ri-notification-badge-line side-menu__icon"></i>
-                                <span class="side-menu__label">التذكيرات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->routeIs('admin.reminders.index') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.reminders.index') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.index') ? 'active' : '' }}">جميع التذكيرات</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.reminders.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.reminders.create') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.create') ? 'active' : '' }}">إرسال تذكير جديد</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.reminders.statistics') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.reminders.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.reminders.statistics') ? 'active' : '' }}">الإحصائيات</a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- التقويم -->
-                        <li class="slide {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->routeIs('admin.calendar.*') ? 'active' : '' }}">
-                                <i class="ri-calendar-line side-menu__icon"></i>
-                                <span class="side-menu__label">التقويم والمواعيد</span>
-                            </a>
                         </li>
 
                         <!-- جدول أعمال الطلاب -->
@@ -379,95 +427,79 @@
                             </a>
                         </li>
 
-                        <!-- المدونة -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.blog.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.blog.*') ? 'active' : '' }}">
-                                <i class="fas fa-blog side-menu__icon"></i>
-                                <span class="side-menu__label">المدونة</span>
+                        <!-- المحتوى والوثائق -->
+                        <li class="slide has-sub {{ $contentActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $contentActive ? 'active' : '' }}">
+                                <i class="fas fa-newspaper side-menu__icon"></i>
+                                <span class="side-menu__label">المحتوى والوثائق</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.blog.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.blog.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.blog.posts.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">
-                                        <i class="ri-article-line me-2"></i>المقالات
-                                    </a>
+                            <ul class="slide-menu child1 {{ $contentActive ? 'active' : '' }}" style="{{ $contentActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المحتوى والوثائق</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.blog.ai-posts.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
-                                        <i class="fas fa-robot me-2"></i>إنشاء مقال بالذكاء الاصطناعي
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.blog.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
-                                        <i class="ri-folder-line me-2"></i>التصنيفات
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.blog.tags.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">
-                                        <i class="ri-price-tag-3-line me-2"></i>الوسوم
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
 
-                        <!-- التوثيق -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.docs.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}">
-                                <i class="ri-book-open-line side-menu__icon"></i>
-                                <span class="side-menu__label">التوثيق</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.docs.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.docs.pages.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.pages.index') }}" class="side-menu__item {{ request()->routeIs('admin.docs.pages.*') ? 'active' : '' }}">
-                                        <i class="ri-file-text-line me-2"></i>صفحات التوثيق
+                                <li class="slide has-sub {{ request()->routeIs('admin.blog.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.blog.*') ? 'active' : '' }}">
+                                        <i class="fas fa-blog me-2"></i>المدونة
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.blog.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.blog.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.posts.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">المقالات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.ai-posts.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">إنشاء مقال بالذكاء الاصطناعي</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">التصنيفات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.tags.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.tags.*') ? 'active' : '' }}">الوسوم</a>
+                                        </li>
+                                    </ul>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.docs.pages.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.pages.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.pages.create') ? 'active' : '' }}">
-                                        <i class="ri-add-circle-line me-2"></i>إضافة صفحة
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.ai-pages.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
-                                        <i class="fas fa-robot me-2"></i>توليد بالذكاء الاصطناعي
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.ai-pages.improve') }}" class="side-menu__item {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
-                                        <i class="fas fa-magic me-2"></i>تحسين محتوى (AI)
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.docs.categories.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.docs.categories.*') ? 'active' : '' }}">
-                                        <i class="ri-folder-line me-2"></i>أقسام التوثيق
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.docs.categories.create') }}" class="side-menu__item {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
-                                        <i class="ri-folder-add-line me-2"></i>إضافة قسم
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
 
-                        <!-- الأسئلة الشائعة -->
-                        <li class="slide has-sub {{ request()->routeIs('admin.faqs.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.faqs.*') ? 'active' : '' }}">
-                                <i class="fas fa-circle-question side-menu__icon"></i>
-                                <span class="side-menu__label">الأسئلة الشائعة</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('admin.faqs.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.faqs.*') ? 'display: block;' : '' }}">
-                                <li class="slide {{ request()->routeIs('admin.faqs.index') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.faqs.index') }}" class="side-menu__item {{ request()->routeIs('admin.faqs.index') ? 'active' : '' }}">
-                                        <i class="ri-list-check me-2"></i>جميع الأسئلة
+                                <li class="slide has-sub {{ request()->routeIs('admin.docs.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}">
+                                        <i class="ri-book-open-line me-2"></i>التوثيق
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.docs.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.docs.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.docs.pages.index', 'admin.docs.pages.show', 'admin.docs.pages.edit') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.pages.index') }}" class="side-menu__item">صفحات التوثيق</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.pages.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.pages.create') }}" class="side-menu__item">إضافة صفحة</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.ai-pages.create') }}" class="side-menu__item">توليد بالذكاء الاصطناعي</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.ai-pages.improve') }}" class="side-menu__item">تحسين محتوى (AI)</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.categories.index', 'admin.docs.categories.show', 'admin.docs.categories.edit') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.categories.index') }}" class="side-menu__item">أقسام التوثيق</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.categories.create') }}" class="side-menu__item">إضافة قسم</a>
+                                        </li>
+                                    </ul>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.faqs.create') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.faqs.create') }}" class="side-menu__item {{ request()->routeIs('admin.faqs.create') ? 'active' : '' }}">
-                                        <i class="ri-add-circle-line me-2"></i>إضافة سؤال جديد
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.faqs.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.faqs.*') ? 'active' : '' }}">
+                                        <i class="fas fa-circle-question me-2"></i>الأسئلة الشائعة
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.faqs.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.faqs.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.faqs.index') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.faqs.index') }}" class="side-menu__item {{ request()->routeIs('admin.faqs.index') ? 'active' : '' }}">جميع الأسئلة</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.faqs.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.faqs.create') }}" class="side-menu__item {{ request()->routeIs('admin.faqs.create') ? 'active' : '' }}">إضافة سؤال جديد</a>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
                         </li>
@@ -515,80 +547,92 @@
                             </ul>
                         </li>
 
-                        <!-- Gamification -->
-                        <li class="slide {{ request()->routeIs('admin.gamification.dashboard') ? 'active' : '' }}">
-                            <a href="{{ route('admin.gamification.dashboard') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.dashboard') ? 'active' : '' }}">
+                        <!-- التلعيب -->
+                        <li class="slide has-sub {{ $gamificationActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $gamificationActive ? 'active' : '' }}">
                                 <i class="fas fa-gamepad side-menu__icon"></i>
-                                <span class="side-menu__label">لوحة التحكم</span>
-                            </a>
-                        </li>
-                        <li class="slide has-sub {{ request()->routeIs('admin.gamification.levels.*') || request()->routeIs('admin.gamification.badges.*') || request()->routeIs('admin.gamification.achievements.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <i class="fas fa-trophy side-menu__icon"></i>
-                                <span class="side-menu__label">المستويات والإنجازات</span>
+                                <span class="side-menu__label">التلعيب</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->routeIs('admin.gamification.levels.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.levels.index') }}" class="side-menu__item">المستويات</a>
+                            <ul class="slide-menu child1 {{ $gamificationActive ? 'active' : '' }}" style="{{ $gamificationActive ? 'display: block;' : '' }}">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">التلعيب</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.gamification.badges.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.badges.index') }}" class="side-menu__item">الشارات</a>
+
+                                <li class="slide {{ request()->routeIs('admin.gamification.dashboard') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.gamification.dashboard') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.dashboard') ? 'active' : '' }}">
+                                        <i class="fas fa-tachometer-alt me-2"></i>لوحة التحكم
+                                    </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.gamification.achievements.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.achievements.index') }}" class="side-menu__item">الإنجازات</a>
-                                </li>
-                            </ul>
-                        </li>
-                        <li class="slide has-sub {{ request()->routeIs('admin.gamification.points.*') || request()->routeIs('admin.gamification.shop.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <i class="fas fa-coins side-menu__icon"></i>
-                                <span class="side-menu__label">النقاط والمكافآت</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->routeIs('admin.gamification.points.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.points.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.points.*') ? 'active' : '' }}">النقاط</a>
-                                </li>
-                                <li class="slide has-sub {{ request()->routeIs('admin.gamification.shop.*') ? 'open active' : '' }}">
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.gamification.levels.*') || request()->routeIs('admin.gamification.badges.*') || request()->routeIs('admin.gamification.achievements.*') ? 'open active' : '' }}">
                                     <a href="javascript:void(0);" class="side-menu__item">
-                                        <i class="fas fa-store me-2"></i>المتجر
+                                        <i class="fas fa-trophy me-2"></i>المستويات والإنجازات
                                         <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
                                     <ul class="slide-menu child2">
-                                        <li class="slide {{ request()->routeIs('admin.gamification.shop.categories.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.gamification.shop.categories.index') }}" class="side-menu__item">الفئات</a>
+                                        <li class="slide {{ request()->routeIs('admin.gamification.levels.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.levels.index') }}" class="side-menu__item">المستويات</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('admin.gamification.shop.items.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.gamification.shop.items.index') }}" class="side-menu__item">العناصر</a>
+                                        <li class="slide {{ request()->routeIs('admin.gamification.badges.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.badges.index') }}" class="side-menu__item">الشارات</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('admin.gamification.shop.purchases.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.gamification.shop.purchases.index') }}" class="side-menu__item">المشتريات</a>
+                                        <li class="slide {{ request()->routeIs('admin.gamification.achievements.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.achievements.index') }}" class="side-menu__item">الإنجازات</a>
                                         </li>
                                     </ul>
                                 </li>
-                            </ul>
-                        </li>
-                        <li class="slide has-sub {{ request()->routeIs('admin.gamification.leaderboards.*') || request()->routeIs('admin.gamification.challenges.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <i class="fas fa-crown side-menu__icon"></i>
-                                <span class="side-menu__label">المنافسة</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->routeIs('admin.gamification.leaderboards.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.leaderboards.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.leaderboards.*') ? 'active' : '' }}">لوحات المتصدرين</a>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.gamification.points.*') || request()->routeIs('admin.gamification.shop.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item">
+                                        <i class="fas fa-coins me-2"></i>النقاط والمكافآت
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2">
+                                        <li class="slide {{ request()->routeIs('admin.gamification.points.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.points.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.points.*') ? 'active' : '' }}">النقاط</a>
+                                        </li>
+                                        <li class="slide has-sub {{ request()->routeIs('admin.gamification.shop.*') ? 'open active' : '' }}">
+                                            <a href="javascript:void(0);" class="side-menu__item">
+                                                <i class="fas fa-store me-2"></i>المتجر
+                                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                                            </a>
+                                            <ul class="slide-menu child2">
+                                                <li class="slide {{ request()->routeIs('admin.gamification.shop.categories.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.gamification.shop.categories.index') }}" class="side-menu__item">الفئات</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.gamification.shop.items.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.gamification.shop.items.index') }}" class="side-menu__item">العناصر</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.gamification.shop.purchases.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.gamification.shop.purchases.index') }}" class="side-menu__item">المشتريات</a>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
                                 </li>
-                                <li class="slide {{ request()->routeIs('admin.gamification.challenges.*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.gamification.challenges.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.challenges.*') ? 'active' : '' }}">التحديات</a>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.gamification.leaderboards.*') || request()->routeIs('admin.gamification.challenges.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item">
+                                        <i class="fas fa-crown me-2"></i>المنافسة
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2">
+                                        <li class="slide {{ request()->routeIs('admin.gamification.leaderboards.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.leaderboards.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.leaderboards.*') ? 'active' : '' }}">لوحات المتصدرين</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.gamification.challenges.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.gamification.challenges.index') }}" class="side-menu__item {{ request()->routeIs('admin.gamification.challenges.*') ? 'active' : '' }}">التحديات</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.gamification.analytics.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.gamification.analytics.dashboard') }}" class="side-menu__item">
+                                        <i class="fas fa-chart-line me-2"></i>التحليلات
+                                    </a>
                                 </li>
                             </ul>
-                        </li>
-                        <li class="slide {{ request()->routeIs('admin.gamification.analytics.*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.gamification.analytics.dashboard') }}" class="side-menu__item">
-                                <i class="fas fa-chart-line side-menu__icon"></i>
-                                <span class="side-menu__label">التحليلات</span>
-                            </a>
                         </li>
 
                         <!-- الإعدادات -->

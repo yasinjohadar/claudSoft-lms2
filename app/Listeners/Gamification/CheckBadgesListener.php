@@ -34,8 +34,8 @@ class CheckBadgesListener
         try {
             $user = $event->user;
 
-            // التحقق من جميع الشارات
-            $awarded = $this->badgeService->checkAllBadges($user);
+            // التحقق من جميع الشارات (مع cascade لشارات meta مثل total_badges)
+            $awarded = $this->badgeService->checkAllBadgesWithCascade($user);
 
             if (count($awarded) > 0) {
                 Log::info("Badges automatically awarded", [

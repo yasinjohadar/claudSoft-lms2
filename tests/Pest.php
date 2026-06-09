@@ -11,9 +11,17 @@
 |
 */
 
+pest()->extend(Tests\Feature\Reports\ReportsMysqlTestCase::class)
+    ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
+    ->in('Feature/Reports');
+
+pest()->extend(Tests\Feature\Gamification\GamificationMysqlTestCase::class)
+    ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
+    ->in('Feature/Gamification');
+
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature/Auth', 'Feature/Admin', 'Feature/Api', 'Feature/ExampleTest.php', 'Feature/ProfileTest.php');
 
 /*
 |--------------------------------------------------------------------------

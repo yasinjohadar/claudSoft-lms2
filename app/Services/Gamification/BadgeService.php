@@ -137,12 +137,30 @@ class BadgeService
     }
 
     /**
+     * معايير مدعومة: مفتاح المعيار => عمود user_stats
+     */
+    protected const CRITERIA_STAT_MAP = [
+        'lessons_completed' => 'lessons_completed',
+        'courses_completed' => 'courses_completed',
+        'quizzes_completed' => 'quizzes_completed',
+        'perfect_scores' => 'perfect_scores',
+        'current_streak' => 'current_streak',
+        'total_points' => 'total_points',
+        'current_level' => 'current_level',
+        'total_badges' => 'total_badges',
+        'assignments_completed' => 'assignments_submitted',
+        'assignments_submitted' => 'assignments_submitted',
+        'comments_posted' => 'comments_count',
+        'comments_count' => 'comments_count',
+    ];
+
+    /**
      * التحقق من معايير الشارة
      */
     protected function checkBadgeCriteria(User $user, Badge $badge): bool
     {
         if (!$badge->criteria) {
-            return true; // إذا لم تكن هناك معايير، منح الشارة
+            return false;
         }
 
         $criteria = $badge->criteria;
@@ -152,56 +170,54 @@ class BadgeService
         if (isset($criteria['field']) && (isset($criteria['required_value']) || isset($criteria['value']))) {
             $field = $criteria['field'];
             $required = (int) ($criteria['required_value'] ?? $criteria['value'] ?? 0);
-            $current = (int) ($stats->{$field} ?? 0);
+            $current = $this->getStatValueForCriteriaKey($stats, $field);
+
+            if ($current === null) {
+                Log::warning('Unsupported badge criteria field', [
+                    'badge_id' => $badge->id,
+                    'badge_slug' => $badge->slug,
+                    'field' => $field,
+                ]);
+
+                return false;
+            }
+
             return $current >= $required;
         }
 
-        // معايير بصيغة مفتاح => حد أدنى (استخدام ?? 0 لتفادي null)
-        foreach ($criteria as $key => $value) {
-            switch ($key) {
-                case 'lessons_completed':
-                    if (($stats->lessons_completed ?? 0) < $value) return false;
-                    break;
+        foreach ($criteria as $key => $requiredValue) {
+            $current = $this->getStatValueForCriteriaKey($stats, $key);
 
-                case 'courses_completed':
-                    if (($stats->courses_completed ?? 0) < $value) return false;
-                    break;
+            if ($current === null) {
+                Log::warning('Unsupported badge criteria key', [
+                    'badge_id' => $badge->id,
+                    'badge_slug' => $badge->slug,
+                    'criteria_key' => $key,
+                ]);
 
-                case 'quizzes_completed':
-                    if (($stats->quizzes_completed ?? 0) < $value) return false;
-                    break;
+                return false;
+            }
 
-                case 'perfect_scores':
-                    if (($stats->perfect_scores ?? 0) < $value) return false;
-                    break;
-
-                case 'current_streak':
-                    if (($stats->current_streak ?? 0) < $value) return false;
-                    break;
-
-                case 'total_points':
-                    if (($stats->total_points ?? 0) < $value) return false;
-                    break;
-
-                case 'current_level':
-                    if (($stats->current_level ?? 0) < $value) return false;
-                    break;
-
-                case 'total_badges':
-                    if (($stats->total_badges ?? 0) < $value) return false;
-                    break;
-
-                case 'assignments_completed':
-                    if (($stats->assignments_completed ?? 0) < $value) return false;
-                    break;
-
-                default:
-                    // معايير مخصصة
-                    break;
+            if ($current < (int) $requiredValue) {
+                return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * قراءة قيمة إحصائية لمعيار شارة (null = معيار غير مدعوم)
+     */
+    protected function getStatValueForCriteriaKey($stats, string $criteriaKey): ?int
+    {
+        $column = self::CRITERIA_STAT_MAP[$criteriaKey] ?? null;
+
+        if ($column === null) {
+            return null;
+        }
+
+        return (int) ($stats->{$column} ?? 0);
     }
 
     /**
@@ -229,6 +245,27 @@ class BadgeService
         }
 
         return $awarded;
+    }
+
+    /**
+     * التحقق من الشارات مع تكرار لدعم شارات meta (مثل total_badges)
+     */
+    public function checkAllBadgesWithCascade(User $user, int $maxPasses = 5): array
+    {
+        $allAwarded = [];
+
+        for ($pass = 0; $pass < $maxPasses; $pass++) {
+            $user->unsetRelation('stats');
+            $awarded = $this->checkAllBadges($user);
+
+            if (count($awarded) === 0) {
+                break;
+            }
+
+            $allAwarded = array_merge($allAwarded, $awarded);
+        }
+
+        return $allAwarded;
     }
 
     /**
@@ -261,12 +298,14 @@ class BadgeService
     public function getBadgeProgress(User $user, Badge $badge): array
     {
         if ($this->userHasBadge($user, $badge)) {
+            $userBadge = UserBadge::where('user_id', $user->id)
+                ->where('badge_id', $badge->id)
+                ->first();
+
             return [
                 'earned' => true,
                 'progress' => 100,
-                'awarded_at' => UserBadge::where('user_id', $user->id)
-                    ->where('badge_id', $badge->id)
-                    ->first()->earned_at,
+                'awarded_at' => $userBadge?->awarded_at,
             ];
         }
 
@@ -285,18 +324,7 @@ class BadgeService
         $criteriaCount = count($criteria);
 
         foreach ($criteria as $key => $required) {
-            $current = match($key) {
-                'lessons_completed' => $stats->lessons_completed,
-                'courses_completed' => $stats->courses_completed,
-                'quizzes_completed' => $stats->quizzes_completed,
-                'perfect_scores' => $stats->perfect_scores,
-                'current_streak' => $stats->current_streak,
-                'total_points' => $stats->total_points,
-                'current_level' => $stats->current_level,
-                'total_badges' => $stats->total_badges,
-                'assignments_completed' => $stats->assignments_completed,
-                default => 0,
-            };
+            $current = $this->getStatValueForCriteriaKey($stats, $key) ?? 0;
 
             $progress = min(100, ($current / $required) * 100);
             $totalProgress += $progress;

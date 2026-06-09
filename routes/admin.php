@@ -1122,6 +1122,10 @@ Route::prefix('admin')
             Route::post('/schedules', [AdminStudentWeeklyReportScheduleController::class, 'store'])->name('schedules.store');
             Route::post('/schedules/{schedule}/toggle', [AdminStudentWeeklyReportScheduleController::class, 'toggle'])->name('schedules.toggle');
             Route::get('/groups-overview', [AdminStudentWeeklyReportController::class, 'groupsOverview'])->name('groups-overview');
+            Route::get('/pending', [AdminStudentWeeklyReportController::class, 'pendingReports'])->name('pending');
+            Route::get('/all', [AdminStudentWeeklyReportController::class, 'allReports'])->name('all');
+            Route::get('/created/batch', [AdminStudentWeeklyReportController::class, 'showCreatedBatch'])->name('created.batch');
+            Route::get('/created', [AdminStudentWeeklyReportController::class, 'createdReports'])->name('created');
 
             Route::get('/', [AdminStudentWeeklyReportController::class, 'index'])->name('index');
             Route::get('/create', [AdminStudentWeeklyReportController::class, 'create'])->name('create');

@@ -12,21 +12,43 @@
                 <h5 class="page-title fs-21 mb-1">{{ $report->report_title }}</h5>
                 <p class="text-muted mb-0">الموعد النهائي: {{ $report->due_at?->format('Y-m-d H:i') ?? 'غير محدد' }}</p>
             </div>
+            <div class="d-flex gap-2 align-items-center">
+                @if($report->status === \App\Models\StudentWeeklyReport::STATUS_REVIEWED)
+                    <span class="badge bg-success-transparent text-success">تمت المراجعة</span>
+                @elseif($report->status === \App\Models\StudentWeeklyReport::STATUS_SUBMITTED)
+                    <span class="badge bg-info-transparent text-info">مرسل</span>
+                @elseif($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)
+                    <span class="badge bg-danger-transparent text-danger">مغلق</span>
+                @else
+                    <span class="badge bg-warning-transparent text-warning">مسودة</span>
+                @endif
+            </div>
         </div>
 
-        @if($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)
+        @if(!$canEdit && $report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)
             <div class="alert alert-danger">هذا التقرير مغلق لانتهاء الموعد النهائي.</div>
         @endif
 
-        @if($report->admin_feedback)
-            <div class="alert alert-info">
-                <strong>تعليق الأدمن:</strong><br>
-                {{ $report->admin_feedback }}
+        @if($wasSubmitted && $canEdit === false && $report->status !== \App\Models\StudentWeeklyReport::STATUS_CLOSED)
+            <div class="alert alert-info d-flex align-items-center gap-2">
+                <i class="ri-information-line fs-18"></i>
+                <span>تم إرسال هذا التقرير ولا يمكن تعديله أو إرساله مرة أخرى.</span>
             </div>
         @endif
 
         @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if($errors->has('report'))
+            <div class="alert alert-danger">{{ $errors->first('report') }}</div>
+        @endif
+
+        @if($report->admin_feedback)
+            @include('student.weekly-reports.partials.admin-feedback-card')
         @endif
 
         <div class="card custom-card">
@@ -34,61 +56,91 @@
                 <form id="weekly-report-form" method="POST" action="{{ route('student.weekly-reports.save', $report) }}">
                     @csrf
                     @method('PUT')
+                    <div id="flattened-lessons-container"></div>
 
                     <div class="mb-3">
-                        <label class="form-label">التقرير التفصيلي</label>
-                        <textarea name="student_details" class="form-control" rows="5" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>{{ old('student_details', $report->student_details) }}</textarea>
+                        <label class="form-label" for="student-details-editor">التقرير التفصيلي</label>
+                        @if($canEdit)
+                            <div class="weekly-report-editor-wrap">
+                                <textarea name="student_details" id="student-details-editor" class="form-control" rows="8">{{ old('student_details', $report->student_details) }}</textarea>
+                            </div>
+                        @else
+                            <div class="p-3 rounded border bg-light weekly-report-html-content">
+                                {!! $report->student_details ?: '<p class="text-muted mb-0">لا يوجد</p>' !!}
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">ملاحظات إضافية</label>
-                        <textarea name="student_notes" class="form-control" rows="4" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>{{ old('student_notes', $report->student_notes) }}</textarea>
+                        <label class="form-label" for="student_notes">ملاحظات إضافية</label>
+                        @if($canEdit)
+                            <textarea name="student_notes" id="student_notes" class="form-control" rows="4">{{ old('student_notes', $report->student_notes) }}</textarea>
+                        @else
+                            <div class="p-3 rounded border bg-light">
+                                {{ $report->student_notes ?: 'لا يوجد' }}
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">الدروس التي تمت دراستها</label>
+                        @if($canEdit)
+                            <p class="text-muted fs-12 mb-2">اختر الكورس ثم حدّد عدة دروس معاً من نفس الكورس.</p>
+                        @endif
                         <div id="lesson-selections">
-                            @php $selected = $report->selectedLessons; @endphp
-                            @forelse($selected as $idx => $sel)
-                                <div class="row g-2 mb-2 lesson-row">
-                                    <div class="col-md-6">
-                                        <select class="form-select course-select" name="lessons[{{ $idx }}][course_id]" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>
-                                            <option value="">اختر الكورس</option>
-                                            @foreach($courses as $course)
-                                                <option value="{{ $course->id }}" @selected($course->id === $sel->course_id)>{{ $course->title }}</option>
-                                            @endforeach
-                                        </select>
+                            @if($canEdit)
+                                @php
+                                    $rows = $groupedSelections->isNotEmpty()
+                                        ? $groupedSelections
+                                        : collect([['course_id' => $courses->count() === 1 ? ($courses->first()?->id) : null, 'module_ids' => []]]);
+                                @endphp
+                                @foreach($rows as $rowIndex => $row)
+                                    <div class="row g-2 mb-3 lesson-row" data-row-index="{{ $rowIndex }}">
+                                        <div class="col-md-5">
+                                            <label class="form-label fs-12">الكورس</label>
+                                            <select class="form-select course-select">
+                                                <option value="">اختر الكورس</option>
+                                                @foreach($courses as $course)
+                                                    <option value="{{ $course->id }}" @selected((int) ($row['course_id'] ?? 0) === (int) $course->id)>{{ $course->title }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label fs-12">الدروس</label>
+                                            <select class="form-select module-multi-select" multiple data-selected-modules='@json($row['module_ids'] ?? [])'>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <select class="form-select lesson-select" name="lessons[{{ $idx }}][module_id]" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>
-                                            <option value="{{ $sel->module_id }}">{{ $sel->module->title ?? $sel->lesson->title ?? 'الدرس الحالي' }}</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="row g-2 mb-2 lesson-row">
-                                    <div class="col-md-6">
-                                        <select class="form-select course-select" name="lessons[0][course_id]" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>
-                                            <option value="">اختر الكورس</option>
-                                            @foreach($courses as $course)
-                                                <option value="{{ $course->id }}">{{ $course->title }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <select class="form-select lesson-select" name="lessons[0][module_id]" @disabled($report->status === \App\Models\StudentWeeklyReport::STATUS_CLOSED)>
-                                            <option value="">اختر الدرس</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            @endforelse
+                                @endforeach
+                            @else
+                                @if($report->selectedLessons->isNotEmpty())
+                                    <ul class="list-group list-group-flush border rounded">
+                                        @foreach($report->selectedLessons as $item)
+                                            <li class="list-group-item d-flex align-items-center gap-2">
+                                                <span class="avatar avatar-sm bg-primary-transparent">
+                                                    <i class="ri-book-open-line text-primary"></i>
+                                                </span>
+                                                <span>
+                                                    {{ $item->course->title ?? '-' }}
+                                                    <span class="text-muted">—</span>
+                                                    {{ $item->module->title ?? $item->lesson->title ?? '-' }}
+                                                </span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <div class="alert alert-light mb-0">لا توجد دروس محددة.</div>
+                                @endif
+                            @endif
                         </div>
-                        @if($report->status !== \App\Models\StudentWeeklyReport::STATUS_CLOSED)
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-lesson-row">إضافة درس آخر</button>
+                        @if($canEdit && $courses->count() > 1)
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-course-row">
+                                <i class="ri-add-line me-1"></i>إضافة كورس آخر
+                            </button>
                         @endif
                     </div>
 
-                    @if($report->status !== \App\Models\StudentWeeklyReport::STATUS_CLOSED)
+                    @if($canEdit)
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">حفظ مسودة</button>
                             <button type="button" class="btn btn-success" id="submit-report-btn">إرسال التقرير</button>
@@ -96,100 +148,254 @@
                     @endif
                 </form>
 
-                <form id="weekly-report-submit-form" method="POST" action="{{ route('student.weekly-reports.submit', $report) }}" class="d-none">
-                    @csrf
-                    @method('PUT')
-                </form>
+                @if($canEdit)
+                    <form id="weekly-report-submit-form" method="POST" action="{{ route('student.weekly-reports.submit', $report) }}" class="d-none">
+                        @csrf
+                        @method('PUT')
+                    </form>
+                @endif
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
+@if($canEdit)
+    @include('student.weekly-reports.partials.tinymce-editor')
+@endif
+@if($canEdit)
 <script>
 (() => {
-    const lessonsUrlTemplate = @json(route('student.weekly-reports.lessons', ['course' => '__COURSE_ID__']));
+    const reportId = @json($report->id);
+    const coursesOptionsHtml = @json($courses->map(fn ($c) => ['id' => $c->id, 'title' => $c->title])->values());
+    const lessonsUrlTemplate = @json(route('student.weekly-reports.lessons', ['course' => '__COURSE_ID__'])) + '?report_id=' + reportId;
+
     const container = document.getElementById('lesson-selections');
-    const addBtn = document.getElementById('add-lesson-row');
+    const addBtn = document.getElementById('add-course-row');
     const saveForm = document.getElementById('weekly-report-form');
     const submitForm = document.getElementById('weekly-report-submit-form');
     const submitBtn = document.getElementById('submit-report-btn');
-    let rowIndex = container.querySelectorAll('.lesson-row').length;
+    const flattenedContainer = document.getElementById('flattened-lessons-container');
+    const rowChoices = new WeakMap();
 
-    function bindCourseSelect(selectEl) {
-        selectEl.addEventListener('change', async () => {
-            const row = selectEl.closest('.lesson-row');
-            const lessonSelect = row.querySelector('.lesson-select');
-            const courseId = selectEl.value;
-            lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-            if (!courseId) return;
+    function syncEditor() {
+        const editor = typeof tinymce !== 'undefined' ? tinymce.get('student-details-editor') : null;
+        if (editor) {
+            editor.save();
+        }
+    }
 
-            const url = lessonsUrlTemplate.replace('__COURSE_ID__', courseId);
-            try {
-                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                if (!response.ok) {
-                    lessonSelect.innerHTML = '<option value="">تعذر تحميل الدروس</option>';
-                    return;
-                }
-                const lessons = await response.json();
-                if (!Array.isArray(lessons) || lessons.length === 0) {
-                    lessonSelect.innerHTML = '<option value="">لا توجد دروس متاحة</option>';
-                    return;
-                }
-                lessons.forEach((lesson) => {
-                    const opt = document.createElement('option');
-                    opt.value = lesson.id;
-                    opt.textContent = lesson.title;
-                    lessonSelect.appendChild(opt);
-                });
-            } catch (e) {
-                lessonSelect.innerHTML = '<option value="">تعذر تحميل الدروس</option>';
+    function getEditorContent() {
+        const editor = typeof tinymce !== 'undefined' ? tinymce.get('student-details-editor') : null;
+        if (editor) {
+            return editor.getContent();
+        }
+        return document.getElementById('student-details-editor')?.value || '';
+    }
+
+    function buildCoursesOptions(selectedId) {
+        let html = '<option value="">اختر الكورس</option>';
+        coursesOptionsHtml.forEach((course) => {
+            const selected = String(course.id) === String(selectedId) ? ' selected' : '';
+            html += `<option value="${course.id}"${selected}>${course.title}</option>`;
+        });
+        return html;
+    }
+
+    async function fetchModules(courseId) {
+        const url = lessonsUrlTemplate.replace('__COURSE_ID__', courseId);
+        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!response.ok) {
+            throw new Error('failed');
+        }
+        return response.json();
+    }
+
+    function destroyChoices(selectEl) {
+        const instance = rowChoices.get(selectEl);
+        if (instance) {
+            instance.destroy();
+            rowChoices.delete(selectEl);
+        }
+    }
+
+    function initModuleChoices(selectEl, modules, selectedIds) {
+        destroyChoices(selectEl);
+        selectEl.innerHTML = '';
+        modules.forEach((module) => {
+            const opt = document.createElement('option');
+            opt.value = module.id;
+            opt.textContent = module.title;
+            if (selectedIds.map(String).includes(String(module.id))) {
+                opt.selected = true;
             }
+            selectEl.appendChild(opt);
+        });
+
+        if (typeof Choices === 'undefined') {
+            return;
+        }
+
+        const instance = new Choices(selectEl, {
+            removeItemButton: true,
+            placeholder: true,
+            placeholderValue: 'اختر الدروس',
+            searchPlaceholderValue: 'ابحث...',
+            noResultsText: 'لا توجد نتائج',
+            noChoicesText: 'لا توجد دروس',
+            itemSelectText: '',
+            shouldSort: false,
+        });
+        rowChoices.set(selectEl, instance);
+    }
+
+    async function loadModulesForRow(row, preserveSelected) {
+        const courseSelect = row.querySelector('.course-select');
+        const moduleSelect = row.querySelector('.module-multi-select');
+        const courseId = courseSelect.value;
+        const selectedFromData = preserveSelected
+            ? JSON.parse(moduleSelect.dataset.selectedModules || '[]')
+            : [];
+
+        destroyChoices(moduleSelect);
+        moduleSelect.innerHTML = '';
+
+        if (!courseId) {
+            return;
+        }
+
+        try {
+            const modules = await fetchModules(courseId);
+            if (!Array.isArray(modules) || modules.length === 0) {
+                moduleSelect.innerHTML = '<option value="" disabled>لا توجد دروس متاحة</option>';
+                return;
+            }
+            initModuleChoices(moduleSelect, modules, selectedFromData);
+            moduleSelect.dataset.selectedModules = '[]';
+        } catch (e) {
+            moduleSelect.innerHTML = '<option value="" disabled>تعذر تحميل الدروس</option>';
+        }
+    }
+
+    function bindCourseSelect(row) {
+        const courseSelect = row.querySelector('.course-select');
+        courseSelect.addEventListener('change', () => loadModulesForRow(row, false));
+    }
+
+    function prepareFlattenedLessons() {
+        flattenedContainer.innerHTML = '';
+        let index = 0;
+
+        container.querySelectorAll('.lesson-row').forEach((row) => {
+            const courseId = row.querySelector('.course-select')?.value;
+            const moduleSelect = row.querySelector('.module-multi-select');
+            if (!courseId || !moduleSelect) {
+                return;
+            }
+
+            const instance = rowChoices.get(moduleSelect);
+            const selectedValues = instance
+                ? instance.getValue(true)
+                : Array.from(moduleSelect.selectedOptions).map((opt) => opt.value);
+
+            selectedValues.forEach((moduleId) => {
+                if (!moduleId) {
+                    return;
+                }
+
+                const courseInput = document.createElement('input');
+                courseInput.type = 'hidden';
+                courseInput.name = `lessons[${index}][course_id]`;
+                courseInput.value = courseId;
+                flattenedContainer.appendChild(courseInput);
+
+                const moduleInput = document.createElement('input');
+                moduleInput.type = 'hidden';
+                moduleInput.name = `lessons[${index}][module_id]`;
+                moduleInput.value = moduleId;
+                flattenedContainer.appendChild(moduleInput);
+
+                index++;
+            });
         });
     }
 
-    container.querySelectorAll('.course-select').forEach(bindCourseSelect);
+    function prepareReportForm() {
+        syncEditor();
+        prepareFlattenedLessons();
+    }
+
+    container.querySelectorAll('.lesson-row').forEach((row) => {
+        bindCourseSelect(row);
+        loadModulesForRow(row, true);
+    });
 
     if (addBtn) {
         addBtn.addEventListener('click', () => {
             const row = document.createElement('div');
-            row.className = 'row g-2 mb-2 lesson-row';
+            row.className = 'row g-2 mb-3 lesson-row';
             row.innerHTML = `
-                <div class="col-md-6">
-                    <select class="form-select course-select" name="lessons[${rowIndex}][course_id]">
-                        <option value="">اختر الكورس</option>
-                        @foreach($courses as $course)
-                            <option value="{{ $course->id }}">{{ $course->title }}</option>
-                        @endforeach
-                    </select>
+                <div class="col-md-5">
+                    <label class="form-label fs-12">الكورس</label>
+                    <select class="form-select course-select">${buildCoursesOptions('')}</select>
                 </div>
-                <div class="col-md-6">
-                    <select class="form-select lesson-select" name="lessons[${rowIndex}][module_id]">
-                        <option value="">اختر الدرس</option>
-                    </select>
+                <div class="col-md-7">
+                    <label class="form-label fs-12">الدروس</label>
+                    <select class="form-select module-multi-select" multiple data-selected-modules="[]"></select>
                 </div>
             `;
             container.appendChild(row);
-            bindCourseSelect(row.querySelector('.course-select'));
-            rowIndex++;
+            bindCourseSelect(row);
+        });
+    }
+
+    if (saveForm) {
+        saveForm.addEventListener('submit', () => {
+            prepareReportForm();
         });
     }
 
     if (submitBtn) {
         submitBtn.addEventListener('click', () => {
-            const formData = new FormData(saveForm);
-            for (const [key, value] of formData.entries()) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = value;
-                submitForm.appendChild(input);
+            if (!window.confirm('هل أنت متأكد من إرسال التقرير؟ لن تتمكن من تعديله أو إرساله مرة أخرى.')) {
+                return;
             }
+
+            prepareReportForm();
+            submitForm.innerHTML = '';
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '_token';
+            csrf.value = @json(csrf_token());
+            submitForm.appendChild(csrf);
+
+            const method = document.createElement('input');
+            method.type = 'hidden';
+            method.name = '_method';
+            method.value = 'PUT';
+            submitForm.appendChild(method);
+
+            Array.from(flattenedContainer.querySelectorAll('input')).forEach((input) => {
+                submitForm.appendChild(input.cloneNode(true));
+            });
+
+            const details = document.createElement('input');
+            details.type = 'hidden';
+            details.name = 'student_details';
+            details.value = getEditorContent();
+            submitForm.appendChild(details);
+
+            const notes = document.createElement('input');
+            notes.type = 'hidden';
+            notes.name = 'student_notes';
+            notes.value = document.getElementById('student_notes')?.value || '';
+            submitForm.appendChild(notes);
+
             submitForm.submit();
         });
     }
 })();
 </script>
-@endpush
-
+@endif
+@endsection

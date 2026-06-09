@@ -2,12 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Models\AssignmentSubmission;
 use App\Models\Badge;
-use App\Models\ModuleCompletion;
 use App\Models\CourseEnrollment;
+use App\Models\DailyStreak;
+use App\Models\ModuleCompletion;
+use App\Models\QuizAttempt;
+use App\Models\User;
 use App\Services\Gamification\BadgeService;
 use App\Services\Gamification\AchievementService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class RecalcGamificationBadges extends Command
@@ -16,7 +20,7 @@ class RecalcGamificationBadges extends Command
                             {--user= : معرّف مستخدم واحد فقط}
                             {--dry-run : عرض النتائج دون حفظ}
                             {--diagnose : عرض أرقام الدروس/الكورسات للمستخدم الأول (لتشخيص السبب)}';
-    protected $description = 'إعادة احتساب عداد الدروس المكتملة والتحقق من الشارات لجميع الطلاب المحققين للشروط';
+    protected $description = 'إعادة احتساب إحصائيات gamification والتحقق من الشارات لجميع الطلاب المحققين للشروط';
 
     public function __construct(
         protected BadgeService $badgeService,
@@ -80,41 +84,61 @@ class RecalcGamificationBadges extends Command
                 ->where('completion_percentage', '>=', 100)
                 ->count();
 
+            $quizzesCount = QuizAttempt::query()
+                ->where('student_id', $user->id)
+                ->where('is_completed', true)
+                ->count();
+
+            $perfectScoresCount = QuizAttempt::query()
+                ->where('student_id', $user->id)
+                ->where('is_completed', true)
+                ->where('percentage_score', '>=', 100)
+                ->count();
+
+            $assignmentsCount = AssignmentSubmission::query()
+                ->where('student_id', $user->id)
+                ->whereIn('status', ['submitted', 'graded', 'returned'])
+                ->count();
+
+            $streakCounts = $this->recalculateStreakCounts($user->id);
+
             if ($diagnose && !$verboseShown) {
                 $rawCompletions = ModuleCompletion::query()
                     ->where('student_id', $user->id)
                     ->where('completion_status', 'completed')
                     ->count();
                 $this->newLine();
-                $this->line("  [تشخيص] المستخدم #{$user->id} ({$user->name}): وحدات مكتملة (محسوبة) = {$lessonsCount}, إكمالات خام = {$rawCompletions}, كورسات مكتملة = {$coursesCount}");
+                $this->line("  [تشخيص] المستخدم #{$user->id} ({$user->name}): وحدات={$lessonsCount}, خام={$rawCompletions}, كورسات={$coursesCount}, اختبارات={$quizzesCount}, سلسلة={$streakCounts['current_streak']}");
                 $verboseShown = true;
             }
 
             $updates = [];
-            if ((int) ($stats->lessons_completed ?? 0) != $lessonsCount) {
-                $updates['lessons_completed'] = $lessonsCount;
-            }
-            if ((int) ($stats->courses_completed ?? 0) != $coursesCount) {
-                $updates['courses_completed'] = $coursesCount;
-            }
+            $this->queueStatUpdate($updates, 'lessons_completed', (int) ($stats->lessons_completed ?? 0), $lessonsCount);
+            $this->queueStatUpdate($updates, 'courses_completed', (int) ($stats->courses_completed ?? 0), $coursesCount);
+            $this->queueStatUpdate($updates, 'quizzes_completed', (int) ($stats->quizzes_completed ?? 0), $quizzesCount);
+            $this->queueStatUpdate($updates, 'perfect_scores', (int) ($stats->perfect_scores ?? 0), $perfectScoresCount);
+            $this->queueStatUpdate($updates, 'assignments_submitted', (int) ($stats->assignments_submitted ?? 0), $assignmentsCount);
+            $this->queueStatUpdate($updates, 'current_streak', (int) ($stats->current_streak ?? 0), $streakCounts['current_streak']);
+            $this->queueStatUpdate($updates, 'longest_streak', (int) ($stats->longest_streak ?? 0), $streakCounts['longest_streak']);
+
             if (!$dryRun && count($updates) > 0) {
                 $stats->update($updates);
                 $statsUpdated++;
             }
 
-            // إعادة تحميل علاقة الإحصائيات حتى checkAllBadges يرى القيم المحدثة
             $user->unsetRelation('stats');
 
-            // التحقق من الشارات والإنجازات
-            $awarded = $this->badgeService->checkAllBadges($user);
-            $completed = $this->achievementService->checkAllAchievements($user);
+            $awarded = [];
+            $completed = [];
 
             if (!$dryRun) {
+                $awarded = $this->badgeService->checkAllBadgesWithCascade($user);
+                $completed = $this->achievementService->checkAllAchievements($user);
                 $badgesAwarded += count($awarded);
                 $achievementsCompleted += count($completed);
-            } elseif (count($awarded) > 0 || count($completed) > 0) {
+            } elseif (count($updates) > 0) {
                 $this->newLine();
-                $this->line("  المستخدم #{$user->id} ({$user->name}): دروس مكتملة = {$lessonsCount}, شارات جديدة = " . count($awarded) . ", إنجازات = " . count($completed));
+                $this->line("  المستخدم #{$user->id} ({$user->name}): تحديثات معلقة = " . json_encode($updates, JSON_UNESCAPED_UNICODE));
             }
 
             $bar->advance();
@@ -128,7 +152,7 @@ class RecalcGamificationBadges extends Command
             ['البيان', 'العدد'],
             [
                 ['مستخدمين تمت معالجتهم', $total],
-                ['سجلات إحصائيات محدثة (دروس/كورسات)', $dryRun ? '—' : $statsUpdated],
+                ['سجلات إحصائيات محدثة', $dryRun ? '—' : $statsUpdated],
                 ['شارات مُمنحة في هذه الجولة', $dryRun ? '—' : $badgesAwarded],
                 ['إنجازات مكتملة في هذه الجولة', $dryRun ? '—' : $achievementsCompleted],
             ]
@@ -139,5 +163,66 @@ class RecalcGamificationBadges extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    protected function queueStatUpdate(array &$updates, string $field, int $current, int $calculated): void
+    {
+        if ($current !== $calculated) {
+            $updates[$field] = $calculated;
+        }
+    }
+
+    /**
+     * إعادة حساب السلسلة الحالية وأطول سلسلة من سجلات daily_streaks
+     */
+    protected function recalculateStreakCounts(int $userId): array
+    {
+        $dates = DailyStreak::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('date')
+            ->pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->startOfDay())
+            ->values();
+
+        if ($dates->isEmpty()) {
+            return ['current_streak' => 0, 'longest_streak' => 0];
+        }
+
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+
+        $currentStreak = 0;
+        $firstDate = $dates->first();
+
+        if ($firstDate->equalTo($today) || $firstDate->equalTo($yesterday)) {
+            $expected = $firstDate->copy();
+            foreach ($dates as $date) {
+                if (!$date->equalTo($expected)) {
+                    break;
+                }
+                $currentStreak++;
+                $expected->subDay();
+            }
+        }
+
+        $longestStreak = 0;
+        $run = 0;
+        $previous = null;
+
+        foreach ($dates->sort()->values() as $date) {
+            if ($previous && $date->equalTo($previous->copy()->addDay())) {
+                $run++;
+            } else {
+                $run = 1;
+            }
+
+            $longestStreak = max($longestStreak, $run);
+            $previous = $date;
+        }
+
+        return [
+            'current_streak' => $currentStreak,
+            'longest_streak' => $longestStreak,
+        ];
     }
 }
