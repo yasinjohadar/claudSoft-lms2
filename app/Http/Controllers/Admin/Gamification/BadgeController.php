@@ -3,21 +3,25 @@
 namespace App\Http\Controllers\Admin\Gamification;
 
 use App\Http\Controllers\Controller;
-use App\Models\Gamification\Badge;
+use App\Models\Badge;
+use App\Models\Course;
+use App\Models\CourseGroup;
 use App\Models\User;
+use App\Services\Gamification\BadgeManualAwardService;
 use App\Services\Gamification\BadgeService;
+use App\Support\Gamification\BadgeCriteriaMapper;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class BadgeController extends Controller
 {
-    protected BadgeService $badgeService;
-
-    public function __construct(BadgeService $badgeService)
-    {
-        $this->badgeService = $badgeService;
-    }
+    public function __construct(
+        protected BadgeService $badgeService,
+        protected BadgeManualAwardService $manualAwardService
+    ) {}
 
     /**
      * عرض قائمة الشارات
@@ -26,26 +30,22 @@ class BadgeController extends Controller
     {
         $query = Badge::query();
 
-        // فلترة حسب النوع
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // فلترة حسب الندرة
         if ($request->filled('rarity')) {
             $query->where('rarity', $request->rarity);
         }
 
-        // فلترة حسب الحالة
         if ($request->filled('is_active')) {
             $query->where('is_active', $request->is_active);
         }
 
-        // البحث
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('description', 'like', "%{$request->search}%");
+                    ->orWhere('description', 'like', "%{$request->search}%");
             });
         }
 
@@ -66,34 +66,14 @@ class BadgeController extends Controller
         return view('admin.pages.gamification.badges.index', compact('badges', 'stats'));
     }
 
-    /**
-     * عرض صفحة إنشاء شارة
-     */
     public function create()
     {
         return view('admin.pages.gamification.badges.create');
     }
 
-    /**
-     * حفظ شارة جديدة
-     */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:100',
-            'slug' => 'nullable|string|max:100|unique:badges,slug',
-            'description' => 'required|string|max:500',
-            'icon' => 'nullable|string|max:100',
-            'type' => 'required|in:achievement,progress,performance,engagement,special,event,social',
-            'category' => 'nullable|string|max:50',
-            'rarity' => 'required|in:common,rare,epic,legendary,mythic',
-            'criteria' => 'nullable|array',
-            'points_value' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
-            'is_visible' => 'boolean',
-            'is_hidden' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ]);
+        $validator = $this->validateBadgeRequest($request);
 
         if ($validator->fails()) {
             return redirect()
@@ -103,23 +83,9 @@ class BadgeController extends Controller
         }
 
         try {
-            $slug = $request->slug ?? Str::slug($request->name);
+            $slug = $request->slug ?: Str::slug($request->name);
 
-            Badge::create([
-                'name' => $request->name,
-                'slug' => $slug,
-                'description' => $request->description,
-                'icon' => $request->icon ?? '🏆',
-                'type' => $request->type,
-                'category' => $request->category,
-                'rarity' => $request->rarity,
-                'criteria' => $request->criteria,
-                'points_value' => $request->points_value ?? 0,
-                'is_active' => $request->has('is_active'),
-                'is_visible' => $request->has('is_visible'),
-                'is_hidden' => $request->has('is_hidden'),
-                'sort_order' => $request->sort_order ?? 0,
-            ]);
+            Badge::create($this->buildBadgeAttributes($request, $slug));
 
             return redirect()
                 ->route('admin.gamification.badges.index')
@@ -132,9 +98,6 @@ class BadgeController extends Controller
         }
     }
 
-    /**
-     * عرض تفاصيل شارة
-     */
     public function show(Badge $badge)
     {
         $badge->load('userBadges.user');
@@ -152,37 +115,25 @@ class BadgeController extends Controller
             ->take(20)
             ->get();
 
-        return view('admin.pages.gamification.badges.show', compact('badge', 'stats', 'recentEarners'));
+        $criteriaLabel = BadgeCriteriaMapper::formatForDisplay($badge->criteria);
+
+        return view('admin.pages.gamification.badges.show', compact('badge', 'stats', 'recentEarners', 'criteriaLabel'));
     }
 
-    /**
-     * عرض صفحة تعديل شارة
-     */
     public function edit(Badge $badge)
     {
-        return view('admin.pages.gamification.badges.edit', compact('badge'));
+        $formFields = BadgeCriteriaMapper::criteriaToForm($badge->criteria);
+
+        return view('admin.pages.gamification.badges.edit', [
+            'badge' => $badge,
+            'requirementType' => $formFields['requirement_type'],
+            'requirementValue' => $formFields['requirement_value'],
+        ]);
     }
 
-    /**
-     * تحديث شارة
-     */
     public function update(Request $request, Badge $badge)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:100',
-            'slug' => 'nullable|string|max:100|unique:badges,slug,' . $badge->id,
-            'description' => 'required|string|max:500',
-            'icon' => 'nullable|string|max:100',
-            'type' => 'required|in:achievement,progress,performance,engagement,special,event,social',
-            'category' => 'nullable|string|max:50',
-            'rarity' => 'required|in:common,rare,epic,legendary,mythic',
-            'criteria' => 'nullable|array',
-            'points_value' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
-            'is_visible' => 'boolean',
-            'is_hidden' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ]);
+        $validator = $this->validateBadgeRequest($request, $badge->id);
 
         if ($validator->fails()) {
             return redirect()
@@ -192,21 +143,7 @@ class BadgeController extends Controller
         }
 
         try {
-            $badge->update([
-                'name' => $request->name,
-                'slug' => $request->slug ?? $badge->slug,
-                'description' => $request->description,
-                'icon' => $request->icon,
-                'type' => $request->type,
-                'category' => $request->category,
-                'rarity' => $request->rarity,
-                'criteria' => $request->criteria,
-                'points_value' => $request->points_value ?? 0,
-                'is_active' => $request->has('is_active'),
-                'is_visible' => $request->has('is_visible'),
-                'is_hidden' => $request->has('is_hidden'),
-                'sort_order' => $request->sort_order ?? $badge->sort_order,
-            ]);
+            $badge->update($this->buildBadgeAttributes($request, $request->slug ?: $badge->slug));
 
             return redirect()
                 ->route('admin.gamification.badges.index')
@@ -219,9 +156,6 @@ class BadgeController extends Controller
         }
     }
 
-    /**
-     * حذف شارة
-     */
     public function destroy(Badge $badge)
     {
         try {
@@ -237,54 +171,213 @@ class BadgeController extends Controller
         }
     }
 
-    /**
-     * منح شارة يدوياً لمستخدم
-     */
-    public function awardToUser(Request $request)
+    public function awardForm(?Badge $badge = null)
     {
-        $validator = Validator::make($request->all(), [
-            'badge_id' => 'required|exists:badges,id',
-            'user_id' => 'required|exists:users,id',
-            'reason' => 'nullable|string|max:500',
-        ]);
+        $badges = Badge::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon', 'rarity']);
+
+        $courses = Course::query()->orderBy('title')->get(['id', 'title']);
+        $groups = CourseGroup::query()
+            ->with('courses:id')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('admin.pages.gamification.badges.award', compact('badge', 'badges', 'courses', 'groups'));
+    }
+
+    public function awardFormForBadge(Badge $badge)
+    {
+        return $this->awardForm($badge);
+    }
+
+    public function previewTargets(Request $request): JsonResponse
+    {
+        $validator = $this->validateManualAwardRequest($request, preview: true);
 
         if ($validator->fails()) {
-            return redirect()
-                ->back()
-                ->withErrors($validator);
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
             $badge = Badge::findOrFail($request->badge_id);
-            $user = User::findOrFail($request->user_id);
-
-            $userBadge = $this->badgeService->awardBadge(
-                $user,
+            $preview = $this->manualAwardService->preview(
                 $badge,
-                null,
-                null,
-                ['reason' => $request->reason, 'manually_awarded' => true, 'awarded_by' => auth()->id()]
+                $request->target_type,
+                $this->manualAwardParams($request)
             );
 
-            if ($userBadge) {
-                return redirect()
-                    ->back()
-                    ->with('success', 'تم منح الشارة بنجاح');
-            } else {
-                return redirect()
-                    ->back()
-                    ->with('info', 'المستخدم يمتلك هذه الشارة بالفعل');
-            }
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
+            return response()->json($preview);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
         }
     }
 
-    /**
-     * تفعيل/تعطيل شارة
-     */
+    public function searchStudents(Request $request): JsonResponse
+    {
+        $query = User::role('student');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('name_ar', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+
+                if (is_numeric($search)) {
+                    $q->orWhere('id', $search);
+                }
+            });
+        }
+
+        if ($request->filled('ids')) {
+            $ids = collect(explode(',', $request->input('ids')))
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->all();
+            $query->whereIn('id', $ids);
+        }
+
+        $students = $query
+            ->orderBy('name')
+            ->limit(50)
+            ->get(['id', 'name', 'name_ar', 'email'])
+            ->map(fn (User $student) => [
+                'id' => $student->id,
+                'text' => $this->formatStudentLabel($student),
+            ]);
+
+        return response()->json(['results' => $students]);
+    }
+
+    public function awardManual(Request $request)
+    {
+        $validator = $this->validateManualAwardRequest($request);
+
+        if ($validator->fails()) {
+            return redirect()
+                ->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            $badge = Badge::findOrFail($request->badge_id);
+            $students = $this->manualAwardService->resolveTargetStudents(
+                $request->target_type,
+                $this->manualAwardParams($request)
+            );
+
+            if ($students->isEmpty()) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'لم يتم العثور على طلاب مستهدفين.')
+                    ->withInput();
+            }
+
+            $result = $this->manualAwardService->awardToStudents(
+                $badge,
+                $students,
+                [
+                    'reason' => $request->reason,
+                    'manually_awarded' => true,
+                    'awarded_by' => auth()->id(),
+                    'target_type' => $request->target_type,
+                    'target_snapshot' => $this->manualAwardParams($request),
+                ]
+            );
+
+            $message = "تم منح الشارة لـ {$result['awarded']} طالب.";
+            if ($result['skipped'] > 0) {
+                $message .= " تم تخطي {$result['skipped']} (يمتلكونها مسبقاً).";
+            }
+            if ($result['failed'] > 0) {
+                $message .= " فشل منح {$result['failed']} طالب.";
+            }
+
+            return redirect()
+                ->route('admin.gamification.badges.show', $badge)
+                ->with('success', $message);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'خطأ: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    public function awardToUser(Request $request)
+    {
+        $request->merge([
+            'target_type' => 'single',
+        ]);
+
+        return $this->awardManual($request);
+    }
+
+    protected function validateManualAwardRequest(Request $request, bool $preview = false): \Illuminate\Validation\Validator
+    {
+        $rules = [
+            'badge_id' => 'required|exists:badges,id',
+            'target_type' => ['required', Rule::in(BadgeManualAwardService::TARGET_TYPES)],
+            'reason' => 'nullable|string|max:500',
+        ];
+
+        $targetType = $request->input('target_type');
+
+        if ($targetType === 'single') {
+            $rules['user_id'] = 'required|exists:users,id';
+        }
+
+        if ($targetType === 'multiple') {
+            $rules['user_ids'] = 'required|array|min:1';
+            $rules['user_ids.*'] = 'integer|exists:users,id';
+        }
+
+        if ($targetType === 'group') {
+            $rules['group_id'] = 'required|exists:course_groups,id';
+        }
+
+        if ($targetType === 'course') {
+            $rules['course_id'] = 'required|exists:courses,id';
+        }
+
+        if ($targetType === 'course_group') {
+            $rules['course_id'] = 'required|exists:courses,id';
+            $rules['group_id'] = 'required|exists:course_groups,id';
+        }
+
+        return Validator::make($request->all(), $rules);
+    }
+
+    protected function manualAwardParams(Request $request): array
+    {
+        return [
+            'user_id' => $request->input('user_id'),
+            'user_ids' => $request->input('user_ids', []),
+            'group_id' => $request->input('group_id'),
+            'course_id' => $request->input('course_id'),
+        ];
+    }
+
+    protected function formatStudentLabel(User $student): string
+    {
+        $label = $student->name;
+
+        if ($student->name_ar) {
+            $label .= ' (' . $student->name_ar . ')';
+        }
+
+        return $label . ' - ' . $student->email;
+    }
+
     public function toggleActive(Badge $badge)
     {
         try {
@@ -300,9 +393,6 @@ class BadgeController extends Controller
         }
     }
 
-    /**
-     * إحصائيات الشارات
-     */
     public function statistics()
     {
         $totalBadges = Badge::count();
@@ -342,5 +432,49 @@ class BadgeController extends Controller
             'leastEarned',
             'neverEarned'
         ));
+    }
+
+    protected function validateBadgeRequest(Request $request, ?int $badgeId = null): \Illuminate\Validation\Validator
+    {
+        $slugRule = 'nullable|string|max:100|unique:badges,slug';
+        if ($badgeId) {
+            $slugRule .= ',' . $badgeId;
+        }
+
+        return Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+            'slug' => $slugRule,
+            'description' => 'required|string|max:500',
+            'icon' => 'nullable|string|max:100',
+            'type' => 'required|in:achievement,progress,performance,engagement,special,event,social',
+            'category' => 'nullable|string|max:50',
+            'rarity' => 'required|in:common,rare,epic,legendary,mythic',
+            'requirement_type' => 'nullable|string|max:50',
+            'requirement_value' => 'nullable|integer|min:0',
+            'points_reward' => 'nullable|integer|min:0',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+    }
+
+    protected function buildBadgeAttributes(Request $request, string $slug): array
+    {
+        return [
+            'name' => $request->name,
+            'slug' => $slug,
+            'description' => $request->description,
+            'icon' => $request->icon ?? '🏆',
+            'type' => $request->type,
+            'category' => $request->category,
+            'rarity' => $request->rarity,
+            'criteria' => BadgeCriteriaMapper::formToCriteria(
+                $request->requirement_type,
+                $request->requirement_value
+            ),
+            'points_value' => (int) ($request->points_reward ?? 0),
+            'is_active' => $request->has('is_active'),
+            'is_visible' => $request->has('is_visible'),
+            'is_hidden' => $request->has('is_hidden'),
+            'sort_order' => (int) ($request->sort_order ?? 0),
+        ];
     }
 }

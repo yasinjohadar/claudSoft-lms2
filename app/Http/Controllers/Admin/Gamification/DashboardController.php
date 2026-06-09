@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Gamification;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Gamification\Badge;
+use App\Models\Badge;
 use App\Models\Gamification\Achievement;
 use App\Models\Gamification\PointTransaction as PointsTransaction;
 use App\Models\Gamification\UserStat;
@@ -43,7 +43,7 @@ class DashboardController extends Controller
             'total_badges' => Badge::count(),
             'active_badges' => Badge::where('is_active', true)->count(),
             'badges_awarded' => UserStat::sum('total_badges'),
-            'badges_this_period' => \DB::table('gamification_user_badges')
+            'badges_this_period' => \DB::table('user_badges')
                 ->where('awarded_at', '>=', $startDate)
                 ->count(),
 

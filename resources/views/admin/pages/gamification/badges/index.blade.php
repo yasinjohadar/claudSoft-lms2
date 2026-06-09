@@ -49,9 +49,14 @@
 
                         <div class="card-header d-flex justify-content-between align-items-center bg-light">
                             <h5 class="mb-0 fw-bold">جدول الشارات</h5>
-                            <a class="btn btn-sm btn-primary" href="{{ route('admin.gamification.badges.create') }}">
-                                <i class="fas fa-plus me-1"></i> إضافة شارة جديدة
-                            </a>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-sm btn-success" href="{{ route('admin.gamification.badges.award.form') }}">
+                                    <i class="fas fa-award me-1"></i> منح يدوي
+                                </a>
+                                <a class="btn btn-sm btn-primary" href="{{ route('admin.gamification.badges.create') }}">
+                                    <i class="fas fa-plus me-1"></i> إضافة شارة جديدة
+                                </a>
+                            </div>
                         </div>
 
                         <div class="card-body">
@@ -71,12 +76,10 @@
                                     <tbody>
                                         @forelse ($badges as $badge)
                                             <tr>
-                                                <td>{{ $loop->iteration }}</td>
+                                                <td>{{ $badges->firstItem() + $loop->index }}</td>
                                                 <td>
                                                     @if($badge->icon)
                                                         <span style="font-size: 24px;">{{ $badge->icon }}</span>
-                                                    @elseif($badge->image)
-                                                        <img src="{{ asset('storage/' . $badge->image) }}" alt="{{ $badge->name }}" width="40" height="40" class="rounded">
                                                     @else
                                                         <i class="fas fa-medal text-warning fs-4"></i>
                                                     @endif
@@ -87,8 +90,8 @@
                                                         @case('common')
                                                             <span class="badge bg-secondary">عادي</span>
                                                             @break
-                                                        @case('uncommon')
-                                                            <span class="badge bg-success">غير شائع</span>
+                                                        @case('mythic')
+                                                            <span class="badge bg-dark">أسطوري+</span>
                                                             @break
                                                         @case('rare')
                                                             <span class="badge bg-info">نادر</span>
@@ -103,7 +106,7 @@
                                                             <span class="badge bg-secondary">{{ $badge->rarity }}</span>
                                                     @endswitch
                                                 </td>
-                                                <td>{{ $badge->points_reward ?? 0 }}</td>
+                                                <td>{{ $badge->points_value ?? 0 }}</td>
                                                 <td>
                                                     @if($badge->is_active)
                                                         <span class="badge bg-success">نشط</span>

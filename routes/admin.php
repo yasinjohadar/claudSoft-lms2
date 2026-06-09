@@ -438,13 +438,18 @@ Route::prefix('admin')
                 Route::get('/', [AdminBadgeController::class, 'index'])->name('index');
                 Route::get('/create', [AdminBadgeController::class, 'create'])->name('create');
                 Route::post('/', [AdminBadgeController::class, 'store'])->name('store');
+                Route::get('/award-manual', [AdminBadgeController::class, 'awardForm'])->name('award.form');
+                Route::get('/award-manual/preview', [AdminBadgeController::class, 'previewTargets'])->name('award.preview');
+                Route::get('/award-manual/students', [AdminBadgeController::class, 'searchStudents'])->name('award.students');
+                Route::post('/award-manual', [AdminBadgeController::class, 'awardManual'])->name('award.store');
+                Route::post('/award', [AdminBadgeController::class, 'awardToUser'])->name('award');
+                Route::get('/statistics/overview', [AdminBadgeController::class, 'statistics'])->name('statistics');
+                Route::get('/{badge}/award', [AdminBadgeController::class, 'awardFormForBadge'])->name('award.badge');
                 Route::get('/{badge}', [AdminBadgeController::class, 'show'])->name('show');
                 Route::get('/{badge}/edit', [AdminBadgeController::class, 'edit'])->name('edit');
                 Route::put('/{badge}', [AdminBadgeController::class, 'update'])->name('update');
                 Route::delete('/{badge}', [AdminBadgeController::class, 'destroy'])->name('destroy');
-                Route::post('/award', [AdminBadgeController::class, 'awardToUser'])->name('award');
                 Route::post('/{badge}/toggle-active', [AdminBadgeController::class, 'toggleActive'])->name('toggle-active');
-                Route::get('/statistics/overview', [AdminBadgeController::class, 'statistics'])->name('statistics');
             });
 
             // Achievements Management
