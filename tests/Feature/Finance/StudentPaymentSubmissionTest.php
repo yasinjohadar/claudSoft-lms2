@@ -199,6 +199,41 @@ class StudentPaymentSubmissionTest extends TestCase
         $this->assertSame('partial', $invoice->status);
     }
 
+    public function test_admin_can_approve_pending_payment_after_invoice_marked_as_paid(): void
+    {
+        $student = $this->studentUser();
+        $admin = $this->adminUser();
+        $method = $this->paymentMethod();
+        $invoice = $this->invoiceFor($student);
+
+        $payment = Payment::query()->create([
+            'payment_number' => 'PAY-PENDING-MARK-PAID',
+            'invoice_id' => $invoice->id,
+            'student_id' => $student->id,
+            'amount' => 100,
+            'payment_method_id' => $method->id,
+            'payment_date' => now(),
+            'status' => 'pending',
+            'receipt_path' => 'payments/receipts/test.jpg',
+            'receipt_disk' => 'public',
+        ]);
+
+        $invoice->markAsPaid();
+
+        $response = $this->actingAs($admin)->post(route('payments.approve', $payment->id));
+
+        $response->assertRedirect(route('payments.show', $payment->id));
+        $response->assertSessionHas('success');
+
+        $payment->refresh();
+        $invoice->refresh();
+
+        $this->assertSame('completed', $payment->status);
+        $this->assertSame('paid', $invoice->status);
+        $this->assertEquals(100, (float) $invoice->paid_amount);
+        $this->assertEquals(0, (float) $invoice->remaining_amount);
+    }
+
     public function test_admin_can_reject_pending_payment_without_updating_invoice(): void
     {
         $student = $this->studentUser();

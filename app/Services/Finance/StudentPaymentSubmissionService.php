@@ -98,19 +98,27 @@ class StudentPaymentSubmissionService
             throw new InvalidArgumentException('لا توجد فاتورة مرتبطة بهذه الدفعة.');
         }
 
-        if ((float) $payment->amount > (float) $invoice->remaining_amount) {
-            throw new InvalidArgumentException('مبلغ الدفعة أكبر من المبلغ المتبقي على الفاتورة.');
-        }
-
         return DB::transaction(function () use ($payment, $invoice, $admin) {
             $invoice->refresh();
+            $payment->refresh();
 
-            if ((float) $payment->amount > (float) $invoice->remaining_amount) {
-                throw new InvalidArgumentException('مبلغ الدفعة أكبر من المبلغ المتبقي على الفاتورة.');
+            $completedPaid = (float) $invoice->payments()
+                ->where('status', 'completed')
+                ->sum('amount');
+
+            $remainingForApproval = max(0, round((float) $invoice->total_amount - $completedPaid, 2));
+            $paymentAmount = round((float) $payment->amount, 2);
+
+            if ($paymentAmount > $remainingForApproval) {
+                throw new InvalidArgumentException(
+                    $remainingForApproval <= 0
+                        ? 'لا يوجد مبلغ متبقٍ على الفاتورة لاعتماد هذه الدفعة. قد تكون الفاتورة مُسدَّدة مسبقاً.'
+                        : 'مبلغ الدفعة أكبر من المبلغ المتبقي على الفاتورة.'
+                );
             }
 
-            $invoice->paid_amount += $payment->amount;
-            $invoice->remaining_amount = $invoice->total_amount - $invoice->paid_amount;
+            $invoice->paid_amount = round($completedPaid + $paymentAmount, 2);
+            $invoice->remaining_amount = max(0, round((float) $invoice->total_amount - (float) $invoice->paid_amount, 2));
 
             if ($invoice->remaining_amount <= 0) {
                 $invoice->status = 'paid';

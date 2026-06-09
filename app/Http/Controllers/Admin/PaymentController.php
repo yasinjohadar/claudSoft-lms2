@@ -233,6 +233,12 @@ class PaymentController extends Controller
             return redirect()
                 ->back()
                 ->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء الموافقة على الدفعة. يرجى المحاولة مرة أخرى.');
         }
     }
 
@@ -257,6 +263,12 @@ class PaymentController extends Controller
             return redirect()
                 ->back()
                 ->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء رفض الدفعة. يرجى المحاولة مرة أخرى.');
         }
     }
 
