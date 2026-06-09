@@ -1,8 +1,19 @@
 <?php
 
 use App\Http\Controllers\Api\N8nWebhookController;
+use App\Http\Controllers\Api\Student\AssignmentApiController as StudentAssignmentApiController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
+use App\Http\Controllers\Api\Student\CertificateApiController as StudentCertificateApiController;
 use App\Http\Controllers\Api\Student\CourseController as StudentCourseController;
+use App\Http\Controllers\Api\Student\DashboardApiController as StudentDashboardApiController;
+use App\Http\Controllers\Api\Student\FeedbackApiController as StudentFeedbackApiController;
+use App\Http\Controllers\Api\Student\GroupApiController as StudentGroupApiController;
+use App\Http\Controllers\Api\Student\PlatformReviewApiController as StudentPlatformReviewApiController;
+use App\Http\Controllers\Api\Student\QuestionModuleStatsApiController as StudentQuestionModuleStatsApiController;
+use App\Http\Controllers\Api\Student\StudentNotesApiController as StudentStudentNotesApiController;
+use App\Http\Controllers\Api\Student\StudyReportApiController as StudentStudyReportApiController;
+use App\Http\Controllers\Api\Student\TrainingCampApiController as StudentTrainingCampApiController;
+use App\Http\Controllers\Api\Student\WeeklyReportApiController as StudentWeeklyReportApiController;
 use App\Http\Controllers\Api\Student\CourseProgressApiController as StudentCourseProgressApiController;
 use App\Http\Controllers\Api\Student\ExternalResourceApiController as StudentExternalResourceApiController;
 use App\Http\Controllers\Api\Student\Gamification\AchievementApiController as StudentAchievementApiController;
@@ -49,12 +60,57 @@ Route::prefix('student')->name('api.student.')->group(function () {
     Route::middleware(['auth.query_token', 'auth:sanctum', 'role:student'])->group(function () {
         Route::get('invoices/{id}/print', [StudentInvoiceApiController::class, 'printInvoice'])->name('invoices.print');
         Route::get('payments/{id}/print', [StudentInvoiceApiController::class, 'printPayment'])->name('payments.print');
+        Route::get('certificates/{certificate}/download', [StudentCertificateApiController::class, 'download'])->name('certificates.download');
         Route::get('courses/{courseId}/certificate', [StudentCourseProgressApiController::class, 'certificate'])->name('courses.certificate');
         Route::get('courses/{courseId}/progress-report', [StudentCourseProgressApiController::class, 'exportReport'])->name('courses.progress-report');
         Route::get('external-resources/{resource}/open', [StudentExternalResourceApiController::class, 'open'])->name('external-resources.open');
     });
 
     Route::middleware(['log.student.api', 'auth:sanctum', 'role:student'])->group(function () {
+        Route::get('dashboard', [StudentDashboardApiController::class, 'index'])->name('dashboard');
+
+        Route::get('certificates', [StudentCertificateApiController::class, 'index'])->name('certificates.index');
+        Route::get('certificates/{certificate}', [StudentCertificateApiController::class, 'show'])->name('certificates.show');
+
+        Route::get('question-modules/stats', [StudentQuestionModuleStatsApiController::class, 'index'])->name('question-modules.stats');
+        Route::get('question-modules/{questionModuleId}/stats', [StudentQuestionModuleStatsApiController::class, 'moduleStats'])->name('question-modules.module-stats');
+
+        Route::get('assignments', [StudentAssignmentApiController::class, 'index'])->name('assignments.index');
+        Route::get('assignments/{id}', [StudentAssignmentApiController::class, 'show'])->name('assignments.show');
+        Route::post('assignments/{id}/submit', [StudentAssignmentApiController::class, 'submit'])->name('assignments.submit');
+        Route::post('assignments/{id}/save-draft', [StudentAssignmentApiController::class, 'saveDraft'])->name('assignments.save-draft');
+
+        Route::get('study-reports', [StudentStudyReportApiController::class, 'index'])->name('study-reports.index');
+        Route::get('study-reports/{report}', [StudentStudyReportApiController::class, 'show'])->name('study-reports.show');
+
+        Route::get('weekly-reports', [StudentWeeklyReportApiController::class, 'index'])->name('weekly-reports.index');
+        Route::get('weekly-reports/{report}', [StudentWeeklyReportApiController::class, 'show'])->name('weekly-reports.show');
+        Route::post('weekly-reports/{report}/save', [StudentWeeklyReportApiController::class, 'save'])->name('weekly-reports.save');
+        Route::post('weekly-reports/{report}/submit', [StudentWeeklyReportApiController::class, 'submit'])->name('weekly-reports.submit');
+        Route::get('weekly-reports/courses/{course}/lessons', [StudentWeeklyReportApiController::class, 'lessons'])->name('weekly-reports.lessons');
+
+        Route::get('ai-feedback', [StudentFeedbackApiController::class, 'index'])->name('ai-feedback.index');
+        Route::get('ai-feedback/{feedback}', [StudentFeedbackApiController::class, 'show'])->name('ai-feedback.show');
+
+        Route::get('groups', [StudentGroupApiController::class, 'index'])->name('groups.index');
+        Route::post('groups/{group}/request', [StudentGroupApiController::class, 'requestMembership'])->name('groups.request');
+
+        Route::get('training-camps', [StudentTrainingCampApiController::class, 'index'])->name('training-camps.index');
+        Route::get('training-camps/{camp}', [StudentTrainingCampApiController::class, 'show'])->name('training-camps.show');
+
+        Route::get('platform-review', [StudentPlatformReviewApiController::class, 'show'])->name('platform-review.show');
+        Route::post('platform-review', [StudentPlatformReviewApiController::class, 'store'])->name('platform-review.store');
+        Route::put('platform-review/{review}', [StudentPlatformReviewApiController::class, 'update'])->name('platform-review.update');
+
+        Route::get('notes', [StudentStudentNotesApiController::class, 'notes'])->name('notes.index');
+        Route::post('notes', [StudentStudentNotesApiController::class, 'storeNote'])->name('notes.store');
+        Route::put('notes/{note}', [StudentStudentNotesApiController::class, 'updateNote'])->name('notes.update');
+        Route::delete('notes/{note}', [StudentStudentNotesApiController::class, 'deleteNote'])->name('notes.delete');
+        Route::get('course-notes', [StudentStudentNotesApiController::class, 'courseNotes'])->name('course-notes.index');
+        Route::get('reminders', [StudentStudentNotesApiController::class, 'reminders'])->name('reminders.index');
+        Route::get('calendar/events', [StudentStudentNotesApiController::class, 'calendarEvents'])->name('calendar.events');
+        Route::get('student-works', [StudentStudentNotesApiController::class, 'works'])->name('student-works.index');
+
         Route::get('profile', [StudentProfileController::class, 'show'])->name('profile.show');
         Route::put('profile', [StudentProfileController::class, 'update'])->name('profile.update');
         Route::get('nationalities', [StudentProfileController::class, 'nationalities'])->name('nationalities');
@@ -88,6 +144,7 @@ Route::prefix('student')->name('api.student.')->group(function () {
 
             Route::post('devices/register-token', [StudentNotificationHubApiController::class, 'registerDeviceToken'])->name('devices.register-token');
             Route::post('devices/unregister-token', [StudentNotificationHubApiController::class, 'unregisterDeviceToken'])->name('devices.unregister-token');
+            Route::get('preferences', [StudentNotificationHubApiController::class, 'preferences'])->name('preferences.index');
             Route::post('preferences', [StudentNotificationHubApiController::class, 'savePreference'])->name('preferences.save');
         });
 

@@ -137,6 +137,26 @@ class NotificationHubController extends Controller
         ]);
     }
 
+    public function preferences(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $items = NotificationUserPreference::where('user_id', $user->id)
+            ->orderBy('event_key')
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'event_key' => $p->event_key,
+                'database_enabled' => (bool) $p->database_enabled,
+                'realtime_enabled' => (bool) $p->realtime_enabled,
+                'fcm_enabled' => (bool) $p->fcm_enabled,
+                'mail_enabled' => (bool) $p->mail_enabled,
+                'whatsapp_enabled' => (bool) $p->whatsapp_enabled,
+                'meta' => $p->meta ?? [],
+            ]);
+
+        return response()->json(['success' => true, 'data' => ['preferences' => $items]]);
+    }
+
     public function savePreference(Request $request): JsonResponse
     {
         $validated = $request->validate([
