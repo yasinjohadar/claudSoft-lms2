@@ -1,4 +1,4 @@
-<div class="card custom-card group-show-members-card dashboard-fade-in h-100">
+<div class="card custom-card group-show-members-card dashboard-fade-in">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
         <div>
             <h4 class="card-title mb-1">الكورسات قيد التقدم</h4>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\GroupMembershipRequest;
 use Illuminate\Http\Request;
@@ -81,7 +82,33 @@ class GroupMembershipRequestController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('student.groups.index', ['groups' => $filteredGroups]);
+        $stats = [
+            'total' => $total,
+            'available' => $visibleGroups->filter(function ($group) {
+                $isFull = $group->max_members && $group->members_count >= $group->max_members;
+
+                return ! $isFull && ! $group->has_pending_request;
+            })->count(),
+            'pending' => GroupMembershipRequest::where('student_id', $student->id)
+                ->where('status', 'pending')
+                ->count(),
+            'filtered' => $total,
+        ];
+
+        $courses = Course::whereHas('groups', function ($q) {
+            $q->where('course_groups.is_visible', true)
+                ->where('course_groups.is_active', true)
+                ->where('course_groups.allow_membership_requests', true)
+                ->where('course_groups.is_visible_for_students', true);
+        })
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return view('student.groups.index', [
+            'groups' => $filteredGroups,
+            'stats' => $stats,
+            'courses' => $courses,
+        ]);
     }
 
     /**
@@ -180,6 +207,14 @@ class GroupMembershipRequestController extends Controller
 
         $requests = $query->paginate($request->get('per_page', 15));
 
-        return view('student.groups.my-requests', compact('requests'));
+        $stats = [
+            'total' => GroupMembershipRequest::where('student_id', $student->id)->count(),
+            'pending' => GroupMembershipRequest::where('student_id', $student->id)->where('status', 'pending')->count(),
+            'approved' => GroupMembershipRequest::where('student_id', $student->id)->where('status', 'approved')->count(),
+            'rejected' => GroupMembershipRequest::where('student_id', $student->id)->where('status', 'rejected')->count(),
+            'filtered' => $requests->total(),
+        ];
+
+        return view('student.groups.my-requests', compact('requests', 'stats'));
     }
 }

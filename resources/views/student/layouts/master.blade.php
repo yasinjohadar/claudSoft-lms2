@@ -95,7 +95,7 @@
     </style>
 </head>
 
-<body>
+<body class="student-portal">
 
 
     @include('student.layouts.switcher')

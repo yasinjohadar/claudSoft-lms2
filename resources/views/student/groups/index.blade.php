@@ -4,191 +4,78 @@
     المجموعات المتاحة
 @stop
 
-@section('css')
-<style>
-    .group-card {
-        border: none;
-        border-radius: 12px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    .group-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    }
-    .group-image {
-        height: 200px;
-        object-fit: cover;
-        width: 100%;
-    }
-    .group-placeholder {
-        height: 200px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 3rem;
-    }
-    .members-badge {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px 15px;
-        border-radius: 25px;
-        font-weight: bold;
-        color: #0d6efd;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-</style>
-@stop
-
 @section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
+<div class="main-content app-content student-groups-page">
+    <div class="container-fluid pb-3">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">
-                        <i class="bi bi-people me-2"></i>
-                        المجموعات المتاحة
-                    </h5>
-                </div>
-                <div>
-                    <a href="{{ route('student.groups.my-requests') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-list-ul me-2"></i>
-                        طلباتي
-                    </a>
-                </div>
+        @include('student.components.alerts')
+
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div class="min-w-0">
+                <h4 class="student-my-courses-welcome__title mb-1">المجموعات المتاحة</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item">الانضمامات</li>
+                        <li class="breadcrumb-item active">المجموعات المتاحة</li>
+                    </ol>
+                </nav>
+                <p class="text-muted fs-13 mb-0 mt-2">تصفّح المجموعات المفتوحة وقدّم طلب انضمام للإدارة</p>
             </div>
-
-            @if (\Session::has('success'))
-                <div class="alert alert-success alert-dismissible fade show">
-                    <i class="bi bi-check-circle me-2"></i>
-                    {!! \Session::get('success') !!}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
-            @if (\Session::has('error'))
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    {!! \Session::get('error') !!}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
-            <!-- Search and Filter Form -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('student.groups.index') }}">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <input type="text"
-                                       name="search"
-                                       class="form-control"
-                                       placeholder="البحث بالاسم أو الوصف..."
-                                       value="{{ request('search') }}">
-                            </div>
-                            <div class="col-md-4">
-                                <select name="course_id" class="form-select">
-                                    <option value="">جميع الكورسات</option>
-                                    @foreach(\App\Models\Course::all() as $course)
-                                        <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
-                                            {{ $course->title }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bi bi-search"></i> بحث
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Groups Grid -->
-            <div class="row">
-                @forelse($groups as $group)
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
-                        <div class="card group-card shadow-sm">
-                            <div class="position-relative">
-                                @if($group->image)
-                                    <img src="{{ asset('storage/' . $group->image) }}"
-                                         alt="{{ $group->name }}"
-                                         class="group-image">
-                                @else
-                                    <div class="group-placeholder">
-                                        <i class="bi bi-people"></i>
-                                    </div>
-                                @endif
-
-                                <div class="members-badge">
-                                    <i class="bi bi-people-fill"></i>
-                                    {{ $group->members_count ?? 0 }}
-                                    @if($group->max_members)
-                                        / {{ $group->max_members }}
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold mb-2">{{ $group->name }}</h5>
-
-                                <p class="card-text text-muted small mb-3">
-                                    {{ Str::limit($group->description, 100, '...') }}
-                                </p>
-
-                                <div class="mb-3">
-                                    @if($group->courses->count() > 0)
-                                        <div class="mb-2">
-                                            @foreach($group->courses->take(2) as $course)
-                                                <span class="badge bg-info mb-1">{{ $course->title }}</span>
-                                            @endforeach
-                                            @if($group->courses->count() > 2)
-                                                <span class="badge bg-secondary">+{{ $group->courses->count() - 2 }}</span>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    @if($group->max_members && $group->members_count >= $group->max_members)
-                                        <span class="badge bg-danger">المجموعة ممتلئة</span>
-                                    @elseif($group->has_pending_request)
-                                        <span class="badge bg-warning text-dark">
-                                            <i class="bi bi-clock-history"></i> طلب قيد المراجعة
-                                        </span>
-                                    @endif
-                                </div>
-
-                                <a href="{{ route('student.groups.show', $group->id) }}"
-                                   class="btn btn-primary w-100">
-                                    <i class="bi bi-eye me-1"></i> عرض التفاصيل
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-body text-center py-5">
-                                <i class="bi bi-inbox display-1 text-muted mb-3 d-block"></i>
-                                <h5 class="text-muted">لا توجد مجموعات متاحة</h5>
-                                <p class="text-muted">لا توجد مجموعات مفتوحة لطلب الانضمام حالياً</p>
-                            </div>
-                        </div>
-                    </div>
-                @endforelse
-            </div>
-
-            <!-- Pagination -->
-            <div class="d-flex justify-content-center mt-4">
-                {{ $groups->links() }}
+            <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+                <span class="badge bg-primary-transparent fs-12 px-3 py-2">
+                    {{ $groups->total() }} مجموعة
+                </span>
+                <a href="{{ route('student.groups.my-requests') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-list me-1"></i>طلباتي
+                </a>
             </div>
         </div>
+
+        @include('student.groups.partials.groups-stats', ['stats' => $stats])
+
+        @include('student.groups.partials.groups-filters', ['courses' => $courses])
+
+        <div class="card custom-card student-quizzes-panel">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="avatar avatar-sm bg-primary-transparent">
+                        <i class="fe fe-users text-primary"></i>
+                    </span>
+                    <h6 class="card-title mb-0">المجموعات المفتوحة للانضمام</h6>
+                </div>
+
+                @include('student.groups.partials.groups-grid', ['groups' => $groups])
+            </div>
+        </div>
+
     </div>
+</div>
 @stop
+
+@push('scripts')
+<script>
+(function () {
+    function formatNumber(value) {
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+    }
+
+    function animateCount(el, target) {
+        if (!el) return;
+        var duration = 600;
+        var start = performance.now();
+        function step(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = formatNumber(target * eased);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        animateCount(el, parseFloat(el.dataset.countup || '0'));
+    });
+})();
+</script>
+@endpush

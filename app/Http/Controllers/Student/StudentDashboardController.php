@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Models\QuestionModuleAttempt;
 use App\Models\CourseEnrollment;
+use App\Models\QuestionModuleAttempt;
 
 class StudentDashboardController extends Controller
 {

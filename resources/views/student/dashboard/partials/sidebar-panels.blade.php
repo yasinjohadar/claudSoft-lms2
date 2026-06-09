@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<div class="card custom-card dashboard-today-card dashboard-fade-in mt-3">
+<div class="card custom-card dashboard-today-card dashboard-fade-in">
     <div class="card-header border-0 pb-0">
         <div class="d-flex align-items-start gap-2">
             <span class="avatar avatar-sm bg-warning-transparent">
@@ -54,7 +54,7 @@
     </div>
 </div>
 
-<div class="card custom-card dashboard-today-card dashboard-fade-in mt-3">
+<div class="card custom-card dashboard-today-card dashboard-fade-in">
     <div class="card-header border-0 pb-0">
         <h4 class="card-title mb-1">ملخص التعلم</h4>
         <p class="fs-12 text-muted mb-0">نظرة سريعة على تقدمك.</p>

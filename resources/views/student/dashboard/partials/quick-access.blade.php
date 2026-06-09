@@ -1,7 +1,6 @@
 @php
     $quickLinks = [
         ['route' => 'student.courses.my-courses', 'icon' => 'fe-book', 'color' => 'primary', 'title' => 'كورساتي', 'subtitle' => 'الكورسات المسجّلة'],
-        ['route' => 'student.external-resources.index', 'icon' => 'fe-link', 'color' => 'info', 'title' => 'الموارد الخارجية', 'subtitle' => 'روابط ومراجع'],
         ['route' => 'student.question-module.stats.index', 'icon' => 'fe-help-circle', 'color' => 'info', 'title' => 'إحصائيات الاختبارات', 'subtitle' => 'الأداء والمحاولات'],
         ['route' => 'student.training-camps.index', 'icon' => 'fe-flag', 'color' => 'success', 'title' => 'المعسكرات التدريبية', 'subtitle' => 'التسجيل والمتابعة'],
         ['route' => 'student.groups.index', 'icon' => 'fe-users', 'color' => 'info', 'title' => 'المجموعات', 'subtitle' => 'مجموعاتي الدراسية'],
@@ -10,6 +9,7 @@
         ['route' => 'gamification.leaderboards.index', 'icon' => 'fe-bar-chart-2', 'color' => 'primary', 'title' => 'لوحة المتصدرين', 'subtitle' => 'ترتيب الطلاب'],
         ['route' => 'student.progress.overview', 'icon' => 'fe-trending-up', 'color' => 'secondary', 'title' => 'تقدمي في الكورسات', 'subtitle' => 'نسب الإنجاز'],
         ['route' => 'gamification.dashboard', 'icon' => 'fe-zap', 'color' => 'orange', 'title' => 'لوحة التلعيب', 'subtitle' => 'النقاط والتحديات'],
+        ['route' => 'student.external-resources.index', 'icon' => 'fe-link', 'color' => 'info', 'title' => 'الموارد الخارجية', 'subtitle' => 'روابط ومراجع'],
     ];
 @endphp
 

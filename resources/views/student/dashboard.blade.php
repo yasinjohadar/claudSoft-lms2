@@ -5,8 +5,8 @@
 @stop
 
 @section('content')
-<div class="main-content app-content">
-    <div class="container-fluid">
+<div class="main-content app-content student-dashboard-page">
+    <div class="container-fluid pb-3">
 
         @if (session('error'))
             <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
@@ -34,8 +34,8 @@
 
         @include('student.dashboard.partials.quick-access')
 
-        <div class="row mt-2">
-            <div class="col-xl-8 col-lg-7 mb-3">
+        <div class="row mt-2 align-items-start dashboard-content-row">
+            <div class="col-xl-8 col-lg-7 mb-3 d-flex flex-column gap-3">
                 @include('student.dashboard.partials.courses-progress', [
                     'inProgressCourses' => $inProgressCourses ?? collect(),
                 ])
@@ -45,7 +45,7 @@
                 ])
             </div>
 
-            <div class="col-xl-4 col-lg-5 mb-3">
+            <div class="col-xl-4 col-lg-5 mb-3 d-flex flex-column gap-3">
                 @include('student.dashboard.partials.sidebar-panels', [
                     'courseStats' => $courseStats,
                     'questionModuleStats' => $questionModuleStats,

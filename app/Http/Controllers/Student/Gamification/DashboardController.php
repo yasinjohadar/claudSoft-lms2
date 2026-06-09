@@ -65,9 +65,18 @@ class DashboardController extends Controller
         // التحديات النشطة
         $activeChallenges = $user->userChallenges()
             ->with('challenge')
-            ->where('status', 'active')
-            ->where('expires_at', '>', now())
+            ->whereIn('status', ['not_started', 'in_progress'])
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->orderByDesc('progress_percentage')
+            ->limit(5)
             ->get();
+
+        $userStats = $user->stats;
+        $leaderboardRank = $dashboard['leaderboard']['global_rank'] ?? $userStats?->global_rank;
+        $leaderboardTotal = \App\Models\User::role('student')->count();
 
         return view('student.pages.gamification.dashboard', compact(
             'dashboard',
@@ -76,7 +85,10 @@ class DashboardController extends Controller
             'recentActivity',
             'latestBadges',
             'inProgressAchievements',
-            'activeChallenges'
+            'activeChallenges',
+            'userStats',
+            'leaderboardRank',
+            'leaderboardTotal'
         ));
     }
 
