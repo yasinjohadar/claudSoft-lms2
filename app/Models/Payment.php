@@ -197,6 +197,18 @@ class Payment extends Model
         return $this->status === 'failed';
     }
 
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'pending' => 'قيد الانتظار',
+            'completed' => 'مكتملة',
+            'failed' => 'فاشلة',
+            'cancelled' => 'ملغاة',
+            'refunded' => 'مستردة',
+            default => (string) $this->status,
+        };
+    }
+
     public function getStatusBadgeAttribute()
     {
         $badges = [

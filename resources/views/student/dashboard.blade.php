@@ -30,7 +30,10 @@
         @include('student.dashboard.partials.kpi-cards', [
             'courseStats' => $courseStats,
             'questionModuleStats' => $questionModuleStats,
+            'accountTier' => $accountTier,
         ])
+
+        @include('student.dashboard.partials.camp-widgets-panel')
 
         @include('student.dashboard.partials.quick-access')
 

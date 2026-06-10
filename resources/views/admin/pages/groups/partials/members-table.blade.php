@@ -175,14 +175,11 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    @if($memberRecord->student->hasRole('student') && $memberRecord->student->is_active)
-                                        <button type="button"
-                                                class="btn btn-sm btn-success impersonate-btn"
-                                                data-user-id="{{ $memberRecord->student_id }}"
-                                                data-user-name="{{ $memberRecord->student->name }}"
-                                                title="الدخول كطالب في تبويب جديد">
-                                            <i class="fas fa-user-secret"></i>
-                                        </button>
+                                    @if($memberRecord->student->hasRole('student'))
+                                        <x-admin.impersonate-trigger
+                                            :user="$memberRecord->student"
+                                            variant="btn"
+                                            title="الدخول كطالب في تبويب جديد" />
                                     @endif
                                     @if($memberRecord->student->hasRole('student') && $trainingCampsForModal->isNotEmpty())
                                         <button type="button"

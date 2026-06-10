@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Events\N8nWebhookEvent;
 use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Models\Nationality;
+use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Rules\PhoneMatchesCountryCode;
 use App\Services\Storage\StorageHelperService;
+use App\Services\TrainingCampEnrollmentService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -189,7 +194,7 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::with('nationality')->findOrFail($id);
 
         // Enrollments & course stats
         $enrollments = \App\Models\CourseEnrollment::where('student_id', $id)
@@ -229,13 +234,16 @@ class UserController extends Controller
             ->limit(10)
             ->get();
 
-        $billingStats = [
-            'total_invoices' => $invoices->count(),
-            'total_amount' => (float) $invoices->sum('total_amount'),
-            'total_paid' => (float) $invoices->sum('paid_amount'),
-            'remaining_amount' => (float) $invoices->sum('remaining_amount'),
-            'payments_count' => $payments->count(),
-        ];
+        $billingStats = $this->buildStudentBillingStats((int) $id);
+        $billingStats['payments_count'] = $payments->count();
+
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
+
+        $payableInvoices = Invoice::where('student_id', $id)
+            ->whereIn('status', ['issued', 'partial'])
+            ->where('remaining_amount', '>', 0)
+            ->orderByDesc('issue_date')
+            ->get(['id', 'invoice_number', 'remaining_amount', 'total_amount', 'status']);
 
         // Certificates
         $certificates = \App\Models\Certificate::where('user_id', $id)
@@ -279,6 +287,32 @@ class UserController extends Controller
 
         $adminNotes = $user->adminNotes()->with('creator')->get();
 
+        $campEnrollments = \App\Models\CampEnrollment::where('student_id', $id)
+            ->with(['camp.category', 'invoice'])
+            ->orderByDesc('enrollment_date')
+            ->get();
+
+        $campStats = [
+            'total' => $campEnrollments->count(),
+            'approved' => $campEnrollments->where('status', 'approved')->count(),
+            'pending' => $campEnrollments->where('status', 'pending')->count(),
+        ];
+
+        $enrolledCampIds = $campEnrollments->pluck('camp_id')->all();
+
+        $availableGroups = \App\Models\CourseGroup::where('is_active', true)
+            ->whereDoesntHave('members', function ($query) use ($id) {
+                $query->where('student_id', $id);
+            })
+            ->with('courses:id,title')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $availableCamps = \App\Models\TrainingCamp::where('is_active', true)
+            ->when(count($enrolledCampIds) > 0, fn ($q) => $q->whereNotIn('id', $enrolledCampIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'price', 'start_date', 'end_date', 'location']);
+
         return view('admin.pages.users.profile', compact(
             'user',
             'adminNotes',
@@ -294,8 +328,122 @@ class UserController extends Controller
             'userSessions',
             'sessionStats',
             'userDevices',
-            'deviceStats'
+            'deviceStats',
+            'campEnrollments',
+            'campStats',
+            'availableGroups',
+            'availableCamps',
+            'paymentMethods',
+            'payableInvoices'
         ));
+    }
+
+    /**
+     * Record a payment against a student invoice (AJAX from profile).
+     */
+    public function recordPayment(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'payment_date' => 'required|date',
+            'transaction_id' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $invoice = Invoice::findOrFail($validated['invoice_id']);
+
+        if ((int) $invoice->student_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الفاتورة لا تتبع هذا الطالب.',
+            ], 422);
+        }
+
+        if (! in_array($invoice->status, ['issued', 'partial'], true) || (float) $invoice->remaining_amount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن تسديد هذه الفاتورة.',
+            ], 422);
+        }
+
+        if ($validated['amount'] > $invoice->remaining_amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المبلغ المدخل أكبر من المبلغ المتبقي ($'.number_format((float) $invoice->remaining_amount, 2).')',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $payment = $invoice->recordPayment($validated['amount'], [
+                'payment_method_id' => $validated['payment_method_id'],
+                'payment_date' => $validated['payment_date'],
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'received_by' => auth()->id(),
+            ]);
+
+            $payment->receipt_number = Payment::generateReceiptNumber();
+            $payment->save();
+
+            DB::commit();
+
+            $invoice->refresh();
+            $payment->load('paymentMethod');
+
+            $billingStats = $this->buildStudentBillingStats($user->id);
+
+            $displayedInvoiceIds = Invoice::where('student_id', $user->id)
+                ->orderByDesc('issue_date')
+                ->limit(10)
+                ->pluck('id');
+
+            $rowIndex = $displayedInvoiceIds->search($invoice->id);
+            $invoiceRowNumber = $rowIndex === false ? 1 : $rowIndex + 1;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تسجيل الدفعة بنجاح',
+                'billing_stats' => $billingStats,
+                'invoice_row_html' => view('admin.pages.users.partials.profile-invoice-row', [
+                    'invoice' => $invoice,
+                    'rowNumber' => $invoiceRowNumber,
+                ])->render(),
+                'payment_row_html' => view('admin.pages.users.partials.profile-payment-row', [
+                    'payment' => $payment,
+                    'rowNumber' => 1,
+                ])->render(),
+                'invoice_id' => $invoice->id,
+                'payment_id' => $payment->id,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تسجيل الدفعة: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @return array{total_invoices: int, total_amount: float, total_paid: float, remaining_amount: float}
+     */
+    private function buildStudentBillingStats(int $studentId): array
+    {
+        $aggregates = Invoice::where('student_id', $studentId)
+            ->selectRaw('count(*) as total_invoices, coalesce(sum(total_amount), 0) as total_amount, coalesce(sum(paid_amount), 0) as total_paid, coalesce(sum(remaining_amount), 0) as remaining_amount')
+            ->first();
+
+        return [
+            'total_invoices' => (int) ($aggregates->total_invoices ?? 0),
+            'total_amount' => (float) ($aggregates->total_amount ?? 0),
+            'total_paid' => (float) ($aggregates->total_paid ?? 0),
+            'remaining_amount' => (float) ($aggregates->remaining_amount ?? 0),
+        ];
     }
 
     /**
@@ -614,40 +762,152 @@ class UserController extends Controller
      */
     public function addToGroup(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'group_id' => 'required|exists:course_groups,id',
             'role' => 'nullable|in:member,leader',
         ]);
 
         try {
-            $group = \App\Models\CourseGroup::findOrFail($request->group_id);
+            $group = \App\Models\CourseGroup::findOrFail($validated['group_id']);
 
-            // التحقق من أن الطالب ليس في المجموعة بالفعل
             if ($group->hasMember($user)) {
-                return redirect()->back()
-                    ->with('error', 'الطالب موجود بالفعل في هذه المجموعة');
+                $message = 'الطالب موجود بالفعل في هذه المجموعة';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : redirect()->back()->with('error', $message);
             }
 
-            // التحقق من أن المجموعة ليست ممتلئة
             if ($group->isFull()) {
-                return redirect()->back()
-                    ->with('error', 'المجموعة ممتلئة');
+                $message = 'المجموعة ممتلئة';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : redirect()->back()->with('error', $message);
             }
 
-            // إضافة الطالب للمجموعة
-            $role = $request->input('role', 'member');
-            $member = $group->addMember($user, $role);
+            $role = $validated['role'] ?? 'member';
+            $memberRecord = $group->addMember($user, $role);
 
-            if ($member) {
-                return redirect()->back()
-                    ->with('success', "تم إضافة الطالب {$user->name} إلى المجموعة {$group->name} بنجاح");
-            } else {
-                return redirect()->back()
-                    ->with('error', 'فشل إضافة الطالب إلى المجموعة');
+            if (! $memberRecord) {
+                $message = 'فشل إضافة الطالب إلى المجموعة';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : redirect()->back()->with('error', $message);
             }
+
+            $message = "تم إضافة الطالب {$user->name} إلى المجموعة {$group->name} بنجاح";
+
+            if ($request->wantsJson()) {
+                $member = \App\Models\CourseGroupMember::query()
+                    ->where('group_id', $group->id)
+                    ->where('student_id', $user->id)
+                    ->with(['group.courses'])
+                    ->first();
+
+                $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'row_html' => view('admin.pages.users.partials.profile-group-row', [
+                        'member' => $member,
+                        'rowNumber' => $total,
+                    ])->render(),
+                    'stats' => ['total' => $total],
+                    'group_id' => $group->id,
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson()) {
+                throw $e;
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'حدث خطأ: '.$e->getMessage());
+            $message = 'حدث خطأ: '.$e->getMessage();
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : redirect()->back()->with('error', $message);
+        }
+    }
+
+    /**
+     * Add student to a training camp (AJAX from profile).
+     */
+    public function addToCamp(Request $request, User $user, TrainingCampEnrollmentService $enrollmentService): JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'camp_id' => 'required|exists:training_camps,id',
+            'status' => 'required|in:pending,approved,rejected,cancelled',
+            'payment_status' => 'required|in:unpaid,paid,refunded',
+            'price' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $camp = \App\Models\TrainingCamp::findOrFail($validated['camp_id']);
+            $campFee = array_key_exists('price', $validated) && $validated['price'] !== null
+                ? (float) $validated['price']
+                : null;
+
+            $enrollment = $enrollmentService->enrollStudent(
+                $camp,
+                $user->id,
+                $validated['status'],
+                $validated['payment_status'],
+                $validated['notes'] ?? null,
+                $campFee
+            );
+
+            $enrollment->load(['camp.category']);
+
+            $campEnrollments = \App\Models\CampEnrollment::where('student_id', $user->id)->get();
+            $campStats = [
+                'total' => $campEnrollments->count(),
+                'approved' => $campEnrollments->where('status', 'approved')->count(),
+                'pending' => $campEnrollments->where('status', 'pending')->count(),
+            ];
+
+            $message = "تم تسجيل الطالب {$user->name} في المعسكر {$camp->name} بنجاح";
+
+            if ($request->wantsJson()) {
+                $enrollmentFee = $campFee ?? (float) $camp->price;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'row_html' => view('admin.pages.users.partials.profile-camp-row', [
+                        'campEnrollment' => $enrollment,
+                        'rowNumber' => $campStats['total'],
+                        'campFee' => $enrollmentFee,
+                    ])->render(),
+                    'camp_stats' => $campStats,
+                    'camp_id' => $camp->id,
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\InvalidArgumentException $e) {
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : redirect()->back()->with('error', $e->getMessage());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson()) {
+                throw $e;
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            $message = 'حدث خطأ: '.$e->getMessage();
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : redirect()->back()->with('error', $message);
         }
     }
 

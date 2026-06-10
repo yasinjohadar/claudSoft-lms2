@@ -676,6 +676,34 @@ a {
     background: linear-gradient(135deg, #3f51b5 0%, #5c6bc0 100%);
 }
 
+.admin-stats-card--gold {
+    background: linear-gradient(135deg, #e8c547 0%, #f5d76e 45%, #d4a017 100%);
+}
+
+.admin-stats-card--gold .admin-stats-card__label {
+    color: rgba(35, 25, 0, 0.82);
+}
+
+.admin-stats-card--gold .admin-stats-card__value {
+    color: #1a1200;
+}
+
+.admin-stats-card--gold .admin-stats-card__sub {
+    color: rgba(35, 25, 0, 0.72);
+}
+
+.admin-stats-card--gold .admin-stats-card__icon {
+    color: #2d1f00;
+}
+
+.admin-stats-card--gold .admin-stats-card__icon-wrap {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.admin-stats-card--silver {
+    background: linear-gradient(135deg, #6b7280 0%, #9ca3af 50%, #4b5563 100%);
+}
+
 .admin-stats-card__icon-wrap {
     flex-shrink: 0;
     width: 52px;
@@ -893,7 +921,7 @@ a {
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: none;
     }
 }
 
@@ -3006,7 +3034,8 @@ a {
     }
 }
 
-.group-show-action {
+.group-show-action,
+button.group-show-action {
     display: flex;
     align-items: center;
     gap: 0.55rem;
@@ -3021,6 +3050,14 @@ a {
     font-weight: 600;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     cursor: pointer;
+    appearance: none;
+    text-align: inherit;
+    font-family: inherit;
+    line-height: inherit;
+}
+
+button.group-show-action {
+    margin: 0;
 }
 
 [data-theme-mode="dark"] .group-show-action {
@@ -3089,7 +3126,7 @@ a {
     border: none;
     border-radius: 16px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
+    overflow: visible;
 }
 
 [data-theme-mode="dark"] .group-show-members-card {
@@ -3294,6 +3331,181 @@ a {
     border-radius: 12px;
     border: 1px solid var(--default-border, #eef1f6);
     padding: 0.35rem;
+    z-index: 1060;
+}
+
+/* Dropdowns inside scrollable tables — escape overflow clipping */
+.admin-users-table .dropdown {
+    position: static;
+}
+
+.admin-users-table .dropdown-menu {
+    z-index: 1060;
+}
+
+.student-detail-course-card {
+    border-radius: 14px;
+    border-color: var(--default-border, #eef1f6) !important;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.student-detail-course-card:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+}
+
+[data-theme-mode="dark"] .student-detail-course-card:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Admin student profile page ── */
+.admin-profile-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    border: none;
+    padding: 0;
+    margin-bottom: 0.25rem;
+    width: 100%;
+}
+
+.admin-profile-tabs--full {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 0.15rem;
+}
+
+@media (min-width: 992px) {
+    .admin-profile-tabs--full {
+        overflow-x: visible;
+    }
+
+    .admin-profile-tabs--full .nav-item {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+
+.admin-profile-tabs--full .nav-link {
+    width: 100%;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.admin-profile-contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    height: 100%;
+}
+
+.admin-profile-contact-strip {
+    align-items: stretch;
+}
+
+.admin-profile-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--default-border, #eef1f6);
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--custom-white, #fff);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-profile-tabs .nav-link:hover {
+    color: rgb(var(--primary-rgb));
+    border-color: rgba(var(--primary-rgb), 0.2);
+}
+
+.admin-profile-tabs .nav-link.active {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    border-color: rgba(var(--primary-rgb), 0.28);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-profile-tab-content {
+    min-height: 200px;
+}
+
+.admin-profile-sidebar-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--default-border, #eef1f6);
+}
+
+.admin-profile-sidebar-field:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.admin-profile-sidebar-field__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(var(--primary-rgb), 0.08);
+    color: rgb(var(--primary-rgb));
+    font-size: 1rem;
+}
+
+.admin-profile-mini-stat {
+    background: rgba(var(--primary-rgb), 0.04);
+    border: 1px solid rgba(var(--primary-rgb), 0.08);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    text-align: center;
+    height: 100%;
+}
+
+.admin-profile-quick-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--default-border, #eef1f6);
+    background: var(--custom-white, #fff);
+    color: var(--default-text-color);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    height: 100%;
+}
+
+.admin-profile-quick-link i {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    flex-shrink: 0;
+}
+
+.admin-profile-quick-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    border-color: rgba(var(--primary-rgb), 0.2);
+    color: var(--default-text-color);
+}
+
+.admin-profile-quick-link--external {
+    border-style: dashed;
 }
 
 .admin-users-dropdown .dropdown-item {
@@ -3316,6 +3528,19 @@ a {
     }
 }
 
+/* Student portal — default avatar (logo fallback) */
+.student-portal .student-avatar--logo {
+    object-fit: contain;
+    background: #fff;
+    padding: 3px;
+    border: 1px solid var(--default-border, #eef1f6);
+}
+
+[data-theme-mode="dark"] .student-portal .student-avatar--logo {
+    background: var(--custom-white, #1a1d2e);
+    border-color: var(--default-border);
+}
+
 /* Student portal — layout & dashboard overlap fixes */
 .student-portal .page {
     justify-content: flex-start;
@@ -3326,12 +3551,473 @@ a {
     padding-bottom: 1.25rem;
 }
 
+/* Student portal — sidebar brand (logo + title) */
+.student-portal .main-sidebar-header .header-logo.student-sidebar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+
+.student-portal .main-sidebar-header .student-sidebar-brand__logo {
+    flex-shrink: 0;
+    width: auto;
+    object-fit: contain;
+}
+
+.student-portal .main-sidebar-header .student-sidebar-brand__logo--expanded {
+    display: block;
+    height: 2.35rem;
+}
+
+.student-portal .main-sidebar-header .student-sidebar-brand__logo--collapsed {
+    display: none;
+    height: 2.1rem;
+}
+
+.student-portal .main-sidebar-header .student-sidebar-brand__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--default-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 992px) {
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .student-portal .student-sidebar-brand__title,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .student-portal .student-sidebar-brand__title,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .student-portal .student-sidebar-brand__title {
+        display: none;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .student-portal .student-sidebar-brand__logo--expanded,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .student-portal .student-sidebar-brand__logo--expanded,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .student-portal .student-sidebar-brand__logo--expanded {
+        display: none;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .student-portal .student-sidebar-brand__logo--collapsed,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .student-portal .student-sidebar-brand__logo--collapsed,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .student-portal .student-sidebar-brand__logo--collapsed {
+        display: block;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .student-portal .main-sidebar-header .student-sidebar-brand,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .student-portal .main-sidebar-header .student-sidebar-brand,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .student-portal .main-sidebar-header .student-sidebar-brand {
+        justify-content: center;
+        gap: 0;
+    }
+}
+
+/* Student portal — sidebar navigation hover & active (soft, no shadow) */
+.student-portal .app-sidebar .main-menu > .slide > .side-menu__item {
+    margin-inline: 0.6rem;
+    border-radius: 10px;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.student-portal .app-sidebar .side-menu__item::before {
+    display: none;
+}
+
+.student-portal .app-sidebar .side-menu__item::after {
+    display: none;
+}
+
+.student-portal .app-sidebar .side-menu__item:not(.active):hover {
+    background: rgba(var(--primary-rgb), 0.06);
+    color: rgb(var(--primary-rgb));
+    box-shadow: none;
+    transform: none;
+}
+
+.student-portal .app-sidebar .side-menu__item:not(.active):hover .side-menu__label,
+.student-portal .app-sidebar .side-menu__item:not(.active):hover .side-menu__icon,
+.student-portal .app-sidebar .side-menu__item:not(.active):hover .side-menu__angle {
+    color: rgb(var(--primary-rgb));
+}
+
+.student-portal .app-sidebar .side-menu__item:not(.active):hover .side-menu__icon {
+    fill: rgb(var(--primary-rgb));
+}
+
+.student-portal .app-sidebar .side-menu__item.active {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb)) !important;
+    font-weight: 600;
+    box-shadow: none;
+    transform: none;
+}
+
+.student-portal .app-sidebar .side-menu__item.active .side-menu__label,
+.student-portal .app-sidebar .side-menu__item.active .side-menu__icon,
+.student-portal .app-sidebar .side-menu__item.active .side-menu__angle {
+    color: rgb(var(--primary-rgb)) !important;
+}
+
+.student-portal .app-sidebar .side-menu__item.active .side-menu__icon {
+    fill: rgb(var(--primary-rgb)) !important;
+}
+
+.student-portal .app-sidebar .side-menu__item.active .badge {
+    background: rgba(var(--primary-rgb), 0.12) !important;
+    color: rgb(var(--primary-rgb)) !important;
+}
+
+.student-portal .app-sidebar .slide.active > .side-menu__item:not(.active) {
+    color: rgb(var(--primary-rgb));
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.student-portal .app-sidebar .slide.has-sub.open > .side-menu__item:not(.active) {
+    background: rgba(var(--primary-rgb), 0.05);
+    color: rgb(var(--primary-rgb));
+    border-radius: 10px 10px 0 0;
+    box-shadow: none;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu > .side-menu__item {
+    font-weight: 600;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu.open > .side-menu__item .side-menu__angle {
+    transform: rotate(180deg);
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu.child1 {
+    margin: 0.35rem 0.5rem 0.5rem;
+    padding: 0.35rem 0;
+    border-radius: 10px;
+    background: rgba(var(--primary-rgb), 0.04);
+    border: 1px solid rgba(var(--primary-rgb), 0.08);
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu .side-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.85rem;
+    margin: 0.15rem 0.35rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-inline: 0.35rem;
+    transform: none;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu .side-menu__item:not(.active):hover {
+    background: rgba(var(--primary-rgb), 0.06);
+    color: rgb(var(--primary-rgb));
+    box-shadow: none;
+    transform: none;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu .side-menu__item.active {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb)) !important;
+    box-shadow: none;
+    transform: none;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu .side-menu__item.active .student-submenu__icon,
+.student-portal .app-sidebar .student-sidebar-submenu .slide-menu .side-menu__item.active span {
+    color: rgb(var(--primary-rgb)) !important;
+    opacity: 1;
+}
+
+.student-portal .app-sidebar .student-sidebar-submenu .side-menu__angle {
+    transition: transform 0.25s ease;
+}
+
+.student-portal .app-sidebar .student-submenu__icon {
+    font-size: 1rem;
+    width: 1.25rem;
+    text-align: center;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+[data-theme-mode="dark"] .student-portal .app-sidebar .side-menu__item:not(.active):hover {
+    background: rgba(var(--primary-rgb), 0.12);
+    box-shadow: none;
+}
+
+[data-theme-mode="dark"] .student-portal .app-sidebar .side-menu__item.active {
+    background: rgba(var(--primary-rgb), 0.16);
+}
+
+[data-theme-mode="dark"] .student-portal .app-sidebar .slide.has-sub.open > .side-menu__item:not(.active) {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+[data-theme-mode="dark"] .student-portal .app-sidebar .student-sidebar-submenu .slide-menu.child1 {
+    background: rgba(var(--primary-rgb), 0.08);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
 .student-portal .student-dashboard-page .dashboard-content-row {
     align-items: flex-start;
 }
 
 .student-portal .student-dashboard-page .dashboard-content-row > [class*="col-"] {
     min-height: 0;
+}
+
+/* Student dashboard — account tier (gold / silver) */
+.student-portal .student-dashboard-page .student-account-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.student-portal .student-dashboard-page .student-account-tier-badge i {
+    font-size: 0.95rem;
+}
+
+.student-portal .student-dashboard-page .student-account-tier-badge--gold {
+    color: #7a5a00;
+    background: linear-gradient(135deg, #fde68a 0%, #f5c842 45%, #d4a017 100%);
+    box-shadow: 0 2px 8px rgba(212, 160, 23, 0.35);
+}
+
+.student-portal .student-dashboard-page .student-account-tier-badge--silver {
+    color: #3d4654;
+    background: linear-gradient(135deg, #e8edf3 0%, #c0c8d4 50%, #8b95a8 100%);
+    box-shadow: 0 2px 8px rgba(139, 149, 168, 0.3);
+}
+
+[data-theme-mode="dark"] .student-portal .student-dashboard-page .student-account-tier-badge--gold {
+    color: #fff8e0;
+    background: linear-gradient(135deg, #b8860b 0%, #d4a017 50%, #8b6914 100%);
+}
+
+[data-theme-mode="dark"] .student-portal .student-dashboard-page .student-account-tier-badge--silver {
+    color: #f0f4f8;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+}
+
+/* Student dashboard — camp countdown widget (compact horizontal) */
+.student-portal .student-dashboard-page .student-camp-widget {
+    border: 1px solid var(--default-border, #eef1f6);
+    border-radius: 14px;
+    background: var(--custom-white, #fff);
+    padding: 0.85rem 0.9rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    color: inherit;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgb(var(--primary-rgb)) 0%, transparent 55%);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success::before {
+    background: linear-gradient(135deg, rgb(var(--success-rgb)) 0%, transparent 55%);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success:hover {
+    border-color: rgba(var(--success-rgb), 0.35);
+}
+
+[data-theme-mode="dark"] .student-portal .student-dashboard-page .student-camp-widget {
+    border-color: var(--default-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme-mode="dark"] .student-portal .student-dashboard-page .student-camp-widget:hover {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.6rem;
+    position: relative;
+    z-index: 1;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__icon i {
+    font-size: 1rem;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__title-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.45rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--default-text-color);
+    line-height: 1.3;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__body {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 1;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__countdown-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__countdown-ring {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb), 0.08);
+    border: 2px solid rgba(var(--primary-rgb), 0.28);
+    animation: student-camp-countdown-pulse 2.5s ease-in-out infinite;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success .student-camp-widget__countdown-ring {
+    background: rgba(var(--success-rgb), 0.1);
+    border-color: rgba(var(--success-rgb), 0.35);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__countdown-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+    color: rgb(var(--primary-rgb));
+    letter-spacing: -0.02em;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success .student-camp-widget__countdown-value {
+    color: rgb(var(--success-rgb));
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__countdown-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+    white-space: nowrap;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__dates {
+    font-size: 0.68rem;
+    line-height: 1.45;
+    flex: 1;
+    min-width: 0;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__dates li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.35rem;
+    padding: 0.1rem 0;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__dates li i {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__link {
+    display: inline-flex;
+    align-items: center;
+    color: rgb(var(--primary-rgb));
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success .student-camp-widget__link {
+    color: rgb(var(--success-rgb));
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__link i {
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+
+[dir="rtl"] .student-portal .student-dashboard-page .student-camp-widget__link i {
+    transform: scaleX(-1);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget:hover .student-camp-widget__link {
+    opacity: 1;
+}
+
+.student-portal .student-dashboard-page .student-camp-widget:hover .student-camp-widget__link i {
+    transform: translateX(-3px);
+}
+
+[dir="rtl"] .student-portal .student-dashboard-page .student-camp-widget:hover .student-camp-widget__link i {
+    transform: scaleX(-1) translateX(3px);
+}
+
+@keyframes student-camp-countdown-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.18);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(var(--primary-rgb), 0);
+    }
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--success .student-camp-widget__countdown-ring {
+    animation-name: student-camp-countdown-pulse-success;
+}
+
+@keyframes student-camp-countdown-pulse-success {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0.22);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(var(--success-rgb), 0);
+    }
 }
 
 .student-portal .footer {

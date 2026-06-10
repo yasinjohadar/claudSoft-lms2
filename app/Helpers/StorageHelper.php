@@ -390,6 +390,16 @@ if (!function_exists('storage_disk_url')) {
     }
 }
 
+if (!function_exists('student_default_avatar_url')) {
+    /**
+     * Default avatar when the student has no profile photo.
+     */
+    function student_default_avatar_url(): string
+    {
+        return asset('frontend2/assets/images/logo.png');
+    }
+}
+
 if (!function_exists('student_profile_photo_url')) {
     /**
      * Get the URL for a student profile photo
@@ -397,7 +407,7 @@ if (!function_exists('student_profile_photo_url')) {
      * 
      * @param \App\Models\User|null $student The student user model
      * @param string|null $photoPath The photo path from database
-     * @return string The full URL to the photo or empty string
+     * @return string The full URL to the photo or the site logo as fallback
      */
     function student_profile_photo_url($student = null, $photoPath = null): string
     {
@@ -406,7 +416,7 @@ if (!function_exists('student_profile_photo_url')) {
             if ($student && !empty($student->photo)) {
                 $photoPath = $student->photo;
             } else {
-                return '';
+                return student_default_avatar_url();
             }
         }
 

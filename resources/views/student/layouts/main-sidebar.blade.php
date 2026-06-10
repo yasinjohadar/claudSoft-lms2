@@ -3,8 +3,13 @@
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
-                <a href="{{ route('student.dashboard') }}" class="header-logo">
-                     أكاديمية كلاودسوفت
+                @php
+                    $sidebarLogoUrl = asset('frontend2/assets/images/logo.png');
+                @endphp
+                <a href="{{ route('student.dashboard') }}" class="header-logo student-sidebar-brand">
+                    <img src="{{ $sidebarLogoUrl }}" alt="أكاديمية كلاودسوفت" class="student-sidebar-brand__logo student-sidebar-brand__logo--expanded">
+                    <img src="{{ $sidebarLogoUrl }}" alt="أكاديمية كلاودسوفت" class="student-sidebar-brand__logo student-sidebar-brand__logo--collapsed">
+                    <span class="student-sidebar-brand__title">أكاديمية كلاودسوفت</span>
                 </a>
             </div>
             <!-- End::main-sidebar-header -->
@@ -463,119 +468,3 @@
         </script>
         @endpush
 
-        @push('styles')
-        <style>
-        /* Active link styling */
-        .side-menu__item.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-            transform: translateX(-5px);
-            transition: all 0.3s ease;
-        }
-
-        .side-menu__item.active .side-menu__icon {
-            color: white !important;
-            fill: white !important;
-        }
-
-        .side-menu__item.active .side-menu__label {
-            color: white !important;
-            font-weight: 600;
-        }
-
-        .side-menu__item.active .badge {
-            background: white !important;
-            color: #667eea !important;
-        }
-
-        /* Hover effect for non-active links */
-        .side-menu__item:not(.active):hover {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            transform: translateX(-3px);
-            transition: all 0.3s ease;
-        }
-
-        /* Parent slide active state */
-        .slide.active > .side-menu__item {
-            border-right: 3px solid #667eea;
-        }
-
-        /* Dropdown open state */
-        .slide.has-sub.open > .side-menu__item {
-            background-color: #f8f9fa;
-            border-radius: 8px 8px 0 0;
-        }
-
-        /* Smooth transitions */
-        .side-menu__item {
-            transition: all 0.3s ease;
-        }
-
-        .slide-menu {
-            transition: all 0.3s ease;
-        }
-
-        /* قوائم الشريط الجانبي المنسدلة */
-        .student-sidebar-submenu > .side-menu__item {
-            font-weight: 600;
-        }
-
-        .student-sidebar-submenu.open > .side-menu__item .side-menu__angle {
-            transform: rotate(180deg);
-        }
-
-        .student-sidebar-submenu .slide-menu.child1 {
-            margin: 0.35rem 0.5rem 0.5rem;
-            padding: 0.35rem 0;
-            border-radius: 10px;
-            background: rgba(var(--primary-rgb), 0.04);
-            border: 1px solid rgba(var(--primary-rgb), 0.08);
-        }
-
-        [data-theme-mode="dark"] .student-sidebar-submenu .slide-menu.child1 {
-            background: rgba(var(--primary-rgb), 0.08);
-            border-color: rgba(255, 255, 255, 0.06);
-        }
-
-        .student-sidebar-submenu .slide-menu .side-menu__item {
-            display: flex;
-            align-items: center;
-            gap: 0.55rem;
-            padding: 0.55rem 0.85rem;
-            margin: 0.15rem 0.35rem;
-            border-radius: 8px;
-            font-size: 0.88rem;
-        }
-
-        .student-sidebar-submenu .slide-menu .side-menu__item:not(.active):hover {
-            background: rgba(var(--primary-rgb), 0.08);
-            transform: none;
-        }
-
-        .student-sidebar-submenu .slide-menu .side-menu__item.active {
-            transform: none;
-            box-shadow: 0 2px 10px rgba(var(--primary-rgb), 0.25);
-        }
-
-        .student-submenu__icon {
-            font-size: 1rem;
-            width: 1.25rem;
-            text-align: center;
-            flex-shrink: 0;
-            opacity: 0.85;
-        }
-
-        .student-sidebar-submenu .slide-menu .side-menu__item.active .student-submenu__icon,
-        .student-sidebar-submenu .slide-menu .side-menu__item.active span {
-            color: #fff !important;
-            opacity: 1;
-        }
-
-        .student-sidebar-submenu .side-menu__angle {
-            transition: transform 0.25s ease;
-        }
-        </style>
-        @endpush

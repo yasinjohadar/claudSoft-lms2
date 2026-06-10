@@ -264,6 +264,19 @@ class Invoice extends Model
         return $this->status === 'partial';
     }
 
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'draft' => 'مسودة',
+            'issued' => 'صادرة',
+            'partial' => 'مدفوعة جزئياً',
+            'paid' => 'مدفوعة',
+            'cancelled' => 'ملغاة',
+            'refunded' => 'مستردة',
+            default => (string) $this->status,
+        };
+    }
+
     public function getStatusBadgeAttribute()
     {
         $badges = [

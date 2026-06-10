@@ -21,7 +21,8 @@ class TrainingCampEnrollmentService
         int $studentId,
         ?string $status = null,
         ?string $paymentStatus = null,
-        ?string $notes = null
+        ?string $notes = null,
+        ?float $price = null
     ): CampEnrollment {
         $exists = CampEnrollment::where('camp_id', $camp->id)
             ->where('student_id', $studentId)
@@ -31,7 +32,9 @@ class TrainingCampEnrollmentService
             throw new InvalidArgumentException('الطالب مسجل بالفعل في هذا المعسكر');
         }
 
-        return DB::transaction(function () use ($camp, $studentId, $status, $paymentStatus, $notes) {
+        return DB::transaction(function () use ($camp, $studentId, $status, $paymentStatus, $notes, $price) {
+            $fee = $price ?? (float) $camp->price;
+
             $enrollment = CampEnrollment::create([
                 'camp_id' => $camp->id,
                 'student_id' => $studentId,
@@ -44,9 +47,9 @@ class TrainingCampEnrollmentService
             $invoice = Invoice::create([
                 'invoice_number' => Invoice::generateInvoiceNumber(),
                 'student_id' => $studentId,
-                'total_amount' => $camp->price,
+                'total_amount' => $fee,
                 'paid_amount' => 0,
-                'remaining_amount' => $camp->price,
+                'remaining_amount' => $fee,
                 'tax_amount' => 0,
                 'discount_amount' => 0,
                 'status' => 'issued',
@@ -60,8 +63,8 @@ class TrainingCampEnrollmentService
                 'invoice_id' => $invoice->id,
                 'description' => 'رسوم التسجيل في معسكر: ' . $camp->name,
                 'quantity' => 1,
-                'unit_price' => $camp->price,
-                'total_price' => $camp->price,
+                'unit_price' => $fee,
+                'total_price' => $fee,
                 'camp_enrollment_id' => $enrollment->id,
             ]);
 

@@ -1,6 +1,7 @@
 @php
     $photoPath = $student->photo ?? null;
-    $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+    $photoUrl = student_profile_photo_url($student);
+    $usesLogoAvatar = empty($photoPath);
 @endphp
 
 <div class="card custom-card student-quizzes-panel mb-4">
@@ -14,17 +15,10 @@
 
         <div class="text-center mb-4">
             <div class="student-profile-photo mx-auto">
-                @if($photoUrl)
-                    <img src="{{ $photoUrl }}" alt="{{ $student->name }}" class="student-profile-photo__img"
-                         onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
-                    <div class="student-profile-photo__placeholder d-none">
-                        {{ mb_substr($student->name, 0, 1) }}
-                    </div>
-                @else
-                    <div class="student-profile-photo__placeholder">
-                        {{ mb_substr($student->name, 0, 1) }}
-                    </div>
-                @endif
+                <img src="{{ $photoUrl }}"
+                     alt="{{ $student->name }}"
+                     class="student-profile-photo__img {{ $usesLogoAvatar ? 'student-avatar--logo' : '' }}"
+                     onerror="this.onerror=null;this.src='{{ student_default_avatar_url() }}';this.classList.add('student-avatar--logo');">
             </div>
         </div>
 

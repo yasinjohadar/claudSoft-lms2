@@ -138,7 +138,9 @@
 
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm btn-primary-light"
-                                        data-bs-toggle="dropdown" aria-expanded="false" title="المزيد">
+                                        data-bs-toggle="dropdown"
+                                        data-bs-popper-config='{"strategy":"fixed","placement":"bottom-end"}'
+                                        aria-expanded="false" title="المزيد">
                                     <i class="fe fe-more-horizontal"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end admin-users-dropdown shadow-sm">
@@ -174,14 +176,9 @@
                                                 <i class="fe fe-users me-2"></i>المجموعات والتفاصيل
                                             </a>
                                         </li>
-                                        @if($user->is_active)
-                                            <li>
-                                                <button type="button" class="dropdown-item impersonate-btn"
-                                                    data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}">
-                                                    <i class="fe fe-log-in me-2"></i>الدخول كطالب
-                                                </button>
-                                            </li>
-                                        @endif
+                                        <li>
+                                            <x-admin.impersonate-trigger :user="$user" variant="dropdown-item" />
+                                        </li>
                                     @endif
                                     <li><hr class="dropdown-divider"></li>
                                     <li>

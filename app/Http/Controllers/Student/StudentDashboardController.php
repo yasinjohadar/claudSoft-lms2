@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\CampEnrollment;
 use App\Models\CourseEnrollment;
 use App\Models\QuestionModuleAttempt;
 
@@ -45,10 +46,31 @@ class StudentDashboardController extends Controller
             ->take(5)
             ->values();
 
+        $activeCampEnrollments = CampEnrollment::query()
+            ->where('student_id', $student->id)
+            ->approved()
+            ->whereHas('camp', fn ($q) => $q->whereDate('end_date', '>=', now()->toDateString()))
+            ->with('camp')
+            ->get()
+            ->sortBy(fn ($enrollment) => $enrollment->camp->end_date)
+            ->values();
+
+        $platformJoinedAt = $student->created_at;
+
+        $hasApprovedCampEnrollment = CampEnrollment::query()
+            ->where('student_id', $student->id)
+            ->approved()
+            ->exists();
+
+        $accountTier = $hasApprovedCampEnrollment ? 'gold' : 'silver';
+
         return view('student.dashboard', compact(
             'questionModuleStats',
             'courseStats',
             'inProgressCourses',
+            'activeCampEnrollments',
+            'platformJoinedAt',
+            'accountTier',
         ));
     }
 }

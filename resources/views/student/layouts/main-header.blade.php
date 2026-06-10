@@ -498,11 +498,12 @@
                     <div class="header-element headerProfile-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
                         <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            @if(Auth::user()->photo)
-                                <img src="{{ student_profile_photo_url(Auth::user()) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
-                            @else
-                                <img src="{{ asset('assets/images/faces/default-avatar.jpg') }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
-                            @endif
+                            <img src="{{ student_profile_photo_url(Auth::user()) }}"
+                                 alt="صورة المستخدم"
+                                 width="37"
+                                 height="37"
+                                 class="rounded-circle {{ Auth::user()->photo ? '' : 'student-avatar--logo' }}"
+                                 onerror="this.onerror=null;this.src='{{ student_default_avatar_url() }}';this.classList.add('student-avatar--logo');">
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <ul class="main-header-dropdown dropdown-menu pt-0 header-profile-dropdown dropdown-menu-end main-profile-menu" aria-labelledby="mainHeaderProfile">

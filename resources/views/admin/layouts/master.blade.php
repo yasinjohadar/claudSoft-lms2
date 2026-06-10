@@ -150,6 +150,11 @@
 
         @yield('content')
 
+        @auth
+            @if(auth()->user()->hasRole('admin'))
+                <x-admin.impersonate-modal />
+            @endif
+        @endauth
 
         @include('admin.layouts.footer')
 

@@ -1,6 +1,7 @@
 @php
     $photoPath = $student->photo ?? null;
-    $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+    $photoUrl = student_profile_photo_url($student);
+    $usesLogoAvatar = empty($photoPath);
     $displayPhone = $student->full_phone ?? trim(($student->country_code ?? '') . ($student->phone ?? '')) ?: $student->phone;
 @endphp
 
@@ -9,17 +10,10 @@
     <div class="row align-items-center g-4 position-relative">
         <div class="col-auto">
             <div class="student-profile-hero__avatar-wrap">
-                @if($photoUrl)
-                    <img src="{{ $photoUrl }}" alt="{{ $student->name }}" class="student-profile-hero__avatar"
-                         onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
-                    <div class="student-profile-hero__avatar-placeholder d-none">
-                        {{ mb_substr($student->name, 0, 1) }}
-                    </div>
-                @else
-                    <div class="student-profile-hero__avatar-placeholder">
-                        {{ mb_substr($student->name, 0, 1) }}
-                    </div>
-                @endif
+                <img src="{{ $photoUrl }}"
+                     alt="{{ $student->name }}"
+                     class="student-profile-hero__avatar {{ $usesLogoAvatar ? 'student-avatar--logo' : '' }}"
+                     onerror="this.onerror=null;this.src='{{ student_default_avatar_url() }}';this.classList.add('student-avatar--logo');">
             </div>
         </div>
         <div class="col min-w-0">

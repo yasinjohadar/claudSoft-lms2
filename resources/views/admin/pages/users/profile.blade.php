@@ -4,747 +4,795 @@
     ملف الطالب - {{ $user->name }}
 @stop
 
-@section('styles')
-@stop
-
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
 
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+        <div class="my-4 page-header-breadcrumb">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('users.index') }}">المستخدمون</a></li>
+                    <li class="breadcrumb-item active">ملف الطالب</li>
+                </ol>
+            </nav>
         </div>
-    @endif
 
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
+        @include('admin.components.alerts')
 
-    @if ($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-times-circle me-2"></i> حدثت بعض الأخطاء:
-                <ul class="mb-0 mt-2">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
+        @php
+            $initial = mb_strtoupper(mb_substr($user->name, 0, 1));
+            $displayPhone = $user->full_phone
+                ?? (($user->country_code && $user->phone) ? $user->country_code . $user->phone : null)
+                ?? $user->phone;
+            $whatsappLink = $user->whatsapp_url
+                ?? ($displayPhone ? 'https://wa.me/' . preg_replace('/[^0-9]/', '', $displayPhone) : null);
+            $roleLabel = $user->roles->pluck('name')->join('، ') ?: 'مستخدم';
+            $kpiCards = [
+                ['variant' => 'blue', 'icon' => 'fe-book-open', 'label' => 'إجمالي الكورسات', 'value' => $courseStats['total_enrollments'], 'sub' => 'كل التسجيلات'],
+                ['variant' => 'green', 'icon' => 'fe-play-circle', 'label' => 'كورسات نشطة', 'value' => $courseStats['active_enrollments'], 'sub' => 'قيد التعلم'],
+                ['variant' => 'cyan', 'icon' => 'fe-check-circle', 'label' => 'كورسات مكتملة', 'value' => $courseStats['completed_enrollments'], 'sub' => 'منتهية'],
+                ['variant' => 'orange', 'icon' => 'fe-trending-up', 'label' => 'متوسط التقدم', 'value' => number_format($courseStats['average_progress'], 1) . '%', 'sub' => 'عبر كل الكورسات', 'countup' => false],
+            ];
+        @endphp
 
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">ملف الطالب: {{ $user->name }}</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('users.index') }}">المستخدمون</a></li>
-                        <li class="breadcrumb-item active">ملف الطالب</li>
-                    </ol>
-                </nav>
-										</div>
-            <div class="mt-3 mt-md-0 d-flex gap-2">
-                <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-right me-1"></i>رجوع
-                </a>
-                <a href="{{ route('users.edit', $user->id) }}" class="btn btn-primary">
-                    <i class="fas fa-edit me-1"></i>تعديل البيانات
-                </a>
-                @if($user->hasRole('student'))
-                    <a href="{{ route('admin.users.courses', $user->id) }}" class="btn btn-outline-primary">
-                        <i class="fas fa-book me-1"></i>كورسات الطالب
-                    </a>
-                @endif
-											</div>
-										</div>
-
-        <div class="row row-sm mt-3">
-            <!-- Left: Basic info -->
-            <div class="col-xl-4">
-                <div class="card custom-card">
-                    <div class="card-body">
-                        <div class="text-center mb-3">
-                            <div class="avatar avatar-xxl mb-3">
-                                @if ($user->avatar)
-                                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="rounded-circle" style="object-fit: cover;">
-                                @else
-                                    <span class="avatar avatar-xxl bg-primary-gradient rounded-circle d-inline-flex align-items-center justify-content-center fs-30 text-white">
-                                        {{ mb_substr($user->name, 0, 1) }}
-                                    </span>
-                                @endif
-											</div>
-                            <h5 class="mb-1">{{ $user->name }}</h5>
-                            <span class="badge bg-{{ $user->hasRole('student') ? 'info' : 'secondary' }}">
-                                {{ $user->roles->pluck('name')->join(' , ') ?: 'مستخدم' }}
-                            </span>
-											</div>
-                        <hr>
-                        <div class="mb-2">
-                            <small class="text-muted d-block">البريد الإلكتروني</small>
-                            <span><i class="fas fa-envelope me-1 text-muted"></i>{{ $user->email }}</span>
-											</div>
-                        @if($user->full_phone)
-                            <div class="mb-2">
-                                <small class="text-muted d-block">رقم الجوال</small>
-                                <span><i class="fas fa-phone me-1 text-muted"></i>{{ $user->full_phone }}</span>
-                                @if($user->whatsapp_url)
-                                    <a href="{{ $user->whatsapp_url }}" target="_blank" class="badge bg-success ms-1">
-                                        <i class="fab fa-whatsapp"></i> واتساب
-                                    </a>
-                                @endif
-										</div>
-                        @endif
-                        @if($user->nationality)
-                            <div class="mb-2">
-                                <small class="text-muted d-block">الجنسية</small>
-                                <span><i class="fas fa-flag me-1 text-muted"></i>{{ $user->nationality->name }}</span>
-												</div>
-                        @endif
-                        <div class="mb-2">
-                            <small class="text-muted d-block">الحالة</small>
-                            @if($user->is_active)
-                                <span class="badge bg-success">نشط</span>
+        {{-- Hero --}}
+        <div class="group-show-hero dashboard-fade-in mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="admin-users-table__avatar flex-shrink-0" style="width: 80px; height: 80px; font-size: 1.75rem;">
+                            @if($user->avatar)
+                                <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}">
+                            @elseif($user->photo)
+                                <img src="{{ asset('storage/' . $user->photo) }}" alt="{{ $user->name }}">
                             @else
-                                <span class="badge bg-danger">موقوف</span>
+                                <span>{{ $initial }}</span>
                             @endif
-												</div>
-											</div>
-										</div>
-											</div>
+                        </div>
+                        <div class="min-w-0">
+                            <span class="group-show-hero__eyebrow">
+                                <i class="fe fe-user me-1"></i>
+                                ملف الطالب
+                            </span>
+                            <h2 class="group-show-hero__title mb-1">{{ $user->name }}</h2>
+                            @if($user->name_ar)
+                                <p class="group-show-hero__desc mb-2">{{ $user->name_ar }}</p>
+                            @endif
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="group-show-chip group-show-chip--sm">{{ $roleLabel }}</span>
+                                @if($user->is_active)
+                                    <span class="group-show-chip group-show-chip--sm text-success"><i class="fe fe-check-circle me-1"></i>نشط</span>
+                                @else
+                                    <span class="group-show-chip group-show-chip--sm text-danger"><i class="fe fe-slash me-1"></i>موقوف</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="group-show-actions">
+                        <a href="{{ route('users.index') }}" class="group-show-action group-show-action--info">
+                            <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                            <span class="group-show-action__text">رجوع للمستخدمين</span>
+                        </a>
+                        @if($user->hasRole('student'))
+                            <a href="{{ route('admin.users.courses', $user->id) }}" class="group-show-action group-show-action--success">
+                                <span class="group-show-action__icon"><i class="fe fe-book-open"></i></span>
+                                <span class="group-show-action__text">كورسات الطالب</span>
+                            </a>
+                            <a href="{{ route('users.student-details', $user->id) }}" class="group-show-action group-show-action--warning">
+                                <span class="group-show-action__icon"><i class="fe fe-layers"></i></span>
+                                <span class="group-show-action__text">المجموعات والتفاصيل</span>
+                            </a>
+                            <x-admin.impersonate-trigger :user="$user" variant="group-action">
+                                <span class="group-show-action__icon"><i class="fe fe-log-in"></i></span>
+                                <span class="group-show-action__text">الدخول كطالب</span>
+                            </x-admin.impersonate-trigger>
+                        @endif
+                        <a href="{{ route('users.edit', $user->id) }}" class="group-show-action group-show-action--primary">
+                            <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
+                            <span class="group-show-action__text">تعديل البيانات</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            <!-- Right: Stats & Tabs -->
-            <div class="col-xl-8">
-                <div class="row row-sm mb-3">
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="avatar avatar-md bg-primary-transparent me-3">
-                                    <i class="fas fa-book fs-18 text-primary"></i>
-										</div>
-                                <div>
-                                    <p class="mb-1 text-muted">إجمالي الكورسات</p>
-                                    <h4 class="mb-0">{{ $courseStats['total_enrollments'] }}</h4>
-								</div>
-							</div>
-						</div>
-					</div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="avatar avatar-md bg-success-transparent me-3">
-                                    <i class="fas fa-play-circle fs-18 text-success"></i>
-											</div>
-                                <div>
-                                    <p class="mb-1 text-muted">كورسات نشطة</p>
-                                    <h4 class="mb-0">{{ $courseStats['active_enrollments'] }}</h4>
-											</div>
-										</div>
-									</div>
-								</div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="avatar avatar-md bg-info-transparent me-3">
-                                    <i class="fas fa-check-circle fs-18 text-info"></i>
-							</div>
-                                <div>
-                                    <p class="mb-1 text-muted">كورسات مكتملة</p>
-                                    <h4 class="mb-0">{{ $courseStats['completed_enrollments'] }}</h4>
-											</div>
-										</div>
-									</div>
-								</div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="avatar avatar-md bg-warning-transparent me-3">
-                                    <i class="fas fa-percentage fs-18 text-warning"></i>
-							</div>
-                                <div>
-                                    <p class="mb-1 text-muted">متوسط التقدم</p>
-                                    <h4 class="mb-0">{{ number_format($courseStats['average_progress'], 1) }}%</h4>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
+        {{-- KPI --}}
+        <div class="row g-3 dashboard-fade-in mb-4">
+            @foreach ($kpiCards as $index => $card)
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+                    <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="admin-stats-card__icon-wrap">
+                                <i class="fe {{ $card['icon'] }} admin-stats-card__icon"></i>
+                            </div>
+                            <div class="admin-stats-card__content flex-fill min-w-0">
+                                <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
+                                @if($card['countup'] ?? true)
+                                    <h3 class="admin-stats-card__value mb-1" data-countup="{{ is_numeric($card['value']) ? $card['value'] : 0 }}">0</h3>
+                                @else
+                                    <h3 class="admin-stats-card__value admin-stats-card__value--text mb-1">{{ $card['value'] }}</h3>
+                                @endif
+                                <p class="admin-stats-card__sub mb-0">{{ $card['sub'] }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
 
-                <div class="card custom-card">
-							<div class="card-body">
-									<ul class="nav nav-tabs profile navtab-custom panel-tabs">
-                            <li class="nav-item">
-                                <a href="#tab-overview" class="nav-link active" data-bs-toggle="tab">
-                                    <i class="las la-user-circle me-1"></i> بيانات الطالب
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="#tab-courses" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-book me-1"></i> الكورسات
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="#tab-quizzes" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-clipboard-list me-1"></i> الاختبارات
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-billing" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-file-invoice-dollar me-1"></i> الفواتير / المدفوعات
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-certificates" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-certificate me-1"></i> الشهادات
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-groups" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-users me-1"></i> المجموعات
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-sessions" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-history me-1"></i> الجلسات
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-devices" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-mobile-alt me-1"></i> الأجهزة
-                                </a>
-										</li>
-                            <li class="nav-item">
-                                <a href="#tab-admin-notes" class="nav-link" data-bs-toggle="tab">
-                                    <i class="fas fa-sticky-note me-1"></i> الملاحظات الإدارية
-                                    @if(isset($adminNotes) && $adminNotes->isNotEmpty())
-                                        <span class="badge bg-secondary ms-1">{{ $adminNotes->count() }}</span>
+        {{-- Contact info strip --}}
+        <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card-body py-3">
+                <div class="row g-3 admin-profile-contact-strip">
+                    <div class="col-md-6 col-xl">
+                        <div class="admin-profile-contact-item">
+                            <span class="admin-profile-sidebar-field__icon"><i class="fe fe-mail"></i></span>
+                            <div class="min-w-0 flex-fill">
+                                <small class="text-muted d-block">البريد الإلكتروني</small>
+                                @if($user->email)
+                                    <div class="d-flex align-items-center gap-1 min-w-0">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary py-0 px-1 copy-email-btn flex-shrink-0"
+                                                data-email="{{ $user->email }}"
+                                                title="نسخ البريد">
+                                            <i class="fe fe-copy"></i>
+                                        </button>
+                                        <a href="mailto:{{ $user->email }}" class="text-decoration-none text-truncate" title="إرسال بريد">
+                                            {{ $user->email }}
+                                        </a>
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @if($displayPhone)
+                        <div class="col-md-6 col-xl">
+                            <div class="admin-profile-contact-item">
+                                <span class="admin-profile-sidebar-field__icon"><i class="fe fe-phone"></i></span>
+                                <div class="min-w-0">
+                                    <small class="text-muted d-block">رقم الجوال</small>
+                                    @if($whatsappLink)
+                                        <a href="{{ $whatsappLink }}" target="_blank" rel="noopener noreferrer"
+                                           class="text-success text-decoration-none d-inline-flex align-items-center gap-1"
+                                           title="فتح WhatsApp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>{{ $displayPhone }}</span>
+                                        </a>
+                                    @else
+                                        <span>{{ $displayPhone }}</span>
                                     @endif
-                                </a>
-										</li>
-									</ul>
-
-								<div class="tab-content border border-top-0 p-4 br-dark">
-                            <!-- Overview -->
-                            <div class="tab-pane active" id="tab-overview">
-                                <h5 class="mb-3">ملخص سريع</h5>
-                                <p class="text-muted">
-                                    يمكن من خلال هذه الصفحة متابعة كل ما يخص الطالب من كورسات، اختبارات، مدفوعات وشهادات في مكان واحد.
-                                </p>
-											</div>
-
-                            <!-- Courses -->
-                            <div class="tab-pane" id="tab-courses">
-                                @if($enrollments->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد كورسات مسجلة لهذا الطالب.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>الكورس</th>
-                                                <th>الحالة</th>
-                                                <th>نسبة الإكمال</th>
-                                                <th>تاريخ التسجيل</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($enrollments as $enrollment)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>{{ $enrollment->course->title ?? '-' }}</td>
-                                                    <td>{{ $enrollment->enrollment_status }}</td>
-                                                    <td>{{ $enrollment->completion_percentage }}%</td>
-                                                    <td>{{ optional($enrollment->enrollment_date)->format('Y-m-d') }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-											</div>
-                                @endif
-										</div>
-
-                            <!-- Quizzes -->
-                            <div class="tab-pane" id="tab-quizzes">
-                                @if($quizAttempts->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد محاولات اختبارات مسجلة.</p>
-                                @else
-                                    <p class="mb-3">
-                                        إجمالي المحاولات: <strong>{{ $quizStats['total_attempts'] }}</strong> -
-                                        متوسط الدرجة: <strong>{{ number_format($quizStats['average_score'], 1) }}%</strong>
-                                    </p>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>الاختبار</th>
-                                                <th>الحالة</th>
-                                                <th>الدرجة</th>
-                                                <th>تاريخ الإكمال</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($quizAttempts as $attempt)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>{{ $attempt->quiz->title ?? '-' }}</td>
-                                                    <td>{{ $attempt->status }}</td>
-                                                    <td>{{ $attempt->percentage_score }}%</td>
-                                                    <td>{{ optional($attempt->completed_at ?? $attempt->submitted_at)->format('Y-m-d H:i') }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-									</div>
-                                @endif
-												</div>
-
-                            <!-- Billing -->
-                            <div class="tab-pane" id="tab-billing">
-                                <div class="row mb-3">
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">عدد الفواتير</small>
-                                            <strong>{{ $billingStats['total_invoices'] }}</strong>
-												</div>
-											</div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">إجمالي المبلغ</small>
-                                            <strong>{{ number_format($billingStats['total_amount'], 2) }}</strong>
-												</div>
-											</div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">المدفوع</small>
-                                            <strong>{{ number_format($billingStats['total_paid'], 2) }}</strong>
-												</div>
-											</div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">المتبقي</small>
-                                            <strong>{{ number_format($billingStats['remaining_amount'], 2) }}</strong>
-												</div>
-											</div>
-										</div>
-
-                                <h6 class="mb-2">آخر الفواتير</h6>
-                                @if($invoices->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد فواتير لهذا الطالب.</p>
-                                @else
-                                    <div class="table-responsive mb-3">
-                                        <table class="table table-sm mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>رقم الفاتورة</th>
-                                                <th>التاريخ</th>
-                                                <th>الإجمالي</th>
-                                                <th>المدفوع</th>
-                                                <th>الحالة</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($invoices as $invoice)
-                                                <tr>
-                                                    <td>{{ $invoice->invoice_number }}</td>
-                                                    <td>{{ optional($invoice->issue_date)->format('Y-m-d') }}</td>
-                                                    <td>{{ number_format($invoice->total_amount, 2) }}</td>
-                                                    <td>{{ number_format($invoice->paid_amount, 2) }}</td>
-                                                    <td>{{ $invoice->status }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-									</div>
-                                @endif
-
-                                <h6 class="mb-2 mt-3">آخر المدفوعات</h6>
-                                @if($payments->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد مدفوعات مسجلة.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-sm mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>رقم الدفعة</th>
-                                                <th>التاريخ</th>
-                                                <th>المبلغ</th>
-                                                <th>طريقة الدفع</th>
-                                                <th>الحالة</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($payments as $payment)
-                                                <tr>
-                                                    <td>{{ $payment->payment_number }}</td>
-                                                    <td>{{ optional($payment->payment_date)->format('Y-m-d H:i') }}</td>
-                                                    <td>{{ number_format($payment->amount, 2) }}</td>
-                                                    <td>{{ $payment->paymentMethod->name ?? '-' }}</td>
-                                                    <td>{{ $payment->status }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-															</div>
-                                @endif
-														</div>
-
-                            <!-- Certificates -->
-                            <div class="tab-pane" id="tab-certificates">
-                                @if($certificates->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد شهادات صادرة لهذا الطالب.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>الكورس</th>
-                                                <th>تاريخ الإصدار</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($certificates as $certificate)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>{{ $certificate->course->title ?? '-' }}</td>
-                                                    <td>{{ optional($certificate->created_at)->format('Y-m-d') }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-															</div>
-                                @endif
-													</div>
-
-                            <!-- Groups -->
-                            <div class="tab-pane" id="tab-groups">
-                                @if($groups->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد مجموعات مسجل بها هذا الطالب.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>اسم المجموعة</th>
-                                                <th>الدور</th>
-                                                <th>الكورس المرتبط</th>
-                                                <th>تاريخ الانضمام</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($groups as $member)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>{{ $member->group->name ?? '-' }}</td>
-                                                    <td>
-                                                        @if($member->role === 'leader')
-                                                            <span class="badge bg-purple">قائد المجموعة</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">عضو</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @php $course = optional($member->group)->courses->first(); @endphp
-                                                        {{ $course->title ?? '-' }}
-                                                    </td>
-                                                    <td>{{ optional($member->joined_at)->format('Y-m-d') }}</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-												</div>
-                                @endif
-									</div>
-
-                            <!-- Sessions -->
-                            <div class="tab-pane" id="tab-sessions">
-                                <!-- Statistics -->
-                                <div class="row mb-3">
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">إجمالي الجلسات</small>
-                                            <strong>{{ number_format($sessionStats['total']) }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">الجلسات النشطة</small>
-                                            <strong class="text-success">{{ number_format($sessionStats['active']) }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">الجلسات المكتملة</small>
-                                            <strong class="text-info">{{ number_format($sessionStats['completed']) }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">متوسط المدة</small>
-                                            <strong>
-                                                @if($sessionStats['avg_duration'])
-                                                    {{ gmdate('H:i:s', (int)$sessionStats['avg_duration']) }}
-                                                @else
-                                                    -
-                                                @endif
-                                            </strong>
-                                        </div>
-                                    </div>
                                 </div>
-
-                                @if($userSessions->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد جلسات مسجلة لهذا المستخدم.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>تاريخ البدء</th>
-                                                <th>تاريخ الانتهاء</th>
-                                                <th>المدة</th>
-                                                <th>الجهاز</th>
-                                                <th>الموقع</th>
-                                                <th>الحالة</th>
-                                                <th>الأنشطة</th>
-                                                <th>الإجراءات</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($userSessions as $session)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>{{ $session->started_at->format('Y-m-d H:i') }}</td>
-                                                    <td>
-                                                        {{ $session->ended_at ? $session->ended_at->format('Y-m-d H:i') : '-' }}
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-info-transparent text-info">
-                                                            {{ $session->duration_formatted }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $session->device_info }}</small>
-                                                        @if($session->ip_address)
-                                                            <br>
-                                                            <small class="text-muted">{{ $session->ip_address }}</small>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $session->location_formatted }}</small>
-                                                    </td>
-                                                    <td>
-                                                        @if($session->status == 'active')
-                                                            <span class="badge bg-success">نشطة</span>
-                                                        @elseif($session->status == 'completed')
-                                                            <span class="badge bg-info">مكتملة</span>
-                                                        @elseif($session->status == 'disconnected')
-                                                            <span class="badge bg-warning">منفصلة</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">انتهت</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-primary-transparent text-primary">
-                                                            {{ $session->activities_count }} نشاط
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <a href="{{ route('admin.user-sessions.show', $session->id) }}" 
-                                                           class="btn btn-sm btn-outline-primary" 
-                                                           title="عرض التفاصيل">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="mt-3">
-                                        <a href="{{ route('admin.user-sessions.user', $user->id) }}" class="btn btn-outline-primary">
-                                            <i class="fas fa-list me-1"></i>عرض جميع الجلسات
-                                        </a>
-                                    </div>
-                                @endif
                             </div>
-
-                            <!-- Devices -->
-                            <div class="tab-pane" id="tab-devices">
-                                <!-- Statistics -->
-                                <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">إجمالي الأجهزة</small>
-                                            <strong>{{ number_format($deviceStats['total']) }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">الأجهزة الموثوقة</small>
-                                            <strong class="text-success">{{ number_format($deviceStats['trusted']) }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="border rounded p-2 text-center">
-                                            <small class="text-muted d-block">الأجهزة المحظورة</small>
-                                            <strong class="text-danger">{{ number_format($deviceStats['blocked']) }}</strong>
-                                        </div>
-                                    </div>
+                        </div>
+                    @endif
+                    @if($user->nationality)
+                        <div class="col-md-6 col-xl">
+                            <div class="admin-profile-contact-item">
+                                <span class="admin-profile-sidebar-field__icon"><i class="fe fe-flag"></i></span>
+                                <div>
+                                    <small class="text-muted d-block">الجنسية</small>
+                                    <span>{{ $user->nationality->name }}</span>
                                 </div>
-
-                                @if($userDevices->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد أجهزة مسجلة لهذا المستخدم.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>معلومات الجهاز</th>
-                                                <th>عدد مرات الدخول</th>
-                                                <th>أول استخدام</th>
-                                                <th>آخر استخدام</th>
-                                                <th>الموقع</th>
-                                                <th>الحالة</th>
-                                                <th>الإجراءات</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($userDevices as $device)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>
-                                                        <small>{{ $device->device_info }}</small>
-                                                        @if($device->device_name)
-                                                            <br>
-                                                            <strong class="text-primary">{{ $device->device_name }}</strong>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-info-transparent text-info">
-                                                            {{ number_format($device->total_logins) }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $device->first_used_human }}</small>
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $device->last_used_human }}</small>
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $device->location_formatted }}</small>
-                                                        @if($device->last_ip_address)
-                                                            <br>
-                                                            <small class="text-muted">{{ $device->last_ip_address }}</small>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <span class="{{ $device->status_badge['class'] }}">
-                                                            <i class="fas {{ $device->status_badge['icon'] }} me-1"></i>
-                                                            {{ $device->status_badge['text'] }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div class="btn-group" role="group">
-                                                            <a href="{{ route('admin.user-devices.show', $device->id) }}" 
-                                                               class="btn btn-sm btn-outline-primary" 
-                                                               title="عرض التفاصيل">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
-                                                            @if($device->is_blocked)
-                                                                <form action="{{ route('admin.user-devices.unblock', $device->id) }}" 
-                                                                      method="POST" 
-                                                                      class="d-inline"
-                                                                      onsubmit="return confirm('هل أنت متأكد من إلغاء حظر هذا الجهاز؟');">
-                                                                    @csrf
-                                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="إلغاء الحظر">
-                                                                        <i class="fas fa-unlock"></i>
-                                                                    </button>
-                                                                </form>
-                                                            @else
-                                                                <form action="{{ route('admin.user-devices.block', $device->id) }}" 
-                                                                      method="POST" 
-                                                                      class="d-inline"
-                                                                      onsubmit="return confirm('هل أنت متأكد من حظر هذا الجهاز؟');">
-                                                                    @csrf
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حظر">
-                                                                        <i class="fas fa-ban"></i>
-                                                                    </button>
-                                                                </form>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="mt-3">
-                                        <a href="{{ route('admin.user-devices.user', $user->id) }}" class="btn btn-outline-primary">
-                                            <i class="fas fa-list me-1"></i>عرض جميع الأجهزة
-                                        </a>
-                                    </div>
-                                @endif
                             </div>
-
-                            <!-- Admin notes -->
-                            <div class="tab-pane" id="tab-admin-notes">
-                                <h5 class="mb-3">سجل الملاحظات الإدارية</h5>
-                                <p class="text-muted small mb-3">تُسجَّل الملاحظات تلقائياً عند إيقاف تفعيل المستخدم من لوحة المستخدمين، ويمكن لاحقاً إضافة مصادر أخرى.</p>
-                                @if(!isset($adminNotes) || $adminNotes->isEmpty())
-                                    <p class="text-muted mb-0">لا توجد ملاحظات مسجلة لهذا المستخدم.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover table-bordered mb-0 align-middle">
-                                            <thead class="table-light">
-                                            <tr>
-                                                <th style="width: 110px;">تاريخ الحدث</th>
-                                                <th>الملاحظة</th>
-                                                <th style="width: 140px;">المصدر</th>
-                                                <th style="width: 160px;">سجّلها</th>
-                                                <th style="width: 150px;">وقت التسجيل</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($adminNotes as $note)
-                                                <tr>
-                                                    <td>{{ $note->occurred_on?->format('Y-m-d') }}</td>
-                                                    <td class="text-wrap" style="white-space: normal;">{{ $note->body }}</td>
-                                                    <td>
-                                                        @if($note->source === 'deactivation')
-                                                            <span class="badge bg-warning-transparent text-warning">إيقاف تفعيل</span>
-                                                        @elseif($note->source === 'reactivation')
-                                                            <span class="badge bg-success-transparent text-success">تفعيل</span>
-                                                        @else
-                                                            <span class="badge bg-secondary-transparent text-secondary">{{ $note->source }}</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>{{ $note->creator?->name ?? '—' }}</td>
-                                                    <td><small class="text-muted">{{ $note->created_at?->format('Y-m-d H:i') }}</small></td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @endif
+                        </div>
+                    @endif
+                    <div class="col-md-6 col-xl">
+                        <div class="admin-profile-contact-item">
+                            <span class="admin-profile-sidebar-field__icon"><i class="fe fe-calendar"></i></span>
+                            <div>
+                                <small class="text-muted d-block">تاريخ التسجيل</small>
+                                <span>{{ $user->created_at?->format('Y-m-d') ?? '—' }}</span>
                             </div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Tabs full width --}}
+        <div class="card custom-card group-show-members-card dashboard-fade-in">
+            <div class="card-body pt-3 px-2 px-md-3">
+                <ul class="nav admin-profile-tabs admin-profile-tabs--full" id="studentProfileTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">
+                                    <i class="fe fe-user me-1"></i>بيانات الطالب
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-courses" type="button" role="tab">
+                                    <i class="fe fe-book-open me-1"></i>الكورسات
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-quizzes" type="button" role="tab">
+                                    <i class="fe fe-clipboard me-1"></i>الاختبارات
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-billing" type="button" role="tab">
+                                    <i class="fe fe-credit-card me-1"></i>الفواتير
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-certificates" type="button" role="tab">
+                                    <i class="fe fe-award me-1"></i>الشهادات
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-groups" type="button" role="tab">
+                                    <i class="fe fe-layers me-1"></i>المجموعات
+                                    @if($groups->count() > 0)
+                                        <span class="badge bg-primary ms-1" id="profile-groups-badge">{{ $groups->count() }}</span>
+                                    @else
+                                        <span class="badge bg-primary ms-1 d-none" id="profile-groups-badge">0</span>
+                                    @endif
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-bootcamps" type="button" role="tab">
+                                    <i class="fe fe-zap me-1"></i>المعسكرات
+                                    @if(($campStats['total'] ?? 0) > 0)
+                                        <span class="badge bg-primary ms-1" id="profile-camps-badge">{{ $campStats['total'] }}</span>
+                                    @else
+                                        <span class="badge bg-primary ms-1 d-none" id="profile-camps-badge">0</span>
+                                    @endif
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sessions" type="button" role="tab">
+                                    <i class="fe fe-clock me-1"></i>الجلسات
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-devices" type="button" role="tab">
+                                    <i class="fe fe-smartphone me-1"></i>الأجهزة
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-admin-notes" type="button" role="tab">
+                                    <i class="fe fe-file-text me-1"></i>ملاحظات
+                                    @if(isset($adminNotes) && $adminNotes->isNotEmpty())
+                                        <span class="badge bg-primary ms-1">{{ $adminNotes->count() }}</span>
+                                    @endif
+                                </button>
+                            </li>
+                        </ul>
+
+                <div class="tab-content admin-profile-tab-content pt-3 px-1 px-md-2" id="studentProfileTabContent">
+                    @include('admin.pages.users.partials.profile-tab-panes')
+                </div>
+            </div>
+        </div>
 
     </div>
+</div>
+
+{{-- Record payment modal --}}
+<div class="modal fade" id="profileRecordPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="profileRecordPaymentForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fe fe-dollar-sign me-2"></i>
+                        تسجيل دفعة — {{ $user->name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if(($paymentMethods ?? collect())->isEmpty())
+                        <div class="alert alert-warning mb-0">
+                            لا توجد طرق دفع مفعّلة. أضف طريقة دفع من إعدادات النظام أولاً.
+                        </div>
+                    @elseif(($payableInvoices ?? collect())->isEmpty())
+                        <div class="alert alert-info mb-0">
+                            لا توجد فواتير مستحقة لهذا الطالب.
+                        </div>
+                    @else
+                        <div class="alert alert-info py-2 small mb-3" role="status">
+                            <strong>المتبقي على الفاتورة المختارة:</strong>
+                            <span id="profilePaymentRemainingValue">0.00</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="profilePaymentInvoiceId">الفاتورة</label>
+                            <select class="form-select" id="profilePaymentInvoiceId" required>
+                                <option value="">اختر فاتورة</option>
+                                @foreach($payableInvoices as $payableInvoice)
+                                    <option value="{{ $payableInvoice->id }}"
+                                            data-remaining="{{ $payableInvoice->remaining_amount }}"
+                                            data-invoice-number="{{ $payableInvoice->invoice_number }}">
+                                        {{ $payableInvoice->invoice_number }} — المتبقي: {{ number_format($payableInvoice->remaining_amount, 2) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="profilePaymentAmount">المبلغ</label>
+                            <input type="number" class="form-control" id="profilePaymentAmount" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="profilePaymentMethodId">طريقة الدفع</label>
+                            <select class="form-select" id="profilePaymentMethodId" required>
+                                @foreach($paymentMethods as $pm)
+                                    <option value="{{ $pm->id }}">{{ $pm->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="profilePaymentDate">تاريخ الدفع</label>
+                            <input type="date" class="form-control" id="profilePaymentDate" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="profilePaymentTransactionId">رقم العملية (اختياري)</label>
+                            <input type="text" class="form-control" id="profilePaymentTransactionId" autocomplete="off">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label" for="profilePaymentNotes">ملاحظات (اختياري)</label>
+                            <textarea class="form-control" id="profilePaymentNotes" rows="2"></textarea>
+                        </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    @if(($paymentMethods ?? collect())->isNotEmpty() && ($payableInvoices ?? collect())->isNotEmpty())
+                        <button type="submit" class="btn btn-success" id="profileRecordPaymentSubmit">
+                            <span class="profile-action-btn__label"><i class="fe fe-check me-1"></i>تسجيل الدفعة</span>
+                            <span class="profile-action-btn__spinner d-none"><span class="spinner-border spinner-border-sm me-1"></span>جاري الحفظ...</span>
+                        </button>
+                    @endif
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 @endsection
 
+@push('scripts')
+<script>
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        var raw = el.getAttribute('data-countup');
+        var target = parseInt(raw, 10);
+        if (!target) {
+            el.textContent = raw || '0';
+            return;
+        }
+        var current = 0;
+        var step = Math.max(1, Math.ceil(target / 20));
+        var timer = setInterval(function () {
+            current += step;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            el.textContent = current.toLocaleString('ar-EG');
+        }, 30);
+    });
 
+    document.querySelectorAll('.admin-profile-quick-link[data-bs-toggle="tab"]').forEach(function (link) {
+        link.addEventListener('click', function () {
+            var target = link.getAttribute('href');
+            if (!target) return;
+            var btn = document.querySelector('[data-bs-target="' + target + '"]');
+            if (btn) btn.click();
+        });
+    });
+
+    (function () {
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+            document.body.removeChild(textArea);
+            return Promise.resolve();
+        }
+
+        document.querySelectorAll('.copy-email-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var email = btn.getAttribute('data-email');
+                if (!email) return;
+                copyToClipboard(email).then(function () {
+                    var originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fe fe-check text-success"></i>';
+                    setTimeout(function () {
+                        btn.innerHTML = originalHTML;
+                    }, 1500);
+                });
+            });
+        });
+
+        var csrfToken = document.querySelector('meta[name="csrf-token"]');
+        var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+        function showFeedback(el, message, type) {
+            if (!el) return;
+            el.textContent = message;
+            el.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+            el.classList.add(type === 'success' ? 'alert-success' : 'alert-danger');
+        }
+
+        function hideFeedback(el) {
+            if (!el) return;
+            el.classList.add('d-none');
+            el.textContent = '';
+        }
+
+        function setButtonLoading(btn, loading) {
+            if (!btn) return;
+            var label = btn.querySelector('.profile-action-btn__label');
+            var spinner = btn.querySelector('.profile-action-btn__spinner');
+            btn.disabled = loading;
+            if (label) label.classList.toggle('d-none', loading);
+            if (spinner) spinner.classList.toggle('d-none', !loading);
+        }
+
+        function formatValidationErrors(data) {
+            if (data.errors) {
+                return Object.values(data.errors).flat().join(' ');
+            }
+            return data.message || 'حدث خطأ غير متوقع';
+        }
+
+        function postProfileAction(url, formData, feedbackEl, onSuccess) {
+            hideFeedback(feedbackEl);
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                },
+                credentials: 'same-origin',
+                body: formData,
+            })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { ok: response.ok, status: response.status, data: data };
+                    }).catch(function () {
+                        return { ok: response.ok, status: response.status, data: {} };
+                    });
+                })
+                .then(function (result) {
+                    if (result.ok && result.data.success) {
+                        showFeedback(feedbackEl, result.data.message, 'success');
+                        if (typeof onSuccess === 'function') {
+                            onSuccess(result.data);
+                        }
+                        return;
+                    }
+                    showFeedback(feedbackEl, formatValidationErrors(result.data), 'error');
+                })
+                .catch(function () {
+                    showFeedback(feedbackEl, 'تعذر إتمام الطلب. حاول مرة أخرى.', 'error');
+                });
+        }
+
+        function updateTabBadge(badgeEl, count) {
+            if (!badgeEl) return;
+            badgeEl.textContent = count;
+            badgeEl.classList.toggle('d-none', count <= 0);
+        }
+
+        function removeSelectOption(selectEl, value) {
+            if (!selectEl) return;
+            var option = selectEl.querySelector('option[value="' + value + '"]');
+            if (option) option.remove();
+            selectEl.value = '';
+            if (selectEl.options.length <= 1 && selectEl.closest('#profile-add-group-form, #profile-add-camp-form')) {
+                var formWrap = selectEl.closest('#profile-add-group-form, #profile-add-camp-form');
+                if (formWrap) formWrap.classList.add('d-none');
+            }
+        }
+
+        var addGroupBtn = document.getElementById('profile-add-group-btn');
+        if (addGroupBtn) {
+            addGroupBtn.addEventListener('click', function () {
+                var groupSelect = document.getElementById('profile_group_id');
+                var roleSelect = document.getElementById('profile_group_role');
+                var feedbackEl = document.getElementById('profile-groups-feedback');
+
+                if (!groupSelect || !groupSelect.value) {
+                    showFeedback(feedbackEl, 'يرجى اختيار مجموعة.', 'error');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('group_id', groupSelect.value);
+                formData.append('role', roleSelect ? roleSelect.value : 'member');
+
+                setButtonLoading(addGroupBtn, true);
+                postProfileAction('{{ route('users.add-to-group', $user->id) }}', formData, feedbackEl, function (data) {
+                    var tbody = document.getElementById('profile-groups-tbody');
+                    var tableWrap = document.getElementById('profile-groups-table-wrap');
+                    var emptyEl = document.getElementById('profile-groups-empty');
+
+                    if (tbody && data.row_html) {
+                        tbody.insertAdjacentHTML('beforeend', data.row_html);
+                    }
+                    if (tableWrap) tableWrap.classList.remove('d-none');
+                    if (emptyEl) emptyEl.classList.add('d-none');
+
+                    if (data.stats && typeof data.stats.total === 'number') {
+                        updateTabBadge(document.getElementById('profile-groups-badge'), data.stats.total);
+                    }
+
+                    if (data.group_id) {
+                        removeSelectOption(groupSelect, String(data.group_id));
+                    }
+                }).finally(function () {
+                    setButtonLoading(addGroupBtn, false);
+                });
+            });
+        }
+
+        function syncProfileCampPrice() {
+            var campSelect = document.getElementById('profile_camp_id');
+            var priceInput = document.getElementById('profile_camp_price');
+            if (!campSelect || !priceInput || !campSelect.selectedOptions.length) {
+                return;
+            }
+            var price = campSelect.selectedOptions[0].getAttribute('data-price');
+            if (price !== null && price !== '' && (!priceInput.dataset.userEdited || priceInput.value === '')) {
+                priceInput.value = parseFloat(price).toFixed(2);
+            }
+        }
+
+        var profileCampSelect = document.getElementById('profile_camp_id');
+        if (profileCampSelect) {
+            profileCampSelect.addEventListener('change', function () {
+                var priceInput = document.getElementById('profile_camp_price');
+                if (priceInput) {
+                    priceInput.dataset.userEdited = '';
+                }
+                syncProfileCampPrice();
+            });
+        }
+
+        var profileCampPriceInput = document.getElementById('profile_camp_price');
+        if (profileCampPriceInput) {
+            profileCampPriceInput.addEventListener('input', function () {
+                profileCampPriceInput.dataset.userEdited = '1';
+            });
+        }
+
+        var addCampBtn = document.getElementById('profile-add-camp-btn');
+        if (addCampBtn) {
+            addCampBtn.addEventListener('click', function () {
+                var campSelect = document.getElementById('profile_camp_id');
+                var statusSelect = document.getElementById('profile_camp_status');
+                var paymentSelect = document.getElementById('profile_camp_payment_status');
+                var priceInput = document.getElementById('profile_camp_price');
+                var notesInput = document.getElementById('profile_camp_notes');
+                var feedbackEl = document.getElementById('profile-camps-feedback');
+
+                if (!campSelect || !campSelect.value) {
+                    showFeedback(feedbackEl, 'يرجى اختيار معسكر.', 'error');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('camp_id', campSelect.value);
+                formData.append('status', statusSelect ? statusSelect.value : 'pending');
+                formData.append('payment_status', paymentSelect ? paymentSelect.value : 'unpaid');
+                if (priceInput && priceInput.value !== '') {
+                    formData.append('price', priceInput.value);
+                }
+                if (notesInput && notesInput.value.trim()) {
+                    formData.append('notes', notesInput.value.trim());
+                }
+
+                setButtonLoading(addCampBtn, true);
+                postProfileAction('{{ route('users.add-to-camp', $user->id) }}', formData, feedbackEl, function (data) {
+                    var tbody = document.getElementById('profile-camps-tbody');
+                    var tableWrap = document.getElementById('profile-camps-table-wrap');
+                    var emptyEl = document.getElementById('profile-camps-empty');
+                    var statsWrap = document.getElementById('profile-camps-stats');
+
+                    if (tbody && data.row_html) {
+                        tbody.insertAdjacentHTML('beforeend', data.row_html);
+                    }
+                    if (tableWrap) tableWrap.classList.remove('d-none');
+                    if (emptyEl) emptyEl.classList.add('d-none');
+                    if (statsWrap) statsWrap.classList.remove('d-none');
+
+                    if (data.camp_stats) {
+                        var totalEl = document.getElementById('profile-camps-stat-total');
+                        var approvedEl = document.getElementById('profile-camps-stat-approved');
+                        var pendingEl = document.getElementById('profile-camps-stat-pending');
+                        if (totalEl) totalEl.textContent = data.camp_stats.total;
+                        if (approvedEl) approvedEl.textContent = data.camp_stats.approved;
+                        if (pendingEl) pendingEl.textContent = data.camp_stats.pending;
+                        updateTabBadge(document.getElementById('profile-camps-badge'), data.camp_stats.total);
+                    }
+
+                    if (data.camp_id) {
+                        removeSelectOption(campSelect, String(data.camp_id));
+                    }
+
+                    if (priceInput) {
+                        priceInput.value = '';
+                        priceInput.dataset.userEdited = '';
+                    }
+                    if (notesInput) notesInput.value = '';
+                }).finally(function () {
+                    setButtonLoading(addCampBtn, false);
+                });
+            });
+        }
+
+        function updateBillingStats(stats) {
+            if (!stats) return;
+            var el;
+            el = document.getElementById('profile-billing-stat-total-invoices');
+            if (el) el.textContent = stats.total_invoices;
+            el = document.getElementById('profile-billing-stat-total-amount');
+            if (el) el.textContent = Number(stats.total_amount).toFixed(2);
+            el = document.getElementById('profile-billing-stat-total-paid');
+            if (el) el.textContent = Number(stats.total_paid).toFixed(2);
+            el = document.getElementById('profile-billing-stat-remaining');
+            if (el) el.textContent = Number(stats.remaining_amount).toFixed(2);
+        }
+
+        function syncProfilePaymentRemaining() {
+            var select = document.getElementById('profilePaymentInvoiceId');
+            var amountInput = document.getElementById('profilePaymentAmount');
+            var remainingEl = document.getElementById('profilePaymentRemainingValue');
+            if (!select || !select.selectedOptions.length) return;
+            var remaining = parseFloat(select.selectedOptions[0].getAttribute('data-remaining') || '0') || 0;
+            if (remainingEl) remainingEl.textContent = remaining.toFixed(2);
+            if (amountInput && (!amountInput.dataset.userEdited || amountInput.value === '')) {
+                amountInput.value = remaining > 0 ? remaining.toFixed(2) : '';
+            }
+        }
+
+        function openProfileRecordPaymentModal(trigger) {
+            var modalEl = document.getElementById('profileRecordPaymentModal');
+            if (!modalEl || typeof window.bootstrap === 'undefined') return;
+
+            var invoiceSelect = document.getElementById('profilePaymentInvoiceId');
+            var amountInput = document.getElementById('profilePaymentAmount');
+            if (!invoiceSelect) return;
+
+            if (trigger && trigger.getAttribute('data-invoice-id')) {
+                invoiceSelect.value = String(trigger.getAttribute('data-invoice-id'));
+            }
+
+            if (amountInput) {
+                amountInput.dataset.userEdited = '';
+                if (trigger && trigger.getAttribute('data-remaining')) {
+                    amountInput.value = parseFloat(trigger.getAttribute('data-remaining')).toFixed(2);
+                }
+            }
+
+            syncProfilePaymentRemaining();
+
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+
+        document.addEventListener('click', function (e) {
+            var payBtn = e.target.closest('.js-profile-record-payment');
+            if (payBtn) {
+                e.preventDefault();
+                openProfileRecordPaymentModal(payBtn);
+            }
+        });
+
+        var profilePaymentInvoiceSelect = document.getElementById('profilePaymentInvoiceId');
+        if (profilePaymentInvoiceSelect) {
+            profilePaymentInvoiceSelect.addEventListener('change', function () {
+                var amountInput = document.getElementById('profilePaymentAmount');
+                if (amountInput) amountInput.dataset.userEdited = '';
+                syncProfilePaymentRemaining();
+            });
+        }
+
+        var profilePaymentAmount = document.getElementById('profilePaymentAmount');
+        if (profilePaymentAmount) {
+            profilePaymentAmount.addEventListener('input', function () {
+                profilePaymentAmount.dataset.userEdited = '1';
+            });
+        }
+
+        var profileRecordPaymentForm = document.getElementById('profileRecordPaymentForm');
+        if (profileRecordPaymentForm) {
+            profileRecordPaymentForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var submitBtn = document.getElementById('profileRecordPaymentSubmit');
+                var feedbackEl = document.getElementById('profile-billing-feedback');
+                var invoiceSelect = document.getElementById('profilePaymentInvoiceId');
+                var amountInput = document.getElementById('profilePaymentAmount');
+
+                if (!invoiceSelect || !invoiceSelect.value) {
+                    showFeedback(feedbackEl, 'يرجى اختيار فاتورة.', 'error');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('invoice_id', invoiceSelect.value);
+                formData.append('amount', amountInput ? amountInput.value : '');
+                formData.append('payment_method_id', document.getElementById('profilePaymentMethodId').value);
+                formData.append('payment_date', document.getElementById('profilePaymentDate').value);
+
+                var transactionId = document.getElementById('profilePaymentTransactionId');
+                if (transactionId && transactionId.value.trim()) {
+                    formData.append('transaction_id', transactionId.value.trim());
+                }
+                var notes = document.getElementById('profilePaymentNotes');
+                if (notes && notes.value.trim()) {
+                    formData.append('notes', notes.value.trim());
+                }
+
+                setButtonLoading(submitBtn, true);
+                postProfileAction('{{ route('users.record-payment', $user->id) }}', formData, feedbackEl, function (data) {
+                    updateBillingStats(data.billing_stats);
+
+                    if (data.invoice_id && data.invoice_row_html) {
+                        var existingRow = document.getElementById('profile-invoice-row-' + data.invoice_id);
+                        if (existingRow) {
+                            existingRow.outerHTML = data.invoice_row_html;
+                        }
+                    }
+
+                    if (data.payment_row_html) {
+                        var paymentsTbody = document.getElementById('profile-payments-tbody');
+                        var paymentsEmpty = document.getElementById('profile-payments-empty');
+                        var paymentsWrap = document.getElementById('profile-payments-table-wrap');
+                        if (paymentsTbody) {
+                            paymentsTbody.insertAdjacentHTML('afterbegin', data.payment_row_html);
+                        }
+                        if (paymentsEmpty) paymentsEmpty.classList.add('d-none');
+                        if (paymentsWrap) paymentsWrap.classList.remove('d-none');
+                    }
+
+                    var modalEl = document.getElementById('profileRecordPaymentModal');
+                    if (modalEl) {
+                        var modal = window.bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+
+                    if (invoiceSelect && data.invoice_id) {
+                        var paidOption = invoiceSelect.querySelector('option[value="' + data.invoice_id + '"]');
+                        if (paidOption && parseFloat(paidOption.getAttribute('data-remaining') || '0') <= parseFloat(amountInput ? amountInput.value : '0')) {
+                            paidOption.remove();
+                        } else if (paidOption && data.billing_stats) {
+                            var newRemaining = parseFloat(paidOption.getAttribute('data-remaining') || '0') - parseFloat(amountInput ? amountInput.value : '0');
+                            if (newRemaining > 0) {
+                                paidOption.setAttribute('data-remaining', newRemaining.toFixed(2));
+                                paidOption.textContent = paidOption.getAttribute('data-invoice-number') + ' — المتبقي: ' + newRemaining.toFixed(2);
+                            } else {
+                                paidOption.remove();
+                            }
+                        }
+                        if (invoiceSelect.options.length <= 1) {
+                            var openBtn = document.getElementById('profile-open-payment-modal-btn');
+                            if (openBtn) openBtn.classList.add('d-none');
+                        }
+                    }
+
+                    if (amountInput) amountInput.value = '';
+                    if (transactionId) transactionId.value = '';
+                    if (notes) notes.value = '';
+                }).finally(function () {
+                    setButtonLoading(submitBtn, false);
+                });
+            });
+        }
+    })();
+</script>
+@endpush

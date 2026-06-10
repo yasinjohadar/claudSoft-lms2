@@ -192,21 +192,22 @@
                     <div class="card-body text-center">
                         @php
                             $photoPath = $student->photo ?? null;
-                            $photoUrl = $photoPath ? student_profile_photo_url($student, $photoPath) : '';
+                            $photoUrl = student_profile_photo_url($student);
+                            $usesLogoAvatar = empty($photoPath);
                         @endphp
 
                         <div class="position-relative d-inline-block mb-3">
                             <div id="photo-preview-container" class="position-relative">
-                                @if($photoUrl)
-                                    <img id="profile-photo-preview" src="{{ $photoUrl }}" class="rounded-circle" width="150" height="150" style="object-fit: cover; border: 3px solid var(--(--clr-primary, #0d6efd));">
-                                @else
-                                    <div id="profile-photo-placeholder" class="bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border: 3px dashed #ccc;">
-                                        <i class="fa fa-camera fa-3x text-muted"></i>
-                                    </div>
-                                @endif
+                                <img id="profile-photo-preview"
+                                     src="{{ $photoUrl }}"
+                                     class="rounded-circle {{ $usesLogoAvatar ? 'student-avatar--logo' : '' }}"
+                                     width="150"
+                                     height="150"
+                                     style="object-fit: {{ $usesLogoAvatar ? 'contain' : 'cover' }}; border: 3px solid var(--primary-color, #0d6efd);"
+                                     onerror="this.onerror=null;this.src='{{ student_default_avatar_url() }}';this.classList.add('student-avatar--logo');this.style.objectFit='contain';">
                             </div>
 
-                            @if($photoUrl)
+                            @if($photoPath)
                                 <form action="{{ route('student.profile.delete-photo') }}" method="POST" class="position-absolute top-0 start-100 translate-middle" style="margin-top: 5px; margin-right: -10px;">
                                     @csrf
                                     @method('DELETE')
