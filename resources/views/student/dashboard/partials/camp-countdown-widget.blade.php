@@ -4,9 +4,18 @@
 
     $statusClass = 'primary';
     $statusLabel = 'قادم';
-    if ($camp->isOngoing()) {
+    $countdownLabel = 'يوم متبقي';
+
+    if ($camp->hasEnded()) {
+        $statusClass = 'secondary';
+        $statusLabel = 'منتهي';
+        $countdownLabel = 'انتهى';
+    } elseif ($camp->isOngoing()) {
         $statusClass = 'success';
         $statusLabel = 'جاري';
+        $countdownLabel = $daysRemaining === 0 ? 'ينتهي اليوم' : 'يوم متبقي';
+    } elseif ($daysRemaining === 0) {
+        $countdownLabel = 'ينتهي اليوم';
     }
 
     $campEnrollmentDate = $enrollment->enrollment_date ?? $enrollment->created_at;
@@ -37,13 +46,7 @@
                     <span class="student-camp-widget__countdown-value"
                           data-countup="{{ $daysRemaining }}">0</span>
                 </div>
-                <span class="student-camp-widget__countdown-label">
-                    @if ($daysRemaining === 0)
-                        ينتهي اليوم
-                    @else
-                        يوم متبقي
-                    @endif
-                </span>
+                <span class="student-camp-widget__countdown-label">{{ $countdownLabel }}</span>
             </div>
 
             <ul class="student-camp-widget__dates list-unstyled mb-0">

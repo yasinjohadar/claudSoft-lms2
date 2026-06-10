@@ -49,20 +49,18 @@ class StudentDashboardController extends Controller
         $activeCampEnrollments = CampEnrollment::query()
             ->where('student_id', $student->id)
             ->approved()
-            ->whereHas('camp', fn ($q) => $q->whereDate('end_date', '>=', now()->toDateString()))
+            ->whereHas('camp')
             ->with('camp')
             ->get()
-            ->sortBy(fn ($enrollment) => $enrollment->camp->end_date)
+            ->sortBy(fn ($enrollment) => [
+                $enrollment->camp->hasEnded() ? 1 : 0,
+                $enrollment->camp->end_date,
+            ])
             ->values();
 
         $platformJoinedAt = $student->created_at;
 
-        $hasApprovedCampEnrollment = CampEnrollment::query()
-            ->where('student_id', $student->id)
-            ->approved()
-            ->exists();
-
-        $accountTier = $hasApprovedCampEnrollment ? 'gold' : 'silver';
+        $accountTier = $activeCampEnrollments->isNotEmpty() ? 'gold' : 'silver';
 
         return view('student.dashboard', compact(
             'questionModuleStats',

@@ -3834,6 +3834,10 @@ button.group-show-action {
     background: linear-gradient(135deg, rgb(var(--success-rgb)) 0%, transparent 55%);
 }
 
+.student-portal .student-dashboard-page .student-camp-widget--secondary::before {
+    background: linear-gradient(135deg, rgb(var(--secondary-rgb)) 0%, transparent 55%);
+}
+
 .student-portal .student-dashboard-page .student-camp-widget:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
@@ -3842,6 +3846,10 @@ button.group-show-action {
 
 .student-portal .student-dashboard-page .student-camp-widget--success:hover {
     border-color: rgba(var(--success-rgb), 0.35);
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--secondary:hover {
+    border-color: rgba(var(--secondary-rgb), 0.35);
 }
 
 [data-theme-mode="dark"] .student-portal .student-dashboard-page .student-camp-widget {
@@ -3925,6 +3933,12 @@ button.group-show-action {
     border-color: rgba(var(--success-rgb), 0.35);
 }
 
+.student-portal .student-dashboard-page .student-camp-widget--secondary .student-camp-widget__countdown-ring {
+    background: rgba(var(--secondary-rgb), 0.1);
+    border-color: rgba(var(--secondary-rgb), 0.3);
+    animation: none;
+}
+
 .student-portal .student-dashboard-page .student-camp-widget__countdown-value {
     font-size: 1.35rem;
     font-weight: 800;
@@ -3935,6 +3949,10 @@ button.group-show-action {
 
 .student-portal .student-dashboard-page .student-camp-widget--success .student-camp-widget__countdown-value {
     color: rgb(var(--success-rgb));
+}
+
+.student-portal .student-dashboard-page .student-camp-widget--secondary .student-camp-widget__countdown-value {
+    color: rgb(var(--secondary-rgb));
 }
 
 .student-portal .student-dashboard-page .student-camp-widget__countdown-label {

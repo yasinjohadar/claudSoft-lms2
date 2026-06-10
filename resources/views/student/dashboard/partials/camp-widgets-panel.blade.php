@@ -6,8 +6,8 @@
                 <i class="fe fe-flag text-success"></i>
             </span>
             <div>
-                <h5 class="card-title mb-1">معسكراتي النشطة</h5>
-                <p class="text-muted fs-12 mb-0">متابعة المعسكرات المسجّل بها والأيام المتبقية</p>
+                <h5 class="card-title mb-1">معسكراتي</h5>
+                <p class="text-muted fs-12 mb-0">متابعة معسكراتك المسجّلة والأيام المتبقية</p>
             </div>
         </div>
     </div>
