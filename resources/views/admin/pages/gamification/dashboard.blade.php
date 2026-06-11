@@ -12,7 +12,12 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <h1 class="page-title fw-semibold fs-18 mb-0">لوحة تحكم الـ Gamification</h1>
-                <div class="ms-md-1 ms-0">
+                <div class="ms-md-1 ms-0 d-flex align-items-center gap-2 flex-wrap">
+                    @include('admin.pages.gamification.partials.recalculate-button', [
+                        'modalId' => 'gamificationDashboardRecalculateModal',
+                        'buttonClass' => 'btn btn-outline-primary btn-sm',
+                        'label' => 'إعادة احتساب النقاط واللوحات',
+                    ])
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
@@ -22,6 +27,19 @@
                 </div>
             </div>
             <!-- Page Header Close -->
+
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fe fe-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fe fe-alert-circle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
             <!-- إحصائيات سريعة -->
             <div class="row">

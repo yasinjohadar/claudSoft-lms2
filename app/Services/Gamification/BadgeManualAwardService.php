@@ -17,8 +17,18 @@ class BadgeManualAwardService
         'single',
         'multiple',
         'group',
+        'multiple_groups',
         'course',
         'course_group',
+    ];
+
+    public const TARGET_TYPE_LABELS = [
+        'single' => 'طالب واحد',
+        'multiple' => 'عدة طلاب',
+        'group' => 'مجموعة كاملة',
+        'multiple_groups' => 'عدة مجموعات',
+        'course' => 'كورس كامل (كل المسجّلين)',
+        'course_group' => 'كورس + مجموعة',
     ];
 
     public function __construct(
@@ -35,6 +45,7 @@ class BadgeManualAwardService
             'single' => $this->resolveSingle($params),
             'multiple' => $this->resolveMultiple($params),
             'group' => $this->resolveGroup($params),
+            'multiple_groups' => $this->resolveMultipleGroups($params),
             'course' => $this->resolveCourse($params),
             'course_group' => $this->resolveCourseGroup($params),
             default => throw ValidationException::withMessages([
@@ -150,6 +161,17 @@ class BadgeManualAwardService
         return User::query()->whereIn('id', $userIds)->get();
     }
 
+    public function targetPayloadFromRequest(array $input): array
+    {
+        return [
+            'user_id' => $input['user_id'] ?? null,
+            'user_ids' => $input['user_ids'] ?? [],
+            'group_id' => $input['group_id'] ?? null,
+            'group_ids' => $input['group_ids'] ?? [],
+            'course_id' => $input['course_id'] ?? null,
+        ];
+    }
+
     protected function resolveGroup(array $params): Collection
     {
         $groupId = (int) ($params['group_id'] ?? 0);
@@ -169,6 +191,34 @@ class BadgeManualAwardService
         }
 
         return $group->students()->orderBy('name')->get();
+    }
+
+    protected function resolveMultipleGroups(array $params): Collection
+    {
+        $groupIds = collect($params['group_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($groupIds === []) {
+            throw ValidationException::withMessages([
+                'group_ids' => 'يرجى اختيار مجموعة واحدة على الأقل.',
+            ]);
+        }
+
+        $students = collect();
+
+        foreach ($groupIds as $groupId) {
+            $group = CourseGroup::query()->find($groupId);
+
+            if ($group) {
+                $students = $students->merge($group->students()->orderBy('name')->get());
+            }
+        }
+
+        return $students;
     }
 
     protected function resolveCourse(array $params): Collection

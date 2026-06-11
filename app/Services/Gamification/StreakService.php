@@ -122,36 +122,28 @@ class StreakService
     protected function awardStreakRewards(User $user, int $streak): void
     {
         $pointsService = app(PointsService::class);
+        $milestones = config('gamification.points.streak_milestones', []);
 
-        // مكافآت السلاسل المميزة
-        $milestones = [
-            7 => ['points' => 100, 'description' => 'إنجاز: أسبوع كامل من النشاط!'],
-            14 => ['points' => 250, 'description' => 'إنجاز: أسبوعين متتاليين!'],
-            30 => ['points' => 500, 'description' => 'إنجاز: شهر كامل من النشاط!'],
-            60 => ['points' => 1000, 'description' => 'إنجاز: شهرين متتاليين!'],
-            90 => ['points' => 2000, 'description' => 'إنجاز: 3 أشهر متتالية!'],
-            180 => ['points' => 5000, 'description' => 'إنجاز: نصف سنة من النشاط المستمر!'],
-            365 => ['points' => 10000, 'description' => 'إنجاز أسطوري: سنة كاملة!'],
-        ];
-
-        if (isset($milestones[$streak])) {
-            $reward = $milestones[$streak];
-
-            $pointsService->awardPoints(
-                $user,
-                $reward['points'],
-                'streak_milestone',
-                $reward['description'],
-                'App\Models\DailyStreak',
-                null
-            );
-
-            Log::info("Streak milestone reached", [
-                'user_id' => $user->id,
-                'streak' => $streak,
-                'points_awarded' => $reward['points'],
-            ]);
+        if (! isset($milestones[$streak]) || ! is_array($milestones[$streak])) {
+            return;
         }
+
+        $reward = $milestones[$streak];
+
+        $pointsService->awardPoints(
+            $user,
+            (int) ($reward['points'] ?? 0),
+            'streak_milestone',
+            $reward['description'] ?? "إنجاز: {$streak} يوم متتالي!",
+            DailyStreak::class,
+            $streak
+        );
+
+        Log::info("Streak milestone reached", [
+            'user_id' => $user->id,
+            'streak' => $streak,
+            'points_awarded' => $reward['points'] ?? 0,
+        ]);
     }
 
     /**

@@ -13,12 +13,10 @@ use Carbon\Carbon;
 
 class ShopService
 {
-    protected InventoryService $inventoryService;
-
-    public function __construct(InventoryService $inventoryService)
-    {
-        $this->inventoryService = $inventoryService;
-    }
+    public function __construct(
+        protected InventoryService $inventoryService,
+        protected PointsService $pointsService
+    ) {}
 
     /**
      * شراء عنصر من المتجر
@@ -64,8 +62,22 @@ class ShopService
                     return null;
                 }
 
-                // خصم المبلغ من رصيد المستخدم
-                $this->deductBalance($user, $finalPrice, $paymentMethod);
+                if ($paymentMethod === 'points') {
+                    $deducted = $this->pointsService->deductPoints(
+                        $user,
+                        $finalPrice,
+                        'shop_purchase',
+                        'شراء من المتجر: '.$item->name,
+                        ShopItem::class,
+                        $item->id
+                    );
+
+                    if (! $deducted) {
+                        return null;
+                    }
+                } else {
+                    $this->deductBalance($user, $finalPrice, $paymentMethod);
+                }
 
                 // إنشاء سجل الشراء
                 $purchase = UserPurchase::create([
@@ -94,10 +106,8 @@ class ShopService
                 $item->increment('total_purchases');
                 $item->update(['last_purchased_at' => now()]);
 
-                // تحديث إحصائيات المستخدم
-                $user->stats->increment('total_shop_purchases');
-                $user->stats->increment('total_spent_points', $paymentMethod === 'points' ? $finalPrice : 0);
-                $user->stats->increment('total_spent_gems', $paymentMethod === 'gems' ? $finalPrice : 0);
+                // تحديث إحصائيات المستخدم (spent_points يُحدَّث عبر PointsService عند الدفع بالنقاط)
+                $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
                 Log::info('Item purchased successfully', [
                     'user_id' => $user->id,

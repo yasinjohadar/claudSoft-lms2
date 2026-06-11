@@ -26,14 +26,41 @@ class LeaderboardController extends Controller
         $leaderboards = Leaderboard::where('is_active', true)
             ->where('is_visible', true)
             ->orderBy('sort_order')
+            ->withCount('entries')
             ->get();
 
-        // الحصول على ترتيب المستخدم في كل لوحة
+        $topByBoard = \App\Models\LeaderboardEntry::query()
+            ->whereIn('leaderboard_id', $leaderboards->pluck('id'))
+            ->where('rank', '<=', 3)
+            ->with('user:id,name,email,avatar,name_ar,is_profile_public')
+            ->orderBy('leaderboard_id')
+            ->orderBy('rank')
+            ->get()
+            ->groupBy('leaderboard_id');
+
+        $rankedCount = 0;
+        $bestRank = null;
+
         foreach ($leaderboards as $leaderboard) {
             $leaderboard->user_rank = $this->leaderboardService->getUserRank($user, $leaderboard);
+            $leaderboard->top_three = $topByBoard->get($leaderboard->id, collect());
+
+            if ($leaderboard->user_rank) {
+                $rankedCount++;
+                $bestRank = $bestRank === null
+                    ? $leaderboard->user_rank['rank']
+                    : min($bestRank, $leaderboard->user_rank['rank']);
+            }
         }
 
-        return view('student.pages.gamification.leaderboard', compact('leaderboards'));
+        $indexStats = [
+            'total_boards' => $leaderboards->count(),
+            'ranked_boards' => $rankedCount,
+            'best_rank' => $bestRank,
+            'total_participants' => $leaderboards->sum('entries_count'),
+        ];
+
+        return view('student.pages.gamification.leaderboards.index', compact('leaderboards', 'indexStats', 'user'));
     }
 
     /**
@@ -60,12 +87,17 @@ class LeaderboardController extends Controller
         // إحصائيات
         $stats = $this->leaderboardService->getLeaderboardStats($leaderboard);
 
+        $user = auth()->user();
+        $topThree = $entries->take(3);
+
         return view('student.pages.gamification.leaderboards.show', compact(
             'leaderboard',
             'entries',
             'userRank',
             'surroundingUsers',
-            'stats'
+            'stats',
+            'topThree',
+            'user'
         ));
     }
 

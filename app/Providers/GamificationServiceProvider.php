@@ -21,6 +21,11 @@ use App\Services\Gamification\CompetitionService;
 use App\Services\Gamification\SocialActivityService;
 use App\Services\Gamification\NotificationService;
 use App\Services\Gamification\AnalyticsService;
+use App\Services\Gamification\LeaderboardCatalog;
+use App\Services\Gamification\PointEarningCatalog;
+use App\Services\Gamification\PointsBackfillService;
+use App\Services\Gamification\PointsBulkGrantService;
+use App\Services\Gamification\ReferralService;
 
 // Events
 use App\Events\Gamification\BadgeEarned;
@@ -64,6 +69,11 @@ class GamificationServiceProvider extends ServiceProvider
         $this->app->singleton(SocialActivityService::class);
         $this->app->singleton(NotificationService::class);
         $this->app->singleton(AnalyticsService::class);
+        $this->app->singleton(PointEarningCatalog::class);
+        $this->app->singleton(LeaderboardCatalog::class);
+        $this->app->singleton(ReferralService::class);
+        $this->app->singleton(PointsBackfillService::class);
+        $this->app->singleton(PointsBulkGrantService::class);
     }
 
     /**
@@ -79,8 +89,7 @@ class GamificationServiceProvider extends ServiceProvider
      */
     protected function registerEvents(): void
     {
-        // عند كسب نقاط
-        Event::listen(PointsEarned::class, [
+        $this->listenMany(PointsEarned::class, [
             SendNotificationListener::class,
             CheckBadgesListener::class,
             CheckAchievementsListener::class,
@@ -89,8 +98,7 @@ class GamificationServiceProvider extends ServiceProvider
             UpdateCompetitionListener::class,
         ]);
 
-        // عند كسب XP
-        Event::listen(XPEarned::class, [
+        $this->listenMany(XPEarned::class, [
             CheckBadgesListener::class,
             CheckAchievementsListener::class,
             UpdateLeaderboardListener::class,
@@ -98,44 +106,38 @@ class GamificationServiceProvider extends ServiceProvider
             UpdateCompetitionListener::class,
         ]);
 
-        // عند الترقية لمستوى جديد
-        Event::listen(LevelUp::class, [
+        $this->listenMany(LevelUp::class, [
             SendNotificationListener::class,
             CheckBadgesListener::class,
             CheckAchievementsListener::class,
             SocialActivityListener::class,
         ]);
 
-        // عند الحصول على شارة
-        Event::listen(BadgeEarned::class, [
+        $this->listenMany(BadgeEarned::class, [
             SendNotificationListener::class,
             CheckBadgesListener::class,
             CheckAchievementsListener::class,
             SocialActivityListener::class,
         ]);
 
-        // عند إكمال إنجاز
-        Event::listen(AchievementUnlocked::class, [
+        $this->listenMany(AchievementUnlocked::class, [
             SendNotificationListener::class,
             SocialActivityListener::class,
         ]);
 
-        // عند تحديث السلسلة
-        Event::listen(StreakUpdated::class, [
+        $this->listenMany(StreakUpdated::class, [
             SendNotificationListener::class,
             CheckBadgesListener::class,
             CheckAchievementsListener::class,
             UpdateChallengeProgressListener::class,
         ]);
 
-        // عند إكمال تحدي
-        Event::listen(ChallengeCompleted::class, [
+        $this->listenMany(ChallengeCompleted::class, [
             SendNotificationListener::class,
             SocialActivityListener::class,
         ]);
 
-        // عند تغيير الترتيب في لوحة المتصدرين
-        Event::listen(LeaderboardRankChanged::class, [
+        $this->listenMany(LeaderboardRankChanged::class, [
             SendNotificationListener::class,
         ]);
 
@@ -146,5 +148,17 @@ class GamificationServiceProvider extends ServiceProvider
         Event::listen(\App\Events\CourseCompleted::class, \App\Listeners\Gamification\CourseCompletedListener::class);
         Event::listen(\App\Events\VideoWatched::class, \App\Listeners\Gamification\VideoWatchedListener::class);
         Event::listen(\Illuminate\Auth\Events\Login::class, \App\Listeners\Gamification\UserLoginListener::class);
+        Event::listen(\Illuminate\Auth\Events\Registered::class, \App\Listeners\Gamification\AwardReferralPointsListener::class);
+    }
+
+    /**
+     * @param  class-string  $event
+     * @param  array<int, class-string>  $listeners
+     */
+    protected function listenMany(string $event, array $listeners): void
+    {
+        foreach ($listeners as $listener) {
+            Event::listen($event, $listener);
+        }
     }
 }

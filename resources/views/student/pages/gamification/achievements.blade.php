@@ -5,76 +5,138 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <h4 class="mb-0">إنجازاتي</h4>
-            </div>
+<div class="main-content app-content student-achievements-page">
+    <div class="container-fluid">
 
-            <!-- الإنجازات المفتوحة -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-trophy me-2 text-warning"></i>الإنجازات المفتوحة ({{ count($unlockedAchievements ?? []) }})</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        @forelse($unlockedAchievements ?? [] as $achievement)
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="card border-0 shadow-sm h-100">
-                                    <div class="card-body text-center">
-                                        <div class="fs-1 mb-2">{{ $achievement->icon ?? '🏆' }}</div>
-                                        <h5 class="fw-bold">{{ $achievement->name }}</h5>
-                                        <span class="badge bg-{{ $achievement->tier == 'diamond' ? 'info' : ($achievement->tier == 'gold' ? 'warning' : ($achievement->tier == 'silver' ? 'secondary' : 'danger')) }} mb-2">
-                                            {{ __('gamification.tier.'.$achievement->tier) }}
-                                        </span>
-                                        <p class="small text-muted mb-2">{{ $achievement->description }}</p>
-                                        <span class="badge bg-success">+{{ $achievement->points_reward }} نقطة</span>
-                                        <p class="small text-muted mt-2 mb-0">
-                                            <i class="fas fa-unlock me-1"></i>
-                                            {{ $achievement->pivot->unlocked_at->format('Y/m/d') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <p class="text-muted text-center py-4">لم تفتح إنجازات بعد</p>
-                            </div>
-                        @endforelse
+        @include('student.components.alerts')
+
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div>
+                <h4 class="student-my-courses-welcome__title mb-1">إنجازاتي</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
+                        <li class="breadcrumb-item active">إنجازاتي</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="mt-3 mt-md-0">
+                <a href="{{ route('gamification.dashboard') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card custom-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <span class="avatar avatar-md bg-success-transparent mb-2">
+                            <i class="fe fe-award text-success fs-20"></i>
+                        </span>
+                        <h3 class="mb-1">{{ $stats['completed'] ?? 0 }}</h3>
+                        <p class="text-muted mb-0">إنجازات مكتملة</p>
                     </div>
                 </div>
             </div>
-
-            <!-- الإنجازات المقفلة -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-lock me-2 text-muted"></i>الإنجازات المقفلة</h5>
+            <div class="col-md-4">
+                <div class="card custom-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <span class="avatar avatar-md bg-primary-transparent mb-2">
+                            <i class="fe fe-trending-up text-primary fs-20"></i>
+                        </span>
+                        <h3 class="mb-1">{{ $stats['in_progress'] ?? 0 }}</h3>
+                        <p class="text-muted mb-0">قيد التقدم</p>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        @forelse($lockedAchievements ?? [] as $achievement)
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="card border-0 shadow-sm h-100" style="opacity: 0.6;">
-                                    <div class="card-body text-center">
-                                        <div class="fs-1 mb-2" style="filter: grayscale(100%);">{{ $achievement->icon ?? '🏆' }}</div>
-                                        <h5 class="fw-bold">{{ $achievement->name }}</h5>
-                                        <span class="badge bg-secondary mb-2">{{ __('gamification.tier.'.$achievement->tier) }}</span>
-                                        <p class="small text-muted mb-2">{{ $achievement->description }}</p>
-                                        <div class="progress mb-2" style="height: 6px;">
-                                            <div class="progress-bar" style="width: {{ $achievement->progress ?? 0 }}%;"></div>
-                                        </div>
-                                        <small class="text-muted">{{ $achievement->current ?? 0 }}/{{ $achievement->requirement_value }}</small>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <p class="text-muted text-center py-4">فتحت جميع الإنجازات!</p>
-                            </div>
-                        @endforelse
+            </div>
+            <div class="col-md-4">
+                <div class="card custom-card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <span class="avatar avatar-md bg-warning-transparent mb-2">
+                            <i class="fe fe-percent text-warning fs-20"></i>
+                        </span>
+                        <h3 class="mb-1">{{ $stats['completion_rate'] ?? 0 }}%</h3>
+                        <p class="text-muted mb-0">نسبة الإكمال</p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="card custom-card student-quizzes-panel mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <span class="avatar avatar-sm bg-success-transparent">
+                        <i class="fe fe-check-circle text-success"></i>
+                    </span>
+                    <h6 class="card-title mb-0">الإنجازات المكتملة ({{ $completedAchievements->count() }})</h6>
+                </div>
+
+                @if($completedAchievements->isNotEmpty())
+                    <div class="row g-4">
+                        @foreach($completedAchievements as $userAchievement)
+                            @php $achievement = $userAchievement->achievement; @endphp
+                            @include('student.pages.gamification.partials.achievement-card', [
+                                'achievement' => $achievement,
+                                'userAchievement' => $userAchievement,
+                                'isCompleted' => true,
+                            ])
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-muted text-center py-4 mb-0">لم تكمل أي إنجاز بعد. استمر في التعلم!</p>
+                @endif
+            </div>
+        </div>
+
+        @if($inProgressAchievements->isNotEmpty())
+            <div class="card custom-card student-quizzes-panel mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <span class="avatar avatar-sm bg-primary-transparent">
+                            <i class="fe fe-loader text-primary"></i>
+                        </span>
+                        <h6 class="card-title mb-0">قيد التقدم ({{ $inProgressAchievements->count() }})</h6>
+                    </div>
+                    <div class="row g-4">
+                        @foreach($inProgressAchievements as $userAchievement)
+                            @php $achievement = $userAchievement->achievement; @endphp
+                            @include('student.pages.gamification.partials.achievement-card', [
+                                'achievement' => $achievement,
+                                'userAchievement' => $userAchievement,
+                                'isCompleted' => false,
+                            ])
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if($notStartedAchievements->isNotEmpty())
+            <div class="card custom-card student-quizzes-panel">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <span class="avatar avatar-sm bg-secondary-transparent">
+                            <i class="fe fe-lock text-muted"></i>
+                        </span>
+                        <h6 class="card-title mb-0">لم تبدأ بعد ({{ $notStartedAchievements->count() }})</h6>
+                    </div>
+                    <div class="row g-4">
+                        @foreach($notStartedAchievements as $userAchievement)
+                            @php $achievement = $userAchievement->achievement; @endphp
+                            @include('student.pages.gamification.partials.achievement-card', [
+                                'achievement' => $achievement,
+                                'userAchievement' => $userAchievement,
+                                'isCompleted' => false,
+                                'isLocked' => true,
+                            ])
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
     </div>
+</div>
 @stop

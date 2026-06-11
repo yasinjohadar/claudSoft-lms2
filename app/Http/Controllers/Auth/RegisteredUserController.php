@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Events\N8nWebhookEvent;
+use App\Services\Gamification\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,12 +20,16 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View|RedirectResponse
+    public function create(Request $request): View|RedirectResponse
     {
         // التحقق من تفعيل التسجيل العام
         if (!SiteSetting::isPublicRegistrationEnabled()) {
             return redirect()->route('login')
                 ->with('error', 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة أو استخدام حساب موجود.');
+        }
+
+        if ($request->filled('ref')) {
+            session(['referral_code' => $request->query('ref')]);
         }
 
         return view('auth.register');
@@ -54,6 +59,13 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        $referralService = app(ReferralService::class);
+        $referralService->attachReferrer(
+            $user,
+            $request->input('ref') ?? session('referral_code')
+        );
+        session()->forget('referral_code');
 
         event(new Registered($user));
 

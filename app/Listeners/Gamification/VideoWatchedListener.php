@@ -12,46 +12,42 @@ class VideoWatchedListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    protected GamificationService $gamificationService;
+    public function __construct(
+        protected GamificationService $gamificationService
+    ) {}
 
-    /**
-     * Create the event listener.
-     */
-    public function __construct(GamificationService $gamificationService)
-    {
-        $this->gamificationService = $gamificationService;
-    }
-
-    /**
-     * Handle the event.
-     */
     public function handle(VideoWatched $event): void
     {
         try {
+            $minPercentage = (int) config('gamification.points.video_watch.min_watch_percentage', 80);
+
+            if ($event->watchPercentage < $minPercentage) {
+                return;
+            }
+
             $result = $this->gamificationService->handleVideoWatch(
                 $event->user,
-                $event->video->id,
-                $event->watchPercentage,
+                $event->module->id,
+                (int) round($event->watchPercentage),
                 [
-                    'video_title' => $event->video->title ?? '',
-                    'duration' => $event->video->duration ?? 0,
-                    'watch_time' => $event->watchTime ?? 0,
+                    'module_title' => $event->module->title ?? '',
+                    'watch_time' => $event->watchedSeconds,
+                    'duration' => $event->totalSeconds,
                 ]
             );
 
-            if ($result['success']) {
-                Log::info("Gamification: Video watch rewarded", [
+            if ($result['success'] ?? false) {
+                Log::info('Gamification: Video watch rewarded', [
                     'user_id' => $event->user->id,
-                    'video_id' => $event->video->id,
+                    'module_id' => $event->module->id,
                     'watch_percentage' => $event->watchPercentage,
-                    'points_awarded' => $result['points_awarded'],
-                    'xp_awarded' => $result['xp_awarded'],
+                    'points_awarded' => $result['points_awarded'] ?? 0,
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error("Gamification: Failed to handle video watch", [
+            Log::error('Gamification: Failed to handle video watch', [
                 'user_id' => $event->user->id,
-                'video_id' => $event->video->id,
+                'module_id' => $event->module->id,
                 'error' => $e->getMessage(),
             ]);
         }

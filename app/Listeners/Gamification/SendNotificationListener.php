@@ -81,6 +81,14 @@ class SendNotificationListener
                 $this->notificationService->notifyCompetitionWon($user, $event->competition);
             }
 
+            if ($this->isLeaderboardRankEvent($eventClass) && isset($event->leaderboard, $event->newRank)) {
+                $this->notificationService->notifyLeaderboardRank(
+                    $user,
+                    $event->leaderboard,
+                    $event->newRank
+                );
+            }
+
         } catch (\Exception $e) {
             Log::error('Failed to send notification', [
                 'error' => $e->getMessage(),
@@ -140,5 +148,10 @@ class SendNotificationListener
     protected function isCompetitionWonEvent(string $eventClass): bool
     {
         return str_contains($eventClass, 'CompetitionWon');
+    }
+
+    protected function isLeaderboardRankEvent(string $eventClass): bool
+    {
+        return str_contains($eventClass, 'LeaderboardRankChanged');
     }
 }

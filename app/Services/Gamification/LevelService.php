@@ -3,6 +3,7 @@
 namespace App\Services\Gamification;
 
 use App\Events\Gamification\LevelUp;
+use App\Events\Gamification\XPEarned;
 use App\Models\User;
 use App\Models\UserStat;
 use App\Models\ExperienceLevel;
@@ -45,6 +46,8 @@ class LevelService
                 if ($newLevel > $oldLevel) {
                     $this->handleLevelUp($user, $oldLevel, $newLevel);
                 }
+
+                XPEarned::dispatch($user, $xp, $source);
 
                 Log::info("XP Awarded", [
                     'user_id' => $user->id,

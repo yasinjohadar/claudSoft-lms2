@@ -29,7 +29,7 @@ class LeaderboardApiController extends Controller
                     'name' => (string) $leaderboard->name,
                     'description' => $leaderboard->description,
                     'type' => $leaderboard->type,
-                    'scope' => $leaderboard->time_scope,
+                    'scope' => $leaderboard->period,
                     'user_rank' => $this->leaderboardService->getUserRank($user, $leaderboard),
                 ];
             })

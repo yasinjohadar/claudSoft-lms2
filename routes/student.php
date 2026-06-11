@@ -104,6 +104,7 @@ Route::prefix('student')
             Route::get('/{id}/preview', [CourseController::class, 'show'])->name('show'); // Preview course before enrollment
             Route::post('/{id}/enroll', [CourseController::class, 'enroll'])->name('enroll'); // Enroll in course
             Route::delete('/{id}/unenroll', [CourseController::class, 'unenroll'])->name('unenroll'); // Unenroll from course
+            Route::post('/{course}/share', [CourseController::class, 'share'])->name('share');
         });
 
         // General (external) resources library — نطاق عام

@@ -557,6 +557,7 @@
         <!-- /app-header -->
 
         @php
+        if (! function_exists('getNotificationIconForHeader')) {
         function getNotificationIconForHeader($type) {
             $icons = [
                 'achievement_unlocked' => '<i class="fas fa-trophy text-warning fa-lg"></i>',
@@ -578,5 +579,6 @@
             ];
 
             return $icons[$type] ?? $icons['default'];
+        }
         }
         @endphp

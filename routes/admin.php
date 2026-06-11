@@ -412,11 +412,14 @@ Route::prefix('admin')
             // Dashboard
             Route::get('/', [GamificationDashboardController::class, 'index'])->name('dashboard');
             Route::get('/analytics', [GamificationDashboardController::class, 'analytics'])->name('analytics');
+            Route::post('/recalculate-all', [GamificationDashboardController::class, 'recalculateAll'])->name('recalculate-all');
 
             // Points Management
             Route::prefix('points')->name('points.')->group(function () {
                 Route::get('/', [AdminPointsController::class, 'index'])->name('index');
                 Route::get('/create', [AdminPointsController::class, 'create'])->name('create');
+                Route::get('/search-students', [AdminPointsController::class, 'searchStudents'])->name('search-students');
+                Route::post('/preview-recipients', [AdminPointsController::class, 'previewRecipients'])->name('preview-recipients');
                 Route::post('/', [AdminPointsController::class, 'store'])->name('store');
                 Route::get('/user/{user}', [AdminPointsController::class, 'userTransactions'])->name('user-transactions');
                 Route::get('/report', [AdminPointsController::class, 'report'])->name('report');
@@ -460,12 +463,13 @@ Route::prefix('admin')
                 Route::get('/', [AdminAchievementController::class, 'index'])->name('index');
                 Route::get('/create', [AdminAchievementController::class, 'create'])->name('create');
                 Route::post('/', [AdminAchievementController::class, 'store'])->name('store');
+                Route::post('/recalculate-all', [AdminAchievementController::class, 'recalculateAll'])->name('recalculate-all');
+                Route::get('/statistics/overview', [AdminAchievementController::class, 'statistics'])->name('statistics');
                 Route::get('/{achievement}', [AdminAchievementController::class, 'show'])->name('show');
                 Route::get('/{achievement}/edit', [AdminAchievementController::class, 'edit'])->name('edit');
                 Route::put('/{achievement}', [AdminAchievementController::class, 'update'])->name('update');
                 Route::delete('/{achievement}', [AdminAchievementController::class, 'destroy'])->name('destroy');
                 Route::post('/{achievement}/toggle-active', [AdminAchievementController::class, 'toggleActive'])->name('toggle-active');
-                Route::get('/statistics/overview', [AdminAchievementController::class, 'statistics'])->name('statistics');
             });
 
             // Leaderboards Management

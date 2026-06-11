@@ -49,6 +49,8 @@ class User extends Authenticatable
         'city', // المدينة
         'notification_preferences',
         'email_preferences',
+        'referral_code',
+        'referred_by_user_id',
     ];
 
     /**

@@ -3,53 +3,56 @@
 namespace App\Http\Controllers\Admin\Gamification;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseGroup;
+use App\Models\PointsTransaction;
 use App\Models\User;
-use App\Models\Gamification\PointTransaction as PointsTransaction;
-use App\Services\Gamification\PointsService;
+use App\Services\Gamification\BadgeManualAwardService;
 use App\Services\Gamification\GamificationService;
+use App\Services\Gamification\PointEarningCatalog;
+use App\Services\Gamification\PointsBulkGrantService;
+use App\Services\Gamification\PointsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PointsController extends Controller
 {
-    protected PointsService $pointsService;
-    protected GamificationService $gamificationService;
-
     public function __construct(
-        PointsService $pointsService,
-        GamificationService $gamificationService
-    ) {
-        $this->pointsService = $pointsService;
-        $this->gamificationService = $gamificationService;
-    }
+        protected PointsService $pointsService,
+        protected GamificationService $gamificationService,
+        protected PointsBulkGrantService $bulkGrantService,
+        protected BadgeManualAwardService $targetService,
+        protected PointEarningCatalog $earningCatalog
+    ) {}
 
-    /**
-     * عرض قائمة معاملات النقاط
-     */
     public function index(Request $request)
     {
-        $query = PointsTransaction::with(['user:id,name,email']);
+        $query = PointsTransaction::with(['user:id,name,email,name_ar', 'admin:id,name']);
 
-        // فلترة حسب المستخدم
+        if ($request->filled('q')) {
+            $term = trim((string) $request->q);
+            $query->whereHas('user', function ($userQuery) use ($term) {
+                $userQuery->where('name', 'like', "%{$term}%")
+                    ->orWhere('name_ar', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%");
+            });
+        }
+
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        // فلترة حسب المصدر
         if ($request->filled('source')) {
             $query->where('source', $request->source);
         }
 
-        // فلترة حسب النوع (ربح/صرف)
         if ($request->filled('type')) {
-            if ($request->type === 'earned') {
-                $query->where('points', '>', 0);
-            } elseif ($request->type === 'spent') {
-                $query->where('points', '<', 0);
-            }
+            $query->where('type', $request->type);
         }
 
-        // فلترة حسب التاريخ
         if ($request->filled('from_date')) {
             $query->whereDate('created_at', '>=', $request->from_date);
         }
@@ -62,20 +65,18 @@ class PointsController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        // إحصائيات
         $stats = [
             'total_transactions' => PointsTransaction::count(),
-            'total_points_awarded' => PointsTransaction::where('points', '>', 0)->sum('points'),
-            'total_points_spent' => abs(PointsTransaction::where('points', '<', 0)->sum('points')),
+            'total_points_awarded' => (int) PointsTransaction::where('points', '>', 0)->sum('points'),
+            'total_points_spent' => (int) abs(PointsTransaction::where('points', '<', 0)->sum('points')),
             'today_transactions' => PointsTransaction::whereDate('created_at', today())->count(),
         ];
 
-        return view('admin.pages.gamification.points.index', compact('transactions', 'stats'));
+        $sourceOptions = $this->earningCatalog->getDistinctSourcesForFilter();
+
+        return view('admin.pages.gamification.points.index', compact('transactions', 'stats', 'sourceOptions'));
     }
 
-    /**
-     * عرض معاملات نقاط مستخدم محدد
-     */
     public function userTransactions(User $user)
     {
         $transactions = $user->pointsTransactions()
@@ -92,97 +93,106 @@ class PointsController extends Controller
         return view('admin.pages.gamification.points.user-transactions', compact('user', 'transactions', 'stats'));
     }
 
-    /**
-     * عرض صفحة منح نقاط يدوياً
-     */
     public function create()
     {
-        $users = User::whereHas('roles', function($q) {
-                $q->where('name', 'student');
-            })
+        $courses = Course::query()->orderBy('title')->get(['id', 'title']);
+        $groups = CourseGroup::query()
+            ->with('courses:id')
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name']);
 
-        return view('admin.pages.gamification.points.create', compact('users'));
+        $targetTypes = BadgeManualAwardService::TARGET_TYPE_LABELS;
+
+        return view('admin.pages.gamification.points.create', compact('courses', 'groups', 'targetTypes'));
     }
 
-    /**
-     * منح نقاط يدوياً
-     */
-    public function store(Request $request)
+    public function previewRecipients(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
-            'points' => 'required|integer|min:-100000|max:100000|not_in:0',
-            'reason' => 'required|string|max:500',
-        ], [
-            'user_id.required' => 'يجب اختيار المستخدم',
-            'user_id.exists' => 'المستخدم غير موجود',
-            'points.required' => 'يجب إدخال عدد النقاط',
-            'points.integer' => 'النقاط يجب أن تكون رقم صحيح',
-            'points.not_in' => 'لا يمكن أن تكون النقاط صفر',
-            'reason.required' => 'يجب إدخال السبب',
-            'reason.max' => 'السبب طويل جداً',
-        ]);
+        $validator = $this->validateGrantRequest($request, preview: true);
 
         if ($validator->fails()) {
-            return redirect()
-                ->back()
-                ->withErrors($validator)
-                ->withInput();
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::findOrFail($request->user_id);
-        $points = (int) $request->points;
-        $reason = $request->reason;
-
         try {
-            if ($points > 0) {
-                // منح نقاط
-                $transaction = $this->pointsService->awardBonus(
-                    $user,
-                    $points,
-                    $reason,
-                    auth()->user()
-                );
-            } else {
-                // خصم نقاط
-                $transaction = $this->pointsService->deductPoints(
-                    $user,
-                    abs($points),
-                    'admin_adjustment',
-                    $reason,
-                    null,
-                    null,
-                    auth()->id()
-                );
-            }
+            $preview = $this->bulkGrantService->preview(
+                $request->input('target_type'),
+                $this->targetService->targetPayloadFromRequest($request->all()),
+                $request->input('operation'),
+                (int) $request->input('points', 0)
+            );
 
-            if ($transaction) {
-                return redirect()
-                    ->route('admin.pages.gamification.points.index')
-                    ->with('success', 'تم تعديل نقاط المستخدم بنجاح');
-            } else {
-                return redirect()
-                    ->back()
-                    ->with('error', 'فشل في تعديل النقاط')
-                    ->withInput();
-            }
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage())
-                ->withInput();
+            return response()->json($preview);
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
         }
     }
 
-    /**
-     * حذف معاملة نقاط (إلغاء)
-     */
+    public function searchStudents(Request $request): JsonResponse
+    {
+        $term = trim((string) $request->input('q', ''));
+        $ids = collect($request->input('ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values();
+
+        $query = User::query()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'student'));
+
+        if ($ids->isNotEmpty()) {
+            $query->whereIn('id', $ids);
+        } elseif (mb_strlen($term) >= 2) {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('name_ar', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%");
+            });
+        } else {
+            return response()->json(['results' => []]);
+        }
+
+        $results = $query->orderBy('name')->limit(50)->get(['id', 'name', 'name_ar', 'email'])
+            ->map(fn (User $student) => [
+                'id' => $student->id,
+                'text' => $this->formatStudentLabel($student),
+            ]);
+
+        return response()->json(['results' => $results]);
+    }
+
+    public function store(Request $request)
+    {
+        $validator = $this->validateGrantRequest($request);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            $result = $this->bulkGrantService->execute(
+                $request->input('target_type'),
+                $this->targetService->targetPayloadFromRequest($request->all()),
+                $request->input('operation'),
+                (int) $request->input('points', 0),
+                $request->input('reason'),
+                auth()->user()
+            );
+
+            $message = $this->formatSuccessMessage($result);
+
+            return redirect()
+                ->route('admin.gamification.points.index')
+                ->with('success', $message);
+        } catch (ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage())->withInput();
+        }
+    }
+
     public function destroy(PointsTransaction $transaction)
     {
         try {
-            // لا يمكن حذف المعاملة مباشرة، يجب إنشاء معاملة عكسية
             $user = $transaction->user;
             $reversePoints = -$transaction->points;
 
@@ -199,63 +209,10 @@ class PointsController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
+                ->with('error', 'خطأ: '.$e->getMessage());
         }
     }
 
-    /**
-     * عرض تقرير النقاط
-     */
-    public function report(Request $request)
-    {
-        $period = $request->get('period', 'month'); // day, week, month, year
-
-        $startDate = match($period) {
-            'day' => now()->startOfDay(),
-            'week' => now()->startOfWeek(),
-            'year' => now()->startOfYear(),
-            default => now()->startOfMonth(),
-        };
-
-        // أكثر المصادر منحاً للنقاط
-        $topSources = PointsTransaction::where('points', '>', 0)
-            ->where('created_at', '>=', $startDate)
-            ->selectRaw('source, COUNT(*) as count, SUM(points) as total_points')
-            ->groupBy('source')
-            ->orderByDesc('total_points')
-            ->limit(10)
-            ->get();
-
-        // أكثر المستخدمين كسباً للنقاط
-        $topEarners = User::whereHas('stats')
-            ->with('stats')
-            ->withCount(['pointsTransactions as earned_points' => function ($query) use ($startDate) {
-                $query->where('points', '>', 0)
-                    ->where('created_at', '>=', $startDate)
-                    ->selectRaw('COALESCE(SUM(points), 0)');
-            }])
-            ->orderByDesc('earned_points')
-            ->limit(20)
-            ->get();
-
-        // رسم بياني للنقاط اليومية
-        $dailyPoints = PointsTransaction::where('created_at', '>=', $startDate)
-            ->selectRaw('DATE(created_at) as date, SUM(CASE WHEN points > 0 THEN points ELSE 0 END) as earned')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        return view('admin.pages.gamification.points.report', compact(
-            'topSources',
-            'topEarners',
-            'dailyPoints',
-            'period'
-        ));
-    }
-
-    /**
-     * إعادة حساب نقاط مستخدم
-     */
     public function recalculate(User $user)
     {
         try {
@@ -265,15 +222,105 @@ class PointsController extends Controller
                 return redirect()
                     ->back()
                     ->with('success', 'تم إعادة حساب الإحصائيات بنجاح');
-            } else {
-                return redirect()
-                    ->back()
-                    ->with('error', 'فشل في إعادة الحساب');
             }
+
+            return redirect()->back()->with('error', 'فشل في إعادة حساب الإحصائيات');
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage());
         }
+    }
+
+    public function report(Request $request)
+    {
+        return redirect()->route('admin.gamification.points.index');
+    }
+
+    protected function validateGrantRequest(Request $request, bool $preview = false): \Illuminate\Contracts\Validation\Validator
+    {
+        $rules = [
+            'target_type' => ['required', Rule::in(BadgeManualAwardService::TARGET_TYPES)],
+            'operation' => ['required', Rule::in([
+                PointsBulkGrantService::OPERATION_BONUS,
+                PointsBulkGrantService::OPERATION_DEDUCT,
+                PointsBulkGrantService::OPERATION_BACKFILL,
+            ])],
+            'reason' => ($preview ? 'nullable' : 'required').'|string|max:500',
+        ];
+
+        if ($request->input('operation') !== PointsBulkGrantService::OPERATION_BACKFILL) {
+            $rules['points'] = 'required|integer|not_in:0';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+        $validator->after(function ($validator) use ($request) {
+            $this->appendTargetingErrors($validator, $request);
+        });
+
+        return $validator;
+    }
+
+    protected function appendTargetingErrors($validator, Request $request): void
+    {
+        $targetType = $request->input('target_type');
+
+        if ($targetType === 'single' && ! $request->filled('user_id')) {
+            $validator->errors()->add('user_id', 'يرجى اختيار طالب.');
+        }
+
+        if ($targetType === 'multiple' && (! is_array($request->input('user_ids')) || count($request->input('user_ids', [])) === 0)) {
+            $validator->errors()->add('user_ids', 'يرجى اختيار طالب واحد على الأقل.');
+        }
+
+        if ($targetType === 'group' && ! $request->filled('group_id')) {
+            $validator->errors()->add('group_id', 'يرجى اختيار مجموعة.');
+        }
+
+        if ($targetType === 'multiple_groups' && (! is_array($request->input('group_ids')) || count($request->input('group_ids', [])) === 0)) {
+            $validator->errors()->add('group_ids', 'يرجى اختيار مجموعة واحدة على الأقل.');
+        }
+
+        if ($targetType === 'course' && ! $request->filled('course_id')) {
+            $validator->errors()->add('course_id', 'يرجى اختيار كورس.');
+        }
+
+        if ($targetType === 'course_group') {
+            if (! $request->filled('course_id')) {
+                $validator->errors()->add('course_id', 'يرجى اختيار كورس.');
+            }
+            if (! $request->filled('group_id')) {
+                $validator->errors()->add('group_id', 'يرجى اختيار مجموعة.');
+            }
+        }
+    }
+
+    protected function formatStudentLabel(User $student): string
+    {
+        $label = $student->name;
+
+        if ($student->name_ar) {
+            $label .= ' ('.$student->name_ar.')';
+        }
+
+        return $label.' - '.$student->email;
+    }
+
+    protected function formatSuccessMessage(array $result): string
+    {
+        if (($result['operation'] ?? '') === PointsBulkGrantService::OPERATION_BACKFILL) {
+            return sprintf(
+                'تم التعويض: %d طالب، %d نشاطاً ممنوحاً، %s نقطة إجمالاً.',
+                $result['students_with_awards'] ?? 0,
+                $result['activities_awarded'] ?? 0,
+                number_format($result['points_awarded'] ?? 0)
+            );
+        }
+
+        return sprintf(
+            'تم تنفيذ العملية على %d طالب (%d نجح، %d فشل) — إجمالي %s نقطة.',
+            $result['total_students'] ?? 0,
+            $result['awarded'] ?? 0,
+            $result['failed'] ?? 0,
+            number_format($result['total_points'] ?? 0)
+        );
     }
 }

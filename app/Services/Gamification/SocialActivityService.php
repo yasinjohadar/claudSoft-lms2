@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Log;
 
 class SocialActivityService
 {
+    public function __construct(
+        protected GamificationService $gamificationService
+    ) {}
+
     /**
      * إنشاء نشاط اجتماعي
      */
@@ -67,6 +71,10 @@ class SocialActivityService
 
             $activity->increment('likes_count');
 
+            if ($activity->user_id !== $user->id) {
+                $this->awardCommentLikePoints($activity->user, $activity->id);
+            }
+
             Log::info('Activity liked', [
                 'activity_id' => $activity->id,
                 'user_id' => $user->id,
@@ -122,12 +130,14 @@ class SocialActivityService
     public function commentOnActivity(User $user, SocialActivity $activity, string $content): bool
     {
         try {
-            $activity->comments()->create([
+            $comment = $activity->comments()->create([
                 'user_id' => $user->id,
                 'content' => $content,
             ]);
 
             $activity->increment('comments_count');
+
+            $this->awardCommentPostPoints($user, $comment->id);
 
             Log::info('Comment added to activity', [
                 'activity_id' => $activity->id,
@@ -348,6 +358,48 @@ class SocialActivityService
             'activities_by_type' => $activitiesByType,
             'most_liked_activity' => $mostLikedActivity,
         ];
+    }
+
+    protected function awardCommentPostPoints(User $user, int $commentId): void
+    {
+        $config = config('gamification.points.comment_post', [
+            'points' => 5,
+            'xp' => 2,
+            'description' => 'إضافة تعليق',
+        ]);
+
+        $this->gamificationService->awardReward(
+            $user,
+            (int) $config['points'],
+            (int) ($config['xp'] ?? 0),
+            'comment_post',
+            $config['description'] ?? 'إضافة تعليق',
+            'social_activity_comments',
+            $commentId
+        );
+    }
+
+    protected function awardCommentLikePoints(User $owner, int $activityId): void
+    {
+        if (! $owner) {
+            return;
+        }
+
+        $config = config('gamification.points.comment_like', [
+            'points' => 2,
+            'xp' => 1,
+            'description' => 'الحصول على إعجاب',
+        ]);
+
+        $this->gamificationService->awardReward(
+            $owner,
+            (int) $config['points'],
+            (int) ($config['xp'] ?? 0),
+            'comment_like',
+            $config['description'] ?? 'الحصول على إعجاب',
+            SocialActivity::class,
+            $activityId
+        );
     }
 
     /**

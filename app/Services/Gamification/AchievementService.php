@@ -2,6 +2,7 @@
 
 namespace App\Services\Gamification;
 
+use App\Events\Gamification\AchievementUnlocked;
 use App\Models\User;
 use App\Models\Achievement;
 use App\Models\UserAchievement;
@@ -81,8 +82,8 @@ class AchievementService
                 }
 
                 $newValue = $userAchievement->current_value + $incrementBy;
-                $targetValue = $achievement->target_value;
-                $progressPercentage = min(100, ($newValue / $targetValue) * 100);
+                $targetValue = max(1, (int) $achievement->target_value);
+                $progressPercentage = $this->progressPercentage($newValue, $targetValue);
 
                 $userAchievement->update([
                     'current_value' => $newValue,
@@ -122,7 +123,7 @@ class AchievementService
         ]);
 
         // تحديث إحصائيات المستخدم
-        $stats = $user->stats;
+        $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
         $stats->increment('total_achievements');
 
         // منح الشارة المرتبطة إن وُجدت
@@ -158,8 +159,7 @@ class AchievementService
             'tier' => $achievement->tier,
         ]);
 
-        // إطلاق حدث إتمام الإنجاز
-        // event(new AchievementUnlocked($user, $achievement));
+        event(new AchievementUnlocked($user, $achievement));
     }
 
     /**
@@ -178,6 +178,7 @@ class AchievementService
         try {
             $userAchievement->update([
                 'claimed_at' => now(),
+                'status' => 'claimed',
             ]);
 
             Log::info("Achievement reward claimed", [
@@ -261,11 +262,15 @@ class AchievementService
     public function checkAllAchievements(User $user): array
     {
         $completed = [];
-        $stats = $user->stats;
+        $stats = $user->stats()->firstOrCreate(['user_id' => $user->id]);
 
         $achievements = Achievement::where('is_active', true)->get();
 
         foreach ($achievements as $achievement) {
+            if (empty($achievement->criteria['field'] ?? null) || (int) $achievement->target_value <= 0) {
+                continue;
+            }
+
             $userAchievement = UserAchievement::firstOrCreate(
                 [
                     'user_id' => $user->id,
@@ -280,23 +285,23 @@ class AchievementService
                 ]
             );
 
-            if ($userAchievement->status === 'completed') {
+            if ($userAchievement->status === 'completed' || $userAchievement->status === 'claimed') {
                 continue;
             }
 
-            // الحصول على القيمة الحالية بناءً على معايير الإنجاز
             $currentValue = $this->getCurrentValueForAchievement($stats, $achievement);
+            $targetValue = max(1, (int) $achievement->target_value);
 
             if ($currentValue != $userAchievement->current_value) {
                 $userAchievement->update([
                     'current_value' => $currentValue,
-                    'progress_percentage' => min(100, ($currentValue / $achievement->target_value) * 100),
+                    'progress_percentage' => $this->progressPercentage($currentValue, $targetValue),
                 ]);
+            }
 
-                if ($currentValue >= $achievement->target_value) {
-                    $this->completeAchievement($user, $userAchievement);
-                    $completed[] = $userAchievement->fresh();
-                }
+            if ($currentValue >= $targetValue) {
+                $this->completeAchievement($user, $userAchievement->fresh());
+                $completed[] = $userAchievement->fresh();
             }
         }
 
@@ -319,18 +324,28 @@ class AchievementService
             return 0;
         }
 
-        return match($field) {
-            'lessons_completed' => $stats->lessons_completed,
-            'courses_completed' => $stats->courses_completed,
-            'quizzes_completed' => $stats->quizzes_completed,
-            'perfect_scores' => $stats->perfect_scores,
-            'longest_streak' => $stats->longest_streak,
-            'total_points' => $stats->total_points,
-            'current_level' => $stats->current_level,
-            'total_badges' => $stats->total_badges,
-            'assignments_completed' => $stats->assignments_completed,
+        return match ($field) {
+            'lessons_completed' => (int) ($stats->lessons_completed ?? 0),
+            'courses_completed' => (int) ($stats->courses_completed ?? 0),
+            'quizzes_completed' => (int) ($stats->quizzes_completed ?? 0),
+            'perfect_scores' => (int) ($stats->perfect_scores ?? 0),
+            'longest_streak' => (int) ($stats->longest_streak ?? 0),
+            'current_streak' => (int) ($stats->current_streak ?? 0),
+            'total_points' => (int) ($stats->total_points ?? 0),
+            'current_level' => (int) ($stats->current_level ?? 0),
+            'total_badges' => (int) ($stats->total_badges ?? 0),
+            'assignments_submitted' => (int) ($stats->assignments_submitted ?? 0),
             default => 0,
         };
+    }
+
+    protected function progressPercentage(int $currentValue, int $targetValue): float
+    {
+        if ($targetValue <= 0) {
+            return 0;
+        }
+
+        return round(min(100, ($currentValue / $targetValue) * 100), 2);
     }
 
     /**

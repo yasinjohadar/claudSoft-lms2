@@ -463,6 +463,14 @@ class CourseLearningController extends Controller
                 $this->updateCourseCompletion($module->course_id, $student->id);
             }
 
+            app(\App\Services\Gamification\GamificationService::class)->dispatchVideoWatchIfEligible(
+                $student,
+                $module,
+                $percentage,
+                (int) $validated['current_time'],
+                (int) $validated['duration']
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم تحديث التقدم',

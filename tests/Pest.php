@@ -19,6 +19,10 @@ pest()->extend(Tests\Feature\Gamification\GamificationMysqlTestCase::class)
     ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
     ->in('Feature/Gamification', 'Feature/StudentGifts');
 
+pest()->extend(Tests\Feature\Leaderboards\LeaderboardMysqlTestCase::class)
+    ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
+    ->in('Feature/Leaderboards');
+
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature/Auth', 'Feature/Admin', 'Feature/Api', 'Feature/ExampleTest.php', 'Feature/ProfileTest.php');

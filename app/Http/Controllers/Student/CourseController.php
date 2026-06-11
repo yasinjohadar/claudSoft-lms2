@@ -8,6 +8,7 @@ use App\Models\CourseCategory;
 use App\Models\CourseEnrollment;
 use App\Models\ModuleCompletion;
 use App\Services\AccessControlService;
+use App\Services\Gamification\ReferralService;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -412,5 +413,31 @@ class CourseController extends Controller
                 ->back()
                 ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Record course share for gamification points.
+     */
+    public function share(Course $course, ReferralService $referralService)
+    {
+        $student = auth()->user();
+        $result = $referralService->handleCourseShare($student, $course);
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => (bool) ($result['success'] ?? false),
+                'message' => ($result['success'] ?? false)
+                    ? 'تم تسجيل المشاركة ومنح النقاط'
+                    : 'تم تسجيل المشاركة مسبقاً أو لا يمكن منح النقاط',
+                'points_awarded' => $result['points_awarded'] ?? 0,
+            ]);
+        }
+
+        return redirect()
+            ->back()
+            ->with(($result['success'] ?? false) ? 'success' : 'info',
+                ($result['success'] ?? false)
+                    ? 'شكراً للمشاركة! تم منحك نقاط المشاركة.'
+                    : 'تم تسجيل مشاركة هذا الكورس مسبقاً.');
     }
 }

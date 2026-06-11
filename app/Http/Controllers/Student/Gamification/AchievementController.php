@@ -24,18 +24,23 @@ class AchievementController extends Controller
     {
         $user = auth()->user();
 
-        // فلترة
         $tier = $request->get('tier');
         $status = $request->get('status');
 
-        // الإنجازات
-        $achievements = $this->achievementService->getUserAchievements($user, $status, $tier);
+        $this->achievementService->initializeAllAchievements($user);
 
-        // الإحصائيات
+        $userAchievements = $this->achievementService->getUserAchievements($user, $status, $tier);
         $stats = $this->achievementService->getUserAchievementStats($user);
 
+        $completedAchievements = $userAchievements->whereIn('status', ['completed', 'claimed']);
+        $inProgressAchievements = $userAchievements->where('status', 'in_progress')->where('progress_percentage', '>', 0);
+        $notStartedAchievements = $userAchievements->where('status', 'in_progress')->where('progress_percentage', '<=', 0);
+
         return view('student.pages.gamification.achievements', compact(
-            'achievements',
+            'userAchievements',
+            'completedAchievements',
+            'inProgressAchievements',
+            'notStartedAchievements',
             'stats',
             'tier',
             'status'

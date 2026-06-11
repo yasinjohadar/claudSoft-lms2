@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin\Gamification;
 
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
 use App\Models\User;
 use App\Models\Badge;
-use App\Models\Gamification\Achievement;
 use App\Models\Gamification\PointTransaction as PointsTransaction;
 use App\Models\Gamification\UserStat;
+use App\Services\Gamification\AchievementRecalculationService;
+use App\Services\Gamification\GamificationService;
+use App\Services\Gamification\LeaderboardService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -49,11 +52,11 @@ class DashboardController extends Controller
 
             // الإنجازات
             'total_achievements' => Achievement::count(),
-            'achievements_completed' => \DB::table('gamification_user_achievements')
-                ->where('status', 'completed')
+            'achievements_completed' => \DB::table('user_achievements')
+                ->whereIn('status', ['completed', 'claimed'])
                 ->count(),
-            'achievements_this_period' => \DB::table('gamification_user_achievements')
-                ->where('status', 'completed')
+            'achievements_this_period' => \DB::table('user_achievements')
+                ->whereIn('status', ['completed', 'claimed'])
                 ->where('completed_at', '>=', $startDate)
                 ->count(),
 
@@ -190,5 +193,37 @@ class DashboardController extends Controller
         ];
 
         return view('admin.pages.gamification.analytics.dashboard', compact('stats'));
+    }
+
+    /**
+     * إعادة احتساب نقاط الطلاب وتحديث لوحات المتصدرين
+     */
+    public function recalculateAll(
+        GamificationService $gamificationService,
+        LeaderboardService $leaderboardService,
+        AchievementRecalculationService $achievementRecalculationService
+    ) {
+        set_time_limit(300);
+
+        try {
+            $statsResult = $gamificationService->recalculateAllStudentStats();
+            $updatedBoards = $leaderboardService->updateAllLeaderboards();
+
+            $achievementRecalculationService->migrateGamificationAchievements();
+            $achievementResult = $achievementRecalculationService->recalculateForAllActiveStudents();
+
+            $message = 'تم إعادة احتساب نقاط '
+                .$statsResult['recalculated'].' طالب وتحديث '
+                .count($updatedBoards).' لوحة متصدرين. '
+                .'اكتمل '.$achievementResult['achievements_completed'].' إنجازاً جديداً.';
+
+            if ($statsResult['failed'] > 0) {
+                $message .= ' (فشل '.$statsResult['failed'].' طالب)';
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage());
+        }
     }
 }

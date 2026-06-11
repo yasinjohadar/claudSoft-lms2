@@ -1,90 +1,58 @@
 @extends('student.layouts.master')
 
 @section('page-title')
-    رتبتي في لوحات المتصدرين
+    ترتيبي
 @stop
 
 @section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <h4 class="mb-0">رتبتي في لوحات المتصدرين</h4>
-                <a href="{{ route('gamification.leaderboards.index') }}" class="btn btn-outline-primary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i>عرض جميع اللوحات
-                </a>
-            </div>
+<div class="main-content app-content student-leaderboards-page">
+    <div class="container-fluid">
+        @php $catalog = app(\App\Services\Gamification\LeaderboardCatalog::class); @endphp
 
-            <!-- ملخص -->
-            <div class="alert alert-info mb-4">
-                <i class="fas fa-info-circle me-2"></i>
-                يعرض هذا القسم رتبتك في جميع لوحات المتصدرين النشطة
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+            <div>
+                <h4 class="student-my-courses-welcome__title mb-1">ترتيبي في اللوحات</h4>
+                <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('gamification.leaderboards.index') }}">المتصدرون</a></li>
+                    <li class="breadcrumb-item active">ترتيبي</li>
+                </ol></nav>
             </div>
+            <a href="{{ route('gamification.leaderboards.index') }}" class="btn btn-outline-primary btn-sm mt-3 mt-md-0"><i class="ri ri-arrow-right-line me-1"></i>كل اللوحات</a>
+        </div>
 
-            <!-- لوحات المتصدرين -->
-            @forelse($rankings ?? [] as $ranking)
-                @php
-                    $leaderboard = $ranking['leaderboard'];
-                    $rank = $ranking['rank'];
-                @endphp
-                <div class="card border-0 shadow-sm mb-4 {{ $rank['rank'] <= 3 ? 'border-warning border-2' : '' }}">
-                    <div class="card-header bg-light">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-trophy me-2 text-warning"></i>
-                                {{ $leaderboard->title ?? 'لوحة المتصدرين' }}
-                            </h5>
-                            @if($rank['rank'] <= 3)
-                                <span class="badge bg-warning">في المراكز الأولى!</span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-2 text-center mb-3 mb-md-0">
-                                <h2 class="fw-bold text-primary mb-0">#{{ $rank['rank'] ?? 'N/A' }}</h2>
-                                <small class="text-muted">الترتيب</small>
+        <div class="row g-3">
+            @forelse ($rankings as $item)
+                @php $board = $item['leaderboard']; $rank = $item['rank']; @endphp
+                <div class="col-lg-6">
+                    <div class="card custom-card student-quizzes-panel h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-semibold mb-0">{{ $board->icon }} {{ $board->name }}</h6>
+                                <span class="badge bg-primary fs-14">#{{ $rank['rank'] }}</span>
                             </div>
-                            <div class="col-md-3 text-center mb-3 mb-md-0">
-                                <h4 class="fw-bold text-success mb-0">{{ number_format($rank['score'] ?? 0) }}</h4>
-                                <small class="text-muted">النتيجة</small>
-                            </div>
-                            <div class="col-md-3 text-center mb-3 mb-md-0">
-                                <h5 class="fw-bold text-info mb-0">{{ number_format($rank['percentile'] ?? 0, 1) }}%</h5>
-                                <small class="text-muted">النسبة المئوية</small>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <a href="{{ route('gamification.leaderboards.show', $leaderboard->id) }}" class="btn btn-primary">
-                                    <i class="fas fa-eye me-1"></i>عرض اللوحة
-                                </a>
-                            </div>
-                        </div>
-                        @if(isset($rank['change']) && $rank['change'] != 0)
-                            <div class="mt-3 pt-3 border-top">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-arrow-{{ $rank['change'] > 0 ? 'up text-success' : 'down text-danger' }} me-2"></i>
-                                    <span class="{{ $rank['change'] > 0 ? 'text-success' : 'text-danger' }}">
-                                        {{ abs($rank['change']) }} {{ $rank['change'] > 0 ? 'صعود' : 'هبوط' }} من آخر تحديث
-                                    </span>
+                            <p class="text-muted fs-12 mb-3">{{ $catalog->getMetricLabel($board->metric ?? 'total_points') }} — {{ $catalog->getPeriodLabel($board->period) }}</p>
+                            <div class="row g-2 text-center">
+                                <div class="col-4"><div class="p-2 rounded bg-light"><div class="fw-bold">{{ number_format($rank['score']) }}</div><small class="text-muted">النتيجة</small></div></div>
+                                <div class="col-4"><div class="p-2 rounded bg-light"><div class="fw-bold">{{ $rank['percentile'] }}%</div><small class="text-muted">النسبة</small></div></div>
+                                <div class="col-4">
+                                    <div class="p-2 rounded bg-light d-flex flex-column align-items-center gap-1">
+                                        @include('student.pages.gamification.leaderboards.partials.division-badge', [
+                                            'division' => $rank['division'],
+                                            'catalog' => $catalog,
+                                            'size' => 'sm',
+                                        ])
+                                        <small class="text-muted">الفئة</small>
+                                    </div>
                                 </div>
                             </div>
-                        @endif
+                            <a href="{{ route('gamification.leaderboards.show', $board) }}" class="btn btn-outline-primary btn-sm w-100 mt-3">عرض اللوحة</a>
+                        </div>
                     </div>
                 </div>
             @empty
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
-                        <h5 class="text-muted">لا توجد لوحات متصدرين نشطة</h5>
-                        <p class="text-muted">ابدأ في التعلم والمشاركة للظهور في لوحات المتصدرين!</p>
-                        <a href="{{ route('student.courses.index') }}" class="btn btn-primary mt-3">
-                            <i class="fas fa-book me-1"></i>تصفح الكورسات
-                        </a>
-                    </div>
-                </div>
+                <div class="col-12"><div class="card custom-card student-quizzes-panel"><div class="card-body text-center py-5 text-muted">لم تدخل أي لوحة بعد — ابدأ النشاط لكسب نقاط!</div></div></div>
             @endforelse
         </div>
     </div>
+</div>
 @stop
-
-
-

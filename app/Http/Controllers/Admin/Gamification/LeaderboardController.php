@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin\Gamification;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\Leaderboard;
+use App\Services\Gamification\LeaderboardCatalog;
 use App\Services\Gamification\LeaderboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -11,16 +13,11 @@ use Illuminate\Support\Str;
 
 class LeaderboardController extends Controller
 {
-    protected LeaderboardService $leaderboardService;
+    public function __construct(
+        protected LeaderboardService $leaderboardService,
+        protected LeaderboardCatalog $catalog
+    ) {}
 
-    public function __construct(LeaderboardService $leaderboardService)
-    {
-        $this->leaderboardService = $leaderboardService;
-    }
-
-    /**
-     * عرض قائمة اللوحات
-     */
     public function index()
     {
         $leaderboards = Leaderboard::orderBy('sort_order')
@@ -37,79 +34,30 @@ class LeaderboardController extends Controller
         return view('admin.pages.gamification.leaderboards.index', compact('leaderboards', 'stats'));
     }
 
-    /**
-     * عرض صفحة إنشاء لوحة
-     */
     public function create()
     {
-        return view('admin.pages.gamification.leaderboards.create');
+        return view('admin.pages.gamification.leaderboards.create', $this->formOptions());
     }
 
-    /**
-     * حفظ لوحة جديدة
-     */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:100',
-            'slug' => 'nullable|string|max:100|unique:leaderboards,slug',
-            'description' => 'nullable|string|max:500',
-            'type' => 'required|in:global,course,weekly,monthly,speed,accuracy,streak,social',
-            'icon' => 'nullable|string|max:20',
-            'period' => 'required|in:all_time,daily,weekly,monthly,yearly,season',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'max_entries' => 'nullable|integer|min:10|max:500',
-            'is_active' => 'sometimes|boolean',
-            'is_visible' => 'sometimes|boolean',
-            'sort_order' => 'nullable|integer',
-        ], [
-            'name.required' => 'اسم اللوحة مطلوب',
-            'type.required' => 'نوع اللوحة مطلوب',
-            'type.in' => 'نوع اللوحة المحدد غير صحيح',
-            'period.required' => 'الفترة مطلوبة',
-            'period.in' => 'الفترة المحددة غير صحيحة',
-        ]);
+        $validator = $this->validateLeaderboard($request);
 
         if ($validator->fails()) {
-            return redirect()
-                ->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         try {
-            $slug = $request->slug ?? Str::slug($request->name);
-
-            Leaderboard::create([
-                'name' => $request->name,
-                'slug' => $slug,
-                'description' => $request->description,
-                'type' => $request->type,
-                'icon' => $request->icon ?? '🏆',
-                'period' => $request->period,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'max_entries' => $request->max_entries ?? 100,
-                'is_active' => $request->has('is_active'),
-                'is_visible' => $request->has('is_visible') ?? true,
-                'sort_order' => $request->sort_order ?? 0,
-            ]);
+            Leaderboard::create($this->leaderboardPayload($request));
 
             return redirect()
                 ->route('admin.gamification.leaderboards.index')
                 ->with('success', 'تم إنشاء لوحة المتصدرين بنجاح');
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage())
-                ->withInput();
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage())->withInput();
         }
     }
 
-    /**
-     * عرض تفاصيل لوحة
-     */
     public function show(Leaderboard $leaderboard)
     {
         $entries = $this->leaderboardService->getLeaderboard($leaderboard, 100);
@@ -118,77 +66,33 @@ class LeaderboardController extends Controller
         return view('admin.pages.gamification.leaderboards.show', compact('leaderboard', 'entries', 'stats'));
     }
 
-    /**
-     * عرض صفحة تعديل لوحة
-     */
     public function edit(Leaderboard $leaderboard)
     {
-        return view('admin.pages.gamification.leaderboards.edit', compact('leaderboard'));
+        return view('admin.pages.gamification.leaderboards.edit', array_merge(
+            compact('leaderboard'),
+            $this->formOptions()
+        ));
     }
 
-    /**
-     * تحديث لوحة
-     */
     public function update(Request $request, Leaderboard $leaderboard)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:100',
-            'slug' => 'nullable|string|max:100|unique:leaderboards,slug,' . $leaderboard->id,
-            'description' => 'nullable|string|max:500',
-            'type' => 'required|in:global,course,weekly,monthly,speed,accuracy,streak,social',
-            'icon' => 'nullable|string|max:20',
-            'period' => 'required|in:all_time,daily,weekly,monthly,yearly,season',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'max_entries' => 'nullable|integer|min:10|max:500',
-            'is_active' => 'sometimes|boolean',
-            'is_visible' => 'sometimes|boolean',
-            'sort_order' => 'nullable|integer',
-        ], [
-            'name.required' => 'اسم اللوحة مطلوب',
-            'type.required' => 'نوع اللوحة مطلوب',
-            'type.in' => 'نوع اللوحة المحدد غير صحيح',
-            'period.required' => 'الفترة مطلوبة',
-            'period.in' => 'الفترة المحددة غير صحيحة',
-        ]);
+        $validator = $this->validateLeaderboard($request, $leaderboard->id);
 
         if ($validator->fails()) {
-            return redirect()
-                ->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         try {
-            $leaderboard->update([
-                'name' => $request->name,
-                'slug' => $request->slug ?? $leaderboard->slug,
-                'description' => $request->description,
-                'type' => $request->type,
-                'icon' => $request->icon,
-                'period' => $request->period,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'max_entries' => $request->max_entries ?? 100,
-                'is_active' => $request->has('is_active'),
-                'is_visible' => $request->has('is_visible') ?? $leaderboard->is_visible,
-                'sort_order' => $request->sort_order ?? $leaderboard->sort_order,
-            ]);
+            $leaderboard->update($this->leaderboardPayload($request, $leaderboard));
 
             return redirect()
-                ->route('admin.gamification.leaderboards.index')
+                ->route('admin.gamification.leaderboards.show', $leaderboard)
                 ->with('success', 'تم تحديث لوحة المتصدرين بنجاح');
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage())
-                ->withInput();
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage())->withInput();
         }
     }
 
-    /**
-     * حذف لوحة
-     */
     public function destroy(Leaderboard $leaderboard)
     {
         try {
@@ -198,87 +102,109 @@ class LeaderboardController extends Controller
                 ->route('admin.gamification.leaderboards.index')
                 ->with('success', 'تم حذف لوحة المتصدرين بنجاح');
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'خطأ: '.$e->getMessage());
         }
     }
 
-    /**
-     * تحديث لوحة يدوياً
-     */
     public function updateLeaderboard(Leaderboard $leaderboard)
     {
-        try {
-            $success = $this->leaderboardService->updateLeaderboard($leaderboard);
+        $success = $this->leaderboardService->updateLeaderboard($leaderboard);
 
-            if ($success) {
-                return redirect()
-                    ->back()
-                    ->with('success', 'تم تحديث اللوحة بنجاح');
-            } else {
-                return redirect()
-                    ->back()
-                    ->with('error', 'فشل في تحديث اللوحة');
-            }
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
-        }
+        return redirect()->back()->with(
+            $success ? 'success' : 'error',
+            $success ? 'تم تحديث الترتيب بنجاح' : 'فشل في تحديث اللوحة'
+        );
     }
 
-    /**
-     * تحديث جميع اللوحات
-     */
     public function updateAll()
     {
-        try {
-            $updated = $this->leaderboardService->updateAllLeaderboards();
+        $updated = $this->leaderboardService->updateAllLeaderboards();
 
-            return redirect()
-                ->back()
-                ->with('success', 'تم تحديث ' . count($updated) . ' لوحة بنجاح');
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
-        }
+        return redirect()->back()->with('success', 'تم تحديث '.count($updated).' لوحة بنجاح');
     }
 
-    /**
-     * منح مكافآت اللوحة
-     */
     public function awardRewards(Leaderboard $leaderboard)
     {
-        try {
-            $awarded = $this->leaderboardService->awardLeaderboardRewards($leaderboard);
+        $awarded = $this->leaderboardService->awardLeaderboardRewards($leaderboard);
 
-            return redirect()
-                ->back()
-                ->with('success', "تم منح المكافآت لـ {$awarded} مستخدم");
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
-        }
+        return redirect()->back()->with('success', "تم منح المكافآت لـ {$awarded} مستخدم");
     }
 
-    /**
-     * تفعيل/تعطيل لوحة
-     */
     public function toggleActive(Leaderboard $leaderboard)
     {
-        try {
-            $leaderboard->update(['is_active' => !$leaderboard->is_active]);
+        $leaderboard->update(['is_active' => ! $leaderboard->is_active]);
 
-            return redirect()
-                ->back()
-                ->with('success', 'تم تحديث حالة اللوحة');
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'خطأ: ' . $e->getMessage());
+        return redirect()->back()->with('success', 'تم تحديث حالة اللوحة');
+    }
+
+    protected function formOptions(): array
+    {
+        return [
+            'typeOptions' => $this->catalog->getTypeOptions(),
+            'periodOptions' => $this->catalog->getPeriodOptions(),
+            'metricOptions' => $this->catalog->getMetricOptions(),
+            'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
+        ];
+    }
+
+    protected function validateLeaderboard(Request $request, ?int $ignoreId = null): \Illuminate\Contracts\Validation\Validator
+    {
+        $slugRule = 'nullable|string|max:100|unique:leaderboards,slug';
+        if ($ignoreId) {
+            $slugRule .= ','.$ignoreId;
         }
+
+        return Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+            'slug' => $slugRule,
+            'description' => 'nullable|string|max:500',
+            'type' => 'required|in:'.implode(',', array_keys(LeaderboardCatalog::TYPES)),
+            'metric' => 'required|in:'.implode(',', array_keys(LeaderboardCatalog::METRICS)),
+            'icon' => 'nullable|string|max:20',
+            'period' => 'required|in:'.implode(',', array_keys(LeaderboardCatalog::PERIODS)),
+            'course_id' => 'nullable|exists:courses,id',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'max_entries' => 'nullable|integer|min:10|max:500',
+            'min_score' => 'nullable|integer|min:0',
+            'sort_order' => 'nullable|integer',
+            'rewards_json' => 'nullable|string',
+        ], [
+            'name.required' => 'اسم اللوحة مطلوب',
+            'type.required' => 'نوع اللوحة مطلوب',
+            'metric.required' => 'المقياس مطلوب',
+            'period.required' => 'الفترة مطلوبة',
+        ]);
+    }
+
+    protected function leaderboardPayload(Request $request, ?Leaderboard $existing = null): array
+    {
+        $rewards = null;
+        if ($request->filled('rewards_json')) {
+            $decoded = json_decode($request->rewards_json, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $rewards = $decoded;
+            }
+        }
+
+        return [
+            'name' => $request->name,
+            'slug' => $request->slug ?: Str::slug($request->name),
+            'description' => $request->description,
+            'type' => $request->type,
+            'metric' => $request->metric,
+            'icon' => $request->icon ?: '🏆',
+            'period' => $request->period,
+            'course_id' => $request->course_id,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'max_entries' => $request->max_entries ?? 100,
+            'min_score' => $request->min_score ?? 0,
+            'has_divisions' => $request->boolean('has_divisions'),
+            'rewards' => $rewards ?? $existing?->rewards,
+            'is_active' => $request->boolean('is_active'),
+            'is_visible' => $request->boolean('is_visible', true),
+            'sort_order' => $request->sort_order ?? 0,
+        ];
     }
 }

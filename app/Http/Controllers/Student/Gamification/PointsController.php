@@ -3,60 +3,68 @@
 namespace App\Http\Controllers\Student\Gamification;
 
 use App\Http\Controllers\Controller;
+use App\Services\Gamification\PointEarningCatalog;
 use App\Services\Gamification\PointsService;
+use App\Services\Gamification\ReferralService;
 use Illuminate\Http\Request;
 
 class PointsController extends Controller
 {
-    protected PointsService $pointsService;
+    public function __construct(
+        protected PointsService $pointsService,
+        protected PointEarningCatalog $earningCatalog,
+        protected ReferralService $referralService
+    ) {}
 
-    public function __construct(PointsService $pointsService)
-    {
-        $this->pointsService = $pointsService;
-    }
-
-    /**
-     * عرض صفحة النقاط
-     */
     public function index()
     {
         $user = auth()->user();
 
         $totalPoints = $this->pointsService->getTotalPoints($user);
         $availablePoints = $this->pointsService->getAvailablePoints($user);
-        $spentPoints = $totalPoints - $availablePoints;
+        $spentPoints = $user->stats?->spent_points ?? ($totalPoints - $availablePoints);
+
+        $monthlyEarned = (int) $user->pointsTransactions()
+            ->where('points', '>', 0)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('points');
+
+        $recentTransactions = $this->pointsService->getPointsHistory($user, 5);
+        $earningMethods = $this->earningCatalog->getEarningMethods();
+        $referralLink = $this->referralService->getReferralLink($user);
 
         return view('student.pages.gamification.points', compact(
             'totalPoints',
             'availablePoints',
-            'spentPoints'
+            'spentPoints',
+            'monthlyEarned',
+            'recentTransactions',
+            'earningMethods',
+            'referralLink'
         ));
     }
 
-    /**
-     * عرض سجل النقاط
-     */
     public function history(Request $request)
     {
         $user = auth()->user();
 
         $query = $user->pointsTransactions();
 
-        // فلترة حسب النوع
         if ($request->filled('type')) {
-            if ($request->type === 'earned') {
+            if (in_array($request->type, ['earn', 'spend', 'bonus', 'penalty', 'refund', 'adjustment'], true)) {
+                $query->where('type', $request->type);
+            } elseif ($request->type === 'earned') {
                 $query->where('points', '>', 0);
             } elseif ($request->type === 'spent') {
                 $query->where('points', '<', 0);
             }
         }
 
-        // فلترة حسب المصدر
         if ($request->filled('source')) {
             $query->where('source', $request->source);
         }
 
-        // فلترة حسب التاريخ
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -69,7 +77,6 @@ class PointsController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        // الإحصائيات
         $stats = [
             'total_transactions' => $user->pointsTransactions()->count(),
             'total_earned' => $user->pointsTransactions()->where('points', '>', 0)->sum('points'),
@@ -80,10 +87,15 @@ class PointsController extends Controller
                 ->sum('points'),
         ];
 
-        // مصادر النقاط المتاحة
         $sources = $user->pointsTransactions()
             ->distinct()
-            ->pluck('source');
+            ->pluck('source')
+            ->filter()
+            ->mapWithKeys(fn (string $source) => [
+                $source => $this->earningCatalog->getSourceLabel($source),
+            ])
+            ->sort()
+            ->all();
 
         return view('student.pages.gamification.points.history', compact(
             'transactions',
@@ -92,17 +104,18 @@ class PointsController extends Controller
         ));
     }
 
-    /**
-     * عرض طرق كسب النقاط
-     */
     public function howToEarn()
     {
-        $pointsConfig = config('gamification.points');
-        $streakMultipliers = config('gamification.streak_multipliers');
+        $earningByCategory = $this->earningCatalog->getEarningMethodsByCategory();
+        $streakMultipliers = $this->earningCatalog->getStreakMultipliers();
+        $streakMilestones = $this->earningCatalog->getStreakMilestones();
+        $referralLink = $this->referralService->getReferralLink(auth()->user());
 
         return view('student.pages.gamification.points.how-to-earn', compact(
-            'pointsConfig',
-            'streakMultipliers'
+            'earningByCategory',
+            'streakMultipliers',
+            'streakMilestones',
+            'referralLink'
         ));
     }
 }

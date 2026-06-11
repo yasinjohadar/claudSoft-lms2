@@ -2,6 +2,8 @@
 
 namespace App\Services\Gamification;
 
+use App\Events\VideoWatched;
+use App\Models\CourseModule;
 use App\Models\User;
 use App\Models\UserStat;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +63,13 @@ class GamificationService
                     $relatedId,
                     $multiplier
                 );
+
+                if (! $pointsTransaction) {
+                    return [
+                        'success' => false,
+                        'reason' => 'points_not_awarded',
+                    ];
+                }
 
                 // حساب XP النهائي مع المضاعف
                 $finalXP = (int) ($baseXP * $multiplier);
@@ -142,30 +151,32 @@ class GamificationService
      */
     public function handleVideoWatch(
         User $user,
-        int $videoId,
+        int $moduleId,
         int $watchPercentage,
         array $metadata = []
     ): array {
         $config = config('gamification.points.video_watch', [
             'points' => 30,
             'xp' => 15,
+            'min_watch_percentage' => 80,
         ]);
 
-        // منح نقاط كاملة فقط إذا شاهد 80% أو أكثر
-        if ($watchPercentage >= 80) {
-            return $this->awardReward(
-                $user,
-                $config['points'],
-                $config['xp'],
-                'video_watch',
-                "مشاهدة فيديو ({$watchPercentage}%)",
-                'App\Models\Video',
-                $videoId,
-                array_merge($metadata, ['watch_percentage' => $watchPercentage])
-            );
+        $minPercentage = (int) ($config['min_watch_percentage'] ?? 80);
+
+        if ($watchPercentage < $minPercentage) {
+            return ['success' => false, 'reason' => 'watch_percentage_too_low'];
         }
 
-        return ['success' => false, 'reason' => 'watch_percentage_too_low'];
+        return $this->awardReward(
+            $user,
+            $config['points'],
+            $config['xp'],
+            'video_watch',
+            "مشاهدة فيديو ({$watchPercentage}%)",
+            'App\Models\CourseModule',
+            $moduleId,
+            array_merge($metadata, ['watch_percentage' => $watchPercentage])
+        );
     }
 
     /**
@@ -410,6 +421,25 @@ class GamificationService
     }
 
     /**
+     * إطلاق حدث مشاهدة الفيديو عند بلوغ الحد الأدنى
+     */
+    public function dispatchVideoWatchIfEligible(
+        User $user,
+        CourseModule $module,
+        float $watchPercentage,
+        int $watchedSeconds = 0,
+        int $totalSeconds = 0
+    ): void {
+        $minPercentage = (int) config('gamification.points.video_watch.min_watch_percentage', 80);
+
+        if ($watchPercentage < $minPercentage) {
+            return;
+        }
+
+        VideoWatched::dispatch($user, $module, $watchPercentage, $watchedSeconds, $totalSeconds);
+    }
+
+    /**
      * التحقق من الإنجازات والشارات بعد كل نشاط
      */
     public function checkAndAwardAchievements(User $user): void
@@ -470,5 +500,35 @@ class GamificationService
             ]);
             return false;
         }
+    }
+
+    /**
+     * إعادة حساب إحصائيات جميع الطلاب النشطين
+     *
+     * @return array{recalculated: int, failed: int}
+     */
+    public function recalculateAllStudentStats(): array
+    {
+        $recalculated = 0;
+        $failed = 0;
+
+        User::role('student')
+            ->where('is_active', true)
+            ->select('id')
+            ->orderBy('id')
+            ->chunkById(100, function ($users) use (&$recalculated, &$failed) {
+                foreach ($users as $user) {
+                    if ($this->recalculateStats($user)) {
+                        $recalculated++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            });
+
+        return [
+            'recalculated' => $recalculated,
+            'failed' => $failed,
+        ];
     }
 }

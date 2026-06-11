@@ -535,11 +535,22 @@ class ProgressTrackingService
             );
 
             // If video is 90% watched, auto-complete
-            if ($percentage >= 90) {
-                $module = CourseModule::find($moduleId);
-                if ($module) {
-                    $this->updateSectionCompletion($module->section_id, $studentId);
-                    $this->updateCourseCompletion($module->course_id, $studentId);
+            $module = CourseModule::find($moduleId);
+            if ($percentage >= 90 && $module) {
+                $this->updateSectionCompletion($module->section_id, $studentId);
+                $this->updateCourseCompletion($module->course_id, $studentId);
+            }
+
+            if ($module) {
+                $student = \App\Models\User::find($studentId);
+                if ($student) {
+                    app(\App\Services\Gamification\GamificationService::class)->dispatchVideoWatchIfEligible(
+                        $student,
+                        $module,
+                        $percentage,
+                        $watchedSeconds,
+                        $totalSeconds
+                    );
                 }
             }
 

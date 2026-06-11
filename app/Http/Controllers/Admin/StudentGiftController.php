@@ -354,6 +354,10 @@ class StudentGiftController extends Controller
             $validator->errors()->add('group_id', 'يرجى اختيار مجموعة.');
         }
 
+        if ($targetType === 'multiple_groups' && (! is_array($request->input('group_ids')) || count($request->input('group_ids', [])) === 0)) {
+            $validator->errors()->add('group_ids', 'يرجى اختيار مجموعة واحدة على الأقل.');
+        }
+
         if ($targetType === 'course' && ! $request->filled('course_id')) {
             $validator->errors()->add('course_id', 'يرجى اختيار كورس.');
         }
@@ -397,6 +401,7 @@ class StudentGiftController extends Controller
             'user_id' => $request->input('user_id'),
             'user_ids' => $request->input('user_ids', []),
             'group_id' => $request->input('group_id'),
+            'group_ids' => $request->input('group_ids', []),
             'course_id' => $request->input('course_id'),
         ];
     }
