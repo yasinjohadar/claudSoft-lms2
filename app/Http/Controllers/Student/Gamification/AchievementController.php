@@ -31,6 +31,7 @@ class AchievementController extends Controller
 
         $userAchievements = $this->achievementService->getUserAchievements($user, $status, $tier);
         $stats = $this->achievementService->getUserAchievementStats($user);
+        $recommended = $this->achievementService->getRecommendedAchievements($user, 3);
 
         $completedAchievements = $userAchievements->whereIn('status', ['completed', 'claimed']);
         $inProgressAchievements = $userAchievements->where('status', 'in_progress')->where('progress_percentage', '>', 0);
@@ -41,6 +42,7 @@ class AchievementController extends Controller
             'completedAchievements',
             'inProgressAchievements',
             'notStartedAchievements',
+            'recommended',
             'stats',
             'tier',
             'status'

@@ -10,133 +10,115 @@
 
         @include('student.components.alerts')
 
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
-            <div>
-                <h4 class="student-my-courses-welcome__title mb-1">إنجازاتي</h4>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
-                        <li class="breadcrumb-item active">إنجازاتي</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="mt-3 mt-md-0">
-                <a href="{{ route('gamification.dashboard') }}" class="btn btn-outline-primary rounded-pill">
-                    <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
-                </a>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card custom-card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <span class="avatar avatar-md bg-success-transparent mb-2">
-                            <i class="fe fe-award text-success fs-20"></i>
-                        </span>
-                        <h3 class="mb-1">{{ $stats['completed'] ?? 0 }}</h3>
-                        <p class="text-muted mb-0">إنجازات مكتملة</p>
-                    </div>
+        <div class="student-achievements-hero mb-4">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <span class="student-achievements-hero__eyebrow"><i class="fe fe-award me-1"></i>التلعيب</span>
+                    <h4 class="student-my-courses-welcome__title mb-2">إنجازاتي</h4>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
+                            <li class="breadcrumb-item active">إنجازاتي</li>
+                        </ol>
+                    </nav>
+                    <p class="student-achievements-hero__desc mt-3 mb-0">تابع تقدّمك، افتح الإنجازات، واجمع نقاط المكافآت مع كل خطوة في رحلة التعلم.</p>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card custom-card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <span class="avatar avatar-md bg-primary-transparent mb-2">
-                            <i class="fe fe-trending-up text-primary fs-20"></i>
-                        </span>
-                        <h3 class="mb-1">{{ $stats['in_progress'] ?? 0 }}</h3>
-                        <p class="text-muted mb-0">قيد التقدم</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card custom-card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <span class="avatar avatar-md bg-warning-transparent mb-2">
-                            <i class="fe fe-percent text-warning fs-20"></i>
-                        </span>
-                        <h3 class="mb-1">{{ $stats['completion_rate'] ?? 0 }}%</h3>
-                        <p class="text-muted mb-0">نسبة الإكمال</p>
+                <div class="col-lg-5">
+                    <div class="student-achievements-ring-wrap">
+                        <div class="student-achievements-ring" style="--ring-pct: {{ min(100, $stats['completion_rate'] ?? 0) }}%">
+                            <div class="student-achievements-ring__inner">
+                                <span class="student-achievements-ring__value" data-countup="{{ round($stats['completion_rate'] ?? 0, 1) }}" data-countup-suffix="%" data-countup-decimals="1">0</span>
+                                <span class="student-achievements-ring__label">نسبة الإكمال</span>
+                            </div>
+                        </div>
+                        <div class="student-achievements-hero__actions">
+                            <a href="{{ route('gamification.dashboard') }}" class="btn btn-light btn-sm rounded-pill">
+                                <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card custom-card student-quizzes-panel mb-4">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <span class="avatar avatar-sm bg-success-transparent">
-                        <i class="fe fe-check-circle text-success"></i>
-                    </span>
-                    <h6 class="card-title mb-0">الإنجازات المكتملة ({{ $completedAchievements->count() }})</h6>
+        @include('student.pages.gamification.partials.achievements-stats', ['stats' => $stats])
+
+        @if(($recommended ?? collect())->isNotEmpty())
+            @php $spotlightIds = $recommended->pluck('id')->all(); @endphp
+            <div class="student-achievements-spotlight mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="avatar avatar-sm bg-warning-transparent"><i class="fe fe-zap text-warning"></i></span>
+                    <h6 class="mb-0 fw-semibold">أقرب للإكمال</h6>
                 </div>
-
-                @if($completedAchievements->isNotEmpty())
-                    <div class="row g-4">
-                        @foreach($completedAchievements as $userAchievement)
-                            @php $achievement = $userAchievement->achievement; @endphp
-                            @include('student.pages.gamification.partials.achievement-card', [
-                                'achievement' => $achievement,
-                                'userAchievement' => $userAchievement,
-                                'isCompleted' => true,
-                            ])
-                        @endforeach
-                    </div>
-                @else
-                    <p class="text-muted text-center py-4 mb-0">لم تكمل أي إنجاز بعد. استمر في التعلم!</p>
-                @endif
-            </div>
-        </div>
-
-        @if($inProgressAchievements->isNotEmpty())
-            <div class="card custom-card student-quizzes-panel mb-4">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-2 mb-4">
-                        <span class="avatar avatar-sm bg-primary-transparent">
-                            <i class="fe fe-loader text-primary"></i>
-                        </span>
-                        <h6 class="card-title mb-0">قيد التقدم ({{ $inProgressAchievements->count() }})</h6>
-                    </div>
-                    <div class="row g-4">
-                        @foreach($inProgressAchievements as $userAchievement)
-                            @php $achievement = $userAchievement->achievement; @endphp
-                            @include('student.pages.gamification.partials.achievement-card', [
-                                'achievement' => $achievement,
-                                'userAchievement' => $userAchievement,
-                                'isCompleted' => false,
-                            ])
-                        @endforeach
-                    </div>
+                <div class="row g-3">
+                    @foreach($recommended as $index => $userAchievement)
+                        @include('student.pages.gamification.partials.achievement-card', [
+                            'userAchievement' => $userAchievement,
+                            'isCompleted' => false,
+                            'index' => $index,
+                        ])
+                    @endforeach
                 </div>
             </div>
+        @else
+            @php $spotlightIds = []; @endphp
         @endif
 
-        @if($notStartedAchievements->isNotEmpty())
-            <div class="card custom-card student-quizzes-panel">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-2 mb-4">
-                        <span class="avatar avatar-sm bg-secondary-transparent">
-                            <i class="fe fe-lock text-muted"></i>
-                        </span>
-                        <h6 class="card-title mb-0">لم تبدأ بعد ({{ $notStartedAchievements->count() }})</h6>
-                    </div>
-                    <div class="row g-4">
-                        @foreach($notStartedAchievements as $userAchievement)
-                            @php $achievement = $userAchievement->achievement; @endphp
-                            @include('student.pages.gamification.partials.achievement-card', [
-                                'achievement' => $achievement,
-                                'userAchievement' => $userAchievement,
-                                'isCompleted' => false,
-                                'isLocked' => true,
-                            ])
-                        @endforeach
-                    </div>
-                </div>
+        @include('student.pages.gamification.partials.achievements-filters')
+
+        @php
+            $gridAchievements = isset($spotlightIds) && count($spotlightIds)
+                ? $userAchievements->reject(fn ($ua) => in_array($ua->id, $spotlightIds))
+                : $userAchievements;
+        @endphp
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-primary-transparent"><i class="fe fe-grid text-primary"></i></span>
+                <h6 class="mb-0 fw-semibold">جميع الإنجازات <span class="text-muted fw-normal" id="achievementVisibleCount">({{ $gridAchievements->count() }})</span></h6>
             </div>
-        @endif
+        </div>
+
+        <div class="row g-4" id="achievementGrid">
+            @forelse($gridAchievements as $index => $userAchievement)
+                @php
+                    $isCompleted = in_array($userAchievement->status, ['completed', 'claimed'], true);
+                    $isLocked = !$isCompleted && ($userAchievement->progress_percentage ?? 0) <= 0;
+                @endphp
+                @include('student.pages.gamification.partials.achievement-card', [
+                    'userAchievement' => $userAchievement,
+                    'isCompleted' => $isCompleted,
+                    'isLocked' => $isLocked,
+                    'index' => $index,
+                ])
+            @empty
+                <div class="col-12">
+                    @include('student.pages.gamification.partials.badges-empty', [
+                        'title' => 'لا توجد إنجازات',
+                        'message' => 'ستظهر الإنجازات هنا عند تفعيلها من الإدارة.',
+                    ])
+                </div>
+            @endforelse
+        </div>
+
+        <div id="achievementEmptyFiltered" class="d-none">
+            <div class="student-my-courses-empty text-center py-5">
+                <div class="student-my-courses-empty__icon mb-4"><i class="fe fe-filter"></i></div>
+                <h4 class="mb-2">لا توجد إنجازات مطابقة</h4>
+                <p class="text-muted mb-3">جرّب تغيير الفلتر أو اختر «الكل» لعرض جميع الإنجازات.</p>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" id="achievementResetFilters">
+                    <i class="fe fe-rotate-cw me-1"></i>إظهار الكل
+                </button>
+            </div>
+        </div>
 
     </div>
 </div>
+
+@include('student.pages.gamification.partials.achievement-modal')
+@stop
+
+@section('scripts')
+@include('student.pages.gamification.partials.achievement-interaction-scripts')
 @stop

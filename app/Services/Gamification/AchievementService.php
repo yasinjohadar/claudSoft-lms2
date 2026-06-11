@@ -356,7 +356,7 @@ class AchievementService
         $totalAchievements = Achievement::where('is_active', true)->count();
 
         $completed = UserAchievement::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'claimed'])
             ->count();
 
         $inProgress = UserAchievement::where('user_id', $user->id)
@@ -364,7 +364,7 @@ class AchievementService
             ->count();
 
         $byTier = UserAchievement::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'claimed'])
             ->join('achievements', 'user_achievements.achievement_id', '=', 'achievements.id')
             ->selectRaw('achievements.tier, COUNT(*) as count')
             ->groupBy('achievements.tier')
@@ -378,7 +378,7 @@ class AchievementService
             'completion_rate' => $totalAchievements > 0 ? round(($completed / $totalAchievements) * 100, 2) : 0,
             'by_tier' => $byTier,
             'latest_completed' => UserAchievement::where('user_id', $user->id)
-                ->where('status', 'completed')
+                ->whereIn('status', ['completed', 'claimed'])
                 ->with('achievement')
                 ->latest('completed_at')
                 ->take(5)
