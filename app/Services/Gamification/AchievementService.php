@@ -203,15 +203,20 @@ class AchievementService
     public function getUserAchievements(User $user, ?string $status = null, ?string $tier = null)
     {
         $query = UserAchievement::where('user_id', $user->id)
-            ->with('achievement.badge');
+            ->whereHas('achievement', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->with(['achievement' => function ($q) {
+                $q->with('badge');
+            }]);
 
         if ($status) {
             $query->where('status', $status);
         }
 
         if ($tier) {
-            $query->whereHas('achievement', function($q) use ($tier) {
-                $q->where('tier', $tier);
+            $query->whereHas('achievement', function ($q) use ($tier) {
+                $q->where('is_active', true)->where('tier', $tier);
             });
         }
 
@@ -228,7 +233,12 @@ class AchievementService
         return UserAchievement::where('user_id', $user->id)
             ->where('status', 'in_progress')
             ->where('progress_percentage', '>=', 50)
-            ->with('achievement.badge')
+            ->whereHas('achievement', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->with(['achievement' => function ($q) {
+                $q->with('badge');
+            }])
             ->orderByDesc('progress_percentage')
             ->limit($limit)
             ->get();

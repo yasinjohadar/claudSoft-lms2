@@ -1,5 +1,10 @@
 @php
     $achievement = $userAchievement->achievement;
+@endphp
+@if(!$achievement)
+    {{-- سجل يشير لإنجاز محذوف أو غير متاح --}}
+@else
+@php
     $isLocked = $isLocked ?? false;
     $isCompleted = $isCompleted ?? in_array($userAchievement->status, ['completed', 'claimed'], true);
     $progress = (float) ($userAchievement->progress_percentage ?? 0);
@@ -103,3 +108,4 @@
         <span class="student-achievement-card__hint"><i class="fe fe-maximize-2 me-1"></i>اضغط للتفاصيل</span>
     </article>
 </div>
+@endif
