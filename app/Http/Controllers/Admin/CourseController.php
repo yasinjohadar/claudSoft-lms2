@@ -10,7 +10,6 @@ use App\Models\Lesson;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use App\Services\Storage\StorageHelperService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -482,35 +481,22 @@ class CourseController extends Controller
     }
 
     /**
-     * Upload course image with dynamic storage then local fallback.
+     * Upload course image with cloud-first failover (S3 then local).
      */
     protected function uploadCourseImageWithFallback($file): string|false
     {
-        try {
-            // Primary for local/dev reliability: save to local public disk first.
-            $localPath = Storage::disk('public')->putFile('courses/images', $file);
-            if ($localPath) {
-                Log::info('Course image uploaded to local public storage', [
-                    'disk' => 'public',
-                    'path' => $localPath,
-                    'original_file_name' => $file->getClientOriginalName(),
-                ]);
-                return $localPath;
-            }
-        } catch (\Exception $e) {
-            Log::warning('Course image local upload failed, trying dynamic storage', [
-                'error' => $e->getMessage(),
-                'original_file_name' => $file->getClientOriginalName(),
-            ]);
+        $storedPath = $this->storageHelper->storeUploadedFileWithFailover(
+            'public',
+            'courses/images',
+            $file,
+            'image'
+        );
+
+        if ($storedPath) {
+            return $storedPath;
         }
 
-        // Secondary attempt: dynamic storage mapping (CDN/remote).
-        $dynamicPath = $this->storageHelper->storeUploadedFile('public', 'courses/images', $file, 'image');
-        if ($dynamicPath) {
-            return $dynamicPath;
-        }
-
-        Log::error('Course image upload failed on local and dynamic storage', [
+        Log::error('Course image upload failed on all storage backends', [
             'original_file_name' => $file->getClientOriginalName(),
         ]);
 

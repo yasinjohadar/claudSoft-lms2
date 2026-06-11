@@ -148,7 +148,7 @@ class UserController extends Controller
         // معالجة الصورة باستخدام النظام الديناميكي
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $this->storageHelper->storeUploadedFile('public', 'users/photos', $request->file('photo'), 'image');
+            $photoPath = $this->storageHelper->storeUploadedFileWithFailover('public', 'users/photos', $request->file('photo'), 'image');
             if (! $photoPath) {
                 // Fallback to direct storage if dynamic storage fails
                 $photo = $request->file('photo');
@@ -513,7 +513,7 @@ class UserController extends Controller
                 $this->storageHelper->deleteFile('public', $user->avatar);
             }
 
-            $photoPath = $this->storageHelper->storeUploadedFile('public', 'users/photos', $request->file('photo'), 'image');
+            $photoPath = $this->storageHelper->storeUploadedFileWithFailover('public', 'users/photos', $request->file('photo'), 'image');
             if (! $photoPath) {
                 // Fallback to direct storage if dynamic storage fails
                 $photo = $request->file('photo');

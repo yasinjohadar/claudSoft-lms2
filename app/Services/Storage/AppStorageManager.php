@@ -540,6 +540,136 @@ class AppStorageManager
         }
     }
 
+    public function getFilesystemForConfig(AppStorageConfig $config): Filesystem
+    {
+        return AppStorageFactory::create($config);
+    }
+
+    public function existsOnConfig(AppStorageConfig $config, string $path): bool
+    {
+        try {
+            return $this->getFilesystemForConfig($config)->exists($path);
+        } catch (\Exception $e) {
+            Log::debug("existsOnConfig failed: {$config->name} - " . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    public function fileExistsWithFailover(string $disk, string $path): bool
+    {
+        foreach ($this->resolveFailoverStorages($disk) as $config) {
+            if ($this->existsOnConfig($config, $path)) {
+                return true;
+            }
+        }
+
+        if ($disk === 'public' && Storage::disk('public')->exists($path)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function getFromConfig(AppStorageConfig $config, string $path): ?string
+    {
+        try {
+            $content = $this->getFilesystemForConfig($config)->get($path);
+
+            return ($content !== false && $content !== '') ? $content : null;
+        } catch (\Exception $e) {
+            Log::debug("getFromConfig failed: {$config->name} - " . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    public function putToConfig(AppStorageConfig $config, string $path, string $content): bool
+    {
+        try {
+            return $this->getFilesystemForConfig($config)->put($path, $content) !== false;
+        } catch (\Exception $e) {
+            Log::warning("putToConfig failed: {$config->name} - " . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    public function deleteFromConfig(AppStorageConfig $config, string $path): bool
+    {
+        try {
+            return $this->getFilesystemForConfig($config)->delete($path);
+        } catch (\Exception $e) {
+            Log::warning("deleteFromConfig failed: {$config->name} - " . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    public function getFileSizeOnConfig(AppStorageConfig $config, string $path): int
+    {
+        try {
+            return $this->getFilesystemForConfig($config)->size($path);
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    public function resolveCloudPrimaryStorages(string $disk): Collection
+    {
+        $cloudDrivers = config('storage_inventory.cloud_drivers', ['s3']);
+
+        return $this->resolveFailoverStorages($disk)
+            ->filter(fn (AppStorageConfig $config) => in_array($config->driver, $cloudDrivers, true))
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    public function resolveLocalStorages(string $disk): Collection
+    {
+        return $this->resolveFailoverStorages($disk)
+            ->filter(fn (AppStorageConfig $config) => $config->driver === 'local')
+            ->values();
+    }
+
+    public function getLegacyPublicContent(string $path): ?string
+    {
+        try {
+            if (! Storage::disk('public')->exists($path)) {
+                return null;
+            }
+
+            $content = Storage::disk('public')->get($path);
+
+            return ($content !== false && $content !== '') ? $content : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    public function deleteLegacyPublic(string $path): bool
+    {
+        try {
+            return Storage::disk('public')->delete($path);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function legacyPublicExists(string $path): bool
+    {
+        try {
+            return Storage::disk('public')->exists($path);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     private function resolveMimeType(Filesystem $storage, string $path): string
     {
         try {

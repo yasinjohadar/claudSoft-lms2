@@ -266,7 +266,7 @@ class AIBlogPostController extends Controller
 
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
-                $featuredImagePath = $this->storageHelper->storeUploadedFile('blog_images', 'blog/images', $request->file('featured_image'), 'image');
+                $featuredImagePath = $this->storageHelper->storeUploadedFileWithFailover('blog_images', 'blog/images', $request->file('featured_image'), 'image');
                 if ($featuredImagePath) {
                     $validated['featured_image'] = $featuredImagePath;
                 }

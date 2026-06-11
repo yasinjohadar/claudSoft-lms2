@@ -93,7 +93,7 @@ class FrontendCourseController extends Controller
 
             // Handle thumbnail upload
             if ($request->hasFile('thumbnail')) {
-                $thumbnailPath = $this->storageHelper->storeUploadedFile('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
+                $thumbnailPath = $this->storageHelper->storeUploadedFileWithFailover('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
                 if ($thumbnailPath) {
                     $validated['thumbnail'] = $thumbnailPath;
                 }
@@ -172,7 +172,7 @@ class FrontendCourseController extends Controller
                 if ($frontendCourse->thumbnail) {
                     $this->storageHelper->deleteFile('course_thumbnails', $frontendCourse->thumbnail);
                 }
-                $thumbnailPath = $this->storageHelper->storeUploadedFile('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
+                $thumbnailPath = $this->storageHelper->storeUploadedFileWithFailover('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
                 if ($thumbnailPath) {
                     $validated['thumbnail'] = $thumbnailPath;
                 }

@@ -53,6 +53,10 @@ if (!function_exists('storage_proxy_image_url')) {
             return route('course.image', ['filename' => $filename]);
         }
 
+        if (str_starts_with($imagePath, 'profile-photos/')) {
+            return route('profile.photo', ['filename' => $filename]);
+        }
+
         if (! str_contains($imagePath, '/')) {
             if (in_array('blog_images', $disks, true)) {
                 return route('blog.image', ['filename' => $filename]);
@@ -411,55 +415,20 @@ if (!function_exists('student_profile_photo_url')) {
      */
     function student_profile_photo_url($student = null, $photoPath = null): string
     {
-        // If no photo path provided, try to get from student
         if (empty($photoPath)) {
-            if ($student && !empty($student->photo)) {
-                $photoPath = $student->photo;
-            } else {
+            if ($student) {
+                $photoPath = $student->photo ?: $student->avatar;
+            }
+
+            if (empty($photoPath)) {
                 return student_default_avatar_url();
             }
         }
 
-        // If already a full URL, return as-is
-        if (filter_var($photoPath, FILTER_VALIDATE_URL)) {
-            return $photoPath;
-        }
-
-        // Clean the path
-        $photoPath = ltrim($photoPath, '/');
-
-        // Try dynamic storage system
-        try {
-            $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
-            
-            // Get the disk (will use cloud storage if available)
-            $disk = $storageHelper->getDisk('public');
-            
-            // Check if file exists on the active storage
-            if ($disk->exists($photoPath)) {
-                // Try to get URL through the storage manager
-                $url = $storageHelper->getFileUrl('public', $photoPath);
-                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-                    return $url;
-                }
-                
-                // If URL generation failed but file exists, generate URL manually
-                $url = $disk->url($photoPath);
-                if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-                    return $url;
-                }
-            }
-        } catch (\Exception $e) {
-            // Continue to fallback
-        }
-
-        // Fallback: check if file exists in local storage
-        $localPath = storage_path('app/public/' . $photoPath);
-        if (file_exists($localPath)) {
-            return asset('storage/' . $photoPath);
-        }
-
-        // Last fallback: return asset URL (might work if storage:link exists)
-        return asset('storage/' . $photoPath);
+        return resolve_storage_image_url(
+            ['public'],
+            $photoPath,
+            student_default_avatar_url()
+        );
     }
 }

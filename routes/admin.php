@@ -1132,6 +1132,11 @@ Route::prefix('admin')
             Route::post('/configs/test-connection', [\App\Http\Controllers\Admin\AppStorageController::class, 'testConnection'])->name('configs.test-connection');
             Route::post('/configs/{config}/test', [\App\Http\Controllers\Admin\AppStorageController::class, 'test'])->name('configs.test');
             Route::get('/analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
+
+            Route::get('/inventory', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'index'])->name('inventory.index');
+            Route::post('/inventory/scan', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'scan'])->name('inventory.scan');
+            Route::post('/inventory/migrate', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'migrate'])->name('inventory.migrate');
+            Route::get('/inventory/progress', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'progress'])->name('inventory.progress');
         });
 
         Route::prefix('storage-disk-mappings')->name('storage-disk-mappings.')->group(function () {

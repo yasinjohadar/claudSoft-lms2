@@ -146,6 +146,14 @@ class StorageHelperService
     }
 
     /**
+     * التحقق من وجود الملف عبر سلسلة failover كاملة.
+     */
+    public function fileExistsWithFailover(string $disk, string $path): bool
+    {
+        return $this->storageManager->fileExistsWithFailover($disk, $path);
+    }
+
+    /**
      * نسخ ملف
      * 
      * @param string $disk

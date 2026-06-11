@@ -6,12 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseEnrollment;
 use App\Models\Gamification\Level;
 use App\Models\Nationality;
-use App\Services\Storage\StorageHelperService;
+use App\Services\Student\StudentProfilePhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 class ProfileController extends Controller
 {
     public function __construct(
-        protected StorageHelperService $storageHelper
+        protected StudentProfilePhotoService $profilePhotoService,
     ) {
     }
     /**
@@ -102,7 +101,7 @@ class ProfileController extends Controller
                 'phone' => $user->phone,
                 'country_code' => $user->country_code,
                 'full_phone' => $user->full_phone,
-                'avatar' => $user->avatar ? url($user->avatar) : null,
+                'avatar' => $this->profilePhotoUrl($user),
                 'date_of_birth' => $this->formatDate($user->date_of_birth),
                 'gender' => $user->gender,
                 'address' => $user->address,
@@ -193,22 +192,14 @@ class ProfileController extends Controller
             $user->is_profile_public = $request->boolean('is_profile_public');
 
             if ($request->hasFile('photo')) {
-                $oldPath = $user->avatar;
-                if ($oldPath && $this->storageHelper->fileExists('public', $oldPath)) {
-                    try {
-                        $this->storageHelper->deleteFile('public', $oldPath);
-                    } catch (\Exception $e) {
-                        Log::warning('Api ProfileController: Failed to delete old avatar', ['path' => $oldPath, 'error' => $e->getMessage()]);
-                    }
+                $photoPath = $this->profilePhotoService->store($user, $request->file('photo'));
+
+                if (! $photoPath) {
+                    throw new \Exception('فشل في رفع الصورة إلى التخزين السحابي');
                 }
 
-                $photoPath = $this->storageHelper->storeUploadedFile('public', 'profile-photos', $request->file('photo'), 'image');
-                if (!$photoPath) {
-                    $photoPath = $request->file('photo')->store('profile-photos', 'public');
-                }
-                if ($photoPath) {
-                    $user->avatar = $photoPath;
-                }
+                $user->photo = $photoPath;
+                $user->avatar = $photoPath;
             }
 
             $user->save();
@@ -223,7 +214,7 @@ class ProfileController extends Controller
                 'phone' => $user->phone,
                 'country_code' => $user->country_code,
                 'full_phone' => $user->full_phone,
-                'avatar' => $user->avatar ? url($user->avatar) : null,
+                'avatar' => $this->profilePhotoUrl($user),
                 'date_of_birth' => $this->formatDate($user->date_of_birth),
                 'gender' => $user->gender,
                 'address' => $user->address,
@@ -266,6 +257,19 @@ class ProfileController extends Controller
             'success' => true,
             'data' => ['nationalities' => $list],
         ]);
+    }
+
+    private function profilePhotoUrl($user): ?string
+    {
+        $path = $user->photo ?: $user->avatar;
+
+        if (empty($path)) {
+            return null;
+        }
+
+        $url = student_profile_photo_url($user, $path);
+
+        return $url !== student_default_avatar_url() ? $url : null;
     }
 
     private function formatDate($value): ?string

@@ -409,8 +409,12 @@ class StudentGiftController extends Controller
     protected function handleUploads(Request $request, StudentGift $gift): void
     {
         if ($request->hasFile('image')) {
-            $path = 'gifts/images/'.Str::uuid().'.'.$request->file('image')->getClientOriginalExtension();
-            $stored = $this->storageHelper->storeUploadedFile('public', $path, $request->file('image'), 'gift_image');
+            $stored = $this->storageHelper->storeUploadedFileWithFailover(
+                'gift_images',
+                'gifts/images',
+                $request->file('image'),
+                'gift_image'
+            );
             if ($stored) {
                 $gift->update(['image_path' => $stored]);
             }
@@ -424,8 +428,7 @@ class StudentGiftController extends Controller
 
         if ($request->hasFile('preview_file')) {
             $file = $request->file('preview_file');
-            $path = 'gifts/previews/'.Str::uuid().'.'.$file->getClientOriginalExtension();
-            $stored = $this->storageHelper->storeUploadedFile('public', $path, $file, 'gift_preview');
+            $stored = $this->storageHelper->storeUploadedFileWithFailover('public', 'gifts/previews', $file, 'gift_preview');
             if ($stored) {
                 $updates['preview_file_path'] = $stored;
                 $updates['preview_file_name'] = $file->getClientOriginalName();
@@ -436,8 +439,7 @@ class StudentGiftController extends Controller
 
         if ($request->hasFile('download_file')) {
             $file = $request->file('download_file');
-            $path = 'gifts/downloads/'.Str::uuid().'.'.$file->getClientOriginalExtension();
-            $stored = $this->storageHelper->storeUploadedFile('public', $path, $file, 'gift_download');
+            $stored = $this->storageHelper->storeUploadedFileWithFailover('public', 'gifts/downloads', $file, 'gift_download');
             if ($stored) {
                 $updates['download_file_path'] = $stored;
                 $updates['download_file_name'] = $file->getClientOriginalName();

@@ -146,7 +146,7 @@ class BlogPostController extends Controller
 
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
-                $validated['featured_image'] = $this->storageHelper->storeUploadedFile('blog_images', 'blog/images', $request->file('featured_image'), 'image');
+                $validated['featured_image'] = $this->storageHelper->storeUploadedFileWithFailover('blog_images', 'blog/images', $request->file('featured_image'), 'image');
             }
 
             // Set published_at if status is published and not set
@@ -331,10 +331,10 @@ class BlogPostController extends Controller
             // Handle featured image upload
             if ($request->hasFile('featured_image')) {
                 // Delete old image
-                if ($post->featured_image && $this->storageHelper->fileExists('blog_images', $post->featured_image)) {
+                if ($post->featured_image && $this->storageHelper->fileExistsWithFailover('blog_images', $post->featured_image)) {
                     $this->storageHelper->deleteFile('blog_images', $post->featured_image);
                 }
-                $validated['featured_image'] = $this->storageHelper->storeUploadedFile('blog_images', 'blog/images', $request->file('featured_image'), 'image');
+                $validated['featured_image'] = $this->storageHelper->storeUploadedFileWithFailover('blog_images', 'blog/images', $request->file('featured_image'), 'image');
             }
 
             // Set published_at if status changed to published
@@ -418,7 +418,7 @@ class BlogPostController extends Controller
             $tagIds = $post->tags->pluck('id')->toArray();
 
             // Delete featured image
-            if ($post->featured_image && $this->storageHelper->fileExists('blog_images', $post->featured_image)) {
+            if ($post->featured_image && $this->storageHelper->fileExistsWithFailover('blog_images', $post->featured_image)) {
                 $this->storageHelper->deleteFile('blog_images', $post->featured_image);
             }
 
@@ -492,7 +492,7 @@ class BlogPostController extends Controller
      */
     public function deleteFeaturedImage(Request $request, BlogPost $post)
     {
-        if ($post->featured_image && $this->storageHelper->fileExists('blog_images', $post->featured_image)) {
+        if ($post->featured_image && $this->storageHelper->fileExistsWithFailover('blog_images', $post->featured_image)) {
             $this->storageHelper->deleteFile('blog_images', $post->featured_image);
             $post->featured_image = null;
             $post->featured_image_alt = null;

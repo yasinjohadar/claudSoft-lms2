@@ -12,6 +12,9 @@
                 <h5 class="page-title fs-21 mb-1">إعدادات التخزين</h5>
             </div>
             <div>
+                <a href="{{ route('app-storage.inventory.index') }}" class="btn btn-outline-primary btn-sm me-1">
+                    <i class="fas fa-folder-open me-1"></i> جرد الملفات
+                </a>
                 <a href="{{ route('app-storage.configs.create') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i> إضافة مكان تخزين
                 </a>
