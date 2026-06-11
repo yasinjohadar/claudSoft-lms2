@@ -7,6 +7,7 @@ use App\Http\Controllers\Student\CourseNoteController;
 use App\Http\Controllers\Student\CourseProgressController;
 use App\Http\Controllers\Student\CourseReviewController;
 use App\Http\Controllers\Student\ExternalResourceController;
+use App\Http\Controllers\Student\StudentGiftController;
 use App\Http\Controllers\Student\Gamification\AchievementController as StudentAchievementController;
 use App\Http\Controllers\Student\Gamification\ChallengeController as StudentChallengeController;
 use App\Http\Controllers\Student\Gamification\CompetitionController as StudentCompetitionController;
@@ -109,6 +110,12 @@ Route::prefix('student')
         Route::prefix('external-resources')->name('student.external-resources.')->group(function () {
             Route::get('/', [ExternalResourceController::class, 'index'])->name('index');
             Route::get('/{resource}/access', [ExternalResourceController::class, 'access'])->name('access');
+        });
+
+        Route::prefix('gifts')->name('student.gifts.')->group(function () {
+            Route::get('/', [StudentGiftController::class, 'index'])->name('index');
+            Route::get('/{recipient}/preview', [StudentGiftController::class, 'preview'])->name('preview');
+            Route::get('/{recipient}/download', [StudentGiftController::class, 'download'])->name('download');
         });
 
         // Course Progress & Statistics

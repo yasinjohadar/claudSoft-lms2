@@ -10,6 +10,7 @@
         ['route' => 'student.progress.overview', 'icon' => 'fe-trending-up', 'color' => 'secondary', 'title' => 'تقدمي في الكورسات', 'subtitle' => 'نسب الإنجاز'],
         ['route' => 'gamification.dashboard', 'icon' => 'fe-zap', 'color' => 'orange', 'title' => 'لوحة التلعيب', 'subtitle' => 'النقاط والتحديات'],
         ['route' => 'student.external-resources.index', 'icon' => 'fe-link', 'color' => 'info', 'title' => 'الموارد الخارجية', 'subtitle' => 'روابط ومراجع'],
+        ['route' => 'student.gifts.index', 'icon' => 'ri-gift-line', 'icon_set' => 'ri', 'color' => 'warning', 'title' => 'هدايا الأكاديمية', 'subtitle' => 'هدايا وموارد من الأكاديمية'],
     ];
 @endphp
 
@@ -31,7 +32,7 @@
                 <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 dashboard-stagger-item" style="--stagger-delay: {{ $index * 35 }}ms">
                     <a href="{{ route($link['route']) }}" class="admin-quick-link text-decoration-none d-block h-100">
                         <span class="admin-quick-link__icon bg-{{ $link['color'] }}-transparent">
-                            <i class="fe {{ $link['icon'] }} text-{{ $link['color'] }}"></i>
+                            <i class="{{ $link['icon_set'] ?? 'fe' }} {{ $link['icon'] }} text-{{ $link['color'] }}"></i>
                         </span>
                         <span class="admin-quick-link__title">{{ $link['title'] }}</span>
                         <span class="admin-quick-link__subtitle">{{ $link['subtitle'] }}</span>

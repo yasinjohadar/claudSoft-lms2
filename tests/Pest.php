@@ -17,7 +17,7 @@ pest()->extend(Tests\Feature\Reports\ReportsMysqlTestCase::class)
 
 pest()->extend(Tests\Feature\Gamification\GamificationMysqlTestCase::class)
     ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
-    ->in('Feature/Gamification');
+    ->in('Feature/Gamification', 'Feature/StudentGifts');
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)

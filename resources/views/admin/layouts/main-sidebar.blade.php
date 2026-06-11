@@ -427,6 +427,13 @@
                             </a>
                         </li>
 
+                        <li class="slide {{ request()->routeIs('admin.gifts.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.gifts.index') }}" class="side-menu__item {{ request()->routeIs('admin.gifts.*') ? 'active' : '' }}">
+                                <i class="ri ri-gift-line side-menu__icon"></i>
+                                <span class="side-menu__label">هدايا الطلاب</span>
+                            </a>
+                        </li>
+
                         <!-- المحتوى والوثائق -->
                         <li class="slide has-sub {{ $contentActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $contentActive ? 'active' : '' }}">

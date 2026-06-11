@@ -61,6 +61,7 @@ use App\Http\Controllers\Admin\ReminderController;
 use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SiteSettingController;
+use App\Http\Controllers\Admin\StudentGiftController;
 use App\Http\Controllers\Admin\StudentCourseAiReportController;
 use App\Http\Controllers\Admin\StudentWeeklyReportController as AdminStudentWeeklyReportController;
 use App\Http\Controllers\Admin\StudentWeeklyReportScheduleController as AdminStudentWeeklyReportScheduleController;
@@ -848,6 +849,22 @@ Route::prefix('admin')
             'destroy' => 'admin.faqs.destroy',
         ]);
         Route::post('faqs/{faq}/toggle-active', [FaqController::class, 'toggleActive'])->name('admin.faqs.toggle-active');
+
+        // ========== Student Gifts Routes ==========
+        Route::prefix('gifts')->name('admin.gifts.')->group(function () {
+            Route::get('/', [StudentGiftController::class, 'index'])->name('index');
+            Route::get('/create', [StudentGiftController::class, 'create'])->name('create');
+            Route::post('/', [StudentGiftController::class, 'store'])->name('store');
+            Route::post('/preview-recipients', [StudentGiftController::class, 'previewRecipients'])->name('preview-recipients');
+            Route::get('/search-students', [StudentGiftController::class, 'searchStudents'])->name('search-students');
+            Route::get('/{gift}', [StudentGiftController::class, 'show'])->name('show');
+            Route::get('/{gift}/edit', [StudentGiftController::class, 'edit'])->name('edit');
+            Route::put('/{gift}', [StudentGiftController::class, 'update'])->name('update');
+            Route::delete('/{gift}', [StudentGiftController::class, 'destroy'])->name('destroy');
+            Route::post('/{gift}/grant', [StudentGiftController::class, 'grant'])->name('grant');
+            Route::post('/{gift}/regrant', [StudentGiftController::class, 'regrant'])->name('regrant');
+            Route::post('/{gift}/revoke', [StudentGiftController::class, 'revoke'])->name('revoke');
+        });
 
         // ========== Contact Settings Routes ==========
         Route::get('contact-settings/edit', [ContactSettingController::class, 'edit'])->name('admin.contact-settings.edit');

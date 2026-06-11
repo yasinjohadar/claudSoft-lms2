@@ -121,6 +121,13 @@
                         </li>
                         <!-- End::slide -->
 
+                        <li class="slide {{ request()->routeIs('student.gifts.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.gifts.index') }}" class="side-menu__item {{ request()->routeIs('student.gifts.*') ? 'active' : '' }}">
+                                <i class="ri ri-gift-line side-menu__icon"></i>
+                                <span class="side-menu__label">هدايا الأكاديمية</span>
+                            </a>
+                        </li>
+
                         <!-- Start::slide - شهاداتي -->
                         <li class="slide">
                             <a href="{{ route('student.certificates.index') }}" class="side-menu__item">
