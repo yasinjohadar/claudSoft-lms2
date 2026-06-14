@@ -237,7 +237,7 @@ class QuestionBankExcelImportService
     /**
      * @return list<string>
      */
-    public function validateRowForType(array $q, ?QuestionType $type): array
+    public function validateRowForType(array $q, ?QuestionType $type, bool $courseSatisfied = false): array
     {
         $errors = [];
         if (empty($q['question_type'])) {
@@ -246,7 +246,7 @@ class QuestionBankExcelImportService
         if (empty($q['question_text'])) {
             $errors[] = 'نص السؤال مطلوب';
         }
-        if (empty($q['course'])) {
+        if (empty($q['course']) && ! $courseSatisfied) {
             $errors[] = 'اسم الكورس مطلوب';
         }
         if (! $type) {

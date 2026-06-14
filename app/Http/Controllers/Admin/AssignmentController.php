@@ -23,6 +23,7 @@ class AssignmentController extends Controller
     public function index(Request $request)
     {
         $query = Assignment::with(['course', 'lesson', 'creator'])
+            ->withCount('submissions')
             ->orderBy('created_at', 'desc');
 
         // Filter by course
@@ -47,7 +48,17 @@ class AssignmentController extends Controller
         $assignments = $query->paginate(15);
         $courses = Course::where('is_published', true)->get();
 
-        return view('admin.pages.assignments.index', compact('assignments', 'courses'));
+        $totalAssignments = Assignment::count();
+        $publishedAssignments = Assignment::where('is_published', true)->count();
+        $draftAssignments = Assignment::where('is_published', false)->count();
+
+        return view('admin.pages.assignments.index', compact(
+            'assignments',
+            'courses',
+            'totalAssignments',
+            'publishedAssignments',
+            'draftAssignments',
+        ));
     }
 
     /**

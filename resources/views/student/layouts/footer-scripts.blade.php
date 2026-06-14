@@ -63,6 +63,17 @@
 <!-- Custom JS -->
 <script src="{{ asset('assets/js/custom.js') }}"></script>
 
+<!-- Show page after all resources load (required for dashboard-fade-in animations) -->
+<script>
+    window.addEventListener('load', function () {
+        document.documentElement.classList.add('loaded');
+        const loader = document.getElementById('loader');
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    });
+</script>
+
 @auth
     @php
         $reverb = config('broadcasting.connections.reverb');

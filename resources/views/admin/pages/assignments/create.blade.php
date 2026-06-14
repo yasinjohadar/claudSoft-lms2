@@ -4,26 +4,45 @@
     إضافة واجب جديد
 @stop
 
+@section('styles')
+    @include('admin.pages.assignments.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إضافة واجب جديد</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('assignments.index') }}">الواجبات</a></li>
-                            <li class="breadcrumb-item active">إضافة واجب</li>
-                        </ol>
-                    </nav>
-                </div>
+            @include('admin.components.alerts')
+
+            <div class="admin-form-layout">
+
+            <div class="my-4 page-header-breadcrumb assignments-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('assignments.index') }}">الواجبات</a></li>
+                        <li class="breadcrumb-item active">إضافة واجب</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Display Alerts -->
-            @include('admin.components.alerts')
+            <div class="group-show-hero dashboard-fade-in assignments-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-plus me-1"></i>واجب جديد</span>
+                        <h2 class="group-show-hero__title mb-2">إضافة واجب جديد</h2>
+                        <p class="group-show-hero__desc mb-0">حدد الكورس والدرس، اضبط إعدادات التسليم والتقييم، ثم انشر الواجب للطلاب.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('assignments.index') }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">العودة للقائمة</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <form action="{{ route('assignments.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
@@ -35,19 +54,19 @@
 
                 <!-- رسالة تنبيه إذا تم التحديد من القسم -->
                 @if($selectedSection)
-                    <div class="alert alert-info mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>إضافة واجب للقسم:</strong> {{ $selectedSection->title }} -
+                    <div class="alert alert-info mb-4 assignments-page-animate">
+                        <i class="fe fe-info me-2"></i>
+                        <strong>إضافة واجب للقسم:</strong> {{ $selectedSection->title }} —
                         <strong>الكورس:</strong> {{ $selectedCourse->title }}
                     </div>
                 @endif
 
-                <!-- Basic Information -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-info-circle me-2"></i>المعلومات الأساسية
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                            المعلومات الأساسية
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -115,12 +134,12 @@
                     </div>
                 </div>
 
-                <!-- Grading Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-star me-2"></i>إعدادات الدرجات
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-award"></i></span>
+                            إعدادات الدرجات
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -148,12 +167,12 @@
                     </div>
                 </div>
 
-                <!-- Submission Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-cog me-2"></i>إعدادات التسليم
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-settings"></i></span>
+                            إعدادات التسليم
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -197,12 +216,12 @@
                     </div>
                 </div>
 
-                <!-- Deadlines -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-clock me-2"></i>المواعيد النهائية
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-clock"></i></span>
+                            المواعيد النهائية
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -256,12 +275,12 @@
                     </div>
                 </div>
 
-                <!-- Resubmission Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-redo me-2"></i>إعدادات إعادة التسليم
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-rotate-cw"></i></span>
+                            إعدادات إعادة التسليم
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -298,12 +317,12 @@
                     </div>
                 </div>
 
-                <!-- Attachments -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-paperclip me-2"></i>المرفقات (موارد للطلاب)
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-paperclip"></i></span>
+                            المرفقات (موارد للطلاب)
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -318,12 +337,12 @@
                     </div>
                 </div>
 
-                <!-- Visibility Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-eye me-2"></i>إعدادات الظهور
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-eye"></i></span>
+                            إعدادات الظهور
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -350,15 +369,14 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="card custom-card">
+                <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in assignments-page-animate">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end gap-2">
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
                             <a href="{{ route('assignments.index') }}" class="btn btn-light">
-                                <i class="fas fa-times me-2"></i>إلغاء
+                                <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>حفظ الواجب
+                                <i class="fe fe-save me-1"></i>حفظ الواجب
                             </button>
                         </div>
                     </div>
@@ -366,144 +384,12 @@
 
             </form>
 
+            </div>
+
         </div>
     </div>
 @stop
 
 @section('script')
-<script src="https://cdn.jsdelivr.net/npm/tinymce@5.10.9/tinymce.min.js"></script>
-<script>
-    tinymce.init({
-        selector: '#description, #instructions',
-        directionality: 'rtl',
-        height: 300,
-        menubar: false,
-        plugins: [
-            'advlist autolink lists link charmap print preview anchor',
-            'searchreplace visualblocks code fullscreen',
-            'insertdatetime table paste code help wordcount codesample'
-        ],
-        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link table | codesample code | fullscreen',
-        codesample_languages: [
-            { text: 'HTML/XML', value: 'markup' },
-            { text: 'JavaScript', value: 'javascript' },
-            { text: 'CSS', value: 'css' },
-            { text: 'PHP', value: 'php' },
-            { text: 'Python', value: 'python' },
-            { text: 'Java', value: 'java' },
-            { text: 'C', value: 'c' },
-            { text: 'C++', value: 'cpp' },
-            { text: 'SQL', value: 'sql' }
-        ],
-        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; font-size: 14px; direction: rtl; }'
-    });
-
-    // Load lessons based on selected course
-    document.getElementById('course_id').addEventListener('change', function() {
-        const courseId = this.value;
-        const lessonSelect = document.getElementById('lesson_id');
-
-        lessonSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-
-        if (!courseId) {
-            lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-            return;
-        }
-
-        const routeUrl = '{{ route("assignments.get-lessons", ["courseId" => ":courseId"]) }}'.replace(':courseId', courseId);
-        fetch(routeUrl, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                lessonSelect.innerHTML = '<option value="">لا يوجد دروس مرتبطة</option>';
-                if (data && Array.isArray(data) && data.length > 0) {
-                    data.forEach(lesson => {
-                        if (lesson && lesson.id && lesson.title) {
-                            const option = document.createElement('option');
-                            option.value = lesson.id;
-                            option.textContent = lesson.title;
-                            lessonSelect.appendChild(option);
-                        }
-                    });
-                } else {
-                    lessonSelect.innerHTML = '<option value="">لا توجد دروس متاحة لهذا الكورس</option>';
-                }
-            })
-            .catch(error => {
-                console.error('Error loading lessons:', error);
-                lessonSelect.innerHTML = '<option value="">خطأ في تحميل الدروس</option>';
-            });
-    });
-
-    // Toggle submission type settings
-    document.getElementById('submission_type').addEventListener('change', function() {
-        const type = this.value;
-        const linkSettings = document.getElementById('link_settings');
-        const fileSettingsCount = document.getElementById('file_settings_count');
-        const fileSettingsSize = document.getElementById('file_settings_size');
-
-        if (type === 'link') {
-            linkSettings.style.display = 'block';
-            fileSettingsCount.style.display = 'none';
-            fileSettingsSize.style.display = 'none';
-        } else if (type === 'file') {
-            linkSettings.style.display = 'none';
-            fileSettingsCount.style.display = 'block';
-            fileSettingsSize.style.display = 'block';
-        } else { // both
-            linkSettings.style.display = 'block';
-            fileSettingsCount.style.display = 'block';
-            fileSettingsSize.style.display = 'block';
-        }
-    });
-
-    // Trigger on page load
-    document.getElementById('submission_type').dispatchEvent(new Event('change'));
-
-    // Toggle resubmission settings
-    document.getElementById('allow_resubmission').addEventListener('change', function() {
-        const resubmissionSettings = document.getElementById('resubmission_settings');
-        const resubmissionGrading = document.getElementById('resubmission_grading');
-
-        if (this.checked) {
-            resubmissionSettings.style.display = 'block';
-            resubmissionGrading.style.display = 'block';
-        } else {
-            resubmissionSettings.style.display = 'none';
-            resubmissionGrading.style.display = 'none';
-        }
-    });
-
-    // Trigger on page load
-    if (document.getElementById('allow_resubmission').checked) {
-        document.getElementById('resubmission_settings').style.display = 'block';
-        document.getElementById('resubmission_grading').style.display = 'block';
-    }
-
-    // Clear hidden field values before form submission to prevent validation errors
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const type = document.getElementById('submission_type').value;
-
-        if (type === 'link') {
-            // Clear file-related fields when only links are allowed
-            const maxFiles = document.querySelector('input[name="max_files"]');
-            const maxFileSize = document.querySelector('input[name="max_file_size"]');
-            if (maxFiles) maxFiles.removeAttribute('required');
-            if (maxFileSize) maxFileSize.removeAttribute('required');
-        } else if (type === 'file') {
-            // Clear link-related fields when only files are allowed
-            const maxLinks = document.querySelector('input[name="max_links"]');
-            if (maxLinks) maxLinks.removeAttribute('required');
-        }
-    });
-</script>
+    @include('admin.pages.assignments.partials.form-scripts', ['currentLessonId' => null])
 @stop

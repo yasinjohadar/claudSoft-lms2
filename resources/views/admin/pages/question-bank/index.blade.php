@@ -6,45 +6,70 @@
 
 @section('styles')
 <style>
-    /* Fix excessive spacing before footer - Override theme CSS */
-    body .page {
-        min-height: auto !important;
-        justify-content: flex-start !important;
-        display: flex !important;
-        flex-direction: column !important;
+    /* إيقاف الأنيميشن أثناء إخفاء الصفحة حتى لا تنتهي قبل الظهور */
+    html:not(.loaded) .qb-page-animate {
+        animation-play-state: paused !important;
+        opacity: 0;
     }
-    
-    body .main-content.app-content {
-        padding-bottom: 1rem !important;
-        min-height: auto !important;
-        margin-block-end: 0 !important;
-        flex: 0 0 auto !important;
+    html.loaded .qb-page-animate {
+        animation-play-state: running !important;
     }
-    
-    body .container-fluid {
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
+
+    .qb-question-preview {
+        max-width: 420px;
+        line-height: 1.45;
     }
-    
-    body .card.custom-card:last-child {
-        margin-bottom: 1rem !important;
+
+    .qb-type-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.28rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(var(--primary-rgb), 0.1);
+        color: rgb(var(--primary-rgb));
     }
-    
-    /* Ensure footer doesn't create extra space */
-    body .footer {
-        margin-top: 0 !important;
-        flex: 0 0 auto !important;
+
+    .qb-lang-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        color: #fff;
+        margin-bottom: 0.15rem;
     }
-    
-    /* Remove any extra padding/margin from app-content */
-    body .app-content > .container-fluid {
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
+
+    .qb-difficulty-chip {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
     }
-    
-    /* Fix for empty state causing extra space */
-    body .table-responsive {
-        margin-bottom: 0 !important;
+
+    .qb-difficulty-chip--easy { background: rgba(25, 135, 84, 0.12); color: #198754; }
+    .qb-difficulty-chip--medium { background: rgba(255, 193, 7, 0.15); color: #cc9a00; }
+    .qb-difficulty-chip--hard { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+    .qb-difficulty-chip--expert { background: rgba(33, 37, 41, 0.12); color: #212529; }
+
+    .qb-table-row {
+        transition: background-color 0.2s ease;
+    }
+
+    .qb-actions .btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
     }
 </style>
 @stop
@@ -53,116 +78,73 @@
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('admin.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">بنك الأسئلة</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item active">بنك الأسئلة</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('question-bank.import.excel') }}" class="btn btn-success me-2">
-                        <i class="fas fa-file-excel me-2"></i>استيراد من Excel
-                    </a>
-                    <a href="{{ route('question-bank.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>إضافة سؤال جديد
-                    </a>
-                </div>
+            <div class="my-4 page-header-breadcrumb qb-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">بنك الأسئلة</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">إجمالي الأسئلة</p>
-                                    <h3 class="mb-0 fw-semibold">{{ $questions->total() }}</h3>
-                                </div>
-                                <div>
-                                    <span class="avatar avatar-md bg-primary-transparent">
-                                        <i class="fas fa-question-circle fs-18"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+            <div class="group-show-hero dashboard-fade-in qb-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-7">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-database me-1"></i>
+                            إدارة بنك الأسئلة
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">بنك الأسئلة</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            إنشاء الأسئلة، استيرادها من Excel أو JSON، وتنظيمها حسب الكورس والنوع والصعوبة.
+                        </p>
                     </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">قابلة لإعادة الاستخدام</p>
-                                    <h3 class="mb-0 fw-semibold">{{ $questions->where('is_reusable', true)->count() }}</h3>
-                                </div>
-                                <div>
-                                    <span class="avatar avatar-md bg-success-transparent">
-                                        <i class="fas fa-recycle fs-18"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">أنواع الأسئلة</p>
-                                    <h3 class="mb-0 fw-semibold">{{ $questionTypes->count() }}</h3>
-                                </div>
-                                <div>
-                                    <span class="avatar avatar-md bg-info-transparent">
-                                        <i class="fas fa-list fs-18"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start justify-content-between">
-                                <div>
-                                    <p class="mb-1 text-muted">الكورسات</p>
-                                    <h3 class="mb-0 fw-semibold">{{ $courses->count() }}</h3>
-                                </div>
-                                <div>
-                                    <span class="avatar avatar-md bg-warning-transparent">
-                                        <i class="fas fa-book fs-18"></i>
-                                    </span>
-                                </div>
-                            </div>
+                    <div class="col-lg-5">
+                        <div class="group-show-actions">
+                            <a href="{{ route('question-bank.create') }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إضافة سؤال جديد</span>
+                            </a>
+                            <a href="{{ route('question-bank.import.excel') }}" class="group-show-action group-show-action--success">
+                                <span class="group-show-action__icon"><i class="fe fe-file-text"></i></span>
+                                <span class="group-show-action__text">استيراد من Excel</span>
+                            </a>
+                            <a href="{{ route('question-bank.import.type.select', 'excel') }}" class="group-show-action group-show-action--warning">
+                                <span class="group-show-action__icon"><i class="fe fe-grid"></i></span>
+                                <span class="group-show-action__text">Excel حسب النوع</span>
+                            </a>
+                            <a href="{{ route('question-bank.import.type.select', 'json') }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-code"></i></span>
+                                <span class="group-show-action__text">استيراد من JSON</span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Filter & Search -->
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('question-bank.index') }}" id="filterForm">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">البحث</label>
-                                <input type="text" name="search" class="form-control"
+            <div id="questionBankStatsContainer" class="mb-4 qb-page-animate">
+                @include('admin.pages.question-bank.partials.stats', ['stats' => $stats ?? []])
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية الأسئلة</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث في نص السؤال أو فلتر حسب الكورس والنوع والصعوبة.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form method="GET" action="{{ route('question-bank.index') }}" id="qbFilterForm" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="qbSearch">البحث</label>
+                                <input type="text" id="qbSearch" name="search" class="form-control"
                                        placeholder="ابحث في نص السؤال..."
                                        value="{{ request('search') }}">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">الكورس</label>
-                                <select name="course_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="qbCourse">الكورس</label>
+                                <select name="course_id" id="qbCourse" class="form-select">
                                     <option value="">جميع الكورسات</option>
                                     @foreach($courses as $course)
                                         <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
@@ -171,9 +153,9 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">نوع السؤال</label>
-                                <select name="question_type_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="qbType">نوع السؤال</label>
+                                <select name="question_type_id" id="qbType" class="form-select">
                                     <option value="">الكل</option>
                                     @foreach($questionTypes as $type)
                                         <option value="{{ $type->id }}" {{ request('question_type_id') == $type->id ? 'selected' : '' }}>
@@ -182,193 +164,56 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">الصعوبة</label>
-                                <select name="difficulty" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="qbDifficulty">الصعوبة</label>
+                                <select name="difficulty" id="qbDifficulty" class="form-select">
                                     <option value="">الكل</option>
                                     <option value="easy" {{ request('difficulty') == 'easy' ? 'selected' : '' }}>سهل</option>
                                     <option value="medium" {{ request('difficulty') == 'medium' ? 'selected' : '' }}>متوسط</option>
                                     <option value="hard" {{ request('difficulty') == 'hard' ? 'selected' : '' }}>صعب</option>
+                                    <option value="expert" {{ request('difficulty') == 'expert' ? 'selected' : '' }}>خبير</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="row g-3 mt-2">
-                            <div class="col-md-3">
-                                <label class="form-label">لغة البرمجة</label>
-                                <select name="language_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="qbLanguage">لغة البرمجة</label>
+                                <select name="language_id" id="qbLanguage" class="form-select">
                                     <option value="">جميع اللغات</option>
                                     @foreach($programmingLanguages as $lang)
                                         <option value="{{ $lang->id }}" {{ request('language_id') == $lang->id ? 'selected' : '' }}>
-                                            {{ $lang->name }}
+                                            {{ $lang->display_name ?? $lang->name }}
                                         </option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">&nbsp;</label>
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i>بحث
-                                </button>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">&nbsp;</label>
-                                <a href="{{ route('question-bank.index') }}" class="btn btn-outline-secondary w-100">
-                                    <i class="fas fa-redo me-2"></i>إعادة تعيين
-                                </a>
+                            <div class="col-xl-12">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fe fe-search me-1"></i>بحث
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="qbResetBtn">
+                                        <i class="fe fe-rotate-cw me-1"></i>مسح
+                                    </button>
+                                    <small id="qbSearchFeedback" class="text-muted ms-1"></small>
+                                </div>
                             </div>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Questions Table -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="card-title">
-                            قائمة الأسئلة (<span id="questions-count">{{ $questions->total() }}</span>)
-                        </div>
-                        <button type="button" class="btn btn-danger btn-sm" id="delete-selected-questions-btn" disabled>
-                            <i class="fas fa-trash me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)
-                        </button>
-                    </div>
+            <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة الأسئلة
+                        <span class="group-show-members-card__count" id="questions-count">{{ $questions->total() }}</span>
+                    </h6>
+                    <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions-btn" disabled>
+                        <i class="fe fe-trash-2 me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)
+                    </button>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th width="50"><input type="checkbox" id="select-all-questions-table"></th>
-                                    <th width="5%">#</th>
-                                    <th width="30%">السؤال</th>
-                                    <th width="10%">النوع</th>
-                                    <th width="12%">اللغات</th>
-                                    <th width="10%">الكورس</th>
-                                    <th width="10%">الدرس</th>
-                                    <th width="8%">الصعوبة</th>
-                                    <th width="6%">الدرجة</th>
-                                    <th width="6%">الاستخدام</th>
-                                    <th width="13%">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($questions as $question)
-                                    <tr id="question-row-{{ $question->id }}">
-                                        <td><input type="checkbox" class="question-row-checkbox" value="{{ $question->id }}"></td>
-                                        <td>{{ $loop->iteration + ($questions->currentPage() - 1) * $questions->perPage() }}</td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 400px;" title="{{ $question->question_text }}">
-                                                {{ $question->question_text }}
-                                            </div>
-                                            <small class="text-muted">
-                                                <i class="fas fa-user fs-10 me-1"></i>{{ $question->creator->name ?? 'غير محدد' }}
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info-transparent">
-                                                <i class="{{ $question->questionType->icon ?? 'fas fa-question' }} me-1"></i>
-                                                {{ $question->questionType->display_name }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if($question->programmingLanguages->count() > 0)
-                                                @foreach($question->programmingLanguages as $lang)
-                                                    <span class="badge mb-1" style="background-color: {{ $lang->color ?? '#6c757d' }}; color: white;">
-                                                        <i class="{{ $lang->icon ?? 'fas fa-code' }} me-1"></i>{{ $lang->name }}
-                                                    </span>
-                                                @endforeach
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($question->course)
-                                                <span class="badge bg-primary-transparent">
-                                                    {{ $question->course->title }}
-                                                </span>
-                                            @else
-                                                <span class="badge bg-secondary-transparent">
-                                                    عام
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @php
-                                                $lessonLabel = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
-                                            @endphp
-                                            @if($lessonLabel)
-                                                <span class="text-truncate d-inline-block" style="max-width: 180px;" title="{{ $lessonLabel }}">{{ $lessonLabel }}</span>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($question->difficulty_level == 'easy')
-                                                <span class="badge bg-success">سهل</span>
-                                            @elseif($question->difficulty_level == 'medium')
-                                                <span class="badge bg-warning">متوسط</span>
-                                            @elseif($question->difficulty_level == 'hard')
-                                                <span class="badge bg-danger">صعب</span>
-                                            @else
-                                                <span class="badge bg-dark">خبير</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ $question->default_grade ?? 0 }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-purple-transparent" title="عدد مرات الاستخدام">
-                                                {{ $question->quizQuestions()->count() }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('question-bank.show', $question->id) }}"
-                                                   class="btn btn-sm btn-info" title="عرض">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('question-bank.edit', $question->id) }}"
-                                                   class="btn btn-sm btn-primary" title="تعديل">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form action="{{ route('question-bank.duplicate', $question->id) }}"
-                                                      method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-secondary" title="نسخ">
-                                                        <i class="fas fa-copy"></i>
-                                                    </button>
-                                                </form>
-                                                <button type="button" class="btn btn-sm btn-danger remove-question" 
-                                                        data-question-id="{{ $question->id }}" 
-                                                        data-question-text="{{ Str::limit(strip_tags($question->question_text), 50) }}"
-                                                        title="حذف">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="11" class="text-center py-5">
-                                            <div class="mb-3">
-                                                <i class="fas fa-question-circle fs-48 text-muted"></i>
-                                            </div>
-                                            <p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p>
-                                            <a href="{{ route('question-bank.create') }}" class="btn btn-primary">
-                                                <i class="fas fa-plus me-2"></i>إضافة سؤال جديد
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-body pt-3" id="questionBankTableContainer">
+                    @include('admin.pages.question-bank._questions_table', ['questions' => $questions])
                 </div>
-                @if($questions->hasPages())
-                    <div class="card-footer">
-                        {{ $questions->links() }}
-                    </div>
-                @endif
             </div>
 
         </div>
@@ -380,23 +225,21 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteQuestionModalLabel">
-                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>حذف السؤال
+                        <i class="fe fe-alert-triangle text-danger me-2"></i>حذف السؤال
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-3">هل أنت متأكد من إزالة هذا السؤال من بنك الأسئلة؟</p>
                     <div class="alert alert-warning mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
+                        <i class="fe fe-info me-2"></i>
                         <strong>السؤال:</strong> <span id="deleteQuestionText"></span>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>إلغاء
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteQuestion">
-                        <i class="fas fa-trash me-2"></i>حذف
+                        <i class="fe fe-trash-2 me-1"></i>حذف
                     </button>
                 </div>
             </div>
@@ -409,420 +252,429 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deleteMultipleQuestionsModalLabel">
-                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>حذف أسئلة متعددة
+                        <i class="fe fe-alert-triangle text-danger me-2"></i>حذف أسئلة متعددة
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-3">هل أنت متأكد من إزالة الأسئلة المحددة من بنك الأسئلة؟</p>
                     <div class="alert alert-warning mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
+                        <i class="fe fe-info me-2"></i>
                         <strong>عدد الأسئلة المحددة:</strong> <span id="deleteMultipleQuestionsCount">0</span>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>إلغاء
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteMultipleQuestions">
-                        <i class="fas fa-trash me-2"></i>حذف المحدد
+                        <i class="fe fe-trash-2 me-1"></i>حذف المحدد
                     </button>
                 </div>
             </div>
         </div>
     </div>
+@stop
 
 @section('scripts')
 <script>
 (function() {
-    console.log('Question Bank Script: Starting initialization...');
-    
-    // Wait for jQuery and Bootstrap to be available
-    function initQuestionBankDelete() {
-        // Check for jQuery
-        if (typeof jQuery === 'undefined') {
-            console.log('Question Bank Script: jQuery not loaded, retrying...');
-            setTimeout(initQuestionBankDelete, 100);
+    function initQuestionBankCountup(root) {
+        const scope = root || document;
+        scope.querySelectorAll('[data-countup]').forEach(function(el) {
+            const target = parseFloat(el.dataset.countup || '0');
+            const duration = 800;
+            const start = performance.now();
+
+            function step(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
+                if (progress < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    }
+
+    window.initQuestionBankCountup = initQuestionBankCountup;
+
+    function restartPageAnimations() {
+        document.querySelectorAll('.qb-page-animate').forEach(function(el) {
+            el.style.animation = 'none';
+            void el.offsetHeight;
+            el.style.animation = '';
+        });
+    }
+
+    function onPageReady() {
+        initQuestionBankCountup();
+        restartPageAnimations();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', onPageReady);
+    } else {
+        onPageReady();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            if (!document.documentElement.classList.contains('loaded')) {
+                document.documentElement.classList.add('loaded');
+            }
+            restartPageAnimations();
+            initQuestionBankCountup();
+        }, 50);
+    });
+})();
+</script>
+<script>
+(function() {
+    function debounce(fn, delay) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    function initQuestionBankAjaxFilter() {
+        const form = document.getElementById('qbFilterForm');
+        const tableContainer = document.getElementById('questionBankTableContainer');
+        const statsContainer = document.getElementById('questionBankStatsContainer');
+        const countBadge = document.getElementById('questions-count');
+        const searchInput = document.getElementById('qbSearch');
+        const feedback = document.getElementById('qbSearchFeedback');
+        const resetBtn = document.getElementById('qbResetBtn');
+
+        if (!form || !tableContainer) {
             return;
         }
 
-        // Check for Bootstrap
-        if (typeof bootstrap === 'undefined') {
-            console.log('Question Bank Script: Bootstrap not loaded, retrying...');
+        let currentController = null;
+
+        const getQueryString = function() {
+            const formData = new FormData(form);
+            const search = (formData.get('search') || '').toString().trim();
+            formData.set('search', search);
+            return new URLSearchParams(formData).toString();
+        };
+
+        const updateBrowserUrl = function(queryString) {
+            const baseUrl = form.getAttribute('action');
+            const nextUrl = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            window.history.replaceState({}, '', nextUrl);
+        };
+
+        const fetchAndRender = function(url) {
+            if (currentController) {
+                currentController.abort();
+            }
+
+            currentController = new AbortController();
+
+            if (feedback) {
+                feedback.textContent = 'جاري البحث...';
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('فشل جلب النتائج');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (!data || typeof data.table_html !== 'string') {
+                        throw new Error('صيغة استجابة غير متوقعة');
+                    }
+
+                    tableContainer.innerHTML = data.table_html;
+
+                    if (statsContainer && typeof data.stats_html === 'string') {
+                        statsContainer.innerHTML = data.stats_html;
+                        if (typeof window.initQuestionBankCountup === 'function') {
+                            window.initQuestionBankCountup(statsContainer);
+                        }
+                    }
+
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
+                    }
+
+                    if (typeof window.initQuestionBankTableHandlers === 'function') {
+                        window.initQuestionBankTableHandlers();
+                    }
+
+                    const queryString = url.includes('?') ? url.split('?')[1] : '';
+                    updateBrowserUrl(queryString);
+
+                    if (feedback) {
+                        feedback.textContent = 'تم تحديث النتائج';
+                    }
+                })
+                .catch(function(error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                    }
+                    console.error(error);
+                });
+        };
+
+        const triggerSearch = function() {
+            const queryString = getQueryString();
+            const baseUrl = form.getAttribute('action');
+            const url = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            fetchAndRender(url);
+        };
+
+        const debouncedSearch = debounce(triggerSearch, 350);
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        form.querySelectorAll('select').forEach(function(selectElement) {
+            selectElement.addEventListener('change', triggerSearch);
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                form.reset();
+                if (feedback) {
+                    feedback.textContent = '';
+                }
+                triggerSearch();
+            });
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        tableContainer.addEventListener('click', function(event) {
+            const paginationLink = event.target.closest('.pagination a, .qb-pagination a');
+            if (!paginationLink) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initQuestionBankAjaxFilter);
+    } else {
+        initQuestionBankAjaxFilter();
+    }
+})();
+</script>
+<script>
+(function() {
+    function initQuestionBankDelete() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
             setTimeout(initQuestionBankDelete, 100);
             return;
         }
 
         var $ = jQuery;
-        console.log('Question Bank Script: jQuery and Bootstrap loaded, initializing...');
+        const tableContainer = document.getElementById('questionBankTableContainer');
+        const deleteSelectedBtn = document.getElementById('delete-selected-questions-btn');
 
-        // Use both document.ready and window.load as fallback
-        function initializeHandlers() {
-            console.log('Question Bank Script: Initializing event handlers...');
-            
-            // Check if required elements exist
-            const selectAllCheckbox = document.getElementById('select-all-questions-table');
-            const deleteSelectedBtn = document.getElementById('delete-selected-questions-btn');
-            const questionCheckboxes = document.querySelectorAll('.question-row-checkbox');
-            
-            console.log('Question Bank Script: Elements check:', {
-                selectAllCheckbox: !!selectAllCheckbox,
-                deleteSelectedBtn: !!deleteSelectedBtn,
-                questionCheckboxes: questionCheckboxes.length
-            });
+        window.currentDeleteQuestionId = null;
+        window.currentDeleteQuestionRow = null;
+        window.selectedQuestionsForDeletion = null;
 
-            // Variables for single delete
-            window.currentDeleteQuestionId = null;
-            window.currentDeleteQuestionRow = null;
-            window.selectedQuestionsForDeletion = null;
+        function toggleBulkDeleteButton() {
+            const selectedQuestions = $('#questionBankTableContainer .question-row-checkbox:checked').map(function() {
+                return parseInt($(this).val());
+            }).get();
 
-            // Cleanup modals on hide
-            const deleteQuestionModal = document.getElementById('deleteQuestionModal');
-            if (deleteQuestionModal) {
-                $(deleteQuestionModal).on('hidden.bs.modal', function() {
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open');
-                    $('body').css('padding-right', '');
-                    window.currentDeleteQuestionId = null;
-                    window.currentDeleteQuestionRow = null;
-                });
-            }
-
-            const deleteMultipleQuestionsModal = document.getElementById('deleteMultipleQuestionsModal');
-            if (deleteMultipleQuestionsModal) {
-                $(deleteMultipleQuestionsModal).on('hidden.bs.modal', function() {
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open');
-                    $('body').css('padding-right', '');
-                    window.selectedQuestionsForDeletion = null;
-                });
-            }
-
-            // Toggle bulk delete button
-            function toggleBulkDeleteButton() {
-                const selectedQuestions = $('.question-row-checkbox:checked').map(function() {
-                    return parseInt($(this).val());
-                }).get();
-                
-                const btn = $('#delete-selected-questions-btn');
-                const countSpan = $('#selected-questions-count');
-                
-                console.log('Selected questions:', selectedQuestions.length);
-                
-                if (selectedQuestions.length > 0) {
-                    btn.prop('disabled', false);
-                    countSpan.text(selectedQuestions.length);
-                } else {
-                    btn.prop('disabled', true);
-                    countSpan.text('0');
-                }
-            }
-
-            // Select all checkbox - use direct binding if element exists
-            if (selectAllCheckbox) {
-                $(selectAllCheckbox).off('change').on('change', function() {
-                    const isChecked = $(this).is(':checked');
-                    console.log('Question Bank Script: Select all changed:', isChecked);
-                    $('.question-row-checkbox').prop('checked', isChecked);
-                    toggleBulkDeleteButton();
-                });
-                console.log('Question Bank Script: Select all checkbox handler attached');
+            if (selectedQuestions.length > 0) {
+                $('#delete-selected-questions-btn').prop('disabled', false);
+                $('#selected-questions-count').text(selectedQuestions.length);
             } else {
-                console.warn('Question Bank Script: Select all checkbox not found!');
+                $('#delete-selected-questions-btn').prop('disabled', true);
+                $('#selected-questions-count').text('0');
             }
+        }
 
-            // Individual checkbox change - use event delegation
-            $(document).off('change', '.question-row-checkbox').on('change', '.question-row-checkbox', function() {
-                const totalCheckboxes = $('.question-row-checkbox').length;
-                const checkedCheckboxes = $('.question-row-checkbox:checked').length;
-                
-                console.log('Question Bank Script: Individual checkbox changed. Total:', totalCheckboxes, 'Checked:', checkedCheckboxes);
-                
-                if (selectAllCheckbox) {
-                    $(selectAllCheckbox).prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
-                }
+        window.initQuestionBankTableHandlers = function() {
+            toggleBulkDeleteButton();
+        };
+
+        const deleteQuestionModal = document.getElementById('deleteQuestionModal');
+        if (deleteQuestionModal) {
+            $(deleteQuestionModal).on('hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                window.currentDeleteQuestionId = null;
+                window.currentDeleteQuestionRow = null;
+            });
+        }
+
+        const deleteMultipleQuestionsModal = document.getElementById('deleteMultipleQuestionsModal');
+        if (deleteMultipleQuestionsModal) {
+            $(deleteMultipleQuestionsModal).on('hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                window.selectedQuestionsForDeletion = null;
+            });
+        }
+
+        if (tableContainer) {
+            $(tableContainer).on('change', '#select-all-questions-table', function() {
+                const isChecked = $(this).is(':checked');
+                $('#questionBankTableContainer .question-row-checkbox').prop('checked', isChecked);
                 toggleBulkDeleteButton();
             });
-            console.log('Question Bank Script: Individual checkbox handlers attached');
 
-            // Initialize toggle button state
-            toggleBulkDeleteButton();
-            console.log('Question Bank Script: Initial toggle button state set');
-
-            // Single delete - open modal
-            $(document).on('click', '.remove-question', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                console.log('Remove question clicked');
-                
-                const questionId = $(this).data('question-id');
-                const questionText = $(this).data('question-text');
-                const row = $(this).closest('tr');
-                
-                console.log('Question ID:', questionId, 'Text:', questionText);
-                
-                window.currentDeleteQuestionId = questionId;
-                window.currentDeleteQuestionRow = row;
-                
-                // Update modal content
-                $('#deleteQuestionText').text(questionText || 'هذا السؤال');
-                
-                // Show modal
-                const modalElement = document.getElementById('deleteQuestionModal');
-                if (modalElement) {
-                    const deleteModal = new bootstrap.Modal(modalElement);
-                    deleteModal.show();
-                } else {
-                    console.error('Delete modal not found');
-                }
+            $(tableContainer).on('change', '.question-row-checkbox', function() {
+                const total = $('#questionBankTableContainer .question-row-checkbox').length;
+                const checked = $('#questionBankTableContainer .question-row-checkbox:checked').length;
+                $('#select-all-questions-table').prop('checked', total === checked && total > 0);
+                toggleBulkDeleteButton();
             });
 
-            // Confirm single delete
-            const confirmDeleteQuestionBtn = document.getElementById('confirmDeleteQuestion');
-            if (confirmDeleteQuestionBtn) {
-                $(confirmDeleteQuestionBtn).off('click').on('click', function() {
-                if (!window.currentDeleteQuestionId || !window.currentDeleteQuestionRow) {
-                    console.error('No question selected for deletion');
-                    return;
+            $(tableContainer).on('click', '.remove-question', function(e) {
+                e.preventDefault();
+                window.currentDeleteQuestionId = $(this).data('question-id');
+                window.currentDeleteQuestionRow = $(this).closest('tr');
+                $('#deleteQuestionText').text($(this).data('question-text') || 'هذا السؤال');
+                if (deleteQuestionModal) {
+                    bootstrap.Modal.getOrCreateInstance(deleteQuestionModal).show();
                 }
+            });
+        }
+
+        const confirmDeleteQuestionBtn = document.getElementById('confirmDeleteQuestion');
+        if (confirmDeleteQuestionBtn) {
+            $(confirmDeleteQuestionBtn).off('click').on('click', function() {
+                if (!window.currentDeleteQuestionId || !window.currentDeleteQuestionRow) return;
 
                 const questionId = window.currentDeleteQuestionId;
                 const row = window.currentDeleteQuestionRow;
+                const deleteModal = bootstrap.Modal.getInstance(deleteQuestionModal);
+                if (deleteModal) deleteModal.hide();
 
-        // Get modal instance and hide it properly
-        const modalElement = document.getElementById('deleteQuestionModal');
-        const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-        
-        // Hide modal and remove backdrop
-        deleteModal.hide();
-        
-        // Force remove backdrop if it exists
-        setTimeout(function() {
-            $('.modal-backdrop').remove();
-            $('body').removeClass('modal-open');
-            $('body').css('padding-right', '');
-        }, 100);
+                row.find('.remove-question').prop('disabled', true);
 
-        // Disable button
-        const btn = row.find('.remove-question');
-        btn.prop('disabled', true);
-
-        $.ajax({
-            url: '{{ url('admin/question-bank') }}/' + questionId,
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            success: function(response) {
-                if (response.success) {
-                    toastr.success(response.message || 'تم حذف السؤال بنجاح');
-                    
-                    // Remove row with animation
-                    row.fadeOut(300, function() {
-                        $(this).remove();
-                        
-                        // Update questions count
-                        const remainingCount = $('.question-row-checkbox').length;
-                        $('#questions-count').text(remainingCount);
-                        
-                        // Update select all checkbox
-                        if (remainingCount === 0) {
-                            $('#select-all-questions-table').prop('checked', false);
-                        }
-                        
-                        // Check if table is empty
-                        if (remainingCount === 0) {
-                            $('tbody').html('<tr><td colspan="11" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
-                        }
-                    });
-                }
-            },
-            error: function(xhr) {
-                toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف السؤال');
-                btn.prop('disabled', false);
-            },
-            complete: function() {
-                window.currentDeleteQuestionId = null;
-                window.currentDeleteQuestionRow = null;
-                
-                // Ensure backdrop is removed
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
-                $('body').css('padding-right', '');
-            }
-        });
-                });
-                console.log('Question Bank Script: Confirm delete question handler attached');
-            } else {
-                console.warn('Question Bank Script: Confirm delete question button not found!');
-            }
-
-            // Bulk delete button handler - opens modal
-            if (deleteSelectedBtn) {
-                $(deleteSelectedBtn).off('click').on('click', function() {
-                    const selectedQuestions = $('.question-row-checkbox:checked').map(function() {
-                        return parseInt($(this).val());
-                    }).get();
-                    
-                    if (selectedQuestions.length === 0) {
-                        toastr.warning('يرجى اختيار سؤال واحد على الأقل');
-                        return;
-                    }
-
-                    // Update modal content
-                    $('#deleteMultipleQuestionsCount').text(selectedQuestions.length);
-
-                    // Show modal
-                    const modalElement = document.getElementById('deleteMultipleQuestionsModal');
-                    if (modalElement) {
-                        const deleteModal = new bootstrap.Modal(modalElement);
-                        deleteModal.show();
-                    } else {
-                        console.error('Delete multiple modal not found');
-                    }
-
-                    // Store selected questions for deletion
-                    window.selectedQuestionsForDeletion = selectedQuestions;
-                });
-                console.log('Question Bank Script: Bulk delete button handler attached');
-            } else {
-                console.warn('Question Bank Script: Delete selected button not found!');
-            }
-
-            // Confirm multiple delete - executes deletion
-            const confirmDeleteMultipleBtn = document.getElementById('confirmDeleteMultipleQuestions');
-            if (confirmDeleteMultipleBtn) {
-                $(confirmDeleteMultipleBtn).off('click').on('click', function() {
-                    const selectedQuestions = window.selectedQuestionsForDeletion || [];
-                    
-                    if (selectedQuestions.length === 0) {
-                        toastr.warning('لم يتم تحديد أي أسئلة');
-                        return;
-                    }
-
-                    // Get modal instance and hide it properly
-                    const modalElement = document.getElementById('deleteMultipleQuestionsModal');
-                    const deleteModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-                    
-                    // Hide modal and remove backdrop
-                    deleteModal.hide();
-                    
-                    // Force remove backdrop if it exists
-                    setTimeout(function() {
-                        $('.modal-backdrop').remove();
-                        $('body').removeClass('modal-open');
-                        $('body').css('padding-right', '');
-                    }, 100);
-
-                    // Disable button
-                    const btn = $('#delete-selected-questions-btn');
-                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الحذف...');
-
-                    $.ajax({
-                        url: '{{ route('question-bank.delete-multiple') }}',
-                        method: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            question_ids: selectedQuestions
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                toastr.success(response.message || `تم حذف ${selectedQuestions.length} سؤال بنجاح`);
-                                
-                                // Remove rows with animation
-                                let removedCount = 0;
-                                selectedQuestions.forEach(function(questionId) {
-                                    const row = $(`#question-row-${questionId}`);
-                                    if (row.length) {
-                                        row.fadeOut(300, function() {
-                                            $(this).remove();
-                                            removedCount++;
-                                            
-                                            // Update count when all rows are removed
-                                            if (removedCount === selectedQuestions.length) {
-                                                const remainingCount = $('.question-row-checkbox').length;
-                                                $('#questions-count').text(remainingCount);
-                                                
-                                                // Reset checkboxes
-                                                if (selectAllCheckbox) {
-                                                    $(selectAllCheckbox).prop('checked', false);
-                                                }
-                                                toggleBulkDeleteButton();
-                                                
-                                                // Check if table is empty
-                                                if (remainingCount === 0) {
-                                                    $('tbody').html('<tr><td colspan="11" class="text-center py-5"><div class="mb-3"><i class="fas fa-question-circle fs-48 text-muted"></i></div><p class="text-muted fs-16 mb-3">لا توجد أسئلة في البنك</p><a href="{{ route('question-bank.create') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>إضافة سؤال جديد</a></td></tr>');
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
+                $.ajax({
+                    url: '{{ url('admin/question-bank') }}/' + questionId,
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.success(response.message || 'تم حذف السؤال بنجاح');
                             }
-                        },
-                        error: function(xhr) {
-                            toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف الأسئلة');
-                            btn.prop('disabled', false);
-                            toggleBulkDeleteButton();
-                        },
-                        complete: function() {
-                            window.selectedQuestionsForDeletion = null;
-                            
-                            // Ensure backdrop is removed
-                            $('.modal-backdrop').remove();
-                            $('body').removeClass('modal-open');
-                            $('body').css('padding-right', '');
+                            row.fadeOut(300, function() {
+                                $(this).remove();
+                                const current = parseInt($('#questions-count').text(), 10) || 0;
+                                $('#questions-count').text(Math.max(0, current - 1));
+                                toggleBulkDeleteButton();
+                            });
                         }
-                    });
+                    },
+                    error: function(xhr) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف السؤال');
+                        }
+                        row.find('.remove-question').prop('disabled', false);
+                    }
                 });
-                console.log('Question Bank Script: Confirm delete multiple handler attached');
-            } else {
-                console.warn('Question Bank Script: Confirm delete multiple button not found!');
-            }
-            
-            console.log('Question Bank Script: All handlers initialized successfully');
+            });
         }
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeHandlers);
-        } else {
-            initializeHandlers();
+        if (deleteSelectedBtn) {
+            $(deleteSelectedBtn).off('click').on('click', function() {
+                const selectedQuestions = $('#questionBankTableContainer .question-row-checkbox:checked').map(function() {
+                    return parseInt($(this).val());
+                }).get();
+
+                if (selectedQuestions.length === 0) {
+                    if (typeof toastr !== 'undefined') toastr.warning('يرجى اختيار سؤال واحد على الأقل');
+                    return;
+                }
+
+                $('#deleteMultipleQuestionsCount').text(selectedQuestions.length);
+                if (deleteMultipleQuestionsModal) {
+                    bootstrap.Modal.getOrCreateInstance(deleteMultipleQuestionsModal).show();
+                }
+                window.selectedQuestionsForDeletion = selectedQuestions;
+            });
         }
 
-        // Also initialize on window load as fallback (for deferred scripts)
-        window.addEventListener('load', function() {
-            console.log('Question Bank Script: Window loaded, re-initializing handlers...');
-            setTimeout(initializeHandlers, 100);
-        });
+        const confirmDeleteMultipleBtn = document.getElementById('confirmDeleteMultipleQuestions');
+        if (confirmDeleteMultipleBtn) {
+            $(confirmDeleteMultipleBtn).off('click').on('click', function() {
+                const selectedQuestions = window.selectedQuestionsForDeletion || [];
+                if (selectedQuestions.length === 0) return;
+
+                const deleteModal = bootstrap.Modal.getInstance(deleteMultipleQuestionsModal);
+                if (deleteModal) deleteModal.hide();
+
+                const btn = $('#delete-selected-questions-btn');
+                btn.prop('disabled', true).html('<i class="fe fe-loader me-1"></i>جاري الحذف...');
+
+                $.ajax({
+                    url: '{{ route('question-bank.delete-multiple') }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        question_ids: selectedQuestions
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.success(response.message || 'تم الحذف بنجاح');
+                            }
+                            selectedQuestions.forEach(function(questionId) {
+                                $('#question-row-' + questionId).fadeOut(300, function() { $(this).remove(); });
+                            });
+                            setTimeout(function() {
+                                const current = parseInt($('#questions-count').text(), 10) || 0;
+                                $('#questions-count').text(Math.max(0, current - selectedQuestions.length));
+                                btn.prop('disabled', true).html('<i class="fe fe-trash-2 me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)');
+                                toggleBulkDeleteButton();
+                            }, 350);
+                        }
+                    },
+                    error: function(xhr) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء الحذف');
+                        }
+                        btn.prop('disabled', false);
+                        toggleBulkDeleteButton();
+                    }
+                });
+            });
+        }
+
+        toggleBulkDeleteButton();
     }
 
-    // Start initialization
-    let initAttempts = 0;
-    const maxAttempts = 50; // 5 seconds max wait time
-    
-    function tryInit() {
-        initAttempts++;
-        if (initAttempts > maxAttempts) {
-            console.error('Question Bank Script: Failed to load jQuery/Bootstrap after', maxAttempts * 100, 'ms');
-            return;
-        }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initQuestionBankDelete);
+    } else {
         initQuestionBankDelete();
     }
-
-    // Try to initialize immediately
-    tryInit();
-    
-    // Also try on DOMContentLoaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tryInit);
-    }
-    
-    // And on window load as final fallback
-    window.addEventListener('load', function() {
-        setTimeout(tryInit, 200);
-    });
 })();
 </script>
 @stop

@@ -31,7 +31,7 @@
                         </form>
                         @if ($leaderboard->rewards)
                         <form action="{{ route('admin.gamification.leaderboards.award-rewards', $leaderboard) }}" method="POST" class="d-inline">@csrf
-                            <button type="submit" class="group-show-action group-show-action--primary"><span class="group-show-action__icon"><i class="fe fe-gift"></i></span><span class="group-show-action__text">منح الجوائز</span></button>
+                            <button type="submit" class="group-show-action group-show-action--primary"><span class="group-show-action__icon"><i class="fe fe-package"></i></span><span class="group-show-action__text">منح الجوائز</span></button>
                         </form>
                         @endif
                         <a href="{{ route('admin.gamification.leaderboards.edit', $leaderboard) }}" class="group-show-action"><span class="group-show-action__icon"><i class="fe fe-edit"></i></span><span class="group-show-action__text">تعديل</span></a>

@@ -73,7 +73,7 @@
                         <form action="{{ route('gamification.achievements.claim', $userAchievement) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-warning rounded-pill px-4">
-                                <i class="fe fe-gift me-1"></i>المطالبة بالمكافأة
+                                <i class="fe fe-package me-1"></i>المطالبة بالمكافأة
                             </button>
                         </form>
                     @elseif($userAchievement->status === 'claimed')

@@ -4,33 +4,55 @@
     إضافة سؤال جديد
 @stop
 
+@section('styles')
+    @include('admin.pages.question-bank.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إضافة سؤال جديد</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
-                            <li class="breadcrumb-item active">إضافة سؤال</li>
-                        </ol>
-                    </nav>
+            @include('admin.components.alerts')
+
+            <div class="admin-form-layout">
+
+            <div class="my-4 page-header-breadcrumb qb-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
+                        <li class="breadcrumb-item active">إضافة سؤال</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in qb-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-plus me-1"></i>سؤال جديد</span>
+                        <h2 class="group-show-hero__title mb-2">إضافة سؤال جديد</h2>
+                        <p class="group-show-hero__desc mb-0">حدد الكورس ونوع السؤال، أضف الخيارات والوسائط، ثم احفظه في بنك الأسئلة.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('question-bank.index') }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">العودة للقائمة</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <form action="{{ route('question-bank.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                <!-- Basic Information -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>المعلومات الأساسية
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                            المعلومات الأساسية
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -124,29 +146,27 @@
                     </div>
                 </div>
 
-                <!-- Options Section -->
-                <div class="card custom-card mb-4" id="options-section">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-list-ul me-2 text-success"></i>خيارات الإجابة
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4" id="options-section">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-list"></i></span>
+                            خيارات الإجابة
+                        </h4>
                     </div>
                     <div class="card-body">
-                        <div id="options-container">
-                            <!-- Options will be added here by JavaScript -->
-                        </div>
-                        <button type="button" class="btn btn-sm btn-primary" id="add-option-btn">
-                            <i class="fas fa-plus me-1"></i>إضافة خيار
+                        <div id="options-container"></div>
+                        <button type="button" class="btn btn-sm btn-primary-light" id="add-option-btn">
+                            <i class="fe fe-plus me-1"></i>إضافة خيار
                         </button>
                     </div>
                 </div>
 
-                <!-- Media Section -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-image me-2 text-info"></i>الوسائط (اختياري)
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-image"></i></span>
+                            الوسائط (اختياري)
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -167,12 +187,12 @@
                     </div>
                 </div>
 
-                <!-- Tags Section -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-tags me-2 text-warning"></i>الوسوم (اختياري)
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-tag"></i></span>
+                            الوسوم (اختياري)
+                        </h4>
                     </div>
                     <div class="card-body">
                         <input type="text" name="tags" class="form-control"
@@ -181,21 +201,22 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="card custom-card">
+                <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in qb-page-animate">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
                             <a href="{{ route('question-bank.index') }}" class="btn btn-light">
-                                <i class="fas fa-times me-2"></i>إلغاء
+                                <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>حفظ السؤال
+                                <i class="fe fe-save me-1"></i>حفظ السؤال
                             </button>
                         </div>
                     </div>
                 </div>
 
             </form>
+
+            </div>
 
         </div>
     </div>
@@ -239,7 +260,7 @@ function addOption() {
     const letter = letters[optionCount - 1] || optionCount;
 
     const optionHtml = `
-        <div class="option-item mb-3 p-3 border rounded">
+        <div class="option-item qb-option-item mb-3 p-3 border rounded">
             <div class="row g-2 align-items-center">
                 <div class="col-auto">
                     <span class="badge bg-secondary fs-6">${letter}</span>
@@ -255,13 +276,13 @@ function addOption() {
                                name="correct_option" value="${optionCount}"
                                id="correct_${optionCount}">
                         <label class="form-check-label text-success" for="correct_${optionCount}">
-                            <i class="fas fa-check me-1"></i>صحيح
+                            <i class="fe fe-check me-1"></i>صحيح
                         </label>
                     </div>
                 </div>
                 <div class="col-auto">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-option-btn">
-                        <i class="fas fa-trash"></i>
+                    <button type="button" class="btn btn-sm btn-danger-light remove-option-btn">
+                        <i class="fe fe-trash-2"></i>
                     </button>
                 </div>
             </div>

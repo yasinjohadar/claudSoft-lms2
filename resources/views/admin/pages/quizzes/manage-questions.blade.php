@@ -4,91 +4,121 @@
     إدارة الأسئلة - {{ $quiz->title }}
 @stop
 
+@section('styles')
+    @include('admin.pages.quizzes.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div>
-                    <h4 class="mb-0">إدارة الأسئلة</h4>
-                    <nav>
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('quizzes.show', $quiz->id) }}">{{ $quiz->title }}</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">إدارة الأسئلة</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-
             @include('admin.components.alerts')
 
-            <!-- Quiz Info Card -->
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <div class="card-title">معلومات الاختبار</div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>العنوان:</strong> {{ $quiz->title }}</p>
-                            @if($quiz->description)
-                                <p><strong>الوصف:</strong> {{ $quiz->description }}</p>
-                            @endif
-                            <p><strong>الكورس:</strong> {{ $quiz->course->title ?? 'غير محدد' }}</p>
-                            <p><strong>نوع الاختبار:</strong> 
-                                @if($quiz->quiz_type === 'practice')
-                                    تدريبي
-                                @elseif($quiz->quiz_type === 'graded')
-                                    مُقيّم
-                                @elseif($quiz->quiz_type === 'final_exam')
-                                    اختبار نهائي
-                                @else
-                                    استبيان
-                                @endif
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>عدد الأسئلة:</strong> {{ $quiz->questions->count() }}</p>
-                            <p><strong>الدرجة القصوى:</strong> {{ number_format($quiz->max_score, 2) }}</p>
-                            <p><strong>الدرجة المطلوبة للنجاح:</strong> {{ $quiz->passing_grade }}%</p>
-                            @if($quiz->time_limit)
-                                <p><strong>الوقت المحدد:</strong> {{ $quiz->time_limit }} دقيقة</p>
-                            @endif
+            <div class="my-4 page-header-breadcrumb quizzes-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.show', $quiz->id) }}">{{ Str::limit($quiz->title, 30) }}</a></li>
+                        <li class="breadcrumb-item active">إدارة الأسئلة</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-list me-1"></i>إدارة الأسئلة</span>
+                        <h2 class="group-show-hero__title mb-2">{{ $quiz->title }}</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            {{ $quiz->questions->count() }} سؤال مرتبط · الدرجة القصوى {{ number_format($quiz->max_score, 1) }}
+                        </p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('quizzes.show', $quiz->id) }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-eye"></i></span>
+                                <span class="group-show-action__text">عرض الاختبار</span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Questions Management -->
+            <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                        <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                        معلومات الاختبار
+                    </h4>
+                </div>
+                <div class="card-body pt-3">
+                    <div class="assignments-info-grid">
+                        <div class="assignments-info-item">
+                            <div class="assignments-info-item__label">الكورس</div>
+                            <div class="assignments-info-item__value">
+                                <span class="assignments-course-chip">{{ $quiz->course->title ?? 'غير محدد' }}</span>
+                            </div>
+                        </div>
+                        <div class="assignments-info-item">
+                            <div class="assignments-info-item__label">نوع الاختبار</div>
+                            <div class="assignments-info-item__value">
+                                @if($quiz->quiz_type === 'practice')
+                                    <span class="quizzes-type-chip quizzes-type-chip--practice">تدريبي</span>
+                                @elseif($quiz->quiz_type === 'graded')
+                                    <span class="quizzes-type-chip quizzes-type-chip--graded">مُقيّم</span>
+                                @elseif($quiz->quiz_type === 'final_exam')
+                                    <span class="quizzes-type-chip quizzes-type-chip--final">اختبار نهائي</span>
+                                @else
+                                    <span class="quizzes-type-chip quizzes-type-chip--survey">استبيان</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="assignments-info-item">
+                            <div class="assignments-info-item__label">عدد الأسئلة</div>
+                            <div class="assignments-info-item__value fw-semibold">{{ $quiz->questions->count() }}</div>
+                        </div>
+                        <div class="assignments-info-item">
+                            <div class="assignments-info-item__label">درجة النجاح</div>
+                            <div class="assignments-info-item__value">{{ $quiz->passing_grade }}%</div>
+                        </div>
+                        @if($quiz->time_limit)
+                            <div class="assignments-info-item">
+                                <div class="assignments-info-item__label">الوقت المحدد</div>
+                                <div class="assignments-info-item__value">{{ $quiz->time_limit }} دقيقة</div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div class="card-title">
-                                <span id="questions-count">{{ $quiz->questions->count() }}</span> أسئلة مرتبطة بالاختبار
-                            </div>
-                            <div>
-                                <button type="button" class="btn btn-danger btn-sm me-2" id="delete-selected-questions" disabled>
-                                    <i class="fas fa-trash me-1"></i>حذف المحدد
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                            <h6 class="group-show-members-card__title mb-0">
+                                الأسئلة المرتبطة
+                                <span class="group-show-members-card__count" id="questions-count">{{ $quiz->questions->count() }}</span>
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions" disabled>
+                                    <i class="fe fe-trash-2 me-1"></i>حذف المحدد
                                 </button>
-                                <a href="{{ route('admin.ai.question-creation.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-info btn-sm me-2">
-                                    <i class="fas fa-magic me-1"></i>إنشاء أسئلة بالذكاء الاصطناعي
+                                <a href="{{ route('admin.ai.question-creation.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-info-light btn-sm">
+                                    <i class="fe fe-zap me-1"></i>إنشاء بالذكاء الاصطناعي
                                 </a>
-                                <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
-                                    <i class="fas fa-plus-circle me-1"></i>إنشاء سؤال جديد
+                                <button type="button" class="btn btn-success-light btn-sm" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
+                                    <i class="fe fe-plus me-1"></i>سؤال جديد
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
-                                    <i class="fas fa-download me-1"></i>استيراد من بنك الأسئلة
+                                    <i class="fe fe-download me-1"></i>استيراد من بنك الأسئلة
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body pt-3">
                             @if($quiz->questions->count() > 0)
                                 <div class="table-responsive">
-                                    <table class="table text-nowrap table-hover">
+                                    <table class="table text-nowrap table-hover dashboard-table mb-0">
                                         <thead>
                                             <tr>
                                                 <th width="50">
@@ -108,7 +138,7 @@
                                                     <td>
                                                         <input type="checkbox" class="question-row-checkbox" value="{{ $question->id }}">
                                                     </td>
-                                                    <td><i class="fas fa-grip-vertical handle" style="cursor: move;"></i></td>
+                                                    <td><i class="fe fe-menu handle" style="cursor: move;"></i></td>
                                                     <td>
                                                         <div class="d-flex align-items-start">
                                                             <div>
@@ -140,9 +170,9 @@
                                                     </td>
                                                     <td>
                                                         <button type="button"
-                                                                class="btn btn-sm btn-danger remove-question"
+                                                                class="btn btn-sm btn-danger-light remove-question"
                                                                 data-question-id="{{ $question->id }}">
-                                                            <i class="fas fa-trash"></i>
+                                                            <i class="fe fe-trash-2"></i>
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -151,11 +181,11 @@
                                     </table>
                                 </div>
                             @else
-                                <div class="text-center py-4">
-                                    <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p>
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
-                                        <i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة
+                                <div class="text-center py-5">
+                                    <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-help-circle"></i></span>
+                                    <p class="text-muted mb-3">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p>
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
+                                        <i class="fe fe-download me-1"></i>استيراد سؤال من بنك الأسئلة
                                     </button>
                                 </div>
                             @endif

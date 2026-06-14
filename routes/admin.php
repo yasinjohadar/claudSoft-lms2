@@ -352,6 +352,15 @@ Route::prefix('admin')
         Route::post('question-bank/import/process', [\App\Http\Controllers\Admin\QuestionBankController::class, 'processImport'])->name('question-bank.import.process');
         Route::get('question-bank/export/template', [\App\Http\Controllers\Admin\QuestionBankController::class, 'downloadTemplate'])->name('question-bank.export.template');
 
+        // Type-specific Import (Excel + JSON)
+        Route::prefix('question-bank/import/type')->name('question-bank.import.type.')->group(function () {
+            Route::get('{format}', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'selectType'])->name('select');
+            Route::get('{format}/{type}', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'showImportForm'])->name('show');
+            Route::get('{format}/{type}/template', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'downloadTemplate'])->name('template');
+            Route::post('{format}/{type}/preview', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'previewImport'])->name('preview');
+            Route::post('{format}/{type}/process', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'processImport'])->name('process');
+        });
+
         // Question Pools Management
         Route::resource('question-pools', \App\Http\Controllers\Admin\QuestionPoolController::class);
         Route::post('question-pools/{id}/duplicate', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'duplicate'])->name('question-pools.duplicate');

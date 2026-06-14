@@ -1,5 +1,5 @@
         <!-- Start::app-sidebar -->
-        <aside class="app-sidebar sticky" id="sidebar">
+        <aside class="app-sidebar admin-sidebar sticky" id="sidebar">
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
@@ -55,7 +55,7 @@
 
                         <li class="slide">
                             <a href="{{ route('frontend.home') }}" target="_blank" rel="noopener noreferrer" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                <i class="fe fe-globe side-menu__icon"></i>
                                 <span class="side-menu__label">الواجهة الأمامية</span>
                                 <i class="fe fe-external-link side-menu__angle" style="font-size: 14px; margin-right: auto;"></i>
                             </a>
@@ -63,7 +63,7 @@
 
                         <li class="slide {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                             <a href="{{ route('admin.dashboard') }}" class="side-menu__item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M5 5h4v6H5zm10 8h4v6h-4zM5 17h4v2H5zM15 5h4v2h-4z" opacity=".3"/><path d="M3 13h8V3H3v10zm2-8h4v6H5V5zm8 16h8V11h-8v10zm2-8h4v6h-4v-6zM13 3v6h8V3h-8zm6 4h-4V5h4v2zM3 21h8v-6H3v6zm2-4h4v2H5v-2z"/></svg>
+                                <i class="fe fe-activity side-menu__icon"></i>
                                 <span class="side-menu__label">الرئيسية</span>
                             </a>
                         </li>
@@ -71,7 +71,7 @@
                         <!-- إدارة الكورسات والمحتوى -->
                         <li class="slide has-sub {{ $coursesSectionActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $coursesSectionActive ? 'active' : '' }}">
-                                <i class="fas fa-graduation-cap side-menu__icon"></i>
+                                <i class="fe fe-book-open side-menu__icon"></i>
                                 <span class="side-menu__label">إدارة الكورسات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -151,7 +151,7 @@
                         <!-- الاختبارات والواجبات -->
                         <li class="slide has-sub {{ $assessmentsActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $assessmentsActive ? 'active' : '' }}">
-                                <i class="fas fa-clipboard-check side-menu__icon"></i>
+                                <i class="fe fe-clipboard side-menu__icon"></i>
                                 <span class="side-menu__label">الاختبارات والواجبات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -228,7 +228,7 @@
                         <!-- التسجيل والمجموعات -->
                         <li class="slide has-sub {{ $enrollmentSectionActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $enrollmentSectionActive ? 'active' : '' }}">
-                                <i class="fas fa-user-graduate side-menu__icon"></i>
+                                <i class="fe fe-user-check side-menu__icon"></i>
                                 <span class="side-menu__label">التسجيل والمجموعات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -284,7 +284,7 @@
                         <!-- المالية -->
                         <li class="slide has-sub {{ $financeActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $financeActive ? 'active' : '' }}">
-                                <i class="fas fa-wallet side-menu__icon"></i>
+                                <i class="fe fe-credit-card side-menu__icon"></i>
                                 <span class="side-menu__label">المالية</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -308,7 +308,7 @@
                         <!-- المستخدمون -->
                         <li class="slide has-sub {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
-                                <i class="fas fa-users side-menu__icon"></i>
+                                <i class="fe fe-users side-menu__icon"></i>
                                 <span class="side-menu__label">المستخدمون</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -338,7 +338,7 @@
                         <!-- الشهادات -->
                         <li class="slide has-sub {{ request()->routeIs('admin.certificates.*') || request()->routeIs('admin.certificate-templates.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.certificates.*') || request()->routeIs('admin.certificate-templates.*') ? 'active' : '' }}">
-                                <i class="fas fa-certificate side-menu__icon"></i>
+                                <i class="fe fe-award side-menu__icon"></i>
                                 <span class="side-menu__label">الشهادات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -358,7 +358,7 @@
                         <!-- تقييمات المنصة -->
                         <li class="slide {{ request()->routeIs('admin.platform-reviews.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.platform-reviews.index') }}" class="side-menu__item {{ request()->routeIs('admin.platform-reviews.*') ? 'active' : '' }}">
-                                <i class="fas fa-star side-menu__icon"></i>
+                                <i class="fe fe-star side-menu__icon"></i>
                                 <span class="side-menu__label">تقييمات المنصة</span>
                             </a>
                         </li>
@@ -366,7 +366,7 @@
                         <!-- التواصل والجدولة -->
                         <li class="slide has-sub {{ $communicationActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $communicationActive ? 'active' : '' }}">
-                                <i class="fas fa-bell side-menu__icon"></i>
+                                <i class="fe fe-bell side-menu__icon"></i>
                                 <span class="side-menu__label">التواصل والجدولة</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -422,14 +422,14 @@
                         <!-- جدول أعمال الطلاب -->
                         <li class="slide {{ request()->routeIs('admin.student-works.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.student-works.index') }}" class="side-menu__item">
-                                <i class="ri-folder-user-line side-menu__icon"></i>
+                                <i class="fe fe-briefcase side-menu__icon"></i>
                                 <span class="side-menu__label">جدول الأعمال</span>
                             </a>
                         </li>
 
                         <li class="slide {{ request()->routeIs('admin.gifts.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.gifts.index') }}" class="side-menu__item {{ request()->routeIs('admin.gifts.*') ? 'active' : '' }}">
-                                <i class="ri ri-gift-line side-menu__icon"></i>
+                                <i class="fe fe-package side-menu__icon"></i>
                                 <span class="side-menu__label">هدايا الطلاب</span>
                             </a>
                         </li>
@@ -437,7 +437,7 @@
                         <!-- المحتوى والوثائق -->
                         <li class="slide has-sub {{ $contentActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $contentActive ? 'active' : '' }}">
-                                <i class="fas fa-newspaper side-menu__icon"></i>
+                                <i class="fe fe-file-text side-menu__icon"></i>
                                 <span class="side-menu__label">المحتوى والوثائق</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -514,7 +514,7 @@
                         <!-- التقارير الأسبوعية -->
                         <li class="slide {{ request()->routeIs('admin.weekly-reports.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.weekly-reports.index') }}" class="side-menu__item {{ request()->routeIs('admin.weekly-reports.*') ? 'active' : '' }}">
-                                <i class="fas fa-calendar-week side-menu__icon"></i>
+                                <i class="fe fe-calendar side-menu__icon"></i>
                                 <span class="side-menu__label">التقارير الأسبوعية</span>
                             </a>
                         </li>
@@ -522,7 +522,7 @@
                         <!-- الذكاء الاصطناعي -->
                         <li class="slide has-sub {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.ai.*') || request()->routeIs('admin.ai-sdk.*') ? 'active' : '' }}">
-                                <i class="fas fa-robot side-menu__icon"></i>
+                                <i class="fe fe-cpu side-menu__icon"></i>
                                 <span class="side-menu__label">الذكاء الاصطناعي</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -557,7 +557,7 @@
                         <!-- التلعيب -->
                         <li class="slide has-sub {{ $gamificationActive ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ $gamificationActive ? 'active' : '' }}">
-                                <i class="fas fa-gamepad side-menu__icon"></i>
+                                <i class="fe fe-target side-menu__icon"></i>
                                 <span class="side-menu__label">التلعيب</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
@@ -645,7 +645,7 @@
                         <!-- الإعدادات -->
                         <li class="slide has-sub {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'open active' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
-                                <i class="ri-settings-3-line side-menu__icon"></i>
+                                <i class="fe fe-settings side-menu__icon"></i>
                                 <span class="side-menu__label">الإعدادات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>

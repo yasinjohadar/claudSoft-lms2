@@ -42,7 +42,7 @@
                 <form action="#" method="POST" class="d-none" id="achievementModalClaimForm">
                     @csrf
                     <button type="submit" class="btn btn-warning rounded-pill">
-                        <i class="fe fe-gift me-1"></i>المطالبة بالمكافأة
+                        <i class="fe fe-package me-1"></i>المطالبة بالمكافأة
                     </button>
                 </form>
             </div>

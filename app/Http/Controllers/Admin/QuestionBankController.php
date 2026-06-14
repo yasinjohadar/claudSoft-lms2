@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\ProgrammingLanguage;
+use App\Services\QuestionBank\TypeImport\ImportDefaultsResolver;
 use App\Services\QuestionBankExcelImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,12 +66,33 @@ class QuestionBankController extends Controller
             });
         }
 
-        $questions = $query->paginate(20);
+        $questions = $query->paginate(20)->withQueryString();
         $courses = Course::where('is_published', true)->get();
         $questionTypes = QuestionType::where('is_active', true)->get();
         $programmingLanguages = ProgrammingLanguage::active()->orderBy('sort_order')->get();
 
-        return view('admin.pages.question-bank.index', compact('questions', 'courses', 'questionTypes', 'programmingLanguages'));
+        $stats = [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('is_active', true)->count(),
+            'types' => $questionTypes->count(),
+            'courses' => $courses->count(),
+        ];
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('admin.pages.question-bank._questions_table', compact('questions'))->render(),
+                'stats_html' => view('admin.pages.question-bank.partials.stats', compact('stats'))->render(),
+                'count' => $questions->total(),
+            ]);
+        }
+
+        return view('admin.pages.question-bank.index', compact(
+            'questions',
+            'courses',
+            'questionTypes',
+            'programmingLanguages',
+            'stats'
+        ));
     }
 
     /**
@@ -768,11 +790,15 @@ class QuestionBankController extends Controller
     public function previewImport(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'excel_file' => 'required|mimes:xlsx,xls|max:10240', // 10MB max
+            'excel_file' => 'required|mimes:xlsx,xls|max:10240',
+            'default_course_id' => 'nullable|exists:courses,id',
+            'default_programming_language_id' => 'nullable|exists:programming_languages,id',
         ], [
             'excel_file.required' => 'يرجى اختيار ملف Excel',
             'excel_file.mimes' => 'يجب أن يكون الملف بصيغة Excel (.xlsx أو .xls)',
             'excel_file.max' => 'حجم الملف يجب أن يكون أقل من 10 ميجابايت',
+            'default_course_id.exists' => 'الكورس المحدد غير موجود',
+            'default_programming_language_id.exists' => 'اللغة البرمجية المحددة غير موجودة',
         ]);
 
         if ($validator->fails()) {
@@ -795,6 +821,10 @@ class QuestionBankController extends Controller
             $parsedData = [];
             $errors = [];
             $questionTypes = QuestionType::where('is_active', true)->get();
+            $resolver = new ImportDefaultsResolver;
+            $defaultCourseId = $request->filled('default_course_id') ? (int) $request->input('default_course_id') : null;
+            $defaultLanguageId = $request->filled('default_programming_language_id') ? (int) $request->input('default_programming_language_id') : null;
+            $courseSatisfied = $resolver->hasValidDefaultCourse($defaultCourseId);
 
             foreach ($rows as $rowIndex => $row) {
                 $rowNumber = $rowIndex + 2;
@@ -807,8 +837,13 @@ class QuestionBankController extends Controller
                     ? $excel->buildRowFromLegacy($row, $rowNumber)
                     : $excel->buildRowFromMapped($headerRow, $row, $rowNumber);
 
+                $applied = $resolver->apply($questionData, $defaultCourseId, $defaultLanguageId);
+                $questionData = $applied['row'];
+                $questionData['course_from_default'] = $applied['course_from_default'];
+                $questionData['language_from_default'] = $applied['language_from_default'];
+
                 $resolvedType = $excel->resolveQuestionType($questionData['question_type'] ?? '', $questionTypes);
-                $rowErrors = $excel->validateRowForType($questionData, $resolvedType);
+                $rowErrors = $excel->validateRowForType($questionData, $resolvedType, $courseSatisfied);
 
                 if ($rowErrors !== []) {
                     $errors[] = [
@@ -892,11 +927,13 @@ class QuestionBankController extends Controller
         $validator = Validator::make($request->all(), [
             'excel_file' => 'nullable|mimes:xlsx,xls|max:10240',
             'questions_data' => 'required|json',
+            'default_course_id' => 'nullable|exists:courses,id',
             'default_programming_language_id' => 'nullable|exists:programming_languages,id',
         ], [
             'excel_file.mimes' => 'ملف Excel يجب أن يكون بصيغة .xlsx أو .xls',
             'questions_data.required' => 'بيانات الأسئلة مطلوبة',
             'questions_data.json' => 'بيانات الأسئلة يجب أن تكون بصيغة JSON',
+            'default_course_id.exists' => 'الكورس المحدد غير موجود',
             'default_programming_language_id.exists' => 'اللغة البرمجية المحددة غير موجودة',
         ]);
 
@@ -975,8 +1012,12 @@ class QuestionBankController extends Controller
                 $defaultLanguageId = $request->input('default_programming_language_id');
             }
 
+            $defaultCourseId = $request->filled('default_course_id') ? (int) $request->input('default_course_id') : null;
+            $resolver = new ImportDefaultsResolver;
+
             Log::info('Question Import: Before transaction', [
                 'questions_count' => count($questionsData),
+                'default_course_id' => $defaultCourseId,
                 'default_language_id' => $defaultLanguageId,
                 'type_mapping_count' => count($typeMapping),
                 'course_mapping_count' => count($courseMapping),
@@ -993,6 +1034,9 @@ class QuestionBankController extends Controller
 
             foreach ($questionsData as $index => $questionData) {
                 try {
+                    $applied = $resolver->apply($questionData, $defaultCourseId, $defaultLanguageId ? (int) $defaultLanguageId : null);
+                    $questionData = $applied['row'];
+
                     Log::debug('Question Import: Processing question', [
                         'index' => $index,
                         'row_number' => $questionData['row_number'] ?? null,
@@ -1160,6 +1204,11 @@ class QuestionBankController extends Controller
         $guide->fromArray(['نوع السؤال', 'الأعمدة المطلوبة', 'ملاحظات'], null, 'A1');
         $guideRows = [
             [
+                'الكورس واللغة البرمجية',
+                'يمكن تركهما فارغين في الملف',
+                'حددهما من واجهة الاستيراد؛ قيم الملف لها الأولوية عند وجودها',
+            ],
+            [
                 'اختيار من متعدد (إجابة واحدة)',
                 'الخيارات 1–6، الإجابة الصحيحة (رقم الخيار)',
                 'مثال الإجابة: 1',
@@ -1219,7 +1268,7 @@ class QuestionBankController extends Controller
         $headers = QuestionBankExcelImportService::templateHeadersOrder();
         $questionsSheet->fromArray($headers, null, 'A1');
 
-        $coursePlaceholder = 'اسم الكورس هنا';
+        $coursePlaceholder = '';
 
         $exampleRows = [
             ['اختيار من متعدد (إجابة واحدة)', 'ما عاصمة السعودية؟', 'درس الجغرافيا', 'الرياض', 'جدة', 'الدمام', 'مكة', '', '', '1', '', '', '', '1', 'easy', $coursePlaceholder, 'شرح', 'وسم1', '', '', '', '', '', '', '', ''],

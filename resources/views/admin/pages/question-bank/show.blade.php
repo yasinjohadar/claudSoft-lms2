@@ -4,14 +4,30 @@
     تفاصيل السؤال
 @stop
 
+@section('styles')
+    @include('admin.pages.question-bank.partials.page-styles')
+@stop
+
+@php
+    $lessonShow = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
+    $responseCount = $question->responses ? $question->responses->count() : 0;
+    $correctPct = $responseCount > 0
+        ? number_format(($question->responses->where('is_correct', true)->count() / $responseCount) * 100, 1)
+        : null;
+    $avgScore = $responseCount > 0
+        ? number_format($question->responses->avg('score_obtained'), 1)
+        : null;
+@endphp
+
 @section('content')
     <div class="main-content app-content">
-        <div class="container-fluid">
+        <div class="container-fluid px-3 px-lg-4">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">تفاصيل السؤال</h5>
+            @include('admin.components.alerts')
+
+            <div class="admin-show-layout">
+
+                <div class="my-4 page-header-breadcrumb qb-page-animate dashboard-fade-in">
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
@@ -20,287 +36,278 @@
                         </ol>
                     </nav>
                 </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('question-bank.edit', $question->id) }}" class="btn btn-warning">
-                        <i class="fas fa-edit me-2"></i>تعديل
-                    </a>
-                    <a href="{{ route('question-bank.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-right me-2"></i>العودة
-                    </a>
-                </div>
-            </div>
 
-            <div class="row">
-                <!-- Main Content -->
-                <div class="col-lg-8">
-                    <!-- Question Details -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header bg-primary-transparent">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="card-title mb-0">
-                                    <i class="fas fa-question-circle me-2 text-primary"></i>تفاصيل السؤال
-                                </div>
-                                <div>
-                                    @if($question->is_active)
-                                        <span class="badge bg-success">نشط</span>
-                                    @else
-                                        <span class="badge bg-danger">غير نشط</span>
+                <div class="group-show-hero dashboard-fade-in qb-page-animate mb-4">
+                    <div class="row align-items-start g-3">
+                        <div class="col-lg-8">
+                            <span class="group-show-hero__eyebrow"><i class="fe fe-help-circle me-1"></i>تفاصيل السؤال</span>
+                            <h2 class="group-show-hero__title mb-2">{{ Str::limit(strip_tags($question->question_text), 90) }}</h2>
+                            <p class="group-show-hero__desc mb-0">
+                                @if($question->questionType)
+                                    {{ $question->questionType->display_name }}
+                                    @if($question->course)
+                                        · <span class="d-inline-block text-truncate align-middle" style="max-width: min(100%, 420px);" title="{{ $question->course->title }}">{{ $question->course->title }}</span>
                                     @endif
-                                </div>
+                                @else
+                                    عرض نص السؤال وخيارات الإجابة والإحصائيات.
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="group-show-actions">
+                                <a href="{{ route('question-bank.edit', $question->id) }}" class="group-show-action group-show-action--primary">
+                                    <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
+                                    <span class="group-show-action__text">تعديل السؤال</span>
+                                </a>
+                                <a href="{{ route('question-bank.index') }}" class="group-show-action">
+                                    <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                    <span class="group-show-action__text">العودة للقائمة</span>
+                                </a>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <!-- Question Text -->
-                            <div class="mb-4">
-                                <h6 class="text-muted mb-2">نص السؤال:</h6>
-                                <div class="p-3 bg-light rounded">
-                                    <p class="mb-0 fs-16">{!! mixed_bidi_html($question->question_text) !!}</p>
-                                </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-8 order-lg-1">
+                        <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                                <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                    <span class="assignments-section-icon"><i class="fe fe-file-text"></i></span>
+                                    نص السؤال
+                                </h4>
+                                @if($question->is_active)
+                                    <span class="assignments-status-chip assignments-status-chip--published">نشط</span>
+                                @else
+                                    <span class="assignments-status-chip assignments-status-chip--draft">غير نشط</span>
+                                @endif
                             </div>
-
-                            @php
-                                $lessonShow = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
-                            @endphp
-                            @if($lessonShow)
-                                <div class="mb-4">
-                                    <h6 class="text-muted mb-2">اسم الدرس:</h6>
-                                    <p class="mb-0">{{ $lessonShow }}</p>
+                            <div class="card-body pt-3">
+                                <div class="qb-show-question-text mb-3">
+                                    {!! mixed_bidi_html($question->question_text) !!}
                                 </div>
-                            @endif
 
-                            <!-- Media -->
-                            @if($question->question_image)
-                                <div class="mb-4">
-                                    <h6 class="text-muted mb-2">صورة السؤال:</h6>
-                                    <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال" class="img-fluid rounded shadow-sm" style="max-width: 500px;">
-                                </div>
-                            @endif
+                                @if($lessonShow)
+                                    <div class="qb-show-meta-list__item mb-3 pb-3 border-bottom">
+                                        <div class="qb-show-meta-list__label">اسم الدرس</div>
+                                        <div class="qb-show-meta-list__value">{{ $lessonShow }}</div>
+                                    </div>
+                                @endif
 
-                            <!-- Options -->
-                            @if($question->options && $question->options->count() > 0)
-                                <div class="mb-4">
-                                    <h6 class="text-muted mb-3">خيارات الإجابة:</h6>
-                                    <div class="options-list">
+                                @if($question->question_image)
+                                    <div class="mb-3">
+                                        <p class="mb-2 fw-semibold">صورة السؤال</p>
+                                        <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال"
+                                             class="img-fluid rounded" style="max-width: 100%;">
+                                    </div>
+                                @endif
+
+                                @if($question->options && $question->options->count() > 0)
+                                    <p class="mb-2 fw-semibold">خيارات الإجابة</p>
+                                    <div class="d-flex flex-column gap-2 mb-3">
                                         @foreach($question->options->sortBy('option_order') as $index => $option)
-                                            <div class="option-item mb-3 p-3 rounded border {{ $option->is_correct ? 'border-success bg-success-transparent' : 'border-secondary bg-light' }}">
-                                                <div class="d-flex justify-content-between align-items-start">
+                                            <div class="qb-show-option {{ $option->is_correct ? 'qb-show-option--correct' : '' }}">
+                                                <div class="d-flex justify-content-between align-items-start gap-2">
                                                     <div class="flex-grow-1">
-                                                        <div class="d-flex align-items-center mb-2">
-                                                            <span class="badge bg-secondary me-2">{{ $index + 1 }}</span>
-                                                            <strong>{!! mixed_bidi_html($option->option_text) !!}</strong>
+                                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                                            <span class="badge bg-secondary-transparent">{{ $index + 1 }}</span>
+                                                            <span class="fw-semibold">{!! mixed_bidi_html($option->option_text) !!}</span>
                                                             @if($option->is_correct)
-                                                                <i class="fas fa-check-circle text-success ms-2 fs-18"></i>
+                                                                <i class="fe fe-check-circle text-success"></i>
                                                             @endif
                                                         </div>
                                                         @if($option->feedback)
-                                                            <small class="text-muted">
-                                                                <i class="fas fa-comment me-1"></i>{!! mixed_bidi_html($option->feedback) !!}
+                                                            <small class="text-muted d-block">
+                                                                <i class="fe fe-message-square me-1"></i>{!! mixed_bidi_html($option->feedback) !!}
                                                             </small>
                                                         @endif
                                                     </div>
-                                                    <div class="text-end">
-                                                        <small class="text-muted d-block">الوزن: {{ $option->score_weight }}</small>
-                                                        <small class="text-muted d-block">الترتيب: {{ $option->option_order }}</small>
+                                                    <div class="text-end small text-muted">
+                                                        <div>الوزن: {{ $option->score_weight }}</div>
+                                                        <div>الترتيب: {{ $option->option_order }}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                         @endforeach
                                     </div>
-                                </div>
-                            @endif
+                                @endif
 
-                            <!-- Explanation -->
-                            @if($question->explanation)
-                                <div class="mb-4">
-                                    <h6 class="text-muted mb-2">شرح الإجابة:</h6>
-                                    <div class="alert alert-info mb-0">
-                                        <i class="fas fa-lightbulb me-2"></i>{!! mixed_bidi_html($question->explanation) !!}
+                                @if($question->explanation)
+                                    <div class="mb-3">
+                                        <p class="mb-2 fw-semibold">شرح الإجابة</p>
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fe fe-info me-2"></i>{!! mixed_bidi_html($question->explanation) !!}
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($question->tags && count($question->tags) > 0)
+                                    <div class="mb-0">
+                                        <p class="mb-2 fw-semibold">الوسوم</p>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach($question->tags as $tag)
+                                                <span class="badge bg-warning-transparent">{{ $tag }}</span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate">
+                            <div class="card-header border-0 pb-0">
+                                <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                    <span class="assignments-section-icon"><i class="fe fe-bar-chart-2"></i></span>
+                                    إحصائيات الاستخدام
+                                </h4>
+                            </div>
+                            <div class="card-body pt-3">
+                                <div class="row g-3">
+                                    <div class="col-sm-6">
+                                        <div class="qb-stat-tile">
+                                            <div class="qb-stat-tile__value text-primary">{{ $question->quizQuestions ? $question->quizQuestions->count() : 0 }}</div>
+                                            <div class="qb-stat-tile__label">عدد الاختبارات المستخدمة فيها</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="qb-stat-tile">
+                                            <div class="qb-stat-tile__value text-success">{{ $responseCount }}</div>
+                                            <div class="qb-stat-tile__label">عدد الإجابات المسجلة</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="qb-stat-tile">
+                                            <div class="qb-stat-tile__value text-warning">{{ $correctPct !== null ? $correctPct . '%' : '-' }}</div>
+                                            <div class="qb-stat-tile__label">نسبة الإجابات الصحيحة</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="qb-stat-tile">
+                                            <div class="qb-stat-tile__value text-info">{{ $avgScore ?? '-' }}</div>
+                                            <div class="qb-stat-tile__label">متوسط الدرجات المحصلة</div>
+                                        </div>
                                     </div>
                                 </div>
-                            @endif
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- Tags -->
-                            @if($question->tags && count($question->tags) > 0)
-                                <div>
-                                    <h6 class="text-muted mb-2">الوسوم:</h6>
-                                    <div>
-                                        @foreach($question->tags as $tag)
-                                            <span class="badge bg-warning-transparent me-1 mb-1">
-                                                <i class="fas fa-tag me-1"></i>{{ $tag }}
-                                            </span>
+                    <div class="col-lg-4 order-lg-2">
+                        <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                            <div class="card-header border-0 pb-0">
+                                <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                    <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                                    المعلومات الأساسية
+                                </h4>
+                            </div>
+                            <div class="card-body pt-3">
+                                <div class="qb-show-meta-list">
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">الكورس</div>
+                                        <div class="qb-show-meta-list__value">
+                                            @if($question->course)
+                                                {{ $question->course->title }}
+                                            @else
+                                                <span class="text-muted fw-normal">عام (غير مرتبط بكورس)</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">نوع السؤال</div>
+                                        <div class="qb-show-meta-list__value">
+                                            <span class="qb-type-chip">{{ $question->questionType->display_name ?? 'غير محدد' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">مستوى الصعوبة</div>
+                                        <div class="qb-show-meta-list__value">
+                                            @if($question->difficulty_level == 'easy')
+                                                <span class="qb-difficulty-chip qb-difficulty-chip--easy">سهل</span>
+                                            @elseif($question->difficulty_level == 'medium')
+                                                <span class="qb-difficulty-chip qb-difficulty-chip--medium">متوسط</span>
+                                            @elseif($question->difficulty_level == 'hard')
+                                                <span class="qb-difficulty-chip qb-difficulty-chip--hard">صعب</span>
+                                            @elseif($question->difficulty_level == 'expert')
+                                                <span class="qb-difficulty-chip qb-difficulty-chip--expert">خبير</span>
+                                            @else
+                                                <span class="text-muted fw-normal">{{ $question->difficulty_level ?? 'غير محدد' }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">الدرجة</div>
+                                        <div class="qb-show-meta-list__value">
+                                            <span class="assignments-grade-chip">{{ $question->default_grade ?? 0 }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">تاريخ الإنشاء</div>
+                                        <div class="qb-show-meta-list__value">{{ $question->created_at->format('Y-m-d H:i') }}</div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">آخر تعديل</div>
+                                        <div class="qb-show-meta-list__value">{{ $question->updated_at->format('Y-m-d H:i') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($question->pools && $question->pools->count() > 0)
+                            <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
+                                <div class="card-header border-0 pb-0">
+                                    <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                        <span class="assignments-section-icon"><i class="fe fe-layers"></i></span>
+                                        المجموعات
+                                    </h4>
+                                </div>
+                                <div class="card-body pt-3">
+                                    <div class="list-group list-group-flush">
+                                        @foreach($question->pools as $pool)
+                                            <a href="{{ route('question-pools.show', $pool->id) }}" class="list-group-item list-group-item-action border-0 px-0">
+                                                <i class="fe fe-layers me-2 text-warning"></i>{{ $pool->name }}
+                                            </a>
                                         @endforeach
                                     </div>
                                 </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Statistics -->
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-chart-bar me-2 text-info"></i>إحصائيات الاستخدام
                             </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-primary-transparent rounded text-center">
-                                        <i class="fas fa-clipboard-list fs-24 text-primary mb-2"></i>
-                                        <h4 class="mb-0">{{ $question->quizQuestions ? $question->quizQuestions->count() : 0 }}</h4>
-                                        <small class="text-muted">عدد الاختبارات المستخدمة فيها</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-success-transparent rounded text-center">
-                                        <i class="fas fa-users fs-24 text-success mb-2"></i>
-                                        <h4 class="mb-0">{{ $question->responses ? $question->responses->count() : 0 }}</h4>
-                                        <small class="text-muted">عدد الإجابات المسجلة</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-warning-transparent rounded text-center">
-                                        <i class="fas fa-percentage fs-24 text-warning mb-2"></i>
-                                        <h4 class="mb-0">
-                                            @if($question->responses && $question->responses->count() > 0)
-                                                {{ number_format(($question->responses->where('is_correct', true)->count() / $question->responses->count()) * 100, 1) }}%
-                                            @else
-                                                -
-                                            @endif
-                                        </h4>
-                                        <small class="text-muted">نسبة الإجابات الصحيحة</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-info-transparent rounded text-center">
-                                        <i class="fas fa-star fs-24 text-info mb-2"></i>
-                                        <h4 class="mb-0">
-                                            @if($question->responses && $question->responses->count() > 0)
-                                                {{ number_format($question->responses->avg('score_obtained'), 1) }}
-                                            @else
-                                                -
-                                            @endif
-                                        </h4>
-                                        <small class="text-muted">متوسط الدرجات المحصلة</small>
-                                    </div>
+                        @endif
+
+                        <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate">
+                            <div class="card-header border-0 pb-0">
+                                <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                    <span class="assignments-section-icon"><i class="fe fe-zap"></i></span>
+                                    إجراءات سريعة
+                                </h4>
+                            </div>
+                            <div class="card-body pt-3">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ route('question-bank.edit', $question->id) }}" class="btn btn-warning-light btn-sm">
+                                        <i class="fe fe-edit-2 me-1"></i>تعديل السؤال
+                                    </a>
+                                    <form action="{{ route('question-bank.duplicate', $question->id) }}" method="POST"
+                                          onsubmit="return confirm('هل تريد إنشاء نسخة من هذا السؤال؟')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-info-light btn-sm w-100">
+                                            <i class="fe fe-copy me-1"></i>نسخ السؤال
+                                        </button>
+                                    </form>
+                                    <hr class="my-2">
+                                    <form action="{{ route('question-bank.destroy', $question->id) }}" method="POST"
+                                          onsubmit="return confirm('هل أنت متأكد من حذف هذا السؤال؟')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger-light btn-sm w-100">
+                                            <i class="fe fe-trash-2 me-1"></i>حذف السؤال
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="col-lg-4">
-                    <!-- Basic Info -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header bg-success-transparent">
-                            <div class="card-title mb-0">
-                                <i class="fas fa-info-circle me-2 text-success"></i>المعلومات الأساسية
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <small class="text-muted d-block mb-1">الكورس:</small>
-                                @if($question->course)
-                                    <strong>{{ $question->course->title }}</strong>
-                                @else
-                                    <span class="text-muted">عام (غير مرتبط بكورس)</span>
-                                @endif
-                            </div>
-                            <div class="mb-3">
-                                <small class="text-muted d-block mb-1">نوع السؤال:</small>
-                                <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
-                            </div>
-                            <div class="mb-3">
-                                <small class="text-muted d-block mb-1">مستوى الصعوبة:</small>
-                                @if($question->difficulty_level == 'easy')
-                                    <span class="badge bg-success">سهل</span>
-                                @elseif($question->difficulty_level == 'medium')
-                                    <span class="badge bg-warning">متوسط</span>
-                                @elseif($question->difficulty_level == 'hard')
-                                    <span class="badge bg-danger">صعب</span>
-                                @elseif($question->difficulty_level == 'expert')
-                                    <span class="badge bg-dark">خبير</span>
-                                @else
-                                    <span class="badge bg-secondary">{{ $question->difficulty_level ?? 'غير محدد' }}</span>
-                                @endif
-                            </div>
-                            <div class="mb-3">
-                                <small class="text-muted d-block mb-1">الدرجة:</small>
-                                <span class="badge bg-primary fs-15">{{ $question->default_grade ?? 0 }} نقطة</span>
-                            </div>
-                            <hr>
-                            <div class="mb-2">
-                                <small class="text-muted">تاريخ الإنشاء:</small>
-                                <p class="mb-0">{{ $question->created_at->format('Y-m-d H:i') }}</p>
-                            </div>
-                            <div>
-                                <small class="text-muted">آخر تعديل:</small>
-                                <p class="mb-0">{{ $question->updated_at->format('Y-m-d H:i') }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Question Pools -->
-                    @if($question->pools && $question->pools->count() > 0)
-                        <div class="card custom-card mb-4">
-                            <div class="card-header bg-warning-transparent">
-                                <div class="card-title mb-0">
-                                    <i class="fas fa-layer-group me-2 text-warning"></i>المجموعات
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="list-group list-group-flush">
-                                    @foreach($question->pools as $pool)
-                                        <a href="{{ route('question-pools.show', $pool->id) }}" class="list-group-item list-group-item-action">
-                                            <i class="fas fa-layer-group me-2 text-warning"></i>{{ $pool->name }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Actions -->
-                    <div class="card custom-card">
-                        <div class="card-header bg-danger-transparent">
-                            <div class="card-title mb-0">
-                                <i class="fas fa-cog me-2 text-danger"></i>الإجراءات
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <a href="{{ route('question-bank.edit', $question->id) }}" class="btn btn-warning">
-                                    <i class="fas fa-edit me-2"></i>تعديل السؤال
-                                </a>
-                                <button type="button" class="btn btn-info" onclick="duplicateQuestion()">
-                                    <i class="fas fa-copy me-2"></i>نسخ السؤال
-                                </button>
-                                <hr>
-                                <form action="{{ route('question-bank.destroy', $question->id) }}" method="POST"
-                                      onsubmit="return confirm('هل أنت متأكد من حذف هذا السؤال؟')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger w-100">
-                                        <i class="fas fa-trash me-2"></i>حذف السؤال
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
         </div>
     </div>
-@stop
-
-@section('script')
-<script>
-function duplicateQuestion() {
-    if (confirm('هل تريد إنشاء نسخة من هذا السؤال؟')) {
-        window.location.href = "{{ route('question-bank.create') }}?duplicate={{ $question->id }}";
-    }
-}
-</script>
 @stop

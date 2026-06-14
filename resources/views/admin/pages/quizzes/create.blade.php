@@ -4,21 +4,43 @@
     إضافة اختبار جديد
 @stop
 
+@section('styles')
+    @include('admin.pages.quizzes.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إضافة اختبار جديد</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
-                            <li class="breadcrumb-item active">إضافة اختبار</li>
-                        </ol>
-                    </nav>
+            @include('admin.components.alerts')
+
+            <div class="admin-form-layout">
+
+            <div class="my-4 page-header-breadcrumb quizzes-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item active">إضافة اختبار</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-plus me-1"></i>اختبار جديد</span>
+                        <h2 class="group-show-hero__title mb-2">إضافة اختبار جديد</h2>
+                        <p class="group-show-hero__desc mb-0">حدد الكورس ونوع الاختبار، اضبط الدرجات والوقت، ثم انشره للطلاب.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('quizzes.index') }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">العودة للقائمة</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -32,19 +54,19 @@
 
                 <!-- رسالة تنبيه إذا تم التحديد من القسم -->
                 @if(isset($selectedSection) && $selectedSection)
-                    <div class="alert alert-info mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
+                    <div class="alert alert-info mb-4 quizzes-page-animate">
+                        <i class="fe fe-info me-2"></i>
                         <strong>إضافة اختبار للقسم:</strong> {{ $selectedSection->title }} -
                         <strong>الكورس:</strong> {{ $selectedCourse->title }}
                     </div>
                 @endif
 
-                <!-- Basic Information -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>المعلومات الأساسية
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                            المعلومات الأساسية
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -137,12 +159,12 @@
                     </div>
                 </div>
 
-                <!-- Grading Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-star me-2 text-warning"></i>إعدادات الدرجات
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-award"></i></span>
+                            إعدادات الدرجات
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -209,12 +231,12 @@
                     </div>
                 </div>
 
-                <!-- Quiz Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-cog me-2 text-info"></i>إعدادات الاختبار
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-settings"></i></span>
+                            إعدادات الاختبار
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -243,14 +265,14 @@
                                     <input class="form-check-input" type="checkbox" name="shuffle_questions"
                                            id="shuffle_questions" {{ old('shuffle_questions') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffle_questions">
-                                        <i class="fas fa-random me-1"></i>ترتيب الأسئلة عشوائياً
+                                        ترتيب الأسئلة عشوائياً
                                     </label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_answers"
                                            id="shuffle_answers" {{ old('shuffle_answers') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffle_answers">
-                                        <i class="fas fa-random me-1"></i>ترتيب الخيارات عشوائياً
+                                        ترتيب الخيارات عشوائياً
                                     </label>
                                 </div>
                             </div>
@@ -285,12 +307,12 @@
                     </div>
                 </div>
 
-                <!-- Publishing Options -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-eye me-2 text-success"></i>خيارات النشر
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-eye"></i></span>
+                            خيارات النشر
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -298,20 +320,15 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_published"
                                            id="is_published" {{ old('is_published') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_published">
-                                        <i class="fas fa-check-circle me-1"></i>نشر الاختبار
-                                    </label>
+                                    <label class="form-check-label" for="is_published">نشر الاختبار</label>
                                     <small class="d-block text-muted mt-1">الاختبار المنشور يمكن للطلاب رؤيته</small>
                                 </div>
                             </div>
-
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_visible"
                                            id="is_visible" {{ old('is_visible', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_visible">
-                                        <i class="fas fa-eye me-1"></i>ظاهر في القائمة
-                                    </label>
+                                    <label class="form-check-label" for="is_visible">ظاهر في القائمة</label>
                                     <small class="d-block text-muted mt-1">إذا كان مخفياً، يمكن الوصول إليه فقط عبر الرابط المباشر</small>
                                 </div>
                             </div>
@@ -319,15 +336,14 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="card custom-card">
+                <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in quizzes-page-animate">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
                             <a href="{{ route('quizzes.index') }}" class="btn btn-light">
-                                <i class="fas fa-times me-2"></i>إلغاء
+                                <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>حفظ الاختبار
+                                <i class="fe fe-save me-1"></i>حفظ الاختبار
                             </button>
                         </div>
                     </div>
@@ -335,38 +351,12 @@
 
             </form>
 
+            </div>
+
         </div>
     </div>
 @stop
 
-@section('scripts')
-<script>
-    // Load lessons when course changes
-    document.getElementById('course_id').addEventListener('change', function() {
-        const courseId = this.value;
-        const lessonSelect = document.getElementById('lesson_id');
-
-        if (!courseId) {
-            lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-            return;
-        }
-
-        // Show loading
-        lessonSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-
-        // Fetch lessons
-        fetch(`{{ url('admin/quizzes/course') }}/${courseId}/lessons`)
-            .then(response => response.json())
-            .then(data => {
-                lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-                data.forEach(lesson => {
-                    lessonSelect.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
-                });
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                lessonSelect.innerHTML = '<option value="">خطأ في التحميل</option>';
-            });
-    });
-</script>
-@endsection
+@section('script')
+    @include('admin.pages.quizzes.partials.form-scripts', ['currentLessonId' => old('lesson_id')])
+@stop

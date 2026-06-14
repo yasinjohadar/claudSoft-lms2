@@ -4,208 +4,195 @@
     عرض الاختبار
 @stop
 
+@section('styles')
+    @include('admin.pages.quizzes.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('admin.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ $quiz->title }}</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
-                            <li class="breadcrumb-item active">عرض الاختبار</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-success me-2">
-                        <i class="fas fa-question-circle me-1"></i>إدارة الأسئلة
-                    </a>
-                    <a href="{{ route('quizzes.edit', $quiz->id) }}" class="btn btn-primary me-2">
-                        <i class="fas fa-edit me-1"></i>تعديل
-                    </a>
-                    <a href="{{ route('grading.index', ['quiz_id' => $quiz->id]) }}" class="btn btn-info">
-                        <i class="fas fa-pen me-1"></i>التصحيح
-                    </a>
+            <div class="my-4 page-header-breadcrumb quizzes-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item active">عرض الاختبار</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-help-circle me-1"></i>تفاصيل الاختبار</span>
+                        <h2 class="group-show-hero__title mb-2">{{ $quiz->title }}</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            @if($quiz->course)
+                                {{ $quiz->course->title }}
+                                @if($quiz->lesson) · {{ $quiz->lesson->title }} @endif
+                            @else
+                                متابعة المحاولات وإدارة أسئلة الاختبار.
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="group-show-action group-show-action--success">
+                                <span class="group-show-action__icon"><i class="fe fe-list"></i></span>
+                                <span class="group-show-action__text">إدارة الأسئلة</span>
+                            </a>
+                            <a href="{{ route('quizzes.edit', $quiz->id) }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
+                                <span class="group-show-action__text">تعديل</span>
+                            </a>
+                            <a href="{{ route('grading.index', ['quiz_id' => $quiz->id]) }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-check-square"></i></span>
+                                <span class="group-show-action__text">التصحيح</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="row">
-                <!-- Left Column -->
                 <div class="col-lg-8">
-                    <!-- Quiz Info -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-info-circle me-2 text-primary"></i>معلومات الاختبار
-                            </div>
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                        <div class="card-header border-0 pb-0">
+                            <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                                معلومات الاختبار
+                            </h4>
                         </div>
-                        <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <p class="mb-2"><strong>الكورس:</strong></p>
-                                    <span class="badge bg-primary-transparent fs-13">
-                                        <i class="fas fa-book me-1"></i>{{ $quiz->course->title }}
-                                    </span>
+                        <div class="card-body pt-3">
+                            <div class="assignments-info-grid mb-3">
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الكورس</div>
+                                    <div class="assignments-info-item__value">
+                                        <span class="assignments-course-chip">{{ $quiz->course->title }}</span>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <p class="mb-2"><strong>الدرس:</strong></p>
-                                    @if($quiz->lesson)
-                                        <span class="badge bg-info-transparent fs-13">
-                                            <i class="fas fa-bookmark me-1"></i>{{ $quiz->lesson->title }}
-                                        </span>
-                                    @else
-                                        <span class="text-muted">غير محدد</span>
-                                    @endif
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الدرس</div>
+                                    <div class="assignments-info-item__value">
+                                        @if($quiz->lesson)
+                                            <span class="assignments-lesson-chip">{{ $quiz->lesson->title }}</span>
+                                        @else
+                                            <span class="text-muted">غير محدد</span>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>نوع الاختبار:</strong></p>
-                                    @if($quiz->quiz_type == 'practice')
-                                        <span class="badge bg-info">تدريبي</span>
-                                    @elseif($quiz->quiz_type == 'graded')
-                                        <span class="badge bg-warning">مُقيّم</span>
-                                    @elseif($quiz->quiz_type == 'final_exam')
-                                        <span class="badge bg-danger">اختبار نهائي</span>
-                                    @else
-                                        <span class="badge bg-secondary">استبيان</span>
-                                    @endif
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">نوع الاختبار</div>
+                                    <div class="assignments-info-item__value">
+                                        @if($quiz->quiz_type == 'practice')
+                                            <span class="quizzes-type-chip quizzes-type-chip--practice">تدريبي</span>
+                                        @elseif($quiz->quiz_type == 'graded')
+                                            <span class="quizzes-type-chip quizzes-type-chip--graded">مُقيّم</span>
+                                        @elseif($quiz->quiz_type == 'final_exam')
+                                            <span class="quizzes-type-chip quizzes-type-chip--final">اختبار نهائي</span>
+                                        @else
+                                            <span class="quizzes-type-chip quizzes-type-chip--survey">استبيان</span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>الحالة:</strong></p>
-                                    @if($quiz->is_published)
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check-circle me-1"></i>منشور
-                                        </span>
-                                    @else
-                                        <span class="badge bg-warning">
-                                            <i class="fas fa-file me-1"></i>مسودة
-                                        </span>
-                                    @endif
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الحالة</div>
+                                    <div class="assignments-info-item__value">
+                                        @if($quiz->is_published)
+                                            <span class="assignments-status-chip assignments-status-chip--published">منشور</span>
+                                        @else
+                                            <span class="assignments-status-chip assignments-status-chip--draft">مسودة</span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>الظهور:</strong></p>
-                                    @if($quiz->is_visible)
-                                        <span class="badge bg-success-transparent">ظاهر</span>
-                                    @else
-                                        <span class="badge bg-secondary-transparent">مخفي</span>
-                                    @endif
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الظهور</div>
+                                    <div class="assignments-info-item__value">
+                                        @if($quiz->is_visible)
+                                            <span class="assignments-status-chip assignments-status-chip--published">ظاهر</span>
+                                        @else
+                                            <span class="assignments-status-chip assignments-status-chip--draft">مخفي</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
 
                             @if($quiz->description)
                                 <div class="mb-3">
-                                    <p class="mb-2"><strong>الوصف:</strong></p>
-                                    <p class="text-muted">{{ $quiz->description }}</p>
+                                    <p class="mb-2 fw-semibold">الوصف</p>
+                                    <div class="text-muted">{{ $quiz->description }}</div>
                                 </div>
                             @endif
 
                             @if($quiz->instructions)
-                                <div>
-                                    <p class="mb-2"><strong>التعليمات:</strong></p>
-                                    <div class="alert alert-info mb-0">
-                                        <i class="fas fa-info-circle me-2"></i>{{ $quiz->instructions }}
-                                    </div>
+                                <div class="mb-0">
+                                    <p class="mb-2 fw-semibold">التعليمات</p>
+                                    <div class="alert alert-info mb-0"><i class="fe fe-info me-2"></i>{{ $quiz->instructions }}</div>
                                 </div>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Settings -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-cog me-2 text-info"></i>الإعدادات
-                            </div>
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                        <div class="card-header border-0 pb-0">
+                            <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                <span class="assignments-section-icon"><i class="fe fe-settings"></i></span>
+                                الإعدادات
+                            </h4>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-md bg-primary-transparent me-3">
-                                            <i class="fas fa-question fs-18"></i>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 text-muted fs-12">عدد الأسئلة</p>
-                                            <h5 class="mb-0">{{ $quiz->getQuestionCount() }}</h5>
-                                        </div>
-                                    </div>
+                        <div class="card-body pt-3">
+                            <div class="assignments-info-grid mb-3">
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">عدد الأسئلة</div>
+                                    <div class="assignments-info-item__value fw-semibold">{{ $quiz->getQuestionCount() }}</div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-md bg-success-transparent me-3">
-                                            <i class="fas fa-star fs-18"></i>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 text-muted fs-12">الدرجة القصوى</p>
-                                            <h5 class="mb-0">{{ number_format($quiz->max_score, 1) }}</h5>
-                                        </div>
-                                    </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الدرجة القصوى</div>
+                                    <div class="assignments-info-item__value"><span class="assignments-grade-chip">{{ number_format($quiz->max_score, 1) }}</span></div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-md bg-warning-transparent me-3">
-                                            <i class="fas fa-trophy fs-18"></i>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 text-muted fs-12">درجة النجاح</p>
-                                            <h5 class="mb-0">{{ $quiz->passing_grade }}%</h5>
-                                        </div>
-                                    </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">درجة النجاح</div>
+                                    <div class="assignments-info-item__value fw-semibold">{{ $quiz->passing_grade }}%</div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-md bg-info-transparent me-3">
-                                            <i class="fas fa-clock fs-18"></i>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 text-muted fs-12">الوقت المحدد</p>
-                                            <h5 class="mb-0">{{ $quiz->time_limit ? $quiz->time_limit . ' دقيقة' : 'غير محدد' }}</h5>
-                                        </div>
-                                    </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">الوقت المحدد</div>
+                                    <div class="assignments-info-item__value">{{ $quiz->time_limit ? $quiz->time_limit . ' دقيقة' : 'غير محدد' }}</div>
+                                </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">المحاولات</div>
+                                    <div class="assignments-info-item__value">{{ $quiz->attempts_allowed ?? 'غير محدود' }}</div>
                                 </div>
                             </div>
 
-                            <hr>
-
-                            <div class="row">
+                            <div class="row g-2">
                                 <div class="col-md-6">
-                                    <ul class="list-unstyled mb-0">
+                                    <ul class="list-unstyled mb-0 small">
                                         <li class="mb-2">
-                                            <i class="fas fa-{{ $quiz->shuffle_questions ? 'check text-success' : 'times text-danger' }} me-2"></i>
+                                            <i class="fe fe-{{ $quiz->shuffle_questions ? 'check text-success' : 'x text-danger' }} me-2"></i>
                                             ترتيب الأسئلة عشوائياً
                                         </li>
                                         <li class="mb-2">
-                                            <i class="fas fa-{{ $quiz->shuffle_answers ? 'check text-success' : 'times text-danger' }} me-2"></i>
+                                            <i class="fe fe-{{ $quiz->shuffle_answers ? 'check text-success' : 'x text-danger' }} me-2"></i>
                                             ترتيب الخيارات عشوائياً
                                         </li>
                                         <li class="mb-2">
-                                            <i class="fas fa-{{ $quiz->show_correct_answers ? 'check text-success' : 'times text-danger' }} me-2"></i>
+                                            <i class="fe fe-{{ $quiz->show_correct_answers ? 'check text-success' : 'x text-danger' }} me-2"></i>
                                             عرض الإجابات الصحيحة
                                         </li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6">
-                                    <ul class="list-unstyled mb-0">
+                                    <ul class="list-unstyled mb-0 small">
                                         <li class="mb-2">
-                                            <i class="fas fa-{{ $quiz->allow_review ? 'check text-success' : 'times text-danger' }} me-2"></i>
+                                            <i class="fe fe-{{ $quiz->allow_review ? 'check text-success' : 'x text-danger' }} me-2"></i>
                                             السماح بالمراجعة
                                         </li>
                                         <li class="mb-2">
-                                            <i class="fas fa-{{ $quiz->show_grade_immediately ? 'check text-success' : 'times text-danger' }} me-2"></i>
+                                            <i class="fe fe-{{ $quiz->show_grade_immediately ? 'check text-success' : 'x text-danger' }} me-2"></i>
                                             عرض الدرجة فوراً
-                                        </li>
-                                        <li class="mb-2">
-                                            <i class="fas fa-redo me-2"></i>
-                                            المحاولات: {{ $quiz->attempts_allowed ?? 'غير محدود' }}
                                         </li>
                                     </ul>
                                 </div>
@@ -213,67 +200,64 @@
                         </div>
                     </div>
 
-                    <!-- Questions List -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div class="card-title mb-0">
-                                <i class="fas fa-list me-2 text-secondary"></i>الأسئلة ({{ $quiz->quizQuestions->count() }})
-                            </div>
-                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-sm btn-success">
-                                <i class="fas fa-cog me-1"></i>إدارة الأسئلة
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                            <h6 class="group-show-members-card__title mb-0">
+                                الأسئلة
+                                <span class="group-show-members-card__count">{{ $quiz->quizQuestions->count() }}</span>
+                            </h6>
+                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
+                                <i class="fe fe-settings me-1"></i>إدارة الأسئلة
                             </a>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="card-body pt-3 p-0">
                             @if($quiz->quizQuestions->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
+                                <div class="table-responsive px-3 pb-3">
+                                    <table class="table table-hover text-nowrap dashboard-table mb-0">
                                         <thead>
                                             <tr>
                                                 <th width="5%">#</th>
-                                                <th width="50%">السؤال</th>
-                                                <th width="15%">النوع</th>
-                                                <th width="10%">الدرجة</th>
-                                                <th width="10%">الترتيب</th>
-                                                <th width="10%">الإجراءات</th>
+                                                <th>السؤال</th>
+                                                <th>النوع</th>
+                                                <th>الدرجة</th>
+                                                <th>الترتيب</th>
+                                                <th>الإجراءات</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach($quiz->quizQuestions as $quizQuestion)
-                                                @php
-                                                    $question = $quizQuestion->question;
-                                                @endphp
+                                                @php $question = $quizQuestion->question; @endphp
                                                 <tr>
                                                     <td>{{ $loop->iteration }}</td>
                                                     <td>
-                                                        <div class="text-truncate" style="max-width: 400px;">
+                                                        <div class="text-truncate" style="max-width: 360px;">
                                                             @if($question)
                                                                 {{ $question->question_text }}
                                                             @else
-                                                                <span class="text-danger">
-                                                                    هذا السؤال محذوف من بنك الأسئلة
-                                                                </span>
+                                                                <span class="text-danger">هذا السؤال محذوف من بنك الأسئلة</span>
                                                             @endif
                                                         </div>
                                                     </td>
                                                     <td>
                                                         @if($question && $question->questionType)
-                                                            <span class="badge bg-info-transparent">
-                                                                {{ $question->questionType->display_name }}
-                                                            </span>
+                                                            <span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span>
                                                         @else
-                                                            <span class="badge bg-danger-transparent">
-                                                                نوع غير متوفر
-                                                            </span>
+                                                            <span class="badge bg-danger-transparent">نوع غير متوفر</span>
                                                         @endif
                                                     </td>
-                                                    <td>
-                                                        <span class="badge bg-success">{{ $quizQuestion->max_score }}</span>
-                                                    </td>
+                                                    <td><span class="badge bg-success-transparent">{{ $quizQuestion->max_score }}</span></td>
                                                     <td>{{ $quizQuestion->question_order }}</td>
                                                     <td>
-                                                        <button type="button" class="btn btn-sm btn-info" title="معاينة" @if(!$question) disabled @endif>
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
+                                                        @if($question)
+                                                            <a href="{{ route('question-bank.preview', $question->id) }}"
+                                                               class="btn btn-primary-light btn-sm" target="_blank" title="معاينة">
+                                                                <i class="fe fe-eye"></i>
+                                                            </a>
+                                                        @else
+                                                            <button type="button" class="btn btn-primary-light btn-sm" disabled title="معاينة">
+                                                                <i class="fe fe-eye"></i>
+                                                            </button>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -281,248 +265,217 @@
                                     </table>
                                 </div>
                             @else
-                                <div class="text-center py-5">
-                                    <i class="fas fa-question-circle fs-48 text-muted mb-3"></i>
-                                    <p class="text-muted">لم يتم إضافة أسئلة بعد</p>
-                                    <a href="{{ route('question-bank.index') }}" class="btn btn-primary">
-                                        <i class="fas fa-plus me-2"></i>إضافة أسئلة
+                                <div class="text-center py-5 px-3">
+                                    <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-help-circle"></i></span>
+                                    <p class="text-muted mb-3">لم يتم إضافة أسئلة بعد</p>
+                                    <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-primary btn-sm">
+                                        <i class="fe fe-plus me-1"></i>إضافة أسئلة
                                     </a>
                                 </div>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Attempts List -->
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-users me-2 text-purple"></i>المحاولات ({{ $attempts->total() }})
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                            <h6 class="group-show-members-card__title mb-0">
+                                المحاولات
+                                <span class="group-show-members-card__count">{{ $attempts->total() }}</span>
+                            </h6>
+                        </div>
+                        <div class="card-body pt-3 p-0">
+                            <div class="table-responsive px-3 pb-3">
+                                <table class="table table-hover text-nowrap dashboard-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>الطالب</th>
+                                            <th>المحاولة</th>
+                                            <th>التاريخ</th>
+                                            <th>الدرجة</th>
+                                            <th>الوقت</th>
+                                            <th>الحالة</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($attempts as $attempt)
+                                            <tr>
+                                                <td>
+                                                    <span class="fw-semibold">{{ $attempt->student->name }}</span>
+                                                    <br><small class="text-muted">{{ $attempt->student->email }}</small>
+                                                </td>
+                                                <td><span class="badge bg-secondary-transparent">#{{ $attempt->attempt_number }}</span></td>
+                                                <td><small class="text-muted">{{ $attempt->started_at->format('Y-m-d H:i') }}</small></td>
+                                                <td>
+                                                    @if($attempt->total_score !== null)
+                                                        <span class="badge bg-{{ $attempt->passed ? 'success' : 'danger' }}-transparent">
+                                                            {{ number_format($attempt->percentage_score, 1) }}%
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td><small>{{ $attempt->getTimeSpentHumanReadable() }}</small></td>
+                                                <td>
+                                                    @if($attempt->status == 'in_progress')
+                                                        <span class="assignments-status-chip assignments-status-chip--pending">جاري</span>
+                                                    @elseif($attempt->status == 'submitted')
+                                                        <span class="assignments-status-chip assignments-status-chip--submission-draft">مُسلّم</span>
+                                                    @elseif($attempt->status == 'graded')
+                                                        <span class="assignments-status-chip assignments-status-chip--graded">مُصحح</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <a href="{{ route('grading.show', $attempt->id) }}"
+                                                       class="btn btn-primary-light btn-sm" title="التصحيح">
+                                                        <i class="fe fe-edit-2"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="7" class="text-center py-5">
+                                                    <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-inbox"></i></span>
+                                                    <p class="text-muted mb-0">لا توجد محاولات بعد</p>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="card-body p-0">
-                            @if($attempts->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>الطالب</th>
-                                                <th>المحاولة</th>
-                                                <th>التاريخ</th>
-                                                <th>الدرجة</th>
-                                                <th>الوقت</th>
-                                                <th>الحالة</th>
-                                                <th>الإجراءات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($attempts as $attempt)
-                                                <tr>
-                                                    <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-sm bg-primary-transparent me-2">
-                                                                <i class="fas fa-user"></i>
-                                                            </div>
-                                                            <span>{{ $attempt->student->name }}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-secondary-transparent">
-                                                            #{{ $attempt->attempt_number }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <small class="text-muted">
-                                                            {{ $attempt->started_at->format('Y-m-d H:i') }}
-                                                        </small>
-                                                    </td>
-                                                    <td>
-                                                        @if($attempt->total_score !== null)
-                                                            <span class="badge bg-{{ $attempt->passed ? 'success' : 'danger' }}">
-                                                                {{ number_format($attempt->percentage_score, 1) }}%
-                                                            </span>
-                                                        @else
-                                                            <span class="text-muted">-</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <small>{{ $attempt->getTimeSpentHumanReadable() }}</small>
-                                                    </td>
-                                                    <td>
-                                                        @if($attempt->status == 'in_progress')
-                                                            <span class="badge bg-info">جاري</span>
-                                                        @elseif($attempt->status == 'submitted')
-                                                            <span class="badge bg-warning">مُسلّم</span>
-                                                        @elseif($attempt->status == 'graded')
-                                                            <span class="badge bg-success">مُصحح</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <a href="{{ route('grading.show', $attempt->id) }}"
-                                                           class="btn btn-sm btn-primary" title="التصحيح">
-                                                            <i class="fas fa-pen"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                @if($attempts->hasPages())
-                                    <div class="card-footer">
-                                        {{ $attempts->links() }}
-                                    </div>
-                                @endif
-                            @else
-                                <div class="text-center py-5">
-                                    <i class="fas fa-inbox fs-48 text-muted mb-3"></i>
-                                    <p class="text-muted">لا توجد محاولات بعد</p>
-                                </div>
-                            @endif
-                        </div>
+                        @if($attempts->hasPages())
+                            <div class="card-footer">{{ $attempts->links() }}</div>
+                        @endif
                     </div>
                 </div>
 
-                <!-- Right Column - Statistics -->
                 <div class="col-lg-4">
-                    <!-- Statistics Card -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-chart-bar me-2 text-success"></i>الإحصائيات
-                            </div>
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                        <div class="card-header border-0 pb-0">
+                            <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                <span class="assignments-section-icon"><i class="fe fe-bar-chart-2"></i></span>
+                                الإحصائيات
+                            </h4>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-4">
+                        <div class="card-body pt-3">
+                            @php $totalAttempts = $stats['total_attempts'] ?? 0; @endphp
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">إجمالي المحاولات</span>
-                                    <span class="fw-bold">{{ $stats['total_attempts'] }}</span>
+                                    <span>إجمالي المحاولات</span>
+                                    <span class="badge bg-primary">{{ $totalAttempts }}</span>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-primary" style="width: 100%"></div>
+                                <div class="assignments-stat-progress">
+                                    <div class="progress-bar bg-primary" style="width: {{ $totalAttempts > 0 ? 100 : 0 }}%"></div>
                                 </div>
                             </div>
-
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">المحاولات المكتملة</span>
-                                    <span class="fw-bold">{{ $stats['completed_attempts'] }}</span>
+                                    <span>المحاولات المكتملة</span>
+                                    <span class="badge bg-success">{{ $stats['completed_attempts'] }}</span>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-success"
-                                         style="width: {{ $stats['total_attempts'] > 0 ? ($stats['completed_attempts'] / $stats['total_attempts']) * 100 : 0 }}%">
-                                    </div>
+                                <div class="assignments-stat-progress">
+                                    <div class="progress-bar bg-success" style="width: {{ $totalAttempts > 0 ? ($stats['completed_attempts'] / $totalAttempts) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">قيد التقدم</span>
-                                    <span class="fw-bold">{{ $stats['in_progress'] }}</span>
+                                    <span>قيد التقدم</span>
+                                    <span class="badge bg-info">{{ $stats['in_progress'] }}</span>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-info"
-                                         style="width: {{ $stats['total_attempts'] > 0 ? ($stats['in_progress'] / $stats['total_attempts']) * 100 : 0 }}%">
-                                    </div>
+                                <div class="assignments-stat-progress">
+                                    <div class="progress-bar bg-info" style="width: {{ $totalAttempts > 0 ? ($stats['in_progress'] / $totalAttempts) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">مُصححة</span>
-                                    <span class="fw-bold">{{ $stats['graded'] }}</span>
+                                    <span>مُصححة</span>
+                                    <span class="badge bg-warning">{{ $stats['graded'] }}</span>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-warning"
-                                         style="width: {{ $stats['total_attempts'] > 0 ? ($stats['graded'] / $stats['total_attempts']) * 100 : 0 }}%">
-                                    </div>
+                                <div class="assignments-stat-progress">
+                                    <div class="progress-bar bg-warning" style="width: {{ $totalAttempts > 0 ? ($stats['graded'] / $totalAttempts) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">بانتظار التصحيح</span>
-                                    <span class="fw-bold text-danger">{{ $stats['pending_grading'] }}</span>
+                                    <span>بانتظار التصحيح</span>
+                                    <span class="badge bg-danger">{{ $stats['pending_grading'] }}</span>
                                 </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-danger"
-                                         style="width: {{ $stats['total_attempts'] > 0 ? ($stats['pending_grading'] / $stats['total_attempts']) * 100 : 0 }}%">
-                                    </div>
+                                <div class="assignments-stat-progress">
+                                    <div class="progress-bar bg-danger" style="width: {{ $totalAttempts > 0 ? ($stats['pending_grading'] / $totalAttempts) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-
                             <hr>
-
                             <div class="text-center mb-3">
-                                <p class="text-muted mb-1">متوسط الدرجات</p>
-                                <h3 class="mb-0 text-primary">
+                                <p class="mb-1 text-muted">متوسط الدرجات</p>
+                                <h3 class="text-primary mb-0">
                                     {{ $stats['average_score'] ? number_format($stats['average_score'], 1) . '%' : '-' }}
                                 </h3>
                             </div>
-
                             <div class="text-center">
-                                <p class="text-muted mb-1">معدل النجاح</p>
-                                <h3 class="mb-0 text-success">
-                                    {{ number_format($stats['pass_rate'], 1) }}%
-                                </h3>
+                                <p class="mb-1 text-muted">معدل النجاح</p>
+                                <h3 class="text-success mb-0">{{ number_format($stats['pass_rate'], 1) }}%</h3>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Dates Card -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-calendar me-2 text-danger"></i>المواعيد
-                            </div>
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                        <div class="card-header border-0 pb-0">
+                            <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                <span class="assignments-section-icon"><i class="fe fe-calendar"></i></span>
+                                المواعيد
+                            </h4>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <p class="mb-1 text-muted fs-12">متاح من:</p>
-                                <p class="mb-0">{{ $quiz->available_from ? $quiz->available_from->format('Y-m-d H:i') : 'غير محدد' }}</p>
-                            </div>
-                            <div class="mb-3">
-                                <p class="mb-1 text-muted fs-12">موعد الاستحقاق:</p>
-                                <p class="mb-0">{{ $quiz->due_date ? $quiz->due_date->format('Y-m-d H:i') : 'غير محدد' }}</p>
-                            </div>
-                            <div>
-                                <p class="mb-1 text-muted fs-12">متاح حتى:</p>
-                                <p class="mb-0">{{ $quiz->available_until ? $quiz->available_until->format('Y-m-d H:i') : 'غير محدد' }}</p>
+                        <div class="card-body pt-3">
+                            <div class="assignments-info-grid">
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">متاح من</div>
+                                    <div class="assignments-info-item__value">{{ $quiz->available_from ? $quiz->available_from->format('Y-m-d H:i') : 'غير محدد' }}</div>
+                                </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">موعد الاستحقاق</div>
+                                    <div class="assignments-info-item__value">{{ $quiz->due_date ? $quiz->due_date->format('Y-m-d H:i') : 'غير محدد' }}</div>
+                                </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">متاح حتى</div>
+                                    <div class="assignments-info-item__value">{{ $quiz->available_until ? $quiz->available_until->format('Y-m-d H:i') : 'غير محدد' }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Actions Card -->
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-bolt me-2 text-warning"></i>إجراءات سريعة
-                            </div>
+                    <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate">
+                        <div class="card-header border-0 pb-0">
+                            <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                                <span class="assignments-section-icon"><i class="fe fe-zap"></i></span>
+                                إجراءات سريعة
+                            </h4>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body pt-3">
                             <div class="d-grid gap-2">
-                                <a href="{{ route('quiz-analytics.quiz', $quiz->id) }}" class="btn btn-outline-info">
-                                    <i class="fas fa-chart-line me-2"></i>عرض التحليلات
+                                <a href="{{ route('quiz-analytics.quiz', $quiz->id) }}" class="btn btn-outline-info btn-sm">
+                                    <i class="fe fe-trending-up me-1"></i>عرض التحليلات
                                 </a>
                                 <form action="{{ route('quizzes.recalculate-score', $quiz->id) }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="btn btn-outline-secondary w-100">
-                                        <i class="fas fa-calculator me-2"></i>إعادة حساب الدرجات
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                                        <i class="fe fe-refresh-cw me-1"></i>إعادة حساب الدرجات
                                     </button>
                                 </form>
                                 <form action="{{ route('quizzes.toggle-publish', $quiz->id) }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="btn btn-outline-{{ $quiz->is_published ? 'warning' : 'success' }} w-100">
-                                        <i class="fas fa-{{ $quiz->is_published ? 'eye-slash' : 'check' }} me-2"></i>
+                                    <button type="submit" class="btn btn-outline-{{ $quiz->is_published ? 'warning' : 'success' }} btn-sm w-100">
+                                        <i class="fe fe-{{ $quiz->is_published ? 'eye-off' : 'check' }} me-1"></i>
                                         {{ $quiz->is_published ? 'إلغاء النشر' : 'نشر الاختبار' }}
                                     </button>
                                 </form>
-                                <hr>
+                                <hr class="my-2">
                                 <form action="{{ route('quizzes.destroy', $quiz->id) }}" method="POST"
                                       onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger w-100">
-                                        <i class="fas fa-trash me-2"></i>حذف الاختبار
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                        <i class="fe fe-trash-2 me-1"></i>حذف الاختبار
                                     </button>
                                 </form>
                             </div>

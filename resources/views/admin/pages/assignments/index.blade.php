@@ -4,45 +4,73 @@
     إدارة الواجبات
 @stop
 
+@section('styles')
+    @include('admin.pages.assignments.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('admin.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إدارة الواجبات</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item active">الواجبات</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('assignments.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>إضافة واجب جديد
-                    </a>
+            <div class="my-4 page-header-breadcrumb assignments-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">الواجبات</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in assignments-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-7">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-clipboard me-1"></i>
+                            إدارة التقييم والواجبات
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">إدارة الواجبات</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            إنشاء الواجبات، ربطها بالكورسات والدروس، متابعة التسليمات وتقييم أعمال الطلاب.
+                        </p>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="group-show-actions">
+                            <a href="{{ route('assignments.create') }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إضافة واجب جديد</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filter & Search -->
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('assignments.index') }}" id="filterForm">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">البحث</label>
-                                <input type="text" name="search" class="form-control"
+            <div class="mb-4 assignments-page-animate">
+                @include('admin.pages.assignments.partials.stats', [
+                    'totalAssignments' => $totalAssignments,
+                    'publishedAssignments' => $publishedAssignments,
+                    'draftAssignments' => $draftAssignments,
+                ])
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية الواجبات</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث بعنوان الواجب أو فلتر حسب الكورس والحالة.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form method="GET" action="{{ route('assignments.index') }}" id="filterForm" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-xl-4 col-lg-4 col-md-6">
+                                <label class="form-label" for="assignmentsSearch">البحث</label>
+                                <input type="text" id="assignmentsSearch" name="search" class="form-control"
                                        placeholder="ابحث بعنوان الواجب..."
                                        value="{{ request('search') }}">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">الكورس</label>
-                                <select name="course_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="assignmentsCourse">الكورس</label>
+                                <select name="course_id" id="assignmentsCourse" class="form-select">
                                     <option value="">جميع الكورسات</option>
                                     @foreach($courses as $course)
                                         <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
@@ -51,213 +79,80 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">الحالة</label>
-                                <select name="status" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="assignmentsStatus">الحالة</label>
+                                <select name="status" id="assignmentsStatus" class="form-select">
                                     <option value="">الكل</option>
                                     <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>منشور</option>
                                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">&nbsp;</label>
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i>بحث
-                                </button>
+                            <div class="col-xl-12">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fe fe-search me-1"></i>بحث
+                                    </button>
+                                    <a href="{{ route('assignments.index') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Assignments Table -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        قائمة الواجبات ({{ $assignments->total() }})
-                    </div>
+            <div class="card custom-card group-show-members-card dashboard-fade-in assignments-page-animate">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة الواجبات
+                        <span class="group-show-members-card__count">{{ $assignments->total() }}</span>
+                    </h6>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>عنوان الواجب</th>
-                                    <th>الكورس</th>
-                                    <th>الدرس</th>
-                                    <th>الدرجة القصوى</th>
-                                    <th>موعد التسليم</th>
-                                    <th>التسليمات</th>
-                                    <th>الحالة</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($assignments as $assignment)
-                                    <tr>
-                                        <td>{{ $loop->iteration }}</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div>
-                                                    <a href="{{ route('assignments.show', $assignment->id) }}"
-                                                       class="fw-semibold">{{ $assignment->title }}</a>
-                                                    <br>
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-user fs-10 me-1"></i>
-                                                        {{ $assignment->creator->name ?? 'غير محدد' }}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($assignment->course)
-                                                <span class="badge bg-primary-transparent">
-                                                    {{ $assignment->course->title }}
-                                                </span>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($assignment->lesson)
-                                                <span class="badge bg-info-transparent">
-                                                    {{ $assignment->lesson->title }}
-                                                </span>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-success">{{ $assignment->max_grade }}</span>
-                                        </td>
-                                        <td>
-                                            @if($assignment->due_date)
-                                                <small>
-                                                    {{ $assignment->due_date->format('Y-m-d H:i') }}
-                                                    <br>
-                                                    @if($assignment->isPastDue())
-                                                        <span class="text-danger">
-                                                            <i class="fas fa-clock"></i> منتهي
-                                                        </span>
-                                                    @else
-                                                        <span class="text-success">
-                                                            <i class="fas fa-clock"></i> نشط
-                                                        </span>
-                                                    @endif
-                                                </small>
-                                            @else
-                                                <span class="text-muted">غير محدد</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('assignments.show', $assignment->id) }}"
-                                               class="badge bg-secondary-transparent">
-                                                {{ $assignment->submissions->count() }} تسليم
-                                            </a>
-                                        </td>
-                                        <td>
-                                            @if($assignment->is_published)
-                                                <span class="badge bg-success">منشور</span>
-                                            @else
-                                                <span class="badge bg-warning">مسودة</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('assignments.show', $assignment->id) }}"
-                                                   class="btn btn-sm btn-info" title="عرض">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('assignments.edit', $assignment->id) }}"
-                                                   class="btn btn-sm btn-primary" title="تعديل">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form action="{{ route('assignments.destroy', $assignment->id) }}"
-                                                      method="POST" class="d-inline assignment-delete-form"
-                                                      id="delete-form-{{ $assignment->id }}"
-                                                      data-assignment-title="{{ $assignment->title }}">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="button" class="btn btn-sm btn-danger btn-delete-assignment" title="حذف"
-                                                            data-assignment-id="{{ $assignment->id }}"
-                                                            data-assignment-title="{{ $assignment->title }}">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center py-4">
-                                            <i class="fas fa-inbox fs-48 text-muted mb-3"></i>
-                                            <p class="text-muted">لا توجد واجبات</p>
-                                            <a href="{{ route('assignments.create') }}" class="btn btn-primary">
-                                                إضافة واجب جديد
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-body pt-3">
+                    @include('admin.pages.assignments._assignments_table', ['assignments' => $assignments])
                 </div>
-                @if($assignments->hasPages())
-                    <div class="card-footer">
-                        {{ $assignments->links() }}
-                    </div>
-                @endif
             </div>
 
         </div>
     </div>
 
-    <!-- Delete Assignment Confirmation Modal -->
     <div class="modal fade" id="deleteAssignmentModal" tabindex="-1" aria-labelledby="deleteAssignmentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0">
-                <div class="modal-body text-center p-5">
-                    <div class="mb-4">
-                        <span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle">
-                            <i class="fas fa-trash-alt fa-2x"></i>
-                        </span>
-                    </div>
-                    <h5 id="deleteAssignmentModalLabel" class="mb-2">تأكيد حذف الواجب</h5>
-                    <p class="text-muted mb-4">
-                        هل أنت متأكد من حذف الواجب
-                        <strong id="delete-assignment-title"></strong>؟
-                        <br>
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="deleteAssignmentModalLabel">
+                        <i class="fe fe-alert-triangle text-danger me-2"></i>تأكيد حذف الواجب
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">هل أنت متأكد من حذف الواجب <strong id="delete-assignment-title"></strong>؟</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fe fe-info me-2"></i>
                         سيتم حذف جميع البيانات المرتبطة بهذا الواجب ولا يمكن التراجع عن هذه العملية.
-                    </p>
-                    <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
-                            إلغاء
-                        </button>
-                        <button type="button" class="btn btn-danger px-4" id="confirm-delete-assignment">
-                            <i class="fas fa-trash me-1"></i> حذف نهائياً
-                        </button>
                     </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-assignment">
+                        <i class="fe fe-trash-2 me-1"></i>حذف نهائياً
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Alert Modal -->
-    <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+    <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0">
-                <div class="modal-body text-center p-5">
-                    <div class="mb-4" id="alert-icon">
-                        <span class="avatar avatar-xl bg-success-transparent text-success rounded-circle">
-                            <i class="fas fa-check-circle fa-2x"></i>
-                        </span>
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3" id="alert-icon">
+                        <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-check-circle"></i></span>
                     </div>
                     <h5 id="alert-title" class="mb-2">نجح</h5>
                     <p class="text-muted mb-4" id="alert-message"></p>
-                    <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">
-                        موافق
-                    </button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">موافق</button>
                 </div>
             </div>
         </div>
@@ -266,11 +161,33 @@
 
 @section('script')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function () {
+    function initAssignmentsCountup() {
+        document.querySelectorAll('[data-countup]').forEach(function (el) {
+            const target = parseFloat(el.dataset.countup || '0');
+            const duration = 800;
+            const start = performance.now();
+            function step(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAssignmentsCountup);
+    } else {
+        initAssignmentsCountup();
+    }
+})();
+
+document.addEventListener('DOMContentLoaded', function () {
     let deleteForm = null;
     const modalElement = document.getElementById('deleteAssignmentModal');
     const alertModalElement = document.getElementById('alertModal');
-    
     if (!modalElement) return;
 
     const deleteModal = new bootstrap.Modal(modalElement);
@@ -278,126 +195,63 @@ document.addEventListener('DOMContentLoaded', function() {
     const titleSpan = document.getElementById('delete-assignment-title');
     const confirmBtn = document.getElementById('confirm-delete-assignment');
 
-    // Handle delete button click
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         const btn = e.target.closest('.btn-delete-assignment');
         if (!btn) return;
-
         e.preventDefault();
-
         const assignmentId = btn.getAttribute('data-assignment-id');
-        const assignmentTitle = btn.getAttribute('data-assignment-title') || '';
-
         deleteForm = document.getElementById('delete-form-' + assignmentId);
         if (!deleteForm) return;
-
-        if (titleSpan) {
-            titleSpan.textContent = assignmentTitle;
-        }
-
+        if (titleSpan) titleSpan.textContent = btn.getAttribute('data-assignment-title') || '';
         deleteModal.show();
     });
 
-    // Handle confirm delete
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', function() {
-            if (!deleteForm) return;
+    if (!confirmBtn) return;
 
-            const formAction = deleteForm.getAttribute('action');
-            const formData = new FormData(deleteForm);
-            const csrfToken = formData.get('_token');
-
-            fetch(formAction, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                deleteModal.hide();
-                
-                if (data.success) {
-                    // Show success message
-                    const alertIcon = document.getElementById('alert-icon');
-                    const alertTitle = document.getElementById('alert-title');
-                    const alertMessage = document.getElementById('alert-message');
-                    
-                    if (alertIcon) {
-                        alertIcon.innerHTML = '<span class="avatar avatar-xl bg-success-transparent text-success rounded-circle"><i class="fas fa-check-circle fa-2x"></i></span>';
-                    }
-                    if (alertTitle) {
-                        alertTitle.textContent = 'نجح';
-                    }
-                    if (alertMessage) {
-                        alertMessage.textContent = data.message || 'تم حذف الواجب بنجاح';
-                    }
-                    
-                    alertModal.show();
-                    
-                    // Remove the row after a short delay
-                    setTimeout(() => {
-                        const row = deleteForm.closest('tr');
-                        if (row) {
-                            row.style.transition = 'opacity 0.3s';
-                            row.style.opacity = '0';
-                            setTimeout(() => {
-                                row.remove();
-                                // Reload page if no more rows
-                                const tbody = row.closest('tbody');
-                                if (tbody && tbody.querySelectorAll('tr').length === 0) {
-                                    location.reload();
-                                }
-                            }, 300);
-                        } else {
-                            location.reload();
-                        }
-                    }, 1500);
-                } else {
-                    // Show error message
-                    const alertIcon = document.getElementById('alert-icon');
-                    const alertTitle = document.getElementById('alert-title');
-                    const alertMessage = document.getElementById('alert-message');
-                    
-                    if (alertIcon) {
-                        alertIcon.innerHTML = '<span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle"><i class="fas fa-exclamation-circle fa-2x"></i></span>';
-                    }
-                    if (alertTitle) {
-                        alertTitle.textContent = 'خطأ';
-                    }
-                    if (alertMessage) {
-                        alertMessage.textContent = data.message || 'حدث خطأ أثناء حذف الواجب';
-                    }
-                    
-                    alertModal.show();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                deleteModal.hide();
-                
-                // Show error message
-                const alertIcon = document.getElementById('alert-icon');
-                const alertTitle = document.getElementById('alert-title');
-                const alertMessage = document.getElementById('alert-message');
-                
-                if (alertIcon) {
-                    alertIcon.innerHTML = '<span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle"><i class="fas fa-exclamation-circle fa-2x"></i></span>';
-                }
-                if (alertTitle) {
-                    alertTitle.textContent = 'خطأ';
-                }
-                if (alertMessage) {
-                    alertMessage.textContent = 'حدث خطأ أثناء حذف الواجب';
-                }
-                
+    confirmBtn.addEventListener('click', function () {
+        if (!deleteForm) return;
+        const formData = new FormData(deleteForm);
+        fetch(deleteForm.getAttribute('action'), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': formData.get('_token'),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            deleteModal.hide();
+            const alertIcon = document.getElementById('alert-icon');
+            const alertTitle = document.getElementById('alert-title');
+            const alertMessage = document.getElementById('alert-message');
+            if (data.success) {
+                if (alertIcon) alertIcon.innerHTML = '<span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-check-circle"></i></span>';
+                if (alertTitle) alertTitle.textContent = 'نجح';
+                if (alertMessage) alertMessage.textContent = data.message || 'تم حذف الواجب بنجاح';
                 alertModal.show();
-            });
+                setTimeout(() => {
+                    const row = deleteForm.closest('tr');
+                    if (row) {
+                        row.remove();
+                        if (!document.querySelector('.assignments-table-row')) location.reload();
+                    } else {
+                        location.reload();
+                    }
+                }, 1200);
+            } else {
+                if (alertIcon) alertIcon.innerHTML = '<span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-alert-circle"></i></span>';
+                if (alertTitle) alertTitle.textContent = 'خطأ';
+                if (alertMessage) alertMessage.textContent = data.message || 'حدث خطأ أثناء حذف الواجب';
+                alertModal.show();
+            }
+        })
+        .catch(() => {
+            deleteModal.hide();
+            alertModal.show();
         });
-    }
+    });
 });
 </script>
 @stop

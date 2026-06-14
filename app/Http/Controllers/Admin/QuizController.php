@@ -20,6 +20,7 @@ class QuizController extends Controller
     public function index(Request $request)
     {
         $query = Quiz::with(['course', 'lesson', 'creator'])
+            ->withCount('attempts')
             ->orderBy('created_at', 'desc');
 
         // Filter by course
@@ -49,7 +50,19 @@ class QuizController extends Controller
         $quizzes = $query->paginate(15);
         $courses = Course::where('is_published', true)->get();
 
-        return view('admin.pages.quizzes.index', compact('quizzes', 'courses'));
+        $totalQuizzes = Quiz::count();
+        $publishedQuizzes = Quiz::where('is_published', true)->count();
+        $draftQuizzes = Quiz::where('is_published', false)->count();
+        $questionBankCount = \App\Models\QuestionBank::count();
+
+        return view('admin.pages.quizzes.index', compact(
+            'quizzes',
+            'courses',
+            'totalQuizzes',
+            'publishedQuizzes',
+            'draftQuizzes',
+            'questionBankCount',
+        ));
     }
 
     /**

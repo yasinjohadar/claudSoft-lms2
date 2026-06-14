@@ -4,53 +4,57 @@
     تعديل الاختبار
 @stop
 
+@section('styles')
+    @include('admin.pages.quizzes.partials.page-styles')
+@stop
+
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">تعديل الاختبار: {{ $quiz->title ?? 'غير محدد' }}</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
-                            <li class="breadcrumb-item active">تعديل الاختبار</li>
-                        </ol>
-                    </nav>
-                </div>
+            @include('admin.components.alerts')
+
+            <div class="admin-form-layout">
+
+            <div class="my-4 page-header-breadcrumb quizzes-page-animate dashboard-fade-in">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('quizzes.show', $quiz->id) }}">{{ Str::limit($quiz->title, 30) }}</a></li>
+                        <li class="breadcrumb-item active">تعديل</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Error Messages -->
-            @if ($errors->any() || session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <strong>خطأ!</strong>
-                    @if ($errors->has('error'))
-                        {{ $errors->first('error') }}
-                    @elseif(session('error'))
-                        {{ session('error') }}
-                    @else
-                        <ul class="mb-0 mt-2">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    @endif
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-edit-2 me-1"></i>تعديل الاختبار</span>
+                        <h2 class="group-show-hero__title mb-2">{{ $quiz->title }}</h2>
+                        <p class="group-show-hero__desc mb-0">حدّث بيانات الاختبار، إعدادات الدرجات، المواعيد وخيارات النشر.</p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('quizzes.show', $quiz->id) }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-eye"></i></span>
+                                <span class="group-show-action__text">عرض الاختبار</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-            @endif
+            </div>
 
             <form action="{{ route('quizzes.update', $quiz->id) }}" method="POST">
                 @csrf
                 @method('PUT')
 
-                <!-- Basic Information -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>المعلومات الأساسية
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-info"></i></span>
+                            المعلومات الأساسية
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -81,7 +85,7 @@
                             <div class="col-md-3">
                                 <label class="form-label">الدرس (اختياري)</label>
                                 <select name="lesson_id" id="lesson_id" class="form-select @error('lesson_id') is-invalid @enderror">
-                                    <option value="">اختر الدرس</option>
+                                    <option value="">لا يوجد دروس مرتبطة</option>
                                     @foreach($lessons as $lesson)
                                         <option value="{{ $lesson->id }}" {{ old('lesson_id', $quiz->lesson_id) == $lesson->id ? 'selected' : '' }}>
                                             {{ $lesson->title }}
@@ -136,12 +140,12 @@
                     </div>
                 </div>
 
-                <!-- Grading Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-star me-2 text-warning"></i>إعدادات الدرجات
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-award"></i></span>
+                            إعدادات الدرجات
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -184,35 +188,29 @@
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" name="show_grade_immediately"
                                            id="show_grade_immediately" {{ old('show_grade_immediately', $quiz->show_grade_immediately) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="show_grade_immediately">
-                                        عرض الدرجة فوراً
-                                    </label>
+                                    <label class="form-check-label" for="show_grade_immediately">عرض الدرجة فوراً</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="allow_review"
                                            id="allow_review" {{ old('allow_review', $quiz->allow_review) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="allow_review">
-                                        السماح بالمراجعة
-                                    </label>
+                                    <label class="form-check-label" for="allow_review">السماح بالمراجعة</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="show_correct_answers"
                                            id="show_correct_answers" {{ old('show_correct_answers', $quiz->show_correct_answers) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="show_correct_answers">
-                                        عرض الإجابات الصحيحة
-                                    </label>
+                                    <label class="form-check-label" for="show_correct_answers">عرض الإجابات الصحيحة</label>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Quiz Settings -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-cog me-2 text-info"></i>إعدادات الاختبار
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-settings"></i></span>
+                            إعدادات الاختبار
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -238,16 +236,12 @@
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" name="shuffle_questions"
                                            id="shuffle_questions" {{ old('shuffle_questions', $quiz->shuffle_questions) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffle_questions">
-                                        ترتيب الأسئلة عشوائياً
-                                    </label>
+                                    <label class="form-check-label" for="shuffle_questions">ترتيب الأسئلة عشوائياً</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_answers"
                                            id="shuffle_answers" {{ old('shuffle_answers', $quiz->shuffle_answers) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffle_answers">
-                                        ترتيب الخيارات عشوائياً
-                                    </label>
+                                    <label class="form-check-label" for="shuffle_answers">ترتيب الخيارات عشوائياً</label>
                                 </div>
                             </div>
 
@@ -281,12 +275,12 @@
                     </div>
                 </div>
 
-                <!-- Publishing Options -->
-                <div class="card custom-card mb-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <i class="fas fa-eye me-2 text-success"></i>خيارات النشر
-                        </div>
+                <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
+                    <div class="card-header border-0 pb-0">
+                        <h4 class="card-title mb-1 d-flex align-items-center gap-2">
+                            <span class="assignments-section-icon"><i class="fe fe-eye"></i></span>
+                            خيارات النشر
+                        </h4>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -294,34 +288,28 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_published"
                                            id="is_published" {{ old('is_published', $quiz->is_published) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_published">
-                                        <i class="fas fa-check-circle me-1"></i>نشر الاختبار
-                                    </label>
+                                    <label class="form-check-label" for="is_published">نشر الاختبار</label>
                                 </div>
                             </div>
-
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_visible"
                                            id="is_visible" {{ old('is_visible', $quiz->is_visible) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_visible">
-                                        <i class="fas fa-eye me-1"></i>ظاهر في القائمة
-                                    </label>
+                                    <label class="form-check-label" for="is_visible">ظاهر في القائمة</label>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="card custom-card">
+                <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in quizzes-page-animate">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-end gap-2 flex-wrap">
                             <a href="{{ route('quizzes.show', $quiz->id) }}" class="btn btn-light">
-                                <i class="fas fa-times me-2"></i>إلغاء
+                                <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>حفظ التعديلات
+                                <i class="fe fe-save me-1"></i>حفظ التعديلات
                             </button>
                         </div>
                     </div>
@@ -329,37 +317,12 @@
 
             </form>
 
+            </div>
+
         </div>
     </div>
 @stop
 
-@section('scripts')
-<script>
-    // Load lessons when course changes
-    document.getElementById('course_id').addEventListener('change', function() {
-        const courseId = this.value;
-        const lessonSelect = document.getElementById('lesson_id');
-
-        if (!courseId) {
-            lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-            return;
-        }
-
-        lessonSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-
-        fetch(`{{ url('admin/quizzes/course') }}/${courseId}/lessons`)
-            .then(response => response.json())
-            .then(data => {
-                lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
-                data.forEach(lesson => {
-                    const selected = lesson.id == {{ $quiz->lesson_id ?? 'null' }} ? 'selected' : '';
-                    lessonSelect.innerHTML += `<option value="${lesson.id}" ${selected}>${lesson.title}</option>`;
-                });
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                lessonSelect.innerHTML = '<option value="">خطأ في التحميل</option>';
-            });
-    });
-</script>
-@endsection
+@section('script')
+    @include('admin.pages.quizzes.partials.form-scripts', ['currentLessonId' => old('lesson_id', $quiz->lesson_id)])
+@stop

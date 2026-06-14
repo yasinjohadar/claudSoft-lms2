@@ -122,7 +122,7 @@
     </style>
 </head>
 
-<body>
+<body class="admin-portal">
 
 
     @include('admin.layouts.switcher')
