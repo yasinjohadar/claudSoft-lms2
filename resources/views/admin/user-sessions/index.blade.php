@@ -139,17 +139,17 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ route('admin.user-sessions.index') }}">
+                <form method="GET" action="{{ route('admin.user-sessions.index') }}" id="userSessionsFilterForm">
                     <div class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label">البحث</label>
-                            <input type="text" name="search" class="form-control" 
-                                   value="{{ request('search') }}" 
+                            <label class="form-label" for="userSessionsSearch">البحث</label>
+                            <input type="text" name="search" id="userSessionsSearch" class="form-control"
+                                   value="{{ request('search') }}"
                                    placeholder="اسم المستخدم، البريد، IP...">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">المستخدم</label>
-                            <select name="user_id" class="form-select">
+                            <label class="form-label" for="userSessionsUser">المستخدم</label>
+                            <select name="user_id" id="userSessionsUser" class="form-select">
                                 <option value="">الكل</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
@@ -159,8 +159,8 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">الحالة</label>
-                            <select name="status" class="form-select">
+                            <label class="form-label" for="userSessionsStatus">الحالة</label>
+                            <select name="status" id="userSessionsStatus" class="form-select">
                                 <option value="">الكل</option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>نشطة</option>
                                 <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>مكتملة</option>
@@ -169,8 +169,8 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">نوع الجهاز</label>
-                            <select name="device_type" class="form-select">
+                            <label class="form-label" for="userSessionsDevice">نوع الجهاز</label>
+                            <select name="device_type" id="userSessionsDevice" class="form-select">
                                 <option value="">الكل</option>
                                 @foreach($deviceTypes as $type)
                                     <option value="{{ $type }}" {{ request('device_type') == $type ? 'selected' : '' }}>
@@ -180,14 +180,19 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">من تاريخ</label>
-                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                            <label class="form-label" for="userSessionsDateFrom">من تاريخ</label>
+                            <input type="date" name="date_from" id="userSessionsDateFrom" class="form-control" value="{{ request('date_from') }}">
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search"></i>
-                            </button>
+                        <div class="col-md-12">
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-search me-1"></i>بحث
+                                </button>
+                                <button type="button" id="userSessionsResetBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-rotate-right me-1"></i>إعادة تعيين
+                                </button>
+                                <span id="userSessionsSearchFeedback" class="fs-12 text-muted"></span>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -223,121 +228,13 @@
         <!-- Sessions Table -->
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">قائمة الجلسات</h5>
+                <h5 class="card-title mb-0">
+                    قائمة الجلسات
+                    <span class="badge bg-primary-transparent text-primary ms-1" id="userSessionsCountBadge">{{ $sessions->total() }}</span>
+                </h5>
             </div>
-            <div class="card-body">
-                @if($sessions->count() > 0)
-                    <form id="bulkDeleteForm" action="{{ route('admin.user-sessions.bulk-delete') }}" method="POST">
-                        @csrf
-                        <div class="table-responsive">
-                            <table class="table table-hover text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th width="40">
-                                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
-                                        </th>
-                                        <th>#</th>
-                                        <th>المستخدم</th>
-                                        <th>تاريخ البدء</th>
-                                        <th>تاريخ الانتهاء</th>
-                                        <th>المدة</th>
-                                        <th>الجهاز</th>
-                                        <th>الموقع</th>
-                                        <th>الحالة</th>
-                                        <th>الأنشطة</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($sessions as $session)
-                                        <tr>
-                                            <td>
-                                                <input type="checkbox" class="form-check-input session-checkbox" value="{{ $session->id }}" onchange="updateBulkActionBar()">
-                                            </td>
-                                            <td>{{ $sessions->firstItem() + $loop->index }}</td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    @if($session->user)
-                                                        @if($session->user->avatar)
-                                                            <img src="{{ asset('storage/' . $session->user->avatar) }}" 
-                                                                 alt="{{ $session->user->name }}" 
-                                                                 class="avatar avatar-sm rounded-circle me-2">
-                                                        @else
-                                                            <div class="avatar avatar-sm rounded-circle bg-primary-transparent me-2">
-                                                                <span class="fw-bold">{{ substr($session->user->name, 0, 1) }}</span>
-                                                            </div>
-                                                        @endif
-                                                        <div>
-                                                            <strong>{{ $session->user->name }}</strong>
-                                                            <br>
-                                                            <small class="text-muted">{{ $session->user->email }}</small>
-                                                        </div>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td>
-                                                {{ $session->started_at->format('Y-m-d H:i') }}
-                                            </td>
-                                            <td>
-                                                {{ $session->ended_at ? $session->ended_at->format('Y-m-d H:i') : '-' }}
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info-transparent text-info">
-                                                    {{ $session->duration_formatted }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <small>{{ $session->device_info }}</small>
-                                                @if($session->ip_address)
-                                                    <br>
-                                                    <small class="text-muted">{{ $session->ip_address }}</small>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <small>{{ $session->location_formatted }}</small>
-                                            </td>
-                                            <td>
-                                                @if($session->status == 'active')
-                                                    <span class="badge bg-success">نشطة</span>
-                                                @elseif($session->status == 'completed')
-                                                    <span class="badge bg-info">مكتملة</span>
-                                                @elseif($session->status == 'disconnected')
-                                                    <span class="badge bg-warning">منفصلة</span>
-                                                @else
-                                                    <span class="badge bg-secondary">انتهت</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-primary-transparent text-primary">
-                                                    {{ $session->activities_count }} نشاط
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('admin.user-sessions.show', $session->id) }}" 
-                                                   class="btn btn-sm btn-outline-primary" 
-                                                   title="عرض التفاصيل">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </form>
-
-                    <!-- Pagination -->
-                    <div class="mt-4">
-                        {{ $sessions->links() }}
-                    </div>
-                @else
-                    <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">لا توجد جلسات</p>
-                    </div>
-                @endif
+            <div class="card-body" id="userSessionsTableContainer">
+                @include('admin.user-sessions._sessions_table', ['sessions' => $sessions])
             </div>
         </div>
     </div>
@@ -447,7 +344,10 @@ function selectAll() {
     checkboxes.forEach(checkbox => {
         checkbox.checked = true;
     });
-    document.getElementById('selectAllCheckbox').checked = true;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = true;
+    }
     updateBulkActionBar();
 }
 
@@ -456,7 +356,10 @@ function deselectAll() {
     checkboxes.forEach(checkbox => {
         checkbox.checked = false;
     });
-    document.getElementById('selectAllCheckbox').checked = false;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+    }
     updateBulkActionBar();
 }
 
@@ -465,30 +368,38 @@ function updateBulkActionBar() {
     const count = checkboxes.length;
     const bulkActionBar = document.getElementById('bulkActionBar');
     const selectedCount = document.getElementById('selectedCount');
-    
-    selectedCount.textContent = count;
-    
-    if (count > 0) {
-        bulkActionBar.classList.remove('d-none');
-    } else {
-        bulkActionBar.classList.add('d-none');
+
+    if (selectedCount) {
+        selectedCount.textContent = count;
+    }
+
+    if (bulkActionBar) {
+        if (count > 0) {
+            bulkActionBar.classList.remove('d-none');
+        } else {
+            bulkActionBar.classList.add('d-none');
+        }
     }
 }
 
 function bulkDeleteSelected() {
     const checkboxes = document.querySelectorAll('.session-checkbox:checked');
     const count = checkboxes.length;
-    
+
     if (count === 0) {
         alert('يرجى تحديد جلسة واحدة على الأقل');
         return;
     }
-    
+
     if (!confirm(`هل أنت متأكد من حذف ${count} جلسة؟`)) {
         return;
     }
-    
+
     const form = document.getElementById('bulkDeleteForm');
+    if (!form) {
+        return;
+    }
+
     checkboxes.forEach(checkbox => {
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -496,8 +407,160 @@ function bulkDeleteSelected() {
         input.value = checkbox.value;
         form.appendChild(input);
     });
-    
+
     form.submit();
 }
+
+window.initUserSessionsTableHandlers = function () {
+    deselectAll();
+};
+
+(function () {
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn.apply(this, args);
+            }, delay);
+        };
+    }
+
+    function initUserSessionsAjaxFilter() {
+        const form = document.getElementById('userSessionsFilterForm');
+        const tableContainer = document.getElementById('userSessionsTableContainer');
+        const countBadge = document.getElementById('userSessionsCountBadge');
+        const searchInput = document.getElementById('userSessionsSearch');
+        const feedback = document.getElementById('userSessionsSearchFeedback');
+        const resetBtn = document.getElementById('userSessionsResetBtn');
+
+        if (!form || !tableContainer) {
+            return;
+        }
+
+        let currentController = null;
+
+        const getQueryString = function () {
+            const formData = new FormData(form);
+            const search = (formData.get('search') || '').toString().trim();
+            formData.set('search', search);
+            return new URLSearchParams(formData).toString();
+        };
+
+        const updateBrowserUrl = function (queryString) {
+            const baseUrl = form.getAttribute('action');
+            const nextUrl = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            window.history.replaceState({}, '', nextUrl);
+        };
+
+        const fetchAndRender = function (url) {
+            if (currentController) {
+                currentController.abort();
+            }
+
+            currentController = new AbortController();
+
+            if (feedback) {
+                feedback.textContent = 'جاري البحث...';
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('فشل جلب النتائج');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data || typeof data.table_html !== 'string') {
+                        throw new Error('صيغة استجابة غير متوقعة');
+                    }
+
+                    tableContainer.innerHTML = data.table_html;
+
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
+                    }
+
+                    if (typeof window.initUserSessionsTableHandlers === 'function') {
+                        window.initUserSessionsTableHandlers();
+                    }
+
+                    const queryString = url.includes('?') ? url.split('?')[1] : '';
+                    updateBrowserUrl(queryString);
+
+                    if (feedback) {
+                        feedback.textContent = 'تم تحديث النتائج';
+                    }
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                    }
+                    console.error(error);
+                });
+        };
+
+        const triggerSearch = function () {
+            const queryString = getQueryString();
+            const baseUrl = form.getAttribute('action');
+            const url = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            fetchAndRender(url);
+        };
+
+        const debouncedSearch = debounce(triggerSearch, 350);
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        form.querySelectorAll('select, input[type="date"]').forEach(function (field) {
+            field.addEventListener('change', triggerSearch);
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                if (feedback) {
+                    feedback.textContent = '';
+                }
+                triggerSearch();
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        tableContainer.addEventListener('click', function (event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserSessionsAjaxFilter);
+    } else {
+        initUserSessionsAjaxFilter();
+    }
+})();
 </script>
 @endpush

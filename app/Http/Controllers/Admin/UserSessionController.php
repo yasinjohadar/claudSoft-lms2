@@ -64,7 +64,7 @@ class UserSessionController extends Controller
                 });
             }
 
-            $sessions = $query->paginate($request->get('per_page', 20));
+            $sessions = $query->paginate($request->get('per_page', 20))->withQueryString();
 
             // Statistics
             $stats = [
@@ -82,6 +82,13 @@ class UserSessionController extends Controller
                 ->pluck('device_type')
                 ->filter()
                 ->values();
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'table_html' => view('admin.user-sessions._sessions_table', compact('sessions'))->render(),
+                    'count' => $sessions->total(),
+                ]);
+            }
 
             return view('admin.user-sessions.index', compact(
                 'sessions',

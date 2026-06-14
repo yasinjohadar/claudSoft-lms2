@@ -9,7 +9,6 @@
                 <th>الأسئلة</th>
                 <th>الدرجة</th>
                 <th>المحاولات</th>
-                <th>موعد الانتهاء</th>
                 <th>الحالة</th>
                 <th style="width: 150px;">الإجراءات</th>
             </tr>
@@ -64,18 +63,6 @@
                         </a>
                     </td>
                     <td>
-                        @if($quiz->due_date)
-                            <div class="small">{{ $quiz->due_date->format('Y-m-d') }}</div>
-                            @if($quiz->due_date->isPast())
-                                <span class="assignments-status-chip assignments-status-chip--expired"><i class="fe fe-clock me-1"></i>منتهي</span>
-                            @else
-                                <span class="assignments-status-chip assignments-status-chip--active"><i class="fe fe-clock me-1"></i>نشط</span>
-                            @endif
-                        @else
-                            <span class="text-muted">—</span>
-                        @endif
-                    </td>
-                    <td>
                         @if($quiz->is_published)
                             <span class="assignments-status-chip assignments-status-chip--published">منشور</span>
                         @else
@@ -110,7 +97,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="text-center py-5">
+                    <td colspan="9" class="text-center py-5">
                         <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-file-text"></i></span>
                         <p class="mb-2 text-muted">لا توجد اختبارات</p>
                         <a href="{{ route('quizzes.create') }}" class="btn btn-primary btn-sm">

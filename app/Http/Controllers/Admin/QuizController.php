@@ -47,13 +47,20 @@ class QuizController extends Controller
             $query->where('title', 'like', '%' . $request->search . '%');
         }
 
-        $quizzes = $query->paginate(15);
+        $quizzes = $query->paginate(15)->withQueryString();
         $courses = Course::where('is_published', true)->get();
 
         $totalQuizzes = Quiz::count();
         $publishedQuizzes = Quiz::where('is_published', true)->count();
         $draftQuizzes = Quiz::where('is_published', false)->count();
         $questionBankCount = \App\Models\QuestionBank::count();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('admin.pages.quizzes._quizzes_table', compact('quizzes'))->render(),
+                'count' => $quizzes->total(),
+            ]);
+        }
 
         return view('admin.pages.quizzes.index', compact(
             'quizzes',

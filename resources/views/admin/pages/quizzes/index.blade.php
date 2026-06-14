@@ -111,9 +111,10 @@
                                     <button type="submit" class="btn btn-primary btn-sm">
                                         <i class="fe fe-search me-1"></i>بحث
                                     </button>
-                                    <a href="{{ route('quizzes.index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <button type="button" id="quizzesResetBtn" class="btn btn-outline-secondary btn-sm">
                                         <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
-                                    </a>
+                                    </button>
+                                    <span id="quizzesSearchFeedback" class="fs-12 text-muted align-self-center"></span>
                                 </div>
                             </div>
                         </div>
@@ -125,10 +126,10 @@
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
                     <h6 class="group-show-members-card__title mb-0">
                         قائمة الاختبارات
-                        <span class="group-show-members-card__count">{{ $quizzes->total() }}</span>
+                        <span class="group-show-members-card__count" id="quizzesCountBadge">{{ $quizzes->total() }}</span>
                     </h6>
                 </div>
-                <div class="card-body pt-3">
+                <div class="card-body pt-3" id="quizzesTableContainer">
                     @include('admin.pages.quizzes._quizzes_table', ['quizzes' => $quizzes])
                 </div>
             </div>
@@ -140,18 +141,168 @@
 @section('script')
 <script>
 (function () {
-    document.querySelectorAll('[data-countup]').forEach(function (el) {
-        const target = parseFloat(el.dataset.countup || '0');
-        const duration = 800;
-        const start = performance.now();
-        function step(now) {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
-            if (progress < 1) requestAnimationFrame(step);
+    function initQuizzesCountup(root) {
+        (root || document).querySelectorAll('[data-countup]').forEach(function (el) {
+            const target = parseFloat(el.dataset.countup || '0');
+            const duration = 800;
+            const start = performance.now();
+            function step(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+    }
+
+    window.initQuizzesCountup = initQuizzesCountup;
+    initQuizzesCountup();
+})();
+</script>
+<script>
+(function () {
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn.apply(this, args);
+            }, delay);
+        };
+    }
+
+    function initQuizzesAjaxFilter() {
+        const form = document.getElementById('filterForm');
+        const tableContainer = document.getElementById('quizzesTableContainer');
+        const countBadge = document.getElementById('quizzesCountBadge');
+        const searchInput = document.getElementById('quizzesSearch');
+        const feedback = document.getElementById('quizzesSearchFeedback');
+        const resetBtn = document.getElementById('quizzesResetBtn');
+
+        if (!form || !tableContainer) {
+            return;
         }
-        requestAnimationFrame(step);
-    });
+
+        let currentController = null;
+
+        const getQueryString = function () {
+            const formData = new FormData(form);
+            const search = (formData.get('search') || '').toString().trim();
+            formData.set('search', search);
+            return new URLSearchParams(formData).toString();
+        };
+
+        const updateBrowserUrl = function (queryString) {
+            const baseUrl = form.getAttribute('action');
+            const nextUrl = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            window.history.replaceState({}, '', nextUrl);
+        };
+
+        const fetchAndRender = function (url) {
+            if (currentController) {
+                currentController.abort();
+            }
+
+            currentController = new AbortController();
+
+            if (feedback) {
+                feedback.textContent = 'جاري البحث...';
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('فشل جلب النتائج');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data || typeof data.table_html !== 'string') {
+                        throw new Error('صيغة استجابة غير متوقعة');
+                    }
+
+                    tableContainer.innerHTML = data.table_html;
+
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
+                    }
+
+                    const queryString = url.includes('?') ? url.split('?')[1] : '';
+                    updateBrowserUrl(queryString);
+
+                    if (feedback) {
+                        feedback.textContent = 'تم تحديث النتائج';
+                    }
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                    }
+                    console.error(error);
+                });
+        };
+
+        const triggerSearch = function () {
+            const queryString = getQueryString();
+            const baseUrl = form.getAttribute('action');
+            const url = queryString ? (baseUrl + '?' + queryString) : baseUrl;
+            fetchAndRender(url);
+        };
+
+        const debouncedSearch = debounce(triggerSearch, 350);
+
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        form.querySelectorAll('select').forEach(function (selectElement) {
+            selectElement.addEventListener('change', triggerSearch);
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                if (feedback) {
+                    feedback.textContent = '';
+                }
+                triggerSearch();
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        tableContainer.addEventListener('click', function (event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initQuizzesAjaxFilter);
+    } else {
+        initQuizzesAjaxFilter();
+    }
 })();
 </script>
 @stop
