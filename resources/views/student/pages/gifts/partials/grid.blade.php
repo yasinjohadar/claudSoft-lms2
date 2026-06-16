@@ -1,7 +1,7 @@
 <div class="row g-4" id="student-gifts-grid">
     @forelse ($recipients as $index => $recipient)
         @php $gift = $recipient->gift; @endphp
-        <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ ($index % 12) * 40 }}ms">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ ($index % 16) * 40 }}ms">
             <article class="student-gift-card h-100">
                 <div class="student-gift-card__cover">
                     @if($gift?->cover_url)

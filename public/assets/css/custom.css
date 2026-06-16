@@ -2383,7 +2383,8 @@ html.loaded .dashboard-stagger-item {
 
 .student-gift-card__cover {
     position: relative;
-    height: 140px;
+    aspect-ratio: 16 / 9;
+    width: 100%;
     background: linear-gradient(135deg, rgba(var(--warning-rgb), 0.12), rgba(var(--primary-rgb), 0.1));
     overflow: hidden;
 }
