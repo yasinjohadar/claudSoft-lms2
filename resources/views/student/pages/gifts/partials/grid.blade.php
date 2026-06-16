@@ -11,8 +11,8 @@
                             <i class="ri ri-gift-line"></i>
                         </div>
                     @endif
-                    <span class="student-gift-card__date badge bg-success-transparent">
-                        <i class="fe fe-calendar me-1"></i>{{ $recipient->granted_at?->format('Y-m-d') }}
+                    <span class="student-gift-card__date">
+                        <i class="fe fe-calendar"></i>{{ $recipient->granted_at?->format('Y-m-d') }}
                     </span>
                 </div>
 

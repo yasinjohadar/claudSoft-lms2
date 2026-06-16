@@ -2410,6 +2410,26 @@ html.loaded .dashboard-stagger-item {
     position: absolute;
     bottom: 0.65rem;
     inset-inline-start: 0.75rem;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+[data-theme-mode="dark"] .student-gift-card__date {
+    background: rgba(0, 0, 0, 0.78);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 .student-gift-card__body {
