@@ -1052,7 +1052,8 @@ html.loaded .dashboard-stagger-item {
 
 .student-course-card__media {
     position: relative;
-    height: 180px;
+    aspect-ratio: 16 / 9;
+    width: 100%;
     overflow: hidden;
 }
 
@@ -1063,7 +1064,8 @@ html.loaded .dashboard-stagger-item {
 }
 
 .student-course-card__img {
-    position: relative;
+    position: absolute;
+    inset: 0;
     z-index: 1;
     width: 100%;
     height: 100%;

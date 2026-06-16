@@ -12,7 +12,7 @@
     $status = $statusMap[$enrollment->enrollment_status] ?? ['class' => 'secondary', 'icon' => 'fe-book', 'label' => $enrollment->enrollment_status];
 @endphp
 
-<div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ ($index ?? 0) * 50 }}ms">
+<div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ (($index ?? 0) % 16) * 50 }}ms">
     <article class="student-course-card h-100">
         <div class="student-course-card__media">
             <div class="student-course-card__placeholder {{ $course && $courseImage ? 'student-course-card__placeholder--under' : '' }}">
