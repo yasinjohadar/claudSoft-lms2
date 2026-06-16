@@ -65,15 +65,50 @@ class StorageHelperService
 
     /**
      * رفع ملف مع تجربة S3 ثم التخزين المحلي عند الحاجة.
+     *
+     * @param  string  $directory  مجلد الوجهة فقط (مثل gifts/images) — بدون اسم ملف
      */
-    public function storeUploadedFileWithFailover(string $disk, string $path, $file, ?string $fileType = null): ?string
+    public function storeUploadedFileWithFailover(string $disk, string $directory, $file, ?string $fileType = null): ?string
     {
         try {
-            return $this->storageManager->storeUploadedFileWithFailover($disk, $path, $file, $fileType);
+            return $this->storageManager->storeUploadedFileWithFailover($disk, $directory, $file, $fileType);
         } catch (\Exception $e) {
             Log::error('StorageHelperService: Failed to store uploaded file with failover', [
                 'disk' => $disk,
-                'path' => $path,
+                'directory' => $directory,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * رفع ملف باسم محدد مع تجربة S3 ثم التخزين المحلي عند الحاجة.
+     *
+     * @param  string  $directory  مجلد الوجهة فقط (مثل gifts/images) — بدون اسم ملف
+     * @param  string  $filename   اسم الملف فقط (مثل uuid.webp)
+     */
+    public function storeUploadedFileAsWithFailover(
+        string $disk,
+        string $directory,
+        $file,
+        string $filename,
+        ?string $fileType = null
+    ): ?string {
+        try {
+            return $this->storageManager->storeUploadedFileAsWithFailover(
+                $disk,
+                $directory,
+                $file,
+                $filename,
+                $fileType
+            );
+        } catch (\Exception $e) {
+            Log::error('StorageHelperService: Failed to store uploaded file-as with failover', [
+                'disk' => $disk,
+                'directory' => $directory,
+                'filename' => $filename,
                 'error' => $e->getMessage(),
             ]);
 
@@ -312,34 +347,30 @@ class StorageHelperService
 
     /**
      * Helper method لتخزين ملف من UploadedFile
-     * 
-     * @param string $disk
-     * @param string $path
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param string|null $fileType
+     *
+     * @param  string  $directory  مجلد الوجهة فقط — بدون اسم ملف
      * @return string|false
      */
-    public function storeUploadedFile(string $disk, string $path, $file, ?string $fileType = null)
+    public function storeUploadedFile(string $disk, string $directory, $file, ?string $fileType = null)
     {
         try {
             Log::info("StorageHelperService: Starting file upload", [
                 'disk' => $disk,
-                'path' => $path,
+                'directory' => $directory,
                 'file_name' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
                 'file_type' => $fileType,
             ]);
 
             $storage = $this->getDisk($disk);
-            
-            // استخدام putFile الذي يحفظ الملف تلقائياً
-            $storedPath = $storage->putFile($path, $file);
+
+            $storedPath = $storage->putFile($directory, $file);
             
             if ($storedPath) {
                 Log::info("StorageHelperService: File uploaded successfully", [
                     'disk' => $disk,
                     'stored_path' => $storedPath,
-                    'original_path' => $path,
+                    'directory' => $directory,
                 ]);
 
                 // تتبع التخزين باستخدام analytics service مباشرة
@@ -365,14 +396,14 @@ class StorageHelperService
             } else {
                 Log::error("StorageHelperService: putFile returned false", [
                     'disk' => $disk,
-                    'path' => $path,
+                    'directory' => $directory,
                 ]);
                 return false;
             }
         } catch (\Exception $e) {
             Log::error("StorageHelperService: Failed to store uploaded file", [
                 'disk' => $disk,
-                'path' => $path,
+                'directory' => $directory,
                 'file_name' => $file->getClientOriginalName() ?? 'unknown',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

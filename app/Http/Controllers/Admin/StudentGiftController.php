@@ -409,12 +409,18 @@ class StudentGiftController extends Controller
     protected function handleUploads(Request $request, StudentGift $gift): void
     {
         if ($request->hasFile('image')) {
-            $stored = $this->storageHelper->storeUploadedFileWithFailover(
+            $file = $request->file('image');
+            $extension = strtolower($file->getClientOriginalExtension() ?: 'webp');
+            $filename = Str::uuid().'.'.$extension;
+
+            $stored = $this->storageHelper->storeUploadedFileAsWithFailover(
                 'gift_images',
                 'gifts/images',
-                $request->file('image'),
+                $file,
+                $filename,
                 'gift_image'
             );
+
             if ($stored) {
                 $gift->update(['image_path' => $stored]);
             }

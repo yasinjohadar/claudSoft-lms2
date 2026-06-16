@@ -175,6 +175,8 @@ class AppStorageManager
 
     /**
      * رفع ملف مع Auto-failover (S3 ثم Local لـ payment_receipts أو عند وجود mapping).
+     *
+     * @param  string  $directory  مجلد الوجهة فقط (مثل gifts/images) — بدون اسم ملف
      */
     public function storeUploadedFileWithFailover(
         string $disk,
@@ -213,6 +215,56 @@ class AppStorageManager
                 }
             } catch (\Exception $e) {
                 Log::warning("Uploaded file storage failed: {$storageConfig->name} - " . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * رفع ملف باسم محدد مع Auto-failover.
+     *
+     * @param  string  $directory  مجلد الوجهة فقط (مثل gifts/images) — بدون اسم ملف
+     * @param  string  $filename   اسم الملف فقط (مثل uuid.webp)
+     */
+    public function storeUploadedFileAsWithFailover(
+        string $disk,
+        string $directory,
+        UploadedFile $file,
+        string $filename,
+        ?string $fileType = null
+    ): ?string {
+        $storages = $this->resolveFailoverStorages($disk);
+
+        if ($storages->isEmpty()) {
+            try {
+                $storage = $this->getDisk($disk);
+                $storedPath = $storage->putFileAs($directory, $file, $filename);
+
+                return $storedPath ?: null;
+            } catch (\Exception $e) {
+                Log::error("Storage uploaded file-as failed for disk {$disk}: " . $e->getMessage());
+
+                return null;
+            }
+        }
+
+        foreach ($storages as $storageConfig) {
+            try {
+                $storage = AppStorageFactory::create($storageConfig);
+                $storedPath = $storage->putFileAs($directory, $file, $filename);
+
+                if ($storedPath) {
+                    $this->trackUploadedFile($disk, $storedPath, $file->getSize(), $fileType, $storageConfig);
+                    Log::info("Uploaded file stored (as) for disk {$disk}", [
+                        'storage' => $storageConfig->name,
+                        'path' => $storedPath,
+                    ]);
+
+                    return $storedPath;
+                }
+            } catch (\Exception $e) {
+                Log::warning("Uploaded file-as storage failed: {$storageConfig->name} - " . $e->getMessage());
             }
         }
 
