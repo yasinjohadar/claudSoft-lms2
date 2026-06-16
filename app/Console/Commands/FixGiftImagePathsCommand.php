@@ -43,13 +43,18 @@ class FixGiftImagePathsCommand extends Command
             ->whereNotNull('image_path')
             ->where('image_path', '!=', '')
             ->orderBy('id')
-            ->chunkById(100, function ($gifts) use ($storageManager, $resolver, $targets, $dryRun, $diagnose, &$fixed, &$skipped) {
+            ->chunkById(100, function ($gifts) use ($resolver, $targets, $dryRun, $diagnose, &$fixed, &$skipped) {
                 foreach ($gifts as $gift) {
                     $relativePath = ltrim($gift->image_path, '/');
                     $match = $this->findFixableNestedPath($targets, $relativePath);
 
                     if ($match === null) {
                         if ($this->pathIsValidFile($targets, $relativePath)) {
+                            if ($diagnose) {
+                                $this->line("Gift #{$gift->id}: OK — {$relativePath}");
+                                $this->diagnoseGiftPath($resolver, $targets, $gift->id, $relativePath);
+                            }
+
                             $skipped++;
 
                             continue;
@@ -96,11 +101,14 @@ class FixGiftImagePathsCommand extends Command
                 }
             });
 
+        $localFixed = $this->fixUnlinkedLocalNestedDirectories($dryRun);
+        $fixed += $localFixed;
+
         $orphans = $this->scanOrphanWebpDirectories($targets);
 
         if ($orphans !== []) {
             $this->newLine();
-            $this->warn('Orphan nested directories under gifts/images/:');
+            $this->warn('Remaining nested directories under gifts/images/:');
             foreach ($orphans as $orphan) {
                 $this->line("  - {$orphan}");
             }
@@ -119,29 +127,27 @@ class FixGiftImagePathsCommand extends Command
     {
         $targets = collect();
 
-        foreach ($storageManager->resolveFailoverStorages(self::LOGICAL_DISK) as $config) {
-            $targets->push([
-                'label' => $config->name.' ('.$config->driver.')',
-                'config' => $config,
-                'filesystem' => $storageManager->getFilesystemForConfig($config),
-            ]);
-        }
+        $targets->push([
+            'label' => 'Laravel public disk',
+            'config' => null,
+            'filesystem' => Storage::disk('public'),
+        ]);
 
-        $hasLegacyPublic = $targets->contains(function (array $target) {
-            if (! $target['config'] instanceof AppStorageConfig || $target['config']->driver !== 'local') {
-                return false;
+        $seenLabels = ['Laravel public disk' => true];
+
+        foreach ($storageManager->resolveFailoverStorages(self::LOGICAL_DISK) as $config) {
+            $label = $config->name.' ('.$config->driver.')';
+
+            if (isset($seenLabels[$label])) {
+                continue;
             }
 
-            $cfg = $target['config']->getDecryptedConfig();
+            $seenLabels[$label] = true;
 
-            return ($cfg['path'] ?? 'public') === 'public';
-        });
-
-        if ($targets->isEmpty() || ! $hasLegacyPublic) {
             $targets->push([
-                'label' => 'Laravel public disk',
-                'config' => null,
-                'filesystem' => Storage::disk('public'),
+                'label' => $label,
+                'config' => $config,
+                'filesystem' => $storageManager->getFilesystemForConfig($config),
             ]);
         }
 
@@ -153,14 +159,24 @@ class FixGiftImagePathsCommand extends Command
      */
     private function pathIsValidFile(Collection $targets, string $relativePath): bool
     {
-        foreach ($targets as $target) {
-            if ($this->isExistingFile($target['filesystem'], $relativePath)) {
-                return true;
-            }
+        if ($this->findFixableNestedPath($targets, $relativePath) !== null) {
+            return false;
+        }
 
+        foreach ($targets as $target) {
             $absolutePath = $this->localAbsolutePath($target['config'], $relativePath);
 
+            if ($absolutePath && is_dir($absolutePath)) {
+                return false;
+            }
+
             if ($absolutePath && is_file($absolutePath)) {
+                return true;
+            }
+        }
+
+        foreach ($targets as $target) {
+            if ($this->isExistingFile($target['filesystem'], $relativePath)) {
                 return true;
             }
         }
@@ -192,43 +208,29 @@ class FixGiftImagePathsCommand extends Command
 
     private function detectNestedInnerFile(Filesystem $filesystem, ?AppStorageConfig $config, string $relativePath): ?string
     {
-        if ($this->isExistingFile($filesystem, $relativePath)) {
-            return null;
+        $absolutePath = $this->localAbsolutePath($config, $relativePath);
+
+        if ($absolutePath && is_dir($absolutePath)) {
+            $innerFiles = File::files($absolutePath);
+
+            if (count($innerFiles) === 1) {
+                $parentDir = dirname($relativePath);
+
+                return ($parentDir !== '.' ? $parentDir.'/' : '').basename($innerFiles[0]->getPathname());
+            }
         }
 
         $innerPath = $this->innerFileViaFilesystem($filesystem, $relativePath);
 
-        if ($innerPath !== null) {
+        if ($innerPath !== null && $innerPath !== $relativePath) {
             return $innerPath;
         }
 
-        $absolutePath = $this->localAbsolutePath($config, $relativePath);
-
-        if ($absolutePath === null || ! is_dir($absolutePath)) {
-            return null;
-        }
-
-        $innerFiles = File::files($absolutePath);
-
-        if (count($innerFiles) !== 1) {
-            return null;
-        }
-
-        $parentDir = dirname($relativePath);
-
-        return ($parentDir !== '.' ? $parentDir.'/' : '').basename($innerFiles[0]->getPathname());
+        return null;
     }
 
     private function innerFileViaFilesystem(Filesystem $filesystem, string $relativePath): ?string
     {
-        try {
-            if (method_exists($filesystem, 'directoryExists') && ! $filesystem->directoryExists($relativePath)) {
-                return null;
-            }
-        } catch (\Throwable) {
-            // Continue with files() probe below.
-        }
-
         try {
             $files = array_values(array_filter(
                 $filesystem->files($relativePath),
@@ -257,6 +259,10 @@ class FixGiftImagePathsCommand extends Command
 
     private function isExistingFile(Filesystem $filesystem, string $path): bool
     {
+        if ($this->innerFileViaFilesystem($filesystem, $path) !== null) {
+            return false;
+        }
+
         try {
             if (method_exists($filesystem, 'fileExists')) {
                 return $filesystem->fileExists($path);
@@ -266,8 +272,7 @@ class FixGiftImagePathsCommand extends Command
                 return false;
             }
 
-            return $this->innerFileViaFilesystem($filesystem, $path) === null
-                && empty($filesystem->directories($path));
+            return empty($filesystem->directories($path));
         } catch (\Throwable) {
             return false;
         }
@@ -332,6 +337,69 @@ class FixGiftImagePathsCommand extends Command
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function fixUnlinkedLocalNestedDirectories(bool $dryRun): int
+    {
+        $base = storage_path('app/public/gifts/images');
+
+        if (! is_dir($base)) {
+            return 0;
+        }
+
+        $fixed = 0;
+
+        foreach (scandir($base) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if (! str_ends_with(strtolower($entry), '.webp')) {
+                continue;
+            }
+
+            $absoluteDir = $base.DIRECTORY_SEPARATOR.$entry;
+
+            if (! is_dir($absoluteDir)) {
+                continue;
+            }
+
+            $innerFiles = File::files($absoluteDir);
+
+            if (count($innerFiles) !== 1) {
+                $this->warn("Local orphan {$entry}: expected one inner file, found ".count($innerFiles));
+
+                continue;
+            }
+
+            $relativeDir = 'gifts/images/'.$entry;
+            $innerPath = $relativeDir.'/'.basename($innerFiles[0]->getPathname());
+            $newRelativePath = $this->flattenedPath($relativeDir, $innerPath);
+            $absoluteNew = $base.DIRECTORY_SEPARATOR.basename($newRelativePath);
+
+            if ($dryRun) {
+                $this->line("[dry-run] Local orphan: would flatten {$relativeDir} → {$newRelativePath}");
+                $fixed++;
+
+                continue;
+            }
+
+            if (is_file($absoluteNew)) {
+                File::delete($absoluteNew);
+            }
+
+            if (! rename($innerFiles[0]->getPathname(), $absoluteNew)) {
+                $this->error("Local orphan {$entry}: failed to flatten");
+
+                continue;
+            }
+
+            File::deleteDirectory($absoluteDir);
+            $this->info("Local orphan flattened → {$newRelativePath}");
+            $fixed++;
+        }
+
+        return $fixed;
     }
 
     /**
@@ -408,6 +476,10 @@ class FixGiftImagePathsCommand extends Command
     {
         $orphans = [];
 
+        foreach ($this->scanLocalNestedWebpDirectoryNames() as $directory) {
+            $orphans[] = $directory.' [Laravel public disk]';
+        }
+
         foreach ($targets as $target) {
             try {
                 $directories = $target['filesystem']->directories('gifts/images');
@@ -425,6 +497,34 @@ class FixGiftImagePathsCommand extends Command
         }
 
         return array_values(array_unique($orphans));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function scanLocalNestedWebpDirectoryNames(): array
+    {
+        $base = storage_path('app/public/gifts/images');
+
+        if (! is_dir($base)) {
+            return [];
+        }
+
+        $directories = [];
+
+        foreach (scandir($base) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $absolute = $base.DIRECTORY_SEPARATOR.$entry;
+
+            if (is_dir($absolute) && str_ends_with(strtolower($entry), '.webp')) {
+                $directories[] = 'gifts/images/'.$entry;
+            }
+        }
+
+        return $directories;
     }
 
     private function localAbsolutePath(?AppStorageConfig $config, string $relativePath): ?string

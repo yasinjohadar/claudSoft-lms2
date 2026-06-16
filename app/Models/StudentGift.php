@@ -105,7 +105,11 @@ class StudentGift extends Model
             return null;
         }
 
-        return storage_url($this->image_path);
+        return resolve_storage_image_url(
+            ['gift_images', 'public'],
+            $this->image_path,
+            asset('frontend/assets/images/placeholder.jpg')
+        );
     }
 
     public function getStatusLabelAttribute(): string

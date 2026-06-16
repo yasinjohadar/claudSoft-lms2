@@ -101,6 +101,15 @@ Route::get('/storage/blog/images/{filename}', function ($filename) {
     );
 })->where('filename', '[a-zA-Z0-9._-]+')->name('blog.image');
 
+// Route لعرض صور الهدايا - يخدم من S3 أو التخزين المحلي
+Route::get('/storage/gifts/images/{filename}', function ($filename) {
+    return serve_storage_image_response(
+        ['gift_images', 'public'],
+        'gifts/images/' . $filename,
+        'gifts/images/' . $filename
+    );
+})->where('filename', '[a-zA-Z0-9._-]+')->name('gift.image');
+
 // Route لعرض صور الملف الشخصي للطلاب - يخدم من S3 أو التخزين المحلي
 Route::get('/storage/profile-photos/{filename}', function ($filename) {
     return serve_storage_image_response(

@@ -57,6 +57,10 @@ if (!function_exists('storage_proxy_image_url')) {
             return route('profile.photo', ['filename' => $filename]);
         }
 
+        if (str_starts_with($imagePath, 'gifts/images/')) {
+            return route('gift.image', ['filename' => $filename]);
+        }
+
         if (! str_contains($imagePath, '/')) {
             if (in_array('blog_images', $disks, true)) {
                 return route('blog.image', ['filename' => $filename]);
@@ -124,7 +128,21 @@ if (!function_exists('serve_storage_image_response')) {
 
         $path = storage_path('app/public/' . ltrim($localRelativePath, '/'));
 
-        if (! file_exists($path)) {
+        if (is_dir($path)) {
+            $innerFiles = array_values(array_filter(
+                scandir($path) ?: [],
+                fn (string $entry) => ! in_array($entry, ['.', '..'], true)
+                    && is_file($path . DIRECTORY_SEPARATOR . $entry)
+            ));
+
+            if (count($innerFiles) === 1) {
+                $path = $path . DIRECTORY_SEPARATOR . $innerFiles[0];
+            } else {
+                abort(404, 'الصورة غير موجودة');
+            }
+        }
+
+        if (! is_file($path)) {
             abort(404, 'الصورة غير موجودة');
         }
 
@@ -325,8 +343,22 @@ if (!function_exists('resolve_storage_image_url')) {
         }
 
         $localPath = storage_path('app/public/' . $normalizedPath);
-        if (file_exists($localPath)) {
+        if (is_file($localPath)) {
             return asset('storage/' . $normalizedPath);
+        }
+
+        if (is_dir($localPath)) {
+            $innerFiles = array_values(array_filter(
+                scandir($localPath) ?: [],
+                fn (string $entry) => ! in_array($entry, ['.', '..'], true)
+                    && is_file($localPath . DIRECTORY_SEPARATOR . $entry)
+            ));
+
+            if (count($innerFiles) === 1) {
+                $flatPath = dirname($normalizedPath) . '/' . $innerFiles[0];
+
+                return asset('storage/' . $flatPath);
+            }
         }
 
         return $defaultUrl;
