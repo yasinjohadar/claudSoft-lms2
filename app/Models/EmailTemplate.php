@@ -133,6 +133,11 @@ class EmailTemplate extends Model
             $variables['group_name'] = 'اسم المجموعة';
         }
 
+        if ($type === self::TYPE_CUSTOM) {
+            $variables['group_name'] = 'اسم المجموعة';
+            $variables['course_name'] = 'اسم الكورس';
+        }
+
         return $variables;
     }
 }

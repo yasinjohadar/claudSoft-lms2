@@ -7358,3 +7358,77 @@ button.admin-course-content-chip {
     line-height: 1.5;
 }
 
+/* Bulk email campaigns admin page */
+.admin-bulk-emails-page .admin-bulk-emails-audience-toggle .btn {
+    margin-bottom: 0.35rem;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-count-badge {
+    border-radius: 0.75rem;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-preview {
+    border-radius: 0.85rem;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-summary-table th {
+    width: 38%;
+    color: var(--text-muted);
+    font-weight: 500;
+    vertical-align: top;
+    padding-inline-end: 1rem;
+}
+
+.admin-bulk-emails-page .select2-container--bootstrap-5 .select2-selection {
+    min-height: 38px;
+}
+
+.admin-bulk-emails-page .group-show-actions {
+    justify-content: flex-end;
+}
+
+[data-theme-mode="dark"] .admin-bulk-emails-page .admin-bulk-emails-preview .bg-white {
+    background: var(--custom-white) !important;
+}
+
+/* Bulk email throttle settings page */
+.admin-bulk-emails-settings-page .admin-bulk-emails-settings-hint {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.admin-bulk-emails-settings-page .admin-bulk-emails-settings-toggle {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: rgba(var(--primary-rgb), 0.06);
+    border: 1px solid rgba(var(--primary-rgb), 0.12);
+}
+
+.admin-bulk-emails-settings-page .group-show-actions {
+    justify-content: flex-end;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-duration-badge {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-duration-badge strong {
+    color: var(--primary-color);
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-audience-panels [data-audience-panel] {
+    width: 100%;
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-recipients-table th {
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.admin-bulk-emails-page .admin-bulk-emails-recipients-table td {
+    vertical-align: middle;
+}
+

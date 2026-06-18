@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\AIStudentFeedbackController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\BlogTagController;
+use App\Http\Controllers\Admin\BulkEmailController;
+use App\Http\Controllers\Admin\BulkEmailSettingsController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ContactSettingController;
@@ -641,6 +643,23 @@ Route::prefix('admin')
         Route::get('email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('admin.email-templates.preview');
         Route::post('email-templates/{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('admin.email-templates.duplicate');
         Route::post('email-templates/{emailTemplate}/send-test', [EmailTemplateController::class, 'sendTest'])->name('admin.email-templates.send-test');
+
+        Route::prefix('bulk-emails')->name('admin.bulk-emails.')->group(function () {
+            Route::get('/', [BulkEmailController::class, 'index'])->name('index');
+            Route::get('/create', [BulkEmailController::class, 'create'])->name('create');
+            Route::post('/preview-count', [BulkEmailController::class, 'previewCount'])->name('preview-count');
+            Route::post('/preview-recipients', [BulkEmailController::class, 'previewRecipients'])->name('preview-recipients');
+            Route::post('/preview-content', [BulkEmailController::class, 'previewContent'])->name('preview-content');
+            Route::post('/', [BulkEmailController::class, 'store'])->name('store');
+
+            Route::prefix('settings')->name('settings.')->group(function () {
+                Route::get('/', [BulkEmailSettingsController::class, 'index'])->name('index');
+                Route::put('/', [BulkEmailSettingsController::class, 'update'])->name('update');
+            });
+
+            Route::get('/{campaign}', [BulkEmailController::class, 'show'])->name('show');
+            Route::post('/{campaign}/retry-failed', [BulkEmailController::class, 'retryFailed'])->name('retry-failed');
+        });
 
         // ========== Reminders Routes ==========
         Route::prefix('reminders')->name('admin.reminders.')->group(function () {
