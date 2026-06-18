@@ -1,6 +1,9 @@
 <?php
 
 use App\Services\SmtpConnectionTestService;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 test('smtp connection test fails with invalid host', function () {
     $service = new SmtpConnectionTestService();

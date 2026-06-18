@@ -115,4 +115,18 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | SMTP Connection Test (admin panel)
+    |--------------------------------------------------------------------------
+    |
+    | On some servers (Docker/Coolify) CA bundles are missing or outbound SMTP
+    | ports are restricted. Adjust these if connection tests fail on production.
+    |
+    */
+
+    'smtp_verify_peer' => env('MAIL_SMTP_VERIFY_PEER', true),
+
+    'smtp_timeout' => env('MAIL_SMTP_TIMEOUT', 30),
+
 ];
