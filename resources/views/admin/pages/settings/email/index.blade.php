@@ -1,123 +1,125 @@
 @extends('admin.layouts.master')
 
-@section('page-title', 'إعدادات البريد الإلكتروني')
+@section('page-title')
+    إعدادات البريد الإلكتروني (SMTP)
+@stop
 
 @section('content')
-<!-- Start::app-content -->
-<div class="main-content app-content">
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <div>
-            <h4 class="page-title fw-semibold fs-18 mb-0">إعدادات البريد الإلكتروني (SMTP)</h4>
-            <p class="fw-normal text-muted fs-14 mb-0">إدارة إعدادات إرسال البريد الإلكتروني</p>
-        </div>
-        <div class="ms-md-auto d-flex gap-2 mt-3 mt-md-0">
-            <a href="{{ route('admin.settings.email.create') }}" class="btn btn-primary btn-wave">
-                <i class="ri-add-line me-1"></i> إضافة إعدادات جديدة
-            </a>
-        </div>
-    </div>
+    <div class="main-content app-content admin-email-settings-page">
+        <div class="container-fluid">
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="ri-check-line me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+            @include('admin.components.alerts')
 
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">إعدادات البريد الإلكتروني</li>
+                    </ol>
+                </nav>
+            </div>
 
-    <!-- Active Configuration Card -->
-    @if($activeSettings)
-    <div class="row">
-        <div class="col-xl-12">
-            <div class="card custom-card border-success">
-                <div class="card-header bg-success-transparent">
-                    <div class="card-title text-success">
-                        <i class="ri-mail-check-line me-2"></i>الإعدادات النشطة حالياً
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-start gap-3">
+                            <span class="admin-group-form-page__icon">
+                                <i class="fe fe-mail"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <span class="group-show-hero__eyebrow">
+                                    <i class="fe fe-settings me-1"></i>إعدادات النظام
+                                </span>
+                                <h2 class="group-show-hero__title mb-2">إعدادات البريد الإلكتروني (SMTP)</h2>
+                                <p class="group-show-hero__desc mb-0">إدارة خوادم الإرسال، اختبار الاتصال، وإرسال بريد تجريبي عند الحاجة.</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="avatar avatar-md bg-success-transparent me-3">
-                                    <i class="ri-server-line fs-18"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">المزود</p>
-                                    <h6 class="mb-0">{{ $providers[$activeSettings->provider]['name'] ?? 'مخصص' }}</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="avatar avatar-md bg-info-transparent me-3">
-                                    <i class="ri-mail-line fs-18"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">البريد المرسل</p>
-                                    <h6 class="mb-0">{{ $activeSettings->mail_from_address }}</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="avatar avatar-md bg-warning-transparent me-3">
-                                    <i class="ri-shield-check-line fs-18"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">التشفير</p>
-                                    <h6 class="mb-0">{{ strtoupper($activeSettings->mail_encryption) }}</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="avatar avatar-md bg-primary-transparent me-3">
-                                    <i class="ri-time-line fs-18"></i>
-                                </div>
-                                <div>
-                                    <p class="mb-0 text-muted fs-12">آخر اختبار</p>
-                                    <h6 class="mb-0">
-                                        @if($activeSettings->last_tested_at)
-                                            {{ $activeSettings->last_tested_at->diffForHumans() }}
-                                        @else
-                                            لم يتم الاختبار
-                                        @endif
-                                    </h6>
-                                </div>
-                            </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('admin.settings.email.create') }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إضافة إعدادات جديدة</span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    @else
-    <div class="alert alert-warning" role="alert">
-        <i class="ri-error-warning-line me-2"></i>
-        <strong>تنبيه:</strong> لا توجد إعدادات بريد إلكتروني نشطة. قم بإضافة وتفعيل إعدادات لإرسال البريد الإلكتروني.
-    </div>
-    @endif
 
-    <!-- All Configurations -->
-    <div class="row">
-        <div class="col-xl-12">
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">جميع الإعدادات المحفوظة</div>
+            @if(!$activeSettings)
+                <div class="alert alert-warning border-0 dashboard-fade-in mb-4" role="alert">
+                    <i class="fe fe-alert-triangle me-2"></i>
+                    لا توجد إعدادات بريد نشطة. أضف إعدادات وفعّلها لتمكين إرسال البريد من النظام.
                 </div>
-                <div class="card-body p-0">
-                    @if($settings->count() > 0)
+            @else
+                @php
+                    $lastTestLabel = $activeSettings->last_tested_at
+                        ? $activeSettings->last_tested_at->diffForHumans()
+                        : 'لم يُختبر';
+                    $lastTestType = $activeSettings->test_results['type'] ?? null;
+                    $lastTestStatus = $activeSettings->test_results['status'] ?? null;
+                    $kpiCards = [
+                        ['variant' => 'green', 'icon' => 'fe-server', 'label' => 'المزود النشط', 'value' => $providers[$activeSettings->provider]['name'] ?? 'مخصص', 'sub' => strtoupper($activeSettings->mail_encryption).' · '.$activeSettings->mail_host, 'countup' => false],
+                        ['variant' => 'blue', 'icon' => 'fe-at-sign', 'label' => 'البريد المرسل', 'value' => $activeSettings->mail_from_address, 'sub' => $activeSettings->mail_from_name, 'countup' => false],
+                        ['variant' => 'cyan', 'icon' => 'fe-shield', 'label' => 'المنفذ والتشفير', 'value' => (string) $activeSettings->mail_port, 'sub' => strtoupper($activeSettings->mail_encryption), 'countup' => false],
+                        ['variant' => 'orange', 'icon' => 'fe-activity', 'label' => 'آخر اختبار', 'value' => $lastTestLabel, 'sub' => $lastTestType === 'connection' ? 'اختبار اتصال' : ($lastTestType === 'send' ? 'إرسال بريد' : '—'), 'countup' => false],
+                    ];
+                @endphp
+
+                <div class="row g-3 dashboard-fade-in mb-4">
+                    @foreach ($kpiCards as $index => $card)
+                        <div class="col-xl-3 col-lg-6 col-md-6 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+                            <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
+                                <div class="card-body d-flex align-items-center gap-3">
+                                    <div class="admin-stats-card__icon-wrap">
+                                        <i class="fe {{ $card['icon'] }} admin-stats-card__icon"></i>
+                                    </div>
+                                    <div class="admin-stats-card__content flex-fill min-w-0">
+                                        <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
+                                        <h3 class="admin-stats-card__value admin-stats-card__value--text mb-1 text-truncate" title="{{ $card['value'] }}">{{ $card['value'] }}</h3>
+                                        <p class="admin-stats-card__sub mb-0 text-truncate">{{ $card['sub'] }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-4 dashboard-fade-in">
+                    <button type="button" class="btn btn-outline-primary rounded-pill"
+                            onclick="testSavedConnection({{ $activeSettings->id }}, this)">
+                        <i class="fe fe-wifi me-1"></i>اختبار اتصال الإعداد النشط
+                    </button>
+                    <button type="button" class="btn btn-outline-info rounded-pill"
+                            onclick="openSendTestModal({{ $activeSettings->id }}, @js($activeSettings->mail_from_address))">
+                        <i class="fe fe-send me-1"></i>إرسال بريد اختبار
+                    </button>
+                    <a href="{{ route('admin.settings.email.edit', $activeSettings->id) }}" class="btn btn-light rounded-pill">
+                        <i class="fe fe-edit-2 me-1"></i>تعديل الإعداد النشط
+                    </a>
+                </div>
+            @endif
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-header border-0 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h6 class="group-show-members-card__title mb-0">
+                        جميع الإعدادات المحفوظة
+                        <span class="group-show-members-card__count">{{ $settings->count() }}</span>
+                    </h6>
+                </div>
+                <div class="card-body pt-3">
+                    @if($settings->isEmpty())
+                        <div class="group-show-empty py-5">
+                            <i class="fe fe-inbox group-show-empty__icon" style="width:56px;height:56px;font-size:1.35rem;"></i>
+                            <p class="group-show-empty__title">لا توجد إعدادات بريد</p>
+                            <p class="group-show-empty__desc mb-3">أضف إعدادات SMTP للبدء في إرسال البريد من النظام.</p>
+                            <a href="{{ route('admin.settings.email.create') }}" class="btn btn-primary btn-sm rounded-pill">
+                                <i class="fe fe-plus me-1"></i>إضافة إعدادات
+                            </a>
+                        </div>
+                    @else
                         <div class="table-responsive">
-                            <table class="table text-nowrap table-hover">
+                            <table class="table table-hover text-nowrap dashboard-table admin-users-table mb-0">
                                 <thead>
                                     <tr>
                                         <th>المزود</th>
@@ -132,82 +134,89 @@
                                 </thead>
                                 <tbody>
                                     @foreach($settings as $setting)
-                                        <tr class="{{ $setting->is_active ? 'table-success' : '' }}">
+                                        @php
+                                            $testType = $setting->test_results['type'] ?? null;
+                                            $testStatus = $setting->test_results['status'] ?? null;
+                                        @endphp
+                                        <tr class="admin-users-table__row {{ $setting->is_active ? 'admin-email-settings-page__row--active' : '' }}"
+                                            id="email-setting-row-{{ $setting->id }}">
                                             <td>
-                                                <div class="d-flex align-items-center">
-                                                    @if($setting->provider == 'gmail')
-                                                        <i class="ri-google-fill text-danger fs-20 me-2"></i>
-                                                    @elseif($setting->provider == 'outlook')
-                                                        <i class="ri-microsoft-fill text-info fs-20 me-2"></i>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($setting->provider === 'gmail')
+                                                        <i class="fe fe-mail text-danger"></i>
+                                                    @elseif($setting->provider === 'outlook')
+                                                        <i class="fe fe-mail text-info"></i>
                                                     @else
-                                                        <i class="ri-mail-settings-line fs-20 me-2"></i>
+                                                        <i class="fe fe-server text-primary"></i>
                                                     @endif
-                                                    <strong>{{ $providers[$setting->provider]['name'] ?? 'مخصص' }}</strong>
+                                                    <span class="fw-semibold">{{ $providers[$setting->provider]['name'] ?? 'مخصص' }}</span>
                                                 </div>
                                             </td>
-                                            <td><code>{{ $setting->mail_host }}</code></td>
-                                            <td><span class="badge bg-secondary">{{ $setting->mail_port }}</span></td>
+                                            <td><code class="fs-12">{{ $setting->mail_host }}</code></td>
+                                            <td><span class="group-show-chip group-show-chip--sm">{{ $setting->mail_port }}</span></td>
                                             <td>{{ $setting->mail_from_address }}</td>
-                                            <td><span class="badge bg-info-transparent">{{ strtoupper($setting->mail_encryption) }}</span></td>
+                                            <td><span class="group-show-chip group-show-chip--sm text-info">{{ strtoupper($setting->mail_encryption) }}</span></td>
                                             <td>
                                                 @if($setting->is_active)
-                                                    <span class="badge bg-success">نشط</span>
+                                                    <span class="group-show-chip group-show-chip--sm text-success">نشط</span>
                                                 @else
-                                                    <span class="badge bg-secondary">غير نشط</span>
+                                                    <span class="group-show-chip group-show-chip--sm text-muted">غير نشط</span>
                                                 @endif
                                             </td>
-                                            <td>
-                                                @if($setting->test_results)
-                                                    @if($setting->test_results['status'] == 'success')
-                                                        <span class="badge bg-success">
-                                                            <i class="ri-check-line"></i> نجح
+                                            <td id="email-setting-test-{{ $setting->id }}">
+                                                @if($testStatus)
+                                                    @if($testStatus === 'success')
+                                                        <span class="group-show-chip group-show-chip--sm text-success">
+                                                            <i class="fe fe-check me-1"></i>
+                                                            {{ $testType === 'connection' ? 'اتصال ناجح' : 'إرسال ناجح' }}
                                                         </span>
                                                     @else
-                                                        <span class="badge bg-danger">
-                                                            <i class="ri-close-line"></i> فشل
+                                                        <span class="group-show-chip group-show-chip--sm text-danger">
+                                                            <i class="fe fe-x me-1"></i>
+                                                            {{ $testType === 'connection' ? 'اتصال فاشل' : 'إرسال فاشل' }}
                                                         </span>
                                                     @endif
-                                                    <br>
-                                                    <small class="text-muted">{{ $setting->last_tested_at->diffForHumans() }}</small>
+                                                    @if($setting->last_tested_at)
+                                                        <br><small class="text-muted">{{ $setting->last_tested_at->diffForHumans() }}</small>
+                                                    @endif
                                                 @else
-                                                    <span class="text-muted">لم يتم الاختبار</span>
+                                                    <span class="text-muted fs-12">لم يُختبر</span>
                                                 @endif
                                             </td>
                                             <td>
-                                                <div class="btn-group" role="group">
-                                                    <!-- Test Button -->
-                                                    <button type="button" class="btn btn-sm btn-info-light"
-                                                            onclick="testEmail({{ $setting->id }}, '{{ $setting->mail_from_address }}')">
-                                                        <i class="ri-test-tube-line"></i>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill"
+                                                            title="اختبار الاتصال"
+                                                            onclick="testSavedConnection({{ $setting->id }}, this)">
+                                                        <i class="fe fe-wifi"></i>
                                                     </button>
-
-                                                    <!-- Activate Button -->
+                                                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill"
+                                                            title="إرسال بريد اختبار"
+                                                            onclick="openSendTestModal({{ $setting->id }}, @js($setting->mail_from_address))">
+                                                        <i class="fe fe-send"></i>
+                                                    </button>
                                                     @if(!$setting->is_active)
-                                                        <form action="{{ route('admin.settings.email.activate', $setting->id) }}"
-                                                              method="POST" class="d-inline">
+                                                        <form action="{{ route('admin.settings.email.activate', $setting->id) }}" method="POST" class="d-inline">
                                                             @csrf
-                                                            <button type="submit" class="btn btn-sm btn-success-light"
-                                                                    onclick="return confirm('هل تريد تفعيل هذه الإعدادات؟')">
-                                                                <i class="ri-check-double-line"></i>
+                                                            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill"
+                                                                    title="تفعيل"
+                                                                    onclick="return confirm('تفعيل هذه الإعدادات؟')">
+                                                                <i class="fe fe-check-circle"></i>
                                                             </button>
                                                         </form>
                                                     @endif
-
-                                                    <!-- Edit Button -->
                                                     <a href="{{ route('admin.settings.email.edit', $setting->id) }}"
-                                                       class="btn btn-sm btn-primary-light">
-                                                        <i class="ri-edit-line"></i>
+                                                       class="btn btn-sm btn-outline-secondary rounded-pill" title="تعديل">
+                                                        <i class="fe fe-edit-2"></i>
                                                     </a>
-
-                                                    <!-- Delete Button -->
                                                     @if(!$setting->is_active)
-                                                        <form action="{{ route('admin.settings.email.destroy', $setting->id) }}"
-                                                              method="POST" class="d-inline">
+                                                        <form action="{{ route('admin.settings.email.destroy', $setting->id) }}" method="POST" class="d-inline">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-danger-light"
-                                                                    onclick="return confirm('هل أنت متأكد من الحذف؟')">
-                                                                <i class="ri-delete-bin-line"></i>
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill"
+                                                                    title="حذف"
+                                                                    onclick="return confirm('حذف هذه الإعدادات؟')">
+                                                                <i class="fe fe-trash-2"></i>
                                                             </button>
                                                         </form>
                                                     @endif
@@ -218,97 +227,37 @@
                                 </tbody>
                             </table>
                         </div>
-                    @else
-                        <div class="text-center p-5">
-                            <i class="ri-mail-settings-line fs-1 text-muted mb-3 d-block"></i>
-                            <h5 class="text-muted">لا توجد إعدادات بريد إلكتروني</h5>
-                            <p class="text-muted">قم بإضافة إعدادات SMTP جديدة للبدء</p>
-                            <a href="{{ route('admin.settings.email.create') }}" class="btn btn-primary mt-3">
-                                <i class="ri-add-line me-1"></i> إضافة إعدادات
-                            </a>
-                        </div>
                     @endif
                 </div>
             </div>
-        </div>
-    </div>
-    </div>
-</div>
-<!-- End::app-content -->
 
-<!-- Test Email Modal -->
-<div class="modal fade" id="testEmailModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">اختبار إعدادات البريد الإلكتروني</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="ri-information-line me-2"></i>
-                    سيتم إرسال بريد اختباري إلى العنوان المحدد للتأكد من صحة الإعدادات
+        </div>
+    </div>
+
+    <div class="modal fade" id="sendTestEmailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title">إرسال بريد اختبار</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">البريد الإلكتروني للاختبار</label>
-                    <input type="email" class="form-control" id="testEmailInput" placeholder="test@example.com" required>
+                <div class="modal-body pt-2">
+                    <p class="admin-group-form-hint mb-3">سيتم إرسال رسالة فعلية إلى العنوان المحدد للتأكد من الإرسال الكامل.</p>
+                    <label class="form-label fw-semibold">البريد الإلكتروني</label>
+                    <input type="email" class="form-control" id="sendTestEmailInput" placeholder="test@example.com" required>
+                    <input type="hidden" id="sendTestSettingId">
                 </div>
-                <input type="hidden" id="testSettingId">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="sendTestEmail()">
-                    <i class="ri-send-plane-line me-1"></i> إرسال بريد اختبار
-                </button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="sendTestEmailBtn" onclick="submitSendTestEmail()">
+                        <i class="fe fe-send me-1"></i>إرسال
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 @stop
 
 @section('script')
-<script>
-function testEmail(settingId, defaultEmail) {
-    document.getElementById('testSettingId').value = settingId;
-    document.getElementById('testEmailInput').value = defaultEmail;
-
-    const modal = new bootstrap.Modal(document.getElementById('testEmailModal'));
-    modal.show();
-}
-
-async function sendTestEmail() {
-    const settingId = document.getElementById('testSettingId').value;
-    const testEmail = document.getElementById('testEmailInput').value;
-
-    if (!testEmail) {
-        alert('الرجاء إدخال بريد إلكتروني صحيح');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/admin/settings/email/${settingId}/test`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ test_email: testEmail })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('✅ ' + result.message);
-            bootstrap.Modal.getInstance(document.getElementById('testEmailModal')).hide();
-            location.reload();
-        } else {
-            alert('❌ ' + result.message);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('❌ حدث خطأ أثناء إرسال البريد الاختباري');
-    }
-}
-</script>
+    @include('admin.pages.settings.email.partials.scripts')
 @stop

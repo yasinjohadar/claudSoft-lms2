@@ -4,12 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmailSetting;
+use App\Services\SmtpConnectionTestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
 class EmailSettingController extends Controller
 {
+    public function __construct(
+        private SmtpConnectionTestService $connectionTester
+    ) {}
+
     /**
      * Display email settings
      */
@@ -143,6 +148,7 @@ class EmailSettingController extends Controller
             $emailSetting->update([
                 'test_results' => [
                     'status' => 'success',
+                    'type' => 'send',
                     'message' => 'تم إرسال البريد الاختباري بنجاح',
                     'tested_email' => $request->test_email,
                     'tested_at' => now()->toDateTimeString(),
@@ -164,6 +170,7 @@ class EmailSettingController extends Controller
             $emailSetting->update([
                 'test_results' => [
                     'status' => 'failed',
+                    'type' => 'send',
                     'message' => $e->getMessage(),
                     'tested_email' => $request->test_email,
                     'tested_at' => now()->toDateTimeString(),
@@ -176,6 +183,64 @@ class EmailSettingController extends Controller
                 'message' => 'فشل إرسال البريد الاختباري: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Test SMTP connection without sending email (saved setting).
+     */
+    public function testConnection(EmailSetting $emailSetting)
+    {
+        $result = $this->connectionTester->test($emailSetting->toConnectionConfig());
+
+        $emailSetting->update([
+            'test_results' => [
+                'status' => $result['success'] ? 'success' : 'failed',
+                'type' => 'connection',
+                'message' => $result['message'],
+                'tested_at' => now()->toDateTimeString(),
+            ],
+            'last_tested_at' => now(),
+        ]);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    /**
+     * Test SMTP connection without sending email (unsaved form data).
+     */
+    public function testConnectionTemp(Request $request)
+    {
+        $validated = $request->validate([
+            'mail_host' => 'required|string|max:255',
+            'mail_port' => 'required|integer',
+            'mail_username' => 'required|string|max:255',
+            'mail_password' => 'nullable|string',
+            'mail_encryption' => 'required|in:tls,ssl,none',
+            'email_setting_id' => 'nullable|exists:email_settings,id',
+        ]);
+
+        $password = $validated['mail_password'] ?? null;
+        if (empty($password) && ! empty($validated['email_setting_id'])) {
+            $existing = EmailSetting::find($validated['email_setting_id']);
+            $password = $existing?->mail_password;
+        }
+
+        if (empty($password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى إدخال كلمة المرور لاختبار الاتصال.',
+            ], 422);
+        }
+
+        $result = $this->connectionTester->test([
+            'host' => $validated['mail_host'],
+            'port' => (int) $validated['mail_port'],
+            'encryption' => $validated['mail_encryption'],
+            'username' => $validated['mail_username'],
+            'password' => $password,
+        ]);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
     }
 
     /**

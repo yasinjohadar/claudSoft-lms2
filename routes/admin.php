@@ -618,10 +618,12 @@ Route::prefix('admin')
             Route::get('/create', [\App\Http\Controllers\Admin\EmailSettingController::class, 'create'])->name('create');
             Route::post('/', [\App\Http\Controllers\Admin\EmailSettingController::class, 'store'])->name('store');
             Route::post('/test-temp', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testTemp'])->name('test-temp');
+            Route::post('/test-connection-temp', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testConnectionTemp'])->name('test-connection-temp');
             Route::get('/{emailSetting}/edit', [\App\Http\Controllers\Admin\EmailSettingController::class, 'edit'])->name('edit');
             Route::put('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'update'])->name('update');
             Route::delete('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'destroy'])->name('destroy');
             Route::post('/{emailSetting}/activate', [\App\Http\Controllers\Admin\EmailSettingController::class, 'activate'])->name('activate');
+            Route::post('/{emailSetting}/test-connection', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testConnection'])->name('test-connection');
             Route::post('/{emailSetting}/test', [\App\Http\Controllers\Admin\EmailSettingController::class, 'test'])->name('test');
             Route::get('/provider/{provider}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'getProviderPreset'])->name('provider.preset');
         });

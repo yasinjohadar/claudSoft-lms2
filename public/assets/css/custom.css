@@ -4587,6 +4587,30 @@ button.admin-course-content-chip {
     text-decoration: underline;
 }
 
+/* ── Admin email settings page ── */
+.admin-email-settings-page .admin-stats-card__value--text {
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.admin-email-settings-page__row--active {
+    background: rgba(var(--bs-success-rgb), 0.04);
+}
+
+.admin-email-settings-page__form-actions .btn {
+    min-width: 140px;
+}
+
+@media (max-width: 576px) {
+    .admin-email-settings-page__form-actions .btn {
+        width: 100%;
+    }
+
+    .admin-email-settings-page__form-actions .ms-md-auto {
+        margin-inline-start: 0 !important;
+    }
+}
+
 .admin-profile-sidebar-field {
     display: flex;
     align-items: flex-start;

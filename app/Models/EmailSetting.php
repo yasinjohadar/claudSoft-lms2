@@ -78,6 +78,22 @@ class EmailSetting extends Model
     }
 
     /**
+     * SMTP connection config for connection tests.
+     *
+     * @return array{host: string, port: int, encryption: string, username: string, password: string}
+     */
+    public function toConnectionConfig(): array
+    {
+        return [
+            'host' => (string) $this->mail_host,
+            'port' => (int) $this->mail_port,
+            'encryption' => (string) $this->mail_encryption,
+            'username' => (string) $this->mail_username,
+            'password' => (string) $this->mail_password,
+        ];
+    }
+
+    /**
      * Apply settings to Laravel config
      */
     public function applyToConfig()
