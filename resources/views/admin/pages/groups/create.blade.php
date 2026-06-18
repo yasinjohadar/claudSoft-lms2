@@ -5,197 +5,158 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content admin-group-form-page">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إنشاء مجموعة جديدة</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ $course->title }}</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.groups.index', $course->id) }}">المجموعات</a></li>
-                            <li class="breadcrumb-item active">إنشاء مجموعة</li>
-                        </ol>
-                    </nav>
-                </div>
+            @include('admin.components.alerts')
+
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('courses.show', $course->id) }}">{{ Str::limit($course->title, 32) }}</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('courses.groups.index', $course->id) }}">المجموعات</a></li>
+                        <li class="breadcrumb-item active">إنشاء مجموعة</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Main Card -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <h6 class="card-title mb-0">معلومات المجموعة</h6>
-                </div>
-
-                <form action="{{ route('courses.groups.store', $course->id) }}" method="POST">
-                    @csrf
-
-                    <div class="card-body">
-                        <!-- Group Name -->
-                        <div class="mb-4">
-                            <label class="form-label required">اسم المجموعة</label>
-                            <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                                   value="{{ old('name') }}" required>
-                            @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Description -->
-                        <div class="mb-4">
-                            <label class="form-label">الوصف</label>
-                            <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                                      rows="4">{{ old('description') }}</textarea>
-                            @error('description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Select Courses -->
-                        <div class="mb-4">
-                            <label class="form-label required">الكورسات المرتبطة</label>
-                            <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
-                                @foreach($courses as $courseItem)
-                                    @php
-                                        $isSelected = (old('course_ids') && in_array($courseItem->id, old('course_ids'))) || $courseItem->id == $course->id;
-                                        $isVisible = old("course_visibility.{$courseItem->id}") !== null 
-                                            ? old("course_visibility.{$courseItem->id}") 
-                                            : true;
-                                    @endphp
-                                    <div class="form-check mb-3 p-2 border-bottom">
-                                        <div class="d-flex align-items-center">
-                                            <input class="form-check-input course-checkbox" 
-                                                   type="checkbox" 
-                                                   name="course_ids[]" 
-                                                   value="{{ $courseItem->id }}" 
-                                                   id="course_{{ $courseItem->id }}"
-                                                   {{ $isSelected ? 'checked' : '' }}
-                                                   onchange="toggleCourseVisibility({{ $courseItem->id }})">
-                                            <label class="form-check-label flex-grow-1 ms-2" for="course_{{ $courseItem->id }}">
-                                                <strong>{{ $courseItem->title }}</strong>
-                                                @if($courseItem->code)
-                                                    <span class="text-muted">({{ $courseItem->code }})</span>
-                                                @endif
-                                            </label>
-                                        </div>
-                                        @if($isSelected)
-                                            <div class="mt-2 ms-4">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" 
-                                                           type="checkbox" 
-                                                           name="course_visibility[{{ $courseItem->id }}]" 
-                                                           value="1"
-                                                           id="visibility_{{ $courseItem->id }}"
-                                                           {{ $isVisible ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="visibility_{{ $courseItem->id }}">
-                                                        <i class="fas fa-eye me-1"></i>ظاهر للطلاب
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-start gap-3">
+                            <span class="admin-group-form-page__icon">
+                                <i class="fe fe-users"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <span class="group-show-hero__eyebrow">
+                                    <i class="fe fe-plus-circle me-1"></i>مجموعة تعليمية جديدة
+                                </span>
+                                <h2 class="group-show-hero__title mb-2">إنشاء مجموعة</h2>
+                                <p class="group-show-hero__desc mb-2">أنشئ مجموعة واربطها بالكورسات المناسبة، ثم أضف الطلاب لاحقاً من صفحة التفاصيل.</p>
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-book-open me-1"></i>{{ Str::limit($course->title, 40) }}
+                                </span>
                             </div>
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                حدد الكورسات المرتبطة بهذه المجموعة. يمكنك تحديد ما إذا كان كل كورس ظاهراً أم مخفياً للطلاب.
-                            </small>
-                            @error('course_ids')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Active Status -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
-                                       {{ old('is_active', true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_active">
-                                    المجموعة نشطة
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Visibility -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="is_visible" id="is_visible"
-                                       {{ old('is_visible', true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_visible">
-                                    مرئية للطلاب
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Max Members -->
-                        <div class="mb-4">
-                            <label class="form-label">الحد الأقصى للأعضاء (اختياري)</label>
-                            <input type="number" name="max_members" class="form-control @error('max_members') is-invalid @enderror"
-                                   value="{{ old('max_members') }}" min="1">
-                            <small class="text-muted">اترك فارغاً لعدم وجود حد أقصى</small>
-                            @error('max_members')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                     </div>
-
-                    <div class="card-footer">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{{ route('courses.groups.index', $course->id) }}" class="btn btn-light">
-                                <i class="fas fa-arrow-right me-2"></i>رجوع
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <a href="{{ route('courses.groups.index', $course->id) }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">رجوع للمجموعات</span>
                             </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>إنشاء المجموعة
-                            </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
+
+            <form action="{{ route('courses.groups.store', $course->id) }}" method="POST">
+                @csrf
+
+                <div class="row g-4 dashboard-fade-in">
+                    <div class="col-lg-8">
+                        <div class="card custom-card group-show-members-card">
+                            <div class="card-header border-0 pb-0">
+                                <h6 class="group-show-members-card__title mb-1">المعلومات الأساسية</h6>
+                                <p class="fs-12 text-muted mb-0">اسم المجموعة ووصف مختصر يظهر في لوحة التحكم.</p>
+                            </div>
+                            <div class="card-body pt-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">اسم المجموعة <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                                           value="{{ old('name') }}" placeholder="مثال: مجموعة المبتدئين — دفعة 2026" required>
+                                    @error('name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label fw-semibold">الوصف</label>
+                                    <textarea name="description" class="form-control @error('description') is-invalid @enderror"
+                                              rows="3" placeholder="وصف اختياري للمجموعة...">{{ old('description') }}</textarea>
+                                    @error('description')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card custom-card group-show-members-card mt-4">
+                            <div class="card-header border-0 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h6 class="group-show-members-card__title mb-1">الكورسات المرتبطة</h6>
+                                    <p class="fs-12 text-muted mb-0">اختر الكورسات التي تنتمي إليها هذه المجموعة.</p>
+                                </div>
+                                <div class="admin-group-form-page__search-wrap">
+                                    <i class="fe fe-search"></i>
+                                    <input type="search" id="groupCourseSearch" class="form-control form-control-sm"
+                                           placeholder="بحث في الكورسات...">
+                                </div>
+                            </div>
+                            <div class="card-body pt-3">
+                                @include('admin.pages.groups.partials.form-course-picker', ['courses' => $courses, 'course' => $course])
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="card custom-card group-show-members-card admin-group-form-page__sidebar">
+                            <div class="card-header border-0 pb-0">
+                                <h6 class="group-show-members-card__title mb-1">إعدادات المجموعة</h6>
+                                <p class="fs-12 text-muted mb-0">الحالة والظهور والحد الأقصى للأعضاء.</p>
+                            </div>
+                            <div class="card-body pt-3">
+                                <div class="admin-group-form-toggle">
+                                    <div class="admin-group-form-toggle__info">
+                                        <span class="admin-group-form-toggle__label">المجموعة نشطة</span>
+                                        <span class="admin-group-form-toggle__hint">تفعيل الوصول والإدارة</span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
+                                               {{ old('is_active', true) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
+                                <div class="admin-group-form-toggle">
+                                    <div class="admin-group-form-toggle__info">
+                                        <span class="admin-group-form-toggle__label">مرئية للطلاب</span>
+                                        <span class="admin-group-form-toggle__hint">إظهار المجموعة في واجهة الطالب</span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="is_visible" id="is_visible"
+                                               {{ old('is_visible', true) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
+                                <div class="mb-0">
+                                    <label class="form-label fw-semibold">الحد الأقصى للأعضاء</label>
+                                    <input type="number" name="max_members" class="form-control @error('max_members') is-invalid @enderror"
+                                           value="{{ old('max_members') }}" min="1" placeholder="بدون حد">
+                                    <small class="text-muted fs-12">اتركه فارغاً لعدم وجود حد أقصى</small>
+                                    @error('max_members')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="admin-group-form-page__actions">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fe fe-save me-1"></i>إنشاء المجموعة
+                                    </button>
+                                    <a href="{{ route('courses.groups.index', $course->id) }}" class="btn btn-outline-secondary w-100">
+                                        إلغاء
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
 
         </div>
     </div>
 @stop
 
 @section('script')
-<script>
-    function toggleCourseVisibility(courseId) {
-        const checkbox = document.getElementById('course_' + courseId);
-        const formCheck = checkbox.closest('.form-check');
-        let visibilityDiv = formCheck.querySelector('.mt-2');
-        
-        if (checkbox.checked) {
-            if (!visibilityDiv) {
-                const newDiv = document.createElement('div');
-                newDiv.className = 'mt-2 ms-4';
-                newDiv.innerHTML = `
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               name="course_visibility[${courseId}]" 
-                               value="1"
-                               id="visibility_${courseId}"
-                               checked>
-                        <label class="form-check-label" for="visibility_${courseId}">
-                            <i class="fas fa-eye me-1"></i>ظاهر للطلاب
-                        </label>
-                    </div>
-                `;
-                formCheck.appendChild(newDiv);
-            } else {
-                visibilityDiv.style.display = 'block';
-            }
-        } else {
-            if (visibilityDiv) {
-                visibilityDiv.style.display = 'none';
-                const visibilityCheckbox = visibilityDiv.querySelector('input[type="checkbox"]');
-                if (visibilityCheckbox) {
-                    visibilityCheckbox.checked = false;
-                }
-            }
-        }
-    }
-</script>
+    @include('admin.pages.groups.partials.form-scripts')
 @stop
