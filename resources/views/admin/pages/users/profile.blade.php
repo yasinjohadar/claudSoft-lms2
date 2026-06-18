@@ -499,6 +499,32 @@
             }
         }
 
+        function addGroupSelectOption(selectEl, group) {
+            if (!selectEl || !group) return;
+            if (selectEl.querySelector('option[value="' + group.id + '"]')) return;
+
+            var option = document.createElement('option');
+            option.value = String(group.id);
+            var label = group.name || '';
+            if (group.courses_count > 0) {
+                label += ' (' + group.courses_count + ' كورس)';
+            }
+            option.textContent = label;
+            selectEl.appendChild(option);
+
+            var formWrap = document.getElementById('profile-add-group-form');
+            if (formWrap) formWrap.classList.remove('d-none');
+        }
+
+        function renumberProfileGroupRows() {
+            var tbody = document.getElementById('profile-groups-tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('.profile-group-row').forEach(function (row, index) {
+                var cell = row.querySelector('td:first-child');
+                if (cell) cell.textContent = String(index + 1);
+            });
+        }
+
         var addGroupBtn = document.getElementById('profile-add-group-btn');
         if (addGroupBtn) {
             addGroupBtn.addEventListener('click', function () {
@@ -536,6 +562,55 @@
                     }
                 }).finally(function () {
                     setButtonLoading(addGroupBtn, false);
+                });
+            });
+        }
+
+        var groupsTbody = document.getElementById('profile-groups-tbody');
+        if (groupsTbody) {
+            groupsTbody.addEventListener('click', function (event) {
+                var btn = event.target.closest('.profile-remove-group-btn');
+                if (!btn) return;
+
+                var groupId = btn.getAttribute('data-group-id');
+                var groupName = btn.getAttribute('data-group-name') || 'هذه المجموعة';
+                var row = btn.closest('.profile-group-row');
+                var feedbackEl = document.getElementById('profile-groups-feedback');
+                var groupSelect = document.getElementById('profile_group_id');
+
+                if (!groupId || !row) return;
+
+                if (!window.confirm('هل أنت متأكد من إلغاء انضمام الطالب إلى المجموعة «' + groupName + '»؟')) {
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('group_id', groupId);
+
+                btn.disabled = true;
+                hideFeedback(feedbackEl);
+
+                postProfileAction('{{ route('users.remove-from-group', $user->id) }}', formData, feedbackEl, function (data) {
+                    row.remove();
+                    renumberProfileGroupRows();
+
+                    var tbody = document.getElementById('profile-groups-tbody');
+                    var tableWrap = document.getElementById('profile-groups-table-wrap');
+                    var emptyEl = document.getElementById('profile-groups-empty');
+                    var hasRows = tbody && tbody.querySelectorAll('.profile-group-row').length > 0;
+
+                    if (tableWrap) tableWrap.classList.toggle('d-none', !hasRows);
+                    if (emptyEl) emptyEl.classList.toggle('d-none', hasRows);
+
+                    if (data.stats && typeof data.stats.total === 'number') {
+                        updateTabBadge(document.getElementById('profile-groups-badge'), data.stats.total);
+                    }
+
+                    if (data.group && groupSelect) {
+                        addGroupSelectOption(groupSelect, data.group);
+                    }
+                }).finally(function () {
+                    btn.disabled = false;
                 });
             });
         }
@@ -605,6 +680,10 @@
 
                     if (tbody && data.row_html) {
                         tbody.insertAdjacentHTML('beforeend', data.row_html);
+                        var newRow = tbody.lastElementChild;
+                        if (typeof initProfileCampRow === 'function') {
+                            initProfileCampRow(newRow);
+                        }
                     }
                     if (tableWrap) tableWrap.classList.remove('d-none');
                     if (emptyEl) emptyEl.classList.add('d-none');
@@ -634,6 +713,130 @@
                 });
             });
         }
+
+        var campStatusValues = ['pending', 'approved', 'rejected', 'cancelled'];
+        var campPaymentValues = ['unpaid', 'paid', 'refunded'];
+
+        function applyCampSelectStyle(selectEl, values) {
+            if (!selectEl) return;
+            var picker = selectEl.closest('.profile-camp-status-picker');
+            values.forEach(function (value) {
+                selectEl.classList.remove('is-' + value);
+                if (picker) picker.classList.remove('is-' + value);
+            });
+            selectEl.classList.add('is-' + selectEl.value);
+            if (picker) picker.classList.add('is-' + selectEl.value);
+        }
+
+        function setCampPickerLoading(selectEl, loading) {
+            var picker = selectEl ? selectEl.closest('.profile-camp-status-picker') : null;
+            if (picker) picker.classList.toggle('is-loading', loading);
+        }
+
+        function updateProfileCampStats(stats) {
+            if (!stats) return;
+            var totalEl = document.getElementById('profile-camps-stat-total');
+            var approvedEl = document.getElementById('profile-camps-stat-approved');
+            var pendingEl = document.getElementById('profile-camps-stat-pending');
+            if (totalEl) totalEl.textContent = stats.total;
+            if (approvedEl) approvedEl.textContent = stats.approved;
+            if (pendingEl) pendingEl.textContent = stats.pending;
+        }
+
+        function initProfileCampRow(row) {
+            if (!row) return;
+            row.querySelectorAll('.profile-camp-status-select').forEach(function (el) {
+                applyCampSelectStyle(el, campStatusValues);
+            });
+            row.querySelectorAll('.profile-camp-payment-select').forEach(function (el) {
+                applyCampSelectStyle(el, campPaymentValues);
+            });
+        }
+
+        var campsTbody = document.getElementById('profile-camps-tbody');
+        if (campsTbody) {
+            campsTbody.querySelectorAll('.profile-camp-row').forEach(initProfileCampRow);
+
+            campsTbody.addEventListener('focusin', function (event) {
+                var selectEl = event.target;
+                if (selectEl.classList.contains('profile-camp-field-select')) {
+                    selectEl.dataset.previousValue = selectEl.value;
+                }
+            });
+
+            campsTbody.addEventListener('change', function (event) {
+                var selectEl = event.target;
+                if (!selectEl.classList.contains('profile-camp-field-select')) return;
+
+                var row = selectEl.closest('.profile-camp-row');
+                if (!row) return;
+
+                var fieldName = selectEl.getAttribute('name');
+                var previousValue = selectEl.dataset.previousValue;
+                var updateUrl = row.getAttribute('data-update-url');
+                var feedbackEl = document.getElementById('profile-camps-feedback');
+
+                if (!fieldName || !updateUrl) return;
+
+                var formData = new FormData();
+                formData.append(fieldName, selectEl.value);
+
+                selectEl.disabled = true;
+                setCampPickerLoading(selectEl, true);
+                hideFeedback(feedbackEl);
+
+                fetch(updateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    credentials: 'same-origin',
+                    body: formData,
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, data: data };
+                        }).catch(function () {
+                            return { ok: response.ok, data: {} };
+                        });
+                    })
+                    .then(function (result) {
+                        if (result.ok && result.data.success) {
+                            selectEl.dataset.previousValue = selectEl.value;
+                            applyCampSelectStyle(
+                                selectEl,
+                                selectEl.classList.contains('profile-camp-status-select') ? campStatusValues : campPaymentValues
+                            );
+                            updateProfileCampStats(result.data.camp_stats);
+                            showFeedback(feedbackEl, result.data.message, 'success');
+                            return;
+                        }
+
+                        selectEl.value = previousValue;
+                        applyCampSelectStyle(
+                            selectEl,
+                            selectEl.classList.contains('profile-camp-status-select') ? campStatusValues : campPaymentValues
+                        );
+                        showFeedback(feedbackEl, formatValidationErrors(result.data), 'error');
+                    })
+                    .catch(function () {
+                        selectEl.value = previousValue;
+                        applyCampSelectStyle(
+                            selectEl,
+                            selectEl.classList.contains('profile-camp-status-select') ? campStatusValues : campPaymentValues
+                        );
+                        showFeedback(feedbackEl, 'تعذر تحديث الحالة. حاول مرة أخرى.', 'error');
+                    })
+                    .finally(function () {
+                        selectEl.disabled = false;
+                        setCampPickerLoading(selectEl, false);
+                    });
+            });
+        }
+
+        window.initProfileCampRow = initProfileCampRow;
 
         function updateBillingStats(stats) {
             if (!stats) return;

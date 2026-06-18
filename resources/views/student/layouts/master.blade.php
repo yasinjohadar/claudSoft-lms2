@@ -209,8 +209,9 @@
 
         @php
             $profileCompletion = auth()->check() ? auth()->user()->profile_completion_data : null;
+            $studentProfileLocked = $studentProfileLocked ?? false;
         @endphp
-        @if($profileCompletion && $profileCompletion['percentage'] < 100)
+        @if($profileCompletion && $profileCompletion['percentage'] < 100 && ! $studentProfileLocked)
             <div class="main-content app-content profile-completion-wrapper">
                 <div class="container-fluid mt-2">
                     <div class="profile-completion-banner shadow-sm">

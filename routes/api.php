@@ -66,7 +66,7 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('external-resources/{resource}/open', [StudentExternalResourceApiController::class, 'open'])->name('external-resources.open');
     });
 
-    Route::middleware(['log.student.api', 'auth:sanctum', 'role:student'])->group(function () {
+    Route::middleware(['log.student.api', 'auth:sanctum', 'role:student', 'student.profile.complete'])->group(function () {
         Route::get('dashboard', [StudentDashboardApiController::class, 'index'])->name('dashboard');
 
         Route::get('certificates', [StudentCertificateApiController::class, 'index'])->name('certificates.index');

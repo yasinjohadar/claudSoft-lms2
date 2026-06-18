@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Student;
 
+use App\Models\SiteSetting;
 use App\Rules\PhoneMatchesCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,30 +32,26 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         $userId = auth()->id();
+        $strict = SiteSetting::isStudentProfileCompletionForced()
+            && auth()->user()?->profile_completion_percentage < 100;
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
+            'name_ar' => [$strict ? 'required' : 'nullable', 'string', 'max:255'],
             // Email is not included - students cannot change their email
-            'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
+            'country_code' => [$strict ? 'required' : 'nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
             'phone' => [
-                'nullable',
+                $strict ? 'required' : 'nullable',
                 'string',
                 'max:20',
                 'regex:/^([0-9\s\-\+\(\)]*)$/',
                 new PhoneMatchesCountryCode,
             ],
-            'national_id' => [
-                'nullable',
-                'string',
-                'max:20',
-                Rule::unique('users', 'national_id')->ignore($userId),
-            ],
-            'date_of_birth' => ['nullable', 'date', 'before:today'],
-            'gender' => ['nullable', 'string', 'in:male,female'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'nationality_id' => ['nullable', 'exists:nationalities,id'],
+            'date_of_birth' => [$strict ? 'required' : 'nullable', 'date', 'before:today'],
+            'gender' => [$strict ? 'required' : 'nullable', 'string', 'in:male,female'],
+            'city' => [$strict ? 'required' : 'nullable', 'string', 'max:255'],
+            'address' => [$strict ? 'required' : 'nullable', 'string', 'max:500'],
+            'nationality_id' => [$strict ? 'required' : 'nullable', 'exists:nationalities,id'],
             'photo' => [
                 'nullable',
                 'image',
@@ -77,7 +74,6 @@ class UpdateProfileRequest extends FormRequest
             'email' => 'البريد الإلكتروني',
             'country_code' => 'رمز الدولة',
             'phone' => 'رقم الهاتف',
-            'national_id' => 'رقم الهوية',
             'date_of_birth' => 'تاريخ الميلاد',
             'gender' => 'الجنس',
             'city' => 'المدينة',
@@ -101,7 +97,6 @@ class UpdateProfileRequest extends FormRequest
             'email.email' => 'يرجى إدخال بريد إلكتروني صحيح',
             'email.unique' => 'هذا البريد الإلكتروني مستخدم بالفعل',
             'phone.regex' => 'صيغة رقم الهاتف غير صحيحة',
-            'national_id.unique' => 'رقم الهوية مستخدم بالفعل',
             'date_of_birth.date' => 'يرجى إدخال تاريخ ميلاد صحيح',
             'date_of_birth.before' => 'تاريخ الميلاد يجب أن يكون قبل اليوم',
             'gender.in' => 'يرجى اختيار جنس صحيح',

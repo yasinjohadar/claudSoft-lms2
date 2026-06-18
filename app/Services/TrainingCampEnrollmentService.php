@@ -75,4 +75,38 @@ class TrainingCampEnrollmentService
             return $enrollment;
         });
     }
+
+    /**
+     * Update camp enrollment status and/or payment status.
+     */
+    public function updateEnrollment(
+        CampEnrollment $enrollment,
+        ?string $status = null,
+        ?string $paymentStatus = null
+    ): CampEnrollment {
+        return DB::transaction(function () use ($enrollment, $status, $paymentStatus) {
+            $camp = $enrollment->camp;
+
+            if ($status !== null && $status !== $enrollment->status) {
+                $oldStatus = $enrollment->status;
+                $enrollment->status = $status;
+
+                if ($camp) {
+                    if ($oldStatus === 'approved' && $status !== 'approved') {
+                        $camp->decrement('current_participants');
+                    } elseif ($oldStatus !== 'approved' && $status === 'approved') {
+                        $camp->increment('current_participants');
+                    }
+                }
+            }
+
+            if ($paymentStatus !== null) {
+                $enrollment->payment_status = $paymentStatus;
+            }
+
+            $enrollment->save();
+
+            return $enrollment->fresh(['camp.category', 'invoice']);
+        });
+    }
 }

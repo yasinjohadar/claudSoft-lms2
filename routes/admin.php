@@ -110,6 +110,7 @@ Route::prefix('admin')
         Route::get('users/{user}/student-details', [UserController::class, 'studentDetails'])->name('users.student-details');
         Route::post('users/{user}/add-to-group', [UserController::class, 'addToGroup'])->name('users.add-to-group');
         Route::post('users/{user}/add-to-camp', [UserController::class, 'addToCamp'])->name('users.add-to-camp');
+        Route::post('users/{user}/camp-enrollments/{enrollment}/update', [UserController::class, 'updateCampEnrollment'])->name('users.update-camp-enrollment');
         Route::post('users/{user}/record-payment', [UserController::class, 'recordPayment'])->name('users.record-payment');
         Route::post('users/{user}/remove-from-group', [UserController::class, 'removeFromGroup'])->name('users.remove-from-group');
         Route::post('users/{user}/enroll-course', [UserController::class, 'enrollCourse'])->name('users.enroll-course');

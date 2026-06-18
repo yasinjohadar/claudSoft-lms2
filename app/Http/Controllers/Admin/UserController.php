@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Events\N8nWebhookEvent;
 use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
+use App\Models\CampEnrollment;
 use App\Models\Invoice;
 use App\Models\Nationality;
 use App\Models\Payment;
@@ -912,36 +913,134 @@ class UserController extends Controller
     }
 
     /**
+     * Update camp enrollment status/payment from student profile (AJAX).
+     */
+    public function updateCampEnrollment(
+        Request $request,
+        User $user,
+        CampEnrollment $enrollment,
+        TrainingCampEnrollmentService $enrollmentService
+    ): JsonResponse {
+        if ((int) $enrollment->student_id !== (int) $user->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'sometimes|required|in:pending,approved,rejected,cancelled',
+            'payment_status' => 'sometimes|required|in:unpaid,paid,refunded',
+        ]);
+
+        if (! array_key_exists('status', $validated) && ! array_key_exists('payment_status', $validated)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم إرسال أي حقل للتحديث',
+            ], 422);
+        }
+
+        try {
+            $enrollment = $enrollmentService->updateEnrollment(
+                $enrollment,
+                $validated['status'] ?? null,
+                $validated['payment_status'] ?? null
+            );
+
+            $campEnrollments = CampEnrollment::where('student_id', $user->id)->get();
+            $campStats = [
+                'total' => $campEnrollments->count(),
+                'approved' => $campEnrollments->where('status', 'approved')->count(),
+                'pending' => $campEnrollments->where('status', 'pending')->count(),
+            ];
+
+            $parts = [];
+            if (array_key_exists('status', $validated)) {
+                $parts[] = 'حالة التسجيل: '.$enrollment->status_label;
+            }
+            if (array_key_exists('payment_status', $validated)) {
+                $parts[] = 'حالة الدفع: '.$enrollment->payment_status_label;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم التحديث — '.implode(' — ', $parts),
+                'camp_stats' => $campStats,
+                'status' => $enrollment->status,
+                'status_label' => $enrollment->status_label,
+                'payment_status' => $enrollment->payment_status,
+                'payment_status_label' => $enrollment->payment_status_label,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Remove student from a group
      */
     public function removeFromGroup(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'group_id' => 'required|exists:course_groups,id',
         ]);
 
         try {
-            $group = \App\Models\CourseGroup::findOrFail($request->group_id);
+            $group = \App\Models\CourseGroup::withCount('courses')->findOrFail($validated['group_id']);
 
-            // التحقق من أن الطالب موجود في المجموعة
             if (! $group->hasMember($user)) {
-                return redirect()->back()
-                    ->with('error', 'الطالب غير موجود في هذه المجموعة');
+                $message = 'الطالب غير موجود في هذه المجموعة';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : redirect()->back()->with('error', $message);
             }
 
-            // إزالة الطالب من المجموعة
+            $groupId = $group->id;
+            $groupName = $group->name;
+            $coursesCount = (int) $group->courses_count;
+
             $removed = $group->removeMember($user);
 
-            if ($removed) {
-                return redirect()->back()
-                    ->with('success', "تم إزالة الطالب {$user->name} من المجموعة {$group->name} بنجاح");
-            } else {
-                return redirect()->back()
-                    ->with('error', 'فشل إزالة الطالب من المجموعة');
+            if (! $removed) {
+                $message = 'فشل إزالة الطالب من المجموعة';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : redirect()->back()->with('error', $message);
             }
+
+            $message = "تم إلغاء انضمام الطالب {$user->name} من المجموعة {$groupName} بنجاح";
+
+            if ($request->wantsJson()) {
+                $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'stats' => ['total' => $total],
+                    'group_id' => $groupId,
+                    'group' => [
+                        'id' => $groupId,
+                        'name' => $groupName,
+                        'courses_count' => $coursesCount,
+                    ],
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson()) {
+                throw $e;
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'حدث خطأ: '.$e->getMessage());
+            $message = 'حدث خطأ: '.$e->getMessage();
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : redirect()->back()->with('error', $message);
         }
     }
 

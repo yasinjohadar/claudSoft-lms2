@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
 use App\Http\Requests\Student\ChangePasswordRequest;
 use App\Models\Nationality;
+use App\Services\Student\StudentProfileCompletionService;
 use App\Services\Student\StudentProfilePhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,7 @@ class StudentProfileController extends Controller
 {
     public function __construct(
         protected StudentProfilePhotoService $profilePhotoService,
+        protected StudentProfileCompletionService $profileCompletion,
     ) {}
 
     /**
@@ -91,8 +93,9 @@ class StudentProfileController extends Controller
     {
         $student = auth()->user();
         $nationalities = Nationality::all();
+        $profileLocked = $this->profileCompletion->isLockedFor($student);
 
-        return view('student.pages.profile.edit', compact('student', 'nationalities'));
+        return view('student.pages.profile.edit', compact('student', 'nationalities', 'profileLocked'));
     }
 
     /**
@@ -109,7 +112,6 @@ class StudentProfileController extends Controller
             $student->name_ar = $request->input('name_ar');
             $student->country_code = $request->input('country_code');
             $student->phone = $request->input('phone');
-            $student->national_id = $request->input('national_id');
             $student->date_of_birth = $request->input('date_of_birth');
             $student->gender = $request->input('gender');
             $student->city = $request->input('city');
@@ -120,6 +122,13 @@ class StudentProfileController extends Controller
             $student->save();
 
             DB::commit();
+
+            $student->refresh();
+
+            if ($this->profileCompletion->isEnforcementEnabled() && $this->profileCompletion->isComplete($student)) {
+                return redirect()->route('student.dashboard')
+                    ->with('success', 'تم إكمال ملفك الشخصي بنجاح! يمكنك الآن استخدام المنصة.');
+            }
 
             return redirect()->route('student.profile.index')
                 ->with('success', 'تم تحديث الملف الشخصي بنجاح');
@@ -153,6 +162,11 @@ class StudentProfileController extends Controller
 
             $student->password = Hash::make($request->new_password);
             $student->save();
+
+            if ($this->profileCompletion->isLockedFor($student)) {
+                return redirect()->route('student.profile.edit')
+                    ->with('success', 'تم تغيير كلمة المرور بنجاح');
+            }
 
             return redirect()->route('student.profile.index')
                 ->with('success', 'تم تغيير كلمة المرور بنجاح');

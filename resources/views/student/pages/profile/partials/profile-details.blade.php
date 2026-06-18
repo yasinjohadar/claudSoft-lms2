@@ -4,7 +4,6 @@
         ['icon' => 'fe-user', 'label' => 'الاسم بالإنجليزية', 'value' => $student->name, 'empty' => false],
         ['icon' => 'fe-mail', 'label' => 'البريد الإلكتروني', 'value' => $student->email, 'empty' => false],
         ['icon' => 'fe-phone', 'label' => 'رقم الهاتف', 'value' => $displayPhone ?? 'غير محدد', 'empty' => empty($displayPhone)],
-        ['icon' => 'fe-credit-card', 'label' => 'رقم الهوية', 'value' => $student->national_id ?? 'غير محدد', 'empty' => empty($student->national_id)],
         ['icon' => 'fe-calendar', 'label' => 'تاريخ الميلاد', 'value' => $student->date_of_birth ? \Carbon\Carbon::parse($student->date_of_birth)->format('Y-m-d') : 'غير محدد', 'empty' => empty($student->date_of_birth)],
         ['icon' => 'fe-users', 'label' => 'الجنس', 'value' => $student->gender == 'male' ? 'ذكر' : ($student->gender == 'female' ? 'أنثى' : 'غير محدد'), 'empty' => empty($student->gender)],
         ['icon' => 'fe-map-pin', 'label' => 'المدينة', 'value' => $student->city ?? 'غير محدد', 'empty' => empty($student->city)],

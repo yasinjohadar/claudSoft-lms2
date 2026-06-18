@@ -166,7 +166,6 @@ class ProfileController extends Controller
             'name_ar' => ['nullable', 'string', 'max:255'],
             'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
             'phone' => ['nullable', 'string', 'max:20', 'regex:/^([0-9\s\-\+\(\)]*)$/'],
-            'national_id' => ['nullable', 'string', 'max:20', \Illuminate\Validation\Rule::unique('users', 'national_id')->ignore($user->id)],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'gender' => ['nullable', 'string', 'in:male,female'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -183,7 +182,6 @@ class ProfileController extends Controller
             $user->name_ar = filled($request->input('name_ar')) ? trim((string) $request->input('name_ar')) : null;
             $user->country_code = filled($request->input('country_code')) ? trim((string) $request->input('country_code')) : null;
             $user->phone = filled($request->input('phone')) ? trim((string) $request->input('phone')) : null;
-            $user->national_id = filled($request->input('national_id')) ? trim((string) $request->input('national_id')) : null;
             $user->date_of_birth = filled($request->input('date_of_birth')) ? $request->input('date_of_birth') : null;
             $user->gender = filled($request->input('gender')) ? $request->input('gender') : null;
             $user->address = filled($request->input('address')) ? trim((string) $request->input('address')) : null;

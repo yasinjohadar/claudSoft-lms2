@@ -22,7 +22,16 @@
                     <div class="slide-left" id="slide-left">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                     </div>
-                    <ul class="main-menu">
+                    <ul class="main-menu {{ ($studentProfileLocked ?? false) ? 'student-sidebar-menu--locked' : '' }}">
+                        @if($studentProfileLocked ?? false)
+                        <li class="slide">
+                            <div class="alert alert-danger mx-2 mb-3 py-2 px-3 fs-12 border-0">
+                                <i class="fe fe-alert-triangle me-1"></i>
+                                أكمل ملفك من الصفحة الحالية فقط
+                            </div>
+                        </li>
+                        @endif
+
                         <!-- Start::slide - الواجهة الأمامية -->
                         <li class="slide">
                             <a href="{{ route('frontend.home') }}" target="_blank" rel="noopener noreferrer" class="side-menu__item">
@@ -163,9 +172,9 @@
 
                         <!-- Start::slide - ملفي الشخصي -->
                         <li class="slide">
-                            <a href="{{ route('student.profile.index') }}" class="side-menu__item">
+                            <a href="{{ route('student.profile.edit') }}" class="side-menu__item student-sidebar-profile-link {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
                                 <i class="fe fe-user side-menu__icon"></i>
-                                <span class="side-menu__label">ملفي الشخصي</span>
+                                <span class="side-menu__label">{{ ($studentProfileLocked ?? false) ? 'إكمال الملف الشخصي' : 'ملفي الشخصي' }}</span>
                             </a>
                         </li>
                         <!-- End::slide -->

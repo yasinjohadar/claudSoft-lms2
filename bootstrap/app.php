@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
             'webhook.verify' => \App\Http\Middleware\VerifyWebhookSignature::class,
             'impersonate' => \App\Http\Middleware\ImpersonateMiddleware::class,
+            'student.profile.complete' => \App\Http\Middleware\RequireCompleteStudentProfile::class,
         ]);
 
         // Add middleware to parse multipart/form-data for PUT/PATCH requests - PREPEND to run first

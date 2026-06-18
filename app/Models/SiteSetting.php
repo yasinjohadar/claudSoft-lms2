@@ -77,4 +77,9 @@ class SiteSetting extends Model
     {
         return static::getValue('registration_public_enabled', true);
     }
+
+    public static function isStudentProfileCompletionForced(): bool
+    {
+        return (bool) static::getValue('force_student_profile_completion', false);
+    }
 }

@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Route;
 | بقية لوحة الطالب: جلسة الويب المعتادة (middleware auth).
 */
 Route::prefix('student/learn')
-    ->middleware(['auth.query_token', 'auth:sanctum', 'role:student'])
+    ->middleware(['auth.query_token', 'auth:sanctum', 'role:student', 'student.profile.complete'])
     ->name('student.learn.')
     ->group(function () {
         Route::get('/courses/{courseId}', [CourseLearningController::class, 'show'])->name('course');
@@ -56,7 +56,7 @@ Route::prefix('student/learn')
     });
 
 Route::prefix('student')
-    ->middleware(['auth', 'role:student'])
+    ->middleware(['auth', 'role:student', 'student.profile.complete'])
     ->group(function () {
 
         // Dashboard

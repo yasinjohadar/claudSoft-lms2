@@ -1,21 +1,11 @@
 @php
     $camp = $campEnrollment->camp;
     $displayFee = $campFee ?? (float) ($campEnrollment->invoice?->total_amount ?? $camp?->price ?? 0);
-    $statusClass = match($campEnrollment->status) {
-        'approved' => 'text-success',
-        'pending' => 'text-warning',
-        'rejected' => 'text-danger',
-        'cancelled' => 'text-muted',
-        default => '',
-    };
-    $paymentClass = match($campEnrollment->payment_status) {
-        'paid' => 'text-success',
-        'unpaid' => 'text-warning',
-        'refunded' => 'text-info',
-        default => '',
-    };
+    $updateUrl = route('users.update-camp-enrollment', [$campEnrollment->student_id, $campEnrollment->id]);
 @endphp
-<tr class="admin-users-table__row">
+<tr class="admin-users-table__row profile-camp-row"
+    data-enrollment-id="{{ $campEnrollment->id }}"
+    data-update-url="{{ $updateUrl }}">
     <td>{{ $rowNumber }}</td>
     <td>
         @if($camp)
@@ -38,8 +28,33 @@
     </td>
     <td><small class="text-muted">{{ optional($campEnrollment->enrollment_date)->format('Y-m-d') ?? '—' }}</small></td>
     <td><span class="fw-semibold">{{ number_format($displayFee, 2) }}</span></td>
-    <td><span class="group-show-chip group-show-chip--sm {{ $statusClass }}">{{ $campEnrollment->status_label }}</span></td>
-    <td><span class="group-show-chip group-show-chip--sm {{ $paymentClass }}">{{ $campEnrollment->payment_status_label }}</span></td>
+    <td class="profile-camp-col-status">
+        <div class="profile-camp-status-picker is-{{ $campEnrollment->status }}">
+            <span class="profile-camp-status-picker__dot" aria-hidden="true"></span>
+            <select class="profile-camp-field-select profile-camp-status-select is-{{ $campEnrollment->status }}"
+                    name="status"
+                    title="تغيير حالة التسجيل"
+                    aria-label="حالة التسجيل">
+                <option value="pending" @selected($campEnrollment->status === 'pending')>قيد الانتظار</option>
+                <option value="approved" @selected($campEnrollment->status === 'approved')>مقبول</option>
+                <option value="rejected" @selected($campEnrollment->status === 'rejected')>مرفوض</option>
+                <option value="cancelled" @selected($campEnrollment->status === 'cancelled')>ملغي</option>
+            </select>
+        </div>
+    </td>
+    <td class="profile-camp-col-payment">
+        <div class="profile-camp-status-picker profile-camp-status-picker--payment is-{{ $campEnrollment->payment_status }}">
+            <span class="profile-camp-status-picker__dot" aria-hidden="true"></span>
+            <select class="profile-camp-field-select profile-camp-payment-select is-{{ $campEnrollment->payment_status }}"
+                    name="payment_status"
+                    title="تغيير حالة الدفع"
+                    aria-label="حالة الدفع">
+                <option value="unpaid" @selected($campEnrollment->payment_status === 'unpaid')>غير مدفوع</option>
+                <option value="paid" @selected($campEnrollment->payment_status === 'paid')>مدفوع</option>
+                <option value="refunded" @selected($campEnrollment->payment_status === 'refunded')>مسترجع</option>
+            </select>
+        </div>
+    </td>
     <td>
         @if($camp?->start_date)
             <small class="text-muted">

@@ -302,7 +302,7 @@
     <div id="profile-groups-table-wrap" class="@if($groups->isEmpty()) d-none @endif">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 admin-users-table">
-                <thead><tr><th>#</th><th>المجموعة</th><th>الدور</th><th>الكورسات</th><th>تاريخ الانضمام</th></tr></thead>
+                <thead><tr><th>#</th><th>المجموعة</th><th>الدور</th><th>الكورسات</th><th>تاريخ الانضمام</th><th></th></tr></thead>
                 <tbody id="profile-groups-tbody">
                     @foreach($groups as $member)
                         @include('admin.pages.users.partials.profile-group-row', [
@@ -397,6 +397,10 @@
     </div>
 
     <div id="profile-camps-table-wrap" class="@if(($campEnrollments ?? collect())->isEmpty()) d-none @endif">
+        <p class="text-muted fs-12 mb-2">
+            <i class="fe fe-info me-1"></i>
+            يمكنك تغيير <strong>حالة التسجيل</strong> و<strong>حالة الدفع</strong> مباشرة من القوائم في الجدول أدناه.
+        </p>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 admin-users-table">
                 <thead>
@@ -406,8 +410,8 @@
                         <th>التصنيف</th>
                         <th>تاريخ التسجيل</th>
                         <th>رسم المعسكر</th>
-                        <th>حالة التسجيل</th>
-                        <th>حالة الدفع</th>
+                        <th class="profile-camp-col-status">حالة التسجيل</th>
+                        <th class="profile-camp-col-payment">حالة الدفع</th>
                         <th>الفترة</th>
                         <th></th>
                     </tr>
