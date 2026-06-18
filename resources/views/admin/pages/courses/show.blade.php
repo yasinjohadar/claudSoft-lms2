@@ -415,298 +415,274 @@
 @stop
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content admin-course-show-page">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('admin.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ $course->title }}</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
-                            <li class="breadcrumb-item active">{{ $course->title }}</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <div class="d-flex gap-2">
-                        @if($course->category)
-                            <span class="badge bg-primary-transparent px-3 py-2">{{ $course->category->name }}</span>
-                        @endif
-                        @if($course->is_published)
-                            <span class="badge bg-success-transparent px-3 py-2">منشور</span>
-                        @else
-                            <span class="badge bg-warning-transparent px-3 py-2">مسودة</span>
-                        @endif
-                        @if($course->is_featured)
-                            <span class="badge bg-warning-transparent px-3 py-2">
-                                <i class="fas fa-star me-1"></i>مميز
-                            </span>
-                        @endif
-                        <span id="course-visibility-badge" class="badge {{ $course->is_visible ? 'bg-info-transparent' : 'bg-secondary-transparent' }} px-3 py-2">
-                            <i class="far fa-eye{{ $course->is_visible ? '' : '-slash' }} me-1"></i>
-                            {{ $course->is_visible ? 'مرئي' : 'مخفي' }}
-                        </span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="course-toggle-visibility-btn"
-                                onclick="toggleVisibility('course', {{ $course->id }})">
-                            <i class="far fa-eye{{ $course->is_visible ? '' : '-slash' }} me-1"></i>
-                            {{ $course->is_visible ? 'إخفاء' : 'إظهار' }}
-                        </button>
-                        <a href="{{ route('courses.edit', $course->id) }}" class="btn btn-primary">
-                            <i class="fas fa-edit me-2"></i>تعديل
-                        </a>
-                    </div>
-                </div>
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('courses.index') }}">الكورسات</a></li>
+                        <li class="breadcrumb-item active">{{ Str::limit($course->title, 48) }}</li>
+                    </ol>
+                </nav>
             </div>
 
+            @php
+                $courseImageUrl = $course->image ? course_image_url($course->image) : null;
+                $courseInitial = mb_strtoupper(mb_substr($course->title, 0, 1));
+                $priceDisplay = ($course->price ?? 0) > 0 ? '$' . number_format($course->price, 2) : 'مجاني';
+                $courseKpiCards = [
+                    ['variant' => 'blue', 'icon' => 'fe-folder', 'label' => 'إجمالي الأقسام', 'value' => $stats['total_sections'] ?? 0, 'sub' => 'أقسام المحتوى', 'countup' => true],
+                    ['variant' => 'green', 'icon' => 'fe-book-open', 'label' => 'إجمالي الدروس', 'value' => $stats['total_modules'] ?? 0, 'sub' => 'وحدات تعليمية', 'countup' => true],
+                    ['variant' => 'cyan', 'icon' => 'fe-users', 'label' => 'الطلاب المسجلين', 'value' => $stats['total_enrollments'] ?? 0, 'sub' => 'تسجيل نشط', 'countup' => true],
+                    ['variant' => 'orange', 'icon' => 'fe-dollar-sign', 'label' => 'سعر الكورس', 'value' => $priceDisplay, 'sub' => ($course->price ?? 0) > 0 ? 'سعر البيع' : 'متاح مجاناً', 'countup' => false],
+                ];
+            @endphp
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-primary-transparent">
-                                        <i class="fas fa-folder fs-18"></i>
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="admin-users-table__avatar flex-shrink-0 admin-course-show-page__cover">
+                                @if($courseImageUrl)
+                                    <img src="{{ $courseImageUrl }}" alt="{{ $course->title }}"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <span style="display:none;">{{ $courseInitial }}</span>
+                                @else
+                                    <span>{{ $courseInitial }}</span>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                <span class="group-show-hero__eyebrow">
+                                    <i class="fe fe-book-open me-1"></i>
+                                    تفاصيل الكورس
+                                </span>
+                                <h2 class="group-show-hero__title mb-2">{{ $course->title }}</h2>
+                                @if($course->code)
+                                    <p class="group-show-hero__desc mb-2">{{ $course->code }}</p>
+                                @endif
+                                <div class="d-flex flex-wrap gap-2">
+                                    @if($course->category)
+                                        <span class="group-show-chip group-show-chip--sm">{{ $course->category->name }}</span>
+                                    @endif
+                                    @if($course->is_published)
+                                        <span class="group-show-chip group-show-chip--sm text-success"><i class="fe fe-check-circle me-1"></i>منشور</span>
+                                    @else
+                                        <span class="group-show-chip group-show-chip--sm text-warning"><i class="fe fe-edit-3 me-1"></i>مسودة</span>
+                                    @endif
+                                    @if($course->is_featured)
+                                        <span class="group-show-chip group-show-chip--sm text-warning"><i class="fe fe-star me-1"></i>مميز</span>
+                                    @endif
+                                    <span id="course-visibility-badge" class="group-show-chip group-show-chip--sm {{ $course->is_visible ? 'text-info' : 'text-muted' }}">
+                                        <i class="fe fe-eye{{ $course->is_visible ? '' : '-off' }} me-1"></i>
+                                        {{ $course->is_visible ? 'مرئي' : 'مخفي' }}
                                     </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <p class="fw-semibold mb-1">إجمالي الأقسام</p>
-                                    <h4 class="fw-bold mb-2">{{ $stats['total_sections'] ?? 0 }}</h4>
-                                    <span class="badge bg-primary-transparent">أقسام</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-success-transparent">
-                                        <i class="fas fa-book-open fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <p class="fw-semibold mb-1">إجمالي الدروس</p>
-                                    <h4 class="fw-bold mb-2">{{ $stats['total_modules'] ?? 0 }}</h4>
-                                    <span class="badge bg-success-transparent">دروس</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-info-transparent">
-                                        <i class="fas fa-users fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <p class="fw-semibold mb-1">الطلاب المسجلين</p>
-                                    <h4 class="fw-bold mb-2">{{ $stats['total_enrollments'] ?? 0 }}</h4>
-                                    <span class="badge bg-info-transparent">طالب</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-warning-transparent">
-                                        <i class="fas fa-dollar-sign fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <p class="fw-semibold mb-1">سعر الكورس</p>
-                                    <h4 class="fw-bold mb-2">${{ number_format($course->price ?? 0, 2) }}</h4>
-                                    <span class="badge bg-warning-transparent">السعر</span>
-                                </div>
-                            </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions">
+                            <button type="button" class="group-show-action group-show-action--info"
+                                    id="course-toggle-visibility-btn"
+                                    onclick="toggleVisibility('course', {{ $course->id }})">
+                                <span class="group-show-action__icon"><i class="fe fe-eye{{ $course->is_visible ? '' : '-off' }}"></i></span>
+                                <span class="group-show-action__text">{{ $course->is_visible ? 'إخفاء الكورس' : 'إظهار الكورس' }}</span>
+                            </button>
+                            <a href="{{ route('courses.enrollments.index', $course->id) }}" class="group-show-action group-show-action--success">
+                                <span class="group-show-action__icon"><i class="fe fe-users"></i></span>
+                                <span class="group-show-action__text">التسجيلات</span>
+                            </a>
+                            <a href="{{ route('courses.edit', $course->id) }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
+                                <span class="group-show-action__text">تعديل الكورس</span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Course Content Card -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs nav-tabs-header mb-0" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#content" role="tab">
-                                <i class="fas fa-book me-2"></i>المحتوى
-                            </a>
+            <div class="row g-3 dashboard-fade-in mb-4">
+                @foreach ($courseKpiCards as $index => $card)
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+                        <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <div class="admin-stats-card__icon-wrap">
+                                    <i class="fe {{ $card['icon'] }} admin-stats-card__icon"></i>
+                                </div>
+                                <div class="admin-stats-card__content flex-fill min-w-0">
+                                    <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
+                                    @if($card['countup'] ?? true)
+                                        <h3 class="admin-stats-card__value mb-1" data-countup="{{ is_numeric($card['value']) ? $card['value'] : 0 }}">0</h3>
+                                    @else
+                                        <h3 class="admin-stats-card__value admin-stats-card__value--text mb-1">{{ $card['value'] }}</h3>
+                                    @endif
+                                    <p class="admin-stats-card__sub mb-0">{{ $card['sub'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-body pt-3 px-2 px-md-3">
+                    <ul class="nav admin-profile-tabs admin-profile-tabs--full" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
+                                <i class="fe fe-layers me-1"></i>المحتوى
+                            </button>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#enrollments" role="tab">
-                                <i class="fas fa-users me-2"></i>التسجيلات
-                            </a>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#enrollments" type="button" role="tab">
+                                <i class="fe fe-users me-1"></i>التسجيلات
+                            </button>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#settings" role="tab">
-                                <i class="fas fa-cog me-2"></i>الإعدادات
-                            </a>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                                <i class="fe fe-settings me-1"></i>الإعدادات
+                            </button>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" role="presentation">
                             <a class="nav-link" href="{{ route('courses.completion-summary', $course) }}">
-                                <i class="fas fa-chart-bar me-2"></i>ملخص الإكمال
+                                <i class="fe fe-bar-chart-2 me-1"></i>ملخص الإكمال
                             </a>
                         </li>
                     </ul>
-                </div>
-                <div class="card-body">
-                    <!-- Tab Content -->
-                    <div class="tab-content">
+
+                    <div class="tab-content admin-profile-tab-content pt-3 px-1 px-md-2">
 
                 <!-- Content Tab -->
                 <div class="tab-pane fade show active" id="content" role="tabpanel">
 
                     <!-- Add Section Button -->
-                    <div class="text-center mb-4">
-                        <a href="{{ route('courses.sections.create', $course->id) }}" class="add-section-btn">
-                            <i class="fas fa-plus me-2"></i>إضافة قسم جديد
+                    <div class="d-flex justify-content-center mb-4">
+                        <a href="{{ route('courses.sections.create', $course->id) }}" class="group-show-action group-show-action--primary admin-course-show-page__add-section">
+                            <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                            <span class="group-show-action__text">إضافة قسم جديد</span>
                         </a>
                     </div>
 
                     <!-- Bulk module restrictions -->
-                    <div class="card custom-card mb-3 border-warning border-opacity-50" id="bulkModuleRestrictionsToolbar">
-                        <div class="card-body py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="admin-course-show-page__bulk-toolbar group-show-filters mb-4" id="bulkModuleRestrictionsToolbar">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="text-muted small" id="bulk-module-selected-count">0 وحدة محددة</span>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-module-select-all">
+                                <span class="group-show-chip group-show-chip--sm" id="bulk-module-selected-count">0 وحدة محددة</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="bulk-module-select-all">
                                     تحديد الكل
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-module-deselect-all">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="bulk-module-deselect-all">
                                     إلغاء التحديد
                                 </button>
                             </div>
-                            <button type="button" class="btn btn-sm btn-warning" id="bulk-module-restrictions-btn" disabled>
-                                <i class="fas fa-users-cog me-1"></i>قيود على المحدد
+                            <button type="button" class="btn btn-sm btn-warning rounded-pill" id="bulk-module-restrictions-btn" disabled>
+                                <i class="fe fe-users me-1"></i>قيود على المحدد
                             </button>
                         </div>
                     </div>
 
                     <!-- Sections Accordion -->
-                    <div class="accordion accordion-customicon1 accordion-primary" id="sectionsAccordion">
+                    <div class="accordion admin-course-sections-accordion" id="sectionsAccordion">
                     @forelse($course->sections()->orderBy('order_index')->get() as $section)
-                        <div class="accordion-item">
+                        <div class="accordion-item admin-course-section-item">
                             <h2 class="accordion-header d-flex align-items-stretch" id="heading-{{ $section->id }}">
-                                <button class="accordion-button collapsed flex-grow-1" type="button"
+                                <button class="accordion-button collapsed flex-grow-1 admin-course-section-item__toggle" type="button"
                                         data-bs-toggle="collapse" data-bs-target="#section-{{ $section->id }}"
-                                        aria-expanded="false" aria-controls="section-{{ $section->id }}"
-                                        style="border-left: none; border-top-left-radius: 0; border-bottom-left-radius: 0;">
-                                    <div class="d-flex align-items-center w-100 justify-content-between me-3">
-                                        <div>
-                                            <i class="fas fa-folder me-2"></i>
-                                            {{ $section->title }}
-                                            <span id="section-restrictions-badge-{{ $section->id }}" class="badge bg-warning text-dark ms-2" title="هذا القسم له قيود وصول" style="display: {{ $section->accessRestrictions && $section->accessRestrictions->count() > 0 ? 'inline-block' : 'none' }};">
-                                                <i class="fas fa-lock me-1"></i>قيود
+                                        aria-expanded="false" aria-controls="section-{{ $section->id }}">
+                                    <div class="d-flex align-items-center w-100 justify-content-between gap-3 me-2">
+                                        <div class="min-w-0 text-start">
+                                            <span class="d-flex align-items-center gap-2 flex-wrap">
+                                                <i class="fe fe-folder text-primary"></i>
+                                                <span class="fw-semibold">{{ $section->title }}</span>
+                                                <span id="section-restrictions-badge-{{ $section->id }}" class="group-show-chip group-show-chip--sm text-warning" title="هذا القسم له قيود وصول" style="display: {{ $section->accessRestrictions && $section->accessRestrictions->count() > 0 ? 'inline-flex' : 'none' }};">
+                                                    <i class="fe fe-lock me-1"></i>قيود
+                                                </span>
                                             </span>
                                             @if($section->description)
-                                                <br><small class="text-muted fw-normal">{{ $section->description }}</small>
+                                                <small class="text-muted fw-normal d-block mt-1">{{ $section->description }}</small>
                                             @endif
                                         </div>
-                                        <span id="section-modules-count-badge-{{ $section->id }}" class="badge bg-light text-default">
+                                        <span id="section-modules-count-badge-{{ $section->id }}" class="group-show-chip group-show-chip--sm flex-shrink-0">
                                             {{ $section->modules->count() }} {{ $section->modules->count() == 1 ? 'درس' : 'دروس' }}
                                         </span>
                                     </div>
                                 </button>
                                 <a href="{{ route('sections.questions.manage', $section->id) }}"
-                                   class="btn btn-success d-flex align-items-center px-3"
-                                   style="border-radius: 0; border-top-left-radius: var(--bs-border-radius); border-bottom-left-radius: var(--bs-border-radius);"
+                                   class="btn btn-sm btn-success-light admin-course-section-item__questions"
                                    title="إدارة الأسئلة">
-                                    <i class="fas fa-question-circle me-1"></i>أسئلة
+                                    <i class="fe fe-help-circle me-1"></i>أسئلة
                                 </a>
                             </h2>
                             <div id="section-{{ $section->id }}" class="accordion-collapse collapse"
                                  aria-labelledby="heading-{{ $section->id }}" data-bs-parent="#sectionsAccordion">
                                 <div class="accordion-body">
-                                    <!-- Add Activity Buttons (Top) -->
-                                    <div class="mb-3 p-3 bg-light rounded">
-                                        <p class="text-muted mb-2 fw-semibold"><i class="fas fa-plus-circle me-2"></i>إضافة محتوى جديد:</p>
-                                        <div class="d-flex gap-2 flex-wrap">
-                                            <a href="{{ route('sections.modules.create', $section->id) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-book-open me-1"></i>درس
+                                    <div class="admin-course-content-toolbar mb-4">
+                                        <p class="admin-course-content-toolbar__title mb-2">
+                                            <i class="fe fe-plus-circle me-1"></i>إضافة محتوى جديد
+                                        </p>
+                                        <div class="admin-course-content-toolbar__grid">
+                                            <a href="{{ route('sections.modules.create', $section->id) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-book-open"></i><span>درس</span>
                                             </a>
-                                            <a href="{{ route('videos.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-play me-1"></i>فيديو
+                                            <a href="{{ route('videos.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-play-circle"></i><span>فيديو</span>
                                             </a>
-                                            <a href="{{ route('assignments.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-warning">
-                                                <i class="fas fa-tasks me-1"></i>واجب
+                                            <a href="{{ route('assignments.create', ['section_id' => $section->id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-check-square"></i><span>واجب</span>
                                             </a>
-                                            <a href="{{ route('quizzes.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-question-circle me-1"></i>اختبار
+                                            <a href="{{ route('quizzes.create', ['section_id' => $section->id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-help-circle"></i><span>اختبار</span>
                                             </a>
-                                            <a href="{{ route('question-modules.create', ['section_id' => $section->id]) }}" class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-clipboard-question me-1"></i>وحدة أسئلة
+                                            <a href="{{ route('question-modules.create', ['section_id' => $section->id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-layers"></i><span>وحدة أسئلة</span>
                                             </a>
-                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-outline-danger">
-                                                <i class="fas fa-clipboard-question me-1"></i>أسئلة
+                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-list"></i><span>أسئلة</span>
                                             </a>
-                                            <a href="{{ route('resources.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-file me-1"></i>مورد
+                                            <a href="{{ route('resources.create', ['section_id' => $section->id, 'course_id' => $section->course_id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-file-text"></i><span>مورد</span>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addResourceModal" data-section-id="{{ $section->id }}" data-course-id="{{ $section->course_id }}">
-                                                <i class="fas fa-file-plus me-1"></i>مورد (مودال)
+                                            <button type="button" class="admin-course-content-chip border-0"
+                                                    data-bs-toggle="modal" data-bs-target="#addResourceModal"
+                                                    data-section-id="{{ $section->id }}" data-course-id="{{ $section->course_id }}">
+                                                <i class="fe fe-file-plus"></i><span>مورد سريع</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <!-- Section Header with Actions -->
-                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
-                                        <div class="d-flex flex-wrap gap-2 align-items-center">
-                                            <span class="text-muted small">هذا القسم فقط:</span>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary js-section-select-all-modules" data-section-id="{{ $section->id }}" title="تحديد كل وحدات هذا القسم">
-                                                تحديد كل الوحدات
+                                    <div class="admin-course-section-toolbar mb-4">
+                                        <div class="admin-course-section-toolbar__left">
+                                            <span class="text-muted fs-12">هذا القسم فقط</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill js-section-select-all-modules" data-section-id="{{ $section->id }}">
+                                                تحديد الوحدات
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary js-section-deselect-all-modules" data-section-id="{{ $section->id }}" title="إلغاء تحديد وحدات هذا القسم">
-                                                إلغاء تحديد الوحدات
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill js-section-deselect-all-modules" data-section-id="{{ $section->id }}">
+                                                إلغاء التحديد
                                             </button>
                                         </div>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-warning manage-restrictions-btn"
-                                                    data-type="section"
-                                                    data-id="{{ $section->id }}"
-                                                    data-title="{{ $section->title }}"
-                                                    title="إدارة القيود للمجموعات">
-                                                <i class="fas fa-users-cog me-1"></i>قيود المجموعات
+                                        <div class="admin-course-section-toolbar__actions">
+                                            <button type="button" class="btn btn-sm btn-warning-light rounded-pill manage-restrictions-btn"
+                                                    data-type="section" data-id="{{ $section->id }}" data-title="{{ $section->title }}">
+                                                <i class="fe fe-lock"></i><span>قيود</span>
                                             </button>
-                                            <a href="{{ route('sections.questions.manage', $section->id) }}"
-                                               class="btn btn-sm btn-outline-success"
-                                               title="إدارة الأسئلة"
-                                               onclick="event.stopPropagation();">
-                                                <i class="fas fa-question-circle me-1"></i>الأسئلة
+                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-success-light rounded-pill" onclick="event.stopPropagation();">
+                                                <i class="fe fe-help-circle"></i><span>أسئلة</span>
                                             </a>
-                                            <a href="{{ route('courses.sections.edit', [$course->id, $section->id]) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-edit me-1"></i>تحرير
+                                            <a href="{{ route('courses.sections.edit', [$course->id, $section->id]) }}" class="btn btn-sm btn-primary-light rounded-pill">
+                                                <i class="fe fe-edit-2"></i><span>تحرير</span>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary section-visibility-btn"
+                                            <button type="button" class="btn btn-sm btn-secondary-light rounded-pill section-visibility-btn"
                                                     id="section-visibility-btn-{{ $section->id }}"
                                                     onclick="toggleVisibility('section', {{ $section->id }})">
-                                                <i class="far fa-eye{{ $section->is_visible ? '' : '-slash' }} me-1"></i>
-                                                {{ $section->is_visible ? 'إخفاء' : 'إظهار' }}
+                                                <i class="fe fe-eye{{ $section->is_visible ? '-off' : '' }}"></i>
+                                                <span>{{ $section->is_visible ? 'إخفاء' : 'إظهار' }}</span>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteSectionModal{{ $section->id }}"
-                                                    data-section-title="{{ $section->title }}">
-                                                <i class="fas fa-trash me-1"></i>حذف
+                                            <button type="button" class="btn btn-sm btn-danger-light rounded-pill"
+                                                    data-bs-toggle="modal" data-bs-target="#deleteSectionModal{{ $section->id }}">
+                                                <i class="fe fe-trash-2"></i><span>حذف</span>
                                             </button>
                                         </div>
                                         <form id="delete-section-{{ $section->id }}"
@@ -770,238 +746,20 @@
                                         </div>
                                     </div>
 
-                                    <!-- Activities List -->
+                                    <div class="admin-course-modules-list">
                                     @forelse($section->modules()->orderBy('sort_order')->get() as $module)
-                                        <div id="module-container-{{ $module->id }}" class="mb-3 border rounded" style="transition: all 0.3s ease;">
-                                            <div class="d-flex align-items-center justify-content-between p-3">
-                                                <div class="d-flex align-items-center flex-grow-1">
-                                                    <div class="form-check me-2 flex-shrink-0 align-self-center">
-                                                        <input type="checkbox" class="form-check-input js-module-bulk-check" value="{{ $module->id }}" id="module-bulk-check-{{ $module->id }}" data-section-id="{{ $section->id }}" title="تحديد للقيود الجماعية" aria-label="تحديد الوحدة">
-                                                    </div>
-                                                    <span class="avatar avatar-md me-3
-                                                        {{ $module->module_type == 'lesson' ? 'bg-primary-transparent text-primary' : '' }}
-                                                        {{ $module->module_type == 'video' ? 'bg-danger-transparent text-danger' : '' }}
-                                                        {{ $module->module_type == 'quiz' ? 'bg-success-transparent text-success' : '' }}
-                                                        {{ $module->module_type == 'assignment' ? 'bg-warning-transparent text-warning' : '' }}
-                                                        {{ $module->module_type == 'question_module' ? 'bg-info-transparent text-info' : '' }}">
-                                                        @if($module->module_type == 'lesson')
-                                                            <i class="fas fa-book-open"></i>
-                                                        @elseif($module->module_type == 'video')
-                                                            <i class="fas fa-play"></i>
-                                                        @elseif($module->module_type == 'quiz')
-                                                            <i class="fas fa-question-circle"></i>
-                                                        @elseif($module->module_type == 'assignment')
-                                                            <i class="fas fa-tasks"></i>
-                                                        @elseif($module->module_type == 'question_module')
-                                                            <i class="fas fa-clipboard-question"></i>
-                                                        @else
-                                                            <i class="fas fa-file"></i>
-                                                        @endif
-                                                    </span>
-                                                    <div>
-                                                        @php
-                                                            // أسماء المجموعات المرتبطة بقيود هذه الوحدة
-                                                            $groupNames = $module->accessRestrictions && $module->accessRestrictions->count() > 0
-                                                                ? $module->accessRestrictions
-                                                                    ->pluck('group.name')
-                                                                    ->filter()
-                                                                    ->unique()
-                                                                    ->values()
-                                                                : collect();
-                                                            $displayGroups = $groupNames->take(3);
-                                                            $moreCount = max($groupNames->count() - $displayGroups->count(), 0);
-                                                            $hasRestrictions = $module->accessRestrictions && $module->accessRestrictions->count() > 0;
-                                                            
-                                                            // التحقق من أن المورد هو رابط
-                                                            $isResourceUrl = false;
-                                                            if ($module->module_type == 'resource' && $module->modulable) {
-                                                                $isResourceUrl = $module->modulable->resource_source == 'url';
-                                                            }
-                                                        @endphp
-                                                        <h6 class="mb-1 fw-semibold text-dark d-flex align-items-center gap-2 flex-wrap flex-row-reverse justify-content-end">
-                                                            <span>{{ $module->title }}</span>
-                                                            @if($isResourceUrl)
-                                                                <i class="fas fa-link text-info" title="رابط خارجي"></i>
-                                                            @endif
-                                                            <span class="badge bg-secondary-transparent text-secondary">#{{ $loop->iteration }}</span>
-                                                        </h6>
-                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                            <span id="module-main-badge-{{ $module->id }}" class="badge bg-warning text-dark" style="display: {{ $hasRestrictions ? 'inline-block' : 'none' }};"
-                                                                  @if($hasRestrictions && $groupNames->isNotEmpty())
-                                                                      title="هذه الوحدة مقيدة على المجموعات: {{ $groupNames->implode('، ') }}"
-                                                                  @elseif($hasRestrictions)
-                                                                      title="هذه الوحدة لها قيود وصول"
-                                                                  @endif
-                                                            >
-                                                                <i class="fas fa-lock me-1"></i>قيود
-                                                            </span>
-                                                            <span id="module-groups-container-{{ $module->id }}">
-                                                                @if($hasRestrictions && $displayGroups->isNotEmpty())
-                                                                    @foreach($displayGroups as $index => $groupName)
-                                                                        <span class="badge bg-primary-transparent text-primary module-group-badge" data-module-id="{{ $module->id }}" data-group-name="{{ $groupName }}">
-                                                                            <i class="fas fa-users me-1"></i>{{ $groupName }}
-                                                                        </span>
-                                                                    @endforeach
-                                                                    @if($moreCount > 0)
-                                                                        <span class="badge bg-light text-muted" id="module-more-badge-{{ $module->id }}">
-                                                                            +{{ $moreCount }}
-                                                                        </span>
-                                                                    @endif
-                                                                @endif
-                                                            </span>
-                                                        </div>
-                                                        <small class="text-muted">
-                                                            <span class="badge bg-light text-default me-1">
-                                                                @if($module->module_type == 'lesson') درس
-                                                                @elseif($module->module_type == 'video') فيديو
-                                                                @elseif($module->module_type == 'quiz') اختبار
-                                                                @elseif($module->module_type == 'assignment') واجب
-                                                                @elseif($module->module_type == 'question_module') وحدة أسئلة
-                                                                @endif
-                                                            </span>
-                                                            @if($module->module_type == 'question_module' && $module->modulable)
-                                                                <span class="badge bg-info-transparent text-info badge-sm ms-1">
-                                                                    {{ $module->modulable->questions->count() }} سؤال
-                                                                </span>
-                                                                @if($module->modulable->getTotalGrade() > 0)
-                                                                    <span class="badge bg-success-transparent text-success badge-sm ms-1">
-                                                                        {{ $module->modulable->getTotalGrade() }} نقطة
-                                                                    </span>
-                                                                @endif
-                                                            @endif
-                                                            <span id="module-visibility-badge-{{ $module->id }}" class="badge badge-sm ms-1 {{ $module->is_visible ? 'bg-success text-white' : 'bg-secondary' }}">
-                                                                {{ $module->is_visible ? 'ظاهر' : 'مخفي' }}
-                                                            </span>
-                                                            @if($module->is_required)
-                                                                <i class="fas fa-asterisk text-danger ms-1" style="font-size: 8px;" title="مطلوب"></i>
-                                                            @endif
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-warning manage-restrictions-btn"
-                                                        data-type="module"
-                                                        data-id="{{ $module->id }}"
-                                                        data-title="{{ $module->title }}"
-                                                        title="إدارة القيود للمجموعات">
-                                                    <i class="fas fa-users-cog me-1"></i>قيود
-                                                </button>
-                                                <a href="{{ route('courses.modules.completions', ['course' => $course->id, 'module' => $module->id]) }}"
-                                                   class="btn btn-sm btn-outline-success"
-                                                   title="تقدم وإكمال الطلاب لهذه الوحدة">
-                                                    <i class="fas fa-user-check me-1"></i>تقدم الطلاب
-                                                </a>
-                                                @if($module->module_type == 'assignment' && $module->modulable_id)
-                                                    <a href="{{ route('assignments.show', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>معاينة
-                                                    </a>
-                                                @elseif($module->module_type == 'quiz' && $module->modulable_id)
-                                                    <a href="{{ route('quizzes.show', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>معاينة
-                                                    </a>
-                                                @elseif($module->module_type == 'question_module' && $module->modulable_id)
-                                                    <a href="{{ route('question-modules.show', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>معاينة
-                                                    </a>
-                                                @else
-                                                    <a href="{{ route('sections.modules.show', [$section->id, $module->id]) }}"
-                                                       class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-eye me-1"></i>معاينة
-                                                    </a>
-                                                @endif
-                                                @if($module->module_type == 'assignment' && $module->modulable_id)
-                                                    <a href="{{ route('assignments.edit', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit me-1"></i>تحرير
-                                                    </a>
-                                                @elseif($module->module_type == 'quiz' && $module->modulable_id)
-                                                    <a href="{{ route('quizzes.edit', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit me-1"></i>تحرير
-                                                    </a>
-                                                @elseif($module->module_type == 'question_module' && $module->modulable_id)
-                                                    <a href="{{ route('question-modules.manage-questions', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit me-1"></i>تحرير
-                                                    </a>
-                                                @elseif($module->module_type == 'video' && $module->modulable_id)
-                                                    {{-- زر تعديل الفيديو مباشرة --}}
-                                                    <a href="{{ route('videos.edit', $module->modulable_id) }}"
-                                                       class="btn btn-sm btn-outline-warning"
-                                                       title="تعديل الفيديو مباشرة">
-                                                        <i class="fas fa-video me-1"></i>تعديل الفيديو
-                                                    </a>
-                                                    {{-- زر تعديل الوحدة --}}
-                                                    <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit me-1"></i>تحرير الوحدة
-                                                    </a>
-                                                @else
-                                                    <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit me-1"></i>تحرير
-                                                    </a>
-                                                @endif
-                                                <button type="button" class="btn btn-sm btn-outline-secondary module-visibility-btn"
-                                                        id="module-visibility-btn-{{ $module->id }}"
-                                                        onclick="toggleVisibility('module', {{ $module->id }})">
-                                                    <i class="far fa-eye{{ $module->is_visible ? '' : '-slash' }} me-1"></i>
-                                                    {{ $module->is_visible ? 'إخفاء' : 'إظهار' }}
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger delete-module-btn"
-                                                        id="delete-module-btn-{{ $module->id }}"
-                                                        data-section-id="{{ $section->id }}"
-                                                        data-module-id="{{ $module->id }}"
-                                                        data-module-title="{{ $module->title }}">
-                                                    <i class="fas fa-trash me-1"></i>حذف
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        @if($module->module_type == 'question_module' && $module->modulable && $module->modulable->questions->count() > 0)
-                                            <!-- Questions List for Question Module -->
-                                            <div class="border-top bg-light p-3">
-                                                <h6 class="mb-3 text-muted">
-                                                    <i class="fas fa-list me-2"></i>الأسئلة ({{ $module->modulable->questions->count() }})
-                                                </h6>
-                                                <div class="list-group">
-                                                    @foreach($module->modulable->questions as $index => $question)
-                                                        <div class="list-group-item d-flex justify-content-between align-items-start py-2 px-3">
-                                                            <div class="flex-grow-1">
-                                                                <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                                                <span class="text-dark">
-                                                                    {!! Str::limit(strip_tags($question->question_text), 80) !!}
-                                                                </span>
-                                                            </div>
-                                                            <div class="text-end" style="min-width: 150px;">
-                                                                <span class="badge bg-info-transparent text-info me-1">
-                                                                    {{ $question->questionType->display_name }}
-                                                                </span>
-                                                                <span class="badge bg-success-transparent text-success">
-                                                                    {{ $question->pivot->question_grade }} نقطة
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                        <form id="delete-form-{{ $module->id }}"
-                                              action="{{ route('sections.modules.destroy', [$section->id, $module->id]) }}"
-                                              method="POST" class="d-none">
-                                            @csrf
-                                            @method('DELETE')
-                                        </form>
+                                        @include('admin.pages.courses.partials.module-card', [
+                                            'module' => $module,
+                                            'section' => $section,
+                                            'course' => $course,
+                                        ])
                                     @empty
-                                        <div class="text-center text-muted py-3">
-                                            <i class="fas fa-inbox fs-3 mb-2 opacity-25"></i>
-                                            <p class="mb-0">لا توجد دروس في هذا القسم</p>
+                                        <div class="group-show-empty py-4">
+                                            <i class="fe fe-inbox group-show-empty__icon" style="width:52px;height:52px;font-size:1.25rem;"></i>
+                                            <p class="group-show-empty__desc mb-0">لا توجد دروس في هذا القسم</p>
                                         </div>
                                     @endforelse
+                                    </div>
 
                                     <!-- Section Questions -->
                                     @if($section->questions->count() > 0)
@@ -1053,17 +811,13 @@
                             </div>
                         </div>
                     @empty
-                        <div class="card custom-card">
-                            <div class="card-body">
-                                <div class="empty-state">
-                                    <i class="fas fa-folder-open fa-5x mb-4 opacity-25"></i>
-                                    <h5 class="mb-3">لا توجد أقسام في هذا الكورس</h5>
-                                    <p class="text-muted mb-4">ابدأ ببناء محتوى الكورس بإضافة الأقسام والدروس</p>
-                                    <a href="{{ route('courses.sections.create', $course->id) }}" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-plus me-2"></i>إضافة أول قسم
-                                    </a>
-                                </div>
-                            </div>
+                        <div class="group-show-empty py-5">
+                            <i class="fe fe-folder group-show-empty__icon" style="width:64px;height:64px;font-size:1.5rem;"></i>
+                            <h5 class="group-show-empty__title">لا توجد أقسام في هذا الكورس</h5>
+                            <p class="group-show-empty__desc mb-3">ابدأ ببناء محتوى الكورس بإضافة الأقسام والدروس</p>
+                            <a href="{{ route('courses.sections.create', $course->id) }}" class="btn btn-primary btn-sm rounded-pill">
+                                <i class="fe fe-plus me-1"></i>إضافة أول قسم
+                            </a>
                         </div>
                     @endforelse
                     </div>
@@ -1073,48 +827,47 @@
 
                 <!-- Enrollments Tab -->
                 <div class="tab-pane fade" id="enrollments" role="tabpanel">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">الطلاب المسجلين ({{ $stats['total_enrollments'] ?? 0 }})</h6>
-                            <a href="{{ route('courses.enrollments.index', $course->id) }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-users me-2"></i>إدارة التسجيلات
+                    <div class="admin-course-show-page__panel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div>
+                                <h6 class="group-show-members-card__title mb-1">الطلاب المسجلين</h6>
+                                <p class="text-muted fs-12 mb-0">{{ $stats['total_enrollments'] ?? 0 }} طالب مسجّل في هذا الكورس</p>
+                            </div>
+                            <a href="{{ route('courses.enrollments.index', $course->id) }}" class="btn btn-primary btn-sm rounded-pill">
+                                <i class="fe fe-users me-1"></i>إدارة التسجيلات
                             </a>
                         </div>
-                        <div class="card-body">
-                            @if(($stats['total_enrollments'] ?? 0) > 0)
-                                <p class="text-muted">عرض وإدارة الطلاب المسجلين في الكورس</p>
-                                <div class="d-flex gap-2 flex-wrap">
-                                    <a href="{{ route('courses.enrollments.create', $course->id) }}" class="btn btn-outline-primary">
-                                        <i class="fas fa-user-plus me-2"></i>تسجيل طالب
-                                    </a>
-                                    <a href="{{ route('courses.enrollments.bulk', $course->id) }}" class="btn btn-outline-success">
-                                        <i class="fas fa-file-excel me-2"></i>تسجيل جماعي
-                                    </a>
-                                    <a href="{{ route('courses.enrollments.progress-report', $course->id) }}" class="btn btn-outline-info">
-                                        <i class="fas fa-chart-line me-2"></i>تقرير التقدم
-                                    </a>
-                                </div>
-                            @else
-                                <div class="text-center py-4">
-                                    <i class="fas fa-users fa-3x mb-3 text-muted opacity-25"></i>
-                                    <p class="text-muted">لا يوجد طلاب مسجلين في هذا الكورس حتى الآن</p>
-                                    <a href="{{ route('courses.enrollments.create', $course->id) }}" class="btn btn-primary">
-                                        <i class="fas fa-user-plus me-2"></i>تسجيل أول طالب
-                                    </a>
-                                </div>
-                            @endif
-                        </div>
+                        @if(($stats['total_enrollments'] ?? 0) > 0)
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{{ route('courses.enrollments.create', $course->id) }}" class="btn btn-outline-primary btn-sm rounded-pill">
+                                    <i class="fe fe-user-plus me-1"></i>تسجيل طالب
+                                </a>
+                                <a href="{{ route('courses.enrollments.bulk', $course->id) }}" class="btn btn-outline-success btn-sm rounded-pill">
+                                    <i class="fe fe-upload me-1"></i>تسجيل جماعي
+                                </a>
+                                <a href="{{ route('courses.enrollments.progress-report', $course->id) }}" class="btn btn-outline-info btn-sm rounded-pill">
+                                    <i class="fe fe-trending-up me-1"></i>تقرير التقدم
+                                </a>
+                            </div>
+                        @else
+                            <div class="group-show-empty py-4">
+                                <i class="fe fe-users group-show-empty__icon" style="width:56px;height:56px;font-size:1.35rem;"></i>
+                                <h5 class="group-show-empty__title">لا يوجد طلاب مسجّلون</h5>
+                                <p class="group-show-empty__desc mb-3">ابدأ بتسجيل الطلاب في هذا الكورس</p>
+                                <a href="{{ route('courses.enrollments.create', $course->id) }}" class="btn btn-primary btn-sm rounded-pill">
+                                    <i class="fe fe-user-plus me-1"></i>تسجيل أول طالب
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 <!-- Settings Tab -->
                 <div class="tab-pane fade" id="settings" role="tabpanel">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <h6 class="mb-0">معلومات الكورس</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-borderless">
+                    <div class="admin-course-show-page__panel">
+                        <h6 class="group-show-members-card__title mb-3">معلومات الكورس</h6>
+                        <div class="table-responsive">
+                            <table class="table table-borderless admin-course-show-page__info-table mb-0">
                                 <tr>
                                     <th width="200">الكود:</th>
                                     <td>{{ $course->slug }}</td>
@@ -1123,7 +876,7 @@
                                     <th>المستوى:</th>
                                     <td>
                                         @if($course->level)
-                                            <span class="badge bg-{{ $course->level == 'beginner' ? 'success' : ($course->level == 'intermediate' ? 'info' : 'danger') }}">
+                                            <span class="group-show-chip group-show-chip--sm {{ $course->level == 'beginner' ? 'text-success' : ($course->level == 'intermediate' ? 'text-info' : 'text-danger') }}">
                                                 {{ $course->level == 'beginner' ? 'مبتدئ' : ($course->level == 'intermediate' ? 'متوسط' : 'متقدم') }}
                                             </span>
                                         @else
@@ -1174,6 +927,22 @@
 
 @section('script')
 <script>
+    document.querySelectorAll('.admin-course-show-page [data-countup]').forEach(function (el) {
+        var target = parseFloat(el.dataset.countup || '0');
+        if (!target) {
+            el.textContent = '0';
+            return;
+        }
+        var duration = 700;
+        var start = performance.now();
+        function tick(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            el.textContent = Math.floor(progress * target).toLocaleString('ar-EG');
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    });
+
     // Toggle Visibility
     function toggleVisibility(type, id) {
         let url;
@@ -1228,28 +997,26 @@
                 
                 // Update UI directly without reload
                 if (type === 'course') {
-                    // Update course visibility badge and button
                     const badge = document.getElementById('course-visibility-badge');
                     const button = document.getElementById('course-toggle-visibility-btn');
                     if (badge && button) {
                         if (data.is_visible) {
-                            badge.className = 'badge bg-info-transparent px-3 py-2';
-                            badge.innerHTML = '<i class="far fa-eye me-1"></i>مرئي';
-                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                            badge.className = 'group-show-chip group-show-chip--sm text-info';
+                            badge.innerHTML = '<i class="fe fe-eye me-1"></i>مرئي';
+                            button.innerHTML = '<span class="group-show-action__icon"><i class="fe fe-eye"></i></span><span class="group-show-action__text">إخفاء الكورس</span>';
                         } else {
-                            badge.className = 'badge bg-secondary-transparent px-3 py-2';
-                            badge.innerHTML = '<i class="far fa-eye-slash me-1"></i>مخفي';
-                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                            badge.className = 'group-show-chip group-show-chip--sm text-muted';
+                            badge.innerHTML = '<i class="fe fe-eye-off me-1"></i>مخفي';
+                            button.innerHTML = '<span class="group-show-action__icon"><i class="fe fe-eye-off"></i></span><span class="group-show-action__text">إظهار الكورس</span>';
                         }
                     }
                 } else if (type === 'section') {
-                    // Update section visibility button
                     const button = document.getElementById(`section-visibility-btn-${id}`);
                     if (button) {
                         if (data.is_visible) {
-                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                            button.innerHTML = '<i class="fe fe-eye-off"></i><span>إخفاء</span>';
                         } else {
-                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                            button.innerHTML = '<i class="fe fe-eye"></i><span>إظهار</span>';
                         }
                     }
                 } else if (type === 'module') {
@@ -1257,20 +1024,19 @@
                     const button = document.getElementById(`module-visibility-btn-${id}`);
                     if (button) {
                         if (data.is_visible) {
-                            button.innerHTML = '<i class="far fa-eye me-1"></i>إخفاء';
+                            button.innerHTML = '<i class="fe fe-eye-off"></i><span class="admin-course-module-card__action-text">إخفاء</span>';
                         } else {
-                            button.innerHTML = '<i class="far fa-eye-slash me-1"></i>إظهار';
+                            button.innerHTML = '<i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">إظهار</span>';
                         }
                     }
-                    // Update module visibility badge
                     const badge = document.getElementById(`module-visibility-badge-${id}`);
                     if (badge) {
                         if (data.is_visible) {
-                            badge.className = 'badge badge-sm ms-1 bg-success text-white';
-                            badge.textContent = 'ظاهر';
+                            badge.className = 'group-show-chip group-show-chip--sm text-success';
+                            badge.innerHTML = '<i class="fe fe-eye me-1"></i>ظاهر';
                         } else {
-                            badge.className = 'badge badge-sm ms-1 bg-secondary';
-                            badge.textContent = 'مخفي';
+                            badge.className = 'group-show-chip group-show-chip--sm text-muted';
+                            badge.innerHTML = '<i class="fe fe-eye-off me-1"></i>مخفي';
                         }
                     }
                 }
@@ -1779,19 +1545,18 @@
 
                 displayGroups.forEach(group => {
                     const groupBadge = document.createElement('span');
-                    groupBadge.className = 'badge bg-primary-transparent text-primary ms-1 module-group-badge';
+                    groupBadge.className = 'group-show-chip group-show-chip--sm module-group-badge';
                     groupBadge.setAttribute('data-module-id', id);
                     groupBadge.setAttribute('data-group-name', group.name);
-                    groupBadge.innerHTML = `<i class="fas fa-users me-1"></i>${group.name}`;
+                    groupBadge.innerHTML = `<i class="fe fe-users me-1"></i>${group.name}`;
                     groupsContainer.appendChild(groupBadge);
                 });
 
-                // Show "more" badge if there are more than 3 groups
                 if (remainingCount > 0) {
                     if (!moreBadge) {
                         const moreBadgeEl = document.createElement('span');
                         moreBadgeEl.id = `module-more-badge-${id}`;
-                        moreBadgeEl.className = 'badge bg-light text-muted ms-1';
+                        moreBadgeEl.className = 'group-show-chip group-show-chip--sm text-muted';
                         moreBadgeEl.title = 'مجموعات أخرى لها نفس القيود';
                         moreBadgeEl.textContent = `+${remainingCount}`;
                         groupsContainer.appendChild(moreBadgeEl);

@@ -8,127 +8,84 @@
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('admin.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إدارة الكورسات</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                            <li class="breadcrumb-item active">الكورسات</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('courses.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>إضافة كورس جديد
-                    </a>
-                </div>
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">الكورسات</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-primary-transparent">
-                                        <i class="fas fa-graduation-cap fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">إجمالي الكورسات</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">{{ $totalCourses }}</h4>
-                                    <span class="badge bg-primary-transparent">في جميع التصنيفات</span>
-                                </div>
-                            </div>
-                        </div>
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-book-open me-1"></i>
+                            إدارة المحتوى التعليمي
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">قائمة الكورسات</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            إدارة الكورسات، التصنيفات، النشر، والتسجيلات من لوحة واحدة منظّمة.
+                        </p>
                     </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-success-transparent">
-                                        <i class="fas fa-check-circle fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">كورسات منشورة</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">{{ $publishedCourses }}</h4>
-                                    <span class="badge bg-success-transparent">نشطة حالياً</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-info-transparent">
-                                        <i class="fas fa-users fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">إجمالي التسجيلات</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">{{ $totalEnrollments }}</h4>
-                                    <span class="badge bg-info-transparent">طالب مسجل</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-3 col-lg-6 col-md-6">
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-top">
-                                <div class="me-3">
-                                    <span class="avatar avatar-md bg-warning-transparent">
-                                        <i class="fas fa-fire fs-18"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-fill">
-                                    <div class="d-flex justify-content-between">
-                                        <p class="fw-semibold mb-1">كورسات نشطة</p>
-                                    </div>
-                                    <h4 class="fw-bold mb-2">{{ $activeCourses }}</h4>
-                                    <span class="badge bg-warning-transparent">يتم التدريس</span>
-                                </div>
-                            </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions group-show-actions--single">
+                            <a href="{{ route('courses.create') }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إضافة كورس جديد</span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('courses.index') }}">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">البحث</label>
-                                <input type="text" name="search" class="form-control"
+            @php
+                $kpiCards = [
+                    ['variant' => 'blue', 'icon' => 'fe-book-open', 'label' => 'إجمالي الكورسات', 'value' => $totalCourses, 'sub' => 'في جميع التصنيفات'],
+                    ['variant' => 'green', 'icon' => 'fe-check-circle', 'label' => 'كورسات منشورة', 'value' => $publishedCourses, 'sub' => 'نشطة حالياً'],
+                    ['variant' => 'cyan', 'icon' => 'fe-users', 'label' => 'إجمالي التسجيلات', 'value' => $totalEnrollments, 'sub' => 'طالب مسجّل'],
+                    ['variant' => 'orange', 'icon' => 'fe-zap', 'label' => 'كورسات نشطة', 'value' => $activeCourses, 'sub' => 'منشورة ومرئية'],
+                ];
+            @endphp
+
+            <div class="row g-3 dashboard-fade-in mb-4">
+                @foreach ($kpiCards as $index => $card)
+                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+                        <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <div class="admin-stats-card__icon-wrap">
+                                    <i class="fe {{ $card['icon'] }} admin-stats-card__icon"></i>
+                                </div>
+                                <div class="admin-stats-card__content flex-fill min-w-0">
+                                    <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
+                                    <h3 class="admin-stats-card__value mb-1" data-countup="{{ $card['value'] }}">0</h3>
+                                    <p class="admin-stats-card__sub mb-0">{{ $card['sub'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية الكورسات</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو الكود، أو فلتر حسب التصنيف والمستوى والحالة.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form method="GET" action="{{ route('courses.index') }}" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="coursesSearchInput">البحث</label>
+                                <input type="text" name="search" id="coursesSearchInput" class="form-control"
                                        value="{{ request('search') }}" placeholder="ابحث عن كورس...">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">التصنيف</label>
-                                <select name="category_id" class="form-select">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="coursesCategory">التصنيف</label>
+                                <select name="category_id" id="coursesCategory" class="form-select">
                                     <option value="">جميع التصنيفات</option>
                                     @foreach($categories as $cat)
                                         <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
@@ -137,31 +94,30 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">المستوى</label>
-                                <select name="level" class="form-select">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="coursesLevel">المستوى</label>
+                                <select name="level" id="coursesLevel" class="form-select">
                                     <option value="">جميع المستويات</option>
                                     <option value="beginner" {{ request('level') == 'beginner' ? 'selected' : '' }}>مبتدئ</option>
                                     <option value="intermediate" {{ request('level') == 'intermediate' ? 'selected' : '' }}>متوسط</option>
                                     <option value="advanced" {{ request('level') == 'advanced' ? 'selected' : '' }}>متقدم</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">الحالة</label>
-                                <select name="status" class="form-select">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="coursesStatus">الحالة</label>
+                                <select name="status" id="coursesStatus" class="form-select">
                                     <option value="">جميع الحالات</option>
                                     <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>منشور</option>
                                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>مسودة</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-search me-1"></i>بحث
+                            <div class="col-xl-3 col-lg-12">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fe fe-search me-1"></i>بحث
                                     </button>
-                                    <a href="{{ route('courses.index') }}" class="btn btn-secondary">
-                                        <i class="fas fa-redo me-1"></i>إعادة تعيين
+                                    <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
                                     </a>
                                 </div>
                             </div>
@@ -170,188 +126,36 @@
                 </div>
             </div>
 
-            <!-- Courses Table -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">قائمة الكورسات</div>
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة الكورسات
+                        <span class="group-show-members-card__count">{{ $courses->total() }}</span>
+                    </h6>
                 </div>
-                <div class="card-body">
-                    @if($courses->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>الكورس</th>
-                                        <th>التصنيف</th>
-                                        <th>المستوى</th>
-                                        <th>المدرب</th>
-                                        <th>الدروس</th>
-                                        <th>الطلاب</th>
-                                        <th>السعر</th>
-                                        <th>الحالة</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($courses as $course)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    @if($course->image)
-                                                        @php
-                                                            // Use course_image_url() helper for dynamic storage support
-                                                            $imageUrl = course_image_url($course->image);
-                                                        @endphp
-                                                        <img src="{{ $imageUrl }}"
-                                                             alt="{{ $course->title }}"
-                                                             class="avatar avatar-md rounded me-2"
-                                                             style="object-fit: cover;"
-                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                    @else
-                                                        <span class="avatar avatar-md bg-primary-transparent me-2">
-                                                            <i class="fas fa-graduation-cap"></i>
-                                                        </span>
-                                                    @endif
-                                                    <div>
-                                                        <a href="{{ route('courses.show', $course->id) }}"
-                                                           class="fw-semibold text-primary">
-                                                            {{ Str::limit($course->title, 40) }}
-                                                        </a>
-                                                        @if($course->code)
-                                                            <small class="d-block text-muted">{{ $course->code }}</small>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @if($course->category)
-                                                    <span class="badge" style="background-color: {{ $course->category->color }}">
-                                                        {{ $course->category->name }}
-                                                    </span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($course->level == 'beginner')
-                                                    <span class="badge bg-success">مبتدئ</span>
-                                                @elseif($course->level == 'intermediate')
-                                                    <span class="badge bg-info">متوسط</span>
-                                                @elseif($course->level == 'advanced')
-                                                    <span class="badge bg-danger">متقدم</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($course->instructor)
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="avatar avatar-xs me-2">
-                                                            {{ substr($course->instructor->name, 0, 1) }}
-                                                        </span>
-                                                        {{ $course->instructor->name }}
-                                                    </div>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-primary-transparent">
-                                                    <i class="fas fa-book me-1"></i>{{ $course->modules_count ?? 0 }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-success-transparent">
-                                                    <i class="fas fa-user me-1"></i>{{ $course->enrollments_count ?? 0 }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if($course->price > 0)
-                                                    <strong class="text-primary">${{ number_format($course->price, 2) }}</strong>
-                                                @else
-                                                    <strong class="text-success">مجاني</strong>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($course->is_published)
-                                                    <span class="badge bg-success">منشور</span>
-                                                @else
-                                                    <span class="badge bg-warning">مسودة</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <a href="{{ route('courses.show', $course->id) }}"
-                                                       class="btn btn-sm btn-info" title="عرض">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('courses.edit', $course->id) }}"
-                                                       class="btn btn-sm btn-primary" title="تعديل">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="{{ route('courses.enrollments.index', $course->id) }}"
-                                                       class="btn btn-sm btn-success" title="التسجيلات">
-                                                        <i class="fas fa-users"></i>
-                                                    </a>
-                                                    <button type="button"
-                                                            class="btn btn-sm btn-{{ $course->is_published ? 'warning' : 'success' }}"
-                                                            onclick="togglePublish({{ $course->id }}, '{{ e(Str::limit($course->title, 40)) }}', {{ $course->is_published ? 'true' : 'false' }})"
-                                                            title="{{ $course->is_published ? 'إلغاء النشر' : 'نشر' }}">
-                                                        <i class="fas fa-{{ $course->is_published ? 'eye-slash' : 'paper-plane' }}"></i>
-                                                    </button>
-                                                    <form action="{{ route('courses.destroy', $course->id) }}"
-                                                          method="POST"
-                                                          class="d-inline course-delete-form"
-                                                          data-course-title="{{ $course->title }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="button" class="btn btn-sm btn-danger btn-delete-course" title="حذف">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mt-3">
-                            {{ $courses->appends(request()->query())->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">لا توجد كورسات</p>
-                        </div>
-                    @endif
+                <div class="card-body pt-3">
+                    @include('admin.pages.courses._courses_table', ['courses' => $courses])
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- Toggle Publish Confirmation Modal -->
     <div class="modal fade" id="publishCourseModal" tabindex="-1" aria-labelledby="publishCourseModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0">
                 <div class="modal-body text-center p-5">
                     <div class="mb-4">
                         <span class="avatar avatar-xl bg-primary-transparent text-primary rounded-circle">
-                            <i class="fas fa-bullhorn fa-2x"></i>
+                            <i class="fe fe-send" style="font-size:1.75rem;"></i>
                         </span>
                     </div>
                     <h5 id="publishCourseModalLabel" class="mb-2">تغيير حالة نشر الكورس</h5>
-                    <p class="text-muted mb-4" id="publish-course-message">
-                        <!-- سيتم تعبئتها عبر الجافاسكربت -->
-                    </p>
+                    <p class="text-muted mb-4" id="publish-course-message"></p>
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
-                            إلغاء
-                        </button>
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">إلغاء</button>
                         <button type="button" class="btn btn-primary px-4" id="confirm-toggle-publish">
-                            <i class="fas fa-check me-1"></i> تأكيد
+                            <i class="fe fe-check me-1"></i>تأكيد
                         </button>
                     </div>
                 </div>
@@ -359,14 +163,13 @@
         </div>
     </div>
 
-    <!-- Delete Course Confirmation Modal -->
     <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0">
                 <div class="modal-body text-center p-5">
                     <div class="mb-4">
                         <span class="avatar avatar-xl bg-danger-transparent text-danger rounded-circle">
-                            <i class="fas fa-trash-alt fa-2x"></i>
+                            <i class="fe fe-trash-2" style="font-size:1.75rem;"></i>
                         </span>
                     </div>
                     <h5 id="deleteCourseModalLabel" class="mb-2">تأكيد حذف الكورس</h5>
@@ -377,11 +180,9 @@
                         سيتم حذف جميع البيانات المرتبطة بهذا الكورس ولا يمكن التراجع عن هذه العملية.
                     </p>
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
-                            إلغاء
-                        </button>
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">إلغاء</button>
                         <button type="button" class="btn btn-danger px-4" id="confirm-delete-course">
-                            <i class="fas fa-trash me-1"></i> حذف نهائياً
+                            <i class="fe fe-trash-2 me-1"></i>حذف نهائياً
                         </button>
                     </div>
                 </div>
@@ -390,9 +191,24 @@
     </div>
 @stop
 
-@section('script')
+@section('scripts')
 <script>
-    // Toggle Publish Status (with modal)
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        var target = parseFloat(el.dataset.countup || '0');
+        if (!target) {
+            el.textContent = '0';
+            return;
+        }
+        var duration = 700;
+        var start = performance.now();
+        function tick(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            el.textContent = Math.floor(progress * target).toLocaleString('ar-EG');
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    });
+
     let toggleCourseId = null;
     let toggleCourseIsPublished = false;
 
@@ -405,27 +221,17 @@
 
         const messageEl = document.getElementById('publish-course-message');
         const actionText = toggleCourseIsPublished ? 'إلغاء نشر' : 'نشر';
-        const statusText = toggleCourseIsPublished ? 'سيتم إخفاء هذا الكورس من قائمة الكورسات للطلاب.' : 'سيصبح هذا الكورس متاحاً للطلاب حسب إعدادات التسجيل.';
+        const statusText = toggleCourseIsPublished
+            ? 'سيتم إخفاء هذا الكورس من قائمة الكورسات للطلاب.'
+            : 'سيصبح هذا الكورس متاحاً للطلاب حسب إعدادات التسجيل.';
 
         if (messageEl) {
-            messageEl.innerHTML = `
-                هل تريد <strong>${actionText}</strong> الكورس
-                <strong>${courseTitle}</strong>؟
-                <br>
-                ${statusText}
-            `;
+            messageEl.innerHTML = 'هل تريد <strong>' + actionText + '</strong> الكورس <strong>' + courseTitle + '</strong>؟<br>' + statusText;
         }
 
-        const publishModal = new bootstrap.Modal(modalElement);
-        publishModal.show();
+        new bootstrap.Modal(modalElement).show();
     }
 
-    // Fade out alerts
-    setTimeout(function() {
-        $('.alert').fadeOut('slow');
-    }, 5000);
-
-    // Fancy delete confirmation for courses
     (function () {
         let deleteForm = null;
         const modalElement = document.getElementById('deleteCourseModal');
@@ -445,9 +251,8 @@
             deleteForm = btn.closest('form.course-delete-form');
             if (!deleteForm) return;
 
-            const courseTitle = deleteForm.getAttribute('data-course-title') || '';
             if (titleSpan) {
-                titleSpan.textContent = courseTitle;
+                titleSpan.textContent = deleteForm.getAttribute('data-course-title') || '';
             }
 
             deleteModal.show();
@@ -455,25 +260,23 @@
 
         if (confirmBtn) {
             confirmBtn.addEventListener('click', function () {
-                if (deleteForm) {
-                    deleteForm.submit();
-                }
+                if (deleteForm) deleteForm.submit();
             });
         }
     })();
 
-    // Handle confirm toggle publish
     (function () {
         const confirmBtn = document.getElementById('confirm-toggle-publish');
         const modalElement = document.getElementById('publishCourseModal');
         if (!confirmBtn || !modalElement) return;
 
-        const publishModal = new bootstrap.Modal(modalElement);
+        const publishModal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
 
         confirmBtn.addEventListener('click', function () {
             if (!toggleCourseId) return;
 
-            const togglePublishUrl = '{{ route("courses.toggle-publish", 0) }}'.replace('/0/toggle-publish', `/${toggleCourseId}/toggle-publish`);
+            const togglePublishUrl = '{{ route("courses.toggle-publish", 0) }}'.replace('/0/toggle-publish', '/' + toggleCourseId + '/toggle-publish');
+
             fetch(togglePublishUrl, {
                 method: 'POST',
                 headers: {
@@ -483,35 +286,29 @@
                     'Content-Type': 'application/json',
                 }
             })
-            .then(async response => {
-                // Check if response is JSON
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.message || 'حدث خطأ في الخادم');
+                .then(async function (response) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.message || 'حدث خطأ في الخادم');
+                        return data;
                     }
-                    return data;
-                } else {
-                    // If not JSON, it's a redirect - reload the page
                     location.reload();
                     return null;
-                }
-            })
-            .then(data => {
-                if (data) {
+                })
+                .then(function (data) {
+                    if (!data) return;
                     if (data.success) {
                         publishModal.hide();
                         location.reload();
                     } else {
                         alert(data.message || 'حدث خطأ');
                     }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('حدث خطأ في الاتصال: ' + error.message);
-            });
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    alert('حدث خطأ في الاتصال: ' + error.message);
+                });
         });
     })();
 </script>

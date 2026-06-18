@@ -5,6 +5,7 @@
 <link rel="preload" href="{{ asset('assets/libs/bootstrap/css/bootstrap.min.css') }}" as="style">
 <link rel="preload" href="{{ asset('assets/libs/bootstrap/css/bootstrap.rtl.min.css') }}" as="style">
 <link rel="preload" href="{{ asset('assets/css/styles.min.css') }}" as="style">
+<link rel="preload" href="{{ asset('assets/css/custom.css') }}?v={{ @filemtime(public_path('assets/css/custom.css')) ?: '1' }}" as="style">
 
 <!-- Bootstrap Css -->
 <link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -36,6 +37,7 @@
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}?v={{ @filemtime(public_path('assets/css/custom.css')) ?: '1' }}">
 
 @yield('styles')
+@yield('css')
 
 <!-- Toastr CSS (after theme styles to prevent override) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
@@ -43,33 +45,53 @@
 <!-- Toastr JS (defer for non-critical) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js" defer></script>
 
-<!-- Inline script to show page after CSS loads -->
+<!-- Wait for all stylesheets before revealing the page (prevents FOUC) -->
 <script>
-    // Hide page until CSS is loaded (handled by inline CSS in master.blade.php)
-    // This script ensures page shows even if CSS loads slowly
-    (function() {
-        // Check if CSS is loaded by testing a computed style
-        function checkCSSLoaded() {
-            const testEl = document.createElement('div');
-            testEl.className = 'd-none';
-            document.body.appendChild(testEl);
-            const isLoaded = window.getComputedStyle(testEl).display === 'none';
-            document.body.removeChild(testEl);
-            return isLoaded;
-        }
-        
-        // Try to show page after a short delay
-        setTimeout(function() {
-            if (checkCSSLoaded() || document.readyState === 'complete') {
-                document.documentElement.classList.add('loaded');
+    (function () {
+        var revealed = false;
+
+        function reveal() {
+            if (revealed) {
+                return;
             }
-        }, 200);
-        
-        // Fallback: show page after DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                document.documentElement.classList.add('loaded');
-            }, 100);
+            revealed = true;
+            document.documentElement.classList.add('loaded');
+        }
+
+        var links = document.querySelectorAll('link[rel="stylesheet"]');
+        if (!links.length) {
+            reveal();
+            return;
+        }
+
+        var pending = 0;
+
+        links.forEach(function (link) {
+            if (link.sheet) {
+                return;
+            }
+
+            pending++;
+            link.addEventListener('load', function () {
+                if (--pending <= 0) {
+                    reveal();
+                }
+            });
+            link.addEventListener('error', function () {
+                if (--pending <= 0) {
+                    reveal();
+                }
+            });
         });
+
+        if (pending === 0) {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(reveal);
+            });
+            return;
+        }
+
+        window.addEventListener('load', reveal);
+        setTimeout(reveal, 5000);
     })();
 </script>
