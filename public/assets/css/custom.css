@@ -4587,6 +4587,133 @@ button.admin-course-content-chip {
     text-decoration: underline;
 }
 
+/* ── Admin course form (create / edit) ── */
+.admin-course-form-page__icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    font-size: 1.35rem;
+}
+
+.admin-course-form-page__sidebar {
+    position: sticky;
+    top: 5.5rem;
+}
+
+.admin-course-form-page__actions {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--default-border, #eef1f6);
+}
+
+.admin-course-form-page__thumbnail {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    border: 2px dashed rgba(var(--primary-rgb), 0.25);
+    background: rgba(var(--primary-rgb), 0.03);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-course-form-page__thumbnail:hover {
+    border-color: rgba(var(--primary-rgb), 0.45);
+    background: rgba(var(--primary-rgb), 0.06);
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.08);
+}
+
+.admin-course-form-page__thumbnail.is-dragover {
+    border-color: rgb(var(--primary-rgb));
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.admin-course-form-page__thumbnail-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-course-form-page__thumbnail-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.admin-course-form-page__thumbnail-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.admin-course-form-page__thumbnail-placeholder i {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    font-size: 1.35rem;
+}
+
+.admin-course-form-page__thumbnail-placeholder span {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.admin-course-form-page__thumbnail-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.admin-course-form-page__enrollment-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    background: rgba(var(--bs-info-rgb), 0.06);
+    border: 1px solid rgba(var(--bs-info-rgb), 0.15);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.admin-course-form-page__enrollment-note i {
+    color: rgb(var(--bs-info-rgb));
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 991px) {
+    .admin-course-form-page__sidebar {
+        position: static;
+    }
+}
+
 /* ── Admin email settings page ── */
 .admin-email-settings-page .admin-stats-card__value--text {
     font-size: 1rem;
