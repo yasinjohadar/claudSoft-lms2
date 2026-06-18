@@ -38,9 +38,16 @@ class EmailTemplateController extends Controller
             });
         }
 
-        $templates = $query->orderBy('created_at', 'desc')->paginate(15);
+        $templates = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
-        return view('admin.email-templates.index', compact('templates'));
+        $stats = [
+            'total' => EmailTemplate::count(),
+            'active' => EmailTemplate::where('is_active', true)->count(),
+            'inactive' => EmailTemplate::where('is_active', false)->count(),
+            'registration_welcome' => EmailTemplate::where('type', 'registration_welcome')->count(),
+        ];
+
+        return view('admin.email-templates.index', compact('templates', 'stats'));
     }
 
     /**

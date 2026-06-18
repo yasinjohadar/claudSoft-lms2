@@ -7432,3 +7432,72 @@ button.admin-course-content-chip {
     vertical-align: middle;
 }
 
+/* Email templates admin page */
+.admin-email-templates-page .group-show-actions {
+    justify-content: flex-end;
+}
+
+.admin-email-templates-page__table th {
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.admin-email-templates-page__actions .btn {
+    white-space: nowrap;
+}
+
+.admin-email-templates-page__variables-card {
+    border-radius: 0.85rem;
+}
+
+.admin-email-templates-page__form-actions .btn {
+    min-width: 140px;
+}
+
+.admin-email-templates-page__preview-subject {
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    background: rgba(var(--primary-rgb), 0.08);
+    border: 1px solid rgba(var(--primary-rgb), 0.12);
+    font-weight: 600;
+}
+
+.admin-email-templates-page__preview-body {
+    padding: 1.25rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--default-border, #eef1f6);
+    background: var(--custom-white, #fff);
+    min-height: 200px;
+    direction: rtl;
+    text-align: right;
+}
+
+[data-theme-mode="dark"] .admin-email-templates-page__preview-body {
+    background: var(--custom-white);
+}
+
+.admin-email-templates-page__test-data li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--default-border, #eef1f6);
+    font-size: 0.875rem;
+}
+
+.admin-email-templates-page__test-data li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+@media (max-width: 576px) {
+    .admin-email-templates-page__form-actions .btn {
+        width: 100%;
+    }
+
+    .admin-email-templates-page__actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
