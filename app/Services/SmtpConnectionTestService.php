@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\EmailSetting;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
-use Symfony\Component\Mailer\Transport\Dsn;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
-use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransportFactory;
 use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
 
 class SmtpConnectionTestService
@@ -20,7 +19,7 @@ class SmtpConnectionTestService
     {
         $host = trim($config['host'] ?? '');
         $port = (int) ($config['port'] ?? 0);
-        $encryption = strtolower($config['encryption'] ?? 'tls');
+        $encryption = EmailSetting::normalizeEncryption($port, strtolower($config['encryption'] ?? 'tls'));
         $username = $config['username'] ?? '';
         $password = $config['password'] ?? '';
 
@@ -81,33 +80,28 @@ class SmtpConnectionTestService
         string $username,
         string $password
     ): EsmtpTransport {
-        $scheme = $encryption === 'ssl' ? 'smtps' : 'smtp';
+        $implicitTls = EmailSetting::usesImplicitTls($port, $encryption);
 
-        $options = [];
-
-        if ($encryption === 'tls') {
-            $options['auto_tls'] = 'true';
-        } elseif ($encryption === 'none') {
-            $options['auto_tls'] = 'false';
-        }
+        // Explicit false = plain TCP then STARTTLS; true = ssl:// (port 465 only).
+        $transport = new EsmtpTransport($host, $port, $implicitTls);
+        $transport->setAutoTls(! $implicitTls && $encryption === 'tls');
+        $transport->setUsername($username);
+        $transport->setPassword($password);
 
         if ($localDomain = $this->resolveLocalDomain()) {
-            $options['local_domain'] = $localDomain;
+            $transport->setLocalDomain($localDomain);
         }
-
-        if (! $this->shouldVerifyPeer()) {
-            $options['verify_peer'] = 'false';
-        }
-
-        $dsn = new Dsn($scheme, $host, $username, $password, $port, $options);
-
-        $factory = new EsmtpTransportFactory;
-        /** @var EsmtpTransport $transport */
-        $transport = $factory->create($dsn);
 
         /** @var SocketStream $stream */
         $stream = $transport->getStream();
         $stream->setTimeout((float) config('mail.smtp_timeout', env('MAIL_SMTP_TIMEOUT', 30)));
+
+        if (! $this->shouldVerifyPeer()) {
+            $streamOptions = $stream->getStreamOptions();
+            $streamOptions['ssl']['verify_peer'] = false;
+            $streamOptions['ssl']['verify_peer_name'] = false;
+            $stream->setStreamOptions($streamOptions);
+        }
 
         return $transport;
     }
@@ -131,6 +125,13 @@ class SmtpConnectionTestService
     {
         $lower = strtolower($message);
 
+        if (str_contains($lower, 'wrong version number') || str_contains($lower, 'ssl://') && $port === 587) {
+            return $this->withDetail(
+                'تعارض بين المنفذ ونوع التشفير: المنفذ 587 يستخدم TLS (STARTTLS) وليس SSL المباشر. اختر TLS مع 587 أو SSL مع 465.',
+                $message
+            );
+        }
+
         if (str_contains($lower, 'authenticate') || str_contains($lower, 'authentication') || str_contains($lower, '535')) {
             return $this->withDetail(
                 'فشلت المصادقة: تحقق من اسم المستخدم وكلمة المرور (استخدم App Password لـ Gmail).',
@@ -138,16 +139,16 @@ class SmtpConnectionTestService
             );
         }
 
-        if (str_contains($lower, 'connection refused') || str_contains($lower, 'could not connect') || str_contains($lower, 'connection could not be established')) {
+        if (str_contains($lower, 'connection refused') || str_contains($lower, 'could not connect')) {
             return $this->withDetail(
-                'تعذر الاتصال بخادم SMTP. على السيرفر غالباً المنفذ '.$port.' محجوب من الجدار الناري — اطلب من الاستضافة فتح المنافذ الصادرة 587 و465.',
+                'تعذر الاتصال بخادم SMTP. تحقق من عنوان الخادم والمنفذ '.$port.'.',
                 $message
             );
         }
 
         if (str_contains($lower, 'starttls') || str_contains($lower, 'unable to connect with starttls')) {
             $hint = $encryption === 'tls' && $port === 587
-                ? 'جرّب المنفذ 465 مع تشفير SSL، أو ثبّت حزمة ca-certificates على السيرفر. يمكنك مؤقتاً ضبط MAIL_SMTP_VERIFY_PEER=false في .env إذا كانت الشهادات ناقصة.'
+                ? 'ثبّت حزمة ca-certificates على السيرفر، أو جرّب المنفذ 465 مع SSL.'
                 : 'تحقق من نوع التشفير والمنفذ (587 لـ TLS، 465 لـ SSL).';
 
             return $this->withDetail('فشل التشفير (STARTTLS/TLS): '.$hint, $message);
@@ -162,7 +163,7 @@ class SmtpConnectionTestService
 
         if (str_contains($lower, 'timed out') || str_contains($lower, 'timeout')) {
             return $this->withDetail(
-                'انتهت مهلة الاتصال. تحقق من أن السيرفر يسمح بالاتصال الصادر إلى smtp.gmail.com على المنفذ '.$port.'.',
+                'انتهت مهلة الاتصال. تحقق من أن السيرفر يسمح بالاتصال الصادر إلى الخادم على المنفذ '.$port.'.',
                 $message
             );
         }

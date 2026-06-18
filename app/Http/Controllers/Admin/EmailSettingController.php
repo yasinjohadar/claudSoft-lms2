@@ -275,12 +275,14 @@ class EmailSettingController extends Controller
 
         try {
             // Temporarily set mail configuration
+            $port = (int) $validated['mail_port'];
+
             config([
+                'mail.mailers.smtp.scheme' => EmailSetting::resolveMailScheme($port, $validated['mail_encryption']),
                 'mail.mailers.smtp.host' => $validated['mail_host'],
-                'mail.mailers.smtp.port' => $validated['mail_port'],
+                'mail.mailers.smtp.port' => $port,
                 'mail.mailers.smtp.username' => $validated['mail_username'],
                 'mail.mailers.smtp.password' => $validated['mail_password'],
-                'mail.mailers.smtp.encryption' => $validated['mail_encryption'] !== 'none' ? $validated['mail_encryption'] : null,
                 'mail.from.address' => $validated['mail_from_address'],
                 'mail.from.name' => $validated['mail_from_name'],
             ]);

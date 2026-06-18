@@ -94,17 +94,64 @@ class EmailSetting extends Model
     }
 
     /**
+     * SMTP scheme for Symfony/Laravel mailer (smtp = STARTTLS, smtps = implicit SSL).
+     */
+    public static function resolveMailScheme(int $port, string $encryption): string
+    {
+        $encryption = strtolower($encryption);
+
+        if ($port === 587) {
+            return 'smtp';
+        }
+
+        if ($port === 465) {
+            return 'smtps';
+        }
+
+        return $encryption === 'ssl' ? 'smtps' : 'smtp';
+    }
+
+    /**
+     * Whether the socket should use implicit TLS (ssl://) instead of STARTTLS.
+     */
+    public static function usesImplicitTls(int $port, string $encryption): bool
+    {
+        return self::resolveMailScheme($port, $encryption) === 'smtps';
+    }
+
+    /**
+     * Normalize encryption for the given port (fixes common port/type mismatches).
+     */
+    public static function normalizeEncryption(int $port, string $encryption): string
+    {
+        $encryption = strtolower($encryption);
+
+        if ($port === 587 && $encryption === 'ssl') {
+            return 'tls';
+        }
+
+        if ($port === 465 && $encryption === 'tls') {
+            return 'ssl';
+        }
+
+        return $encryption;
+    }
+
+    /**
      * Apply settings to Laravel config
      */
     public function applyToConfig()
     {
+        $port = (int) $this->mail_port;
+        $encryption = (string) $this->mail_encryption;
+
         config([
             'mail.default' => $this->mail_mailer,
+            'mail.mailers.smtp.scheme' => self::resolveMailScheme($port, $encryption),
             'mail.mailers.smtp.host' => $this->mail_host,
-            'mail.mailers.smtp.port' => $this->mail_port,
+            'mail.mailers.smtp.port' => $port,
             'mail.mailers.smtp.username' => $this->mail_username,
             'mail.mailers.smtp.password' => $this->mail_password,
-            'mail.mailers.smtp.encryption' => $this->mail_encryption,
             'mail.from.address' => $this->mail_from_address,
             'mail.from.name' => $this->mail_from_name,
         ]);
