@@ -13,9 +13,9 @@ class SmtpConnectionTestService
      * Test SMTP connection and authentication without sending an email.
      *
      * @param  array{host: string, port: int, encryption: string, username: string, password: string}  $config
-     * @return array{success: bool, message: string, detail?: string}
+     * @return array{success: bool, message: string, detail?: string, suggested_port?: int, suggested_encryption?: string}
      */
-    public function test(array $config): array
+    public function test(array $config, bool $allowPortFallback = true): array
     {
         $host = trim($config['host'] ?? '');
         $port = (int) ($config['port'] ?? 0);
@@ -44,6 +44,46 @@ class SmtpConnectionTestService
             ];
         }
 
+        $result = $this->attemptConnection($host, $port, $encryption, $username, $password);
+
+        if (
+            $allowPortFallback
+            && ! $result['success']
+            && $port === 587
+            && $encryption === 'tls'
+            && $this->shouldRetryWithSslPort($result['detail'] ?? '')
+        ) {
+            $fallback = $this->test([
+                'host' => $host,
+                'port' => 465,
+                'encryption' => 'ssl',
+                'username' => $username,
+                'password' => $password,
+            ], false);
+
+            if ($fallback['success']) {
+                return [
+                    'success' => true,
+                    'message' => 'تم الاتصال بنجاح عبر المنفذ 465 (SSL). حدّث الإعدادات إلى المنفذ 465 والتشفير SSL.',
+                    'suggested_port' => 465,
+                    'suggested_encryption' => 'ssl',
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{success: bool, message: string, detail?: string}
+     */
+    private function attemptConnection(
+        string $host,
+        int $port,
+        string $encryption,
+        string $username,
+        string $password
+    ): array {
         $transport = $this->buildTransport($host, $port, $encryption, $username, $password);
 
         try {
@@ -59,7 +99,7 @@ class SmtpConnectionTestService
 
             return [
                 'success' => false,
-                'message' => $this->translateError($detail, $encryption, $port),
+                'message' => $this->translateError($detail, $encryption, $port, $host),
                 'detail' => $detail,
             ];
         } catch (\Throwable $e) {
@@ -82,7 +122,6 @@ class SmtpConnectionTestService
     ): EsmtpTransport {
         $implicitTls = EmailSetting::usesImplicitTls($port, $encryption);
 
-        // Explicit false = plain TCP then STARTTLS; true = ssl:// (port 465 only).
         $transport = new EsmtpTransport($host, $port, $implicitTls);
         $transport->setAutoTls(! $implicitTls && $encryption === 'tls');
         $transport->setUsername($username);
@@ -96,12 +135,15 @@ class SmtpConnectionTestService
         $stream = $transport->getStream();
         $stream->setTimeout((float) config('mail.smtp_timeout', env('MAIL_SMTP_TIMEOUT', 30)));
 
+        $streamOptions = $stream->getStreamOptions();
+        $streamOptions['ssl']['peer_name'] = $host;
+
         if (! $this->shouldVerifyPeer()) {
-            $streamOptions = $stream->getStreamOptions();
             $streamOptions['ssl']['verify_peer'] = false;
             $streamOptions['ssl']['verify_peer_name'] = false;
-            $stream->setStreamOptions($streamOptions);
         }
+
+        $stream->setStreamOptions($streamOptions);
 
         return $transport;
     }
@@ -114,6 +156,16 @@ class SmtpConnectionTestService
         );
     }
 
+    private function shouldRetryWithSslPort(string $detail): bool
+    {
+        $lower = strtolower($detail);
+
+        return str_contains($lower, 'starttls')
+            || str_contains($lower, 'did not match expected')
+            || str_contains($lower, 'peer certificate')
+            || str_contains($lower, 'wrong version number');
+    }
+
     private function resolveLocalDomain(): ?string
     {
         $host = parse_url((string) config('app.url', ''), PHP_URL_HOST);
@@ -121,11 +173,22 @@ class SmtpConnectionTestService
         return is_string($host) && $host !== '' ? $host : null;
     }
 
-    private function translateError(string $message, string $encryption, int $port): string
+    private function translateError(string $message, string $encryption, int $port, string $host): string
     {
         $lower = strtolower($message);
 
-        if (str_contains($lower, 'wrong version number') || str_contains($lower, 'ssl://') && $port === 587) {
+        if (str_contains($lower, 'did not match expected') || str_contains($lower, 'peer certificate')) {
+            $presentedCn = $this->extractCertificateCn($message);
+
+            return $this->withDetail(
+                'السيرفر لا يتصل بـ '.$host.' مباشرة — يتم تحويل SMTP محلياً'
+                .($presentedCn ? ' (شهادة: '.$presentedCn.')' : '')
+                .'. جرّب المنفذ 465 مع SSL، أو استخدم SMTP الاستضافة بدل Gmail. تحقق أيضاً من ملف /etc/hosts وإعدادات البريد على السيرفر.',
+                $message
+            );
+        }
+
+        if (str_contains($lower, 'wrong version number') || (str_contains($lower, 'ssl://') && $port === 587)) {
             return $this->withDetail(
                 'تعارض بين المنفذ ونوع التشفير: المنفذ 587 يستخدم TLS (STARTTLS) وليس SSL المباشر. اختر TLS مع 587 أو SSL مع 465.',
                 $message
@@ -148,7 +211,7 @@ class SmtpConnectionTestService
 
         if (str_contains($lower, 'starttls') || str_contains($lower, 'unable to connect with starttls')) {
             $hint = $encryption === 'tls' && $port === 587
-                ? 'ثبّت حزمة ca-certificates على السيرفر، أو جرّب المنفذ 465 مع SSL.'
+                ? 'قد يكون SMTP على المنفذ 587 محوّلاً محلياً على السيرفر — جرّب المنفذ 465 مع SSL.'
                 : 'تحقق من نوع التشفير والمنفذ (587 لـ TLS، 465 لـ SSL).';
 
             return $this->withDetail('فشل التشفير (STARTTLS/TLS): '.$hint, $message);
@@ -156,7 +219,7 @@ class SmtpConnectionTestService
 
         if (str_contains($lower, 'certificate') || str_contains($lower, 'ssl') || str_contains($lower, 'tls')) {
             return $this->withDetail(
-                'فشل التحقق من شهادة SSL/TLS على السيرفر. ثبّت ca-certificates أو عطّل التحقق مؤقتاً عبر MAIL_SMTP_VERIFY_PEER=false في .env.',
+                'فشل التحقق من شهادة SSL/TLS. جرّب المنفذ 465 مع SSL، أو ثبّت ca-certificates على السيرفر.',
                 $message
             );
         }
@@ -169,6 +232,15 @@ class SmtpConnectionTestService
         }
 
         return $this->withDetail('فشل اختبار الاتصال.', $message);
+    }
+
+    private function extractCertificateCn(string $message): ?string
+    {
+        if (preg_match('/CN=`([^`]+)`/', $message, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private function withDetail(string $message, string $technical): string
