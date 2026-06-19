@@ -40,13 +40,37 @@ class BulkEmailSender
         ];
     }
 
+    /**
+     * @return array{subject: string, body: string}
+     */
+    public function renderTemplateForUser(EmailTemplate $template, User $user): array
+    {
+        $variables = $this->variableBuilder->build($user);
+
+        return [
+            'subject' => $template->renderSubject($variables),
+            'body' => $template->render($variables),
+        ];
+    }
+
     public function send(BulkEmailCampaign $campaign, User $user, string $subject, string $body): void
     {
-        $this->applyMailConfig($campaign);
+        $this->applyEmailSetting($campaign->email_setting_id);
+        $this->deliverMail($user, $subject, $body);
+    }
 
+    public function sendTemplateToUser(User $user, EmailTemplate $template, ?int $emailSettingId = null): void
+    {
+        $rendered = $this->renderTemplateForUser($template, $user);
+        $this->applyEmailSetting($emailSettingId);
+        $this->deliverMail($user, $rendered['subject'], $rendered['body']);
+    }
+
+    private function deliverMail(User $user, string $subject, string $body): void
+    {
         $toEmail = trim((string) ($user->email ?? ''));
         if ($toEmail === '') {
-            throw new \InvalidArgumentException('لا يوجد بريد إلكتروني للطالب.');
+            throw new \InvalidArgumentException('لا يوجد بريد إلكتروني للمستخدم.');
         }
 
         $fromAddress = config('mail.from.address', 'noreply@cloudsoft.edu');
@@ -60,13 +84,9 @@ class BulkEmailSender
         });
     }
 
-    private function applyMailConfig(BulkEmailCampaign $campaign): void
+    private function applyEmailSetting(?int $emailSettingId = null): void
     {
-        $setting = null;
-
-        if ($campaign->email_setting_id) {
-            $setting = EmailSetting::find($campaign->email_setting_id);
-        }
+        $setting = $emailSettingId ? EmailSetting::find($emailSettingId) : null;
 
         if (! $setting) {
             $setting = EmailSetting::getActive();
@@ -75,5 +95,10 @@ class BulkEmailSender
         if ($setting) {
             $setting->applyToConfig();
         }
+    }
+
+    private function applyMailConfig(BulkEmailCampaign $campaign): void
+    {
+        $this->applyEmailSetting($campaign->email_setting_id);
     }
 }

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\CampEnrollment;
 use App\Models\CourseGroup;
 use App\Models\CourseGroupMember;
+use App\Models\Invoice;
 use App\Models\TrainingCamp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,6 +150,145 @@ class StudentProfileEnrollmentTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'الطالب مسجل بالفعل في هذا المعسكر');
+    }
+
+    public function test_ajax_remove_from_camp_deletes_enrollment_and_returns_camp(): void
+    {
+        $admin = $this->adminUser();
+        $student = $this->studentUser();
+        $camp = $this->createCamp();
+
+        $addResponse = $this->actingAs($admin)->postJson(route('users.add-to-camp', $student->id), [
+            'camp_id' => $camp->id,
+            'status' => 'approved',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $addResponse->assertOk();
+        $enrollmentId = \App\Models\CampEnrollment::where('student_id', $student->id)
+            ->where('camp_id', $camp->id)
+            ->value('id');
+
+        $this->assertNotNull($enrollmentId);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('users.remove-from-camp', [$student->id, $enrollmentId])
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('camp_id', $camp->id)
+            ->assertJsonStructure([
+                'message',
+                'camp_stats' => ['total', 'approved', 'pending'],
+                'camp' => ['id', 'name', 'price'],
+                'billing_stats' => ['total_invoices', 'total_amount', 'total_paid', 'remaining_amount'],
+                'cancelled_invoice_ids',
+            ]);
+
+        $this->assertDatabaseMissing('camp_enrollments', [
+            'id' => $enrollmentId,
+            'student_id' => $student->id,
+            'camp_id' => $camp->id,
+        ]);
+
+        $invoice = Invoice::where('student_id', $student->id)->first();
+        $this->assertNotNull($invoice);
+        $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertSame(0.0, (float) $invoice->fresh()->remaining_amount);
+    }
+
+    public function test_ajax_remove_from_camp_blocks_when_invoice_is_partially_paid(): void
+    {
+        $admin = $this->adminUser();
+        $student = $this->studentUser();
+        $camp = $this->createCamp();
+
+        $this->actingAs($admin)->postJson(route('users.add-to-camp', $student->id), [
+            'camp_id' => $camp->id,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $enrollmentId = CampEnrollment::where('student_id', $student->id)->value('id');
+        $invoice = Invoice::where('student_id', $student->id)->first();
+        $invoice->update([
+            'status' => 'partial',
+            'paid_amount' => 50,
+            'remaining_amount' => 200,
+        ]);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('users.remove-from-camp', [$student->id, $enrollmentId])
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseHas('camp_enrollments', ['id' => $enrollmentId]);
+        $this->assertSame('partial', $invoice->fresh()->status);
+    }
+
+    public function test_ajax_remove_from_camp_blocks_when_invoice_is_paid(): void
+    {
+        $admin = $this->adminUser();
+        $student = $this->studentUser();
+        $camp = $this->createCamp();
+
+        $this->actingAs($admin)->postJson(route('users.add-to-camp', $student->id), [
+            'camp_id' => $camp->id,
+            'status' => 'approved',
+            'payment_status' => 'paid',
+        ]);
+
+        $enrollmentId = CampEnrollment::where('student_id', $student->id)->value('id');
+        $invoice = Invoice::where('student_id', $student->id)->first();
+        $invoice->update([
+            'status' => 'paid',
+            'paid_amount' => 250,
+            'remaining_amount' => 0,
+        ]);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('users.remove-from-camp', [$student->id, $enrollmentId])
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseHas('camp_enrollments', ['id' => $enrollmentId]);
+    }
+
+    public function test_update_camp_status_to_cancelled_cancels_unpaid_invoice(): void
+    {
+        $admin = $this->adminUser();
+        $student = $this->studentUser();
+        $camp = $this->createCamp();
+
+        $this->actingAs($admin)->postJson(route('users.add-to-camp', $student->id), [
+            'camp_id' => $camp->id,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $enrollmentId = CampEnrollment::where('student_id', $student->id)->value('id');
+        $invoice = Invoice::where('student_id', $student->id)->first();
+
+        $response = $this->actingAs($admin)->postJson(
+            route('users.update-camp-enrollment', [$student->id, $enrollmentId]),
+            ['status' => 'cancelled']
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('status', 'cancelled');
+
+        $this->assertDatabaseHas('camp_enrollments', [
+            'id' => $enrollmentId,
+            'status' => 'cancelled',
+        ]);
+        $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertSame(0.0, (float) $invoice->fresh()->remaining_amount);
     }
 
     public function test_non_ajax_add_to_group_still_redirects(): void

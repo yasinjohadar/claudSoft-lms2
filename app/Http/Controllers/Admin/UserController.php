@@ -7,6 +7,8 @@ use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
 use App\Models\CampEnrollment;
 use App\Models\Invoice;
+use App\Models\EmailSetting;
+use App\Models\EmailTemplate;
 use App\Models\Nationality;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
@@ -96,7 +98,22 @@ class UserController extends Controller
             ]);
         }
 
-        return view('admin.pages.users.index', compact('users', 'roles', 'sessions', 'stats'));
+        return view('admin.pages.users.index', array_merge(
+            compact('users', 'roles', 'sessions', 'stats'),
+            $this->emailFormData()
+        ));
+    }
+
+    /**
+     * @return array{emailTemplates: \Illuminate\Database\Eloquent\Collection, emailSettings: \Illuminate\Database\Eloquent\Collection, defaultEmailSetting: ?EmailSetting}
+     */
+    private function emailFormData(): array
+    {
+        return [
+            'emailTemplates' => EmailTemplate::active()->orderBy('name_ar')->orderBy('name')->get(['id', 'name', 'name_ar', 'subject']),
+            'emailSettings' => EmailSetting::orderByDesc('is_active')->orderBy('id')->get(),
+            'defaultEmailSetting' => EmailSetting::getActive(),
+        ];
     }
 
     /**
@@ -195,7 +212,7 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        $user = User::with('nationality')->findOrFail($id);
+        $user = User::with(['nationality', 'roles'])->findOrFail($id);
 
         // Enrollments & course stats
         $enrollments = \App\Models\CourseEnrollment::where('student_id', $id)
@@ -314,7 +331,7 @@ class UserController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'price', 'start_date', 'end_date', 'location']);
 
-        return view('admin.pages.users.profile', compact(
+        return view('admin.pages.users.profile', array_merge(compact(
             'user',
             'adminNotes',
             'enrollments',
@@ -336,7 +353,7 @@ class UserController extends Controller
             'availableCamps',
             'paymentMethods',
             'payableInvoices'
-        ));
+        ), $this->emailFormData()));
     }
 
     /**
@@ -439,11 +456,16 @@ class UserController extends Controller
             ->selectRaw('count(*) as total_invoices, coalesce(sum(total_amount), 0) as total_amount, coalesce(sum(paid_amount), 0) as total_paid, coalesce(sum(remaining_amount), 0) as remaining_amount')
             ->first();
 
+        $activeAggregates = Invoice::where('student_id', $studentId)
+            ->whereNotIn('status', ['cancelled', 'refunded'])
+            ->selectRaw('coalesce(sum(total_amount), 0) as total_amount, coalesce(sum(paid_amount), 0) as total_paid, coalesce(sum(remaining_amount), 0) as remaining_amount')
+            ->first();
+
         return [
             'total_invoices' => (int) ($aggregates->total_invoices ?? 0),
-            'total_amount' => (float) ($aggregates->total_amount ?? 0),
-            'total_paid' => (float) ($aggregates->total_paid ?? 0),
-            'remaining_amount' => (float) ($aggregates->remaining_amount ?? 0),
+            'total_amount' => (float) ($activeAggregates->total_amount ?? 0),
+            'total_paid' => (float) ($activeAggregates->total_paid ?? 0),
+            'remaining_amount' => (float) ($activeAggregates->remaining_amount ?? 0),
         ];
     }
 
@@ -959,7 +981,7 @@ class UserController extends Controller
                 $parts[] = 'حالة الدفع: '.$enrollment->payment_status_label;
             }
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'message' => 'تم التحديث — '.implode(' — ', $parts),
                 'camp_stats' => $campStats,
@@ -967,12 +989,82 @@ class UserController extends Controller
                 'status_label' => $enrollment->status_label,
                 'payment_status' => $enrollment->payment_status,
                 'payment_status_label' => $enrollment->payment_status_label,
-            ]);
+            ];
+
+            if (array_key_exists('status', $validated) && in_array($validated['status'], ['cancelled', 'rejected'], true)) {
+                $response['billing_stats'] = $this->buildStudentBillingStats($user->id);
+                $response['cancelled_invoice_ids'] = $enrollmentService->findInvoicesForEnrollment($enrollment)
+                    ->where('status', 'cancelled')
+                    ->pluck('id')
+                    ->values()
+                    ->all();
+            }
+
+            return response()->json($response);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Remove student from a training camp (AJAX from profile).
+     */
+    public function removeFromCamp(
+        Request $request,
+        User $user,
+        CampEnrollment $enrollment,
+        TrainingCampEnrollmentService $enrollmentService
+    ): JsonResponse|\Illuminate\Http\RedirectResponse {
+        if ((int) $enrollment->student_id !== (int) $user->id) {
+            abort(404);
+        }
+
+        try {
+            $campName = $enrollment->camp?->name ?? 'المعسكر';
+            $enrollmentId = $enrollment->id;
+            $removed = $enrollmentService->removeEnrollment($enrollment);
+
+            $campEnrollments = CampEnrollment::where('student_id', $user->id)->get();
+            $campStats = [
+                'total' => $campEnrollments->count(),
+                'approved' => $campEnrollments->where('status', 'approved')->count(),
+                'pending' => $campEnrollments->where('status', 'pending')->count(),
+            ];
+
+            $message = "تم إلغاء تسجيل الطالب {$user->name} من المعسكر {$campName} بنجاح";
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'camp_stats' => $campStats,
+                    'enrollment_id' => $enrollmentId,
+                    'camp_id' => $removed['camp_id'],
+                    'camp' => $removed['camp'],
+                    'billing_stats' => $this->buildStudentBillingStats($user->id),
+                    'cancelled_invoice_ids' => $removed['cancelled_invoice_ids'] ?? [],
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\InvalidArgumentException $e) {
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : redirect()->back()->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            $message = 'حدث خطأ: '.$e->getMessage();
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : redirect()->back()->with('error', $message);
         }
     }
 

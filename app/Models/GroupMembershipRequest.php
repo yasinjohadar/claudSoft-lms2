@@ -182,4 +182,30 @@ class GroupMembershipRequest extends Model
             'admin_notes' => $adminNotes ?? $this->admin_notes,
         ]);
     }
+
+    /**
+     * Find the group registration form submission linked to this request.
+     */
+    public function resolveRegistration(): ?GroupRegistration
+    {
+        $this->loadMissing('student');
+
+        $query = GroupRegistration::query()
+            ->where('group_id', $this->group_id)
+            ->with('nationality');
+
+        if ($this->student_id) {
+            $byUser = (clone $query)->where('user_id', $this->student_id)->latest()->first();
+            if ($byUser) {
+                return $byUser;
+            }
+        }
+
+        $email = $this->student?->email;
+        if ($email) {
+            return $query->where('email', $email)->latest()->first();
+        }
+
+        return null;
+    }
 }

@@ -4,265 +4,119 @@
     المعسكرات التدريبية
 @stop
 
-@section('css')
-<style>
-    .camp-status-badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
-    }
-    .camp-image {
-        width: 90px !important;
-        max-width: 90px !important;
-        height: 60px !important;
-        max-height: 60px !important;
-        object-fit: cover !important;
-        border-radius: 8px !important;
-        flex-shrink: 0 !important;
-        display: block !important;
-    }
-</style>
-@stop
-
 @section('content')
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-check-circle me-2"></i>نجح!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-exclamation-circle me-2"></i>خطأ!</strong> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
     <div class="main-content app-content">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إدارة المعسكرات التدريبية</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">المعسكرات التدريبية</li>
-                        </ol>
-                    </nav>
-                </div>
+            @include('admin.components.alerts')
+
+            <div class="my-4 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active">المعسكرات التدريبية</li>
+                    </ol>
+                </nav>
             </div>
 
-            <!-- Start::row-1 -->
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div class="card-title">قائمة المعسكرات</div>
-                            <a href="{{ route('training-camps.create') }}" class="btn btn-primary btn-wave">
-                                <i class="fas fa-plus me-2"></i>إضافة معسكر جديد
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-flag me-1"></i>
+                            إدارة المعسكرات
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">المعسكرات التدريبية</h2>
+                        <p class="group-show-hero__desc mb-0">
+                            إدارة المعسكرات، التصنيفات، المشاركين، والحالات من لوحة واحدة منظّمة.
+                        </p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions group-show-actions--single">
+                            <a href="{{ route('training-camps.create') }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
+                                <span class="group-show-action__text">إضافة معسكر جديد</span>
+                            </a>
+                            <a href="{{ route('training-camps.enrollments') }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-inbox"></i></span>
+                                <span class="group-show-action__text">طلبات التسجيل</span>
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                        <div class="card-header">
-                            <form action="{{ route('training-camps.index') }}" method="GET" class="row g-3 align-items-end">
-                                <div class="col-md-3">
-                                    <label class="form-label mb-1">البحث</label>
-                                    <input type="text" name="search" class="form-control"
-                                           placeholder="ابحث عن معسكر..." value="{{ request('search') }}">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label mb-1">الحالة</label>
-                                    <select name="status" class="form-select">
-                                        <option value="">جميع الحالات</option>
-                                        <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>قادم</option>
-                                        <option value="ongoing" {{ request('status') == 'ongoing' ? 'selected' : '' }}>جاري</option>
-                                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>منتهي</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label mb-1">التصنيف</label>
-                                    <select name="category_id" class="form-select">
-                                        <option value="">جميع التصنيفات</option>
-                                        @foreach($categories as $cat)
-                                            <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
-                                                {{ $cat->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label mb-1">النشاط</label>
-                                    <select name="is_active" class="form-select">
-                                        <option value="">الكل</option>
-                                        <option value="1" {{ request('is_active') == '1' ? 'selected' : '' }}>نشط</option>
-                                        <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary flex-fill">
-                                            <i class="fas fa-search me-1"></i>بحث
-                                        </button>
-                                        <a href="{{ route('training-camps.index') }}" class="btn btn-outline-secondary" title="إعادة تعيين">
-                                            <i class="fas fa-redo me-1"></i>إعادة تعيين
-                                        </a>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
+            <div id="campsStatsContainer" class="mb-4">
+                @include('admin.pages.training-camps.partials.camps-stats', ['stats' => $stats ?? []])
+            </div>
 
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th scope="col" style="width: 50px;">#</th>
-                                            <th scope="col">المعسكر</th>
-                                            <th scope="col">التصنيف</th>
-                                            <th scope="col">المدرب</th>
-                                            <th scope="col">التاريخ</th>
-                                            <th scope="col">المدة</th>
-                                            <th scope="col">السعر</th>
-                                            <th scope="col">المشاركين</th>
-                                            <th scope="col">الحالة</th>
-                                            <th scope="col">العمليات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($camps as $camp)
-                                            <tr>
-                                                <td>{{ $loop->iteration + ($camps->currentPage() - 1) * $camps->perPage() }}</td>
-
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        @if($camp->image)
-                                                            <img src="{{ asset('storage/' . $camp->image) }}"
-                                                                 alt="{{ $camp->name }}"
-                                                                 class="camp-image me-3"
-                                                                 style="width: 90px; height: 60px; object-fit: cover; border-radius: 8px;">
-                                                        @endif
-                                                        <div>
-                                                            <strong>{{ $camp->name }}</strong>
-                                                            @if($camp->is_featured)
-                                                                <i class="fas fa-star text-warning ms-1" title="مميز"></i>
-                                                            @endif
-                                                            <br><small class="text-muted">{{ $camp->location ?? '-' }}</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    @if($camp->category)
-                                                        <span class="badge" style="background-color: {{ $camp->category->color }}">
-                                                            {{ $camp->category->name }}
-                                                        </span>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-
-                                                <td>{{ $camp->instructor_name ?? '-' }}</td>
-
-                                                <td>
-                                                    <small>
-                                                        <strong>من:</strong> {{ $camp->start_date->format('Y-m-d') }}<br>
-                                                        <strong>إلى:</strong> {{ $camp->end_date->format('Y-m-d') }}
-                                                    </small>
-                                                </td>
-
-                                                <td>
-                                                    <span class="badge bg-info">{{ $camp->duration_days }} يوم</span>
-                                                </td>
-
-                                                <td>
-                                                    <strong>${{ number_format($camp->price, 2) }}</strong>
-                                                </td>
-
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="badge bg-primary me-1">{{ $camp->current_participants }}</span>
-                                                        @if($camp->max_participants)
-                                                            / {{ $camp->max_participants }}
-                                                            @if($camp->isFull())
-                                                                <i class="fas fa-exclamation-circle text-danger ms-1" title="ممتلئ"></i>
-                                                            @endif
-                                                        @endif
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    <div>
-                                                        @if($camp->isOngoing())
-                                                            <span class="badge bg-success camp-status-badge">
-                                                                <i class="fas fa-play me-1"></i>جاري
-                                                            </span>
-                                                        @elseif($camp->hasEnded())
-                                                            <span class="badge bg-secondary camp-status-badge">
-                                                                <i class="fas fa-check me-1"></i>منتهي
-                                                            </span>
-                                                        @else
-                                                            <span class="badge bg-info camp-status-badge">
-                                                                <i class="fas fa-clock me-1"></i>قادم
-                                                            </span>
-                                                        @endif
-                                                        <br>
-                                                        @if($camp->is_active)
-                                                            <span class="badge bg-success mt-1">نشط</span>
-                                                        @else
-                                                            <span class="badge bg-danger mt-1">معطل</span>
-                                                        @endif
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    <div class="btn-group" role="group">
-                                                        <a href="{{ route('training-camps.show', $camp->id) }}"
-                                                           class="btn btn-sm btn-primary-light"
-                                                           title="عرض">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-
-                                                        <a href="{{ route('training-camps.edit', $camp->id) }}"
-                                                           class="btn btn-sm btn-info-light"
-                                                           title="تعديل">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-
-                                                        <button type="button"
-                                                                class="btn btn-sm btn-danger-light"
-                                                                onclick="deleteCamp({{ $camp->id }}, '{{ e(Str::limit($camp->name, 50)) }}')"
-                                                                title="حذف">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="10" class="text-center py-5">
-                                                    <div class="text-muted">
-                                                        <i class="fas fa-campground fa-3x mb-3 d-block"></i>
-                                                        <h5>لا توجد معسكرات تدريبية حالياً</h5>
-                                                        <p>قم بإنشاء أول معسكر تدريبي</p>
-                                                        <a href="{{ route('training-camps.create') }}" class="btn btn-primary mt-2">
-                                                            <i class="fas fa-plus me-2"></i>إضافة معسكر
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">تصفية المعسكرات</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو المدرب أو الموقع، أو فلتر حسب الحالة والتصنيف.</p>
+                </div>
+                <div class="card-body pt-3">
+                    <form id="campsFilterForm" action="{{ route('training-camps.index') }}" method="GET" class="group-show-filters mb-0">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="campsSearchInput">البحث</label>
+                                <input type="text" name="search" id="campsSearchInput" class="form-control"
+                                       value="{{ request('search') }}" placeholder="ابحث عن معسكر...">
                             </div>
-
-                            @if($camps->hasPages())
-                                <div class="d-flex justify-content-center mt-4">
-                                    {{ $camps->links() }}
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="campsStatus">الحالة</label>
+                                <select name="status" id="campsStatus" class="form-select">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>قادم</option>
+                                    <option value="ongoing" {{ request('status') == 'ongoing' ? 'selected' : '' }}>جاري</option>
+                                    <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>منتهي</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="campsCategory">التصنيف</label>
+                                <select name="category_id" id="campsCategory" class="form-select">
+                                    <option value="">جميع التصنيفات</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
+                                            {{ $cat->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="campsActive">النشاط</label>
+                                <select name="is_active" id="campsActive" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="1" {{ request('is_active') == '1' ? 'selected' : '' }}>نشط</option>
+                                    <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-3 col-lg-12">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fe fe-search me-1"></i>بحث
+                                    </button>
+                                    <a href="{{ route('training-camps.index') }}" class="btn btn-outline-secondary btn-sm" id="campsResetBtn">
+                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                    </a>
+                                    <small id="campsFilterFeedback" class="text-muted ms-1"></small>
                                 </div>
-                            @endif
+                            </div>
                         </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                    <h6 class="group-show-members-card__title mb-0">
+                        قائمة المعسكرات
+                        <span class="group-show-members-card__count" id="campsTableCount">{{ $camps->total() }}</span>
+                    </h6>
+                </div>
+                <div class="card-body pt-3">
+                    <div id="campsTableContainer">
+                        @include('admin.pages.training-camps._camps_table', ['camps' => $camps])
                     </div>
                 </div>
             </div>
@@ -270,51 +124,26 @@
         </div>
     </div>
 
-    <!-- Delete Camp Modal -->
-    <div class="modal fade" id="deleteCampModal" tabindex="-1" aria-labelledby="deleteCampModalLabel" aria-hidden="true">
+    <div class="modal fade" id="deleteCampModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header border-0 pb-0">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title fw-bold">
+                        <i class="fe fe-trash-2 me-2 text-danger"></i>حذف المعسكر
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body text-center py-4">
-                    <div class="mb-4">
-                        <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
-                            <i class="fas fa-trash-alt fs-24 text-danger"></i>
-                        </div>
-                        <h5 class="mb-2" id="deleteCampModalLabel">حذف المعسكر</h5>
-                        <p class="text-muted mb-0" id="deleteCampMessage">هل أنت متأكد من حذف هذا المعسكر؟</p>
-                        <p class="text-danger small mt-2 mb-0">لن يمكن التراجع عن هذا الإجراء.</p>
+                    <div class="group-show-empty__icon mx-auto mb-3" style="width:72px;height:72px;font-size:1.75rem;background:rgba(var(--danger-rgb),0.12);color:rgb(var(--danger-rgb));">
+                        <i class="fe fe-alert-triangle"></i>
                     </div>
+                    <p class="text-muted mb-2" id="deleteCampMessage">هل أنت متأكد من حذف هذا المعسكر؟</p>
+                    <p class="text-danger small mb-0">لن يمكن التراجع عن هذا الإجراء.</p>
                 </div>
-                <div class="modal-footer border-0 pt-0 justify-content-center">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>إلغاء
-                    </button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteCamp">
-                        <i class="fas fa-trash me-2"></i>حذف
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Success/Error Alert Modal -->
-    <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body text-center py-4">
-                    <div class="mb-3">
-                        <div class="avatar avatar-xl bg-success-transparent mx-auto mb-3" id="alertIconContainer">
-                            <i class="fas fa-check-circle fs-24 text-success" id="alertIcon"></i>
-                        </div>
-                        <h5 class="mb-2" id="alertModalLabel">نجح</h5>
-                        <p class="text-muted mb-0" id="alertMessage">تمت العملية بنجاح</p>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0 justify-content-center">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-                        <i class="fas fa-check me-2"></i>حسناً
+                        <i class="fe fe-trash-2 me-1"></i>حذف
                     </button>
                 </div>
             </div>
@@ -324,103 +153,189 @@
 
 @section('script')
 <script>
+(function () {
+    'use strict';
+
     let currentCampId = null;
+    let campsFilterController = null;
 
-    // Delete Camp
-    function deleteCamp(campId, campName) {
-        currentCampId = campId;
-        
-        const messageEl = document.getElementById('deleteCampMessage');
-        if (messageEl) {
-            messageEl.innerHTML = `هل أنت متأكد من حذف المعسكر<br><strong>${campName}</strong>؟`;
-        }
-        
-        const modalElement = document.getElementById('deleteCampModal');
-        if (!modalElement) {
-            console.error('deleteCampModal element not found');
-            return;
-        }
-        
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
     }
 
-    // Show Alert Modal
-    function showAlert(type, message) {
-        const modal = new bootstrap.Modal(document.getElementById('alertModal'));
-        const iconContainer = document.getElementById('alertIconContainer');
-        const icon = document.getElementById('alertIcon');
-        const label = document.getElementById('alertModalLabel');
-        const messageEl = document.getElementById('alertMessage');
-        
-        if (type === 'success') {
-            iconContainer.className = 'avatar avatar-xl bg-success-transparent mx-auto mb-3';
-            icon.className = 'fas fa-check-circle fs-24 text-success';
-            label.textContent = 'نجح';
-        } else {
-            iconContainer.className = 'avatar avatar-xl bg-danger-transparent mx-auto mb-3';
-            icon.className = 'fas fa-exclamation-circle fs-24 text-danger';
-            label.textContent = 'خطأ';
-        }
-        
-        messageEl.textContent = message;
-        modal.show();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Confirm Delete Camp
-        const confirmBtn = document.getElementById('confirmDeleteCamp');
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', function() {
-                if (!currentCampId) return;
-                
-                const modalElement = document.getElementById('deleteCampModal');
-                if (modalElement) {
-                    const modal = bootstrap.Modal.getInstance(modalElement);
-                    if (modal) {
-                        modal.hide();
-                    }
+    function initCountup(container) {
+        (container || document).querySelectorAll('[data-countup]').forEach(function (el) {
+            const target = parseInt(el.dataset.countup || '0', 10);
+            if (!target) {
+                el.textContent = '0';
+                return;
+            }
+            let current = 0;
+            const step = Math.max(1, Math.ceil(target / 20));
+            const timer = setInterval(function () {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
                 }
-                
-                fetch(`{{ url('/admin/training-camps') }}/${currentCampId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                el.textContent = current.toLocaleString('ar-EG');
+            }, 30);
+        });
+    }
+
+    function initCampsAjaxFilters() {
+        const form = document.getElementById('campsFilterForm');
+        const tableContainer = document.getElementById('campsTableContainer');
+        const statsContainer = document.getElementById('campsStatsContainer');
+        const countBadge = document.getElementById('campsTableCount');
+        const searchInput = document.getElementById('campsSearchInput');
+        const feedback = document.getElementById('campsFilterFeedback');
+        const resetBtn = document.getElementById('campsResetBtn');
+
+        if (!form || !tableContainer) return;
+
+        initCountup(document);
+
+        const getQueryString = function () {
+            const formData = new FormData(form);
+            formData.set('search', (formData.get('search') || '').toString().trim());
+            return new URLSearchParams(formData).toString();
+        };
+
+        const fetchAndRender = function (url) {
+            if (campsFilterController) campsFilterController.abort();
+            campsFilterController = new AbortController();
+
+            if (feedback) feedback.textContent = 'جاري التحديث...';
+            tableContainer.style.opacity = '0.6';
+
+            fetch(url, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                signal: campsFilterController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function (r) { if (!r.ok) throw new Error('fetch failed'); return r.json(); })
+                .then(function (data) {
+                    if (typeof data.table_html === 'string') {
+                        tableContainer.innerHTML = data.table_html;
                     }
-                })
-                .then(response => {
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        return response.json();
-                    } else {
-                        location.reload();
-                        return null;
+                    if (statsContainer && typeof data.stats_html === 'string') {
+                        statsContainer.innerHTML = data.stats_html;
+                        initCountup(statsContainer);
                     }
-                })
-                .then(data => {
-                    if (data) {
-                        if (data.success) {
-                            showAlert('success', data.message || 'تم حذف المعسكر بنجاح');
-                            setTimeout(() => location.reload(), 1500);
-                        } else {
-                            showAlert('error', data.message || 'حدث خطأ أثناء الحذف');
-                        }
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
                     }
+                    if (feedback) feedback.textContent = 'تم تحديث النتائج';
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showAlert('error', 'حدث خطأ أثناء الحذف: ' + error.message);
+                .catch(function (err) {
+                    if (err.name === 'AbortError') return;
+                    if (feedback) feedback.textContent = 'تعذر تحديث النتائج.';
+                })
+                .finally(function () {
+                    tableContainer.style.opacity = '1';
                 });
+        };
+
+        const triggerSearch = function () {
+            const qs = getQueryString();
+            const base = form.getAttribute('action');
+            fetchAndRender(qs ? base + '?' + qs : base);
+        };
+
+        const debouncedSearch = debounce(triggerSearch, 350);
+
+        if (searchInput) searchInput.addEventListener('input', debouncedSearch);
+
+        form.querySelectorAll('select[name="status"], select[name="category_id"], select[name="is_active"]').forEach(function (el) {
+            el.addEventListener('change', triggerSearch);
+        });
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                triggerSearch();
             });
         }
 
-        // Auto-hide alerts
-        setTimeout(function() {
-            $('.alert').fadeOut('slow');
-        }, 5000);
-    });
+        tableContainer.addEventListener('click', function (e) {
+            const link = e.target.closest('.pagination a');
+            if (link) {
+                e.preventDefault();
+                fetchAndRender(link.href);
+            }
+        });
+    }
+
+    function initDeleteCamp() {
+        const modalEl = document.getElementById('deleteCampModal');
+        const confirmBtn = document.getElementById('confirmDeleteCamp');
+        const messageEl = document.getElementById('deleteCampMessage');
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.js-delete-camp');
+            if (!btn || !modalEl) return;
+            currentCampId = btn.getAttribute('data-camp-id');
+            const name = btn.getAttribute('data-camp-name') || '';
+            if (messageEl) {
+                messageEl.innerHTML = 'هل أنت متأكد من حذف المعسكر<br><strong>' + name + '</strong>؟';
+            }
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        });
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+                if (!currentCampId) return;
+                confirmBtn.disabled = true;
+
+                fetch('{{ url('/admin/training-camps') }}/' + currentCampId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                })
+                    .then(function (r) { return r.json().catch(function () { return { success: true }; }); })
+                    .then(function (data) {
+                        bootstrap.Modal.getInstance(modalEl)?.hide();
+                        if (data.success !== false) {
+                            const form = document.getElementById('campsFilterForm');
+                            if (form) form.dispatchEvent(new Event('submit'));
+                        } else {
+                            alert(data.message || 'تعذر الحذف');
+                        }
+                    })
+                    .catch(function () { alert('تعذر الحذف'); })
+                    .finally(function () {
+                        confirmBtn.disabled = false;
+                        currentCampId = null;
+                    });
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initCampsAjaxFilters();
+            initDeleteCamp();
+        });
+    } else {
+        initCampsAjaxFilters();
+        initDeleteCamp();
+    }
+})();
 </script>
 @stop

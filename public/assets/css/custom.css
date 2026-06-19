@@ -3584,6 +3584,308 @@ button.group-show-action {
     color: rgb(var(--primary-rgb));
 }
 
+.admin-users-profile-pct {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 7rem;
+}
+
+.admin-users-profile-pct__bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(var(--primary-rgb), 0.12);
+    overflow: hidden;
+    min-width: 3.5rem;
+}
+
+.admin-users-profile-pct__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: rgb(var(--warning-rgb, 255, 193, 7));
+    transition: width 0.3s ease;
+}
+
+.admin-users-profile-pct__fill.is-complete {
+    background: rgb(var(--success-rgb, 40, 167, 69));
+}
+
+.admin-users-profile-pct__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(var(--warning-rgb, 255, 193, 7));
+    white-space: nowrap;
+    min-width: 2.25rem;
+    text-align: end;
+}
+
+.admin-users-profile-pct__label.is-complete {
+    color: rgb(var(--success-rgb, 40, 167, 69));
+}
+
+/* ── Send email modal preview ── */
+.admin-send-email-preview__body {
+    max-height: 18rem;
+    overflow: auto;
+    padding: 1rem;
+    background: var(--custom-white, #fff);
+}
+
+.admin-send-email-preview__subject strong {
+    word-break: break-word;
+}
+
+/* ── Admin enrollments table (all enrollments page) ── */
+.admin-enrollments-table__row {
+    transition: background-color 0.2s ease;
+}
+
+.admin-enrollments-table__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.admin-enrollments-table__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-enrollments-table__name {
+    color: var(--default-text-color);
+}
+
+.admin-enrollments-table__name:hover {
+    color: rgb(var(--primary-rgb));
+}
+
+.admin-enrollments-table__course {
+    color: rgb(var(--primary-rgb));
+    font-weight: 600;
+}
+
+.admin-enrollments-table__course:hover {
+    color: rgb(var(--primary-rgb));
+    opacity: 0.85;
+}
+
+.admin-enrollment-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.admin-enrollment-status--active {
+    background: rgba(var(--success-rgb), 0.12);
+    color: rgb(var(--success-rgb));
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.admin-enrollment-status--completed {
+    background: rgba(var(--primary-rgb), 0.12);
+    color: rgb(var(--primary-rgb));
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+}
+
+.admin-enrollment-status--suspended {
+    background: rgba(var(--danger-rgb), 0.12);
+    color: rgb(var(--danger-rgb));
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+}
+
+.admin-enrollment-status--pending {
+    background: rgba(var(--warning-rgb), 0.15);
+    color: rgb(var(--warning-rgb, 255, 193, 7));
+    border: 1px solid rgba(var(--warning-rgb), 0.25);
+}
+
+.admin-enrollment-status--cancelled,
+.admin-enrollment-status--default {
+    background: rgba(var(--secondary-rgb, 108, 117, 125), 0.12);
+    color: var(--text-muted);
+    border: 1px solid rgba(var(--secondary-rgb, 108, 117, 125), 0.2);
+}
+
+.admin-enrollments-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 7rem;
+}
+
+.admin-enrollments-progress__bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(var(--primary-rgb), 0.12);
+    overflow: hidden;
+    min-width: 3.5rem;
+}
+
+.admin-enrollments-progress__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: rgb(var(--primary-rgb));
+    transition: width 0.3s ease;
+}
+
+.admin-enrollments-progress__fill.is-complete {
+    background: rgb(var(--success-rgb, 40, 167, 69));
+}
+
+.admin-enrollments-progress__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(var(--primary-rgb));
+    white-space: nowrap;
+    min-width: 2.25rem;
+    text-align: end;
+}
+
+.admin-enrollments-progress__label.is-complete {
+    color: rgb(var(--success-rgb, 40, 167, 69));
+}
+
+.admin-enrollments-table .dropdown-menu {
+    min-width: 12rem;
+}
+
+/* ── Admin training camps tables ── */
+.admin-camps-table__row,
+.admin-camp-enrollments-table__row {
+    transition: background-color 0.2s ease;
+}
+
+.admin-camps-table__thumb {
+    width: 52px;
+    height: 40px;
+    border-radius: 10px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.admin-camps-table__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-camps-table__name {
+    color: var(--default-text-color);
+}
+
+.admin-camps-table__name:hover {
+    color: rgb(var(--primary-rgb));
+}
+
+.admin-camp-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.admin-camp-status--ongoing {
+    background: rgba(var(--success-rgb), 0.12);
+    color: rgb(var(--success-rgb));
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.admin-camp-status--completed {
+    background: rgba(108, 117, 125, 0.12);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.admin-camp-status--upcoming {
+    background: rgba(var(--primary-rgb), 0.12);
+    color: rgb(var(--primary-rgb));
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+}
+
+.admin-camp-status--active {
+    background: rgba(var(--success-rgb), 0.12);
+    color: rgb(var(--success-rgb));
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.admin-camp-status--inactive {
+    background: rgba(var(--danger-rgb), 0.12);
+    color: rgb(var(--danger-rgb));
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+}
+
+.admin-camp-enrollment-status,
+.admin-camp-enrollment-payment {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.admin-camp-enrollment-status--pending,
+.admin-camp-enrollment-payment--unpaid {
+    background: rgba(var(--warning-rgb), 0.15);
+    color: rgb(var(--warning-rgb, 255, 193, 7));
+    border: 1px solid rgba(var(--warning-rgb), 0.25);
+}
+
+.admin-camp-enrollment-status--approved,
+.admin-camp-enrollment-payment--paid {
+    background: rgba(var(--success-rgb), 0.12);
+    color: rgb(var(--success-rgb));
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.admin-camp-enrollment-status--rejected {
+    background: rgba(var(--danger-rgb), 0.12);
+    color: rgb(var(--danger-rgb));
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+}
+
+.admin-camp-enrollment-status--cancelled,
+.admin-camp-enrollment-payment--refunded {
+    background: rgba(108, 117, 125, 0.12);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.admin-camp-show-image {
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.admin-camp-info-strip strong {
+    font-size: 0.9rem;
+}
+
 /* ── Profile camp status pickers (student profile bootcamps tab) ── */
 .profile-camp-col-status {
     min-width: 9.25rem;
@@ -4810,6 +5112,57 @@ button.admin-course-content-chip {
 
 .admin-profile-quick-link--external {
     border-style: dashed;
+}
+
+.admin-profile-detail-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--default-border, #eef1f6);
+    background: rgba(var(--primary-rgb), 0.02);
+    height: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-profile-detail-field:hover {
+    border-color: rgba(var(--primary-rgb), 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.admin-profile-detail-field__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(var(--primary-rgb), 0.08);
+    color: rgb(var(--primary-rgb));
+    font-size: 1rem;
+}
+
+.admin-profile-detail-field__label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted, #6c757d);
+    margin-bottom: 0.15rem;
+}
+
+.admin-profile-detail-field__value {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--default-text-color);
+    word-break: break-word;
+}
+
+.admin-profile-detail-field.is-empty .admin-profile-detail-field__value {
+    color: var(--text-muted, #adb5bd);
+    font-weight: 500;
+    font-style: italic;
 }
 
 .admin-users-dropdown .dropdown-item {

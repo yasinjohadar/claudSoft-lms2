@@ -58,7 +58,7 @@
                         </span>
                         <h2 class="group-show-hero__title mb-2">كافة المستخدمين</h2>
                         <p class="group-show-hero__desc mb-0">
-                            إدارة الحسابات، الأدوار، التفعيل، والجلسات من لوحة واحدة أنيقة.
+                            إدارة الحسابات، اكتمال البروفايل، التفعيل، والجلسات من لوحة واحدة أنيقة.
                         </p>
                     </div>
                     <div class="col-lg-4">
@@ -145,6 +145,7 @@
     </div>
 
     @include('admin.pages.users.partials.change-password-modal')
+    @include('admin.pages.users.partials.send-email-modal')
 
     <div class="modal fade" id="adminUserNotesModal" tabindex="-1" aria-labelledby="adminUserNotesModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -163,6 +164,7 @@
 @stop
 
 @section('scripts')
+@include('admin.pages.users.partials.send-email-scripts')
 <script>
 (function() {
     'use strict';

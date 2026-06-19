@@ -7,7 +7,7 @@
                 <th scope="col">البريد</th>
                 <th scope="col">الهاتف</th>
                 <th scope="col">آخر دخول</th>
-                <th scope="col">الأدوار</th>
+                <th scope="col">اكتمال البروفايل</th>
                 <th scope="col">الاتصال</th>
                 <th scope="col">التفعيل</th>
                 <th scope="col" style="width: 120px;">الإجراءات</th>
@@ -97,13 +97,7 @@
                     </td>
 
                     <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @forelse ($user->getRoleNames() as $role)
-                                <span class="group-show-chip group-show-chip--sm">{{ $role }}</span>
-                            @empty
-                                <span class="text-muted">—</span>
-                            @endforelse
-                        </div>
+                        @include('admin.pages.users.partials.profile-completion-cell', ['user' => $user])
                     </td>
 
                     <td>
@@ -164,6 +158,18 @@
                                             <i class="fe fe-file-text me-2"></i>الملاحظات الإدارية
                                         </button>
                                     </li>
+                                    @if($user->email)
+                                        <li>
+                                            <button type="button" class="dropdown-item js-open-send-email"
+                                                data-user-id="{{ $user->id }}"
+                                                data-user-name="{{ $user->name }}"
+                                                data-user-email="{{ $user->email }}"
+                                                data-preview-url="{{ route('users.send-email.preview', $user) }}"
+                                                data-send-url="{{ route('users.send-email.send', $user) }}">
+                                                <i class="fe fe-mail me-2"></i>إرسال بريد
+                                            </button>
+                                        </li>
+                                    @endif
                                     @if($user->hasRole('student'))
                                         <li><hr class="dropdown-divider"></li>
                                         <li>

@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\BulkEmailController;
 use App\Http\Controllers\Admin\BulkEmailSettingsController;
+use App\Http\Controllers\Admin\UserSendEmailController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ContactSettingController;
@@ -107,12 +108,15 @@ Route::prefix('admin')
         Route::resource('users', UserController::class);
         Route::resource('roles', RoleController::class);
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
+        Route::post('users/{user}/send-email/preview', [UserSendEmailController::class, 'preview'])->name('users.send-email.preview');
+        Route::post('users/{user}/send-email', [UserSendEmailController::class, 'send'])->name('users.send-email.send');
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::get('users/{userId}/courses', [UserController::class, 'showCourses'])->name('admin.users.courses');
         Route::get('users/{user}/student-details', [UserController::class, 'studentDetails'])->name('users.student-details');
         Route::post('users/{user}/add-to-group', [UserController::class, 'addToGroup'])->name('users.add-to-group');
         Route::post('users/{user}/add-to-camp', [UserController::class, 'addToCamp'])->name('users.add-to-camp');
         Route::post('users/{user}/camp-enrollments/{enrollment}/update', [UserController::class, 'updateCampEnrollment'])->name('users.update-camp-enrollment');
+        Route::post('users/{user}/camp-enrollments/{enrollment}/remove', [UserController::class, 'removeFromCamp'])->name('users.remove-from-camp');
         Route::post('users/{user}/record-payment', [UserController::class, 'recordPayment'])->name('users.record-payment');
         Route::post('users/{user}/remove-from-group', [UserController::class, 'removeFromGroup'])->name('users.remove-from-group');
         Route::post('users/{user}/enroll-course', [UserController::class, 'enrollCourse'])->name('users.enroll-course');
@@ -283,6 +287,7 @@ Route::prefix('admin')
 
         // Group Membership Requests routes
         Route::get('courses/{courseId}/groups/{groupId}/membership-requests', [CourseGroupController::class, 'membershipRequests'])->name('courses.groups.membership-requests');
+        Route::get('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}', [CourseGroupController::class, 'showMembershipRequest'])->name('courses.groups.membership-requests.show');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/approve', [CourseGroupController::class, 'approveRequest'])->name('courses.groups.membership-requests.approve');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/reject', [CourseGroupController::class, 'rejectRequest'])->name('courses.groups.membership-requests.reject');
         Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/delete', [CourseGroupController::class, 'deleteRequest'])->name('courses.groups.membership-requests.delete');

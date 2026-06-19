@@ -190,6 +190,7 @@ class Invoice extends Model
     public function cancel($reason = null)
     {
         $this->status = 'cancelled';
+        $this->remaining_amount = 0;
         if ($reason) {
             $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . "سبب الإلغاء: " . $reason;
         }

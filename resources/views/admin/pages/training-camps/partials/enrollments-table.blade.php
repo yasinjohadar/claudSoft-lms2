@@ -1,131 +1,138 @@
 <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-        <thead class="table-light">
+    <table class="table table-hover text-nowrap dashboard-table admin-camp-enrollments-table mb-0">
+        <thead>
             <tr>
-                <th scope="col">#</th>
+                <th scope="col" style="width: 48px;">#</th>
                 <th scope="col">الطالب</th>
                 <th scope="col">المعسكر</th>
                 <th scope="col">تاريخ الطلب</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">حالة الدفع</th>
-                <th scope="col">العمليات</th>
+                <th scope="col" style="width: 140px;">الإجراءات</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($enrollments as $enrollment)
-                <tr>
+                @php
+                    $student = $enrollment->student;
+                    $initial = $student ? mb_strtoupper(mb_substr($student->name, 0, 1)) : '?';
+                    $statusClasses = [
+                        'pending' => 'admin-camp-enrollment-status--pending',
+                        'approved' => 'admin-camp-enrollment-status--approved',
+                        'rejected' => 'admin-camp-enrollment-status--rejected',
+                        'cancelled' => 'admin-camp-enrollment-status--cancelled',
+                    ];
+                    $paymentClasses = [
+                        'unpaid' => 'admin-camp-enrollment-payment--unpaid',
+                        'paid' => 'admin-camp-enrollment-payment--paid',
+                        'refunded' => 'admin-camp-enrollment-payment--refunded',
+                    ];
+                @endphp
+                <tr class="admin-camp-enrollments-table__row">
                     <td>{{ $loop->iteration + ($enrollments->currentPage() - 1) * $enrollments->perPage() }}</td>
 
                     <td>
-                        <div>
-                            <strong>{{ $enrollment->student->name }}</strong>
-                            <br>
-                            <small class="text-muted">
-                                <button type="button" class="btn btn-xs btn-outline-secondary copy-student-email-btn me-1"
-                                    data-email="{{ $enrollment->student->email }}" title="نسخ البريد">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                                {{ $enrollment->student->email }}
-                            </small>
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <div class="admin-camps-table__thumb flex-shrink-0" style="width:34px;height:34px;border-radius:10px;">
+                                <span>{{ $initial }}</span>
+                            </div>
+                            <div class="min-w-0">
+                                @if($student)
+                                    <a href="{{ route('users.show', $student->id) }}"
+                                       class="fw-semibold text-decoration-none d-block text-truncate admin-camps-table__name">
+                                        {{ $student->name }}
+                                    </a>
+                                    @if($student->email)
+                                        <div class="d-flex align-items-center gap-1 min-w-0">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary py-0 px-1 copy-student-email-btn flex-shrink-0"
+                                                    data-email="{{ $student->email }}" title="نسخ البريد">
+                                                <i class="fe fe-copy"></i>
+                                            </button>
+                                            <small class="text-muted text-truncate">{{ $student->email }}</small>
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </div>
                         </div>
                     </td>
 
                     <td>
-                        <div>
-                            <strong>{{ $enrollment->camp->name }}</strong>
-                            <br><small class="text-muted">
-                                {{ $enrollment->camp->start_date->format('Y-m-d') }}
+                        @if($enrollment->camp)
+                            <a href="{{ route('training-camps.show', $enrollment->camp_id) }}"
+                               class="admin-camps-table__name text-decoration-none d-block text-truncate"
+                               style="max-width: 12rem;">
+                                {{ $enrollment->camp->name }}
+                            </a>
+                            <small class="text-muted d-block">
+                                {{ $enrollment->camp->start_date?->format('Y-m-d') }}
                             </small>
-                        </div>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
                     </td>
 
                     <td>
-                        <small>{{ $enrollment->created_at->format('Y-m-d H:i') }}</small>
+                        <span class="small text-muted">
+                            <i class="fe fe-clock me-1"></i>{{ $enrollment->created_at->format('Y-m-d H:i') }}
+                        </span>
                     </td>
 
                     <td>
-                        @php
-                            $statusColors = [
-                                'pending' => 'bg-warning text-dark',
-                                'approved' => 'bg-success',
-                                'rejected' => 'bg-danger',
-                                'cancelled' => 'bg-secondary',
-                            ];
-                        @endphp
-                        <span class="badge {{ $statusColors[$enrollment->status] ?? 'bg-secondary' }}">
+                        <span class="admin-camp-enrollment-status {{ $statusClasses[$enrollment->status] ?? '' }}">
                             {{ $enrollment->status_label }}
                         </span>
                     </td>
 
                     <td>
-                        @php
-                            $paymentColors = [
-                                'unpaid' => 'bg-warning text-dark',
-                                'paid' => 'bg-success',
-                                'refunded' => 'bg-secondary',
-                            ];
-                        @endphp
-                        <span class="badge {{ $paymentColors[$enrollment->payment_status] ?? 'bg-secondary' }}">
+                        <span class="admin-camp-enrollment-payment {{ $paymentClasses[$enrollment->payment_status] ?? '' }}">
                             {{ $enrollment->payment_status_label }}
                         </span>
                     </td>
 
                     <td>
-                        <div class="d-flex gap-1 flex-wrap">
-                            @php
-                                $statusButtons = [
-                                    'pending' => [
-                                        'class' => 'btn-warning',
-                                        'icon' => 'fa-clock',
-                                        'label' => 'قيد الانتظار',
-                                        'title' => 'تغيير إلى: قيد الانتظار',
-                                        'color' => 'warning',
-                                    ],
-                                    'approved' => [
-                                        'class' => 'btn-success',
-                                        'icon' => 'fa-check-circle',
-                                        'label' => 'مقبول',
-                                        'title' => 'تغيير إلى: مقبول',
-                                        'color' => 'success',
-                                    ],
-                                    'rejected' => [
-                                        'class' => 'btn-danger',
-                                        'icon' => 'fa-times-circle',
-                                        'label' => 'مرفوض',
-                                        'title' => 'تغيير إلى: مرفوض',
-                                        'color' => 'danger',
-                                    ],
-                                    'cancelled' => [
-                                        'class' => 'btn-secondary',
-                                        'icon' => 'fa-ban',
-                                        'label' => 'ملغي',
-                                        'title' => 'تغيير إلى: ملغي',
-                                        'color' => 'secondary',
-                                    ],
-                                ];
-                            @endphp
-
-                            @foreach($statusButtons as $status => $button)
-                                @if($enrollment->status !== $status)
-                                    <button type="button" class="btn btn-xs {{ $button['class'] }}"
-                                        title="{{ $button['title'] }}" data-bs-toggle="modal"
-                                        data-bs-target="#changeStatusModal" data-enrollment-id="{{ $enrollment->id }}"
-                                        data-new-status="{{ $status }}" data-status-label="{{ $button['label'] }}"
-                                        data-status-icon="{{ $button['icon'] }}"
-                                        data-status-color="{{ $button['color'] }}">
-                                        <i class="fas {{ $button['icon'] }}"></i>
-                                    </button>
-                                @endif
-                            @endforeach
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-primary-light"
+                                    data-bs-toggle="dropdown"
+                                    data-bs-popper-config='{"strategy":"fixed","placement":"bottom-end"}'
+                                    aria-expanded="false" title="المزيد">
+                                <i class="fe fe-more-horizontal"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                @foreach([
+                                    'pending' => ['label' => 'قيد الانتظار', 'icon' => 'fe-clock', 'class' => 'text-warning'],
+                                    'approved' => ['label' => 'مقبول', 'icon' => 'fe-check-circle', 'class' => 'text-success'],
+                                    'rejected' => ['label' => 'مرفوض', 'icon' => 'fe-x-circle', 'class' => 'text-danger'],
+                                    'cancelled' => ['label' => 'ملغي', 'icon' => 'fe-ban', 'class' => 'text-secondary'],
+                                ] as $status => $meta)
+                                    @if($enrollment->status !== $status)
+                                        <li>
+                                            <button type="button" class="dropdown-item {{ $meta['class'] }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#changeStatusModal"
+                                                    data-enrollment-id="{{ $enrollment->id }}"
+                                                    data-new-status="{{ $status }}"
+                                                    data-status-label="{{ $meta['label'] }}"
+                                                    data-status-icon="{{ $meta['icon'] }}"
+                                                    data-status-color="{{ str_replace('text-', '', $meta['class']) }}">
+                                                <i class="fe {{ $meta['icon'] }} me-2"></i>{{ $meta['label'] }}
+                                            </button>
+                                        </li>
+                                    @endif
+                                @endforeach
+                            </ul>
                         </div>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center py-5">
-                        <div class="text-muted">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                            <h5>لا توجد طلبات تسجيل</h5>
+                    <td colspan="7">
+                        <div class="group-show-empty py-5">
+                            <i class="fe fe-inbox group-show-empty__icon"></i>
+                            <h5 class="group-show-empty__title">لا توجد طلبات تسجيل</h5>
+                            <p class="group-show-empty__desc mb-0">جرّب تعديل الفلاتر أو انتظر طلبات جديدة.</p>
                         </div>
                     </td>
                 </tr>
@@ -134,7 +141,7 @@
     </table>
 </div>
 
-@if($enrollments->hasPages())
+@if($enrollments->count() > 0)
     <div class="d-flex justify-content-center mt-4">
         {{ $enrollments->withQueryString()->links() }}
     </div>

@@ -12,7 +12,7 @@
                 <th>رقم الهاتف</th>
                 <th>تاريخ الطلب</th>
                 <th>موعد تسديد الرسوم</th>
-                <th>الرسالة</th>
+                <th>عرض الفورم</th>
                 <th>الحالة</th>
                 <th>الإجراءات</th>
             </tr>
@@ -25,7 +25,10 @@
                     </td>
                     <td>{{ $request->id }}</td>
                     <td>
-                        <strong>{{ $request->student->name }}</strong>
+                        <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
+                           class="fw-semibold text-decoration-none admin-camps-table__name">
+                            {{ $request->student->name }}
+                        </a>
                         @if($request->student->name_ar)
                             <br><small class="text-muted">{{ $request->student->name_ar }}</small>
                         @endif
@@ -87,14 +90,10 @@
                         @endif
                     </td>
                     <td>
-                        @if($request->message)
-                            <button type="button" class="btn btn-sm btn-info-light" data-bs-toggle="modal"
-                                data-bs-target="#messageModal{{ $request->id }}">
-                                <i class="fe fe-mail me-1"></i>عرض
-                            </button>
-                        @else
-                            <span class="text-muted">—</span>
-                        @endif
+                        <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
+                           class="btn btn-sm btn-primary-light">
+                            <i class="fe fe-eye me-1"></i>عرض البيانات
+                        </a>
                     </td>
                     <td>
                         @if($request->status === 'pending')
@@ -119,6 +118,10 @@
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
+                            <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
+                               class="btn btn-sm btn-info-light" title="مراجعة بيانات الفورم">
+                                <i class="fe fe-file-text"></i>
+                            </a>
                             @if($request->status === 'pending')
                                 <form action="{{ route('courses.groups.membership-requests.approve', [$course->id, $group->id, $request->id]) }}"
                                     method="POST" class="d-inline"
@@ -170,22 +173,6 @@
                         </div>
                     </td>
                 </tr>
-
-                @if($request->message)
-                    <div class="modal fade" id="messageModal{{ $request->id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content border-0 shadow-lg">
-                                <div class="modal-header border-0">
-                                    <h5 class="modal-title"><i class="fe fe-mail me-2"></i>رسالة من الطالب</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body pt-0">
-                                    <p class="mb-0">{{ $request->message }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
 
                 <div class="modal fade" id="rejectModal{{ $request->id }}" tabindex="-1">
                     <div class="modal-dialog modal-dialog-centered">

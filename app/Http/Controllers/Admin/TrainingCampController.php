@@ -27,9 +27,29 @@ class TrainingCampController extends Controller
      */
     public function index(Request $request)
     {
+        $campsQuery = $this->buildCampsQuery($request);
+        $stats = $this->buildCampsStats($campsQuery);
+        $camps = (clone $campsQuery)->orderBy('start_date', 'desc')->paginate(20)->withQueryString();
+        $categories = CourseCategory::active()->ordered()->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('admin.pages.training-camps._camps_table', compact('camps'))->render(),
+                'stats_html' => view('admin.pages.training-camps.partials.camps-stats', compact('stats'))->render(),
+                'count' => $camps->total(),
+            ]);
+        }
+
+        return view('admin.pages.training-camps.index', compact('camps', 'categories', 'stats'));
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<TrainingCamp>
+     */
+    private function buildCampsQuery(Request $request)
+    {
         $query = TrainingCamp::with('category');
 
-        // Filter by status
         if ($request->filled('status')) {
             if ($request->status === 'upcoming') {
                 $query->upcoming();
@@ -40,30 +60,95 @@ class TrainingCampController extends Controller
             }
         }
 
-        // Filter by category
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
-        // Filter by active status
         if ($request->filled('is_active')) {
             $query->where('is_active', $request->is_active);
         }
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('instructor_name', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%");
+                    ->orWhere('instructor_name', 'like', "%{$search}%")
+                    ->orWhere('location', 'like', "%{$search}%");
             });
         }
 
-        $camps = $query->orderBy('start_date', 'desc')->paginate(20);
-        $categories = CourseCategory::active()->ordered()->get();
+        return $query;
+    }
 
-        return view('admin.pages.training-camps.index', compact('camps', 'categories'));
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<TrainingCamp>  $query
+     * @return array{total: int, ongoing: int, upcoming: int, active: int}
+     */
+    private function buildCampsStats($query): array
+    {
+        return [
+            'total' => (clone $query)->count(),
+            'ongoing' => (clone $query)->ongoing()->count(),
+            'upcoming' => (clone $query)->upcoming()->count(),
+            'active' => (clone $query)->where('is_active', true)->count(),
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<CampEnrollment>
+     */
+    private function buildCampEnrollmentsQuery(Request $request)
+    {
+        $query = CampEnrollment::query()
+            ->select([
+                'id',
+                'camp_id',
+                'student_id',
+                'status',
+                'payment_status',
+                'created_at',
+            ])
+            ->with([
+                'camp:id,name,start_date',
+                'student:id,name,email',
+            ])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        if ($request->filled('camp_id')) {
+            $query->where('camp_id', $request->camp_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('student', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<CampEnrollment>  $query
+     * @return array{total: int, pending: int, approved: int, unpaid: int}
+     */
+    private function buildCampEnrollmentsStats($query): array
+    {
+        return [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'unpaid' => (clone $query)->where('payment_status', 'unpaid')->count(),
+        ];
     }
 
     /**
@@ -432,64 +517,22 @@ class TrainingCampController extends Controller
      */
     public function enrollments(Request $request)
     {
-        $query = \App\Models\CampEnrollment::query()
-            ->select([
-                'id',
-                'camp_id',
-                'student_id',
-                'status',
-                'payment_status',
-                'created_at',
-            ])
-            ->with([
-                'camp:id,name,start_date',
-                'student:id,name,email',
-            ])
-            ->orderBy('created_at', 'desc');
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by payment status
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->payment_status);
-        }
-
-        // Filter by camp
-        if ($request->filled('camp_id')) {
-            $query->where('camp_id', $request->camp_id);
-        }
-
-        // Search by student name
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('student', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        $enrollments = $query->paginate(20);
+        $enrollmentsQuery = $this->buildCampEnrollmentsQuery($request);
+        $stats = $this->buildCampEnrollmentsStats($enrollmentsQuery);
+        $enrollments = (clone $enrollmentsQuery)->paginate(20)->withQueryString();
         $camps = TrainingCamp::active()->orderBy('name')->get(['id', 'name']);
 
         if ($request->ajax()) {
-            $tableHtml = view('admin.pages.training-camps.partials.enrollments-table', [
-                'enrollments' => $enrollments,
-            ])->render();
-
             return response()->json([
-                'table_html' => $tableHtml,
-                'meta' => [
-                    'total' => $enrollments->total(),
-                    'current_page' => $enrollments->currentPage(),
-                    'last_page' => $enrollments->lastPage(),
-                ],
+                'table_html' => view('admin.pages.training-camps.partials.enrollments-table', [
+                    'enrollments' => $enrollments,
+                ])->render(),
+                'stats_html' => view('admin.pages.training-camps.partials.enrollments-stats', compact('stats'))->render(),
+                'count' => $enrollments->total(),
             ]);
         }
 
-        return view('admin.pages.training-camps.enrollments', compact('enrollments', 'camps'));
+        return view('admin.pages.training-camps.enrollments', compact('enrollments', 'camps', 'stats'));
     }
 
     /**
@@ -833,12 +876,17 @@ class TrainingCampController extends Controller
                 });
             }
 
-            $enrollments = $query->paginate(15);
+            $enrollments = $query->paginate(15)->withQueryString();
 
             return response()->json([
                 'success' => true,
+                'table_html' => view('admin.pages.training-camps.partials.camp-enrollments-table', [
+                    'enrollments' => $enrollments,
+                    'camp' => $camp,
+                ])->render(),
+                'count' => $enrollments->total(),
                 'enrollments' => $enrollments,
-                'camp' => $camp->fresh(['category'])
+                'camp' => $camp->fresh(['category'])->loadCount('enrollments'),
             ]);
 
         } catch (\Exception $e) {
@@ -942,38 +990,29 @@ class TrainingCampController extends Controller
     /**
      * Delete an enrollment.
      */
-    public function destroyEnrollment(string $campId, string $enrollmentId)
+    public function destroyEnrollment(string $campId, string $enrollmentId, TrainingCampEnrollmentService $enrollmentService)
     {
         try {
             $camp = TrainingCamp::findOrFail($campId);
             $enrollment = CampEnrollment::where('camp_id', $campId)
                 ->findOrFail($enrollmentId);
 
-            DB::beginTransaction();
-
-            $wasApproved = $enrollment->status === 'approved';
-
-            // Delete enrollment
-            $enrollment->delete();
-
-            // Decrement current_participants if was approved
-            if ($wasApproved) {
-                $camp->decrement('current_participants');
-            }
-
-            DB::commit();
+            $enrollmentService->removeEnrollment($enrollment);
 
             return response()->json([
                 'success' => true,
                 'message' => 'تم حذف العضو بنجاح',
-                'camp' => $camp->fresh()
+                'camp' => $camp->fresh(),
             ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (InvalidArgumentException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage()
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: '.$e->getMessage(),
             ], 500);
         }
     }

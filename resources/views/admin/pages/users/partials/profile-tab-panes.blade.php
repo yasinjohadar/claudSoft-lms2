@@ -9,7 +9,9 @@
 @endphp
 
 <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
-    <h5 class="fw-bold mb-3">ملخص سريع</h5>
+    @include('admin.pages.users.partials.profile-personal-data', ['user' => $user])
+
+    <h5 class="fw-bold mb-3 mt-2">ملخص سريع</h5>
     <p class="text-muted mb-4">
         متابعة شاملة لكورسات الطالب، اختباراته، مدفوعاته، شهاداته، مجموعاته، جلساته وأجهزته من لوحة واحدة.
     </p>
@@ -399,7 +401,7 @@
     <div id="profile-camps-table-wrap" class="@if(($campEnrollments ?? collect())->isEmpty()) d-none @endif">
         <p class="text-muted fs-12 mb-2">
             <i class="fe fe-info me-1"></i>
-            يمكنك تغيير <strong>حالة التسجيل</strong> و<strong>حالة الدفع</strong> مباشرة من القوائم في الجدول أدناه.
+            يمكنك تغيير <strong>حالة التسجيل</strong> و<strong>حالة الدفع</strong> من القوائم، أو إلغاء التسجيل بالكامل من زر <i class="fe fe-user-minus"></i>.
         </p>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 admin-users-table">

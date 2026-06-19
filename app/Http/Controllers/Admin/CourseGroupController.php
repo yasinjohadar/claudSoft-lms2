@@ -1425,6 +1425,66 @@ class CourseGroupController extends Controller
     }
 
     /**
+     * Show membership request with full registration form data for review.
+     */
+    public function showMembershipRequest($courseId, $groupId, $requestId)
+    {
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::with(['courses', 'creator'])
+                ->whereHas('courses', function ($q) use ($courseId) {
+                    $q->where('courses.id', $courseId);
+                })
+                ->findOrFail($groupId);
+
+            $membershipRequest = GroupMembershipRequest::with([
+                'student:id,name,name_ar,email,phone,country_code,date_of_birth,gender,city,address,nationality_id',
+                'student.nationality:id,name',
+                'approver:id,name',
+                'rejecter:id,name',
+            ])->findOrFail($requestId);
+
+            if ((int) $membershipRequest->group_id !== (int) $groupId) {
+                abort(404);
+            }
+
+            $registration = $membershipRequest->resolveRegistration();
+
+            $otherGroups = collect();
+            if ($membershipRequest->student_id) {
+                $otherGroups = CourseGroupMember::query()
+                    ->where('student_id', $membershipRequest->student_id)
+                    ->where('group_id', '!=', (int) $groupId)
+                    ->with([
+                        'group' => function ($q) {
+                            $q->select('id', 'name')
+                                ->with(['courses' => function ($cq) {
+                                    $cq->select('courses.id');
+                                }]);
+                        },
+                    ])
+                    ->get()
+                    ->pluck('group')
+                    ->filter()
+                    ->unique('id')
+                    ->values();
+            }
+
+            return view('admin.course-groups.membership-request-show', compact(
+                'course',
+                'group',
+                'membershipRequest',
+                'registration',
+                'otherGroups'
+            ));
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('courses.groups.membership-requests', [$courseId, $groupId])
+                ->with('error', 'حدث خطأ أثناء تحميل بيانات الطلب: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Approve a membership request.
      */
     public function approveRequest($courseId, $groupId, $requestId, Request $request)

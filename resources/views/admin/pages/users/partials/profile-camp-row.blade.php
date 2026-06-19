@@ -68,11 +68,22 @@
         @endif
     </td>
     <td>
-        @if($camp)
-            <a href="{{ route('training-camps.enrollments.show', [$camp->id, $campEnrollment->id]) }}"
-               class="btn btn-sm btn-info-light" title="تفاصيل التسجيل">
-                <i class="fe fe-eye"></i>
-            </a>
-        @endif
+        <div class="d-flex align-items-center gap-1">
+            @if($camp)
+                <a href="{{ route('training-camps.enrollments.show', [$camp->id, $campEnrollment->id]) }}"
+                   class="btn btn-sm btn-info-light" title="تفاصيل التسجيل">
+                    <i class="fe fe-eye"></i>
+                </a>
+                <button type="button"
+                        class="btn btn-sm btn-danger-light profile-remove-camp-btn"
+                        data-enrollment-id="{{ $campEnrollment->id }}"
+                        data-camp-id="{{ $camp->id }}"
+                        data-camp-name="{{ $camp->name }}"
+                        data-remove-url="{{ route('users.remove-from-camp', [$campEnrollment->student_id, $campEnrollment->id]) }}"
+                        title="إلغاء الطالب من المعسكر">
+                    <i class="fe fe-user-minus"></i>
+                </button>
+            @endif
+        </div>
     </td>
 </tr>

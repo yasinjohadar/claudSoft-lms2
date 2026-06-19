@@ -90,6 +90,18 @@
                                 <span class="group-show-action__text">الدخول كطالب</span>
                             </x-admin.impersonate-trigger>
                         @endif
+                        @if($user->email)
+                            <button type="button"
+                                    class="group-show-action group-show-action--info js-open-send-email border-0 bg-transparent w-100 text-start"
+                                    data-user-id="{{ $user->id }}"
+                                    data-user-name="{{ $user->name }}"
+                                    data-user-email="{{ $user->email }}"
+                                    data-preview-url="{{ route('users.send-email.preview', $user) }}"
+                                    data-send-url="{{ route('users.send-email.send', $user) }}">
+                                <span class="group-show-action__icon"><i class="fe fe-mail"></i></span>
+                                <span class="group-show-action__text">إرسال بريد</span>
+                            </button>
+                        @endif
                         <a href="{{ route('users.edit', $user->id) }}" class="group-show-action group-show-action--primary">
                             <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                             <span class="group-show-action__text">تعديل البيانات</span>
@@ -350,9 +362,12 @@
         </div>
     </div>
 </div>
+
+@include('admin.pages.users.partials.send-email-modal')
 @endsection
 
 @push('scripts')
+@include('admin.pages.users.partials.send-email-scripts')
 <script>
     document.querySelectorAll('[data-countup]').forEach(function (el) {
         var raw = el.getAttribute('data-countup');
@@ -753,6 +768,29 @@
             });
         }
 
+        function renumberProfileCampRows() {
+            var tbody = document.getElementById('profile-camps-tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('.profile-camp-row').forEach(function (row, index) {
+                var cell = row.querySelector('td:first-child');
+                if (cell) cell.textContent = String(index + 1);
+            });
+        }
+
+        function addCampSelectOption(selectEl, camp) {
+            if (!selectEl || !camp) return;
+            if (selectEl.querySelector('option[value="' + camp.id + '"]')) return;
+
+            var option = document.createElement('option');
+            option.value = String(camp.id);
+            option.setAttribute('data-price', camp.price != null ? String(camp.price) : '0');
+            option.textContent = camp.name + ' — ' + parseFloat(camp.price || 0).toFixed(2);
+            selectEl.appendChild(option);
+
+            var formWrap = document.getElementById('profile-add-camp-form');
+            if (formWrap) formWrap.classList.remove('d-none');
+        }
+
         var campsTbody = document.getElementById('profile-camps-tbody');
         if (campsTbody) {
             campsTbody.querySelectorAll('.profile-camp-row').forEach(initProfileCampRow);
@@ -810,6 +848,7 @@
                                 selectEl.classList.contains('profile-camp-status-select') ? campStatusValues : campPaymentValues
                             );
                             updateProfileCampStats(result.data.camp_stats);
+                            applyProfileBillingSideEffects(result.data);
                             showFeedback(feedbackEl, result.data.message, 'success');
                             return;
                         }
@@ -834,6 +873,78 @@
                         setCampPickerLoading(selectEl, false);
                     });
             });
+
+            campsTbody.addEventListener('click', function (event) {
+                var btn = event.target.closest('.profile-remove-camp-btn');
+                if (!btn) return;
+
+                var row = btn.closest('.profile-camp-row');
+                var removeUrl = btn.getAttribute('data-remove-url');
+                var campName = btn.getAttribute('data-camp-name') || 'هذا المعسكر';
+                var feedbackEl = document.getElementById('profile-camps-feedback');
+                var campSelect = document.getElementById('profile_camp_id');
+
+                if (!row || !removeUrl) return;
+
+                if (!window.confirm('هل أنت متأكد من إلغاء تسجيل الطالب في المعسكر «' + campName + '»؟')) {
+                    return;
+                }
+
+                btn.disabled = true;
+                hideFeedback(feedbackEl);
+
+                fetch(removeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    credentials: 'same-origin',
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, data: data };
+                        }).catch(function () {
+                            return { ok: response.ok, data: {} };
+                        });
+                    })
+                    .then(function (result) {
+                        if (result.ok && result.data.success) {
+                            row.remove();
+                            renumberProfileCampRows();
+
+                            var tbody = document.getElementById('profile-camps-tbody');
+                            var tableWrap = document.getElementById('profile-camps-table-wrap');
+                            var emptyEl = document.getElementById('profile-camps-empty');
+                            var statsWrap = document.getElementById('profile-camps-stats');
+                            var hasRows = tbody && tbody.querySelectorAll('.profile-camp-row').length > 0;
+
+                            if (tableWrap) tableWrap.classList.toggle('d-none', !hasRows);
+                            if (emptyEl) emptyEl.classList.toggle('d-none', hasRows);
+                            if (statsWrap) statsWrap.classList.toggle('d-none', !hasRows);
+
+                            updateProfileCampStats(result.data.camp_stats);
+                            updateTabBadge(document.getElementById('profile-camps-badge'), result.data.camp_stats.total);
+
+                            if (result.data.camp && campSelect) {
+                                addCampSelectOption(campSelect, result.data.camp);
+                            }
+
+                            applyProfileBillingSideEffects(result.data);
+                            showFeedback(feedbackEl, result.data.message, 'success');
+                            return;
+                        }
+
+                        showFeedback(feedbackEl, formatValidationErrors(result.data), 'error');
+                    })
+                    .catch(function () {
+                        showFeedback(feedbackEl, 'تعذر إلغاء التسجيل. حاول مرة أخرى.', 'error');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
         }
 
         window.initProfileCampRow = initProfileCampRow;
@@ -849,6 +960,45 @@
             if (el) el.textContent = Number(stats.total_paid).toFixed(2);
             el = document.getElementById('profile-billing-stat-remaining');
             if (el) el.textContent = Number(stats.remaining_amount).toFixed(2);
+        }
+
+        function markProfileInvoicesCancelled(invoiceIds) {
+            if (!invoiceIds || !invoiceIds.length) return;
+
+            invoiceIds.forEach(function (invoiceId) {
+                var row = document.getElementById('profile-invoice-row-' + invoiceId);
+                if (!row) return;
+
+                var remainingCell = row.querySelector('td:nth-child(5)');
+                if (remainingCell) remainingCell.textContent = '0.00';
+
+                var statusChip = row.querySelector('.group-show-chip');
+                if (statusChip) {
+                    statusChip.textContent = 'ملغاة';
+                    statusChip.classList.remove('text-success', 'text-warning', 'text-info');
+                    statusChip.classList.add('text-danger');
+                }
+
+                var actionsCell = row.querySelector('td:last-child');
+                if (actionsCell) {
+                    actionsCell.innerHTML = '<span class="text-muted">—</span>';
+                }
+
+                var paymentSelect = document.getElementById('profilePaymentInvoiceId');
+                if (paymentSelect) {
+                    var option = paymentSelect.querySelector('option[value="' + invoiceId + '"]');
+                    if (option) option.remove();
+                }
+            });
+        }
+
+        function applyProfileBillingSideEffects(data) {
+            if (data.billing_stats) {
+                updateBillingStats(data.billing_stats);
+            }
+            if (data.cancelled_invoice_ids) {
+                markProfileInvoicesCancelled(data.cancelled_invoice_ids);
+            }
         }
 
         function syncProfilePaymentRemaining() {
