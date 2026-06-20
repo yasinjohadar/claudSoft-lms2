@@ -50,4 +50,11 @@ return [
         'mcp_personal_access_token' => env('WASENDER_MCP_PERSONAL_ACCESS_TOKEN'),
     ],
 
+    'bunny_stream' => [
+        // CDN hostname for direct MP4 playback (e.g. vz-xxxxx.b-cdn.net) — avoids Bunny iframe RUM pings
+        'cdn_hostname' => env('BUNNY_STREAM_CDN_HOSTNAME'),
+        // Optional: auto-resolve CDN hostname per library via Bunny Stream API
+        'api_key' => env('BUNNY_STREAM_API_KEY'),
+    ],
+
 ];

@@ -254,11 +254,142 @@ class Video extends Model
     }
 
     /**
+     * Check if the video is hosted on Bunny Stream.
+     */
+    public function isBunnyStreamVideo(): bool
+    {
+        foreach ([$this->video_url, $this->embed_code, $this->thumbnail] as $value) {
+            if (! is_string($value) || $value === '') {
+                continue;
+            }
+
+            if (str_contains($value, 'mediadelivery.net')
+                || str_contains($value, 'bunny.net')
+                || str_contains($value, 'b-cdn.net')
+                || str_contains($value, 'iframe.mediadelivery')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Direct MP4/HLS URL for Bunny Stream (bypasses iframe player and RUM metrics).
+     */
+    public function getBunnyNativePlaybackUrl(string $quality = '720p'): ?string
+    {
+        if (! $this->isBunnyStreamVideo()) {
+            return null;
+        }
+
+        $videoUrl = trim((string) ($this->video_url ?? ''));
+        if ($videoUrl !== '' && $this->isBunnyDirectMediaUrl($videoUrl)) {
+            return $videoUrl;
+        }
+
+        $ids = $this->parseBunnyStreamIds();
+        $hostname = $this->resolveBunnyCdnHostname();
+
+        if (! $ids || ! $hostname) {
+            return null;
+        }
+
+        return "https://{$hostname}/{$ids['video_id']}/play_{$quality}.mp4";
+    }
+
+    /**
+     * Bunny iframe embed URL (fallback when direct playback is unavailable).
+     */
+    public function getBunnyIframeSrc(): ?string
+    {
+        $ids = $this->parseBunnyStreamIds();
+        if (! $ids) {
+            return null;
+        }
+
+        $query = http_build_query([
+            'responsive' => 'true',
+            'preload' => 'false',
+        ]);
+
+        return "https://iframe.mediadelivery.net/embed/{$ids['library_id']}/{$ids['video_id']}?{$query}";
+    }
+
+    /**
+     * @return array{library_id: string, video_id: string}|null
+     */
+    public function parseBunnyStreamIds(): ?array
+    {
+        foreach ([$this->video_url, $this->embed_code] as $source) {
+            if (! is_string($source) || $source === '') {
+                continue;
+            }
+
+            if (preg_match('#mediadelivery\.net/(?:embed|play)/(\d+)/([a-f0-9-]+)#i', $source, $matches)) {
+                return [
+                    'library_id' => $matches[1],
+                    'video_id' => $matches[2],
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    public function resolveBunnyCdnHostname(): ?string
+    {
+        foreach ([$this->video_url, $this->embed_code, $this->thumbnail] as $source) {
+            $hostname = $this->extractBunnyCdnHostnameFromText($source);
+            if ($hostname) {
+                return $hostname;
+            }
+        }
+
+        $ids = $this->parseBunnyStreamIds();
+        if ($ids) {
+            $hostname = app(\App\Services\Video\BunnyStreamPlaybackService::class)
+                ->resolveCdnHostname($ids['library_id'], $ids['video_id']);
+
+            if ($hostname) {
+                return $hostname;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractBunnyCdnHostnameFromText(mixed $text): ?string
+    {
+        return app(\App\Services\Video\BunnyStreamPlaybackService::class)
+            ->extractBunnyCdnHostnameFromText($text);
+    }
+
+    private function isBunnyDirectMediaUrl(string $url): bool
+    {
+        if (! str_contains($url, 'b-cdn.net')) {
+            return false;
+        }
+
+        return (bool) preg_match('#/play_\d+p\.mp4(?:\?|$)#i', $url)
+            || str_contains($url, '/playlist.m3u8')
+            || str_ends_with(strtolower(parse_url($url, PHP_URL_PATH) ?: ''), '.mp4');
+    }
+
+    /**
      * Get embed code for the video.
      * Returns saved embed_code if exists, otherwise generates from video_url for Bunny Stream.
      */
     public function getEmbedCode(): ?string
     {
+        if ($this->isBunnyStreamVideo()) {
+            return null;
+        }
+
+        if ($this->getBunnyNativePlaybackUrl()) {
+            return null;
+        }
+
         // If embed_code exists, return it
         if ($this->embed_code) {
             return $this->embed_code;
@@ -316,8 +447,9 @@ class Video extends Model
                     parse_str($parsedUrl['query'], $queryParams);
                 }
                 
-                // Ensure responsive is true
+                // Ensure responsive is true, disable preload to reduce player overhead
                 $queryParams['responsive'] = 'true';
+                $queryParams['preload'] = 'false';
                 
                 if (!empty($queryParams)) {
                     $embedUrl .= '?' . http_build_query($queryParams);

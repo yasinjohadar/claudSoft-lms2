@@ -10,20 +10,28 @@
 
         @include('student.components.alerts')
 
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4">
-            <div>
-                <h4 class="student-my-courses-welcome__title mb-1">الموارد الخارجية</h4>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active">الموارد الخارجية</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="mt-3 mt-md-0">
-                <span class="badge bg-primary-transparent fs-12 px-3 py-2" id="external-resources-count">
-                    {{ $resources->total() }} مورد
-                </span>
+        <div class="card custom-card group-show-hero dashboard-fade-in mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-folder me-1"></i>مصادر تعلم إضافية
+                    </span>
+                    <h4 class="group-show-hero__title mb-2">الموارد الخارجية</h4>
+                    <p class="group-show-hero__desc mb-2">
+                        أدوات، مواقع، وملفات مفيدة خارج منهج الكورس — تصفّحها وافتح ما تحتاجه بضغطة واحدة.
+                    </p>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item active">الموارد الخارجية</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="student-external-resources-hero__badge-wrap">
+                    <span class="student-external-resources-hero__badge" id="external-resources-count">
+                        <i class="fe fe-layers me-1"></i>{{ $resources->total() }} مورد
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -31,15 +39,21 @@
 
         @include('student.pages.external-resources.partials.external-resources-filters')
 
-        <div class="card custom-card student-quizzes-panel">
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <span class="avatar avatar-sm bg-primary-transparent">
-                        <i class="fe fe-book-open text-primary"></i>
-                    </span>
-                    <h6 class="card-title mb-0">مكتبة الموارد</h6>
+        <div class="card custom-card student-external-resources-panel dashboard-fade-in">
+            <div class="card-header border-0 pb-0">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-sm bg-primary-transparent">
+                            <i class="fe fe-book-open text-primary"></i>
+                        </span>
+                        <div>
+                            <h6 class="card-title mb-0">مكتبة الموارد</h6>
+                            <p class="text-muted fs-12 mb-0">روابط وملفات منظّمة حسب النوع والتصنيف</p>
+                        </div>
+                    </div>
                 </div>
-
+            </div>
+            <div class="card-body pt-3">
                 <div id="external-resources-results">
                     @include('student.pages.external-resources.partials.grid', ['resources' => $resources])
                 </div>
@@ -114,7 +128,9 @@
             .then(function (data) {
                 resultsEl.innerHTML = data.html;
                 if (data.meta) {
-                    if (countEl) countEl.textContent = data.meta.total + ' مورد';
+                    if (countEl) {
+                        countEl.innerHTML = '<i class="fe fe-layers me-1"></i>' + data.meta.total + ' مورد';
+                    }
                     animateCount(filteredCountEl, data.meta.total);
                 }
                 bindPagination();

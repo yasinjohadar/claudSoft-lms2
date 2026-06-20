@@ -13,7 +13,27 @@ class StudentWorkController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        $works = $this->buildWorksQuery($user, $request)->paginate(12)->withQueryString();
+        $stats = $this->buildWorksStats($user);
+        $categories = StudentWork::getCategories();
+        $statuses = StudentWork::getStatuses();
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html' => view('student.works.partials.grid', compact('works', 'categories', 'statuses'))->render(),
+                'meta' => [
+                    'total' => $works->total(),
+                    'current_page' => $works->currentPage(),
+                    'last_page' => $works->lastPage(),
+                ],
+            ]);
+        }
+
+        return view('student.works.index', compact('works', 'stats', 'categories', 'statuses'));
+    }
+
+    private function buildWorksQuery($user, Request $request)
+    {
         $query = StudentWork::where('student_id', $user->id)
             ->with(['course', 'approver'])
             ->latest();
@@ -30,19 +50,17 @@ class StudentWorkController extends Controller
             $query->search($request->search);
         }
 
-        $works = $query->paginate(12);
+        return $query;
+    }
 
-        $stats = [
+    private function buildWorksStats($user): array
+    {
+        return [
             'total' => StudentWork::where('student_id', $user->id)->count(),
             'draft' => StudentWork::where('student_id', $user->id)->draft()->count(),
             'pending' => StudentWork::where('student_id', $user->id)->pending()->count(),
             'approved' => StudentWork::where('student_id', $user->id)->approved()->count(),
         ];
-
-        $categories = StudentWork::getCategories();
-        $statuses = StudentWork::getStatuses();
-
-        return view('student.works.index', compact('works', 'stats', 'categories', 'statuses'));
     }
 
     public function create()

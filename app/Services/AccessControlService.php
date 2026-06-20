@@ -118,8 +118,21 @@ class AccessControlService
      */
     public function canAccessSection(CourseSection $section, User $student): array
     {
+        $course = $section->relationLoaded('course')
+            ? $section->course
+            : ($section->course_id ? Course::find($section->course_id) : null);
+
+        if (! $course) {
+            return [
+                'can_access' => false,
+                'reason' => 'الكورس غير موجود',
+                'reason_en' => 'Course not found',
+                'code' => 'COURSE_NOT_FOUND',
+            ];
+        }
+
         // First check course access
-        $courseAccess = $this->canAccessCourse($section->course, $student);
+        $courseAccess = $this->canAccessCourse($course, $student);
         if (!$courseAccess['can_access']) {
             return $courseAccess;
         }
@@ -199,8 +212,19 @@ class AccessControlService
      */
     public function canAccessModule(CourseModule $module, User $student): array
     {
+        $section = $module->section;
+
+        if (! $section) {
+            return [
+                'can_access' => false,
+                'reason' => 'القسم غير موجود',
+                'reason_en' => 'Section not found',
+                'code' => 'SECTION_NOT_FOUND',
+            ];
+        }
+
         // First check section access
-        $sectionAccess = $this->canAccessSection($module->section, $student);
+        $sectionAccess = $this->canAccessSection($section, $student);
         if (!$sectionAccess['can_access']) {
             return $sectionAccess;
         }

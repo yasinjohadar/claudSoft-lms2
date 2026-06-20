@@ -11,6 +11,7 @@ use App\Models\NotificationUserPreference;
 use App\Models\User;
 use App\Notifications\HubDatabaseNotification;
 use App\Services\Flaxxa\WapiAutomationService;
+use Illuminate\Support\Facades\Log;
 
 class NotificationHubService
 {
@@ -54,23 +55,42 @@ class NotificationHubService
         }
 
         if (in_array('realtime', $resolvedChannels, true)) {
-            event(new UserNotificationBroadcasted($user->id, [
-                'notification_id' => $notificationId,
-                'event_key' => $eventKey,
-                'title' => $databasePayload['title'] ?? null,
-                'body' => $databasePayload['body'] ?? null,
-                'data' => $databasePayload['data'] ?? [],
-            ]));
+            try {
+                event(new UserNotificationBroadcasted($user->id, [
+                    'notification_id' => $notificationId,
+                    'event_key' => $eventKey,
+                    'title' => $databasePayload['title'] ?? null,
+                    'body' => $databasePayload['body'] ?? null,
+                    'data' => $databasePayload['data'] ?? [],
+                ]));
 
-            NotificationDeliveryLog::create([
-                'user_id' => $user->id,
-                'database_notification_id' => $notificationId,
-                'event_key' => $eventKey,
-                'channel' => 'realtime',
-                'status' => 'sent',
-                'payload' => $databasePayload,
-                'sent_at' => now(),
-            ]);
+                NotificationDeliveryLog::create([
+                    'user_id' => $user->id,
+                    'database_notification_id' => $notificationId,
+                    'event_key' => $eventKey,
+                    'channel' => 'realtime',
+                    'status' => 'sent',
+                    'payload' => $databasePayload,
+                    'sent_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Notification hub realtime broadcast failed', [
+                    'user_id' => $user->id,
+                    'event_key' => $eventKey,
+                    'error' => $e->getMessage(),
+                ]);
+
+                NotificationDeliveryLog::create([
+                    'user_id' => $user->id,
+                    'database_notification_id' => $notificationId,
+                    'event_key' => $eventKey,
+                    'channel' => 'realtime',
+                    'status' => 'failed',
+                    'payload' => $databasePayload,
+                    'error_message' => $e->getMessage(),
+                    'sent_at' => null,
+                ]);
+            }
         }
 
         if (in_array('fcm', $resolvedChannels, true)) {

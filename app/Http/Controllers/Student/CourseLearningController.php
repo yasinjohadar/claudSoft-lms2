@@ -116,86 +116,141 @@ class CourseLearningController extends Controller
      */
     public function showModule($moduleId)
     {
+        $isLearnMainPartial = request()->header('Turbo-Frame') === 'student-learn-main'
+            || request()->header('X-Learn-Partial') === 'main';
+
         try {
             $student = auth()->user();
             $accessControl = new AccessControlService;
 
-            $module = CourseModule::with([
-                'course',
-                'course.sections' => function ($q) {
-                    $q->visible()->orderBy('sort_order');
-                },
-                'course.sections.course',
-                'course.sections.modules' => function ($q) {
-                    $q->visible()->orderBy('sort_order');
-                },
-                'course.sections.modules.section',
-                'course.sections.modules.accessRestrictions' => function ($q) {
-                    $q->where('restriction_type', 'group')
-                        ->where('access_type', 'allow');
-                },
-                'course.sections.modules.accessRestrictions.group',
-                'course.sections.accessRestrictions' => function ($q) {
-                    $q->where('restriction_type', 'group')
-                        ->where('access_type', 'allow');
-                },
-                'course.sections.accessRestrictions.group',
-                'section',
-                'modulable',
-                'completions' => function ($q) use ($student) {
-                    $q->where('student_id', $student->id);
-                },
-            ])->findOrFail($moduleId);
-
-            // Check module access using AccessControlService
-            $moduleAccess = $accessControl->canAccessModule($module, $student);
-            if (! $moduleAccess['can_access']) {
-                return redirect()
-                    ->route('student.courses.show', $module->course_id)
-                    ->with('error', $moduleAccess['reason'] ?? 'هذا الدرس غير متاح حالياً');
+            if ($isLearnMainPartial) {
+                return $this->renderLearnModulePartial($moduleId, $student, $accessControl);
             }
 
-            // Load questions for question modules
-            if ($module->module_type === 'question_module' && $module->modulable) {
-                $module->modulable->load(['questions.questionType']);
+            return $this->renderLearnModuleFull($moduleId, $student, $accessControl);
+
+        } catch (\Exception $e) {
+            if ($isLearnMainPartial) {
+                return response('', 500);
             }
 
-            // Load quiz data for quiz modules
-            if ($module->module_type === 'quiz' && $module->modulable) {
-                $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
-            }
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ أثناء تحميل المحتوى: '.$e->getMessage());
+        }
+    }
 
-            // Filter sections based on access restrictions
-            $module->course->sections = $module->course->sections->filter(function ($section) use ($accessControl, $student) {
-                $access = $accessControl->canAccessSection($section, $student);
+    /**
+     * Fast path: sidebar AJAX — loads only main content, not full course tree.
+     */
+    protected function renderLearnModulePartial($moduleId, $student, AccessControlService $accessControl)
+    {
+        $module = CourseModule::with([
+            'section.course',
+            'modulable',
+            'completions' => fn ($q) => $q->where('student_id', $student->id),
+        ])->findOrFail($moduleId);
 
-                return $access['can_access'];
-            })->values(); // Reindex collection
+        $moduleAccess = $accessControl->canAccessModule($module, $student);
+        if (! $moduleAccess['can_access']) {
+            return response('', 403);
+        }
 
-            // Filter modules in each section based on access restrictions
-            $module->course->sections->each(function ($section) use ($accessControl, $student) {
-                $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
-                    $access = $accessControl->canAccessModule($mod, $student);
+        $this->loadModuleModulableRelations($module);
 
-                    return $access['can_access'];
-                })->values(); // Reindex collection
-            });
+        $enrollment = CourseEnrollment::where('course_id', $module->course_id)
+            ->where('student_id', $student->id)
+            ->first();
 
-            // Get enrollment
-            $enrollment = CourseEnrollment::where('course_id', $module->course_id)
-                ->where('student_id', $student->id)
-                ->first();
+        defer(function () use ($enrollment) {
+            $enrollment?->touchLastAccessed();
+        });
 
-            // Update last accessed if enrolled
-            if ($enrollment) {
-                $enrollment->touchLastAccessed();
-            }
+        $completion = $module->completions->first();
+        $isCompleted = $completion && $completion->completion_status === 'completed';
 
-            // Check if module is completed
-            $completion = $module->completions->first();
-            $isCompleted = $completion && $completion->completion_status === 'completed';
+        $completedModules = $enrollment
+            ? ModuleCompletion::where('student_id', $student->id)
+                ->where('completion_status', 'completed')
+                ->whereHas('module', fn ($q) => $q->where('course_id', $module->course_id))
+                ->pluck('module_id')
+                ->toArray()
+            : [];
 
-            $module->loadMissing('course');
+        return response()
+            ->view('student.courses.learning.module-main', compact(
+                'module',
+                'enrollment',
+                'isCompleted',
+                'completedModules'
+            ))
+            ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    /**
+     * Full page: includes sidebar curriculum with access-filtered sections.
+     */
+    protected function renderLearnModuleFull($moduleId, $student, AccessControlService $accessControl)
+    {
+        $module = CourseModule::with([
+            'course',
+            'course.sections' => function ($q) {
+                $q->visible()->orderBy('sort_order');
+            },
+            'course.sections.course',
+            'course.sections.modules' => function ($q) {
+                $q->visible()->orderBy('sort_order');
+            },
+            'course.sections.modules.section',
+            'course.sections.modules.accessRestrictions' => function ($q) {
+                $q->where('restriction_type', 'group')
+                    ->where('access_type', 'allow');
+            },
+            'course.sections.modules.accessRestrictions.group',
+            'course.sections.accessRestrictions' => function ($q) {
+                $q->where('restriction_type', 'group')
+                    ->where('access_type', 'allow');
+            },
+            'course.sections.accessRestrictions.group',
+            'section',
+            'modulable',
+            'completions' => function ($q) use ($student) {
+                $q->where('student_id', $student->id);
+            },
+        ])->findOrFail($moduleId);
+
+        $moduleAccess = $accessControl->canAccessModule($module, $student);
+        if (! $moduleAccess['can_access']) {
+            return redirect()
+                ->route('student.courses.show', $module->course_id)
+                ->with('error', $moduleAccess['reason'] ?? 'هذا الدرس غير متاح حالياً');
+        }
+
+        $this->loadModuleModulableRelations($module);
+
+        $module->course->sections = $module->course->sections->filter(function ($section) use ($accessControl, $student) {
+            return $accessControl->canAccessSection($section, $student)['can_access'];
+        })->values();
+
+        $module->course->sections->each(function ($section) use ($accessControl, $student) {
+            $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
+                return $accessControl->canAccessModule($mod, $student)['can_access'];
+            })->values();
+        });
+
+        $enrollment = CourseEnrollment::where('course_id', $module->course_id)
+            ->where('student_id', $student->id)
+            ->first();
+
+        defer(function () use ($enrollment) {
+            $enrollment?->touchLastAccessed();
+        });
+
+        $completion = $module->completions->first();
+        $isCompleted = $completion && $completion->completion_status === 'completed';
+
+        $module->loadMissing('course');
+        defer(function () use ($student, $module) {
             StudentActivityTracked::dispatch($student, 'student.module.viewed', [
                 'module_id' => $module->id,
                 'module_title' => $module->title,
@@ -203,39 +258,32 @@ class CourseLearningController extends Controller
                 'course_id' => $module->course_id,
                 'course_title' => $module->course->title ?? '',
             ]);
+        });
 
-            // Get all completed modules for the course
-            $completedModules = [];
-            if ($enrollment) {
-                $completedModules = ModuleCompletion::where('student_id', $student->id)
-                    ->whereIn('module_id', $module->course->modules()->pluck('course_modules.id'))
-                    ->where('completion_status', 'completed')
-                    ->pluck('module_id')
-                    ->toArray();
-            }
+        $completedModules = $enrollment
+            ? ModuleCompletion::where('student_id', $student->id)
+                ->where('completion_status', 'completed')
+                ->whereHas('module', fn ($q) => $q->where('course_id', $module->course_id))
+                ->pluck('module_id')
+                ->toArray()
+            : [];
 
-            $learnViewData = compact(
-                'module',
-                'enrollment',
-                'isCompleted',
-                'completedModules'
-            );
+        return view('student.courses.learning.module', compact(
+            'module',
+            'enrollment',
+            'isCompleted',
+            'completedModules'
+        ));
+    }
 
-            $isLearnMainPartial = request()->header('Turbo-Frame') === 'student-learn-main'
-                || request()->header('X-Learn-Partial') === 'main';
+    protected function loadModuleModulableRelations(CourseModule $module): void
+    {
+        if ($module->module_type === 'question_module' && $module->modulable) {
+            $module->modulable->load(['questions.questionType']);
+        }
 
-            if ($isLearnMainPartial) {
-                return response()
-                    ->view('student.courses.learning.module-main', $learnViewData)
-                    ->header('Content-Type', 'text/html; charset=UTF-8');
-            }
-
-            return view('student.courses.learning.module', $learnViewData);
-
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل المحتوى: '.$e->getMessage());
+        if ($module->module_type === 'quiz' && $module->modulable) {
+            $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
         }
     }
 

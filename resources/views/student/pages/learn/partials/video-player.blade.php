@@ -1,43 +1,24 @@
 @php
     $video = $module->modulable;
-    
-    // Check Bunny URL
-    $isBunnyUrl = false;
-    $videoUrl = '';
-    
-    if ($video) {
-        $videoUrl = $video->video_url ?? '';
-        $isBunnyUrl = !empty($videoUrl) && (
-            str_contains($videoUrl, 'mediadelivery.net') ||
-            str_contains($videoUrl, 'bunny.net') ||
-            str_contains($videoUrl, 'b-cdn.net') ||
-            str_contains($videoUrl, 'iframe.mediadelivery')
-        );
-    }
+    $isBunnyUrl = $video && $video->isBunnyStreamVideo();
 @endphp
 
 <!-- Video Player Container - FULL WIDTH -->
 <div style="width: 100%; max-width: 100%; margin-bottom: 1.5rem;">
     <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 12px; overflow: hidden;">
         @if($video)
+            @if($isBunnyUrl)
+                @include('shared.video.bunny-player', ['video' => $video])
+            @else
             @php
                 $embedCode = $video->getEmbedCode();
+                $videoUrl = $video->video_url ?? '';
             @endphp
             @if($embedCode)
                 {{-- Use embed code if available --}}
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                     {!! $embedCode !!}
                 </div>
-            @elseif($isBunnyUrl)
-                {{-- Bunny.net Video --}}
-                <iframe 
-                    src="{{ $videoUrl }}"
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
-                    frameborder="0"
-                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                    allowfullscreen
-                    loading="lazy">
-                </iframe>
             @elseif($video->video_type == 'youtube')
                 {{-- YouTube Video --}}
                 <iframe 
@@ -81,6 +62,7 @@
                         <p>الفيديو غير متوفر</p>
                     </div>
                 </div>
+            @endif
             @endif
         @else
             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white;">

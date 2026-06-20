@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
        $middleware->alias([
             'auth.query_token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
             'auth.token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
+            'auth.web_or_sanctum' => \App\Http\Middleware\AuthenticateWebOrSanctumToken::class,
             'log.student.api' => \App\Http\Middleware\LogStudentApiRequests::class,
             'optional.sanctum' => \App\Http\Middleware\OptionalSanctumAuth::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
@@ -32,6 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(prepend: [
             \App\Http\Middleware\ParseMultipartFormData::class,
         ]);
+
+        // Sanctum: السماح بجلسة المتصفح على نفس النطاق (claudsoft.com وغيره)
+        $middleware->statefulApi();
 
         // Add impersonate middleware to web group to share data with views
         $middleware->web(append: [

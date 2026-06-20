@@ -2,37 +2,24 @@
                 @if($module->module_type == 'video' && $module->modulable)
                     @php 
                         $video = $module->modulable;
-                        $videoUrl = $video->video_url ?? '';
-                        $isBunnyUrl = !empty($videoUrl) && (
-                            str_contains($videoUrl, 'mediadelivery.net') ||
-                            str_contains($videoUrl, 'bunny.net') ||
-                            str_contains($videoUrl, 'b-cdn.net') ||
-                            str_contains($videoUrl, 'iframe.mediadelivery')
-                        );
+                        $isBunnyUrl = $video && $video->isBunnyStreamVideo();
                     @endphp
                     <div class="student-learn-video-sticky-wrap">
-                    <div class="card student-learn-video-card">
-                        <div class="card-body p-0 p-lg-3">
-                            {{-- Video Container with 16:9 Aspect Ratio --}}
-                            <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+                    <div class="card custom-card student-learn-video-shell dashboard-fade-in">
+                        <div class="card-body p-0">
+                            <div class="student-learn-video-frame">
+                                @if($isBunnyUrl)
+                                    @include('shared.video.bunny-player', ['video' => $video])
+                                @else
                                 @php
                                     $embedCode = $video->getEmbedCode();
+                                    $videoUrl = $video->video_url ?? '';
                                 @endphp
                                 @if($embedCode)
                                     {{-- Use embed code if available --}}
                                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                                         {!! $embedCode !!}
                                     </div>
-                                @elseif($isBunnyUrl)
-                                    {{-- Bunny.net Video --}}
-                                    <iframe 
-                                        src="{{ $videoUrl }}"
-                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
-                                        frameborder="0"
-                                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                                        allowfullscreen
-                                        loading="lazy">
-                                    </iframe>
                                 @elseif($video->video_type == 'youtube')
                                     @php
                                         preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\\/|.*[?&]v=)|youtu\.be\/)([^"&?\\/ ]{11})/', $videoUrl, $matches);
@@ -60,6 +47,7 @@
                                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                                         <source src="{{ $videoUrl }}" type="video/mp4">
                                     </video>
+                                @endif
                                 @endif
                             </div>
                         </div>
@@ -124,8 +112,8 @@
 
                 <!-- Lesson -->
                 @if($module->module_type == 'lesson' && $module->modulable)
-                    <div class="card">
-                        <div class="card-body p-4">
+                    <div class="card custom-card group-show-members-card dashboard-fade-in">
+                        <div class="card-body p-4 student-learn-lesson-content">
                             {!! $module->modulable->content !!}
                         </div>
                     </div>
@@ -419,41 +407,7 @@
                 @endif
 
                 <!-- Complete -->
-                @if($enrollment)
-                    <div class="card border-primary student-learn-completion-card" id="module-completion-card"
-                         data-module-id="{{ $module->id }}"
-                         data-url-complete="{{ route('student.learn.module.mark-complete', $module->id) }}"
-                         data-url-incomplete="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <div class="d-flex align-items-center flex-grow-1 min-w-0">
-                                    <div class="min-w-0">
-                                        <h5 class="student-learn-completion-title mb-1"><i class="fas fa-graduation-cap text-primary me-2"></i>هل أكملت هذا الدرس؟</h5>
-                                        <p class="text-muted mb-0 student-learn-completion-sub">قم بتحديده كمكتمل للمتابعة</p>
-                                    </div>
-                                    <div id="module-completion-badge" class="d-flex align-items-center ms-3 flex-shrink-0 {{ $isCompleted ? '' : 'd-none' }}">
-                                        <i class="fas fa-check-circle text-success me-1"></i>
-                                        <span class="text-success fw-semibold student-learn-completion-badge-text">مكتمل</span>
-                                    </div>
-                                </div>
-                                <div id="module-completion-actions" class="flex-shrink-0">
-                                    <button type="button"
-                                            class="btn btn-outline-secondary btn-sm js-module-completion-btn student-learn-completion-btn {{ $isCompleted ? '' : 'd-none' }}"
-                                            data-action="incomplete"
-                                            data-url="{{ route('student.learn.module.mark-incomplete', $module->id) }}">
-                                        <i class="fas fa-times me-1"></i>إلغاء الإكمال
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-primary btn-sm js-module-completion-btn student-learn-completion-btn {{ $isCompleted ? 'd-none' : '' }}"
-                                            data-action="complete"
-                                            data-url="{{ route('student.learn.module.mark-complete', $module->id) }}">
-                                        <i class="fas fa-check me-1"></i>تحديد كمكتمل
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
+                @include('student.courses.learning.partials.learn-completion')
 
                 <!-- Question Module -->
                 @if($module->module_type == 'question_module' && $module->modulable)

@@ -15,14 +15,6 @@
                             <i class="fe fe-users"></i>
                         </div>
                     @endif
-
-                    <span class="student-group-card__members-badge">
-                        <i class="fe fe-users me-1"></i>
-                        {{ $group->members_count ?? 0 }}
-                        @if($group->max_members)
-                            / {{ $group->max_members }}
-                        @endif
-                    </span>
                 </div>
 
                 <div class="student-group-card__body">
