@@ -802,6 +802,9 @@
                                                 <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">
                                                     <a href="{{ route('admin.flaxxa-wapi.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">إعدادات Flaxxa</a>
                                                 </li>
+                                                <li class="slide {{ request()->routeIs('admin.settings.phone-otp.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.settings.phone-otp.edit') }}" class="side-menu__item {{ request()->routeIs('admin.settings.phone-otp.*') ? 'active' : '' }}">OTP — واتساب</a>
+                                                </li>
                                                 <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">
                                                     <a href="{{ route('admin.flaxxa-wapi.messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">سجل Flaxxa</a>
                                                 </li>

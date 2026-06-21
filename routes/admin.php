@@ -1069,6 +1069,7 @@ Route::prefix('admin')
             Route::get('settings', [FlaxxaWapiSettingsController::class, 'index'])->name('settings.index');
             Route::post('settings', [FlaxxaWapiSettingsController::class, 'update'])->name('settings.update');
             Route::post('settings/test-connection', [FlaxxaWapiSettingsController::class, 'testConnection'])->name('settings.test-connection');
+            Route::get('settings/phone-otp', fn () => redirect()->route('admin.settings.phone-otp.edit'))->name('settings.phone-otp');
             Route::get('messages', [FlaxxaWapiController::class, 'messagesIndex'])->name('messages.index');
             Route::get('messages/{wapiMessage}', [FlaxxaWapiController::class, 'messageShow'])->name('messages.show');
             Route::post('messages/{wapiMessage}/check-status', [FlaxxaWapiController::class, 'messageCheckStatus'])->name('messages.check-status');
