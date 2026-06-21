@@ -15,7 +15,7 @@
     </div>
     <div class="col-12">
         <label for="whatsapp_template_body" class="form-label">نص الرسالة <span class="text-danger">*</span></label>
-        <textarea class="form-control @error('body') is-invalid @enderror" id="whatsapp_template_body" name="body" rows="8" placeholder="@verbatimمثال: مرحباً {{student_name}}، تم استلام طلبك في {{group_name}}.@endverbatim" required>{{ old('body', $template?->body) }}</textarea>
+        <textarea class="form-control @error('body') is-invalid @enderror" id="whatsapp_template_body" name="body" rows="8" placeholder="@verbatimمثال: مرحباً {{student_name}}، تم استلام طلبك في {{group_name}}.@endverbatim">{{ old('body', $template?->body) }}</textarea>
         <small class="text-muted">استخدم المتغيرات بصيغة @verbatim<code>{{اسم_المتغير}}</code>@endverbatim مثل: student_name, course_name, group_name, student_email</small>
         @error('body')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
@@ -105,11 +105,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setTimeout(initWhatsAppTemplateEditor, 200);
 
-    document.querySelector('form')?.addEventListener('submit', function () {
-        if (typeof tinymce !== 'undefined') {
-            tinymce.triggerSave();
-        }
-    });
+    var templateForm = document.getElementById('whatsappTemplateForm');
+    if (templateForm) {
+        templateForm.addEventListener('submit', function (event) {
+            if (typeof tinymce !== 'undefined') {
+                tinymce.triggerSave();
+            }
+
+            var bodyField = document.getElementById('whatsapp_template_body');
+            var bodyValue = bodyField ? bodyField.value.trim() : '';
+            var bodyPlain = bodyValue.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+
+            if (!bodyPlain) {
+                event.preventDefault();
+                alert('يرجى إدخال نص الرسالة.');
+                var editor = typeof tinymce !== 'undefined' ? tinymce.get('whatsapp_template_body') : null;
+                if (editor) {
+                    editor.focus();
+                } else if (bodyField) {
+                    bodyField.focus();
+                }
+            }
+        });
+    }
 });
 </script>
 @endpush

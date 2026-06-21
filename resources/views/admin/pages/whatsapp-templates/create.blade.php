@@ -30,7 +30,7 @@
                         <div class="card-header">
                             <div class="card-title">بيانات القالب</div>
                         </div>
-                        <form action="{{ route('admin.whatsapp-templates.store') }}" method="POST">
+                        <form id="whatsappTemplateForm" action="{{ route('admin.whatsapp-templates.store') }}" method="POST">
                             @csrf
                             <div class="card-body">
                                 @include('admin.pages.whatsapp-templates._form', ['template' => null])
