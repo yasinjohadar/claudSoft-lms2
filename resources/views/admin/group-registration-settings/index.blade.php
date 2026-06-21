@@ -219,13 +219,21 @@
                                 <div id="whatsappFieldsWrap">
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">قالب واتساب</label>
-                                        <textarea name="whatsapp_template" class="form-control @error('whatsapp_template') is-invalid @enderror" rows="4"
-                                                  placeholder="مرحباً {student_name}، تم تسجيلك في {group_name}...">{{ old('whatsapp_template', $settings->whatsapp_template) }}</textarea>
-                                        @error('whatsapp_template')
+                                        <select name="whatsapp_template_id" class="form-select @error('whatsapp_template_id') is-invalid @enderror">
+                                            <option value="">استخدام القالب الافتراضي</option>
+                                            @foreach($whatsappTemplates as $template)
+                                                <option value="{{ $template->id }}" {{ old('whatsapp_template_id', $settings->whatsapp_template_id) == $template->id ? 'selected' : '' }}>
+                                                    {{ $template->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('whatsapp_template_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                         <p class="admin-group-form-hint mb-0 mt-2">
-                                            المتغيرات: <code>{student_name}</code>، <code>{group_name}</code>، <code>{email}</code>
+                                            اختر قالباً من
+                                            <a href="{{ route('admin.whatsapp-templates.index') }}" target="_blank" rel="noopener">قوالب الرسائل</a>.
+                                            المتغيرات: @verbatim<code>{{student_name}}</code>، <code>{{group_name}}</code>، <code>{{email}}</code>@endverbatim
                                         </p>
                                     </div>
 

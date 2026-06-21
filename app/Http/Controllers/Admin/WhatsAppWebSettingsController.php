@@ -79,21 +79,12 @@ class WhatsAppWebSettingsController extends Controller
         $validated = $request->validate([
             'whatsapp_web_service_url' => 'required|string|url|max:500',
             'whatsapp_web_api_token' => 'nullable|string|max:500',
-            'delay_between_messages' => 'nullable|integer|min:1|max:60',
-            'delay_between_broadcasts' => 'nullable|integer|min:1|max:60',
-            'max_messages_per_minute' => 'nullable|integer|min:1|max:100',
-            'random_delay_enabled' => 'nullable',
-            'min_delay' => 'nullable|integer|min:1|max:10',
-            'max_delay' => 'nullable|integer|min:1|max:10',
         ], [
             'whatsapp_web_service_url.required' => 'رابط Node.js service مطلوب',
             'whatsapp_web_service_url.url' => 'رابط Node.js service غير صالح',
         ]);
 
         try {
-            // Handle checkbox
-            $validated['random_delay_enabled'] = $request->has('random_delay_enabled') ? '1' : '0';
-
             // If api_token is empty, keep existing value
             if (empty($validated['whatsapp_web_api_token'])) {
                 $existingSettings = $this->settingsService->getSettings();

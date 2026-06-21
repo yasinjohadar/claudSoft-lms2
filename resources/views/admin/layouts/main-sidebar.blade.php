@@ -643,13 +643,13 @@
                         </li>
 
                         <!-- الإعدادات -->
-                        <li class="slide has-sub {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*') || request()->routeIs('admin.evolution-api.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*') || request()->routeIs('admin.evolution-api.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}">
                                 <i class="fe fe-settings side-menu__icon"></i>
                                 <span class="side-menu__label">الإعدادات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}" style="{{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'display: block;' : '' }}">
+                            <ul class="slide-menu child1 {{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*') || request()->routeIs('admin.evolution-api.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'active' : '' }}" style="{{ request()->routeIs('roles.*') || request()->routeIs('payment-methods.*') || request()->routeIs('admin.settings.email.*') || request()->routeIs('admin.email-templates.*') || request()->routeIs('admin.bulk-emails.*') || request()->routeIs('admin.contact-settings.*') || request()->routeIs('admin.google-settings.*') || request()->routeIs('admin.settings.site.*') || (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*') || request()->routeIs('admin.evolution-api.*')) || request()->routeIs('admin.webhooks.*') || request()->routeIs('admin.n8n.*') || request()->routeIs('backups.*') || request()->routeIs('backup-*') || request()->routeIs('app-storage.*') || request()->routeIs('storage-disk-mappings.*') || request()->routeIs('admin.database-info.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                                     <a href="{{ route('roles.index') }}" class="side-menu__item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                                         <i class="fas fa-user-shield me-2"></i>الصلاحيات
@@ -704,47 +704,93 @@
                                     </a>
                                 </li>
 
-                                <li class="slide has-sub {{ (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) ? 'open active' : '' }}">
-                                    <a href="javascript:void(0);" class="side-menu__item {{ (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) ? 'active' : '' }}">
+                                @php
+                                    $whatsappMenuActive = request()->routeIs('admin.whatsapp-*')
+                                        || request()->routeIs('admin.flaxxa-wapi.*')
+                                        || request()->routeIs('admin.evolution-api.*');
+                                    $evolutionMenuActive = request()->routeIs('admin.evolution-api.*')
+                                        || request()->routeIs('admin.whatsapp-web-settings.*')
+                                        || request()->routeIs('admin.whatsapp-messages.*')
+                                        || request()->routeIs('admin.whatsapp-templates.*');
+                                    $flaxxaMenuActive = request()->routeIs('admin.flaxxa-wapi.*');
+                                @endphp
+                                <li class="slide has-sub {{ $whatsappMenuActive ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ $whatsappMenuActive ? 'active' : '' }}">
                                         <i class="ri-whatsapp-line me-2"></i>WhatsApp
                                         <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
-                                    <ul class="slide-menu child2 {{ (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) ? 'active' : '' }}" style="{{ (request()->routeIs('admin.whatsapp-*') || request()->routeIs('admin.flaxxa-wapi.*')) ? 'display: block;' : '' }}">
+                                    <ul class="slide-menu child2 {{ $whatsappMenuActive ? 'active' : '' }}" style="{{ $whatsappMenuActive ? 'display: block;' : '' }}">
                                         <li class="slide {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.whatsapp-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-settings.*') ? 'active' : '' }}">الإعدادات العامة</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">WhatsApp Web</a>
+
+                                        <li class="slide has-sub {{ $evolutionMenuActive ? 'open active' : '' }}">
+                                            <a href="javascript:void(0);" class="side-menu__item {{ $evolutionMenuActive ? 'active' : '' }}">
+                                                <i class="ri-plug-line me-2 text-success"></i>Evolution API
+                                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                                            </a>
+                                            <ul class="slide-menu child2 {{ $evolutionMenuActive ? 'active' : '' }}" style="{{ $evolutionMenuActive ? 'display: block;' : '' }}">
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.settings.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.settings.*') ? 'active' : '' }}">إعدادات Evolution</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.instances.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.instances.index') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.instances.*') ? 'active' : '' }}">Instances</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.send.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.send.text') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.send.*') ? 'active' : '' }}">إرسال Evolution</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.groups.*') && !request()->routeIs('admin.evolution-api.groups.compare*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.groups.index') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.groups.index') || request()->routeIs('admin.evolution-api.groups.show') || request()->routeIs('admin.evolution-api.groups.members') ? 'active' : '' }}">المجموعات</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.groups.compare*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.groups.compare') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.groups.compare*') ? 'active' : '' }}">مقارنة WA</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.contacts.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.contacts.index') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.contacts.*') ? 'active' : '' }}">جهات الاتصال</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.evolution-api.webhook.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.evolution-api.webhook.index') }}" class="side-menu__item {{ request()->routeIs('admin.evolution-api.webhook.*') ? 'active' : '' }}">Webhook Evolution</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-web-settings.*') ? 'active' : '' }}">WhatsApp Web</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">الرسائل</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.whatsapp-messages.broadcasts.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">تقارير الإرسال الجماعي</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.whatsapp-templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">قوالب الرسائل</a>
+                                                </li>
+                                            </ul>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.whatsapp-messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.index') || request()->routeIs('admin.whatsapp-messages.show') || request()->routeIs('admin.whatsapp-messages.create') ? 'active' : '' }}">الرسائل</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.whatsapp-messages.broadcasts.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-messages.broadcasts.*') ? 'active' : '' }}">تقارير الإرسال الجماعي</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.whatsapp-templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">قوالب الرسائل</a>
-                                        </li>
-                                        <li class="slide pt-2 mt-1 border-top">
-                                            <span class="side-menu__item text-muted small py-1">Flaxxa (WAPI)</span>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">إعدادات Flaxxa</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">سجل Flaxxa</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.message') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.send.message') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.message') ? 'active' : '' }}">إرسال نص Flaxxa</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.template') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.send.template') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.template') ? 'active' : '' }}">إرسال قالب Flaxxa</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.campaign') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.send.campaign') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.campaign') ? 'active' : '' }}">حملة Flaxxa</a>
-                                        </li>
-                                        <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.templates.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.flaxxa-wapi.templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.templates.*') ? 'active' : '' }}">قوالب Flaxxa المحلية</a>
+
+                                        <li class="slide has-sub {{ $flaxxaMenuActive ? 'open active' : '' }}">
+                                            <a href="javascript:void(0);" class="side-menu__item {{ $flaxxaMenuActive ? 'active' : '' }}">
+                                                <i class="ri-cloud-line me-2 text-muted"></i>Flaxxa (WAPI)
+                                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                                            </a>
+                                            <ul class="slide-menu child2 {{ $flaxxaMenuActive ? 'active' : '' }}" style="{{ $flaxxaMenuActive ? 'display: block;' : '' }}">
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.settings.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.settings.*') ? 'active' : '' }}">إعدادات Flaxxa</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.messages.*') ? 'active' : '' }}">سجل Flaxxa</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.message') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.send.message') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.message') ? 'active' : '' }}">إرسال نص Flaxxa</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.template') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.send.template') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.template') ? 'active' : '' }}">إرسال قالب Flaxxa</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.send.campaign') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.send.campaign') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.send.campaign') ? 'active' : '' }}">حملة Flaxxa</a>
+                                                </li>
+                                                <li class="slide {{ request()->routeIs('admin.flaxxa-wapi.templates.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.flaxxa-wapi.templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.flaxxa-wapi.templates.*') ? 'active' : '' }}">قوالب Flaxxa المحلية</a>
+                                                </li>
+                                            </ul>
                                         </li>
                                     </ul>
                                 </li>

@@ -1,3 +1,11 @@
+@php
+    $waContext = $waContext ?? [];
+    $waSelectedJid = $waContext['selected_jid'] ?? '';
+    $waStatusMap = $waContext['wa_status_by_student_id'] ?? [];
+    $phoneDigitsMap = $waContext['phone_digits_by_student_id'] ?? [];
+    $defaultInviteMessage = $waContext['default_invite_message'] ?? '';
+    $showWaColumn = $waSelectedJid !== '' && empty($waContext['wa_load_error']);
+@endphp
 <div class="table-responsive">
     <table class="table table-hover text-nowrap dashboard-table mb-0">
         <thead>
@@ -10,6 +18,9 @@
                 <th>مجموعات أخرى</th>
                 <th>البريد الإلكتروني</th>
                 <th>رقم الهاتف</th>
+                @if($showWaColumn)
+                    <th>واتساب</th>
+                @endif
                 <th>تاريخ الطلب</th>
                 <th>موعد تسديد الرسوم</th>
                 <th>عرض الفورم</th>
@@ -81,6 +92,38 @@
                             <span class="text-muted">—</span>
                         @endif
                     </td>
+                    @if($showWaColumn)
+                        @php
+                            $sid = (int) $request->student_id;
+                            $waStatus = $waStatusMap[$sid] ?? 'no_phone';
+                            $phoneDigits = $phoneDigitsMap[$sid] ?? null;
+                            $studentPhoneDisplay = $request->student->full_phone
+                                ?: trim(($request->student->country_code ?? '').($request->student->phone ?? ''))
+                                ?: ($request->student->phone ?? '—');
+                        @endphp
+                        <td>
+                            @if($waStatus === 'in_group')
+                                <span class="badge bg-success-transparent text-success">
+                                    <i class="ri-check-line me-1"></i>منضم
+                                </span>
+                            @elseif($waStatus === 'not_in_group')
+                                <span class="badge bg-danger-transparent text-danger d-block mb-1">
+                                    <i class="ri-close-line me-1"></i>غير منضم
+                                </span>
+                                @if($phoneDigits)
+                                    <button type="button"
+                                            class="btn btn-sm btn-success js-membership-wa-invite"
+                                            data-student-id="{{ $request->student_id }}"
+                                            data-student-name="{{ $request->student->name }}"
+                                            data-student-phone="{{ $studentPhoneDisplay }}">
+                                        <i class="ri-send-plane-line me-1"></i>دعوة
+                                    </button>
+                                @endif
+                            @else
+                                <span class="badge bg-secondary-transparent text-secondary">لا رقم</span>
+                            @endif
+                        </td>
+                    @endif
                     <td><small>{{ $request->created_at->format('Y-m-d H:i') }}</small></td>
                     <td>
                         @if($request->payment_date)
@@ -201,7 +244,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="11">
+                    <td colspan="{{ $showWaColumn ? 12 : 11 }}">
                         <div class="group-show-empty">
                             <div class="group-show-empty__icon">
                                 <i class="fe fe-inbox"></i>

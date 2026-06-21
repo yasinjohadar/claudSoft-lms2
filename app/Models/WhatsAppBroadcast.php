@@ -16,8 +16,12 @@ class WhatsAppBroadcast extends Model
     protected $fillable = [
         'message_template',
         'send_type',
+        'campaign_type',
         'course_id',
         'group_id',
+        'whatsapp_group_jid',
+        'whatsapp_group_name',
+        'meta',
         'total_recipients',
         'sent_count',
         'failed_count',
@@ -29,7 +33,15 @@ class WhatsAppBroadcast extends Model
         'total_recipients' => 'integer',
         'sent_count' => 'integer',
         'failed_count' => 'integer',
+        'meta' => 'array',
     ];
+
+    /**
+     * Campaign type constants
+     */
+    public const CAMPAIGN_STANDARD = 'standard';
+
+    public const CAMPAIGN_COMPARE_MISSING = 'compare_missing';
 
     /**
      * Status constants
@@ -93,5 +105,15 @@ class WhatsAppBroadcast extends Model
     public function scopeCompleted($query)
     {
         return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    public function scopeCompareMissing($query)
+    {
+        return $query->where('campaign_type', self::CAMPAIGN_COMPARE_MISSING);
+    }
+
+    public function isCompareMissing(): bool
+    {
+        return $this->campaign_type === self::CAMPAIGN_COMPARE_MISSING;
     }
 }

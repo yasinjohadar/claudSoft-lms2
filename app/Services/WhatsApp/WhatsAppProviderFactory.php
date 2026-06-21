@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Services\WhatsApp\Providers\CustomApiProvider;
+use App\Services\WhatsApp\Providers\EvolutionApiProvider;
 use App\Services\WhatsApp\Providers\MetaProvider;
 use App\Services\WhatsApp\Providers\WhatsAppWebProvider;
 use InvalidArgumentException;
@@ -22,6 +23,7 @@ class WhatsAppProviderFactory
             'meta' => new MetaProvider($config),
             'custom_api' => new CustomApiProvider($config),
             'whatsapp_web' => new WhatsAppWebProvider($config),
+            'evolution' => new EvolutionApiProvider($config),
             default => throw new InvalidArgumentException("Unsupported WhatsApp provider: {$provider}"),
         };
     }
@@ -37,6 +39,7 @@ class WhatsAppProviderFactory
             'meta' => 'Meta WhatsApp Cloud API',
             'custom_api' => 'Custom API Provider',
             'whatsapp_web' => 'WhatsApp Web (QR Code)',
+            'evolution' => 'Evolution API',
         ];
     }
 }

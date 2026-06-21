@@ -165,3 +165,14 @@
     </div>
 </div>
 @endsection
+
+@if($broadcast->status === 'processing')
+@section('scripts')
+<script>
+(function () {
+    const refreshMs = 5000;
+    setTimeout(function () { window.location.reload(); }, refreshMs);
+})();
+</script>
+@endsection
+@endif

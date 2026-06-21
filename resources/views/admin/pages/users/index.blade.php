@@ -146,6 +146,7 @@
 
     @include('admin.pages.users.partials.change-password-modal')
     @include('admin.pages.users.partials.send-email-modal')
+    @include('admin.pages.users.partials.send-whatsapp-modal')
 
     <div class="modal fade" id="adminUserNotesModal" tabindex="-1" aria-labelledby="adminUserNotesModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -165,6 +166,7 @@
 
 @section('scripts')
 @include('admin.pages.users.partials.send-email-scripts')
+@include('admin.pages.users.partials.send-whatsapp-scripts')
 <script>
 (function() {
     'use strict';

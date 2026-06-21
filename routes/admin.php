@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\BulkEmailController;
 use App\Http\Controllers\Admin\BulkEmailSettingsController;
 use App\Http\Controllers\Admin\UserSendEmailController;
+use App\Http\Controllers\Admin\UserSendWhatsAppController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ContactSettingController;
@@ -110,6 +111,8 @@ Route::prefix('admin')
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
         Route::post('users/{user}/send-email/preview', [UserSendEmailController::class, 'preview'])->name('users.send-email.preview');
         Route::post('users/{user}/send-email', [UserSendEmailController::class, 'send'])->name('users.send-email.send');
+        Route::post('users/{user}/send-whatsapp/preview', [UserSendWhatsAppController::class, 'preview'])->name('users.send-whatsapp.preview');
+        Route::post('users/{user}/send-whatsapp', [UserSendWhatsAppController::class, 'send'])->name('users.send-whatsapp.send');
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::get('users/{userId}/courses', [UserController::class, 'showCourses'])->name('admin.users.courses');
         Route::get('users/{user}/student-details', [UserController::class, 'studentDetails'])->name('users.student-details');
@@ -294,6 +297,7 @@ Route::prefix('admin')
         Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/delete-multiple', [CourseGroupController::class, 'deleteMultipleRequests'])->name('courses.groups.membership-requests.delete-multiple');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-multiple', [CourseGroupController::class, 'approveMultipleRequests'])->name('courses.groups.membership-requests.approve-multiple');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-all', [CourseGroupController::class, 'approveAllPendingRequests'])->name('courses.groups.membership-requests.approve-all');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-whatsapp-invite', [CourseGroupController::class, 'sendMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.send-whatsapp-invite');
 
         // General management routes (all courses)
         Route::get('all-enrollments', [CourseEnrollmentController::class, 'allEnrollments'])->name('enrollments.all');
@@ -1085,6 +1089,52 @@ Route::prefix('admin')
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'index'])->name('index');
             Route::post('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'update'])->name('update');
             Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
+        // Evolution API
+        Route::prefix('evolution-api')->name('admin.evolution-api.')->group(function () {
+            Route::get('/', fn () => redirect()->route('admin.evolution-api.settings.index'))->name('home');
+            Route::get('settings', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'index'])->name('settings.index');
+            Route::post('settings', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'update'])->name('settings.update');
+            Route::post('settings/test-connection', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'testConnection'])->name('settings.test-connection');
+
+            Route::get('instances', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'index'])->name('instances.index');
+            Route::post('instances', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'store'])->name('instances.store');
+            Route::post('instances/sync', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'sync'])->name('instances.sync');
+            Route::get('instances/{instanceName}/connect', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'connect'])->name('instances.connect');
+            Route::get('instances/{instanceName}/qr', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'fetchQr'])->name('instances.qr');
+            Route::get('instances/{instanceName}/status', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'status'])->name('instances.status');
+            Route::post('instances/{instanceName}/restart', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'restart'])->name('instances.restart');
+            Route::post('instances/{instanceName}/logout', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'logout'])->name('instances.logout');
+            Route::delete('instances/{instanceName}', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'destroy'])->name('instances.destroy');
+
+            Route::get('send/text', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'textForm'])->name('send.text');
+            Route::post('send/text', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendText'])->name('send.text.store');
+            Route::get('send/media', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'mediaForm'])->name('send.media');
+            Route::post('send/media', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendMedia'])->name('send.media.store');
+            Route::get('send/{type}', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'advancedForm'])->name('send.advanced');
+            Route::post('send/{type}', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendAdvanced'])->name('send.advanced.store');
+
+            Route::get('groups', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'index'])->name('groups.index');
+            Route::get('groups/show', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'show'])->name('groups.show');
+            Route::get('groups/members', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'members'])->name('groups.members');
+            Route::get('groups/compare', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'index'])->name('groups.compare');
+            Route::get('groups/compare/export', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'export'])->name('groups.compare.export');
+            Route::post('groups/compare/message-missing', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'messageMissing'])->name('groups.compare.message-missing');
+            Route::get('groups/compare/campaigns', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'campaigns'])->name('groups.compare.campaigns');
+            Route::get('groups/compare/campaigns/{broadcast}', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'showCampaign'])->name('groups.compare.campaigns.show');
+            Route::post('groups/send', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'sendMessage'])->name('groups.send');
+            Route::post('groups/send-member', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'sendMemberMessage'])->name('groups.send-member');
+
+            Route::get('contacts', [\App\Http\Controllers\Admin\EvolutionContactsController::class, 'index'])->name('contacts.index');
+            Route::post('contacts/sync', [\App\Http\Controllers\Admin\EvolutionContactsController::class, 'sync'])->name('contacts.sync');
+
+            Route::get('chats', [\App\Http\Controllers\Admin\EvolutionChatsController::class, 'index'])->name('chats.index');
+
+            Route::get('messages', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'messagesIndex'])->name('messages.index');
+
+            Route::get('webhook', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
+            Route::post('webhook/activate', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
         });
 
         // ========== User Sessions Routes ==========

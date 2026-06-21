@@ -75,6 +75,67 @@
                 'pendingCount' => $pendingCount ?? 0,
             ])
 
+            @php
+                $waContext = $waContext ?? [];
+                $waSelectedJid = $waContext['selected_jid'] ?? '';
+            @endphp
+
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+                <div class="card-header border-0 pb-0">
+                    <h4 class="card-title mb-1">
+                        <i class="ri-whatsapp-line me-2 text-success"></i>مجموعة واتساب للمقارنة
+                    </h4>
+                    <p class="fs-12 text-muted mb-0">اختر مجموعة واتساب لمعرفة من انضم إليها من الطلاب ومراسلة غير المنضمين برابط الانضمام.</p>
+                </div>
+                <div class="card-body pt-3">
+                    @if(!empty($waContext['whatsapp_groups_error']))
+                        <div class="alert alert-warning py-2 mb-3">{{ $waContext['whatsapp_groups_error'] }}</div>
+                    @endif
+                    @if(!empty($waContext['wa_load_error']))
+                        <div class="alert alert-danger py-2 mb-3">{{ $waContext['wa_load_error'] }}</div>
+                    @endif
+                    <form method="GET" action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}" id="membershipWaGroupForm">
+                        @if(request('search'))
+                            <input type="hidden" name="search" value="{{ request('search') }}">
+                        @endif
+                        @if(request('status'))
+                            <input type="hidden" name="status" value="{{ request('status') }}">
+                        @endif
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label">مجموعة WhatsApp</label>
+                                <select name="whatsapp_jid" class="form-select" id="membershipWhatsappJid">
+                                    <option value="">— بدون مقارنة —</option>
+                                    @foreach($waContext['whatsapp_groups'] ?? [] as $wg)
+                                        @php $wjid = $wg['id'] ?? $wg['jid'] ?? ''; @endphp
+                                        <option value="{{ $wjid }}" @selected($waSelectedJid === $wjid)>
+                                            {{ $wg['subject'] ?? $wg['name'] ?? $wjid }}
+                                            ({{ $wg['size'] ?? '?' }} عضو)
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="ri-refresh-line me-1"></i>تحديث حالة الانضمام
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    @if($waSelectedJid !== '' && !empty($waContext['wa_group_info']))
+                        <div class="alert alert-light border mt-3 mb-0 py-2">
+                            <small class="text-muted d-block">المجموعة المختارة</small>
+                            <strong>{{ $waContext['wa_group_info']['subject'] ?? $waContext['wa_group_info']['name'] ?? $waSelectedJid }}</strong>
+                            @if(!empty($waContext['whatsapp_group_link']))
+                                <br><small class="text-muted">رابط الدعوة: <a href="{{ $waContext['whatsapp_group_link'] }}" target="_blank" rel="noopener">{{ Str::limit($waContext['whatsapp_group_link'], 60) }}</a></small>
+                            @else
+                                <br><small class="text-warning">لم يُعرّف رابط مجموعة الواتساب في <a href="{{ route('admin.group-registration-settings.index', $group->id) }}">إعدادات التسجيل</a>.</small>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية الطلبات</h4>
@@ -103,6 +164,9 @@
                                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>مرفوض</option>
                                 </select>
                             </div>
+                            @if($waSelectedJid ?? '')
+                                <input type="hidden" name="whatsapp_jid" value="{{ $waSelectedJid }}">
+                            @endif
                             <div class="col-md-4">
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-primary">
@@ -159,6 +223,7 @@
                             'course' => $course,
                             'group' => $group,
                             'otherGroupsByStudentId' => $otherGroupsByStudentId ?? collect(),
+                            'waContext' => $waContext ?? [],
                         ])
                     </div>
                 </div>
@@ -238,6 +303,12 @@
             </div>
         </div>
     </div>
+
+    @include('admin.course-groups.partials.membership-wa-invite-modal', [
+        'course' => $course,
+        'group' => $group,
+        'waContext' => $waContext ?? [],
+    ])
 @stop
 
 @section('script')
@@ -375,6 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 initSelectionHandlers();
                 initCopyEmailButtons();
+                initMembershipWaInviteButtons();
                 updateBulkActions();
                 updateSelectAll();
                 setFeedback('تم تحديث النتائج');
@@ -390,6 +462,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!filterForm) return;
         const formData = new FormData(filterForm);
         formData.set('search', (formData.get('search') || '').toString().trim());
+        const waJidEl = document.getElementById('membershipWhatsappJid');
+        if (waJidEl && waJidEl.value) {
+            formData.set('whatsapp_jid', waJidEl.value);
+        }
         const queryString = new URLSearchParams(formData).toString();
         const baseUrl = filterForm.getAttribute('action');
         fetchAndRender(queryString ? `${baseUrl}?${queryString}` : baseUrl);
@@ -411,8 +487,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (resetBtn && filterForm) {
         resetBtn.addEventListener('click', function() {
+            var preservedWaJid = '';
+            var waJidSelect = document.getElementById('membershipWhatsappJid');
+            if (waJidSelect && waJidSelect.value) {
+                preservedWaJid = waJidSelect.value;
+            } else {
+                var hiddenWa = filterForm.querySelector('input[name="whatsapp_jid"]');
+                if (hiddenWa) preservedWaJid = hiddenWa.value;
+            }
             filterForm.reset();
             if (searchInput) searchInput.value = '';
+            if (preservedWaJid) {
+                var existingHidden = filterForm.querySelector('input[name="whatsapp_jid"]');
+                if (existingHidden) {
+                    existingHidden.value = preservedWaJid;
+                } else {
+                    var hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'whatsapp_jid';
+                    hiddenInput.value = preservedWaJid;
+                    filterForm.appendChild(hiddenInput);
+                }
+            }
             lastRequestUrl = null;
             requestFromFilterForm();
         });
@@ -481,8 +577,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initSelectionHandlers();
     initCopyEmailButtons();
+    initMembershipWaInviteButtons();
     updateBulkActions();
     updateSelectAll();
+
+    function initMembershipWaInviteButtons() {
+        document.querySelectorAll('.js-membership-wa-invite').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var modalEl = document.getElementById('membershipWaInviteModal');
+                if (!modalEl) return;
+                document.getElementById('membershipWaInviteStudentName').textContent = btn.getAttribute('data-student-name') || '—';
+                document.getElementById('membershipWaInviteStudentPhone').textContent = btn.getAttribute('data-student-phone') || '—';
+                document.getElementById('membershipWaInviteStudentId').value = btn.getAttribute('data-student-id') || '';
+                var msgEl = document.getElementById('membershipWaInviteMessage');
+                var formEl = document.getElementById('membershipWaInviteForm');
+                if (msgEl && formEl) {
+                    var template = msgEl.dataset.defaultMessage || '';
+                    template = template
+                        .replace(/\{student_name\}/g, btn.getAttribute('data-student-name') || '')
+                        .replace(/\{group_name\}/g, formEl.dataset.groupName || '')
+                        .replace(/\{group_link\}/g, formEl.dataset.groupLink || '');
+                    msgEl.value = template;
+                }
+                var alertEl = document.getElementById('membershipWaInviteAlert');
+                if (alertEl) {
+                    alertEl.classList.add('d-none');
+                    alertEl.textContent = '';
+                }
+                if (window.bootstrap) {
+                    window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                }
+            });
+        });
+    }
+
+    var membershipWaInviteForm = document.getElementById('membershipWaInviteForm');
+    if (membershipWaInviteForm) {
+        membershipWaInviteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var submitBtn = document.getElementById('membershipWaInviteSubmitBtn');
+            var alertEl = document.getElementById('membershipWaInviteAlert');
+            var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+            var formData = new FormData(membershipWaInviteForm);
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+            if (alertEl) {
+                alertEl.classList.add('d-none');
+            }
+
+            fetch(membershipWaInviteForm.getAttribute('action'), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                },
+                credentials: 'same-origin',
+                body: formData,
+            })
+                .then(function(response) {
+                    return response.json().then(function(data) {
+                        return { ok: response.ok, data: data };
+                    }).catch(function() {
+                        return { ok: response.ok, data: {} };
+                    });
+                })
+                .then(function(result) {
+                    if (!alertEl) return;
+                    alertEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+                    if (result.ok && result.data.success) {
+                        alertEl.classList.add('alert-success');
+                        alertEl.textContent = result.data.message || 'تم الإرسال';
+                        setTimeout(function() {
+                            var modalEl = document.getElementById('membershipWaInviteModal');
+                            if (modalEl && window.bootstrap) {
+                                var instance = window.bootstrap.Modal.getInstance(modalEl);
+                                if (instance) instance.hide();
+                            }
+                        }, 1200);
+                        return;
+                    }
+                    alertEl.classList.add('alert-danger');
+                    alertEl.textContent = result.data.message || 'تعذر إرسال الرسالة';
+                })
+                .catch(function() {
+                    if (alertEl) {
+                        alertEl.classList.remove('d-none');
+                        alertEl.classList.add('alert-danger');
+                        alertEl.textContent = 'تعذر إرسال الرسالة. حاول مرة أخرى.';
+                    }
+                })
+                .finally(function() {
+                    if (submitBtn) submitBtn.disabled = false;
+                });
+        });
+    }
 });
 </script>
 @stop

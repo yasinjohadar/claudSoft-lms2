@@ -228,4 +228,13 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
         ->group(function () {
             Route::post('/incoming', [WhatsAppWebWebhookController::class, 'handleIncoming'])->name('incoming');
         });
+
+    Route::prefix('evolution')
+        ->name('evolution.')
+        ->middleware(['throttle:120,1'])
+        ->group(function () {
+            Route::post('/{instance?}', [\App\Http\Controllers\Api\EvolutionWebhookController::class, 'handle'])
+                ->where('instance', '[a-zA-Z0-9_-]+')
+                ->name('handle');
+        });
 });

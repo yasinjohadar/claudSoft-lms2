@@ -8,6 +8,7 @@ use App\Services\Ai\AIModelService;
 use App\Services\Ai\AIProviderFactory;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Support\WhatsAppRecipientNormalizer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -26,66 +27,80 @@ class AutoReplyWhatsAppListener implements ShouldQueue
      */
     public function handle(WhatsAppMessageReceived $event): void
     {
-        // Only process text messages
-        if ($event->message->type !== 'text' || $event->message->direction !== 'inbound') {
-            Log::info('AutoReply: skipped non-text message', [
-                'type' => $event->message->type,
-                'direction' => $event->message->direction,
-            ]);
+        if ($event->message->direction !== 'inbound') {
             return;
         }
 
-        // Get settings from database
+        if ($event->message->type !== 'text') {
+            Log::channel('whatsapp')->info('AutoReply: skipped non-text message', [
+                'type' => $event->message->type,
+            ]);
+
+            return;
+        }
+
+        $incomingBody = trim((string) ($event->message->body ?? ''));
+        if ($incomingBody === '') {
+            Log::channel('whatsapp')->info('AutoReply: skipped empty text body');
+
+            return;
+        }
+
         $settings = $this->settingsService->getSettings();
 
-        Log::info('AutoReply: checking settings', [
-            'auto_reply' => $settings['auto_reply'] ?? false,
-            'auto_reply_use_ai' => $settings['auto_reply_use_ai'] ?? false,
-            'auto_reply_ai_model_id' => $settings['auto_reply_ai_model_id'] ?? null,
-        ]);
+        if (! ($settings['whatsapp_enabled'] ?? false)) {
+            Log::channel('whatsapp')->info('AutoReply: WhatsApp disabled globally');
 
-        // Check if auto-reply is enabled
-        $autoReplyEnabled = $settings['auto_reply'] ?? false;
-        if (!$autoReplyEnabled) {
-            Log::info('AutoReply: disabled, skipping');
+            return;
+        }
+
+        if (! ($settings['auto_reply'] ?? false)) {
+            Log::channel('whatsapp')->info('AutoReply: disabled in settings');
+
+            return;
+        }
+
+        $contact = $event->message->contact;
+        if (! $contact || ! WhatsAppRecipientNormalizer::isReplyableRecipient($contact->wa_id)) {
+            Log::channel('whatsapp')->info('AutoReply: skipped non-replyable recipient', [
+                'wa_id' => $contact?->wa_id,
+            ]);
+
             return;
         }
 
         $useAi = $settings['auto_reply_use_ai'] ?? false;
-        
-        Log::info('AutoReply: generating reply', [
+
+        Log::channel('whatsapp')->info('AutoReply: generating reply', [
+            'provider' => $settings['whatsapp_provider'] ?? null,
             'use_ai' => $useAi,
-            'incoming_message' => substr($event->message->body ?? '', 0, 100),
+            'incoming_preview' => mb_substr($incomingBody, 0, 100),
         ]);
-        
+
         $replyText = $useAi
-            ? $this->generateAiReply($event->message->body ?? '', $settings)
+            ? $this->generateAiReply($incomingBody, $settings)
             : ($settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.');
 
-        Log::info('AutoReply: generated reply', [
-            'use_ai' => $useAi,
-            'reply_length' => strlen($replyText ?? ''),
-            'is_fallback' => $replyText === null || $replyText === '',
-        ]);
-
-        if ($replyText === null || $replyText === '') {
+        if ($replyText === null || trim($replyText) === '') {
             $replyText = $settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.';
-            Log::warning('AutoReply: AI returned null, using fallback message');
+            Log::channel('whatsapp')->warning('AutoReply: AI returned empty, using fallback message');
         }
 
         try {
-            $contact = $event->message->contact;
             $sendService = app(SendWhatsAppMessage::class);
-            $sendService->sendText($contact->wa_id, $replyText);
+            // Sync send inside queued listener — avoids a third queue hop for the reply.
+            $sendService->sendTextSync($contact->wa_id, $replyText);
 
-            Log::info('Auto-reply sent', [
+            Log::channel('whatsapp')->info('Auto-reply sent', [
                 'original_message_id' => $event->message->id,
                 'to' => $contact->wa_id,
                 'used_ai' => $useAi,
+                'provider' => $settings['whatsapp_provider'] ?? null,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send auto-reply', [
+            Log::channel('whatsapp')->error('Failed to send auto-reply', [
                 'original_message_id' => $event->message->id,
+                'to' => $contact->wa_id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -100,14 +115,15 @@ class AutoReplyWhatsAppListener implements ShouldQueue
         $systemPrompt = trim($settings['auto_reply_ai_system_prompt'] ?? '');
 
         $model = null;
-        if (!empty($modelId)) {
+        if (! empty($modelId)) {
             $model = AIModel::find($modelId);
         }
-        if (!$model || !$model->is_active) {
+        if (! $model || ! $model->is_active) {
             $model = $this->aiModelService->getBestModelFor('chat');
         }
-        if (!$model) {
-            Log::warning('WhatsApp AI auto-reply: no AI model available, using fallback');
+        if (! $model) {
+            Log::channel('whatsapp')->warning('WhatsApp AI auto-reply: no AI model available, using fallback');
+
             return null;
         }
 
@@ -123,19 +139,21 @@ class AutoReplyWhatsAppListener implements ShouldQueue
             $provider = AIProviderFactory::create($model);
             $response = $provider->chat($messages, ['max_tokens' => $model->max_tokens ?? 512]);
 
-            if (!empty($response['success']) && !empty($response['content'])) {
+            if (! empty($response['success']) && ! empty($response['content'])) {
                 return trim($response['content']);
             }
 
-            Log::warning('WhatsApp AI auto-reply: empty or failed response', [
+            Log::channel('whatsapp')->warning('WhatsApp AI auto-reply: empty or failed response', [
                 'error' => $response['error'] ?? 'unknown',
             ]);
+
             return null;
         } catch (\Exception $e) {
-            Log::error('WhatsApp AI auto-reply failed', [
+            Log::channel('whatsapp')->error('WhatsApp AI auto-reply failed', [
                 'error' => $e->getMessage(),
                 'model_id' => $model->id,
             ]);
+
             return null;
         }
     }

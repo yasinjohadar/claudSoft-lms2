@@ -4,10 +4,15 @@ namespace App\Services\WhatsApp;
 
 use App\DTOs\WhatsApp\InboundMessageDTO;
 use App\DTOs\WhatsApp\StatusUpdateDTO;
+use App\Services\WhatsApp\Evolution\EvolutionWebhookParser;
 use Illuminate\Support\Facades\Log;
 
 class WebhookParser
 {
+    public function __construct(
+        private EvolutionWebhookParser $evolutionParser
+    ) {}
+
     /**
      * Parse webhook payload and extract messages and statuses
      *
@@ -60,6 +65,13 @@ class WebhookParser
                         }
                     }
                 }
+            }
+
+            // Evolution API payload
+            if (empty($messages) && empty($statuses) && $this->evolutionParser->isEvolutionPayload($payload)) {
+                $evolutionParsed = $this->evolutionParser->parse($payload);
+                $messages = $evolutionParsed['messages'];
+                $statuses = $evolutionParsed['statuses'];
             }
 
             // Wasender/Custom API style payload fallback

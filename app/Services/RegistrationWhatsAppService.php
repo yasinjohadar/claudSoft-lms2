@@ -50,28 +50,38 @@ class RegistrationWhatsAppService
                 return true;
             }
 
-            // الحصول على القالب: أولاً قالب إعدادات المجموعة، ثم قالب محفوظ (slug welcome_group)، ثم الافتراضي
-            $templateText = $settings && trim((string) ($settings->whatsapp_template ?? '')) !== ''
-                ? $settings->whatsapp_template
-                : null;
+            $replacements = [
+                'student_name' => $registration->name_ar ?? $registration->name,
+                'group_name' => $group->name,
+                'email' => $registration->email ?? '',
+            ];
 
-            if ($templateText !== null) {
-                $message = str_replace('{{student_name}}', $registration->name_ar ?? $registration->name, $templateText);
-                $message = str_replace('{{group_name}}', $group->name, $message);
-                $message = str_replace('{{email}}', $registration->email ?? '', $message);
+            // الحصول على القالب: أولاً القالب المحدد في الإعدادات، ثم النص القديم، ثم welcome_group، ثم الافتراضي
+            $messageTemplate = null;
+            if ($settings?->whatsapp_template_id) {
+                $messageTemplate = WhatsAppMessageTemplate::active()
+                    ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+                    ->find($settings->whatsapp_template_id);
+            }
+
+            if ($messageTemplate) {
+                $message = $messageTemplate->render($replacements);
+            } elseif ($settings && trim((string) ($settings->whatsapp_template ?? '')) !== '') {
+                $message = str_replace(
+                    ['{{student_name}}', '{student_name}', '{{group_name}}', '{group_name}', '{{email}}', '{email}'],
+                    [$replacements['student_name'], $replacements['student_name'], $replacements['group_name'], $replacements['group_name'], $replacements['email'], $replacements['email']],
+                    $settings->whatsapp_template
+                );
             } else {
                 $messageTemplate = WhatsAppMessageTemplate::findBySlug('welcome_group');
                 if ($messageTemplate) {
-                    $message = $messageTemplate->render([
-                        'student_name' => $registration->name_ar ?? $registration->name,
-                        'group_name' => $group->name,
-                        'email' => $registration->email ?? '',
-                    ]);
+                    $message = $messageTemplate->render($replacements);
                 } else {
-                    $default = $this->getDefaultWhatsAppTemplateForGroup();
-                    $message = str_replace('{{student_name}}', $registration->name_ar ?? $registration->name, $default);
-                    $message = str_replace('{{group_name}}', $group->name, $message);
-                    $message = str_replace('{{email}}', $registration->email ?? '', $message);
+                    $message = str_replace(
+                        ['{{student_name}}', '{{group_name}}', '{{email}}'],
+                        [$replacements['student_name'], $replacements['group_name'], $replacements['email']],
+                        $this->getDefaultWhatsAppTemplateForGroup()
+                    );
                 }
             }
 

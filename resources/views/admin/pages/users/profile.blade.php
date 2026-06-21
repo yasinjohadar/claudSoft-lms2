@@ -102,6 +102,21 @@
                                 <span class="group-show-action__text">إرسال بريد</span>
                             </button>
                         @endif
+                        @php
+                            $profileWhatsappPhone = $user->full_phone ?: trim(($user->country_code ?? '').($user->phone ?? ''));
+                        @endphp
+                        @if($profileWhatsappPhone !== '')
+                            <button type="button"
+                                    class="group-show-action group-show-action--success js-open-send-whatsapp border-0 bg-transparent w-100 text-start"
+                                    data-user-id="{{ $user->id }}"
+                                    data-user-name="{{ $user->name }}"
+                                    data-user-phone="{{ $profileWhatsappPhone }}"
+                                    data-preview-url="{{ route('users.send-whatsapp.preview', $user) }}"
+                                    data-send-url="{{ route('users.send-whatsapp.send', $user) }}">
+                                <span class="group-show-action__icon"><i class="ri-whatsapp-line"></i></span>
+                                <span class="group-show-action__text">إرسال واتساب</span>
+                            </button>
+                        @endif
                         <a href="{{ route('users.edit', $user->id) }}" class="group-show-action group-show-action--primary">
                             <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                             <span class="group-show-action__text">تعديل البيانات</span>
@@ -364,10 +379,12 @@
 </div>
 
 @include('admin.pages.users.partials.send-email-modal')
+@include('admin.pages.users.partials.send-whatsapp-modal')
 @endsection
 
 @push('scripts')
 @include('admin.pages.users.partials.send-email-scripts')
+@include('admin.pages.users.partials.send-whatsapp-scripts')
 <script>
     document.querySelectorAll('[data-countup]').forEach(function (el) {
         var raw = el.getAttribute('data-countup');

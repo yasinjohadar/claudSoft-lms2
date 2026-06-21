@@ -8,12 +8,17 @@ use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\CourseGroupMember;
 use App\Models\GroupMembershipRequest;
+use App\Models\GroupRegistrationSetting;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\TrainingCamp;
 use App\Models\User;
 use App\Services\TrainingCampEnrollmentService;
+use App\Services\WhatsApp\BroadcastWhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
+use App\Support\WhatsAppSendErrorMessage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -1345,7 +1350,7 @@ class CourseGroupController extends Controller
                     'rejected_at',
                 ])
                 ->with([
-                    'student:id,name,name_ar,email,phone,country_code',
+                    'student:id,name,name_ar,email,phone,country_code,full_phone',
                     'approver:id,name',
                     'rejecter:id,name',
                 ])
@@ -1372,6 +1377,8 @@ class CourseGroupController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             $requests = $query->paginate($request->get('per_page', 15));
+
+            $waContext = $this->resolveMembershipWhatsAppContext($group, $requests, $request->input('whatsapp_jid'));
 
             $studentIds = $requests->pluck('student_id')->unique()->filter()->values();
             $otherGroupsByStudentId = collect();
@@ -1405,6 +1412,7 @@ class CourseGroupController extends Controller
                     'course' => $course,
                     'group' => $group,
                     'otherGroupsByStudentId' => $otherGroupsByStudentId,
+                    'waContext' => $waContext,
                 ])->render();
 
                 return response()->json([
@@ -1417,10 +1425,137 @@ class CourseGroupController extends Controller
                 ]);
             }
 
-            return view('admin.course-groups.membership-requests', compact('course', 'group', 'requests', 'pendingCount', 'otherGroupsByStudentId'));
+            return view('admin.course-groups.membership-requests', compact(
+                'course',
+                'group',
+                'requests',
+                'pendingCount',
+                'otherGroupsByStudentId',
+                'waContext',
+            ));
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء تحميل طلبات الانضمام: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveMembershipWhatsAppContext(CourseGroup $group, $requests, ?string $whatsappJid): array
+    {
+        $compareService = app(EvolutionGroupCompareService::class);
+        $broadcastService = app(BroadcastWhatsAppMessage::class);
+
+        $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
+        $defaultInviteMessage = "مرحباً {student_name} 👋\n\nيرجى الانضمام لمجموعة الواتساب الخاصة بـ {group_name} عبر الرابط:\n{group_link}";
+
+        $context = [
+            'whatsapp_groups' => [],
+            'whatsapp_groups_error' => null,
+            'selected_jid' => trim((string) ($whatsappJid ?? '')),
+            'wa_group_info' => null,
+            'wa_load_error' => null,
+            'wa_status_by_student_id' => [],
+            'phone_digits_by_student_id' => [],
+            'whatsapp_group_link' => $registrationSettings?->whatsapp_group_link,
+            'default_invite_message' => $defaultInviteMessage,
+        ];
+
+        try {
+            $context['whatsapp_groups'] = $compareService->listWhatsAppGroups(false);
+        } catch (\Throwable $e) {
+            $context['whatsapp_groups_error'] = $e->getMessage();
+        }
+
+        if ($context['selected_jid'] === '') {
+            return $context;
+        }
+
+        try {
+            $wa = $compareService->loadWhatsAppGroup($context['selected_jid']);
+            $context['wa_group_info'] = $wa['group_info'];
+            $students = $requests->getCollection()->pluck('student')->filter();
+            $context['wa_status_by_student_id'] = $compareService->waMembershipStatusForUsers(
+                $students,
+                $wa['phone_index'],
+                $broadcastService
+            );
+            foreach ($students as $student) {
+                $digits = $broadcastService->normalizedPhoneDigitsForWapi($student);
+                if ($digits !== null) {
+                    $context['phone_digits_by_student_id'][(int) $student->id] = $digits;
+                }
+            }
+        } catch (\Throwable $e) {
+            $context['wa_load_error'] = $e->getMessage();
+        }
+
+        return $context;
+    }
+
+    public function sendMembershipWhatsAppInvite(Request $request, $courseId, $groupId): JsonResponse
+    {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'message' => 'nullable|string|max:5000',
+        ]);
+
+        try {
+            $course = Course::findOrFail($courseId);
+            $group = CourseGroup::whereHas('courses', fn ($q) => $q->where('courses.id', $courseId))
+                ->findOrFail($groupId);
+
+            $student = User::findOrFail($validated['student_id']);
+
+            $hasRequest = GroupMembershipRequest::where('group_id', $groupId)
+                ->where('student_id', $student->id)
+                ->exists();
+            if (! $hasRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الطالب غير مرتبط بطلب انضمام لهذه المجموعة.',
+                ], 422);
+            }
+
+            $broadcastService = app(BroadcastWhatsAppMessage::class);
+            $digits = $broadcastService->normalizedPhoneDigitsForWapi($student);
+            if ($digits === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'رقم واتساب الطالب غير صالح أو غير متوفر.',
+                ], 422);
+            }
+
+            $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
+            $groupLink = $registrationSettings?->whatsapp_group_link ?? '';
+            $template = trim((string) ($validated['message'] ?? ''));
+            if ($template === '') {
+                $template = "مرحباً {student_name} 👋\n\nيرجى الانضمام لمجموعة الواتساب الخاصة بـ {group_name} عبر الرابط:\n{group_link}";
+            }
+
+            $body = $broadcastService->replacePlaceholders($template, $student, $course, $group);
+            $body = str_replace('{group_link}', $groupLink, $body);
+
+            if ($groupLink === '' && str_contains($body, '{group_link}')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'رابط مجموعة الواتساب غير مُعرّف. أضفه من إعدادات التسجيل للمجموعة.',
+                ], 422);
+            }
+
+            $phone = '+'.$digits;
+            app(SendWhatsAppMessage::class)->sendTextSync($phone, $body);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال رسالة الدعوة إلى '.$phone,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر إرسال الرسالة: '.WhatsAppSendErrorMessage::fromThrowable($e),
+            ], 500);
         }
     }
 

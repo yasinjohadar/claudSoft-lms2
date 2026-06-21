@@ -53,7 +53,34 @@ class WhatsAppMessageTemplate extends Model
                 $body
             );
         }
-        return $body;
+
+        return self::normalizeBodyForSending($body);
+    }
+
+    /**
+     * Convert stored HTML (from the editor) to WhatsApp-friendly plain text.
+     */
+    public static function normalizeBodyForSending(string $body): string
+    {
+        if ($body === '' || strip_tags($body) === $body) {
+            return $body;
+        }
+
+        $html = html_entity_decode($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $html = preg_replace('/<br\s*\/?>/i', "\n", $html);
+        $html = preg_replace('/<\/p>/i', "\n\n", $html);
+        $html = preg_replace('/<\/div>/i', "\n", $html);
+        $html = preg_replace('/<\/li>/i', "\n", $html);
+        $html = preg_replace('/<li[^>]*>/i', '• ', $html);
+        $html = preg_replace('/<(strong|b)[^>]*>(.*?)<\/\1>/is', '*$2*', $html);
+        $html = preg_replace('/<(em|i)[^>]*>(.*?)<\/\1>/is', '_$2_', $html);
+        $html = preg_replace('/<(s|strike|del)[^>]*>(.*?)<\/\1>/is', '~$2~', $html);
+
+        $text = strip_tags($html);
+        $text = preg_replace("/[ \t]+\n/", "\n", $text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+        return trim($text);
     }
 
     /**

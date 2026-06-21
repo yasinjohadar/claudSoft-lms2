@@ -32,27 +32,25 @@
                                     <i class="fas fa-user-circle text-primary me-2"></i>
                                     معلومات التسجيل
                                 </h5>
-                                <div class="row mb-3">
-                                    <div class="col-md-6 mb-3">
-                                        <p class="mb-2">
+                                <div class="registration-info-stack text-center">
+                                    <div class="registration-info-item">
+                                        <p class="mb-1">
                                             <strong><i class="fas fa-user me-2 text-muted"></i>الاسم:</strong>
                                         </p>
                                         <p class="text-primary fw-bold fs-5 mb-0">
                                             {{ $registration->name_ar ?? $registration->name }}
                                         </p>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <p class="mb-2">
+                                    <div class="registration-info-item">
+                                        <p class="mb-1">
                                             <strong><i class="fas fa-envelope me-2 text-muted"></i>البريد الإلكتروني:</strong>
                                         </p>
-                                        <p class="text-primary fw-bold fs-5 mb-0">
+                                        <p class="text-primary fw-bold fs-5 mb-0 text-break">
                                             {{ $registration->email }}
                                         </p>
                                     </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-12">
-                                        <p class="mb-2">
+                                    <div class="registration-info-item mb-0">
+                                        <p class="mb-1">
                                             <strong><i class="fas fa-building me-2 text-muted"></i>المؤسسة:</strong>
                                         </p>
                                         <p class="text-success fw-bold fs-5 mb-0">
@@ -150,6 +148,23 @@
         text-align: center;
     }
     
+    .registration-info-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .registration-info-item {
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .registration-info-item:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
     @media (max-width: 768px) {
         .card-body {
             padding: 2rem 1rem !important;

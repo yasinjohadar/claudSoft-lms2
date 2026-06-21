@@ -231,6 +231,55 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-header bg-transparent">
+                        <h6 class="card-title mb-0"><i class="ri-settings-3-line me-1 text-success"></i> إعدادات الإرسال الجماعي</h6>
+                    </div>
+                    <div class="card-body small">
+                        <p class="mb-2"><strong>المزود النشط:</strong>
+                            <span class="badge bg-success-transparent text-success">{{ $whatsappSettings['whatsapp_provider'] ?? '—' }}</span>
+                        </p>
+                        <ul class="list-unstyled mb-3">
+                            <li class="mb-1"><i class="ri-time-line me-1 text-muted"></i> الفاصل بين الرسائل: <strong>{{ $delaySettings['delay_between_messages'] ?? 4 }} ث</strong></li>
+                            <li class="mb-1"><i class="ri-shuffle-line me-1 text-muted"></i> تفاوت عشوائي:
+                                @if(!empty($delaySettings['random_delay_enabled']))
+                                    <strong>{{ $delaySettings['min_delay'] }}–{{ $delaySettings['max_delay'] }} ث إضافية</strong>
+                                @else
+                                    <span class="text-muted">غير مفعّل</span>
+                                @endif
+                            </li>
+                            <li class="mb-1"><i class="ri-pause-circle-line me-1 text-muted"></i> الفاصل بين البثوات: {{ $delaySettings['delay_between_broadcasts'] ?? 5 }} ث <span class="text-muted">(غير مُطبَّق بعد)</span></li>
+                            <li class="mb-1"><i class="ri-speed-line me-1 text-muted"></i> الحد الأقصى/دقيقة: {{ $delaySettings['max_messages_per_minute'] ?? 20 }} <span class="text-muted">(غير مُطبَّق بعد)</span></li>
+                        </ul>
+                        <a href="{{ route('admin.whatsapp-settings.index') }}#delay-settings" class="btn btn-sm btn-outline-secondary w-100">تعديل الفواصل الزمنية</a>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 {{ ($queuePendingCount ?? 0) > 0 ? 'border-warning' : 'border-success' }}">
+                    <div class="card-header bg-transparent">
+                        <h6 class="card-title mb-0"><i class="ri-stack-line me-1"></i> حالة الطابور (Queue)</h6>
+                    </div>
+                    <div class="card-body small">
+                        <p class="mb-2">Driver: <code>{{ config('queue.default') }}</code></p>
+                        <p class="mb-2">مهام معلّقة: <strong>{{ $queuePendingCount ?? 0 }}</strong></p>
+                        @if(($queuePendingCount ?? 0) > 0)
+                            <div class="alert alert-warning py-2 mb-2">
+                                <i class="ri-alert-line me-1"></i>
+                                يوجد مهام في الطابور. شغّل <code>php artisan queue:work</code> لإكمال الإرسال الجماعي.
+                            </div>
+                        @else
+                            <div class="alert alert-success py-2 mb-2">
+                                <i class="ri-check-line me-1"></i> لا توجد مهام معلّقة حالياً.
+                            </div>
+                        @endif
+                        <p class="text-muted mb-0">
+                            الإرسال الجماعي: الرسالة الأولى فوراً، والباقي عبر الطابور بفواصل تراكمية (4 ث، 8 ث، 12 ث…).
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

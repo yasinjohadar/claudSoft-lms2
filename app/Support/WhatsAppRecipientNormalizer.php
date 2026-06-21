@@ -17,7 +17,7 @@ class WhatsAppRecipientNormalizer
         }
 
         return match ($provider) {
-            'custom_api' => self::normalizeForCustomApi($trimmed),
+            'custom_api', 'evolution' => self::normalizeForCustomApi($trimmed),
             default => self::normalizeAsE164($trimmed),
         };
     }
@@ -27,6 +27,11 @@ class WhatsAppRecipientNormalizer
      * - Keep valid JID as-is (individual/group)
      * - Otherwise normalize to digits without "+"
      */
+    public static function normalizeForEvolution(string $recipient): string
+    {
+        return self::normalizeForCustomApi($recipient);
+    }
+
     public static function normalizeForCustomApi(string $recipient): string
     {
         if (self::isValidGroupJid($recipient) || self::isValidIndividualJid($recipient)) {
@@ -69,5 +74,28 @@ class WhatsAppRecipientNormalizer
     public static function isValidIndividualJid(string $recipient): bool
     {
         return preg_match('/^\d{7,20}@(s\.whatsapp\.net|c\.us)$/', $recipient) === 1;
+    }
+
+    /**
+     * Whether we can send a direct reply to this recipient (not a group, has a usable JID/number).
+     */
+    public static function isReplyableRecipient(string $recipient): bool
+    {
+        $recipient = trim($recipient);
+        if ($recipient === '' || self::isLikelyGroupRecipient($recipient)) {
+            return false;
+        }
+
+        if (self::isValidIndividualJid($recipient)) {
+            return true;
+        }
+
+        if (str_ends_with($recipient, '@lid')) {
+            return false;
+        }
+
+        $digits = preg_replace('/\D+/', '', $recipient) ?? '';
+
+        return $digits !== '' && strlen($digits) >= 8 && strlen($digits) <= 15;
     }
 }

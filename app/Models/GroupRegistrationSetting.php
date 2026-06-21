@@ -19,6 +19,7 @@ class GroupRegistrationSetting extends Model
         'send_welcome_email',
         'send_welcome_whatsapp',
         'email_template_id',
+        'whatsapp_template_id',
         'whatsapp_template',
         'whatsapp_group_link',
         'require_email_verification',
@@ -45,6 +46,11 @@ class GroupRegistrationSetting extends Model
     public function emailTemplate(): BelongsTo
     {
         return $this->belongsTo(EmailTemplate::class);
+    }
+
+    public function whatsappTemplate(): BelongsTo
+    {
+        return $this->belongsTo(WhatsAppMessageTemplate::class, 'whatsapp_template_id');
     }
 
     // Helper Methods

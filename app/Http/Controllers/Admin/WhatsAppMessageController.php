@@ -133,8 +133,18 @@ class WhatsAppMessageController extends Controller
         $courses = Course::where('is_published', true)->orderBy('title')->get();
         $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
         $templates = WhatsAppMessageTemplate::active()->orderBy('name')->get(['id', 'name', 'body', 'type', 'language', 'meta_template_name']);
+        $delaySettings = $this->settingsService->getDelaySettings();
+        $whatsappSettings = $this->settingsService->getSettings();
+        $queuePendingCount = (int) \Illuminate\Support\Facades\DB::table('jobs')->count();
 
-        return view('admin.pages.whatsapp-messages.send', compact('courses', 'groups', 'templates'));
+        return view('admin.pages.whatsapp-messages.send', compact(
+            'courses',
+            'groups',
+            'templates',
+            'delaySettings',
+            'whatsappSettings',
+            'queuePendingCount'
+        ));
     }
 
     /**

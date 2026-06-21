@@ -9,6 +9,8 @@ use App\Models\CampEnrollment;
 use App\Models\Invoice;
 use App\Models\EmailSetting;
 use App\Models\EmailTemplate;
+use App\Models\EvolutionInstance;
+use App\Models\WhatsAppMessageTemplate;
 use App\Models\Nationality;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
@@ -100,8 +102,16 @@ class UserController extends Controller
 
         return view('admin.pages.users.index', array_merge(
             compact('users', 'roles', 'sessions', 'stats'),
-            $this->emailFormData()
+            $this->userMessagingFormData()
         ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function userMessagingFormData(): array
+    {
+        return array_merge($this->emailFormData(), $this->whatsappFormData());
     }
 
     /**
@@ -113,6 +123,21 @@ class UserController extends Controller
             'emailTemplates' => EmailTemplate::active()->orderBy('name_ar')->orderBy('name')->get(['id', 'name', 'name_ar', 'subject']),
             'emailSettings' => EmailSetting::orderByDesc('is_active')->orderBy('id')->get(),
             'defaultEmailSetting' => EmailSetting::getActive(),
+        ];
+    }
+
+    /**
+     * @return array{whatsappTemplates: \Illuminate\Database\Eloquent\Collection, evolutionInstances: \Illuminate\Database\Eloquent\Collection, defaultEvolutionInstance: ?EvolutionInstance}
+     */
+    private function whatsappFormData(): array
+    {
+        return [
+            'whatsappTemplates' => WhatsAppMessageTemplate::active()
+                ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'evolutionInstances' => EvolutionInstance::orderByDesc('is_default')->orderBy('instance_name')->get(),
+            'defaultEvolutionInstance' => EvolutionInstance::defaultInstance(),
         ];
     }
 
@@ -353,7 +378,7 @@ class UserController extends Controller
             'availableCamps',
             'paymentMethods',
             'payableInvoices'
-        ), $this->emailFormData()));
+        ), $this->userMessagingFormData()));
     }
 
     /**

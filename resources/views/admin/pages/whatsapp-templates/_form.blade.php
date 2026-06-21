@@ -14,8 +14,8 @@
         @error('slug')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-12">
-        <label for="body" class="form-label">نص الرسالة <span class="text-danger">*</span></label>
-        <textarea class="form-control @error('body') is-invalid @enderror" id="body" name="body" rows="6" placeholder="@verbatimمثال: مرحباً {{student_name}}، تم استلام طلبك في {{group_name}}.@endverbatim" required>{{ old('body', $template?->body) }}</textarea>
+        <label for="whatsapp_template_body" class="form-label">نص الرسالة <span class="text-danger">*</span></label>
+        <textarea class="form-control @error('body') is-invalid @enderror" id="whatsapp_template_body" name="body" rows="8" placeholder="@verbatimمثال: مرحباً {{student_name}}، تم استلام طلبك في {{group_name}}.@endverbatim" required>{{ old('body', $template?->body) }}</textarea>
         <small class="text-muted">استخدم المتغيرات بصيغة @verbatim<code>{{اسم_المتغير}}</code>@endverbatim مثل: student_name, course_name, group_name, student_email</small>
         @error('body')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
@@ -58,10 +58,58 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js"></script>
 <script>
-document.getElementById('type').addEventListener('change', function() {
-    var wrap = document.getElementById('meta-template-name-wrap');
-    wrap.style.display = this.value === 'template' ? 'block' : 'none';
+document.addEventListener('DOMContentLoaded', function () {
+    var typeSelect = document.getElementById('type');
+    var metaWrap = document.getElementById('meta-template-name-wrap');
+
+    if (typeSelect && metaWrap) {
+        typeSelect.addEventListener('change', function () {
+            metaWrap.style.display = this.value === 'template' ? 'block' : 'none';
+        });
+    }
+
+    function initWhatsAppTemplateEditor() {
+        if (typeof tinymce === 'undefined') {
+            setTimeout(initWhatsAppTemplateEditor, 100);
+            return;
+        }
+
+        if (tinymce.get('whatsapp_template_body')) {
+            tinymce.get('whatsapp_template_body').remove();
+        }
+
+        tinymce.init({
+            selector: '#whatsapp_template_body',
+            height: 320,
+            directionality: 'rtl',
+            language: 'ar',
+            language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@latest/langs6/ar.js',
+            promotion: false,
+            branding: false,
+            menubar: false,
+            statusbar: true,
+            plugins: 'lists link directionality wordcount',
+            toolbar: 'undo redo | bold italic underline strikethrough | forecolor | alignright aligncenter alignleft alignjustify | bullist numlist | ltr rtl | removeformat',
+            content_style: 'body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 14px; direction: rtl; line-height: 1.6; }',
+            paste_as_text: false,
+            entity_encoding: 'raw',
+            setup: function (editor) {
+                editor.on('init', function () {
+                    editor.getContainer().style.visibility = 'visible';
+                });
+            }
+        });
+    }
+
+    setTimeout(initWhatsAppTemplateEditor, 200);
+
+    document.querySelector('form')?.addEventListener('submit', function () {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.triggerSave();
+        }
+    });
 });
 </script>
 @endpush

@@ -170,6 +170,21 @@
                                             </button>
                                         </li>
                                     @endif
+                                    @php
+                                        $userWhatsappPhone = $user->full_phone ?: trim(($user->country_code ?? '').($user->phone ?? ''));
+                                    @endphp
+                                    @if($userWhatsappPhone !== '')
+                                        <li>
+                                            <button type="button" class="dropdown-item js-open-send-whatsapp"
+                                                data-user-id="{{ $user->id }}"
+                                                data-user-name="{{ $user->name }}"
+                                                data-user-phone="{{ $userWhatsappPhone }}"
+                                                data-preview-url="{{ route('users.send-whatsapp.preview', $user) }}"
+                                                data-send-url="{{ route('users.send-whatsapp.send', $user) }}">
+                                                <i class="ri-whatsapp-line me-2"></i>إرسال واتساب
+                                            </button>
+                                        </li>
+                                    @endif
                                     @if($user->hasRole('student'))
                                         <li><hr class="dropdown-divider"></li>
                                         <li>

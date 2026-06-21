@@ -3,53 +3,116 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Auth\PasswordResetDeliveryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PasswordResetLinkController extends Controller
 {
+    public function __construct(
+        private PasswordResetDeliveryService $resetDelivery
+    ) {}
+
     /**
      * Display the password reset link request view.
      */
     public function create(): View
     {
-        return view('auth.forgot-password');
+        return view('auth.forgot-password', [
+            'whatsappAvailable' => $this->resetDelivery->isWhatsAppAvailable(),
+        ]);
     }
 
     /**
      * Handle an incoming password reset link request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
+        $channel = $request->input('channel', 'email');
+        $countryCodes = array_keys(config('country_codes.list', []));
+
         $request->validate([
-            'email' => ['required', 'email'],
+            'channel' => ['required', Rule::in(['email', 'whatsapp'])],
+            'email' => [Rule::requiredIf($channel === 'email'), 'nullable', 'email'],
+            'country_code' => [
+                Rule::requiredIf($channel === 'whatsapp'),
+                'nullable',
+                Rule::in($countryCodes),
+            ],
+            'phone' => [
+                Rule::requiredIf($channel === 'whatsapp'),
+                'nullable',
+                'string',
+                'regex:/^[0-9]{6,14}$/',
+            ],
+        ], [
+            'email.required' => 'البريد الإلكتروني مطلوب.',
+            'country_code.required' => 'رمز الدولة مطلوب.',
+            'country_code.in' => 'رمز الدولة غير صالح.',
+            'phone.required' => 'رقم الجوال مطلوب.',
+            'phone.regex' => 'أدخل رقم الجوال بدون رمز الدولة وبدون صفر في البداية.',
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        if ($channel === 'whatsapp' && ! $this->resetDelivery->isWhatsAppAvailable()) {
+            return back()->withInput()->withErrors([
+                'phone' => 'إرسال رابط الاستعادة عبر الواتساب غير متاح حالياً.',
+            ]);
+        }
 
-        // Translate status messages to Arabic
-        // The status is already a translation key (e.g., 'passwords.sent', 'passwords.user')
+        try {
+            if ($channel === 'whatsapp') {
+                $status = $this->resetDelivery->sendViaWhatsAppParts(
+                    (string) $request->input('country_code'),
+                    (string) $request->input('phone')
+                );
+            } else {
+                $status = $this->resetDelivery->sendViaEmail((string) $request->input('email'));
+            }
+        } catch (\InvalidArgumentException $e) {
+            $field = $channel === 'whatsapp' ? 'phone' : 'email';
+
+            return back()->withInput()->withErrors([$field => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $field = $channel === 'whatsapp' ? 'phone' : 'email';
+
+            return back()->withInput()->withErrors([
+                $field => 'تعذّر إرسال رابط الاستعادة. حاول لاحقاً أو استخدم البريد الإلكتروني.',
+            ]);
+        }
+
         $messages = [
-            'passwords.sent' => 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
-            'passwords.user' => 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
-            'passwords.token' => 'رابط إعادة تعيين كلمة المرور غير صحيح أو منتهي الصلاحية.',
-            'passwords.throttled' => 'يرجى الانتظار قبل إعادة المحاولة.',
+            Password::RESET_LINK_SENT => $channel === 'whatsapp'
+                ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى واتسابك.'
+                : 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
+            Password::INVALID_USER => $channel === 'whatsapp'
+                ? 'لا يمكننا العثور على حساب مرتبط بهذا الرقم.'
+                : 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
+            Password::RESET_THROTTLED => 'يرجى الانتظار قبل إعادة المحاولة.',
         ];
 
         $message = $messages[$status] ?? trans($status, [], 'ar');
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', $message)
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => $message]);
+        if ($status === Password::RESET_LINK_SENT) {
+            $contact = $channel === 'whatsapp'
+                ? $this->resetDelivery->formatPhoneForDisplay(
+                    (string) $request->input('country_code'),
+                    (string) $request->input('phone')
+                )
+                : $request->input('email');
+
+            return back()
+                ->with('status', $message)
+                ->with('reset_channel', $channel)
+                ->with('reset_contact', $contact);
+        }
+
+        $field = $channel === 'whatsapp' ? 'phone' : 'email';
+
+        return back()
+            ->withInput($request->only('channel', 'country_code', 'phone', 'email'))
+            ->withErrors([$field => $message]);
     }
 }

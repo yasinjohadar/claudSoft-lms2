@@ -23,7 +23,7 @@ class WhatsAppSettingsService
 
         return [
             'whatsapp_enabled' => filter_var($settings['whatsapp_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'whatsapp_provider' => $settings['whatsapp_provider'] ?? 'meta',
+            'whatsapp_provider' => $settings['whatsapp_provider'] ?? 'evolution',
             'api_version' => $settings['api_version'] ?? 'v20.0',
             'phone_number_id' => $settings['phone_number_id'] ?? '',
             'waba_id' => $settings['waba_id'] ?? '',
@@ -61,6 +61,11 @@ class WhatsAppSettingsService
             // Flaxxa WAPI (لوحة الإدارة — يُفضّل على .env عند التعيين)
             'wapi_token' => $this->decryptIfEncrypted($settings['wapi_token'] ?? ''),
             'wapi_base_url' => $settings['wapi_base_url'] ?? '',
+            // Evolution API settings
+            'evolution_base_url' => $this->normalizeServiceUrl($settings['evolution_base_url'] ?? ''),
+            'evolution_api_key' => $this->decryptIfEncrypted($settings['evolution_api_key'] ?? ''),
+            'evolution_instance_name' => $settings['evolution_instance_name'] ?? '',
+            'evolution_webhook_secret' => $this->decryptIfEncrypted($settings['evolution_webhook_secret'] ?? ''),
         ];
     }
 
@@ -71,12 +76,16 @@ class WhatsAppSettingsService
     {
         foreach ($newSettings as $key => $value) {
             // Encrypt sensitive fields
-            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token', 'wapi_token']) && ! empty($value)) {
+            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'whatsapp_web_api_token', 'wapi_token', 'evolution_api_key', 'evolution_webhook_secret']) && ! empty($value)) {
                 $value = Crypt::encryptString($value);
             }
 
             // Normalize WhatsApp Web service URL when saving (remove leading slash that causes "غير متاح على: /https://...")
             if ($key === 'whatsapp_web_service_url' && is_string($value)) {
+                $value = $this->normalizeServiceUrl($value);
+            }
+
+            if ($key === 'evolution_base_url' && is_string($value)) {
                 $value = $this->normalizeServiceUrl($value);
             }
 
@@ -114,7 +123,7 @@ class WhatsAppSettingsService
     {
         $defaults = [
             'whatsapp_enabled' => false,
-            'whatsapp_provider' => 'meta',
+            'whatsapp_provider' => 'evolution',
             'api_version' => 'v20.0',
             'phone_number_id' => '',
             'waba_id' => '',
@@ -149,6 +158,10 @@ class WhatsAppSettingsService
             'study_report_delivery' => 'both',
             'wapi_token' => '',
             'wapi_base_url' => '',
+            'evolution_base_url' => '',
+            'evolution_api_key' => '',
+            'evolution_instance_name' => '',
+            'evolution_webhook_secret' => '',
         ];
 
         foreach ($defaults as $key => $value) {
@@ -181,6 +194,14 @@ class WhatsAppSettingsService
             return [
                 'nodejs_service_url' => $settings['whatsapp_web_service_url'],
                 'api_token' => $settings['whatsapp_web_api_token'],
+            ];
+        }
+
+        if ($provider === 'evolution') {
+            return [
+                'base_url' => $settings['evolution_base_url'],
+                'api_key' => $settings['evolution_api_key'],
+                'instance_name' => $settings['evolution_instance_name'],
             ];
         }
 

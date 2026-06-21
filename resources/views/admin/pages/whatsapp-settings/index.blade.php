@@ -40,6 +40,11 @@
             </div>
         @endif
 
+        @php
+            $savedProvider = $settings['whatsapp_provider'] ?? 'evolution';
+            $activeProvider = $savedProvider === 'meta' ? 'evolution' : $savedProvider;
+        @endphp
+
         <!-- Settings Form -->
         <div class="row">
             <div class="col-xl-12">
@@ -80,9 +85,9 @@
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">المرسل الافتراضي للرسائل (المزود) <span class="text-danger">*</span></label>
                                             <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required onchange="handleProviderChange(this.value)">
-                                                <option value="meta" {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'meta') || (!isset($settings['whatsapp_provider'])) ? 'selected' : '' }}>Meta (WhatsApp Cloud API)</option>
-                                                <option value="custom_api" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api' ? 'selected' : '' }}>Custom API</option>
-                                                <option value="whatsapp_web" {{ isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web' ? 'selected' : '' }}>WhatsApp Web (QR Code)</option>
+                                                <option value="evolution" {{ $activeProvider === 'evolution' ? 'selected' : '' }}>Evolution API</option>
+                                                <option value="whatsapp_web" {{ $activeProvider === 'whatsapp_web' ? 'selected' : '' }}>WhatsApp Web (QR Code)</option>
+                                                <option value="custom_api" {{ $activeProvider === 'custom_api' ? 'selected' : '' }}>Custom API</option>
                                             </select>
                                             <small class="text-muted d-block mt-1">يُستخدم هذا المزود لإرسال جميع رسائل واتساب (ترحيب، إشعارات، إرسال جماعي، إلخ).</small>
                                             @error('whatsapp_provider')
@@ -90,13 +95,22 @@
                                             @enderror
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            @if(isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web')
+                                            @if($activeProvider === 'whatsapp_web')
                                                 <div class="d-flex gap-2">
                                                     <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-primary">
                                                         <i class="ri-settings-3-line me-2"></i>إعدادات WhatsApp Web
                                                     </a>
                                                     <a href="{{ route('admin.whatsapp-web.connect') }}" class="btn btn-outline-primary">
                                                         <i class="ri-qr-code-line me-2"></i>ربط WhatsApp Web
+                                                    </a>
+                                                </div>
+                                            @elseif($activeProvider === 'evolution')
+                                                <div class="d-flex gap-2">
+                                                    <a href="{{ route('admin.evolution-api.settings.index') }}" class="btn btn-success">
+                                                        <i class="ri-settings-3-line me-2"></i>إعدادات Evolution API
+                                                    </a>
+                                                    <a href="{{ route('admin.evolution-api.instances.index') }}" class="btn btn-outline-success">
+                                                        <i class="ri-smartphone-line me-2"></i>Instances
                                                     </a>
                                                 </div>
                                             @endif
@@ -110,29 +124,30 @@
                                                 <option value="whatsapp" {{ ($settings['study_report_delivery'] ?? '') === 'whatsapp' ? 'selected' : '' }}>واتساب فقط — يُضاف البريد تلقائياً إن لم يتوفر رقم للطالب</option>
                                             </select>
                                             <small class="text-muted d-block mt-1">تُرسل عند إصدار تقرير دراسة جديد للطالب (قاعدة الإشعارات + البريد و/أو واتساب حسب الاختيار).</small>
-                                            <div class="alert alert-warning small mt-2 mb-0">
-                                                <strong>Meta Cloud API:</strong> الرسائل النصية خارج نافذة المحادثة قد تتطلب <strong>قوالباً معتمدة</strong>؛ للنص الحر غالباً أنسب <strong>WhatsApp Web</strong> أو <strong>Custom API</strong> حسب إعدادك.
+                                            <div class="alert alert-info small mt-2 mb-0">
+                                                <strong>Evolution API</strong> هو المزود الموصى به حالياً. للنص الحر والإرسال الجماعي استخدم Evolution أو WhatsApp Web.
                                                 <br><strong>رقم الطالب:</strong> يُشتق من كود الدولة والهاتف في الملف الشخصي. <strong>عامل الطابور</strong> مطلوب لتسليم رسائل واتساب.
                                             </div>
                                         </div>
                                         <script>
                                             function handleProviderChange(provider) {
-                                                var metaSettings = document.getElementById('meta-settings');
                                                 var customApiSettings = document.getElementById('custom-api-settings');
                                                 var whatsappWebSettings = document.getElementById('whatsapp-web-settings');
-                                                
-                                                // Hide all settings
-                                                if (metaSettings) metaSettings.style.display = 'none';
+                                                var evolutionHint = document.getElementById('evolution-hint');
+                                                var customApiUrl = document.getElementById('custom_api_url');
+
                                                 if (customApiSettings) customApiSettings.style.display = 'none';
                                                 if (whatsappWebSettings) whatsappWebSettings.style.display = 'none';
-                                                
-                                                // Show relevant settings
+                                                if (evolutionHint) evolutionHint.style.display = 'none';
+                                                if (customApiUrl) customApiUrl.required = false;
+
                                                 if (provider === 'custom_api') {
                                                     if (customApiSettings) customApiSettings.style.display = 'block';
+                                                    if (customApiUrl) customApiUrl.required = true;
                                                 } else if (provider === 'whatsapp_web') {
                                                     if (whatsappWebSettings) whatsappWebSettings.style.display = 'block';
-                                                } else {
-                                                    if (metaSettings) metaSettings.style.display = 'block';
+                                                } else if (provider === 'evolution') {
+                                                    if (evolutionHint) evolutionHint.style.display = 'block';
                                                 }
                                             }
                                         </script>
@@ -140,102 +155,15 @@
                                 </div>
                             </div>
 
-                            <!-- Meta Provider Settings -->
-                            <div class="card border mb-4" id="meta-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api') ? 'none' : 'block' }};">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-facebook-box-line me-2"></i>إعدادات Meta (WhatsApp Cloud API)
-                                    </h5>
-                                </div>
+                            <div class="card border mb-4" id="evolution-hint" style="display: {{ $activeProvider === 'evolution' ? 'block' : 'none' }};">
                                 <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">إصدار API <span class="text-danger">*</span></label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="api_version" 
-                                                   id="api_version"
-                                                   value="{{ old('api_version', $settings['api_version'] ?? 'v20.0') }}"
-                                                   placeholder="v20.0"
-                                                   required>
-                                            @error('api_version')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Phone Number ID <span class="text-danger">*</span></label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="phone_number_id" 
-                                                   id="phone_number_id"
-                                                   value="{{ old('phone_number_id', $settings['phone_number_id'] ?? '') }}"
-                                                   placeholder="رقم معرف رقم الهاتف">
-                                            @error('phone_number_id')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">WABA ID</label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="waba_id" 
-                                                   id="waba_id"
-                                                   value="{{ old('waba_id', $settings['waba_id'] ?? '') }}"
-                                                   placeholder="معرف WhatsApp Business Account">
-                                            @error('waba_id')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Access Token</label>
-                                            <input type="password" 
-                                                   class="form-control" 
-                                                   name="access_token" 
-                                                   id="access_token"
-                                                   value=""
-                                                   placeholder="اتركه فارغاً للحفاظ على القيمة الحالية">
-                                            <small class="text-muted">اتركه فارغاً إذا كنت لا تريد تغييره</small>
-                                            @error('access_token')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Verify Token <span class="text-danger">*</span></label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="verify_token" 
-                                                   id="verify_token"
-                                                   value="{{ old('verify_token', $settings['verify_token'] ?? '') }}"
-                                                   placeholder="رمز التحقق للـ Webhook"
-                                                   required>
-                                            @error('verify_token')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">App Secret</label>
-                                            <input type="password" 
-                                                   class="form-control" 
-                                                   name="app_secret" 
-                                                   id="app_secret"
-                                                   value=""
-                                                   placeholder="اتركه فارغاً للحفاظ على القيمة الحالية">
-                                            <small class="text-muted">للتوقيع الرقمي للـ Webhook</small>
-                                            @error('app_secret')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
+                                    <p class="mb-2">إعدادات Evolution API في صفحة مستقلة. بعد اختيار هذا المزود، اضبط URL و API Key و Instance من:</p>
+                                    <a href="{{ route('admin.evolution-api.settings.index') }}" class="btn btn-success btn-sm">فتح إعدادات Evolution API</a>
                                 </div>
                             </div>
 
                             <!-- Custom API Settings -->
-                            <div class="card border mb-4" id="custom-api-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'custom_api') ? 'block' : 'none' }};">
+                            <div class="card border mb-4" id="custom-api-settings" style="display: {{ $activeProvider === 'custom_api' ? 'block' : 'none' }};">
                                 <div class="card-header bg-light">
                                     <h5 class="mb-0">
                                         <i class="ri-code-s-slash-line me-2"></i>إعدادات Custom API
@@ -382,6 +310,16 @@
                                     </h5>
                                 </div>
                                 <div class="card-body">
+                                    <div class="alert alert-info small mb-3">
+                                        <i class="ri-information-line me-1"></i>
+                                        <strong>Evolution API:</strong> يعمل الرد التلقائي على المحادثات <strong>الفردية</strong> الواردة عبر Webhook
+                                        (<code>MESSAGES_UPSERT</code>). تأكد من:
+                                        <ul class="mb-0 mt-1">
+                                            <li>تفعيل WhatsApp + اختيار Evolution كمزود</li>
+                                            <li>ضبط Webhook من <a href="{{ route('admin.evolution-api.webhook.index') }}">لوحة Evolution → Webhook</a></li>
+                                            <li>تشغيل <code>php artisan queue:work</code> (معالجة Webhook + الرد التلقائي)</li>
+                                        </ul>
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-12 mb-3">
                                             <div class="form-check form-switch">
@@ -468,6 +406,8 @@
                                 });
                             </script>
 
+                            @include('admin.pages.whatsapp-settings.partials.delay-settings')
+
                             <!-- Queue Worker (عامل الطابور) -->
                             <div class="card border mb-4">
                                 <div class="card-header bg-light">
@@ -506,7 +446,7 @@
                             </div>
 
                             <!-- WhatsApp Web Info -->
-                            <div class="card border mb-4" id="whatsapp-web-settings" style="display: {{ (isset($settings['whatsapp_provider']) && $settings['whatsapp_provider'] == 'whatsapp_web') ? 'block' : 'none' }};">
+                            <div class="card border mb-4" id="whatsapp-web-settings" style="display: {{ $activeProvider === 'whatsapp_web' ? 'block' : 'none' }};">
                                 <div class="card-header bg-light">
                                     <h5 class="mb-0">
                                         <i class="ri-qr-code-line me-2"></i>WhatsApp Web
@@ -598,9 +538,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('whatsapp_provider');
-    const metaSettings = document.getElementById('meta-settings');
     const customApiSettings = document.getElementById('custom-api-settings');
     const whatsappWebSettings = document.getElementById('whatsapp-web-settings');
+    const evolutionHint = document.getElementById('evolution-hint');
     const testConnectionBtn = document.getElementById('test-connection-btn');
     
     // Safely initialize modal
@@ -657,45 +597,27 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Provider select not found');
             return;
         }
-        
+
         const provider = providerSelect.value;
-        console.log('Provider changed to:', provider); // Debug log
-        
-        if (provider === 'meta') {
-            if (metaSettings) metaSettings.style.display = 'block';
-            if (customApiSettings) customApiSettings.style.display = 'none';
-            // Make Meta fields required
-            const apiVersion = document.getElementById('api_version');
-            const phoneNumberId = document.getElementById('phone_number_id');
-            const verifyToken = document.getElementById('verify_token');
-            const customApiUrl = document.getElementById('custom_api_url');
-            
-            if (apiVersion) apiVersion.required = true;
-            if (phoneNumberId) phoneNumberId.required = true;
-            if (verifyToken) verifyToken.required = true;
-            if (customApiUrl) customApiUrl.required = false;
-        } else if (provider === 'custom_api') {
-            if (metaSettings) metaSettings.style.display = 'none';
+        const customApiUrl = document.getElementById('custom_api_url');
+
+        if (customApiSettings) customApiSettings.style.display = 'none';
+        if (whatsappWebSettings) whatsappWebSettings.style.display = 'none';
+        if (evolutionHint) evolutionHint.style.display = 'none';
+        if (customApiUrl) customApiUrl.required = false;
+
+        if (provider === 'custom_api') {
             if (customApiSettings) customApiSettings.style.display = 'block';
-            // Make Custom API fields required
-            const apiVersion = document.getElementById('api_version');
-            const phoneNumberId = document.getElementById('phone_number_id');
-            const verifyToken = document.getElementById('verify_token');
-            const customApiUrl = document.getElementById('custom_api_url');
-            
-            if (apiVersion) apiVersion.required = false;
-            if (phoneNumberId) phoneNumberId.required = false;
-            if (verifyToken) verifyToken.required = false;
             if (customApiUrl) customApiUrl.required = true;
-        } else {
-            // Default to meta if unknown provider
-            if (metaSettings) metaSettings.style.display = 'block';
-            if (customApiSettings) customApiSettings.style.display = 'none';
+        } else if (provider === 'whatsapp_web') {
+            if (whatsappWebSettings) whatsappWebSettings.style.display = 'block';
+        } else if (provider === 'evolution') {
+            if (evolutionHint) evolutionHint.style.display = 'block';
         }
     }
 
     // Initial call after DOM is fully loaded
-    if (providerSelect && metaSettings && customApiSettings && whatsappWebSettings) {
+    if (providerSelect && customApiSettings && whatsappWebSettings) {
         // Add event listener for change
         providerSelect.addEventListener('change', function() {
             toggleProviderSettings();
@@ -711,9 +633,9 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.error('Required elements not found:', {
             providerSelect: !!providerSelect,
-            metaSettings: !!metaSettings,
             customApiSettings: !!customApiSettings,
-            whatsappWebSettings: !!whatsappWebSettings
+            whatsappWebSettings: !!whatsappWebSettings,
+            evolutionHint: !!evolutionHint,
         });
     }
 

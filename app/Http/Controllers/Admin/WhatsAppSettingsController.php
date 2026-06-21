@@ -50,7 +50,7 @@ class WhatsAppSettingsController extends Controller
 
         $validated = $request->validate([
             'whatsapp_enabled' => 'nullable',
-            'whatsapp_provider' => 'required|string|in:meta,custom_api,whatsapp_web',
+            'whatsapp_provider' => 'required|string|in:custom_api,whatsapp_web,evolution',
             'api_version' => 'required_if:whatsapp_provider,meta|nullable|string|max:10',
             'phone_number_id' => 'required_if:whatsapp_provider,meta|nullable|string|max:255',
             'waba_id' => 'nullable|string|max:255',
@@ -155,7 +155,7 @@ class WhatsAppSettingsController extends Controller
     {
         try {
             $settings = $this->settingsService->getSettings();
-            $provider = $request->input('whatsapp_provider', $settings['whatsapp_provider'] ?? 'meta');
+            $provider = $request->input('whatsapp_provider', $settings['whatsapp_provider'] ?? 'evolution');
 
             // Get provider config
             if ($provider === 'custom_api') {
@@ -177,6 +177,12 @@ class WhatsAppSettingsController extends Controller
                 $config = [
                     'nodejs_service_url' => $nodejsUrl,
                     'api_token' => $apiToken,
+                ];
+            } elseif ($provider === 'evolution') {
+                $config = [
+                    'base_url' => $request->input('evolution_base_url', $settings['evolution_base_url'] ?? ''),
+                    'api_key' => $request->input('evolution_api_key') ?: ($settings['evolution_api_key'] ?? ''),
+                    'instance_name' => $request->input('evolution_instance_name', $settings['evolution_instance_name'] ?? ''),
                 ];
             } else {
                 $apiVersion = $request->input('api_version', $settings['api_version'] ?? 'v20.0');

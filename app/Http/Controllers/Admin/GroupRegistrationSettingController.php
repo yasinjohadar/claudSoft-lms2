@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseGroup;
 use App\Models\GroupRegistrationSetting;
 use App\Models\EmailTemplate;
+use App\Models\WhatsAppMessageTemplate;
 use Illuminate\Http\Request;
 
 class GroupRegistrationSettingController extends Controller
@@ -28,8 +29,12 @@ class GroupRegistrationSettingController extends Controller
         );
 
         $emailTemplates = EmailTemplate::active()->get();
+        $whatsappTemplates = WhatsAppMessageTemplate::active()
+            ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.group-registration-settings.index', compact('group', 'settings', 'emailTemplates'));
+        return view('admin.group-registration-settings.index', compact('group', 'settings', 'emailTemplates', 'whatsappTemplates'));
     }
 
     /**
@@ -65,7 +70,7 @@ class GroupRegistrationSettingController extends Controller
             'send_welcome_email' => 'boolean',
             'send_welcome_whatsapp' => 'boolean',
             'email_template_id' => 'nullable|exists:email_templates,id',
-            'whatsapp_template' => 'nullable|string',
+            'whatsapp_template_id' => 'nullable|exists:whatsapp_message_templates,id',
             'whatsapp_group_link' => 'nullable|url|max:500',
             'require_email_verification' => 'boolean',
         ]);
