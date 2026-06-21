@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\WapiTemplate;
 use App\Models\WhatsAppMessageTemplate;
 use App\Services\Finance\PaymentWhatsAppMessageRenderer;
 use App\Services\Finance\PaymentWhatsAppMessageSettingsService;
@@ -29,6 +30,8 @@ class PaymentWhatsAppMessageSettingsController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $wapiTemplates = WapiTemplate::query()->orderBy('name')->get(['id', 'name', 'language']);
+
         $samplePayment = new Payment([
             'payment_number' => 'PAY-2026-00001',
             'receipt_number' => 'RCP-2026-00001',
@@ -53,6 +56,7 @@ class PaymentWhatsAppMessageSettingsController extends Controller
         return view('admin.pages.settings.payment-whatsapp-message.edit', compact(
             'settings',
             'whatsappTemplates',
+            'wapiTemplates',
             'placeholders'
         ));
     }
@@ -63,12 +67,16 @@ class PaymentWhatsAppMessageSettingsController extends Controller
             'enabled' => 'nullable|boolean',
             'whatsapp_template_id' => 'nullable|exists:whatsapp_message_templates,id',
             'whatsapp_body' => 'nullable|string|max:10000',
+            'delivery_mode' => 'nullable|in:evolution_text,flaxxa_template',
+            'wapi_template_id' => 'nullable|exists:wapi_templates,id',
         ]);
 
         $this->settingsService->updateSettings([
             'enabled' => $request->boolean('enabled'),
             'whatsapp_template_id' => $validated['whatsapp_template_id'] ?? '',
             'whatsapp_body' => $validated['whatsapp_body'] ?? '',
+            'delivery_mode' => $validated['delivery_mode'] ?? 'evolution_text',
+            'wapi_template_id' => $validated['wapi_template_id'] ?? '',
         ]);
 
         return redirect()

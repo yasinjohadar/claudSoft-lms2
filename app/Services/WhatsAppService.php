@@ -371,6 +371,36 @@ class WhatsAppService
         return $this->finalize($response, 'Create_Campaign');
     }
 
+    /**
+     * @param  array<string, mixed>  $dataOverride
+     * @return array{response: Response, status: WapiMessageStatus, log_payload: array<string, mixed>}
+     */
+    public function triggerCampaign(int|string $campaignId, string $groupId, array $dataOverride = []): array
+    {
+        $this->assertConfigured();
+
+        $url = $this->baseUrl().'/sendcampaigns';
+
+        $payload = [
+            'token' => $this->token(),
+            'campaing_id' => is_numeric($campaignId) ? (int) $campaignId : $campaignId,
+            'group_id' => $groupId,
+            'data' => $dataOverride === [] ? (object) [] : $dataOverride,
+        ];
+
+        $this->logRequest('sendcampaigns', [
+            'campaing_id' => $payload['campaing_id'],
+            'group_id' => $groupId,
+        ]);
+
+        $response = Http::timeout((int) config('services.whatsapp.timeout', 120))
+            ->withHeaders(['Accept' => 'application/json'])
+            ->asJson()
+            ->post($url, $payload);
+
+        return $this->finalize($response, 'sendcampaigns');
+    }
+
     public function assertConfigured(): void
     {
         if ($this->token() === '') {

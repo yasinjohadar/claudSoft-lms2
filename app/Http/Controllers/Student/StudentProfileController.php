@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
+use App\Services\Auth\PhoneOtpService;
+use App\Enums\OtpPurpose;
 use App\Http\Requests\Student\ChangePasswordRequest;
 use App\Models\Nationality;
 use App\Services\Student\StudentProfileCompletionService;
@@ -107,6 +109,37 @@ class StudentProfileController extends Controller
             DB::beginTransaction();
 
             $student = auth()->user();
+
+            $phoneChanged = $request->input('country_code') !== $student->country_code
+                || $request->input('phone') !== $student->phone;
+
+            $otpService = app(PhoneOtpService::class);
+            if ($phoneChanged && $otpService->isAvailableFor(OtpPurpose::ChangePhone)) {
+                $fullPhone = $otpService->formatPhoneDisplay(
+                    (string) $request->input('country_code'),
+                    (string) $request->input('phone')
+                );
+
+                try {
+                    $otpService->send($fullPhone, OtpPurpose::ChangePhone, $student, $request->ip());
+                } catch (\InvalidArgumentException $e) {
+                    return redirect()->back()->withInput()->with('error', $e->getMessage());
+                }
+
+                session([
+                    'pending_phone_change' => [
+                        'country_code' => $request->input('country_code'),
+                        'phone' => $request->input('phone'),
+                        'full_phone_digits' => $otpService->normalizePhone($fullPhone),
+                    ],
+                    'pending_profile_update' => $request->except(['_token', '_method']),
+                ]);
+
+                return redirect()->route('phone-otp.verify', [
+                    'purpose' => OtpPurpose::ChangePhone->value,
+                    'phone' => $otpService->normalizePhone($fullPhone),
+                ])->with('status', 'تم إرسال رمز التحقق للرقم الجديد.');
+            }
 
             $student->name = $request->name;
             $student->name_ar = $request->input('name_ar');

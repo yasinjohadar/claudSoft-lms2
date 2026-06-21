@@ -7,6 +7,11 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\PhoneChangeOtpController;
+use App\Http\Controllers\Auth\PhoneLoginController;
+use App\Http\Controllers\Auth\PhoneOtpController;
+use App\Http\Controllers\Auth\PhonePasswordResetOtpController;
+use App\Http\Controllers\Auth\RegisterOtpController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +31,19 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('phone-login', [PhoneLoginController::class, 'create'])->name('phone-login');
+    Route::post('phone-login/send-otp', [PhoneLoginController::class, 'sendOtp'])->name('phone-login.send-otp');
+    Route::post('phone-login/verify', [PhoneLoginController::class, 'verifyAndLogin'])->name('phone-login.verify');
+
+    Route::get('phone-otp/verify', [PhoneOtpController::class, 'showVerify'])->name('phone-otp.verify');
+    Route::post('phone-otp/send', [PhoneOtpController::class, 'send'])->name('phone-otp.send');
+    Route::post('phone-otp/verify', [PhoneOtpController::class, 'verify'])->name('phone-otp.verify.submit');
+
+    Route::post('register/otp/complete', [RegisterOtpController::class, 'verifyAndRegister'])->name('register.otp.complete');
+
+    Route::post('password/otp/send', [PhonePasswordResetOtpController::class, 'send'])->name('password.otp.send');
+    Route::post('password/otp/verify', [PhonePasswordResetOtpController::class, 'verify'])->name('password.otp.verify');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
@@ -58,6 +76,9 @@ Route::middleware('auth')->group(function () {
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
     Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+
+    Route::post('phone/change/send-otp', [PhoneChangeOtpController::class, 'send'])->name('phone.change.send-otp');
+    Route::post('phone/change/apply', [PhoneChangeOtpController::class, 'applyVerifiedPhone'])->name('phone.change.apply');
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');

@@ -648,6 +648,11 @@ Route::prefix('admin')
         Route::put('settings/payment-whatsapp-message', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'update'])->name('admin.settings.payment-whatsapp-message.update');
         Route::post('settings/payment-whatsapp-message/restore-defaults', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.payment-whatsapp-message.restore-defaults');
 
+        Route::get('settings/phone-otp', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'edit'])->name('admin.settings.phone-otp.edit');
+        Route::put('settings/phone-otp', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'update'])->name('admin.settings.phone-otp.update');
+        Route::post('settings/phone-otp/test-send', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'testSend'])->name('admin.settings.phone-otp.test-send');
+        Route::post('settings/phone-otp/restore-defaults', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'restoreDefaults'])->name('admin.settings.phone-otp.restore-defaults');
+
         // ========== Email Templates Routes ==========
         Route::resource('email-templates', EmailTemplateController::class)->names([
             'index' => 'admin.email-templates.index',

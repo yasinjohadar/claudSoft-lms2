@@ -4,8 +4,11 @@ namespace App\Services\Finance;
 
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\WapiTemplate;
 use App\Models\WhatsAppMessageTemplate;
+use App\Services\WapiOutboundDispatcher;
 use App\Services\WhatsApp\SendWhatsAppMessage;
+use App\Services\WhatsAppService;
 use App\Support\WhatsAppSendErrorMessage;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -15,7 +18,9 @@ class PaymentWhatsAppNotifyService
     public function __construct(
         private PaymentWhatsAppMessageSettingsService $settingsService,
         private PaymentWhatsAppMessageRenderer $renderer,
-        private SendWhatsAppMessage $sendWhatsAppMessage
+        private SendWhatsAppMessage $sendWhatsAppMessage,
+        private WapiOutboundDispatcher $wapiDispatcher,
+        private WhatsAppService $whatsAppService
     ) {}
 
     public function notify(Payment $payment): bool
@@ -42,6 +47,14 @@ class PaymentWhatsAppNotifyService
             }
 
             $phone = $this->resolvePhone($student);
+            $deliveryMode = (string) ($settings['delivery_mode'] ?? 'evolution_text');
+
+            if ($deliveryMode === 'flaxxa_template') {
+                $this->notifyViaFlaxxaTemplate($payment, $phone, $settings);
+
+                return true;
+            }
+
             $body = $this->renderer->render($payment);
             $this->sendWhatsAppMessage->sendTextSync($phone, $body);
 
@@ -79,5 +92,43 @@ class PaymentWhatsAppNotifyService
         }
 
         return $phone;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function notifyViaFlaxxaTemplate(Payment $payment, string $phone, array $settings): void
+    {
+        $this->whatsAppService->assertConfigured();
+
+        $templateId = $settings['wapi_template_id'] ?? null;
+        $template = $templateId ? WapiTemplate::query()->find($templateId) : null;
+
+        if (! $template) {
+            throw new InvalidArgumentException('لم يُحدد قالب Flaxxa لإشعار الدفع.');
+        }
+
+        $body = $this->renderer->render($payment);
+        $lines = array_values(array_filter(preg_split('/\r\n|\r|\n/', $body) ?: [], fn ($l) => trim($l) !== ''));
+
+        $components = [
+            [
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn ($line) => ['type' => 'text', 'text' => mb_substr(trim($line), 0, 1024)],
+                    $lines !== [] ? $lines : [$body]
+                ),
+            ],
+        ];
+
+        $this->wapiDispatcher->queueTemplate(
+            phone: $phone,
+            templateName: $template->name,
+            language: $template->language ?? 'ar',
+            components: $components,
+            attachmentStoragePath: null,
+            wapiTemplateId: $template->id,
+            variablesLog: ['payment_id' => $payment->id, 'delivery_mode' => 'flaxxa_template'],
+        );
     }
 }

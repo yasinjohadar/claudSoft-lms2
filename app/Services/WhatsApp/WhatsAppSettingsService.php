@@ -60,7 +60,7 @@ class WhatsAppSettingsService
             'study_report_delivery' => $settings['study_report_delivery'] ?? 'both',
             // Flaxxa WAPI (لوحة الإدارة — يُفضّل على .env عند التعيين)
             'wapi_token' => $this->decryptIfEncrypted($settings['wapi_token'] ?? ''),
-            'wapi_base_url' => $settings['wapi_base_url'] ?? '',
+            'wapi_base_url' => $settings['wapi_base_url'] ?? config('services.whatsapp.base_url', 'https://wapi.flaxxa.com/api/v1'),
             // Evolution API settings
             'evolution_base_url' => $this->normalizeServiceUrl($settings['evolution_base_url'] ?? ''),
             'evolution_api_key' => $this->decryptIfEncrypted($settings['evolution_api_key'] ?? ''),
@@ -162,7 +162,7 @@ class WhatsAppSettingsService
             'max_delay' => '5',
             'study_report_delivery' => 'both',
             'wapi_token' => '',
-            'wapi_base_url' => '',
+            'wapi_base_url' => config('services.whatsapp.base_url', 'https://wapi.flaxxa.com/api/v1'),
             'evolution_base_url' => '',
             'evolution_api_key' => '',
             'evolution_instance_name' => '',

@@ -401,6 +401,11 @@
                     </svg>
                     <span>البريد الإلكتروني</span>
                 </button>
+                @if(!empty($whatsappOtpAvailable))
+                <button type="button" class="channel-tab {{ $defaultChannel === 'whatsapp_otp' ? 'is-active' : '' }}" data-channel="whatsapp_otp">
+                    <span>OTP واتساب</span>
+                </button>
+                @endif
             </div>
 
             <div class="channel-panel {{ $defaultChannel === 'email' ? 'is-active' : '' }}" id="panel-email">
@@ -504,16 +509,16 @@
                 tab.classList.toggle('is-active', tab.dataset.channel === channel);
             });
             panelEmail.classList.toggle('is-active', channel === 'email');
-            panelWhatsapp.classList.toggle('is-active', channel === 'whatsapp');
+            panelWhatsapp.classList.toggle('is-active', channel === 'whatsapp' || channel === 'whatsapp_otp');
             stepsEmail.style.display = channel === 'email' ? '' : 'none';
-            stepsWhatsapp.style.display = channel === 'whatsapp' ? '' : 'none';
+            stepsWhatsapp.style.display = (channel === 'whatsapp' || channel === 'whatsapp_otp') ? '' : 'none';
             if (emailField) emailField.required = channel === 'email';
-            if (phoneField) phoneField.required = channel === 'whatsapp';
-            if (countryCodeField) countryCodeField.required = channel === 'whatsapp';
-            submitBtn.textContent = channel === 'whatsapp'
-                ? 'إرسال الرابط عبر الواتساب'
-                : 'إرسال الرابط عبر البريد';
-            submitBtn.classList.toggle('btn-submit--wa', channel === 'whatsapp');
+            if (phoneField) phoneField.required = channel === 'whatsapp' || channel === 'whatsapp_otp';
+            if (countryCodeField) countryCodeField.required = channel === 'whatsapp' || channel === 'whatsapp_otp';
+            submitBtn.textContent = channel === 'whatsapp_otp'
+                ? 'إرسال رمز OTP'
+                : (channel === 'whatsapp' ? 'إرسال الرابط عبر الواتساب' : 'إرسال الرابط عبر البريد');
+            submitBtn.classList.toggle('btn-submit--wa', channel === 'whatsapp' || channel === 'whatsapp_otp');
             if (channel === 'email' && emailField) {
                 emailField.focus();
             } else if (phoneField) {

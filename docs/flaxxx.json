@@ -1,0 +1,1505 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Flaxxa Wapi — Public API",
+    "version": "1.0.0",
+    "summary": "WhatsApp Business API for messages, campaigns, contacts, and templates.",
+    "description": "The Flaxxa Wapi Public API lets you send WhatsApp messages, manage contacts and\ngroups, create and trigger campaigns, and fetch templates — all programmatically.\n\n## Quick start\n\n1. Sign in at [wapi.flaxxa.com](https://wapi.flaxxa.com) and open **Brand → API Access**\n   to copy your **API token**.\n2. Pick an endpoint below. Every endpoint accepts your token as a parameter — see\n   *Authentication* for where it goes (body / query / form field).\n3. Try the cURL snippet from your terminal, or copy the JS / Python / PHP sample\n   into your own code.\n\n## Authentication\n\nEvery endpoint requires a `token` parameter. The location depends on the\nendpoint's content type:\n\n| Content type                | Where to put the token |\n|-----------------------------|------------------------|\n| `application/json` (POST)   | In the JSON body as `\"token\": \"...\"` |\n| Query string (GET)          | As `?token=...` |\n| `multipart/form-data` (POST)| As a form field named `token` |\n\nTokens are scoped to a single brand + phone number. Issue separate tokens for\neach brand you operate.\n\n## Base URL\n\n`https://wapi.flaxxa.com`\n\nAll paths below are appended to this base.\n\n## Conventions you'll see\n\n- **Endpoint name casing is inconsistent** (`Create_Campaign`, `CreateGroups`,\n  `Groups_contact`, `sendcampaigns`). These are intentional and preserved for\n  backwards compatibility — copy the exact path from each endpoint card.\n- **`campaing_id`** (yes, missing the second `g`) is the actual wire-format\n  field name on `POST /api/v1/sendcampaigns`. Preserved for compatibility.\n- Phone numbers are accepted in E.164 format (e.g. `+918470968883`); the leading\n  `+` is optional.\n- Timestamps in responses are MySQL `DATETIME` strings (UTC).\n\n## Rate limits\n\nThe default `api` throttle is **60 requests / minute / token**. Hitting it\nreturns `429 Too Many Requests` with a `Retry-After` header.\n\n## Errors\n\nEvery endpoint returns a JSON envelope:\n\n```json\n{ \"status\": \"error\", \"message\": \"Invalid API Token.\" }\n```\n\nCommon HTTP status codes:\n\n- `200` — success (status field will be `success` or similar)\n- `400` — request validation failed\n- `401` — invalid / missing / expired token\n- `403` — token is valid but plan doesn't include API access, or WhatsApp not configured\n- `429` — rate-limited\n- `5xx` — server error (please retry with exponential backoff)\n",
+    "contact": {
+      "name": "Flaxxa Wapi Support",
+      "url": "https://wapi.flaxxa.com/support"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://wapi.flaxxa.com"
+    }
+  },
+  "externalDocs": {
+    "description": "Flaxxa Wapi platform",
+    "url": "https://wapi.flaxxa.com"
+  },
+  "servers": [
+    {
+      "url": "https://wapi.flaxxa.com",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Messages",
+      "description": "Send WhatsApp messages directly — either free-form (within a 24-hour customer\nwindow) or via approved templates. Attachment variants accept multipart uploads.\n"
+    },
+    {
+      "name": "Templates",
+      "description": "List the approved WhatsApp templates available to your brand."
+    },
+    {
+      "name": "Contacts",
+      "description": "Create and list contacts on your brand."
+    },
+    {
+      "name": "Groups",
+      "description": "Create groups, list groups, and add contacts to groups."
+    },
+    {
+      "name": "Campaigns",
+      "description": "Create campaigns from templates and trigger sends to groups."
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "tokenQuery": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token",
+        "description": "Use this scheme for GET endpoints and form-data endpoints (which can\naccept the token either as a query string parameter or as a form field).\nFor JSON POST endpoints, put the token inside the JSON body instead — see\neach endpoint's request body schema.\n"
+      }
+    },
+    "parameters": {
+      "TokenQuery": {
+        "name": "token",
+        "in": "query",
+        "required": true,
+        "description": "Your brand's API token.",
+        "schema": {
+          "type": "string"
+        },
+        "example": "wefrwf4344243c23ec23c"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid API Token."
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Field-level validation errors (only on 4xx where applicable)."
+          }
+        }
+      },
+      "Token": {
+        "type": "string",
+        "description": "Your brand's API token (issued from the Flaxxa Wapi dashboard).",
+        "example": "wefrwf4344243c23ec23c"
+      },
+      "PhoneE164": {
+        "type": "string",
+        "pattern": "^\\+?[1-9][0-9]{6,14}$",
+        "description": "Recipient phone number in E.164 format. Leading `+` is optional.\n",
+        "example": "+918470968883"
+      },
+      "TemplateComponentParameter": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "currency",
+              "date_time",
+              "image",
+              "video",
+              "document",
+              "payload",
+              "PHONE_NUMBER",
+              "URL",
+              "QUICK_REPLY"
+            ],
+            "description": "Parameter type per Meta's\n[Cloud API spec](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates).\n"
+          },
+          "text": {
+            "type": "string",
+            "description": "Used when `type` is `text` (also as button label for PHONE_NUMBER / URL / QUICK_REPLY)."
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Used when `type` is `PHONE_NUMBER`."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Used when `type` is `URL`."
+          }
+        }
+      },
+      "TemplateComponent": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "header",
+              "body",
+              "footer",
+              "button"
+            ]
+          },
+          "index": {
+            "type": "integer",
+            "description": "Button index (0-based). Only used when `type` is `button`.",
+            "minimum": 0
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateComponentParameter"
+            }
+          }
+        }
+      },
+      "InlineButton": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "yes_12",
+            "description": "Internal id you assign — included in webhook callbacks when the user taps."
+          },
+          "title": {
+            "type": "string",
+            "example": "Yes",
+            "description": "Button label visible to the recipient."
+          }
+        }
+      },
+      "SendMessageResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "message_id": {
+            "type": "integer",
+            "example": 28341,
+            "description": "Internal Flaxxa Wapi message id (use with `get_message_response`)."
+          },
+          "message_wamid": {
+            "type": "string",
+            "description": "Meta WhatsApp message id (wamid).",
+            "example": "wamid.HBgM..."
+          }
+        }
+      },
+      "MessageStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "value": {
+                "type": "string"
+              },
+              "error_details": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "One of `APPROVED`, `PENDING`, `REJECTED`."
+          },
+          "category": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "components": {
+            "type": "string",
+            "description": "Raw template components JSON (string-encoded)."
+          },
+          "company_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "Group": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "integer"
+          },
+          "deleted_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "Contact": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "country_id": {
+            "type": "integer"
+          },
+          "company_id": {
+            "type": "integer"
+          },
+          "deleted_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "last_reply_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_client_reply_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_support_reply_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_last_message_by_contact": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "has_chat": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "resolved_chat": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "enabled_ai_bot": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        }
+      },
+      "Campaign": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "template_id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "bot",
+              "api",
+              "regular"
+            ]
+          },
+          "company_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Invalid or missing API token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "invalidToken": {
+                "value": {
+                  "status": "error",
+                  "message": "Invalid API Token."
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Token is valid but the plan doesn't include API access, or WhatsApp isn't configured for this brand.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "noApiAccess": {
+                "value": {
+                  "status": "error",
+                  "message": "Your Plan dont have access to API. Please upgrade your plan."
+                }
+              },
+              "whatsappNotConfigured": {
+                "value": {
+                  "status": "error",
+                  "message": "WhatsApp not configured yet. Please configure WhatsApp to use API."
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Validation failed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "missingToken": {
+                "value": {
+                  "status": "error",
+                  "errors": {
+                    "token": [
+                      "The token field is required."
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "rateLimited": {
+                "value": {
+                  "status": "error",
+                  "message": "Too Many Attempts."
+                }
+              }
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seconds until the limit window resets."
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/sendmessage": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a free-form WhatsApp message",
+        "description": "Send a custom (non-template) message to a phone number. Optionally include\nreply buttons with a header and footer.\n\n**Important**: free-form messages can only be delivered if the recipient has\nreplied to your brand within the **last 24 hours**. Outside that window use\n`/api/v1/sendtemplatemessage` instead.\n",
+        "operationId": "sendMessage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "phone",
+                  "message"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneE164"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Do you like our service"
+                  },
+                  "header": {
+                    "type": "string",
+                    "example": "Hello there",
+                    "description": "Only applied when `buttons` is present."
+                  },
+                  "footer": {
+                    "type": "string",
+                    "example": "Thanks",
+                    "description": "Only applied when `buttons` is present."
+                  },
+                  "buttons": {
+                    "type": "array",
+                    "description": "Up to 3 reply buttons.",
+                    "items": {
+                      "$ref": "#/components/schemas/InlineButton"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "plain": {
+                  "summary": "Plain text",
+                  "value": {
+                    "token": "wefrwf4344243c23ec23c",
+                    "phone": "+918470968883",
+                    "message": "Your order #1234 is confirmed."
+                  }
+                },
+                "withButtons": {
+                  "summary": "With reply buttons",
+                  "value": {
+                    "token": "wefrwf4344243c23ec23c",
+                    "phone": "+918470968883",
+                    "message": "Do you like our service?",
+                    "header": "Hello there",
+                    "footer": "Thanks",
+                    "buttons": [
+                      {
+                        "id": "yes_12",
+                        "title": "Yes"
+                      },
+                      {
+                        "id": "no_12",
+                        "title": "No"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/api/v1/sendmessagewithattachment": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a free-form message with a file attachment",
+        "description": "Same as `sendmessage` but accepts a binary file (image / video / document)\nas `header_attachment`. Request must be `multipart/form-data`.\n",
+        "operationId": "sendMessageWithAttachment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "phone",
+                  "header_attachment"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneE164"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "header": {
+                    "type": "string"
+                  },
+                  "footer": {
+                    "type": "string"
+                  },
+                  "buttons": {
+                    "type": "string",
+                    "description": "JSON-encoded array of `{id, title}` button objects (string-form for multipart)."
+                  },
+                  "header_attachment": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image / video / document to attach to the message header."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/sendtemplatemessage": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a pre-approved template message",
+        "description": "Sends a WhatsApp template message — used outside the 24-hour customer-reply\nwindow (e.g. for notifications, marketing, alerts). The template must be\nin `APPROVED` status (see `GET /api/v1/getTemplates`).\n\nThe `components` array follows Meta's official structure — see\n[Send Template Messages](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates).\n",
+        "operationId": "sendTemplateMessage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "phone",
+                  "template_name",
+                  "template_language"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneE164"
+                  },
+                  "template_name": {
+                    "type": "string",
+                    "example": "order_confirmation"
+                  },
+                  "template_language": {
+                    "type": "string",
+                    "example": "en_US"
+                  },
+                  "components": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/TemplateComponent"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "bodyAndButtons": {
+                  "summary": "Template with body variables + button overrides",
+                  "value": {
+                    "token": "{{token}}",
+                    "phone": "+918470968883",
+                    "template_name": "order_confirmation",
+                    "template_language": "en_US",
+                    "components": [
+                      {
+                        "type": "body",
+                        "parameters": [
+                          {
+                            "type": "text",
+                            "text": "Daniel"
+                          },
+                          {
+                            "type": "text",
+                            "text": "14"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "button",
+                        "index": 0,
+                        "parameters": [
+                          {
+                            "type": "PHONE_NUMBER",
+                            "text": "call",
+                            "phone_number": "+92897393793"
+                          },
+                          {
+                            "type": "URL",
+                            "text": "Visit website",
+                            "url": "https://www.webliska.com/"
+                          },
+                          {
+                            "type": "QUICK_REPLY",
+                            "text": "purchase now"
+                          },
+                          {
+                            "type": "QUICK_REPLY",
+                            "text": "call us"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template message accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/sendtemplatemessage_withattachment": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a template message with a file attachment",
+        "description": "Same as `sendtemplatemessage` but accepts a binary file as\n`header_attachment` (used by templates whose header is `IMAGE`, `VIDEO`, or\n`DOCUMENT`). Request must be `multipart/form-data`.\n",
+        "operationId": "sendTemplateMessageWithAttachment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "phone",
+                  "template_name",
+                  "template_language",
+                  "header_attachment"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneE164"
+                  },
+                  "template_name": {
+                    "type": "string",
+                    "example": "check_attachment"
+                  },
+                  "template_language": {
+                    "type": "string",
+                    "example": "en_US"
+                  },
+                  "components": {
+                    "type": "array",
+                    "description": "JSON-encoded array of template components (string-form for multipart).",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "header_attachment": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Header media (image / video / document) matching the template's header type."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template message accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/get_message_response": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Fetch delivery status for a sent message",
+        "description": "Returns the latest delivery state (`sent`, `delivered`, `read`, `failed`)\nand any error details for a previously-sent message. Wait at least **5\nseconds** after the send call before polling — Meta's delivery webhook\ntakes that long to arrive.\n",
+        "operationId": "getMessageResponse",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "message_id"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "message_id": {
+                    "type": "integer",
+                    "description": "Internal Flaxxa Wapi message id returned by `/sendmessage` or `/sendtemplatemessage`.",
+                    "example": 28341
+                  }
+                }
+              },
+              "examples": {
+                "fetch": {
+                  "value": {
+                    "token": "wefrwf4344243c23ec23c",
+                    "message_id": 28341
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message status returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/getTemplates": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "List your brand's approved templates",
+        "description": "Returns every template registered on your brand with its current Meta approval status.",
+        "operationId": "getTemplates",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of templates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "templates": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Template"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/getContacts": {
+      "get": {
+        "tags": [
+          "Contacts"
+        ],
+        "summary": "List contacts on your brand",
+        "operationId": "getContacts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of contacts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "contacts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Contact"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/makeContact": {
+      "post": {
+        "tags": [
+          "Contacts"
+        ],
+        "summary": "Create a new contact",
+        "description": "Adds a phone number to your brand's contact list. If the contact already exists,\nthe existing record is returned (idempotent on `phone`).\n",
+        "operationId": "makeContact",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "phone"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneE164"
+                  }
+                }
+              },
+              "examples": {
+                "minimal": {
+                  "value": {
+                    "token": "{{token}}",
+                    "phone": "+918470968883"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "contact": {
+                      "$ref": "#/components/schemas/Contact"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/getGroups": {
+      "get": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "List contact groups",
+        "operationId": "getGroups",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          },
+          {
+            "name": "showContacts",
+            "in": "query",
+            "required": false,
+            "description": "Set to `yes` to expand each group with its full contact list. Defaults to `no` for performance.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "yes",
+                "no"
+              ],
+              "default": "no"
+            },
+            "example": "no"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of groups.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Group"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/CreateGroups": {
+      "post": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Create a contact group",
+        "description": "Note the unusual PascalCase path — preserved for backwards compatibility.\nParameters are passed as **query string**, not body.\n",
+        "operationId": "createGroups",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          },
+          {
+            "name": "group_name",
+            "in": "query",
+            "required": true,
+            "description": "Name of the new group.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Returning Customers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group created (or already exists).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "group": {
+                      "$ref": "#/components/schemas/Group"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/Groups_contact": {
+      "post": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Add contacts to a group",
+        "description": "Note the unusual `Groups_contact` snake_case path — preserved for backwards\ncompatibility. Parameters are passed as **query string**.\nMultiple phone numbers are comma-separated in `phone_no`.\n",
+        "operationId": "groupsContact",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          },
+          {
+            "name": "group_id",
+            "in": "query",
+            "required": true,
+            "description": "Target group id (from `/getGroups`).",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 102
+          },
+          {
+            "name": "phone_no",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated phone numbers in E.164 format.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "+912312222222,+12334444455"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contacts added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "added": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/getCampaigns": {
+      "get": {
+        "tags": [
+          "Campaigns"
+        ],
+        "summary": "List campaigns on your brand",
+        "description": "Filter by `type` to get only campaigns created from a specific source:\n- `api`     — created via `/Create_Campaign` (this API)\n- `regular` — created via the dashboard UI\n- `bot`     — created by an automation rule\n",
+        "operationId": "getCampaigns",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Filter by campaign source.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bot",
+                "api",
+                "regular"
+              ]
+            },
+            "example": "api"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of campaigns.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "campaigns": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Campaign"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/Create_Campaign": {
+      "post": {
+        "tags": [
+          "Campaigns"
+        ],
+        "summary": "Create a campaign from a template",
+        "description": "Note the unusual `Create_Campaign` PascalCase + underscore path — preserved\nfor backwards compatibility. Most parameters are passed as **query string**;\nany template body/header variables go in the **JSON body** as `body` and\n`header` maps (positional, keyed by 1-based index — the keys are strings).\n\nIf the template has no variables, send an empty JSON body (`{}`).\n",
+        "operationId": "createCampaign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TokenQuery"
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "description": "Campaign name (free text).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "May Promo"
+          },
+          {
+            "name": "template_id",
+            "in": "query",
+            "required": true,
+            "description": "Template id (from `/getTemplates`).",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Defaults to `api`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "api",
+                "regular",
+                "bot"
+              ],
+              "default": "api"
+            }
+          },
+          {
+            "name": "group_id",
+            "in": "query",
+            "required": true,
+            "description": "Target group id (from `/getGroups`).",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Variable substitution map. Skip entirely if the template has no variables.",
+                "properties": {
+                  "header": {
+                    "type": "object",
+                    "description": "Header variables, keyed by 1-based string index.\n`{\"1\": \"Welcome Daniel\"}` substitutes `{{1}}` in the template header.\n",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "example": {
+                      "1": "Welcome Daniel"
+                    }
+                  },
+                  "body": {
+                    "type": "object",
+                    "description": "Body variables, keyed by 1-based string index.\n`{\"1\": \"Daniel\", \"2\": \"Sat 14 May\"}` substitutes `{{1}}` and `{{2}}` in the body.\n",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "example": {
+                      "1": "Daniel",
+                      "2": "Sat 14 May"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Campaign created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "campaign": {
+                      "$ref": "#/components/schemas/Campaign"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/sendcampaigns": {
+      "post": {
+        "tags": [
+          "Campaigns"
+        ],
+        "summary": "Trigger sending of a created campaign",
+        "description": "Dispatches a previously-created campaign to its target group.\n**Field naming**: this endpoint uses `campaing_id` (missing the second `g`) —\na historical typo preserved for backwards compatibility.\n",
+        "operationId": "sendCampaigns",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "campaing_id",
+                  "group_id"
+                ],
+                "properties": {
+                  "token": {
+                    "$ref": "#/components/schemas/Token"
+                  },
+                  "campaing_id": {
+                    "type": "integer",
+                    "description": "Campaign id (yes, the field name has a typo — see endpoint description).",
+                    "example": 301
+                  },
+                  "group_id": {
+                    "type": "string",
+                    "description": "Target group id.",
+                    "example": "102"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Optional override map; leave as `{}` to use the campaign's stored variables.",
+                    "example": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Campaign send dispatched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "campaign_id": {
+                      "type": "integer"
+                    },
+                    "queued_count": {
+                      "type": "integer",
+                      "description": "Number of recipients queued."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "tokenQuery": []
+    }
+  ]
+}

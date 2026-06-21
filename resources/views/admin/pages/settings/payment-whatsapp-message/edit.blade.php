@@ -46,6 +46,30 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label" for="delivery_mode">طريقة الإرسال</label>
+                        <select name="delivery_mode" id="delivery_mode" class="form-select">
+                            <option value="evolution_text" @selected(old('delivery_mode', $settings['delivery_mode'] ?? 'evolution_text') === 'evolution_text')>
+                                Evolution / مسار النص الحر (الافتراضي)
+                            </option>
+                            <option value="flaxxa_template" @selected(old('delivery_mode', $settings['delivery_mode'] ?? '') === 'flaxxa_template')>
+                                Flaxxa — قالب Meta معتمد
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="wapiTemplateWrap">
+                        <label class="form-label" for="wapi_template_id">قالب Flaxxa (عند اختيار Flaxxa)</label>
+                        <select name="wapi_template_id" id="wapi_template_id" class="form-select">
+                            <option value="">— اختر قالب —</option>
+                            @foreach($wapiTemplates as $tpl)
+                                <option value="{{ $tpl->id }}" @selected(old('wapi_template_id', $settings['wapi_template_id'] ?? '') == $tpl->id)>
+                                    {{ $tpl->name }} ({{ $tpl->language }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label" for="whatsapp_template_id">قالب واتساب (اختياري)</label>
                         <select name="whatsapp_template_id" id="whatsapp_template_id" class="form-select">
                             <option value="">— نص مخصص أدناه —</option>

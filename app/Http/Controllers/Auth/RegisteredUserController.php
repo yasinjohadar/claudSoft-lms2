@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Events\N8nWebhookEvent;
+use App\Services\Auth\PhoneOtpService;
+use App\Enums\OtpPurpose;
 use App\Services\Gamification\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +34,12 @@ class RegisteredUserController extends Controller
             session(['referral_code' => $request->query('ref')]);
         }
 
-        return view('auth.register');
+        $otpService = app(PhoneOtpService::class);
+
+        return view('auth.register', [
+            'otpRegisterAvailable' => $otpService->isAvailableFor(OtpPurpose::Register),
+            'countryCodes' => config('country_codes.list', []),
+        ]);
     }
 
     /**
@@ -52,12 +59,47 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'country_code' => ['nullable', 'string'],
+            'phone' => ['nullable', 'string', 'regex:/^[0-9]{6,14}$/'],
         ]);
+
+        $otpService = app(PhoneOtpService::class);
+        $phoneProvided = $request->filled('country_code') && $request->filled('phone');
+
+        if ($phoneProvided && $otpService->isAvailableFor(OtpPurpose::Register)) {
+            $fullPhone = $otpService->formatPhoneDisplay(
+                (string) $request->input('country_code'),
+                (string) $request->input('phone')
+            );
+
+            try {
+                $otpService->send($fullPhone, OtpPurpose::Register, null, $request->ip());
+            } catch (\InvalidArgumentException $e) {
+                return back()->withInput()->withErrors(['phone' => $e->getMessage()]);
+            }
+
+            session([
+                'pending_registration' => [
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => Hash::make($request->password),
+                    'country_code' => $request->input('country_code'),
+                    'phone' => $request->input('phone'),
+                ],
+            ]);
+
+            return redirect()->route('phone-otp.verify', [
+                'purpose' => OtpPurpose::Register->value,
+                'phone' => $otpService->normalizePhone($fullPhone),
+            ])->with('status', 'تم إرسال رمز التحقق إلى واتساب. أكمل التسجيل.');
+        }
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'country_code' => $request->input('country_code'),
+            'phone' => $request->input('phone'),
         ]);
 
         $referralService = app(ReferralService::class);

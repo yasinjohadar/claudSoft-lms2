@@ -65,12 +65,7 @@ class SendWapiWhatsAppMessageJob implements ShouldQueue
                     is_array($content['components'] ?? null) ? $content['components'] : [],
                     $abs,
                 ),
-                WapiMessageType::Campaign => $service->sendCampaign(
-                    (string) $content['name'],
-                    (string) $content['template_id'],
-                    (string) $content['group_id'],
-                    is_array($content['campaign_body'] ?? null) ? $content['campaign_body'] : [],
-                ),
+                WapiMessageType::Campaign => $this->sendCampaignWithTrigger($service, $content),
             };
 
             $message->update([
@@ -100,9 +95,6 @@ class SendWapiWhatsAppMessageJob implements ShouldQueue
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $content
-     */
     protected function logTemplateVariablesIfNeeded(WapiMessage $message, array $content, WapiMessageStatus $status): void
     {
         if ($message->type !== WapiMessageType::Template) {
@@ -129,5 +121,46 @@ class SendWapiWhatsAppMessageJob implements ShouldQueue
             'wapi_message_id' => $this->wapiMessage->id,
             'error' => $exception?->getMessage(),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $content
+     * @return array{response: \Illuminate\Http\Client\Response, status: WapiMessageStatus, log_payload: array<string, mixed>}
+     */
+    protected function sendCampaignWithTrigger(WhatsAppService $service, array $content): array
+    {
+        $createResult = $service->sendCampaign(
+            (string) $content['name'],
+            (string) $content['template_id'],
+            (string) $content['group_id'],
+            is_array($content['campaign_body'] ?? null) ? $content['campaign_body'] : [],
+        );
+
+        if ($createResult['status'] === WapiMessageStatus::Failed) {
+            return $createResult;
+        }
+
+        $json = $createResult['log_payload']['json'] ?? [];
+        $campaignId = $json['campaign_id'] ?? $json['id'] ?? data_get($json, 'data.id');
+
+        if ($campaignId === null) {
+            $createResult['log_payload']['trigger_skipped'] = 'no campaign_id in Create_Campaign response';
+
+            return $createResult;
+        }
+
+        $triggerResult = $service->triggerCampaign(
+            $campaignId,
+            (string) $content['group_id'],
+            is_array($content['campaign_body'] ?? null) ? $content['campaign_body'] : [],
+        );
+
+        $createResult['log_payload']['trigger'] = $triggerResult['log_payload'];
+
+        if ($triggerResult['status'] === WapiMessageStatus::Failed) {
+            return $triggerResult;
+        }
+
+        return $triggerResult;
     }
 }

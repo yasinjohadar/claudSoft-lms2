@@ -415,7 +415,13 @@
         @if (Route::has('password.request'))
             <div class="forgot-password">
                 <a href="{{ route('password.request') }}">نسيت كلمة المرور؟</a>
-                                            </div>
+            </div>
+        @endif
+
+        @if(\Illuminate\Support\Facades\Route::has('phone-login'))
+            <div class="forgot-password" style="margin-top:8px;">
+                <a href="{{ route('phone-login') }}">الدخول برمز OTP عبر واتساب</a>
+            </div>
         @endif
 
         <div class="register-link">

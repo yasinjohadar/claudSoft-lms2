@@ -8,7 +8,7 @@ return [
         'mail' => env('NOTIFY_CHANNEL_MAIL', true),
         'whatsapp' => env('NOTIFY_CHANNEL_WHATSAPP', true),
         /** إرسال قوالب Flaxxa WAPI تلقائياً حسب قواعد wapi_automation_rules */
-        'whatsapp_wapi' => env('NOTIFY_CHANNEL_WHATSAPP_WAPI', false),
+        'whatsapp_wapi' => env('NOTIFY_CHANNEL_WHATSAPP_WAPI', true),
     ],
 
     'fcm' => [

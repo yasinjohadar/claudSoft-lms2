@@ -37,6 +37,12 @@ class PaymentWhatsAppMessageSettingsService
         $merged = array_merge($defaults, $stored);
 
         $merged['enabled'] = filter_var($merged['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $merged['wapi_template_id'] = ($merged['wapi_template_id'] ?? '') !== ''
+            ? (int) $merged['wapi_template_id']
+            : null;
+        $merged['delivery_mode'] = in_array($merged['delivery_mode'] ?? '', ['evolution_text', 'flaxxa_template'], true)
+            ? $merged['delivery_mode']
+            : 'evolution_text';
 
         return $merged;
     }
@@ -92,6 +98,16 @@ class PaymentWhatsAppMessageSettingsService
                 'type' => 'string',
                 'description' => 'نص واتساب مخصص عند تسجيل دفعة',
             ],
+            'delivery_mode' => [
+                'value' => 'evolution_text',
+                'type' => 'string',
+                'description' => 'evolution_text | flaxxa_template',
+            ],
+            'wapi_template_id' => [
+                'value' => '',
+                'type' => 'string',
+                'description' => 'قالب Flaxxa لإشعار الدفع',
+            ],
         ];
     }
 
@@ -101,6 +117,8 @@ class PaymentWhatsAppMessageSettingsService
             'enabled' => true,
             'whatsapp_template_id' => '',
             'whatsapp_body' => PaymentWhatsAppMessageRenderer::defaultBody(),
+            'delivery_mode' => 'evolution_text',
+            'wapi_template_id' => '',
         ]);
     }
 }

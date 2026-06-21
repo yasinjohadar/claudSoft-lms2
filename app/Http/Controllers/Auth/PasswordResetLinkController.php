@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\Auth\PasswordResetDeliveryService;
+use App\Services\Auth\PhoneOtpService;
+use App\Enums\OtpPurpose;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -21,8 +23,11 @@ class PasswordResetLinkController extends Controller
      */
     public function create(): View
     {
+        $otpService = app(PhoneOtpService::class);
+
         return view('auth.forgot-password', [
             'whatsappAvailable' => $this->resetDelivery->isWhatsAppAvailable(),
+            'whatsappOtpAvailable' => $otpService->isAvailableFor(OtpPurpose::ResetPassword),
         ]);
     }
 
@@ -35,15 +40,15 @@ class PasswordResetLinkController extends Controller
         $countryCodes = array_keys(config('country_codes.list', []));
 
         $request->validate([
-            'channel' => ['required', Rule::in(['email', 'whatsapp'])],
+            'channel' => ['required', Rule::in(['email', 'whatsapp', 'whatsapp_otp'])],
             'email' => [Rule::requiredIf($channel === 'email'), 'nullable', 'email'],
             'country_code' => [
-                Rule::requiredIf($channel === 'whatsapp'),
+                Rule::requiredIf(in_array($channel, ['whatsapp', 'whatsapp_otp'], true)),
                 'nullable',
                 Rule::in($countryCodes),
             ],
             'phone' => [
-                Rule::requiredIf($channel === 'whatsapp'),
+                Rule::requiredIf(in_array($channel, ['whatsapp', 'whatsapp_otp'], true)),
                 'nullable',
                 'string',
                 'regex:/^[0-9]{6,14}$/',
@@ -60,6 +65,16 @@ class PasswordResetLinkController extends Controller
             return back()->withInput()->withErrors([
                 'phone' => 'إرسال رابط الاستعادة عبر الواتساب غير متاح حالياً.',
             ]);
+        }
+
+        if ($channel === 'whatsapp_otp' && ! app(PhoneOtpService::class)->isAvailableFor(OtpPurpose::ResetPassword)) {
+            return back()->withInput()->withErrors([
+                'phone' => 'استعادة كلمة المرور عبر رمز OTP غير متاحة حالياً.',
+            ]);
+        }
+
+        if ($channel === 'whatsapp_otp') {
+            return app(PhonePasswordResetOtpController::class)->send($request);
         }
 
         try {

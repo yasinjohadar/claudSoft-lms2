@@ -781,6 +781,9 @@
                                                 <li class="slide {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">
                                                     <a href="{{ route('admin.whatsapp-templates.index') }}" class="side-menu__item {{ request()->routeIs('admin.whatsapp-templates.*') ? 'active' : '' }}">قوالب الرسائل</a>
                                                 </li>
+                                                <li class="slide {{ request()->routeIs('admin.settings.phone-otp.*') ? 'active' : '' }}">
+                                                    <a href="{{ route('admin.settings.phone-otp.edit') }}" class="side-menu__item {{ request()->routeIs('admin.settings.phone-otp.*') ? 'active' : '' }}">OTP — واتساب Flaxxa</a>
+                                                </li>
                                                 <li class="slide {{ request()->routeIs('admin.settings.payment-whatsapp-message.*') ? 'active' : '' }}">
                                                     <a href="{{ route('admin.settings.payment-whatsapp-message.edit') }}" class="side-menu__item {{ request()->routeIs('admin.settings.payment-whatsapp-message.*') ? 'active' : '' }}">إشعار الدفع — واتساب</a>
                                                 </li>

@@ -65,7 +65,8 @@
 
 ### 10. Integration
 - ✅ **AppServiceProvider** - تسجيل Event Listener
-- ✅ **OTPService** - دمج WhatsApp في خدمة OTP (sendText method)
+- ✅ **Flaxxa WAPI** — مسار منفصل عن Evolution (OTP + أتمتة + إشعار دفع اختياري)
+- ✅ **sendcampaigns** — trigger بعد Create_Campaign في `SendWapiWhatsAppMessageJob`
 
 ---
 
@@ -79,11 +80,14 @@
 - ⚠️ **التحقق من:** هل تم إضافة قسم WhatsApp في sidebar؟
 - 📍 **الموقع المتوقع:** بعد قسم SMS أو Email
 
-### 3. OTP Integration ✅ (مكتمل جزئياً)
-- ✅ **OTPService** - تم دمج WhatsApp (sendText method)
-- ✅ **OTPController** - يعمل تلقائياً مع OTPService
-- ✅ **PhoneVerificationController** - يعمل تلقائياً مع OTPService
-- ⚠️ **verify-phone.blade.php** - يحتاج إضافة خيار WhatsApp في UI (اختياري)
+### 3. OTP via WhatsApp (Flaxxa WAPI)
+
+- ✅ **PhoneOtpService** — توليد/تحقق/rate limit
+- ✅ **PhoneOtpWhatsAppSender** — إرسال عبر `WapiOutboundDispatcher` + قوالب Meta فقط
+- ✅ **إعدادات Admin** — `/admin/settings/phone-otp`
+- ✅ **تسجيل / دخول / استعادة / تغيير رقم** — مسارات auth مخصصة
+- ⚠️ **Migration:** `php artisan migrate` (جدول `phone_otp_codes` + `phone_verified_at`)
+- ⚠️ **قالب Meta Authentication** — مزامنة من Flaxxa ثم ربطه في إعدادات OTP
 
 ### 4. Tests
 - ❌ **Feature Tests** - لم يتم إنشاؤها

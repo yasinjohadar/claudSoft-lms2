@@ -273,7 +273,23 @@
                 @error('email')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                                                </div>
+            </div>
+
+            @if(!empty($otpRegisterAvailable))
+            <div class="form-group" style="border-top:1px solid #eee;padding-top:16px;margin-top:8px;">
+                <p style="font-size:14px;color:#666;margin-bottom:12px;">اختياري: أضف رقم واتساب للتحقق عند التسجيل</p>
+                <label for="country_code">رمز الدولة</label>
+                <select name="country_code" id="country_code" class="form-control">
+                    <option value="">—</option>
+                    @foreach(($countryCodes ?? []) as $code => $label)
+                        <option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <label for="phone" style="margin-top:10px;">رقم الجوال</label>
+                <input id="phone" type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}" placeholder="بدون صفر في البداية">
+                @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            @endif
 
             <div class="form-group">
                 <label for="password">كلمة المرور</label>

@@ -31,6 +31,7 @@ class User extends Authenticatable
         'phone',
         'country_code', // رمز الدولة
         'full_phone', // الرقم الكامل بصيغة دولية
+        'phone_verified_at',
         'national_id',
         'nationality_id',
         'password',
@@ -72,6 +73,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'is_profile_public' => 'boolean',
