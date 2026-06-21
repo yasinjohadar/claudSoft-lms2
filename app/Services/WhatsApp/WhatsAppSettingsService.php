@@ -66,6 +66,7 @@ class WhatsAppSettingsService
             'evolution_api_key' => $this->decryptIfEncrypted($settings['evolution_api_key'] ?? ''),
             'evolution_instance_name' => $settings['evolution_instance_name'] ?? '',
             'evolution_webhook_secret' => $this->decryptIfEncrypted($settings['evolution_webhook_secret'] ?? ''),
+            'evolution_webhook_base_url' => rtrim(trim($settings['evolution_webhook_base_url'] ?? ''), '/'),
         ];
     }
 
@@ -87,6 +88,10 @@ class WhatsAppSettingsService
 
             if ($key === 'evolution_base_url' && is_string($value)) {
                 $value = $this->normalizeServiceUrl($value);
+            }
+
+            if ($key === 'evolution_webhook_base_url' && is_string($value)) {
+                $value = rtrim(trim($value), '/');
             }
 
             // Handle JSON fields - custom_api_headers comes as string from textarea
@@ -162,6 +167,7 @@ class WhatsAppSettingsService
             'evolution_api_key' => '',
             'evolution_instance_name' => '',
             'evolution_webhook_secret' => '',
+            'evolution_webhook_base_url' => '',
         ];
 
         foreach ($defaults as $key => $value) {

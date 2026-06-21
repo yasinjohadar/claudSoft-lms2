@@ -80,12 +80,31 @@ class EvolutionService
         return $synced;
     }
 
+    public function webhookBaseUrl(): string
+    {
+        $settings = $this->getSettings();
+        $custom = trim((string) ($settings['evolution_webhook_base_url'] ?? ''));
+        if ($custom !== '') {
+            return rtrim($custom, '/');
+        }
+
+        return rtrim((string) config('app.url'), '/');
+    }
+
+    public function isLocalWebhookBaseUrl(?string $baseUrl = null): bool
+    {
+        $base = strtolower($baseUrl ?? $this->webhookBaseUrl());
+
+        return str_contains($base, '127.0.0.1')
+            || str_contains($base, 'localhost')
+            || str_contains($base, '::1');
+    }
+
     public function webhookUrl(?string $instanceName = null): string
     {
         $instance = $instanceName ?: $this->activeInstanceName();
-        $base = rtrim((string) config('app.url'), '/');
 
-        return $base . '/api/webhooks/evolution/' . urlencode($instance);
+        return $this->webhookBaseUrl() . '/api/webhooks/evolution/' . urlencode($instance);
     }
 
     public function defaultWebhookEvents(): array

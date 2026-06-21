@@ -1134,6 +1134,7 @@ Route::prefix('admin')
             Route::get('messages', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'messagesIndex'])->name('messages.index');
 
             Route::get('webhook', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
+            Route::post('webhook/url', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'saveUrl'])->name('webhook.save-url');
             Route::post('webhook/activate', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
         });
 
