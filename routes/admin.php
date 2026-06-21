@@ -1050,6 +1050,8 @@ Route::prefix('admin')
             Route::post('/', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'store'])->name('store');
             Route::get('/{whatsapp_template}/edit', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'edit'])->name('edit');
             Route::put('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'update'])->name('update');
+            Route::post('/{whatsapp_template}/test/preview', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'previewTest'])->name('test.preview');
+            Route::post('/{whatsapp_template}/test/send', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'sendTest'])->name('test.send');
             Route::delete('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'destroy'])->name('destroy');
             Route::get('/{whatsapp_template}/json', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'getTemplate'])->name('get');
         });

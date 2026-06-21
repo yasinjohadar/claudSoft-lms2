@@ -3,11 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvolutionInstance;
 use App\Models\WhatsAppMessageTemplate;
+use App\Services\WhatsApp\WhatsAppTemplateTestSendService;
+use App\Support\WhatsAppSendErrorMessage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use InvalidArgumentException;
 
 class WhatsAppMessageTemplateController extends Controller
 {
+    public function __construct(
+        private WhatsAppTemplateTestSendService $testSendService
+    ) {}
+
     public function index(Request $request)
     {
         $query = WhatsAppMessageTemplate::query();
@@ -29,7 +38,15 @@ class WhatsAppMessageTemplateController extends Controller
 
         $templates = $query->orderBy('name')->paginate(15);
 
-        return view('admin.pages.whatsapp-templates.index', compact('templates'));
+        $evolutionInstances = EvolutionInstance::orderByDesc('is_default')->orderBy('instance_name')->get();
+        $defaultEvolutionInstance = $evolutionInstances->firstWhere('is_default', true)
+            ?? $evolutionInstances->firstWhere('connection_status', 'open');
+
+        return view('admin.pages.whatsapp-templates.index', compact(
+            'templates',
+            'evolutionInstances',
+            'defaultEvolutionInstance'
+        ));
     }
 
     public function create()
@@ -119,5 +136,68 @@ class WhatsAppMessageTemplateController extends Controller
             'meta_template_name' => $whatsapp_template->meta_template_name,
             'variables' => $whatsapp_template->variables ?? [],
         ]);
+    }
+
+    public function previewTest(Request $request, WhatsAppMessageTemplate $whatsapp_template): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'body' => $this->testSendService->renderForTest($whatsapp_template),
+            'template_name' => $whatsapp_template->name,
+            'template_type' => $whatsapp_template->type,
+        ]);
+    }
+
+    public function sendTest(Request $request, WhatsAppMessageTemplate $whatsapp_template): JsonResponse
+    {
+        $validated = $this->validateTestRequest($request);
+
+        try {
+            $this->testSendService->sendTest(
+                $whatsapp_template,
+                $validated['phone'],
+                $validated['evolution_instance_name'] ?? null
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال رسالة الاختبار بنجاح إلى '.$validated['phone'],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء الإرسال: '.WhatsAppSendErrorMessage::fromThrowable($e),
+            ], 500);
+        }
+    }
+
+    /**
+     * @return array{phone: string, evolution_instance_name?: string|null}
+     */
+    private function validateTestRequest(Request $request): array
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string|max:30',
+            'evolution_instance_name' => 'nullable|string|max:255',
+        ]);
+
+        $validated['phone'] = trim($validated['phone']);
+
+        if (! empty($validated['evolution_instance_name'])) {
+            $exists = EvolutionInstance::where('instance_name', $validated['evolution_instance_name'])->exists();
+            if (! $exists) {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Instance Evolution المحدد غير موجود.',
+                ], 422));
+            }
+        }
+
+        return $validated;
     }
 }
