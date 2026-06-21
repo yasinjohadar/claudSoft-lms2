@@ -182,7 +182,11 @@ class GroupMembershipRequest extends Model
             $this->load(['group', 'student']);
             
             if ($this->group && $this->student) {
-                $this->group->addMember($this->student);
+                $this->group->addMember($this->student, 'member', [
+                    'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_MEMBERSHIP_REQUEST,
+                    'source_reference_id' => $this->id,
+                    'performed_by' => $approvedById,
+                ]);
             }
         }
 

@@ -593,6 +593,7 @@ class CourseGroupController extends Controller
         $validated = $request->validate([
             'student_id' => 'required|exists:users,id',
             'role' => 'required|in:member,leader',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
@@ -614,7 +615,10 @@ class CourseGroupController extends Controller
                     ->with('error', 'الطالب عضو بالفعل في هذه المجموعة');
             }
 
-            $group->addMember($student, $validated['role']);
+            $group->addMember($student, $validated['role'], [
+                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_GROUP_PAGE,
+                'reason' => $validated['reason'] ?? null,
+            ]);
 
             DB::commit();
 
@@ -712,6 +716,7 @@ class CourseGroupController extends Controller
             'student_ids' => 'required|array|min:1',
             'student_ids.*' => 'exists:users,id',
             'default_role' => 'required|in:member,leader',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
@@ -738,7 +743,10 @@ class CourseGroupController extends Controller
                     continue;
                 }
 
-                $group->addMember($student, $validated['default_role']);
+                $group->addMember($student, $validated['default_role'], [
+                    'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_BULK_ENROLL,
+                    'reason' => $validated['reason'] ?? null,
+                ]);
                 $addedCount++;
             }
 
@@ -767,8 +775,12 @@ class CourseGroupController extends Controller
     /**
      * Remove member from group.
      */
-    public function removeMember($groupId, $memberId)
+    public function removeMember(Request $request, $groupId, $memberId)
     {
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
         DB::beginTransaction();
         try {
             $group = CourseGroup::findOrFail($groupId);
@@ -780,7 +792,10 @@ class CourseGroupController extends Controller
                     ->with('error', 'الطالب ليس عضواً في هذه المجموعة');
             }
 
-            $group->removeMember($student);
+            $group->removeMember($student, [
+                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_GROUP_PAGE,
+                'reason' => $validated['reason'] ?? null,
+            ]);
 
             DB::commit();
 
@@ -804,6 +819,7 @@ class CourseGroupController extends Controller
         $validated = $request->validate([
             'member_ids' => 'required|array|min:1',
             'member_ids.*' => 'exists:users,id',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
@@ -823,7 +839,10 @@ class CourseGroupController extends Controller
                         continue;
                     }
 
-                    $group->removeMember($student);
+                    $group->removeMember($student, [
+                        'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_BULK_REMOVE,
+                        'reason' => $validated['reason'] ?? null,
+                    ]);
                     $removedCount++;
                 } catch (\Exception $e) {
                     $errors[] = "خطأ في إزالة العضو ID: {$memberId} - ".$e->getMessage();

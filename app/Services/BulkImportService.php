@@ -345,7 +345,9 @@ class BulkImportService
             DB::beginTransaction();
 
             // Use the addMember method which automatically enrolls students in group courses
-            $member = $group->addMember($user, 'member');
+            $member = $group->addMember($user, 'member', [
+                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_BULK_IMPORT,
+            ]);
 
             if (!$member) {
                 DB::rollBack();

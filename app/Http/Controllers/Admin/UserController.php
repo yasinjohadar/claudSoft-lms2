@@ -301,6 +301,11 @@ class UserController extends Controller
             ->orderByDesc('joined_at')
             ->get();
 
+        $groupMembershipHistories = \App\Models\CourseGroupMembershipHistory::forStudent((int) $id)
+            ->with(['group.courses', 'joinedByUser', 'removedByUser'])
+            ->orderByDesc('joined_at')
+            ->get();
+
         // User Sessions
         $userSessions = \App\Models\UserSession::where('user_id', $id)
             ->withCount('activities')
@@ -368,6 +373,7 @@ class UserController extends Controller
             'billingStats',
             'certificates',
             'groups',
+            'groupMembershipHistories',
             'userSessions',
             'sessionStats',
             'userDevices',
@@ -857,6 +863,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'group_id' => 'required|exists:course_groups,id',
             'role' => 'nullable|in:member,leader',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -879,7 +886,10 @@ class UserController extends Controller
             }
 
             $role = $validated['role'] ?? 'member';
-            $memberRecord = $group->addMember($user, $role);
+            $memberRecord = $group->addMember($user, $role, [
+                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_PROFILE,
+                'reason' => $validated['reason'] ?? null,
+            ]);
 
             if (! $memberRecord) {
                 $message = 'فشل إضافة الطالب إلى المجموعة';
@@ -899,6 +909,12 @@ class UserController extends Controller
                     ->first();
 
                 $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
+                $history = \App\Models\CourseGroupMembershipHistory::forStudent($user->id)
+                    ->where('group_id', $group->id)
+                    ->whereNull('left_at')
+                    ->latest('joined_at')
+                    ->with(['group.courses', 'joinedByUser', 'removedByUser'])
+                    ->first();
 
                 return response()->json([
                     'success' => true,
@@ -907,6 +923,12 @@ class UserController extends Controller
                         'member' => $member,
                         'rowNumber' => $total,
                     ])->render(),
+                    'history_row_html' => $history
+                        ? view('admin.pages.users.partials.profile-group-history-row', [
+                            'history' => $history,
+                            'rowNumber' => 1,
+                        ])->render()
+                        : null,
                     'stats' => ['total' => $total],
                     'group_id' => $group->id,
                 ]);
@@ -1145,6 +1167,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'group_id' => 'required|exists:course_groups,id',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -1162,7 +1185,10 @@ class UserController extends Controller
             $groupName = $group->name;
             $coursesCount = (int) $group->courses_count;
 
-            $removed = $group->removeMember($user);
+            $removed = $group->removeMember($user, [
+                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_PROFILE,
+                'reason' => $validated['reason'] ?? null,
+            ]);
 
             if (! $removed) {
                 $message = 'فشل إزالة الطالب من المجموعة';
@@ -1176,6 +1202,12 @@ class UserController extends Controller
 
             if ($request->wantsJson()) {
                 $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
+                $history = \App\Models\CourseGroupMembershipHistory::forStudent($user->id)
+                    ->where('group_id', $groupId)
+                    ->whereNotNull('left_at')
+                    ->latest('left_at')
+                    ->with(['group.courses', 'joinedByUser', 'removedByUser'])
+                    ->first();
 
                 return response()->json([
                     'success' => true,
@@ -1187,6 +1219,13 @@ class UserController extends Controller
                         'name' => $groupName,
                         'courses_count' => $coursesCount,
                     ],
+                    'history_id' => $history?->id,
+                    'history_row_html' => $history
+                        ? view('admin.pages.users.partials.profile-group-history-row', [
+                            'history' => $history,
+                            'rowNumber' => 1,
+                        ])->render()
+                        : null,
                 ]);
             }
 

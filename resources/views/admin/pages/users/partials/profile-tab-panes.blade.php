@@ -264,7 +264,7 @@
     @if(($availableGroups ?? collect())->isNotEmpty())
         <div class="group-show-filters mb-4" id="profile-add-group-form">
             <div class="row g-3 align-items-end">
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <label class="form-label" for="profile_group_id">المجموعة</label>
                     <select name="group_id" id="profile_group_id" class="form-select" required>
                         <option value="">اختر مجموعة</option>
@@ -278,7 +278,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label" for="profile_group_role">الدور</label>
                     <select name="role" id="profile_group_role" class="form-select">
                         <option value="member">عضو</option>
@@ -286,6 +286,10 @@
                     </select>
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label" for="profile_group_join_reason">سبب الإضافة (اختياري)</label>
+                    <input type="text" name="join_reason" id="profile_group_join_reason" class="form-control" maxlength="1000" placeholder="مثال: نقل من مجموعة أخرى">
+                </div>
+                <div class="col-md-2">
                     <button type="button" id="profile-add-group-btn" class="btn btn-primary w-100">
                         <span class="profile-action-btn__label"><i class="fe fe-plus me-1"></i>إضافة للمجموعة</span>
                         <span class="profile-action-btn__spinner d-none"><span class="spinner-border spinner-border-sm me-1"></span>جاري الإضافة...</span>
@@ -309,6 +313,44 @@
                     @foreach($groups as $member)
                         @include('admin.pages.users.partials.profile-group-row', [
                             'member' => $member,
+                            'rowNumber' => $loop->iteration,
+                        ])
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    <h6 class="fw-semibold mb-3">سجل التنقل بين المجموعات</h6>
+
+    <div id="profile-group-history-empty" class="group-show-empty py-3 @if(!($groupMembershipHistories ?? collect())->isEmpty()) d-none @endif">
+        <p class="group-show-empty__desc mb-0">لا يوجد سجل تنقل لهذا الطالب بعد.</p>
+    </div>
+
+    <div id="profile-group-history-table-wrap" class="@if(($groupMembershipHistories ?? collect())->isEmpty()) d-none @endif">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 admin-users-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>المجموعة</th>
+                        <th>الدور</th>
+                        <th>تاريخ الانضمام</th>
+                        <th>تاريخ المغادرة</th>
+                        <th>سبب الانضمام</th>
+                        <th>سبب المغادرة</th>
+                        <th>أضيف بواسطة</th>
+                        <th>أُزيل بواسطة</th>
+                        <th>المصدر</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody id="profile-group-history-tbody">
+                    @foreach(($groupMembershipHistories ?? collect()) as $history)
+                        @include('admin.pages.users.partials.profile-group-history-row', [
+                            'history' => $history,
                             'rowNumber' => $loop->iteration,
                         ])
                     @endforeach

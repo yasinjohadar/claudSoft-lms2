@@ -332,8 +332,10 @@ class CourseGroup extends Model
     /**
      * Add a member to the group.
      * Automatically enrolls the student in all courses associated with this group.
+     *
+     * @param  array{reason?: ?string, source?: string, performed_by?: ?int, source_reference_id?: ?int}  $context
      */
-    public function addMember(User $user, string $role = 'member'): ?CourseGroupMember
+    public function addMember(User $user, string $role = 'member', array $context = []): ?CourseGroupMember
     {
         if ($this->isFull()) {
             return null;
@@ -353,6 +355,9 @@ class CourseGroup extends Model
         // Automatically enroll student in all group courses
         if ($member) {
             $this->enrollStudentInGroupCourses($user);
+
+            app(\App\Services\CourseGroup\CourseGroupMembershipHistoryService::class)
+                ->recordJoin($this, $user, $role, $context);
         }
 
         return $member;
@@ -361,14 +366,23 @@ class CourseGroup extends Model
     /**
      * Remove a member from the group.
      * Automatically unenrolls the student from all courses associated with this group.
+     *
+     * @param  array{reason?: ?string, source?: string, performed_by?: ?int, source_reference_id?: ?int}  $context
      */
-    public function removeMember(User $user): bool
+    public function removeMember(User $user, array $context = []): bool
     {
         // Unenroll student from all group courses before removing from group
         $this->unenrollStudentFromGroupCourses($user);
 
         // Remove member from group
-        return $this->members()->where('student_id', $user->id)->delete() > 0;
+        $removed = $this->members()->where('student_id', $user->id)->delete() > 0;
+
+        if ($removed) {
+            app(\App\Services\CourseGroup\CourseGroupMembershipHistoryService::class)
+                ->recordLeave($this, $user, $context);
+        }
+
+        return $removed;
     }
 
     /**

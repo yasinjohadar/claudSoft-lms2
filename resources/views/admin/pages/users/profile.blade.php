@@ -378,6 +378,35 @@
     </div>
 </div>
 
+{{-- Remove from group modal --}}
+<div class="modal fade" id="profileRemoveGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fe fe-user-minus me-2"></i>
+                    إلغاء الانضمام من المجموعة
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3" id="profileRemoveGroupModalText">هل أنت متأكد من إلغاء انضمام الطالب إلى هذه المجموعة؟</p>
+                <div class="mb-0">
+                    <label class="form-label" for="profile_group_leave_reason">سبب الإزالة (اختياري)</label>
+                    <input type="text" id="profile_group_leave_reason" class="form-control" maxlength="1000" placeholder="مثال: نقل إلى مجموعة أخرى">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-danger" id="profileRemoveGroupConfirmBtn">
+                    <span class="profile-action-btn__label">تأكيد الإزالة</span>
+                    <span class="profile-action-btn__spinner d-none"><span class="spinner-border spinner-border-sm me-1"></span>جاري الإزالة...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @include('admin.pages.users.partials.send-email-modal')
 @include('admin.pages.users.partials.send-whatsapp-modal')
 @endsection
@@ -557,11 +586,61 @@
             });
         }
 
+        function renumberProfileGroupHistoryRows() {
+            var tbody = document.getElementById('profile-group-history-tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('.profile-group-history-row').forEach(function (row, index) {
+                var cell = row.querySelector('.profile-group-history-row__number');
+                if (cell) cell.textContent = String(index + 1);
+            });
+        }
+
+        function prependProfileGroupHistoryRow(html) {
+            if (!html) return;
+
+            var tbody = document.getElementById('profile-group-history-tbody');
+            var tableWrap = document.getElementById('profile-group-history-table-wrap');
+            var emptyEl = document.getElementById('profile-group-history-empty');
+
+            if (tbody) {
+                tbody.insertAdjacentHTML('afterbegin', html);
+                renumberProfileGroupHistoryRows();
+            }
+            if (tableWrap) tableWrap.classList.remove('d-none');
+            if (emptyEl) emptyEl.classList.add('d-none');
+        }
+
+        function updateProfileGroupHistoryRow(historyId, html) {
+            if (!historyId || !html) return;
+
+            var tbody = document.getElementById('profile-group-history-tbody');
+            if (!tbody) return;
+
+            var existingRow = tbody.querySelector('.profile-group-history-row[data-history-id="' + historyId + '"]');
+            if (existingRow) {
+                existingRow.outerHTML = html;
+                renumberProfileGroupHistoryRows();
+                return;
+            }
+
+            prependProfileGroupHistoryRow(html);
+        }
+
+        var pendingRemoveGroup = null;
+        var removeGroupModalEl = document.getElementById('profileRemoveGroupModal');
+        var removeGroupConfirmBtn = document.getElementById('profileRemoveGroupConfirmBtn');
+        var removeGroupReasonInput = document.getElementById('profile_group_leave_reason');
+        var removeGroupModalText = document.getElementById('profileRemoveGroupModalText');
+        var removeGroupModal = (removeGroupModalEl && typeof window.bootstrap !== 'undefined')
+            ? new window.bootstrap.Modal(removeGroupModalEl)
+            : null;
+
         var addGroupBtn = document.getElementById('profile-add-group-btn');
         if (addGroupBtn) {
             addGroupBtn.addEventListener('click', function () {
                 var groupSelect = document.getElementById('profile_group_id');
                 var roleSelect = document.getElementById('profile_group_role');
+                var reasonInput = document.getElementById('profile_group_join_reason');
                 var feedbackEl = document.getElementById('profile-groups-feedback');
 
                 if (!groupSelect || !groupSelect.value) {
@@ -572,6 +651,9 @@
                 var formData = new FormData();
                 formData.append('group_id', groupSelect.value);
                 formData.append('role', roleSelect ? roleSelect.value : 'member');
+                if (reasonInput && reasonInput.value.trim() !== '') {
+                    formData.append('reason', reasonInput.value.trim());
+                }
 
                 setButtonLoading(addGroupBtn, true);
                 postProfileAction('{{ route('users.add-to-group', $user->id) }}', formData, feedbackEl, function (data) {
@@ -581,9 +663,14 @@
 
                     if (tbody && data.row_html) {
                         tbody.insertAdjacentHTML('beforeend', data.row_html);
+                        renumberProfileGroupRows();
                     }
                     if (tableWrap) tableWrap.classList.remove('d-none');
                     if (emptyEl) emptyEl.classList.add('d-none');
+
+                    if (data.history_row_html) {
+                        prependProfileGroupHistoryRow(data.history_row_html);
+                    }
 
                     if (data.stats && typeof data.stats.total === 'number') {
                         updateTabBadge(document.getElementById('profile-groups-badge'), data.stats.total);
@@ -592,6 +679,8 @@
                     if (data.group_id) {
                         removeSelectOption(groupSelect, String(data.group_id));
                     }
+
+                    if (reasonInput) reasonInput.value = '';
                 }).finally(function () {
                     setButtonLoading(addGroupBtn, false);
                 });
@@ -607,43 +696,85 @@
                 var groupId = btn.getAttribute('data-group-id');
                 var groupName = btn.getAttribute('data-group-name') || 'هذه المجموعة';
                 var row = btn.closest('.profile-group-row');
-                var feedbackEl = document.getElementById('profile-groups-feedback');
-                var groupSelect = document.getElementById('profile_group_id');
 
                 if (!groupId || !row) return;
 
-                if (!window.confirm('هل أنت متأكد من إلغاء انضمام الطالب إلى المجموعة «' + groupName + '»؟')) {
-                    return;
+                pendingRemoveGroup = {
+                    groupId: groupId,
+                    groupName: groupName,
+                    row: row,
+                    btn: btn
+                };
+
+                if (removeGroupReasonInput) removeGroupReasonInput.value = '';
+                if (removeGroupModalText) {
+                    removeGroupModalText.textContent = 'هل أنت متأكد من إلغاء انضمام الطالب إلى المجموعة «' + groupName + '»؟';
                 }
 
-                var formData = new FormData();
-                formData.append('group_id', groupId);
+                if (removeGroupModal) {
+                    removeGroupModal.show();
+                } else if (window.confirm('هل أنت متأكد من إلغاء انضمام الطالب إلى المجموعة «' + groupName + '»؟')) {
+                    executeProfileRemoveFromGroup();
+                }
+            });
+        }
 
-                btn.disabled = true;
-                hideFeedback(feedbackEl);
+        function executeProfileRemoveFromGroup() {
+            if (!pendingRemoveGroup) return;
 
-                postProfileAction('{{ route('users.remove-from-group', $user->id) }}', formData, feedbackEl, function (data) {
-                    row.remove();
-                    renumberProfileGroupRows();
+            var groupId = pendingRemoveGroup.groupId;
+            var row = pendingRemoveGroup.row;
+            var btn = pendingRemoveGroup.btn;
+            var feedbackEl = document.getElementById('profile-groups-feedback');
+            var groupSelect = document.getElementById('profile_group_id');
 
-                    var tbody = document.getElementById('profile-groups-tbody');
-                    var tableWrap = document.getElementById('profile-groups-table-wrap');
-                    var emptyEl = document.getElementById('profile-groups-empty');
-                    var hasRows = tbody && tbody.querySelectorAll('.profile-group-row').length > 0;
+            var formData = new FormData();
+            formData.append('group_id', groupId);
+            if (removeGroupReasonInput && removeGroupReasonInput.value.trim() !== '') {
+                formData.append('reason', removeGroupReasonInput.value.trim());
+            }
 
-                    if (tableWrap) tableWrap.classList.toggle('d-none', !hasRows);
-                    if (emptyEl) emptyEl.classList.toggle('d-none', hasRows);
+            if (btn) btn.disabled = true;
+            hideFeedback(feedbackEl);
+            if (removeGroupConfirmBtn) setButtonLoading(removeGroupConfirmBtn, true);
 
-                    if (data.stats && typeof data.stats.total === 'number') {
-                        updateTabBadge(document.getElementById('profile-groups-badge'), data.stats.total);
-                    }
+            postProfileAction('{{ route('users.remove-from-group', $user->id) }}', formData, feedbackEl, function (data) {
+                if (row) row.remove();
+                renumberProfileGroupRows();
 
-                    if (data.group && groupSelect) {
-                        addGroupSelectOption(groupSelect, data.group);
-                    }
-                }).finally(function () {
-                    btn.disabled = false;
-                });
+                var tbody = document.getElementById('profile-groups-tbody');
+                var tableWrap = document.getElementById('profile-groups-table-wrap');
+                var emptyEl = document.getElementById('profile-groups-empty');
+                var hasRows = tbody && tbody.querySelectorAll('.profile-group-row').length > 0;
+
+                if (tableWrap) tableWrap.classList.toggle('d-none', !hasRows);
+                if (emptyEl) emptyEl.classList.toggle('d-none', hasRows);
+
+                if (data.history_id && data.history_row_html) {
+                    updateProfileGroupHistoryRow(String(data.history_id), data.history_row_html);
+                } else if (data.history_row_html) {
+                    prependProfileGroupHistoryRow(data.history_row_html);
+                }
+
+                if (data.stats && typeof data.stats.total === 'number') {
+                    updateTabBadge(document.getElementById('profile-groups-badge'), data.stats.total);
+                }
+
+                if (data.group && groupSelect) {
+                    addGroupSelectOption(groupSelect, data.group);
+                }
+
+                if (removeGroupModal) removeGroupModal.hide();
+                pendingRemoveGroup = null;
+            }).finally(function () {
+                if (btn) btn.disabled = false;
+                if (removeGroupConfirmBtn) setButtonLoading(removeGroupConfirmBtn, false);
+            });
+        }
+
+        if (removeGroupConfirmBtn) {
+            removeGroupConfirmBtn.addEventListener('click', function () {
+                executeProfileRemoveFromGroup();
             });
         }
 
