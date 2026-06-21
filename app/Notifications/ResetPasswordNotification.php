@@ -2,11 +2,11 @@
 
 namespace App\Notifications;
 
+use App\Services\Auth\PasswordResetMessageRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Lang;
 
 class ResetPasswordNotification extends Notification
 {
@@ -48,34 +48,37 @@ class ResetPasswordNotification extends Notification
         ], false));
 
         $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
-        
-        $userName = $notifiable->name_ar ?? $notifiable->name ?? 'عزيزي المستخدم';
+        $renderer = app(PasswordResetMessageRenderer::class);
+        $variables = $renderer->variables($notifiable, $url, $expireMinutes);
+
+        $userName = $variables['user_name'];
         $appUrl = rtrim(config('app.url'), '/');
-        
-        // Generate logo URL - use absolute URL for email clients
+
         $logoPath = public_path('assets/logo/logo.png');
         $logoUrl = null;
-        
-        // Try to embed image as base64 if file exists (works in most email clients)
+
         if (file_exists($logoPath)) {
             $imageData = file_get_contents($logoPath);
             $imageBase64 = base64_encode($imageData);
             $imageInfo = getimagesize($logoPath);
             $mimeType = $imageInfo['mime'] ?? 'image/png';
-            $logoUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
+            $logoUrl = 'data:'.$mimeType.';base64,'.$imageBase64;
         } else {
-            // Fallback to URL if file doesn't exist or base64 fails
-            $logoUrl = $appUrl . '/assets/logo/logo.png';
+            $logoUrl = $appUrl.'/assets/logo/logo.png';
         }
 
+        $customBodyHtml = $renderer->renderEmailBodyHtml($notifiable, $url, $expireMinutes);
+
         return (new MailMessage)
-            ->subject('إعادة تعيين كلمة المرور - أكاديمية كلاودسوفت')
+            ->subject($renderer->renderEmailSubject())
             ->view('emails.reset-password', [
                 'url' => $url,
                 'userName' => $userName,
                 'expireMinutes' => $expireMinutes,
+                'expireAt' => $variables['expire_at'],
                 'logoUrl' => $logoUrl,
                 'appUrl' => $appUrl,
+                'customBodyHtml' => $customBodyHtml,
             ]);
     }
 

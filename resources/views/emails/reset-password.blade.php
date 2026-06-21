@@ -174,36 +174,9 @@
         
         <!-- Body -->
         <div class="email-body">
-            <div class="greeting">مرحباً {{ $userName }}! 👋</div>
-            
-            <p>لقد تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في أكاديمية كلاودسوفت.</p>
-            
-            <div class="button-container">
-                <a href="{{ $url }}" class="button">إعادة تعيين كلمة المرور</a>
-            </div>
-            
-            <p>يرجى الضغط على الزر أعلاه لإعادة تعيين كلمة المرور الخاصة بك.</p>
-            
-            <div class="important-note">
-                <strong>⚠️ مهم:</strong>
-                <span>هذا الرابط سينتهي خلال <strong>{{ $expireMinutes }}</strong> دقيقة. يرجى استخدامه في أقرب وقت ممكن.</span>
-            </div>
-            
-            <div class="security-note">
-                <strong>🔒 ملاحظة أمان:</strong>
-                <ul style="margin-right: 20px; margin-top: 10px;">
-                    <li>إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان.</li>
-                    <li>لن يتم تغيير كلمة المرور الخاصة بك إلا إذا قمت بالضغط على الرابط أعلاه.</li>
-                    <li>لا تشارك هذا الرابط مع أي شخص آخر.</li>
-                </ul>
-            </div>
-            
-            <div class="url-fallback">
-                <strong style="color: #333;">إذا لم يعمل الزر أعلاه، انسخ والصق الرابط التالي في متصفحك:</strong><br>
-                <a href="{{ $url }}" style="color: #0555a2; word-break: break-all;">{{ $url }}</a>
-            </div>
+            {!! $customBodyHtml ?? '' !!}
         </div>
-        
+
         <!-- Footer -->
         <div class="email-footer">
             <div class="salutation">

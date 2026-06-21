@@ -1036,6 +1036,7 @@
 
             var invoiceSelect = document.getElementById('profilePaymentInvoiceId');
             var amountInput = document.getElementById('profilePaymentAmount');
+            var titleEl = modalEl.querySelector('.modal-title');
             if (!invoiceSelect) return;
 
             if (trigger && trigger.getAttribute('data-invoice-id')) {
@@ -1049,9 +1050,24 @@
                 }
             }
 
+            if (titleEl) {
+                var campName = trigger && trigger.getAttribute('data-camp-name');
+                titleEl.innerHTML = campName
+                    ? '<i class="fe fe-dollar-sign me-2"></i>تسجيل دفعة — {{ $user->name }} — ' + campName
+                    : '<i class="fe fe-dollar-sign me-2"></i>تسجيل دفعة — {{ $user->name }}';
+            }
+
             syncProfilePaymentRemaining();
 
             window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+
+        function refreshProfileCampRow(enrollmentId, rowHtml) {
+            if (!enrollmentId || !rowHtml) return;
+            var existingRow = document.querySelector('.profile-camp-row[data-enrollment-id="' + enrollmentId + '"]');
+            if (!existingRow) return;
+            existingRow.outerHTML = rowHtml;
+            initProfileCampRow(document.querySelector('.profile-camp-row[data-enrollment-id="' + enrollmentId + '"]'));
         }
 
         document.addEventListener('click', function (e) {
@@ -1128,6 +1144,10 @@
                         }
                         if (paymentsEmpty) paymentsEmpty.classList.add('d-none');
                         if (paymentsWrap) paymentsWrap.classList.remove('d-none');
+                    }
+
+                    if (data.camp_enrollment_id && data.camp_row_html) {
+                        refreshProfileCampRow(data.camp_enrollment_id, data.camp_row_html);
                     }
 
                     var modalEl = document.getElementById('profileRecordPaymentModal');

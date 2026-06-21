@@ -447,7 +447,7 @@ class UserController extends Controller
             $rowIndex = $displayedInvoiceIds->search($invoice->id);
             $invoiceRowNumber = $rowIndex === false ? 1 : $rowIndex + 1;
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'message' => 'تم تسجيل الدفعة بنجاح',
                 'billing_stats' => $billingStats,
@@ -461,7 +461,15 @@ class UserController extends Controller
                 ])->render(),
                 'invoice_id' => $invoice->id,
                 'payment_id' => $payment->id,
-            ]);
+            ];
+
+            $campRowPayload = $this->buildProfileCampRowPayload($user->id, $invoice->id);
+            if ($campRowPayload !== null) {
+                $response['camp_enrollment_id'] = $campRowPayload['enrollment_id'];
+                $response['camp_row_html'] = $campRowPayload['row_html'];
+            }
+
+            return response()->json($response);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -491,6 +499,42 @@ class UserController extends Controller
             'total_amount' => (float) ($activeAggregates->total_amount ?? 0),
             'total_paid' => (float) ($activeAggregates->total_paid ?? 0),
             'remaining_amount' => (float) ($activeAggregates->remaining_amount ?? 0),
+        ];
+    }
+
+    /**
+     * @return array{enrollment_id: int, row_html: string}|null
+     */
+    private function buildProfileCampRowPayload(int $studentId, int $invoiceId): ?array
+    {
+        $enrollment = CampEnrollment::query()
+            ->where('student_id', $studentId)
+            ->whereHas('invoiceItems', fn ($query) => $query->where('invoice_id', $invoiceId))
+            ->with(['camp.category', 'invoice'])
+            ->first();
+
+        if (! $enrollment) {
+            return null;
+        }
+
+        $orderedIds = CampEnrollment::query()
+            ->where('student_id', $studentId)
+            ->orderByDesc('enrollment_date')
+            ->pluck('id');
+
+        $rowIndex = $orderedIds->search($enrollment->id);
+        $rowNumber = $rowIndex === false ? 1 : $rowIndex + 1;
+        $campFee = (float) ($enrollment->invoice?->total_amount ?? $enrollment->camp?->price ?? 0);
+        $canRecordCampPayments = PaymentMethod::where('is_active', true)->exists();
+
+        return [
+            'enrollment_id' => $enrollment->id,
+            'row_html' => view('admin.pages.users.partials.profile-camp-row', [
+                'campEnrollment' => $enrollment,
+                'rowNumber' => $rowNumber,
+                'campFee' => $campFee,
+                'canRecordCampPayments' => $canRecordCampPayments,
+            ])->render(),
         ];
     }
 
@@ -912,7 +956,7 @@ class UserController extends Controller
                 $campFee
             );
 
-            $enrollment->load(['camp.category']);
+            $enrollment->load(['camp.category', 'invoice']);
 
             $campEnrollments = \App\Models\CampEnrollment::where('student_id', $user->id)->get();
             $campStats = [
@@ -933,6 +977,7 @@ class UserController extends Controller
                         'campEnrollment' => $enrollment,
                         'rowNumber' => $campStats['total'],
                         'campFee' => $enrollmentFee,
+                        'canRecordCampPayments' => PaymentMethod::where('is_active', true)->exists(),
                     ])->render(),
                     'camp_stats' => $campStats,
                     'camp_id' => $camp->id,

@@ -401,7 +401,7 @@
     <div id="profile-camps-table-wrap" class="@if(($campEnrollments ?? collect())->isEmpty()) d-none @endif">
         <p class="text-muted fs-12 mb-2">
             <i class="fe fe-info me-1"></i>
-            يمكنك تغيير <strong>حالة التسجيل</strong> و<strong>حالة الدفع</strong> من القوائم، أو إلغاء التسجيل بالكامل من زر <i class="fe fe-user-minus"></i>.
+            يمكنك تغيير <strong>حالة التسجيل</strong> و<strong>حالة الدفع</strong> من القوائم، تسجيل <strong>دفعة</strong> من زر <i class="fe fe-dollar-sign"></i> (مع إشعار واتساب تلقائي)، أو إلغاء التسجيل من زر <i class="fe fe-user-minus"></i>.
         </p>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 admin-users-table">
@@ -412,6 +412,7 @@
                         <th>التصنيف</th>
                         <th>تاريخ التسجيل</th>
                         <th>رسم المعسكر</th>
+                        <th>المتبقي</th>
                         <th class="profile-camp-col-status">حالة التسجيل</th>
                         <th class="profile-camp-col-payment">حالة الدفع</th>
                         <th>الفترة</th>
@@ -424,6 +425,7 @@
                             'campEnrollment' => $campEnrollment,
                             'rowNumber' => $loop->iteration,
                             'campFee' => (float) ($campEnrollment->invoice?->total_amount ?? $campEnrollment->camp?->price ?? 0),
+                            'canRecordCampPayments' => ($paymentMethods ?? collect())->isNotEmpty(),
                         ])
                     @endforeach
                 </tbody>

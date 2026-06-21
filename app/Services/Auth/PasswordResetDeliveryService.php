@@ -97,13 +97,7 @@ class PasswordResetDeliveryService
         $token = $broker->createToken($user);
         $url = $this->buildResetUrl($user, $token);
         $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
-        $userName = $user->name_ar ?? $user->name ?? 'عزيزي المستخدم';
-
-        $message = "مرحباً {$userName}،\n\n"
-            . "طلبت إعادة تعيين كلمة المرور في أكاديمية كلاودسوفت.\n"
-            . "اضغط الرابط التالي:\n{$url}\n\n"
-            . "⏱ الرابط صالح لمدة {$expireMinutes} دقيقة.\n"
-            . "إذا لم تطلب ذلك تجاهل هذه الرسالة.";
+        $message = app(PasswordResetMessageRenderer::class)->renderWhatsApp($user, $url, $expireMinutes);
 
         app(SendWhatsAppMessage::class)->sendTextSync($recipient, $message);
 

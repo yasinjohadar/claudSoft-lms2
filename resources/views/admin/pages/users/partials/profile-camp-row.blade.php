@@ -1,6 +1,17 @@
 @php
     $camp = $campEnrollment->camp;
-    $displayFee = $campFee ?? (float) ($campEnrollment->invoice?->total_amount ?? $camp?->price ?? 0);
+    $invoice = $campEnrollment->invoice;
+    $displayFee = $campFee ?? (float) ($invoice?->total_amount ?? $camp?->price ?? 0);
+    $paidAmount = $invoice
+        ? (float) $invoice->paid_amount
+        : ($campEnrollment->payment_status === 'paid' ? $displayFee : 0);
+    $remainingAmount = $invoice
+        ? (float) $invoice->remaining_amount
+        : ($campEnrollment->payment_status === 'paid' ? 0 : $displayFee);
+    $canPay = $invoice
+        && in_array($invoice->status, ['issued', 'partial'], true)
+        && $remainingAmount > 0
+        && ($canRecordCampPayments ?? true);
     $updateUrl = route('users.update-camp-enrollment', [$campEnrollment->student_id, $campEnrollment->id]);
 @endphp
 <tr class="admin-users-table__row profile-camp-row"
@@ -28,6 +39,15 @@
     </td>
     <td><small class="text-muted">{{ optional($campEnrollment->enrollment_date)->format('Y-m-d') ?? '—' }}</small></td>
     <td><span class="fw-semibold">{{ number_format($displayFee, 2) }}</span></td>
+    <td>
+        <span class="fw-semibold profile-camp-remaining {{ $remainingAmount > 0 ? 'text-warning' : 'text-success' }}"
+              data-remaining="{{ number_format($remainingAmount, 2, '.', '') }}">
+            {{ number_format($remainingAmount, 2) }}
+        </span>
+        @if($paidAmount > 0 && $remainingAmount > 0)
+            <br><small class="text-muted">مدفوع: {{ number_format($paidAmount, 2) }}</small>
+        @endif
+    </td>
     <td class="profile-camp-col-status">
         <div class="profile-camp-status-picker is-{{ $campEnrollment->status }}">
             <span class="profile-camp-status-picker__dot" aria-hidden="true"></span>
@@ -69,6 +89,17 @@
     </td>
     <td>
         <div class="d-flex align-items-center gap-1">
+            @if($canPay)
+                <button type="button"
+                        class="btn btn-sm btn-success-light js-profile-record-payment"
+                        data-invoice-id="{{ $invoice->id }}"
+                        data-invoice-number="{{ $invoice->invoice_number }}"
+                        data-remaining="{{ number_format($remainingAmount, 2, '.', '') }}"
+                        data-camp-name="{{ $camp?->name }}"
+                        title="تسجيل دفعة — {{ $camp?->name }}">
+                    <i class="fe fe-dollar-sign"></i>
+                </button>
+            @endif
             @if($camp)
                 <a href="{{ route('training-camps.enrollments.show', [$camp->id, $campEnrollment->id]) }}"
                    class="btn btn-sm btn-info-light" title="تفاصيل التسجيل">

@@ -297,6 +297,7 @@ Route::prefix('admin')
         Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/delete-multiple', [CourseGroupController::class, 'deleteMultipleRequests'])->name('courses.groups.membership-requests.delete-multiple');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-multiple', [CourseGroupController::class, 'approveMultipleRequests'])->name('courses.groups.membership-requests.approve-multiple');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-all', [CourseGroupController::class, 'approveAllPendingRequests'])->name('courses.groups.membership-requests.approve-all');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-whatsapp-invite', [CourseGroupController::class, 'previewMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.preview-whatsapp-invite');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-whatsapp-invite', [CourseGroupController::class, 'sendMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.send-whatsapp-invite');
 
         // General management routes (all courses)
@@ -638,6 +639,14 @@ Route::prefix('admin')
             Route::post('/{emailSetting}/test', [\App\Http\Controllers\Admin\EmailSettingController::class, 'test'])->name('test');
             Route::get('/provider/{provider}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'getProviderPreset'])->name('provider.preset');
         });
+
+        Route::get('settings/password-reset-message', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'edit'])->name('admin.settings.password-reset-message.edit');
+        Route::put('settings/password-reset-message', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'update'])->name('admin.settings.password-reset-message.update');
+        Route::post('settings/password-reset-message/restore-defaults', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.password-reset-message.restore-defaults');
+
+        Route::get('settings/payment-whatsapp-message', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'edit'])->name('admin.settings.payment-whatsapp-message.edit');
+        Route::put('settings/payment-whatsapp-message', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'update'])->name('admin.settings.payment-whatsapp-message.update');
+        Route::post('settings/payment-whatsapp-message/restore-defaults', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.payment-whatsapp-message.restore-defaults');
 
         // ========== Email Templates Routes ==========
         Route::resource('email-templates', EmailTemplateController::class)->names([
