@@ -1378,9 +1378,63 @@ class CourseGroupController extends Controller
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
 
+            $whatsappJid = trim((string) $request->input('whatsapp_jid', ''));
+            $waContext = $this->resolveMembershipWhatsAppContext($group, $whatsappJid);
+
+            if ($whatsappJid !== '' && empty($waContext['wa_load_error']) && ! empty($waContext['phone_index'])) {
+                $compareService = app(EvolutionGroupCompareService::class);
+                $broadcastService = app(BroadcastWhatsAppMessage::class);
+
+                $studentIds = (clone $query)->pluck('student_id')->unique()->filter()->values();
+                $students = User::query()
+                    ->whereIn('id', $studentIds)
+                    ->get(['id', 'name', 'name_ar', 'email', 'phone', 'country_code', 'full_phone']);
+
+                $waStatusMap = $compareService->waMembershipStatusForUsers(
+                    $students,
+                    $waContext['phone_index'],
+                    $broadcastService
+                );
+
+                $waContext['wa_stats'] = [
+                    'not_in_group' => collect($waStatusMap)->filter(fn ($s) => $s === 'not_in_group')->count(),
+                    'in_group' => collect($waStatusMap)->filter(fn ($s) => $s === 'in_group')->count(),
+                    'no_phone' => collect($waStatusMap)->filter(fn ($s) => $s === 'no_phone')->count(),
+                ];
+
+                foreach ($students as $student) {
+                    $digits = $broadcastService->normalizedPhoneDigitsForWapi($student);
+                    if ($digits !== null) {
+                        $waContext['phone_digits_by_student_id'][(int) $student->id] = $digits;
+                    }
+                }
+
+                $waMembershipFilter = $request->input('wa_membership');
+                if ($waMembershipFilter && in_array($waMembershipFilter, ['not_in_group', 'in_group', 'no_phone'], true)) {
+                    $filteredStudentIds = array_keys(array_filter(
+                        $waStatusMap,
+                        fn ($status) => $status === $waMembershipFilter
+                    ));
+                    $query->whereIn('student_id', $filteredStudentIds ?: [-1]);
+                }
+
+                $waContext['wa_status_map_full'] = $waStatusMap;
+            }
+
             $requests = $query->paginate($request->get('per_page', 15));
 
-            $waContext = $this->resolveMembershipWhatsAppContext($group, $requests, $request->input('whatsapp_jid'));
+            if (! empty($waContext['wa_status_map_full'])) {
+                $pageStudentIds = $requests->getCollection()
+                    ->pluck('student_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $waContext['wa_status_by_student_id'] = array_intersect_key(
+                    $waContext['wa_status_map_full'],
+                    array_flip($pageStudentIds)
+                );
+            }
+
+            unset($waContext['phone_index'], $waContext['wa_status_map_full']);
 
             $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
             $whatsappTemplates = WhatsAppMessageTemplate::active()
@@ -1453,10 +1507,9 @@ class CourseGroupController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function resolveMembershipWhatsAppContext(CourseGroup $group, $requests, ?string $whatsappJid): array
+    private function resolveMembershipWhatsAppContext(CourseGroup $group, ?string $whatsappJid): array
     {
         $compareService = app(EvolutionGroupCompareService::class);
-        $broadcastService = app(BroadcastWhatsAppMessage::class);
 
         $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
         $defaultInviteMessage = "مرحباً {student_name} 👋\n\nيرجى الانضمام لمجموعة الواتساب الخاصة بـ {group_name} عبر الرابط:\n{group_link}";
@@ -1469,6 +1522,11 @@ class CourseGroupController extends Controller
             'wa_load_error' => null,
             'wa_status_by_student_id' => [],
             'phone_digits_by_student_id' => [],
+            'wa_stats' => [
+                'not_in_group' => 0,
+                'in_group' => 0,
+                'no_phone' => 0,
+            ],
             'whatsapp_group_link' => $registrationSettings?->whatsapp_group_link,
             'default_invite_message' => $defaultInviteMessage,
         ];
@@ -1486,18 +1544,7 @@ class CourseGroupController extends Controller
         try {
             $wa = $compareService->loadWhatsAppGroup($context['selected_jid']);
             $context['wa_group_info'] = $wa['group_info'];
-            $students = $requests->getCollection()->pluck('student')->filter();
-            $context['wa_status_by_student_id'] = $compareService->waMembershipStatusForUsers(
-                $students,
-                $wa['phone_index'],
-                $broadcastService
-            );
-            foreach ($students as $student) {
-                $digits = $broadcastService->normalizedPhoneDigitsForWapi($student);
-                if ($digits !== null) {
-                    $context['phone_digits_by_student_id'][(int) $student->id] = $digits;
-                }
-            }
+            $context['phone_index'] = $wa['phone_index'];
         } catch (\Throwable $e) {
             $context['wa_load_error'] = $e->getMessage();
         }

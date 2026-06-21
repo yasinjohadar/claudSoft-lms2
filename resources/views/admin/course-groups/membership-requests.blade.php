@@ -74,6 +74,7 @@
                 'requests' => $requests,
                 'group' => $group,
                 'pendingCount' => $pendingCount ?? 0,
+                'waContext' => $waContext ?? [],
             ])
 
             @php
@@ -102,6 +103,9 @@
                         @if(request('status'))
                             <input type="hidden" name="status" value="{{ request('status') }}">
                         @endif
+                        @if(request('wa_membership'))
+                            <input type="hidden" name="wa_membership" value="{{ request('wa_membership') }}">
+                        @endif
                         <div class="row g-3 align-items-end">
                             <div class="col-md-8">
                                 <label class="form-label">مجموعة WhatsApp</label>
@@ -127,6 +131,12 @@
                         <div class="alert alert-light border mt-3 mb-0 py-2">
                             <small class="text-muted d-block">المجموعة المختارة</small>
                             <strong>{{ $waContext['wa_group_info']['subject'] ?? $waContext['wa_group_info']['name'] ?? $waSelectedJid }}</strong>
+                            @if(!empty($waContext['wa_stats']))
+                                <span class="ms-2">
+                                    <span class="badge bg-danger-transparent text-danger">{{ $waContext['wa_stats']['not_in_group'] ?? 0 }} غير منضم</span>
+                                    <span class="badge bg-success-transparent text-success">{{ $waContext['wa_stats']['in_group'] ?? 0 }} منضم</span>
+                                </span>
+                            @endif
                             @if(!empty($waContext['whatsapp_group_link']))
                                 <br><small class="text-muted">رابط الدعوة: <a href="{{ $waContext['whatsapp_group_link'] }}" target="_blank" rel="noopener">{{ Str::limit($waContext['whatsapp_group_link'], 60) }}</a></small>
                             @else
@@ -140,14 +150,14 @@
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية الطلبات</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو الإيميل أو الهاتف، أو فلتر حسب الحالة.</p>
+                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو الإيميل أو الهاتف، أو فلتر حسب الحالة أو حالة الانضمام لواتساب.</p>
                 </div>
                 <div class="card-body pt-3">
                     <form id="membershipRequestsFilterForm" method="GET"
                           action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}"
                           class="group-show-filters mb-0">
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label">البحث</label>
                                 <input type="text"
                                        id="membershipRequestsSearchInput"
@@ -156,7 +166,7 @@
                                        placeholder="البحث بالاسم، الإيميل أو الهاتف..."
                                        value="{{ request('search') }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">الحالة</label>
                                 <select name="status" class="form-select">
                                     <option value="">جميع الحالات</option>
@@ -166,9 +176,20 @@
                                 </select>
                             </div>
                             @if($waSelectedJid ?? '')
+                                <div class="col-md-3">
+                                    <label class="form-label">انضمام واتساب</label>
+                                    <select name="wa_membership" class="form-select" id="membershipWaMembershipFilter">
+                                        <option value="">جميع الطلاب</option>
+                                        <option value="not_in_group" {{ request('wa_membership') === 'not_in_group' ? 'selected' : '' }}>غير منضمين فقط ({{ $waContext['wa_stats']['not_in_group'] ?? 0 }})</option>
+                                        <option value="in_group" {{ request('wa_membership') === 'in_group' ? 'selected' : '' }}>منضمين فقط ({{ $waContext['wa_stats']['in_group'] ?? 0 }})</option>
+                                        <option value="no_phone" {{ request('wa_membership') === 'no_phone' ? 'selected' : '' }}>بدون رقم واتساب ({{ $waContext['wa_stats']['no_phone'] ?? 0 }})</option>
+                                    </select>
+                                </div>
+                            @endif
+                            @if($waSelectedJid ?? '')
                                 <input type="hidden" name="whatsapp_jid" value="{{ $waSelectedJid }}">
                             @endif
-                            <div class="col-md-4">
+                            <div class="col-md-{{ ($waSelectedJid ?? '') ? '3' : '6' }}">
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fe fe-search me-1"></i>بحث
@@ -482,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchInput) searchInput.addEventListener('input', debouncedSearch);
 
     if (filterForm) {
-        filterForm.querySelectorAll('select[name="status"]').forEach(sel => {
+        filterForm.querySelectorAll('select[name="status"], select[name="wa_membership"]').forEach(sel => {
             sel.addEventListener('change', requestFromFilterForm);
         });
         filterForm.addEventListener('submit', function(e) {
