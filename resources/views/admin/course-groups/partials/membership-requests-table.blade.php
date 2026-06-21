@@ -107,16 +107,23 @@
                                     <i class="ri-check-line me-1"></i>منضم
                                 </span>
                             @elseif($waStatus === 'not_in_group')
-                                <span class="badge bg-danger-transparent text-danger d-block mb-1">
-                                    <i class="ri-close-line me-1"></i>غير منضم
-                                </span>
+                                @if($request->whatsapp_invite_sent_at)
+                                    <span class="badge bg-warning-transparent text-warning d-block mb-1">
+                                        <i class="ri-mail-send-line me-1"></i>دُعي — لم ينضم بعد
+                                    </span>
+                                    <small class="text-muted d-block mb-1">آخر دعوة: {{ $request->whatsapp_invite_sent_at->format('Y-m-d H:i') }}</small>
+                                @else
+                                    <span class="badge bg-danger-transparent text-danger d-block mb-1">
+                                        <i class="ri-close-line me-1"></i>غير منضم
+                                    </span>
+                                @endif
                                 @if($phoneDigits)
                                     <button type="button"
-                                            class="btn btn-sm btn-success js-membership-wa-invite"
+                                            class="btn btn-sm btn-{{ $request->whatsapp_invite_sent_at ? 'outline-success' : 'success' }} js-membership-wa-invite"
                                             data-student-id="{{ $request->student_id }}"
                                             data-student-name="{{ $request->student->name }}"
                                             data-student-phone="{{ $studentPhoneDisplay }}">
-                                        <i class="ri-send-plane-line me-1"></i>دعوة
+                                        <i class="ri-send-plane-line me-1"></i>{{ $request->whatsapp_invite_sent_at ? 'إعادة الدعوة' : 'دعوة' }}
                                     </button>
                                 @endif
                             @else

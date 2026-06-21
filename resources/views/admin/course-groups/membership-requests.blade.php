@@ -87,7 +87,7 @@
                     <h4 class="card-title mb-1">
                         <i class="ri-whatsapp-line me-2 text-success"></i>مجموعة واتساب للمقارنة
                     </h4>
-                    <p class="fs-12 text-muted mb-0">اختر مجموعة واتساب لمعرفة من انضم إليها من الطلاب ومراسلة غير المنضمين برابط الانضمام.</p>
+                    <p class="fs-12 text-muted mb-0">اختر مجموعة واتساب لمقارنة <strong>طلبات الانضمام</strong> بأعضائها. رقم «X عضو» في القائمة = إجمالي المجموعة في واتساب، وليس عدد طلابنا المنضمين.</p>
                 </div>
                 <div class="card-body pt-3">
                     @if(!empty($waContext['whatsapp_groups_error']))
@@ -133,8 +133,17 @@
                             <strong>{{ $waContext['wa_group_info']['subject'] ?? $waContext['wa_group_info']['name'] ?? $waSelectedJid }}</strong>
                             @if(!empty($waContext['wa_stats']))
                                 <span class="ms-2">
-                                    <span class="badge bg-danger-transparent text-danger">{{ $waContext['wa_stats']['not_in_group'] ?? 0 }} غير منضم</span>
-                                    <span class="badge bg-success-transparent text-success">{{ $waContext['wa_stats']['in_group'] ?? 0 }} منضم</span>
+                                    <span class="badge bg-danger-transparent text-danger">{{ $waContext['wa_stats']['not_in_group'] ?? 0 }} طالب غير منضم</span>
+                                    <span class="badge bg-warning-transparent text-warning">{{ $waContext['wa_stats']['invite_pending'] ?? 0 }} دُعوا ولم ينضموا</span>
+                                    <span class="badge bg-success-transparent text-success">{{ $waContext['wa_stats']['in_group'] ?? 0 }} طالب منضم</span>
+                                    @php
+                                        $waTotalMembers = $waContext['wa_group_info']['size']
+                                            ?? $waContext['wa_group_info']['participants_count']
+                                            ?? null;
+                                    @endphp
+                                    @if($waTotalMembers !== null)
+                                        <span class="badge bg-info-transparent text-info">{{ $waTotalMembers }} عضو إجمالي في WA</span>
+                                    @endif
                                 </span>
                             @endif
                             @if(!empty($waContext['whatsapp_group_link']))
@@ -181,6 +190,7 @@
                                     <select name="wa_membership" class="form-select" id="membershipWaMembershipFilter">
                                         <option value="">جميع الطلاب</option>
                                         <option value="not_in_group" {{ request('wa_membership') === 'not_in_group' ? 'selected' : '' }}>غير منضمين فقط ({{ $waContext['wa_stats']['not_in_group'] ?? 0 }})</option>
+                                        <option value="invite_sent" {{ request('wa_membership') === 'invite_sent' ? 'selected' : '' }}>دُعوا ولم ينضموا ({{ $waContext['wa_stats']['invite_pending'] ?? 0 }})</option>
                                         <option value="in_group" {{ request('wa_membership') === 'in_group' ? 'selected' : '' }}>منضمين فقط ({{ $waContext['wa_stats']['in_group'] ?? 0 }})</option>
                                         <option value="no_phone" {{ request('wa_membership') === 'no_phone' ? 'selected' : '' }}>بدون رقم واتساب ({{ $waContext['wa_stats']['no_phone'] ?? 0 }})</option>
                                     </select>
@@ -609,6 +619,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     updateBulkActions();
     updateSelectAll();
+
+    window.reloadMembershipRequestsTable = function() {
+        lastRequestUrl = null;
+        requestFromFilterForm();
+    };
 });
 </script>
 @stop

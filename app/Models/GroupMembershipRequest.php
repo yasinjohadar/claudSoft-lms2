@@ -22,6 +22,8 @@ class GroupMembershipRequest extends Model
         'approved_by',
         'rejected_at',
         'rejected_by',
+        'whatsapp_invite_sent_at',
+        'whatsapp_invite_sent_by',
     ];
 
     protected $casts = [
@@ -29,6 +31,7 @@ class GroupMembershipRequest extends Model
         'payment_date' => 'date',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'whatsapp_invite_sent_at' => 'datetime',
     ];
 
     // Relationships
@@ -63,6 +66,24 @@ class GroupMembershipRequest extends Model
     public function rejecter()
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function whatsappInviteSender()
+    {
+        return $this->belongsTo(User::class, 'whatsapp_invite_sent_by');
+    }
+
+    public function hasPendingWhatsAppInvite(): bool
+    {
+        return $this->whatsapp_invite_sent_at !== null;
+    }
+
+    public function markWhatsAppInviteSent(?int $sentBy = null): bool
+    {
+        return $this->update([
+            'whatsapp_invite_sent_at' => now(),
+            'whatsapp_invite_sent_by' => $sentBy ?? auth()->id(),
+        ]);
     }
 
     // Scopes

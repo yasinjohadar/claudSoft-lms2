@@ -163,11 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.ok && result.data.success) {
                     showMembershipWaAlert(result.data.message || 'تم الإرسال', 'success');
                     setTimeout(function() {
+                        if (typeof window.reloadMembershipRequestsTable === 'function') {
+                            window.reloadMembershipRequestsTable();
+                        }
                         if (modalEl && window.bootstrap) {
                             var instance = window.bootstrap.Modal.getInstance(modalEl);
                             if (instance) instance.hide();
                         }
-                    }, 1200);
+                    }, 900);
                     return;
                 }
                 showMembershipWaAlert(result.data.message || 'تعذر إرسال الرسالة', 'error');

@@ -1,7 +1,7 @@
 @php
     $waContext = $waContext ?? [];
     $waSelectedJid = $waContext['selected_jid'] ?? '';
-    $waStats = $waContext['wa_stats'] ?? ['not_in_group' => 0, 'in_group' => 0, 'no_phone' => 0];
+    $waStats = $waContext['wa_stats'] ?? ['not_in_group' => 0, 'in_group' => 0, 'no_phone' => 0, 'invite_pending' => 0];
 
     $kpiCards = [
         [
@@ -33,15 +33,34 @@
             'icon' => 'ri-user-unfollow-line',
             'label' => 'غير منضمين WA',
             'value' => $waStats['not_in_group'] ?? 0,
-            'sub' => 'يحتاجون دعوة للمجموعة',
+            'sub' => 'من طلبات الانضمام — يحتاجون دعوة',
+        ];
+        $kpiCards[] = [
+            'variant' => 'orange',
+            'icon' => 'ri-mail-send-line',
+            'label' => 'دُعوا ولم ينضموا',
+            'value' => $waStats['invite_pending'] ?? 0,
+            'sub' => 'أُرسلت دعوة واتساب — بانتظار الانضمام',
         ];
         $kpiCards[] = [
             'variant' => 'green',
             'icon' => 'ri-user-follow-line',
             'label' => 'منضمين WA',
             'value' => $waStats['in_group'] ?? 0,
-            'sub' => 'موجودون في مجموعة الواتساب',
+            'sub' => 'من طلبات الانضمام — رقمهم موجود في WA',
         ];
+        $waGroupSize = $waContext['wa_group_info']['size']
+            ?? $waContext['wa_group_info']['participants_count']
+            ?? null;
+        if ($waGroupSize !== null) {
+            $kpiCards[] = [
+                'variant' => 'blue',
+                'icon' => 'ri-whatsapp-line',
+                'label' => 'إجمالي مجموعة WA',
+                'value' => (int) $waGroupSize,
+                'sub' => 'كل الأعضاء في واتساب (ليس فقط طلابنا)',
+            ];
+        }
     }
 @endphp
 

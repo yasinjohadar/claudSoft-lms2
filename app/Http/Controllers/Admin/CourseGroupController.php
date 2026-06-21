@@ -1350,6 +1350,8 @@ class CourseGroupController extends Controller
                     'created_at',
                     'approved_at',
                     'rejected_at',
+                    'whatsapp_invite_sent_at',
+                    'whatsapp_invite_sent_by',
                 ])
                 ->with([
                     'student:id,name,name_ar,email,phone,country_code,full_phone',
@@ -1400,7 +1402,18 @@ class CourseGroupController extends Controller
                     'not_in_group' => collect($waStatusMap)->filter(fn ($s) => $s === 'not_in_group')->count(),
                     'in_group' => collect($waStatusMap)->filter(fn ($s) => $s === 'in_group')->count(),
                     'no_phone' => collect($waStatusMap)->filter(fn ($s) => $s === 'no_phone')->count(),
+                    'invite_pending' => 0,
                 ];
+
+                $inviteSentByStudentId = (clone $query)
+                    ->whereNotNull('whatsapp_invite_sent_at')
+                    ->pluck('whatsapp_invite_sent_at', 'student_id');
+
+                foreach ($waStatusMap as $studentId => $status) {
+                    if ($status === 'not_in_group' && $inviteSentByStudentId->has($studentId)) {
+                        $waContext['wa_stats']['invite_pending']++;
+                    }
+                }
 
                 foreach ($students as $student) {
                     $digits = $broadcastService->normalizedPhoneDigitsForWapi($student);
@@ -1410,12 +1423,21 @@ class CourseGroupController extends Controller
                 }
 
                 $waMembershipFilter = $request->input('wa_membership');
-                if ($waMembershipFilter && in_array($waMembershipFilter, ['not_in_group', 'in_group', 'no_phone'], true)) {
-                    $filteredStudentIds = array_keys(array_filter(
-                        $waStatusMap,
-                        fn ($status) => $status === $waMembershipFilter
-                    ));
-                    $query->whereIn('student_id', $filteredStudentIds ?: [-1]);
+                if ($waMembershipFilter && in_array($waMembershipFilter, ['not_in_group', 'in_group', 'no_phone', 'invite_sent'], true)) {
+                    if ($waMembershipFilter === 'invite_sent') {
+                        $notInGroupIds = array_keys(array_filter(
+                            $waStatusMap,
+                            fn ($status) => $status === 'not_in_group'
+                        ));
+                        $query->whereIn('student_id', $notInGroupIds ?: [-1])
+                            ->whereNotNull('whatsapp_invite_sent_at');
+                    } else {
+                        $filteredStudentIds = array_keys(array_filter(
+                            $waStatusMap,
+                            fn ($status) => $status === $waMembershipFilter
+                        ));
+                        $query->whereIn('student_id', $filteredStudentIds ?: [-1]);
+                    }
                 }
 
                 $waContext['wa_status_map_full'] = $waStatusMap;
@@ -1526,6 +1548,7 @@ class CourseGroupController extends Controller
                 'not_in_group' => 0,
                 'in_group' => 0,
                 'no_phone' => 0,
+                'invite_pending' => 0,
             ],
             'whatsapp_group_link' => $registrationSettings?->whatsapp_group_link,
             'default_invite_message' => $defaultInviteMessage,
@@ -1619,9 +1642,18 @@ class CourseGroupController extends Controller
 
             $phone = $inviteService->sendTemplateInvite($student, $course, $group, $template);
 
+            $membershipRequest = GroupMembershipRequest::where('group_id', $group->id)
+                ->where('student_id', $student->id)
+                ->latest('id')
+                ->first();
+
+            $membershipRequest?->markWhatsAppInviteSent();
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم إرسال رسالة الدعوة إلى '.$phone,
+                'student_id' => $student->id,
+                'invite_sent_at' => optional($membershipRequest?->fresh()->whatsapp_invite_sent_at)->format('Y-m-d H:i'),
             ]);
         } catch (InvalidArgumentException $e) {
             return response()->json([
