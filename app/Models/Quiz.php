@@ -271,6 +271,7 @@ class Quiz extends Model
         }
 
         $usedAttempts = $this->attempts()
+            ->realAttempts()
             ->where('student_id', $studentId)
             ->where('status', '!=', 'abandoned')
             ->count();

@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Quiz;
-use App\Models\QuizSettings;
 use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\Lesson;
+use App\Models\ProgrammingLanguage;
+use App\Models\QuestionBank;
+use App\Models\QuestionType;
+use App\Models\Quiz;
+use App\Models\QuizSettings;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -216,19 +220,21 @@ class QuizController extends Controller
             'settings'
         ])->findOrFail($id);
 
-        // Get attempts statistics
+        // Get attempts statistics (exclude admin preview attempts)
         $attempts = $quiz->attempts()
+            ->realAttempts()
             ->with('student')
             ->orderBy('submitted_at', 'desc')
             ->paginate(20);
 
         $stats = [
-            'total_attempts' => $quiz->attempts()->count(),
-            'completed_attempts' => $quiz->attempts()->where('is_completed', true)->count(),
-            'in_progress' => $quiz->attempts()->where('status', 'in_progress')->count(),
-            'graded' => $quiz->attempts()->where('status', 'graded')->count(),
-            'pending_grading' => $quiz->attempts()->where('status', 'submitted')->count(),
+            'total_attempts' => $quiz->attempts()->realAttempts()->count(),
+            'completed_attempts' => $quiz->attempts()->realAttempts()->where('is_completed', true)->count(),
+            'in_progress' => $quiz->attempts()->realAttempts()->where('status', 'in_progress')->count(),
+            'graded' => $quiz->attempts()->realAttempts()->where('status', 'graded')->count(),
+            'pending_grading' => $quiz->attempts()->realAttempts()->where('status', 'submitted')->count(),
             'average_score' => $quiz->attempts()
+                ->realAttempts()
                 ->where('is_completed', true)
                 ->whereNotNull('total_score')
                 ->avg('total_score'),
@@ -520,6 +526,7 @@ class QuizController extends Controller
     private function calculatePassRate(Quiz $quiz): float
     {
         $completedAttempts = $quiz->attempts()
+            ->realAttempts()
             ->where('is_completed', true)
             ->count();
 
@@ -528,6 +535,7 @@ class QuizController extends Controller
         }
 
         $passedAttempts = $quiz->attempts()
+            ->realAttempts()
             ->where('is_completed', true)
             ->where('passed', true)
             ->count();
@@ -543,41 +551,9 @@ class QuizController extends Controller
         $quiz = Quiz::with(['questions.questionType', 'questions.options', 'course'])
             ->findOrFail($id);
 
-        // Get available questions from the question bank
-        // Get IDs of questions already in the quiz to exclude them
-        // Use pivot table directly for accurate results
-        $existingQuestionIds = DB::table('quiz_questions')
-            ->where('quiz_id', $quiz->id)
-            ->pluck('question_id')
-            ->toArray();
-        
-        // Get all active questions (no automatic course filtering)
-        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
-            ->where('is_active', true)
-            ->when(!empty($existingQuestionIds), function($query) use ($existingQuestionIds) {
-                return $query->whereNotIn('id', $existingQuestionIds);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $questionTypes = QuestionType::where('is_active', true)->get();
 
-        // Get question types for filtering
-        $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
-
-        // Get all courses for filtering dropdown
-        $courses = \App\Models\Course::where('is_published', true)->get();
-
-        $bankLessonNames = $availableQuestions
-            ->map(function (\App\Models\QuestionBank $q) {
-                $name = $q->lesson_name ?? ($q->metadata['lesson_name'] ?? null);
-
-                return $name !== null && trim((string) $name) !== '' ? trim((string) $name) : null;
-            })
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
-
-        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses', 'bankLessonNames'));
+        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'questionTypes'));
     }
 
     /**
@@ -765,36 +741,169 @@ class QuizController extends Controller
     }
 
     /**
-     * Show import questions page/modal.
+     * صفحة استيراد الأسئلة من بنك الأسئلة (فلاتر AJAX).
      */
-    public function importQuestions($id)
+    public function importQuestions(Request $request, $id)
     {
-        $quiz = Quiz::with('course')->findOrFail($id);
+        $quiz = Quiz::with(['course', 'questions'])->findOrFail($id);
 
-        // Get available questions from the question bank
-        // Get IDs of questions already in the quiz to exclude them
-        // Use pivot table directly for accurate results
+        $query = $this->buildQuizImportQuestionsQuery($quiz, $request);
+        $availableQuestions = $query->paginate(20)->withQueryString();
+
+        $courses = Course::where('is_published', true)->orderBy('title')->get();
+        $questionTypes = QuestionType::where('is_active', true)->orderBy('display_name')->get();
+        $programmingLanguages = ProgrammingLanguage::active()->orderBy('sort_order')->get();
+        $lessonNames = $this->quizImportLessonNames($quiz);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('admin.pages.quizzes._import_questions_table', compact('availableQuestions', 'quiz'))->render(),
+                'count' => $availableQuestions->total(),
+            ]);
+        }
+
+        return view('admin.pages.quizzes.import-questions', compact(
+            'quiz',
+            'availableQuestions',
+            'courses',
+            'questionTypes',
+            'programmingLanguages',
+            'lessonNames'
+        ));
+    }
+
+    /**
+     * استيراد عدة أسئلة دفعة واحدة.
+     */
+    public function importQuestionsBulk(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'questions' => 'required|array|min:1',
+            'questions.*.id' => 'required|exists:question_bank,id',
+            'questions.*.grade' => 'nullable|numeric|min:0',
+        ]);
+
+        $quiz = Quiz::findOrFail($id);
+        $imported = 0;
+        $skipped = 0;
+        $errors = [];
+
+        DB::transaction(function () use ($quiz, $validated, &$imported, &$skipped, &$errors) {
+            $lockedQuiz = Quiz::lockForUpdate()->findOrFail($quiz->id);
+            $maxOrder = (int) ($lockedQuiz->quizQuestions()->max('question_order') ?? 0);
+
+            foreach ($validated['questions'] as $item) {
+                $questionId = (int) $item['id'];
+                $grade = isset($item['grade']) ? (float) $item['grade'] : 1.0;
+
+                if (DB::table('quiz_questions')
+                    ->where('quiz_id', $lockedQuiz->id)
+                    ->where('question_id', $questionId)
+                    ->exists()) {
+                    $skipped++;
+                    continue;
+                }
+
+                $maxOrder++;
+                $lockedQuiz->questions()->attach($questionId, [
+                    'question_order' => $maxOrder,
+                    'question_grade' => $grade,
+                    'is_required' => false,
+                ]);
+                $imported++;
+            }
+
+            if ($imported > 0) {
+                $lockedQuiz->update(['max_score' => $lockedQuiz->calculateMaxScore()]);
+            }
+        });
+
+        $message = "تم استيراد {$imported} سؤال بنجاح";
+        if ($skipped > 0) {
+            $message .= " (تم تخطي {$skipped} موجود مسبقاً)";
+        }
+
+        return response()->json([
+            'success' => $imported > 0 || $skipped > 0,
+            'message' => $message,
+            'imported' => $imported,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ]);
+    }
+
+    private function buildQuizImportQuestionsQuery(Quiz $quiz, Request $request)
+    {
         $existingQuestionIds = DB::table('quiz_questions')
             ->where('quiz_id', $quiz->id)
             ->pluck('question_id')
             ->toArray();
-        
-        // Get all active questions (no automatic course filtering)
-        $availableQuestions = \App\Models\QuestionBank::with(['questionType', 'options', 'course'])
+
+        $query = QuestionBank::with(['questionType', 'course', 'creator', 'programmingLanguages'])
             ->where('is_active', true)
-            ->when(!empty($existingQuestionIds), function($query) use ($existingQuestionIds) {
-                return $query->whereNotIn('id', $existingQuestionIds);
+            ->when($existingQuestionIds !== [], fn ($q) => $q->whereNotIn('id', $existingQuestionIds))
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('course_id')) {
+            $query->where('course_id', $request->course_id);
+        }
+
+        if ($request->filled('question_type_id')) {
+            $query->where('question_type_id', $request->question_type_id);
+        }
+
+        if ($request->filled('difficulty')) {
+            $query->where('difficulty_level', $request->difficulty);
+        }
+
+        if ($request->filled('language_id')) {
+            $query->whereHas('programmingLanguages', function ($q) use ($request) {
+                $q->where('programming_languages.id', $request->language_id);
+            });
+        }
+
+        if ($request->filled('lesson_name')) {
+            $lesson = (string) $request->lesson_name;
+            $query->where(function ($q) use ($lesson) {
+                $q->where('lesson_name', $lesson)
+                    ->orWhere('metadata->lesson_name', $lesson);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = (string) $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('question_text', 'like', '%'.$search.'%')
+                    ->orWhere('explanation', 'like', '%'.$search.'%')
+                    ->orWhere('lesson_name', 'like', '%'.$search.'%');
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function quizImportLessonNames(Quiz $quiz)
+    {
+        $existingQuestionIds = DB::table('quiz_questions')
+            ->where('quiz_id', $quiz->id)
+            ->pluck('question_id');
+
+        return QuestionBank::query()
+            ->where('is_active', true)
+            ->when($existingQuestionIds->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $existingQuestionIds))
+            ->get(['lesson_name', 'metadata'])
+            ->map(function (QuestionBank $q) {
+                $name = $q->lesson_name ?? ($q->metadata['lesson_name'] ?? null);
+
+                return $name !== null && trim((string) $name) !== '' ? trim((string) $name) : null;
             })
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // Get question types for filtering
-        $questionTypes = \App\Models\QuestionType::where('is_active', true)->get();
-
-        // Get courses for filtering
-        $courses = \App\Models\Course::where('is_published', true)->get();
-
-        return view('admin.pages.quizzes.import-questions', compact('quiz', 'availableQuestions', 'questionTypes', 'courses'));
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
     }
 
 }

@@ -18,8 +18,12 @@ class GroupRegistrationSetting extends Model
         'auto_approve_membership',
         'send_welcome_email',
         'send_welcome_whatsapp',
+        'whatsapp_delivery_mode',
         'email_template_id',
         'whatsapp_template_id',
+        'wapi_template_id',
+        'wapi_template_language',
+        'wapi_body_variables',
         'whatsapp_template',
         'whatsapp_group_link',
         'require_email_verification',
@@ -33,6 +37,7 @@ class GroupRegistrationSetting extends Model
         'send_welcome_email' => 'boolean',
         'send_welcome_whatsapp' => 'boolean',
         'require_email_verification' => 'boolean',
+        'wapi_body_variables' => 'array',
         'extra' => 'array',
     ];
 
@@ -51,6 +56,17 @@ class GroupRegistrationSetting extends Model
     public function whatsappTemplate(): BelongsTo
     {
         return $this->belongsTo(WhatsAppMessageTemplate::class, 'whatsapp_template_id');
+    }
+
+    public function wapiTemplate(): BelongsTo
+    {
+        return $this->belongsTo(WapiTemplate::class, 'wapi_template_id');
+    }
+
+    public function usesFlaxxaTemplate(): bool
+    {
+        return ($this->whatsapp_delivery_mode ?? 'evolution_text') === 'flaxxa_template'
+            && ! empty($this->wapi_template_id);
     }
 
     // Helper Methods

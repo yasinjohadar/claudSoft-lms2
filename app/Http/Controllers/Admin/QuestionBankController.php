@@ -23,6 +23,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class QuestionBankController extends Controller
 {
+    private const PER_PAGE_OPTIONS = [20, 50, 100, 150];
+
     /**
      * Display a listing of questions.
      */
@@ -66,7 +68,8 @@ class QuestionBankController extends Controller
             });
         }
 
-        $questions = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $questions = $query->paginate($perPage)->withQueryString();
         $courses = Course::where('is_published', true)->get();
         $questionTypes = QuestionType::where('is_active', true)->get();
         $programmingLanguages = ProgrammingLanguage::active()->orderBy('sort_order')->get();
@@ -77,6 +80,8 @@ class QuestionBankController extends Controller
             'types' => $questionTypes->count(),
             'courses' => $courses->count(),
         ];
+
+        $bankTotalCount = QuestionBank::count();
 
         if ($request->ajax()) {
             return response()->json([
@@ -91,8 +96,17 @@ class QuestionBankController extends Controller
             'courses',
             'questionTypes',
             'programmingLanguages',
-            'stats'
+            'stats',
+            'bankTotalCount',
+            'perPage'
         ));
+    }
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = (int) $request->input('per_page', 20);
+
+        return in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 20;
     }
 
     /**
@@ -449,6 +463,43 @@ class QuestionBankController extends Controller
                 ], 500);
             }
             return back()->withErrors(['error' => 'حدث خطأ أثناء حذف السؤال: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove all questions from the question bank.
+     */
+    public function destroyAll(Request $request)
+    {
+        $request->validate([
+            'confirmation' => 'required|in:حذف الكل',
+        ], [
+            'confirmation.in' => 'اكتب «حذف الكل» للتأكيد.',
+        ]);
+
+        try {
+            $deletedCount = QuestionBank::count();
+
+            if ($deletedCount === 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'بنك الأسئلة فارغ بالفعل.',
+                    'deleted_count' => 0,
+                ]);
+            }
+
+            QuestionBank::query()->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "تم حذف {$deletedCount} سؤال من بنك الأسئلة.",
+                'deleted_count' => $deletedCount,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حذف الأسئلة: '.$e->getMessage(),
+            ], 500);
         }
     }
 

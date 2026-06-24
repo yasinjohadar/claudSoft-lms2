@@ -344,10 +344,18 @@ Route::prefix('admin')
         // Quiz Questions Management
         Route::get('quizzes/{id}/manage-questions', [\App\Http\Controllers\Admin\QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');
         Route::get('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
+        Route::post('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestionsBulk'])->name('quizzes.import-questions.bulk');
         Route::post('quizzes/{id}/add-question', [\App\Http\Controllers\Admin\QuizController::class, 'addQuestion'])->name('quizzes.add-question');
         Route::delete('quizzes/{id}/remove-question/{questionId}', [\App\Http\Controllers\Admin\QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
         Route::post('quizzes/{id}/remove-multiple-questions', [\App\Http\Controllers\Admin\QuizController::class, 'removeMultipleQuestions'])->name('quizzes.remove-multiple-questions');
         Route::post('quizzes/{id}/reorder-questions', [\App\Http\Controllers\Admin\QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
+
+        // Quiz preview (admin test-taking — separate from student routes)
+        Route::post('quizzes/{id}/preview/start', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'start'])->name('quizzes.preview.start');
+        Route::get('quizzes/preview/{attemptId}/take', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'take'])->name('quizzes.preview.take');
+        Route::post('quizzes/preview/{attemptId}/save-answer', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'saveAnswer'])->name('quizzes.preview.save-answer');
+        Route::post('quizzes/preview/{attemptId}/submit', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'submit'])->name('quizzes.preview.submit');
+        Route::get('quizzes/preview/{attemptId}/review', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'review'])->name('quizzes.preview.review');
 
         // Question Bank Management
         Route::get('question-bank/create/{type}', [\App\Http\Controllers\Admin\QuestionBankController::class, 'createByType'])->name('question-bank.create.type');
@@ -358,6 +366,7 @@ Route::prefix('admin')
         Route::get('question-bank/type/{typeId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByType'])->name('question-bank.by-type');
         Route::post('question-bank/bulk-action', [\App\Http\Controllers\Admin\QuestionBankController::class, 'bulkAction'])->name('question-bank.bulk-action');
         Route::post('question-bank/delete-multiple', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyMultiple'])->name('question-bank.delete-multiple');
+        Route::post('question-bank/delete-all', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyAll'])->name('question-bank.delete-all');
 
         // Excel Import/Export
         Route::get('question-bank/import/excel', [\App\Http\Controllers\Admin\QuestionBankController::class, 'showImportForm'])->name('question-bank.import.excel');

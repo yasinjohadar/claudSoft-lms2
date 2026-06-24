@@ -19,6 +19,7 @@ class QuizGradingController extends Controller
     public function index(Request $request)
     {
         $query = QuizAttempt::with(['quiz', 'student'])
+            ->realAttempts()
             ->where('status', 'submitted')
             ->orderBy('submitted_at', 'desc');
 
@@ -49,13 +50,13 @@ class QuizGradingController extends Controller
 
         // Statistics
         $stats = [
-            'pending_grading' => QuizAttempt::where('status', 'submitted')
+            'pending_grading' => QuizAttempt::realAttempts()->where('status', 'submitted')
                 ->where('grade_status', 'not_graded')
                 ->count(),
-            'partially_graded' => QuizAttempt::where('status', 'submitted')
+            'partially_graded' => QuizAttempt::realAttempts()->where('status', 'submitted')
                 ->where('grade_status', 'partially_graded')
                 ->count(),
-            'fully_graded' => QuizAttempt::where('status', 'graded')
+            'fully_graded' => QuizAttempt::realAttempts()->where('status', 'graded')
                 ->whereDate('graded_at', today())
                 ->count(),
         ];
@@ -74,6 +75,11 @@ class QuizGradingController extends Controller
             'responses.question.questionType',
             'responses.question.options'
         ])->findOrFail($attemptId);
+
+        if ($attempt->isPreview()) {
+            return redirect()->route('quizzes.preview.review', $attempt->id)
+                ->with('info', 'محاولات المعاينة تُراجع من صفحة تجربة الاختبار وليس من التصحيح');
+        }
 
         // Check if attempt is submitted
         if ($attempt->status !== 'submitted' && $attempt->status !== 'graded') {
@@ -592,15 +598,18 @@ class QuizGradingController extends Controller
         $quiz = Quiz::findOrFail($quizId);
 
         $stats = [
-            'total_attempts' => $quiz->attempts()->count(),
+            'total_attempts' => $quiz->attempts()->realAttempts()->count(),
             'pending_grading' => $quiz->attempts()
+                ->realAttempts()
                 ->where('status', 'submitted')
                 ->where('grade_status', '!=', 'fully_graded')
                 ->count(),
             'graded' => $quiz->attempts()
+                ->realAttempts()
                 ->where('status', 'graded')
                 ->count(),
             'average_score' => $quiz->attempts()
+                ->realAttempts()
                 ->where('status', 'graded')
                 ->avg('percentage_score'),
             'pass_rate' => $this->calculatePassRate($quiz),
@@ -622,6 +631,7 @@ class QuizGradingController extends Controller
         ]);
 
         $query = QuizAttempt::with(['quiz', 'student', 'grader'])
+            ->realAttempts()
             ->where('status', 'graded');
 
         if (isset($validated['quiz_id'])) {
@@ -680,6 +690,7 @@ class QuizGradingController extends Controller
     private function calculatePassRate(Quiz $quiz): float
     {
         $totalGraded = $quiz->attempts()
+            ->realAttempts()
             ->where('status', 'graded')
             ->count();
 
@@ -688,6 +699,7 @@ class QuizGradingController extends Controller
         }
 
         $passed = $quiz->attempts()
+            ->realAttempts()
             ->where('status', 'graded')
             ->where('passed', true)
             ->count();
@@ -701,6 +713,7 @@ class QuizGradingController extends Controller
     private function calculateAverageGradingTime(Quiz $quiz): ?int
     {
         $attempts = $quiz->attempts()
+            ->realAttempts()
             ->where('status', 'graded')
             ->whereNotNull('submitted_at')
             ->whereNotNull('graded_at')

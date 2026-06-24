@@ -110,9 +110,9 @@
                                 <button type="button" class="btn btn-success-light btn-sm" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
                                     <i class="fe fe-plus me-1"></i>سؤال جديد
                                 </button>
-                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
+                                <a href="{{ route('quizzes.import-questions', $quiz->id) }}" class="btn btn-primary btn-sm">
                                     <i class="fe fe-download me-1"></i>استيراد من بنك الأسئلة
-                                </button>
+                                </a>
                             </div>
                         </div>
                         <div class="card-body pt-3">
@@ -184,9 +184,9 @@
                                 <div class="text-center py-5">
                                     <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-help-circle"></i></span>
                                     <p class="text-muted mb-3">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p>
-                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importQuestionModal">
+                                    <a href="{{ route('quizzes.import-questions', $quiz->id) }}" class="btn btn-primary btn-sm">
                                         <i class="fe fe-download me-1"></i>استيراد سؤال من بنك الأسئلة
-                                    </button>
+                                    </a>
                                 </div>
                             @endif
                         </div>
@@ -194,114 +194,6 @@
                 </div>
             </div>
 
-        </div>
-    </div>
-
-    <!-- Import Question Modal -->
-    <div class="modal fade" id="importQuestionModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title">استيراد أسئلة من بنك الأسئلة</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Filters -->
-                    <div class="row mb-3 g-2">
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">البحث</label>
-                            <input type="text" id="search-questions" class="form-control" placeholder="ابحث في الأسئلة...">
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">نوع السؤال</label>
-                            <select id="filter-question-type" class="form-select">
-                                <option value="">جميع الأنواع</option>
-                                @foreach($questionTypes as $type)
-                                    <option value="{{ $type->id }}">{{ $type->display_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">الكورس</label>
-                            <select id="filter-course" class="form-select">
-                                <option value="">جميع الكورسات</option>
-                                @foreach($courses as $course)
-                                    <option value="{{ $course->id }}" {{ $quiz->course_id == $course->id ? 'selected' : '' }}>
-                                        {{ $course->title }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">الدرس</label>
-                            <select id="filter-lesson" class="form-select">
-                                <option value="">جميع الدروس</option>
-                                @foreach($bankLessonNames as $lessonName)
-                                    <option value="{{ $lessonName }}">{{ $lessonName }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table text-nowrap table-hover">
-                            <thead class="sticky-top bg-light">
-                                <tr>
-                                    <th width="50">
-                                        <input type="checkbox" id="select-all-questions">
-                                    </th>
-                                    <th>السؤال</th>
-                                    <th>النوع</th>
-                                    <th>الكورس</th>
-                                    <th>اسم الدرس</th>
-                                    <th width="100">الدرجة الافتراضية</th>
-                                </tr>
-                            </thead>
-                            <tbody id="available-questions-list">
-                                @forelse($availableQuestions as $question)
-                                    @php
-                                        $importLessonLabel = $question->lesson_name ?? ($question->metadata['lesson_name'] ?? null);
-                                    @endphp
-                                    <tr class="question-row" 
-                                        data-question-id="{{ $question->id }}"
-                                        data-question-type="{{ $question->question_type_id }}"
-                                        data-course-id="{{ $question->course_id ?? '' }}"
-                                        data-lesson-name="{{ $importLessonLabel !== null && trim((string) $importLessonLabel) !== '' ? trim((string) $importLessonLabel) : '' }}"
-                                        data-question-text="{{ strip_tags($question->question_text) }}">
-                                        <td>
-                                            <input type="checkbox" 
-                                                   class="question-checkbox" 
-                                                   value="{{ $question->id }}"
-                                                   data-grade="{{ $question->default_grade }}">
-                                        </td>
-                                        <td>{!! Str::limit(strip_tags($question->question_text), 80) !!}</td>
-                                        <td><span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span></td>
-                                        <td>{{ $question->course->title ?? 'عام' }}</td>
-                                        <td>
-                                            @if($importLessonLabel !== null && trim((string) $importLessonLabel) !== '')
-                                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ $importLessonLabel }}">{{ $importLessonLabel }}</span>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $question->default_grade }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">لا توجد أسئلة متاحة للاستيراد</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" id="import-selected-questions">
-                        <i class="fas fa-download me-1"></i>استيراد الأسئلة المحددة
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -493,11 +385,6 @@ $(document).ready(function() {
         });
     }
 
-    // Select all questions in import modal
-    $('#select-all-questions').on('change', function() {
-        $('.question-checkbox').prop('checked', $(this).prop('checked'));
-    });
-
     // Select all questions in table
     $('#select-all-questions-table').on('change', function() {
         $('.question-row-checkbox').prop('checked', $(this).prop('checked'));
@@ -524,123 +411,7 @@ $(document).ready(function() {
         updateDeleteButtonState();
     });
 
-    // Filter questions (import modal rows only)
-    function filterQuestions() {
-        const searchText = $('#search-questions').val().toLowerCase();
-        const questionType = $('#filter-question-type').val();
-        const courseId = $('#filter-course').val();
-        const lessonName = ($('#filter-lesson').val() || '').toString();
-
-        $('#available-questions-list .question-row').each(function() {
-            const $row = $(this);
-            const questionText = ($row.data('question-text') || '').toString().toLowerCase();
-            const rowQuestionType = $row.data('question-type');
-            const rowCourseId = $row.data('course-id') || '';
-            const rowLessonName = ($row.attr('data-lesson-name') || '').toString();
-
-            const matchesSearch = !searchText || questionText.includes(searchText);
-            const matchesType = !questionType || rowQuestionType == questionType;
-            const matchesCourse = !courseId || rowCourseId == courseId;
-            const matchesLesson = !lessonName || rowLessonName === lessonName;
-
-            if (matchesSearch && matchesType && matchesCourse && matchesLesson) {
-                $row.show();
-            } else {
-                $row.hide();
-            }
-        });
-    }
-
-    $('#search-questions, #filter-question-type, #filter-course, #filter-lesson').on('input change', filterQuestions);
-
-    // Import selected questions
-    $('#import-selected-questions').on('click', function() {
-        const selectedQuestions = [];
-        $('.question-checkbox:checked').each(function() {
-            selectedQuestions.push({
-                id: $(this).val(),
-                grade: $(this).data('grade') || 1.0
-            });
-        });
-
-        if (selectedQuestions.length === 0) {
-            toastr.warning('يرجى اختيار سؤال واحد على الأقل');
-            return;
-        }
-
-        const btn = $(this);
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري الاستيراد...');
-
-        let imported = 0;
-        let failed = 0;
-        const total = selectedQuestions.length;
-
-        function importNext(index) {
-            if (index >= selectedQuestions.length) {
-                btn.prop('disabled', false).html('<i class="fas fa-download me-1"></i>استيراد الأسئلة المحددة');
-                if (imported > 0) {
-                    const message = failed > 0 
-                        ? `تم استيراد ${imported} من ${total} سؤال بنجاح. فشل استيراد ${failed} سؤال (قد تكون موجودة مسبقاً)`
-                        : `تم استيراد ${imported} من ${total} سؤال بنجاح`;
-                    toastr.success(message);
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    toastr.error('فشل استيراد جميع الأسئلة. قد تكون جميع الأسئلة موجودة مسبقاً في الاختبار');
-                }
-                return;
-            }
-
-            const question = selectedQuestions[index];
-            console.log(`Importing question ${index + 1}/${total}: ID=${question.id}, Grade=${question.grade}`);
-            
-            $.ajax({
-                url: '{{ route('quizzes.add-question', $quiz->id) }}',
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    question_id: question.id,
-                    question_grade: question.grade
-                },
-                success: function(response) {
-                    console.log(`Question ${question.id} response:`, response);
-                    if (response.success) {
-                        imported++;
-                        console.log(`✓ Question ${question.id} imported successfully`);
-                    } else {
-                        failed++;
-                        console.warn(`✗ Question ${question.id} failed:`, response.message);
-                        // Log warning for duplicate questions
-                        if (response.message && response.message.includes('موجود')) {
-                            console.warn('Question already exists:', question.id, response.message);
-                        } else {
-                            console.error('Error importing question:', question.id, response.message);
-                        }
-                    }
-                    importNext(index + 1);
-                },
-                error: function(xhr) {
-                    failed++;
-                    const errorMessage = xhr.responseJSON?.message || xhr.statusText || 'حدث خطأ غير معروف';
-                    console.error(`✗ Question ${question.id} error:`, {
-                        status: xhr.status,
-                        message: errorMessage,
-                        response: xhr.responseJSON
-                    });
-                    // Log warning for duplicate questions (400 status)
-                    if (xhr.status === 400 && errorMessage.includes('موجود')) {
-                        console.warn('Question already exists:', question.id, errorMessage);
-                    } else {
-                        console.error('Error importing question:', question.id, xhr.responseJSON || errorMessage);
-                    }
-                    importNext(index + 1);
-                }
-            });
-        }
-
-        importNext(0);
-    });
-
-    // Remove question - Single delete
+    // Update delete button when individual checkbox changes
     let currentDeleteQuestionId = null;
     let currentDeleteQuestionRow = null;
 
@@ -708,7 +479,7 @@ $(document).ready(function() {
                         
                         // Update card title if no questions left
                         if (remainingCount === 0) {
-                            $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#importQuestionModal"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</button></td></tr>');
+                            $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><a href="{{ route('quizzes.import-questions', $quiz->id) }}" class="btn btn-primary mt-2"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</a></td></tr>');
                         }
                     });
                 }
@@ -852,7 +623,7 @@ $(document).ready(function() {
                                     
                                     // Update card title if no questions left
                                     if (remainingCount === 0) {
-                                        $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#importQuestionModal"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</button></td></tr>');
+                                        $('#questions-sortable').html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-question-circle fa-3x text-muted mb-3"></i><p class="text-muted">لا توجد أسئلة مرتبطة بهذا الاختبار بعد</p><a href="{{ route('quizzes.import-questions', $quiz->id) }}" class="btn btn-primary mt-2"><i class="fas fa-plus me-1"></i>استيراد سؤال من بنك الأسئلة</a></td></tr>');
                                     }
                                     
                                     // Reset checkboxes

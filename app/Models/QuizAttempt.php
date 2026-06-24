@@ -44,6 +44,7 @@ class QuizAttempt extends Model
         'user_agent',
         'completed_at',
         'is_completed',
+        'is_preview',
     ];
 
     /**
@@ -65,6 +66,7 @@ class QuizAttempt extends Model
         'graded_at' => 'datetime',
         'completed_at' => 'datetime',
         'is_completed' => 'boolean',
+        'is_preview' => 'boolean',
     ];
 
     /**
@@ -170,6 +172,29 @@ class QuizAttempt extends Model
     public function scopeByQuiz($query, $quizId)
     {
         return $query->where('quiz_id', $quizId);
+    }
+
+    /**
+     * Scope a query to exclude admin preview attempts.
+     */
+    public function scopeRealAttempts($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_preview', false)->orWhereNull('is_preview');
+        });
+    }
+
+    /**
+     * Scope a query to only include admin preview attempts.
+     */
+    public function scopePreview($query)
+    {
+        return $query->where('is_preview', true);
+    }
+
+    public function isPreview(): bool
+    {
+        return (bool) $this->is_preview;
     }
 
     /**

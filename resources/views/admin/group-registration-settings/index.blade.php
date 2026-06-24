@@ -217,8 +217,29 @@
                                 </div>
 
                                 <div id="whatsappFieldsWrap">
+                                    @php
+                                        $deliveryMode = old('whatsapp_delivery_mode', $settings->whatsapp_delivery_mode ?? 'evolution_text');
+                                        $defaultBodyVars = implode("\n", old('wapi_body_variables_text', $settings->wapi_body_variables ?? ['{student_name}', '{group_name}']));
+                                    @endphp
+
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold">قالب واتساب</label>
+                                        <label class="form-label fw-semibold">طريقة إرسال واتساب</label>
+                                        <select name="whatsapp_delivery_mode" id="whatsapp_delivery_mode" class="form-select">
+                                            <option value="evolution_text" @selected($deliveryMode === 'evolution_text')>
+                                                نص حر — Evolution / WhatsApp Web (قوالب الرسائل)
+                                            </option>
+                                            <option value="flaxxa_template" @selected($deliveryMode === 'flaxxa_template')>
+                                                Flaxxa — قالب Meta معتمد
+                                            </option>
+                                        </select>
+                                        <p class="admin-group-form-hint mb-0 mt-2">
+                                            قوالب Meta تُرسل عبر Flaxxa WAPI (خارج نافذة 24 ساعة). مسار النص الحر يستخدم المزود من
+                                            <a href="{{ route('admin.whatsapp-settings.index') }}" target="_blank" rel="noopener">إعدادات WhatsApp</a>.
+                                        </p>
+                                    </div>
+
+                                    <div class="mb-3" id="evolutionTemplateWrap">
+                                        <label class="form-label fw-semibold">قالب واتساب (نص)</label>
                                         <select name="whatsapp_template_id" class="form-select @error('whatsapp_template_id') is-invalid @enderror">
                                             <option value="">استخدام القالب الافتراضي</option>
                                             @foreach($whatsappTemplates as $template)
@@ -235,6 +256,40 @@
                                             <a href="{{ route('admin.whatsapp-templates.index') }}" target="_blank" rel="noopener">قوالب الرسائل</a>.
                                             المتغيرات: @verbatim<code>{{student_name}}</code>، <code>{{group_name}}</code>، <code>{{email}}</code>@endverbatim
                                         </p>
+                                    </div>
+
+                                    <div class="mb-3" id="flaxxaTemplateWrap">
+                                        <label class="form-label fw-semibold">قالب Flaxxa (Meta)</label>
+                                        <select name="wapi_template_id" id="wapi_template_id" class="form-select @error('wapi_template_id') is-invalid @enderror">
+                                            <option value="">— اختر قالب —</option>
+                                            @foreach($wapiTemplates as $tpl)
+                                                <option value="{{ $tpl->id }}" @selected(old('wapi_template_id', $settings->wapi_template_id) == $tpl->id)>
+                                                    {{ $tpl->name }} ({{ $tpl->language }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('wapi_template_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <p class="admin-group-form-hint mb-0 mt-2">
+                                            مزامنة القوالب من
+                                            <a href="{{ route('admin.flaxxa-wapi.templates.index') }}" target="_blank" rel="noopener">قوالب Flaxxa</a>.
+                                            يتطلب توكن Flaxxa في
+                                            <a href="{{ route('admin.flaxxa-wapi.settings.index') }}" target="_blank" rel="noopener">إعدادات Flaxxa</a>.
+                                        </p>
+                                    </div>
+
+                                    <div class="mb-3" id="flaxxaVarsWrap">
+                                        <label class="form-label fw-semibold">متغيرات قالب Meta (سطر لكل @verbatim{{1}}@endverbatim، @verbatim{{2}}@endverbatim…)</label>
+                                        <textarea name="wapi_body_variables_text" id="wapi_body_variables_text" class="form-control font-monospace" rows="4" placeholder="{student_name}&#10;{group_name}">{{ $defaultBodyVars }}</textarea>
+                                        <p class="admin-group-form-hint mb-0 mt-2">
+                                            المتغيرات المتاحة: @verbatim<code>{student_name}</code>، <code>{group_name}</code>، <code>{email}</code>، <code>{registration_id}</code>@endverbatim
+                                        </p>
+                                    </div>
+
+                                    <div class="mb-3" id="flaxxaLangWrap">
+                                        <label class="form-label fw-semibold">لغة القالب</label>
+                                        <input type="text" name="wapi_template_language" class="form-control" value="{{ old('wapi_template_language', $settings->wapi_template_language ?? 'ar') }}" placeholder="ar">
                                     </div>
 
                                     <div class="mb-0">
@@ -340,6 +395,28 @@
                 syncVisibility(whatsappToggle, whatsappWrap);
             });
             syncVisibility(whatsappToggle, whatsappWrap);
+        }
+
+        var deliveryMode = document.getElementById('whatsapp_delivery_mode');
+        var evolutionWrap = document.getElementById('evolutionTemplateWrap');
+        var flaxxaWrap = document.getElementById('flaxxaTemplateWrap');
+        var flaxxaVarsWrap = document.getElementById('flaxxaVarsWrap');
+        var flaxxaLangWrap = document.getElementById('flaxxaLangWrap');
+
+        function syncDeliveryMode() {
+            if (!deliveryMode) {
+                return;
+            }
+            var isFlaxxa = deliveryMode.value === 'flaxxa_template';
+            if (evolutionWrap) evolutionWrap.style.display = isFlaxxa ? 'none' : '';
+            if (flaxxaWrap) flaxxaWrap.style.display = isFlaxxa ? '' : 'none';
+            if (flaxxaVarsWrap) flaxxaVarsWrap.style.display = isFlaxxa ? '' : 'none';
+            if (flaxxaLangWrap) flaxxaLangWrap.style.display = isFlaxxa ? '' : 'none';
+        }
+
+        if (deliveryMode) {
+            deliveryMode.addEventListener('change', syncDeliveryMode);
+            syncDeliveryMode();
         }
     });
 </script>

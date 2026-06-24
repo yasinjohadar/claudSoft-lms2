@@ -44,6 +44,13 @@
                                 <span class="group-show-action__icon"><i class="fe fe-list"></i></span>
                                 <span class="group-show-action__text">إدارة الأسئلة</span>
                             </a>
+                            <form method="POST" action="{{ route('quizzes.preview.start', $quiz->id) }}" class="d-inline">
+                                @csrf
+                                <button type="submit" class="group-show-action group-show-action--warning border-0">
+                                    <span class="group-show-action__icon"><i class="fe fe-play-circle"></i></span>
+                                    <span class="group-show-action__text">تجربة الاختبار</span>
+                                </button>
+                            </form>
                             <a href="{{ route('quizzes.edit', $quiz->id) }}" class="group-show-action group-show-action--primary">
                                 <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                                 <span class="group-show-action__text">تعديل</span>

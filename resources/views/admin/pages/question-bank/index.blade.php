@@ -185,6 +185,16 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="qbPerPage">عدد السجلات في الصفحة</label>
+                                <select name="per_page" id="qbPerPage" class="form-select">
+                                    @foreach([20, 50, 100, 150] as $size)
+                                        <option value="{{ $size }}" @selected((int) ($perPage ?? request('per_page', 20)) === $size)>
+                                            {{ $size }} سجل
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-xl-12">
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <button type="submit" class="btn btn-primary btn-sm">
@@ -207,9 +217,21 @@
                         قائمة الأسئلة
                         <span class="group-show-members-card__count" id="questions-count">{{ $questions->total() }}</span>
                     </h6>
-                    <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions-btn" disabled>
-                        <i class="fe fe-trash-2 me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)
-                    </button>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <label class="form-label mb-0 text-muted small" for="qbPerPageHeader">عرض</label>
+                        <select id="qbPerPageHeader" class="form-select form-select-sm" style="width: auto; min-width: 110px;">
+                            @foreach([20, 50, 100, 150] as $size)
+                                <option value="{{ $size }}" @selected((int) ($perPage ?? request('per_page', 20)) === $size)>{{ $size }}</option>
+                            @endforeach
+                        </select>
+                        <span class="text-muted small">سجل</span>
+                        <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions-btn" disabled>
+                            <i class="fe fe-trash-2 me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="delete-all-questions-btn" @disabled(($bankTotalCount ?? 0) === 0)>
+                            <i class="fe fe-alert-triangle me-1"></i>حذف الكل ({{ $bankTotalCount ?? 0 }})
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body pt-3" id="questionBankTableContainer">
                     @include('admin.pages.question-bank._questions_table', ['questions' => $questions])
@@ -240,6 +262,35 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteQuestion">
                         <i class="fe fe-trash-2 me-1"></i>حذف
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete All Questions Modal -->
+    <div class="modal fade" id="deleteAllQuestionsModal" tabindex="-1" aria-labelledby="deleteAllQuestionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title text-danger" id="deleteAllQuestionsModalLabel">
+                        <i class="fe fe-alert-triangle me-2"></i>حذف جميع أسئلة بنك الأسئلة
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger mb-3">
+                        <strong>تحذير:</strong> سيتم حذف <strong>{{ $bankTotalCount ?? 0 }}</strong> سؤال من بنك الأسئلة بالكامل. لا يمكن التراجع عن هذا الإجراء بسهولة.
+                    </div>
+                    <p class="mb-2 text-muted small">للتأكيد، اكتب العبارة التالية في الحقل:</p>
+                    <p class="mb-2"><code>حذف الكل</code></p>
+                    <input type="text" class="form-control" id="deleteAllQuestionsConfirmation" placeholder="حذف الكل" autocomplete="off">
+                    <div class="invalid-feedback d-block" id="deleteAllQuestionsConfirmationError" style="display: none;"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteAllQuestions" disabled>
+                        <i class="fe fe-trash-2 me-1"></i>حذف جميع الأسئلة
                     </button>
                 </div>
             </div>
@@ -345,6 +396,8 @@
         const searchInput = document.getElementById('qbSearch');
         const feedback = document.getElementById('qbSearchFeedback');
         const resetBtn = document.getElementById('qbResetBtn');
+        const perPageHeader = document.getElementById('qbPerPageHeader');
+        const perPageFilter = document.getElementById('qbPerPage');
 
         if (!form || !tableContainer) {
             return;
@@ -440,6 +493,16 @@
 
         const debouncedSearch = debounce(triggerSearch, 350);
 
+        if (perPageHeader && perPageFilter) {
+            perPageHeader.addEventListener('change', function() {
+                perPageFilter.value = perPageHeader.value;
+                triggerSearch();
+            });
+            perPageFilter.addEventListener('change', function() {
+                perPageHeader.value = perPageFilter.value;
+            });
+        }
+
         if (searchInput) {
             searchInput.addEventListener('input', debouncedSearch);
         }
@@ -452,6 +515,8 @@
             resetBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 form.reset();
+                if (perPageHeader) perPageHeader.value = '20';
+                if (perPageFilter) perPageFilter.value = '20';
                 if (feedback) {
                     feedback.textContent = '';
                 }
@@ -662,6 +727,106 @@
                         }
                         btn.prop('disabled', false);
                         toggleBulkDeleteButton();
+                    }
+                });
+            });
+        }
+
+        const deleteAllBtn = document.getElementById('delete-all-questions-btn');
+        const deleteAllModal = document.getElementById('deleteAllQuestionsModal');
+        const deleteAllConfirmation = document.getElementById('deleteAllQuestionsConfirmation');
+        const confirmDeleteAllBtn = document.getElementById('confirmDeleteAllQuestions');
+        const deleteAllConfirmationError = document.getElementById('deleteAllQuestionsConfirmationError');
+        const requiredConfirmationText = 'حذف الكل';
+
+        function syncDeleteAllConfirmation() {
+            if (!confirmDeleteAllBtn || !deleteAllConfirmation) {
+                return;
+            }
+            const isValid = deleteAllConfirmation.value.trim() === requiredConfirmationText;
+            confirmDeleteAllBtn.disabled = !isValid;
+            if (deleteAllConfirmationError) {
+                deleteAllConfirmationError.style.display = 'none';
+            }
+        }
+
+        if (deleteAllBtn && deleteAllModal) {
+            $(deleteAllBtn).off('click').on('click', function() {
+                if (deleteAllConfirmation) {
+                    deleteAllConfirmation.value = '';
+                }
+                syncDeleteAllConfirmation();
+                bootstrap.Modal.getOrCreateInstance(deleteAllModal).show();
+            });
+        }
+
+        if (deleteAllModal) {
+            $(deleteAllModal).on('hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                if (deleteAllConfirmation) {
+                    deleteAllConfirmation.value = '';
+                }
+                syncDeleteAllConfirmation();
+            });
+        }
+
+        if (deleteAllConfirmation) {
+            $(deleteAllConfirmation).off('input').on('input', syncDeleteAllConfirmation);
+        }
+
+        if (confirmDeleteAllBtn) {
+            $(confirmDeleteAllBtn).off('click').on('click', function() {
+                if (!deleteAllConfirmation || deleteAllConfirmation.value.trim() !== requiredConfirmationText) {
+                    if (deleteAllConfirmationError) {
+                        deleteAllConfirmationError.textContent = 'اكتب «حذف الكل» للتأكيد.';
+                        deleteAllConfirmationError.style.display = 'block';
+                    }
+                    return;
+                }
+
+                const modal = bootstrap.Modal.getInstance(deleteAllModal);
+                if (modal) {
+                    modal.hide();
+                }
+
+                const btn = $('#delete-all-questions-btn');
+                btn.prop('disabled', true).html('<i class="fe fe-loader me-1"></i>جاري الحذف...');
+
+                $.ajax({
+                    url: '{{ route('question-bank.delete-all') }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        confirmation: deleteAllConfirmation.value.trim()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.success(response.message || 'تم حذف جميع الأسئلة');
+                            }
+                            $('#questionBankTableContainer').html(
+                                '<div class="text-center text-muted py-5">لا توجد أسئلة في بنك الأسئلة.</div>'
+                            );
+                            $('#questions-count').text('0');
+                            $('#delete-selected-questions-btn').prop('disabled', true);
+                            btn.html('<i class="fe fe-alert-triangle me-1"></i>حذف الكل (0)');
+                            if (typeof window.initQuestionBankCountup === 'function') {
+                                const statsContainer = document.getElementById('questionBankStatsContainer');
+                                if (statsContainer) {
+                                    statsContainer.querySelectorAll('[data-countup]').forEach(function(el) {
+                                        el.dataset.countup = '0';
+                                    });
+                                    window.initQuestionBankCountup(statsContainer);
+                                }
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error(xhr.responseJSON?.message || 'حدث خطأ أثناء حذف الأسئلة');
+                        }
+                        btn.prop('disabled', false).html('<i class="fe fe-alert-triangle me-1"></i>حذف الكل ({{ $bankTotalCount ?? 0 }})');
                     }
                 });
             });

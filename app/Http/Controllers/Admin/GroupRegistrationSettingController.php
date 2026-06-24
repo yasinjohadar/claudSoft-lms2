@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseGroup;
 use App\Models\GroupRegistrationSetting;
 use App\Models\EmailTemplate;
+use App\Models\WapiTemplate;
 use App\Models\WhatsAppMessageTemplate;
 use Illuminate\Http\Request;
 
@@ -34,7 +35,9 @@ class GroupRegistrationSettingController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.group-registration-settings.index', compact('group', 'settings', 'emailTemplates', 'whatsappTemplates'));
+        $wapiTemplates = WapiTemplate::query()->orderBy('name')->get(['id', 'name', 'language']);
+
+        return view('admin.group-registration-settings.index', compact('group', 'settings', 'emailTemplates', 'whatsappTemplates', 'wapiTemplates'));
     }
 
     /**
@@ -69,11 +72,33 @@ class GroupRegistrationSettingController extends Controller
             'auto_approve_membership' => 'boolean',
             'send_welcome_email' => 'boolean',
             'send_welcome_whatsapp' => 'boolean',
+            'whatsapp_delivery_mode' => 'nullable|in:evolution_text,flaxxa_template',
             'email_template_id' => 'nullable|exists:email_templates,id',
             'whatsapp_template_id' => 'nullable|exists:whatsapp_message_templates,id',
+            'wapi_template_id' => 'nullable|exists:wapi_templates,id',
+            'wapi_template_language' => 'nullable|string|max:16',
+            'wapi_body_variables_text' => 'nullable|string|max:5000',
             'whatsapp_group_link' => 'nullable|url|max:500',
             'require_email_verification' => 'boolean',
         ]);
+
+        $bodyVariables = null;
+        if ($request->filled('wapi_body_variables_text')) {
+            $bodyVariables = array_values(array_filter(
+                array_map('trim', preg_split('/\r\n|\r|\n/', (string) $request->input('wapi_body_variables_text')) ?: []),
+                fn ($line) => $line !== ''
+            ));
+        }
+
+        $validated['whatsapp_delivery_mode'] = $validated['whatsapp_delivery_mode'] ?? 'evolution_text';
+        $validated['wapi_body_variables'] = $bodyVariables;
+        unset($validated['wapi_body_variables_text']);
+
+        if ($validated['whatsapp_delivery_mode'] === 'flaxxa_template' && empty($validated['wapi_template_id'])) {
+            return back()->withInput()->withErrors([
+                'wapi_template_id' => 'اختر قالب Flaxxa (Meta) عند تفعيل هذا الخيار.',
+            ]);
+        }
 
         $settings = GroupRegistrationSetting::updateOrCreate(
             ['group_id' => $group->id],

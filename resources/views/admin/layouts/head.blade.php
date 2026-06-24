@@ -38,6 +38,8 @@
 
 @yield('styles')
 @yield('css')
+@stack('styles')
+@stack('head-scripts')
 
 <!-- Toastr CSS (after theme styles to prevent override) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
