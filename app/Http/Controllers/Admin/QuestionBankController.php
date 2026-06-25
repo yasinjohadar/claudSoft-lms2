@@ -567,16 +567,20 @@ class QuestionBankController extends Controller
     }
 
     /**
-     * Get question preview (AJAX).
+     * Get question preview (HTML page or AJAX JSON).
      */
     public function preview($id)
     {
-        $question = QuestionBank::with(['questionType', 'options'])->findOrFail($id);
+        $question = QuestionBank::with(['questionType', 'options', 'course'])->findOrFail($id);
 
-        return response()->json([
-            'question' => $question,
-            'html' => view('admin.pages.question-bank.partials.preview', compact('question'))->render()
-        ]);
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'question' => $question,
+                'html' => view('admin.pages.question-bank.partials.preview', compact('question'))->render(),
+            ]);
+        }
+
+        return view('admin.pages.question-bank.preview', compact('question'));
     }
 
     /**

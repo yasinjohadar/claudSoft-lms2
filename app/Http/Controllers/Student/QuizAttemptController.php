@@ -559,8 +559,19 @@ class QuizAttemptController extends Controller
                     $response->update([
                         'response_data' => ['answer' => $map],
                     ]);
+                } elseif ($questionType === 'ordering') {
+                    $sequence = is_array($answer) ? array_values($answer) : [];
+                    if ($sequence === [] && is_string($answer)) {
+                        $decoded = json_decode($answer, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $sequence = array_values($decoded);
+                        }
+                    }
+                    $response->update([
+                        'response_data' => ['answer' => $sequence],
+                    ]);
                 } else {
-                    // Complex types (matching, ordering, drag_drop) - save as response_data
+                    // Complex types (matching, drag_drop) - save as response_data
                     $response->update([
                         'response_data' => is_array($answer) ? $answer : ['answer' => $answer],
                     ]);
@@ -676,6 +687,17 @@ class QuizAttemptController extends Controller
                                 $map = is_array($answer) ? $answer : ['0' => $answer];
                                 $response->update([
                                     'response_data' => ['answer' => $map],
+                                ]);
+                            } elseif ($questionType === 'ordering') {
+                                $sequence = is_array($answer) ? array_values($answer) : [];
+                                if ($sequence === [] && is_string($answer)) {
+                                    $decoded = json_decode($answer, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                        $sequence = array_values($decoded);
+                                    }
+                                }
+                                $response->update([
+                                    'response_data' => ['answer' => $sequence],
                                 ]);
                             } else {
                                 $response->update([

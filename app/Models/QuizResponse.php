@@ -662,19 +662,10 @@ class QuizResponse extends Model
             return false;
         }
 
-        // Support both formats: 'sequence' (old) and 'answer' (new from QuestionModule format)
-        $sequence = $this->response_data['answer'] ?? $this->response_data['sequence'] ?? [];
+        $sequence = $this->getOrderingSequenceFromResponseData();
 
-        if (empty($sequence)) {
+        if ($sequence === []) {
             return false;
-        }
-
-        // If sequence is a JSON string, decode it
-        if (is_string($sequence)) {
-            $decoded = json_decode($sequence, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $sequence = $decoded;
-            }
         }
 
         $correctSequence = $this->question->options()
@@ -682,12 +673,79 @@ class QuizResponse extends Model
             ->pluck('id')
             ->toArray();
 
-        // Compare arrays (both should be arrays of IDs)
-        if (!is_array($sequence) || !is_array($correctSequence)) {
+        if (! is_array($correctSequence) || $correctSequence === []) {
             return false;
         }
 
-        return $sequence === $correctSequence;
+        return $this->normalizeOrderingSequence($sequence) === $this->normalizeOrderingSequence($correctSequence);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function getOrderingSequenceFromResponseData(): array
+    {
+        $raw = $this->response_data;
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        $sequence = null;
+
+        if (isset($raw['answer'])) {
+            $sequence = $raw['answer'];
+        } elseif (isset($raw['sequence'])) {
+            $sequence = $raw['sequence'];
+        } elseif ($this->isNumericIndexedList($raw)) {
+            $sequence = $raw;
+        }
+
+        if ($sequence === null) {
+            return [];
+        }
+
+        if (is_string($sequence)) {
+            $decoded = json_decode($sequence, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $sequence = $decoded;
+            } else {
+                return [];
+            }
+        }
+
+        if (! is_array($sequence)) {
+            return [];
+        }
+
+        return $this->normalizeOrderingSequence($sequence);
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $sequence
+     * @return array<int, int>
+     */
+    private function normalizeOrderingSequence(array $sequence): array
+    {
+        return array_values(array_map(static fn ($id) => (int) $id, $sequence));
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $data
+     */
+    private function isNumericIndexedList(array $data): bool
+    {
+        if ($data === []) {
+            return false;
+        }
+
+        $keys = array_keys($data);
+        foreach ($keys as $key) {
+            if (! is_int($key) && ! (is_string($key) && ctype_digit($key))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

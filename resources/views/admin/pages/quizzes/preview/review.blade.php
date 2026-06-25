@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('shared.quizzes.review-assets')
+
 @section('page-title')
     مراجعة تجربة الاختبار
 @stop
@@ -70,14 +72,18 @@
                     </div>
                 </div>
                 <div class="card-body pt-3 quiz-review-questions-section">
+                    @include('shared.quizzes.review-filter-toolbar', ['stats' => $stats])
                     @foreach($orderedResponses as $index => $response)
                         @if($response)
                             @php
                                 $question = $response->question;
                                 $questionNumber = $index + 1;
+                                $reviewStatus = $response->is_correct === true ? 'correct' : ($response->is_correct === false ? 'wrong' : 'pending');
+                                $showCorrectColumn = $attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay']);
                             @endphp
 
-                            <div class="card custom-card question-review-card student-quiz-review-question mb-3">
+                            <div class="card custom-card question-review-card student-quiz-review-question quiz-review-card quiz-review-card--{{ $reviewStatus }} mb-3" data-review-status="{{ $reviewStatus }}" id="review-question-{{ $questionNumber }}">
+                                <div class="quiz-review-card__stripe" aria-hidden="true"></div>
                                 <div class="card-body">
                                 <div class="student-quiz-review-question__header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -85,21 +91,17 @@
                                         <span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span>
                                     </div>
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        @if($response->is_correct)
-                                            <span class="badge bg-success-transparent">
-                                                <i class="fe fe-check-circle me-1"></i>صحيح
-                                            </span>
-                                        @elseif($response->is_correct === false)
-                                            <span class="badge bg-danger-transparent">
-                                                <i class="fe fe-x-circle me-1"></i>خطأ
-                                            </span>
-                                        @else
-                                            <span class="badge bg-warning-transparent">
-                                                <i class="fe fe-clock me-1"></i>قيد التصحيح
-                                            </span>
-                                        @endif
+                                        <span class="quiz-review-status quiz-review-status--{{ $reviewStatus }}">
+                                            @if($reviewStatus === 'correct')
+                                                <i class="fe fe-check-circle"></i>صحيح
+                                            @elseif($reviewStatus === 'wrong')
+                                                <i class="fe fe-x-circle"></i>خطأ
+                                            @else
+                                                <i class="fe fe-clock"></i>قيد التصحيح
+                                            @endif
+                                        </span>
                                         @if($response->score_obtained !== null)
-                                            <span class="badge bg-secondary-transparent">
+                                            <span class="quiz-review-score">
                                                 {{ number_format($response->score_obtained, 1) }} / {{ $response->max_score }}
                                             </span>
                                         @endif
@@ -117,10 +119,10 @@
                                     
                                 </div>
 
-                                <!-- Student Answer -->
-                                <div class="student-quiz-review-block mb-3">
-                                    <p class="student-quiz-review-block__label mb-2">إجابتك</p>
-                                    <div class="quiz-review-answer-box">
+                                <div class="quiz-review-answers-grid {{ $showCorrectColumn ? 'quiz-review-answers-grid--compare' : '' }} mb-3">
+                                <div class="quiz-review-answer-col">
+                                    <p class="quiz-review-answer-col__label quiz-review-answer-col__label--student mb-2">إجابتك</p>
+                                    <div class="quiz-review-answer-box quiz-review-answer-box--student-{{ $reviewStatus }}">
                                         @if($question->questionType->name == 'true_false')
                                             @php
                                                 // Get student answer value
@@ -172,9 +174,12 @@
                                                     $badgeClass = 'bg-secondary';
                                                 }
                                             @endphp
-                                            <span class="badge {{ $badgeClass }} text-white fs-14 px-3 py-2">
-                                                {{ $displayText }}
-                                            </span>
+                                            <div class="quiz-review-answer-pill {{ str_contains($badgeClass, 'success') ? 'quiz-review-answer-pill--correct' : (str_contains($badgeClass, 'danger') ? 'quiz-review-answer-pill--wrong' : 'quiz-review-answer-pill--neutral') }}">
+                                                <span class="quiz-review-answer-pill__icon">
+                                                    <i class="fe {{ str_contains($badgeClass, 'success') ? 'fe-check' : (str_contains($badgeClass, 'danger') ? 'fe-x' : 'fe-minus') }}"></i>
+                                                </span>
+                                                <span>{{ $displayText }}</span>
+                                            </div>
                                         @elseif($question->questionType->name == 'fill_blanks')
                                             @php
                                                 // Extract answer from response_data
@@ -332,14 +337,12 @@
                                             
                                             @if($selectedOption)
                                                 {{-- عرض نص الخيار إذا وُجد --}}
-                                                <span class="badge {{ $selectedOption->is_correct ? 'bg-success' : 'bg-danger' }} text-white fs-14 px-3 py-2">
-                                                    {!! mixed_bidi_html($selectedOption->option_text) !!}
-                                                    @if($selectedOption->is_correct)
-                                                        <i class="fas fa-check-circle ms-2"></i>
-                                                    @else
-                                                        <i class="fas fa-times-circle ms-2"></i>
-                                                    @endif
-                                                </span>
+                                                <div class="quiz-review-answer-pill {{ $selectedOption->is_correct ? 'quiz-review-answer-pill--correct' : 'quiz-review-answer-pill--wrong' }}">
+                                                    <span class="quiz-review-answer-pill__icon">
+                                                        <i class="fe {{ $selectedOption->is_correct ? 'fe-check' : 'fe-x' }}"></i>
+                                                    </span>
+                                                    <span>{!! mixed_bidi_html($selectedOption->option_text) !!}</span>
+                                                </div>
                                             @elseif($selectedOptionId)
                                                 {{-- إذا وُجد option_id لكن الخيار غير موجود في قاعدة البيانات --}}
                                                 <div class="alert alert-warning mb-0">
@@ -355,10 +358,10 @@
                                         @elseif($response->response_text && $question->questionType->name != 'multiple_choice_single')
                                             {!! mixed_bidi_html($response->response_text) !!}
                                         @elseif($response->selected_option_ids && $question->questionType->name != 'multiple_choice_single')
-                                            <ul class="mb-0">
+                                            <ul class="quiz-review-option-list mb-0">
                                                 @foreach($question->options as $option)
                                                     @if(in_array($option->id, $response->selected_option_ids))
-                                                        <li class="mb-2">
+                                                        <li class="{{ $option->is_correct ? 'is-correct' : 'is-wrong' }}">
                                                             {!! mixed_bidi_html($option->option_text) !!}
                                                             @if($option->is_correct)
                                                                 <i class="fas fa-check-circle text-success ms-2"></i>
@@ -389,10 +392,9 @@
                                     </div>
                                 </div>
 
-                                <!-- Correct Answer (if allowed) -->
-                                @if($attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay']))
-                                    <div class="student-quiz-review-block mb-3">
-                                        <p class="student-quiz-review-block__label text-success mb-2">
+                                @if($showCorrectColumn)
+                                <div class="quiz-review-answer-col">
+                                        <p class="quiz-review-answer-col__label quiz-review-answer-col__label--correct mb-2">
                                             <i class="fe fe-zap me-1"></i>الإجابة الصحيحة
                                         </p>
                                         <div class="quiz-review-answer-box quiz-review-answer-box--correct">
@@ -717,8 +719,9 @@
                                                 </div>
                                             @endif
                                         </div>
-                                    </div>
+                                </div>
                                 @endif
+                                </div>
 
                                 <!-- Explanation -->
                                 @if($question->explanation)

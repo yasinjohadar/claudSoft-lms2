@@ -116,24 +116,30 @@ class QuizAnalyticsController extends Controller
      */
     public function quiz($quizId)
     {
-        $quiz = Quiz::with(['course', 'quizQuestions.question'])->findOrFail($quizId);
+        $quiz = Quiz::with([
+            'course',
+            'quizQuestions.question.questionType',
+            'quizQuestions.question.options',
+        ])->findOrFail($quizId);
+
+        $attemptsQuery = fn () => $quiz->attempts()->realAttempts();
 
         // Quiz statistics
         $stats = [
-            'total_attempts' => $quiz->attempts()->count(),
-            'completed_attempts' => $quiz->attempts()->where('is_completed', true)->count(),
-            'in_progress' => $quiz->attempts()->where('status', 'in_progress')->count(),
-            'average_score' => $quiz->attempts()
+            'total_attempts' => $attemptsQuery()->count(),
+            'completed_attempts' => $attemptsQuery()->where('is_completed', true)->count(),
+            'in_progress' => $attemptsQuery()->where('status', 'in_progress')->count(),
+            'average_score' => $attemptsQuery()
                 ->where('is_completed', true)
                 ->avg('percentage_score'),
-            'highest_score' => $quiz->attempts()
+            'highest_score' => $attemptsQuery()
                 ->where('is_completed', true)
                 ->max('percentage_score'),
-            'lowest_score' => $quiz->attempts()
+            'lowest_score' => $attemptsQuery()
                 ->where('is_completed', true)
                 ->min('percentage_score'),
             'pass_rate' => $this->calculatePassRate($quiz),
-            'average_time' => $quiz->attempts()
+            'average_time' => $attemptsQuery()
                 ->where('is_completed', true)
                 ->avg('time_spent'),
         ];
@@ -429,13 +435,14 @@ class QuizAnalyticsController extends Controller
      */
     private function calculatePassRate(Quiz $quiz): float
     {
-        $completed = $quiz->attempts()->where('is_completed', true)->count();
+        $completed = $quiz->attempts()->realAttempts()->where('is_completed', true)->count();
 
         if ($completed === 0) {
             return 0;
         }
 
         $passed = $quiz->attempts()
+            ->realAttempts()
             ->where('is_completed', true)
             ->where('passed', true)
             ->count();
@@ -481,6 +488,7 @@ class QuizAnalyticsController extends Controller
 
         foreach ($ranges as $label => $range) {
             $count = $quiz->attempts()
+                ->realAttempts()
                 ->where('is_completed', true)
                 ->whereBetween('percentage_score', $range)
                 ->count();
@@ -496,26 +504,92 @@ class QuizAnalyticsController extends Controller
      */
     private function getQuestionAnalysis(Quiz $quiz)
     {
-        return $quiz->quizQuestions->map(function($quizQuestion) {
+        return $quiz->quizQuestions->map(function ($quizQuestion) use ($quiz) {
             $responses = QuizResponse::where('question_id', $quizQuestion->question_id)
-                ->whereHas('attempt', function($q) use ($quizQuestion) {
-                    $q->where('quiz_id', $quizQuestion->quiz_id)
-                      ->where('is_completed', true);
+                ->whereHas('attempt', function ($q) use ($quiz) {
+                    $q->where('quiz_id', $quiz->id)
+                        ->realAttempts()
+                        ->where('is_completed', true);
                 })
                 ->get();
 
+            $question = $quizQuestion->question;
             $totalResponses = $responses->count();
             $correctResponses = $responses->where('is_correct', true)->count();
+            $successRate = $totalResponses > 0 ? ($correctResponses / $totalResponses) * 100 : 0;
 
             return [
-                'question' => $quizQuestion->question,
+                'question' => $question,
                 'total_responses' => $totalResponses,
                 'correct_responses' => $correctResponses,
-                'success_rate' => $totalResponses > 0 ? ($correctResponses / $totalResponses) * 100 : 0,
+                'incorrect_responses' => $totalResponses - $correctResponses,
+                'success_rate' => $successRate,
+                'difficulty' => $successRate >= 70 ? 'easy' : ($successRate >= 50 ? 'medium' : 'hard'),
                 'average_score' => $responses->avg('score_obtained'),
                 'average_time' => $responses->avg('time_spent'),
+                'option_distribution' => $this->getOptionDistribution($question, $responses),
             ];
         });
+    }
+
+    /**
+     * Distribution of selected options for a question.
+     */
+    private function getOptionDistribution($question, $responses): array
+    {
+        if (!$question || !$question->relationLoaded('options')) {
+            $question?->load('options');
+        }
+
+        $options = $question?->options ?? collect();
+        if ($options->isEmpty()) {
+            return [];
+        }
+
+        $mcTypes = ['multiple_choice_single', 'multiple_choice_multiple', 'true_false'];
+        if (!in_array($question->questionType->name ?? '', $mcTypes, true)) {
+            return [];
+        }
+
+        $counts = $options->pluck('id')->mapWithKeys(fn ($id) => [$id => 0])->all();
+
+        foreach ($responses as $response) {
+            $ids = $response->selected_option_ids ?? [];
+
+            if (empty($ids) && is_array($response->response_data)) {
+                $answer = $response->response_data['answer'] ?? null;
+                if (is_array($answer)) {
+                    $ids = $answer;
+                } elseif (is_numeric($answer)) {
+                    $ids = [(int) $answer];
+                }
+            }
+
+            if (!is_array($ids)) {
+                $ids = [$ids];
+            }
+
+            foreach ($ids as $id) {
+                $id = (int) $id;
+                if (array_key_exists($id, $counts)) {
+                    $counts[$id]++;
+                }
+            }
+        }
+
+        $total = max(1, $responses->count());
+
+        return $options->map(function ($option) use ($counts, $total) {
+            $count = $counts[$option->id] ?? 0;
+
+            return [
+                'id' => $option->id,
+                'text' => strip_tags($option->option_text ?? ''),
+                'is_correct' => (bool) $option->is_correct,
+                'count' => $count,
+                'percentage' => round(($count / $total) * 100, 1),
+            ];
+        })->values()->all();
     }
 
     /**
@@ -524,6 +598,7 @@ class QuizAnalyticsController extends Controller
     private function getStudentPerformance(Quiz $quiz)
     {
         return $quiz->attempts()
+            ->realAttempts()
             ->with('student')
             ->where('is_completed', true)
             ->get()
@@ -562,6 +637,7 @@ class QuizAnalyticsController extends Controller
     private function getAttemptTrends(Quiz $quiz)
     {
         return $quiz->attempts()
+            ->realAttempts()
             ->where('is_completed', true)
             ->selectRaw('DATE(started_at) as date, COUNT(*) as count, AVG(percentage_score) as avg_score')
             ->groupBy('date')

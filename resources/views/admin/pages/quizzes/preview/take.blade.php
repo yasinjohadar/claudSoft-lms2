@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('shared.quizzes.take-assets')
+
 @section('page-title', 'تجربة الاختبار - ' . $attempt->quiz->title)
 
 @push('head-scripts')
@@ -110,8 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 
 @section('content')
-<!-- Start::app-content -->
-    <div class="main-content app-content">
+    <div class="main-content app-content quiz-take-page">
         <div class="container-fluid">
 
             @include('admin.components.alerts')
@@ -124,72 +125,68 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                            <div>
-                <h4 class="mb-0">
-                    <i class="fas fa-clipboard-question me-2"></i>
+            <div class="quiz-take-header">
+                <h4 class="quiz-take-header__title">
+                    <i class="fe fe-clipboard"></i>
                     {{ $attempt->quiz->title }}
                 </h4>
-                            </div>
-                            </div>
-        <!-- End Page Header -->
-    <div class="row">
-        <!-- Sidebar - Questions Navigator -->
-        <div class="col-lg-3 mb-4">
-            <div class="card sticky-top" style="top: 20px;">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-list me-2"></i>
-                        الأسئلة
-                    </h5>
-                        </div>
-                <div class="card-body">
-                    <!-- Timer -->
-                    @if($remainingTime !== null && $remainingTime > 0)
-                    <div class="alert alert-warning mb-3 text-center" id="timer-container">
-                        <i class="fas fa-clock me-2"></i>
-                        <strong>الوقت المتبقي:</strong>
-                        <div class="fs-3 fw-bold mt-2" id="timer">
-                            <span id="timer-minutes">{{ floor($remainingTime / 60) }}</span>:<span id="timer-seconds">{{ str_pad($remainingTime % 60, 2, '0', STR_PAD_LEFT) }}</span>
-                    </div>
+                <div class="quiz-take-header__meta">
+                    <span class="quiz-take-chip"><i class="fe fe-help-circle"></i>{{ $questions->count() }} سؤال</span>
                 </div>
+            </div>
+
+            @include('shared.quizzes.take-mobile-chrome', ['questions' => $questions])
+
+            <div class="row quiz-take-layout">
+                <div class="col-lg-3 mb-4 quiz-take-sidebar-col" id="quiz-take-sidebar-col">
+                    <aside class="card quiz-take-sidebar sticky-top">
+                        <div class="card-header text-white">
+                            <h5 class="mb-0">
+                                <i class="fe fe-grid me-2"></i>
+                                الأسئلة
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                    @if($remainingTime !== null && $remainingTime > 0)
+                    <div class="quiz-take-timer" id="timer-container">
+                        <div class="quiz-take-timer__label"><i class="fe fe-clock me-1"></i>الوقت المتبقي</div>
+                        <div class="quiz-take-timer__value" id="timer">
+                            <span id="timer-minutes">{{ str_pad(floor($remainingTime / 60), 2, '0', STR_PAD_LEFT) }}</span>:<span id="timer-seconds">{{ str_pad($remainingTime % 60, 2, '0', STR_PAD_LEFT) }}</span>
+                        </div>
+                    </div>
             @elseif($attempt->quiz->time_limit === null)
-                    <div class="alert alert-info mb-3 text-center">
-                        <i class="fas fa-infinity me-2"></i>
-                        <strong>بدون حد زمني</strong>
+                    <div class="quiz-take-timer mb-3">
+                        <div class="quiz-take-timer__label"><i class="fe fe-infinity me-1"></i>بدون حد زمني</div>
                     </div>
             @endif
 
-                    <!-- Progress -->
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-2">
+                    <div class="quiz-take-progress mb-3">
+                        <div class="quiz-take-progress__head">
                             <span class="text-muted">التقدم</span>
                             <span class="fw-bold"><span id="answered-count">0</span> / {{ $questions->count() }}</span>
                         </div>
-                        <div class="progress" style="height: 10px;">
+                        <div class="progress">
                             <div class="progress-bar bg-success" role="progressbar" id="progress-bar" style="width: 0%"></div>
                         </div>
                     </div>
 
-                    <!-- Questions Grid -->
-                    <div class="questions-grid">
+                    <div class="questions-grid quiz-take-nav-grid">
                         @foreach($questions as $index => $question)
                         <button type="button"
-                                class="btn btn-outline-secondary btn-sm question-nav-btn m-1"
+                                class="btn btn-outline-secondary btn-sm question-nav-btn quiz-take-nav-btn"
                                 data-question-index="{{ $index }}"
                                 data-question-id="{{ $question->id }}"
-                                onclick="goToQuestion({{ $index }})">
+                                onclick="goToQuestion({{ $index }})"
+                                aria-label="السؤال {{ $index + 1 }}">
                             {{ $index + 1 }}
                         </button>
                         @endforeach
                     </div>
-                    </div>
+                        </div>
+                    </aside>
                 </div>
-            </div>
 
-        <!-- Main Content - Questions -->
-                <div class="col-lg-9">
+        <div class="col-lg-9 quiz-take-main">
             <form id="quiz-form">
                         @csrf
                 @foreach($questions as $question)
@@ -198,16 +195,14 @@ document.addEventListener('DOMContentLoaded', function() {
                      data-question-index="{{ $index }}"
                      data-question-id="{{ $question->id }}"
                      style="display: {{ $index === 0 ? 'block' : 'none' }}">
-                    <div class="card-header bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <span class="badge bg-primary me-2">السؤال {{ $index + 1 }}</span>
-                                                <span class="badge bg-info">{{ $question->questionType->display_name }}</span>
-                                <span class="badge bg-success">{{ $question->pivot->question_grade }} نقطة</span>
-                                            </h5>
-                                    </div>
-                                </div>
-                                <div class="card-body">
+                    <div class="card-header quiz-take-q-header">
+                        <div class="quiz-take-q-badges">
+                            <span class="badge bg-primary">السؤال {{ $index + 1 }}</span>
+                            <span class="badge bg-info-transparent text-info">{{ $question->questionType->display_name }}</span>
+                            <span class="badge bg-success-transparent text-success">{{ $question->pivot->question_grade }} نقطة</span>
+                        </div>
+                    </div>
+                                <div class="card-body pt-4">
                                     <!-- Question Text -->
                         @if($question->questionType->name !== 'fill_blanks')
                         <div class="question-text mb-4">
@@ -794,61 +789,26 @@ document.addEventListener('DOMContentLoaded', function() {
                             @endif
                             </div>
 
-                        <!-- Navigation Buttons -->
-                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                            {{-- #region agent log --}}
-                            <script>
-                            console.log('DEBUG: Navigation buttons section', {
-                                question_index: {{ $index }},
-                                loop_last: {{ $loop->last ? 'true' : 'false' }},
-                                loop_index: {{ $loop->index }},
-                                total_questions: {{ $questions->count() }},
-                                hypothesisId: 'D'
-                            });
-                            </script>
-                            {{-- #endregion --}}
+                        <div class="quiz-take-nav-row d-none d-lg-flex">
                             <button type="button"
                                     class="btn btn-outline-secondary"
                                     onclick="previousQuestion()"
-                                    {{ $index === 0 ? 'disabled' : '' }}
-                                    style="display: block !important;">
-                                <i class="fas fa-arrow-right me-2"></i>السابق
+                                    {{ $index === 0 ? 'disabled' : '' }}>
+                                <i class="fe fe-chevron-right me-2"></i>السابق
                             </button>
 
                             @if(!$loop->last)
-                                {{-- #region agent log --}}
-                                <script>
-                                console.log('DEBUG: Showing next button', {
-                                    question_index: {{ $index }},
-                                    loop_last: {{ $loop->last ? 'true' : 'false' }},
-                                    total_questions: {{ $questions->count() }},
-                                    is_last: {{ $loop->last ? 'true' : 'false' }},
-                                    hypothesisId: 'D'
-                                });
-                                </script>
-                                {{-- #endregion --}}
                                 <button type="button"
                                         id="next-btn-{{ $index }}"
                                         class="btn btn-primary"
-                                        onclick="nextQuestion()"
-                                        style="display: block !important; visibility: visible !important; opacity: 1 !important;">
-                                    التالي<i class="fas fa-arrow-left ms-2"></i>
+                                        onclick="nextQuestion()">
+                                    التالي<i class="fe fe-chevron-left ms-2"></i>
                                 </button>
                             @else
-                                {{-- #region agent log --}}
-                                <script>
-                                console.log('DEBUG: Showing submit button (last question)', {
-                                    question_index: {{ $index }},
-                                    loop_last: {{ $loop->last ? 'true' : 'false' }},
-                                    hypothesisId: 'D'
-                                });
-                                </script>
-                                {{-- #endregion --}}
                                 <button type="button"
-                                        class="btn btn-success btn-lg"
-                                        onclick="showSubmitConfirmation()"
-                                        style="display: block !important;">
-                                    <i class="fas fa-check me-2"></i>إرسال الاختبار
+                                        class="btn btn-success"
+                                        onclick="showSubmitConfirmation()">
+                                    <i class="fe fe-check me-2"></i>إرسال الاختبار
                                 </button>
                             @endif
                         </div>
@@ -856,254 +816,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 @endforeach
             </form>
-            </div>
         </div>
     </div>
-</div>
-<!-- End::app-content -->
+        </div>
+    </div>
 
-    <!-- Submit Confirmation Modal -->
-    <div class="modal fade" id="submitModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title">
-                    <i class="fas fa-exclamation-triangle me-2"></i>تأكيد الإرسال
-                    </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                <p class="mb-3">هل أنت متأكد من إرسال الاختبار؟</p>
-                <div class="alert alert-info">
-                    <strong>ملخص إجاباتك:</strong>
-                    <ul class="mb-0 mt-2">
-                        <li>عدد الأسئلة المجابة: <strong><span id="submit-answered-count">0</span></strong></li>
-                        <li>عدد الأسئلة غير المجابة: <strong><span id="submit-unanswered-count">0</span></strong></li>
-                        </ul>
-                    </div>
-                <p class="text-danger mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    لن تتمكن من تعديل إجاباتك بعد الإرسال
-                </p>
-                </div>
-                <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-success" id="confirm-submit-quiz" onclick="submitQuiz()">
-                    <i class="fas fa-check me-2"></i>إرسال الآن
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('shared.quizzes.submit-modal')
 
 @endsection
-
-@push('styles')
-<style>
-    /* تفاعل خيارات الاختبار: انظر public/assets/css/custom.css (.quiz-option-hit وغيرها) */
-
-    .question-nav-btn.answered {
-        background-color: #28a745;
-        color: white;
-        border-color: #28a745;
-    }
-
-    .question-nav-btn.answered:hover {
-        background-color: #218838;
-        border-color: #1e7e34;
-    }
-
-    .question-nav-btn.active {
-        background-color: #007bff;
-        color: white;
-        border-color: #007bff;
-    }
-
-    #timer-container.time-warning {
-        background-color: #dc3545;
-        color: white;
-        border-color: #dc3545;
-    }
-
-    .sticky-top {
-        z-index: 1020;
-    }
-
-    /* Drag and Drop Styles */
-    .drag-item {
-        padding: 12px 15px;
-        margin-bottom: 10px;
-        background: #fff;
-        color: inherit;
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 8px;
-        cursor: grab;
-        transition:
-            transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
-            box-shadow 0.28s ease,
-            border-color 0.22s ease,
-            background-color 0.22s ease;
-        box-shadow: 0 0.125rem 0.4rem rgba(0, 0, 0, 0.04);
-        user-select: none;
-    }
-
-    .drag-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
-        border-color: rgba(var(--bs-primary-rgb), 0.45);
-        background-color: rgba(var(--bs-primary-rgb), 0.06);
-    }
-
-    .drag-item:active {
-        cursor: grabbing;
-        transform: scale(0.95);
-    }
-
-    .drag-item.dragging {
-        opacity: 0.5;
-    }
-
-    .drop-zone {
-        min-width: 200px;
-        min-height: 50px;
-        padding: 10px 15px;
-        background: #f8f9fa;
-        border: 2px dashed #dee2e6 !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-    }
-
-    .drop-zone.drag-over {
-        background: #e8f5e9;
-        border-color: #4caf50 !important;
-        border-style: solid !important;
-    }
-
-    .drop-placeholder {
-        color: #adb5bd;
-        font-size: 0.85rem;
-    }
-
-    .dropped-item {
-        background: rgba(var(--bs-success-rgb), 0.1);
-        color: inherit;
-        border: 1px solid rgba(var(--bs-success-rgb), 0.35);
-        padding: 8px 12px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        animation: dropIn 0.3s ease;
-    }
-
-    @keyframes dropIn {
-        from {
-            transform: scale(0.8);
-            opacity: 0;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    .btn-remove-item {
-        background: rgba(var(--bs-danger-rgb), 0.12);
-        border: 1px solid rgba(var(--bs-danger-rgb), 0.35);
-        color: var(--bs-danger);
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        margin-right: 8px;
-        transition: transform 0.2s ease, background-color 0.2s ease;
-    }
-
-    .btn-remove-item:hover {
-        background: rgba(var(--bs-danger-rgb), 0.2);
-        transform: scale(1.1);
-    }
-
-    .drag-items-container {
-        min-height: 100px;
-    }
-
-    .drag-items-container:empty::after {
-        content: 'تم استخدام جميع العناصر';
-        color: #6c757d;
-        font-style: italic;
-        display: block;
-        text-align: center;
-        padding: 20px;
-    }
-
-    /* Ordering Styles — خلفية بيضاء مثل باقي الخيارات + نفس أسلوب hover */
-    .ordering-item {
-        display: flex;
-        align-items: center;
-        padding: 15px;
-        margin-bottom: 10px;
-        background: #fff;
-        color: inherit;
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 8px;
-        cursor: grab;
-        transition:
-            transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1),
-            box-shadow 0.28s ease,
-            border-color 0.22s ease,
-            background-color 0.22s ease;
-        box-shadow: 0 0.125rem 0.4rem rgba(0, 0, 0, 0.04);
-        user-select: none;
-    }
-
-    .ordering-item:hover:not(.dragging) {
-        transform: translateY(-2px);
-        box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
-        border-color: rgba(var(--bs-primary-rgb), 0.45);
-        background-color: rgba(var(--bs-primary-rgb), 0.06);
-    }
-
-    .ordering-item:active {
-        cursor: grabbing;
-        transform: translateY(0);
-        transition-duration: 0.12s;
-    }
-
-    .ordering-item.dragging {
-        opacity: 0.55;
-    }
-
-    .ordering-item.drag-over {
-        border-top: 3px solid var(--bs-success, #198754);
-    }
-
-    .ordering-handle {
-        color: var(--bs-secondary-color, #6c757d);
-    }
-
-    .ordering-number {
-        background: rgba(var(--bs-primary-rgb), 0.12);
-        color: var(--bs-primary);
-        border: 1px solid rgba(var(--bs-primary-rgb), 0.22);
-        padding: 5px 10px;
-        border-radius: 50%;
-        font-weight: bold;
-        min-width: 30px;
-        text-align: center;
-    }
-
-    .ordering-text {
-        flex-grow: 1;
-    }
-</style>
-@endpush
 
 @push('scripts')
 <script>
@@ -1852,6 +1572,9 @@ $(document).ready(function() {
         const percentage = (answeredCount / totalQuestions) * 100;
         $('#answered-count').text(answeredCount);
         $('#progress-bar').css('width', percentage + '%');
+        if (window.QuizTakeUI && typeof window.QuizTakeUI.syncMobileNav === 'function') {
+            window.QuizTakeUI.syncMobileNav();
+        }
     }
 
     // Update question navigation buttons
@@ -1912,6 +1635,12 @@ $(document).ready(function() {
 
         $('#submit-answered-count').text(answeredCount);
         $('#submit-unanswered-count').text(unansweredCount);
+
+        const unansweredBox = document.getElementById('submit-unanswered-stat-box');
+        if (unansweredBox) {
+            unansweredBox.classList.toggle('quiz-submit-stat--danger', unansweredCount > 0);
+            unansweredBox.classList.toggle('quiz-submit-stat--muted', unansweredCount === 0);
+        }
 
         const el = document.getElementById('submitModal');
         if (el) {

@@ -175,39 +175,11 @@
         </div>
     </div>
 
-    <!-- Create Question Modal -->
-    <div class="modal fade" id="createQuestionModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title">إنشاء سؤال جديد</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">اختر نوع السؤال الذي تريد إنشاءه:</p>
-                    <div class="row g-3">
-                        @foreach($questionTypes as $type)
-                            <div class="col-md-4">
-                                <a href="{{ route('question-bank.create.type', $type->name) }}?question_module_id={{ $questionModule->id }}"
-                                   class="card custom-card text-center hover-card"
-                                   style="text-decoration: none; transition: all 0.3s;">
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <i class="{{ $type->icon ?? 'fas fa-question-circle' }} fa-3x text-primary"></i>
-                                        </div>
-                                        <h6 class="card-title mb-2">{{ $type->display_name }}</h6>
-                                        @if($type->description)
-                                            <p class="card-text text-muted small">{{ $type->description }}</p>
-                                        @endif
-                                    </div>
-                                </a>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('shared.question-types.create-modal', [
+        'questionTypes' => $questionTypes,
+        'context' => 'question-module',
+        'contextParams' => ['question_module_id' => $questionModule->id],
+    ])
 @stop
 
 @section('script')

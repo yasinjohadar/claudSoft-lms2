@@ -96,4 +96,71 @@ class QuestionType extends Model
     {
         return $this->supports_auto_grading;
     }
+
+    /**
+     * Feather icon class for UI cards (admin theme).
+     */
+    public function featherIconClass(): string
+    {
+        $icons = [
+            'multiple_choice_single' => 'fe-check-circle',
+            'multiple_choice_multiple' => 'fe-check-square',
+            'true_false' => 'fe-toggle-right',
+            'short_answer' => 'fe-edit-3',
+            'essay' => 'fe-file-text',
+            'matching' => 'fe-shuffle',
+            'fill_blanks' => 'fe-type',
+            'fill_blank' => 'fe-type',
+            'ordering' => 'fe-list',
+            'numerical' => 'fe-hash',
+            'calculated' => 'fe-percent',
+            'drag_drop' => 'fe-move',
+        ];
+
+        $icon = $icons[$this->name] ?? 'fe-help-circle';
+
+        return str_starts_with($icon, 'fe ') ? $icon : 'fe ' . $icon;
+    }
+
+    /**
+     * CSS modifier slug for type-specific colors.
+     */
+    public function typeSlug(): string
+    {
+        return str_replace('_', '-', $this->name);
+    }
+
+    /**
+     * Short Arabic description for type selection cards.
+     */
+    public function selectionSummary(): string
+    {
+        return match ($this->name) {
+            'multiple_choice_single' => 'إجابة واحدة صحيحة من عدة خيارات',
+            'multiple_choice_multiple' => 'أكثر من إجابة صحيحة',
+            'true_false' => 'تحديد صحة العبارة',
+            'short_answer' => 'نص قصير يُصحَّح تلقائياً أو يدوياً',
+            'essay' => 'إجابة مقالية طويلة',
+            'matching' => 'مطابقة العناصر ببعضها',
+            'ordering' => 'ترتيب العناصر بالتسلسل',
+            'fill_blanks', 'fill_blank' => 'ملء الفراغات في النص',
+            'numerical' => 'قيمة رقمية مع هامش خطأ',
+            'calculated' => 'سؤال بمعادلة محسوبة',
+            'drag_drop' => 'سحب وإفلات العناصر',
+            default => (string) ($this->description ?? ''),
+        };
+    }
+
+    /**
+     * Build create URL for question type selection modal.
+     */
+    public function createUrl(string $context, array $params = []): string
+    {
+        return match ($context) {
+            'quiz' => route('question-bank.create.type', $this->name) . '?' . http_build_query(['quiz_id' => $params['quiz_id'] ?? null]),
+            'question-module' => route('question-bank.create.type', $this->name) . '?' . http_build_query(['question_module_id' => $params['question_module_id'] ?? null]),
+            'section' => route('sections.questions.create', [$params['section_id'] ?? 0, $this->name]),
+            default => route('question-bank.create.type', $this->name),
+        };
+    }
 }

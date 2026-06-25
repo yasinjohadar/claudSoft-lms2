@@ -1,0 +1,162 @@
+/* Question type selection — modal & page cards */
+
+.qt-select-modal .modal-content {
+    border: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+}
+
+.qt-select-modal .modal-header {
+    background: linear-gradient(135deg, rgb(var(--primary-rgb)) 0%, rgba(var(--primary-rgb), 0.82) 100%);
+    color: #fff;
+    border: 0;
+    padding: 1.15rem 1.35rem;
+}
+
+.qt-select-modal .modal-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.qt-select-modal .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+}
+
+.qt-select-modal .modal-body {
+    padding: 1.25rem 1.35rem 1.5rem;
+    background: var(--custom-white, #fff);
+}
+
+[data-theme-mode="dark"] .qt-select-modal .modal-body {
+    background: var(--custom-white, #1a1d2e);
+}
+
+.qt-select-modal__hint {
+    font-size: 0.875rem;
+    color: var(--text-muted, #64748b);
+    margin-bottom: 1rem;
+}
+
+.qt-select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 0.75rem;
+}
+
+.qt-select-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid var(--bs-border-color);
+    background: var(--custom-white, #fff);
+    text-decoration: none !important;
+    color: inherit;
+    height: 100%;
+    min-height: 148px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme-mode="dark"] .qt-select-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.qt-select-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(var(--primary-rgb), 0.35);
+    box-shadow: 0 10px 24px rgba(var(--primary-rgb), 0.12);
+}
+
+.qt-select-card:focus-visible {
+    outline: 2px solid rgb(var(--primary-rgb));
+    outline-offset: 2px;
+}
+
+.qt-select-card__icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    margin-bottom: 0.65rem;
+    flex-shrink: 0;
+}
+
+.qt-select-card__title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.45;
+    margin-bottom: 0.35rem;
+    color: var(--default-text-color, #1e293b);
+}
+
+.qt-select-card__desc {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 0.5rem;
+    flex: 1;
+}
+
+.qt-select-card__badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+}
+
+.qt-select-card__badge--auto {
+    background: rgba(var(--bs-success-rgb), 0.12);
+    color: rgb(var(--bs-success-rgb));
+}
+
+.qt-select-card__badge--manual {
+    background: rgba(var(--bs-warning-rgb), 0.12);
+    color: rgb(var(--bs-warning-rgb));
+}
+
+/* Type colors */
+.qt-select-card--multiple-choice-single .qt-select-card__icon { background: rgba(79, 70, 229, 0.12); color: #4f46e5; }
+.qt-select-card--multiple-choice-multiple .qt-select-card__icon { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.qt-select-card--true-false .qt-select-card__icon { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.qt-select-card--short-answer .qt-select-card__icon { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.qt-select-card--essay .qt-select-card__icon { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.qt-select-card--matching .qt-select-card__icon { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
+.qt-select-card--fill-blanks .qt-select-card__icon,
+.qt-select-card--fill-blank .qt-select-card__icon { background: rgba(99, 102, 241, 0.12); color: #6366f1; }
+.qt-select-card--ordering .qt-select-card__icon { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+.qt-select-card--numerical .qt-select-card__icon { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+.qt-select-card--calculated .qt-select-card__icon { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.qt-select-card--drag-drop .qt-select-card__icon { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+
+@media (max-width: 575.98px) {
+    .qt-select-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.55rem;
+    }
+
+    .qt-select-card {
+        min-height: 130px;
+        padding: 0.85rem 0.5rem;
+    }
+
+    .qt-select-card__desc {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qt-select-card:hover {
+        transform: none;
+    }
+}

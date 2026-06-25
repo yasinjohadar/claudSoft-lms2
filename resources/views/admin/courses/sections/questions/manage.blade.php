@@ -208,60 +208,11 @@
         </div>
     </div>
 
-    <!-- Create Question Modal -->
-    <div class="modal fade" id="createQuestionModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title">إنشاء سؤال جديد</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-4">اختر نوع السؤال الذي تريد إنشاءه</p>
-
-                    <div class="row g-3">
-                        @foreach($questionTypes as $type)
-                            @php
-                                $icons = [
-                                    'multiple_choice_single' => 'fa-dot-circle',
-                                    'multiple_choice_multiple' => 'fa-check-double',
-                                    'true_false' => 'fa-check-circle',
-                                    'short_answer' => 'fa-font',
-                                    'essay' => 'fa-pen-fancy',
-                                    'matching' => 'fa-arrows-alt-h',
-                                    'ordering' => 'fa-sort-numeric-down',
-                                    'fill_blank' => 'fa-pen-square',
-                                    'fill_blanks' => 'fa-pen-square',
-                                    'numerical' => 'fa-calculator',
-                                    'calculated' => 'fa-square-root-alt',
-                                    'drag_drop' => 'fa-hand-pointer',
-                                ];
-                                $iconClass = $type->icon ?? ($icons[$type->name] ?? 'fa-question');
-                                if (!str_starts_with($iconClass, 'fas ') && !str_starts_with($iconClass, 'far ') && !str_starts_with($iconClass, 'fab ')) {
-                                    $iconClass = 'fas ' . $iconClass;
-                                }
-                            @endphp
-                            <div class="col-md-6 col-lg-4">
-                                <a href="{{ route('sections.questions.create', [$section->id, $type->name]) }}"
-                                   class="card custom-card text-center card-hover h-100">
-                                    <div class="card-body">
-                                        <i class="{{ $iconClass }} fa-3x text-primary mb-3"></i>
-                                        <h6 class="mb-2">{{ $type->display_name }}</h6>
-                                        @if($type->description)
-                                            <p class="text-muted small mb-0">{{ Str::limit($type->description, 60) }}</p>
-                                        @endif
-                                    </div>
-                                </a>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('shared.question-types.create-modal', [
+        'questionTypes' => $questionTypes,
+        'context' => 'section',
+        'contextParams' => ['section_id' => $section->id],
+    ])
 
     <!-- Remove Question Confirmation Modal -->
     <div class="modal fade" id="removeQuestionModal" tabindex="-1" aria-labelledby="removeQuestionModalLabel" aria-hidden="true">
