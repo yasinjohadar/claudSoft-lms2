@@ -413,141 +413,49 @@
                 @if($module->module_type == 'question_module' && $module->modulable)
                     @php
                         $questionModule = $module->modulable;
+                        $studentAttempts = $questionModule->studentAttempts(auth()->id());
+                        $completedAttempts = $studentAttempts->where('status', 'completed')->count();
+                        $inProgressAttempt = $studentAttempts->where('status', 'in_progress')->first();
+                        $canAttempt = $questionModule->canStudentAttempt(auth()->id());
+                        $lastAttempt = $studentAttempts->first();
                     @endphp
 
-                    <!-- Question Module Info Card -->
-                    <div class="card mb-4 student-learn-assessment-card">
-                        <div class="card-header student-learn-assessment-header student-learn-assessment-header--qm rounded-0">
-                            <h5 class="mb-0 fw-semibold"><i class="fas fa-clipboard-question me-2 opacity-90"></i>{{ $questionModule->title }}</h5>
-                        </div>
-                        <div class="card-body p-4">
-                            @if($questionModule->description)
-                                <p class="text-muted mb-3">{{ $questionModule->description }}</p>
-                            @endif
+                    @php
+                        $qmStats = [
+                            ['icon' => 'fe-help-circle', 'label' => 'عدد الأسئلة', 'value' => $questionModule->questions->count(), 'color' => 'blue'],
+                            ['icon' => 'fe-star', 'label' => 'إجمالي الدرجات', 'value' => $questionModule->getTotalGrade(), 'color' => 'gold'],
+                        ];
+                        if ($questionModule->time_limit) {
+                            $qmStats[] = ['icon' => 'fe-clock', 'label' => 'الوقت المحدد', 'value' => $questionModule->time_limit . ' <small>دقيقة</small>', 'color' => 'red'];
+                        }
+                        $qmStats[] = ['icon' => 'fe-refresh-cw', 'label' => 'المحاولات المسموحة', 'value' => $questionModule->attempts_allowed, 'color' => 'cyan'];
+                    @endphp
 
-                            @if($questionModule->instructions)
-                                <div class="alert alert-info mb-4">
-                                    <h6 class="mb-2"><i class="fas fa-clipboard-list me-2"></i>التعليمات:</h6>
-                                    <div>{!! nl2br(e($questionModule->instructions)) !!}</div>
-                                </div>
-                            @endif
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 rounded student-learn-stat-tile">
-                                        <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
-                                        <p class="mb-1 text-muted small">عدد الأسئلة</p>
-                                        <h4 class="mb-0">{{ $questionModule->questions->count() }}</h4>
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 rounded student-learn-stat-tile">
-                                        <i class="fas fa-star text-warning fs-4 mb-2"></i>
-                                        <p class="mb-1 text-muted small">إجمالي الدرجات</p>
-                                        <h4 class="mb-0">{{ $questionModule->getTotalGrade() }}</h4>
-                                    </div>
-                                </div>
-                                @if($questionModule->time_limit)
-                                    <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 rounded student-learn-stat-tile">
-                                            <i class="fas fa-clock text-danger fs-4 mb-2"></i>
-                                            <p class="mb-1 text-muted small">الوقت المحدد</p>
-                                            <h4 class="mb-0">{{ $questionModule->time_limit }} <small>دقيقة</small></h4>
-                                        </div>
-                                    </div>
-                                @endif
-                                <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 rounded student-learn-stat-tile">
-                                        <i class="fas fa-redo text-primary fs-4 mb-2"></i>
-                                        <p class="mb-1 text-muted small">المحاولات المسموحة</p>
-                                        <h4 class="mb-0">{{ $questionModule->attempts_allowed }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Questions Preview -->
-                            @if($questionModule->questions->count() > 0)
-                                <div class="mb-4">
-                                    <h6 class="fw-semibold mb-3"><i class="fas fa-list me-2"></i>الأسئلة ({{ $questionModule->questions->count() }})</h6>
-                                    <div class="list-group">
-                                        @foreach($questionModule->questions as $index => $question)
-                                            <div class="list-group-item d-flex justify-content-between align-items-start">
-                                                <div class="flex-grow-1">
-                                <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                <span class="student-learn-question-preview-text">
-                                                        {!! Str::limit(strip_tags($question->question_text), 100) !!}
-                                                    </span>
-                                                </div>
-                                                <div class="text-end" style="min-width: 150px;">
-                                                    <span class="badge bg-info-transparent text-info me-1">
-                                                        {{ $question->questionType->display_name }}
-                                                    </span>
-                                                    <span class="badge bg-success-transparent text-success">
-                                                        {{ $question->pivot->question_grade }} نقطة
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            <!-- Attempts Info -->
-                            @php
-                                $studentAttempts = $questionModule->studentAttempts(auth()->id());
-                                $completedAttempts = $studentAttempts->where('status', 'completed')->count();
-                                $inProgressAttempt = $studentAttempts->where('status', 'in_progress')->first();
-                                $canAttempt = $questionModule->canStudentAttempt(auth()->id());
-                                $lastAttempt = $studentAttempts->first();
-                            @endphp
-
-                            @if($completedAttempts > 0)
-                                <div class="alert alert-info mb-4">
-                                    <h6 class="mb-2"><i class="fas fa-history me-2"></i>محاولاتك السابقة:</h6>
-                                    <div class="d-flex justify-content-between">
-                                        <span>عدد المحاولات: <strong>{{ $completedAttempts }} / {{ $questionModule->attempts_allowed }}</strong></span>
-                                        @if($lastAttempt && $lastAttempt->status === 'completed')
-                                            <span>آخر درجة: <strong class="{{ $lastAttempt->is_passed ? 'text-success' : 'text-danger' }}">{{ number_format($lastAttempt->percentage, 1) }}%</strong></span>
-                                        @endif
-                                    </div>
-                                    @if($lastAttempt && $lastAttempt->status === 'completed')
-                                        <a href="{{ route('student.question-module.result', $lastAttempt->id) }}" class="btn btn-sm btn-outline-info mt-2" data-turbo="false">
-                                            <i class="fas fa-eye me-1"></i>عرض آخر محاولة
-                                        </a>
-                                    @endif
-                                </div>
-                            @endif
-
-                            <!-- Start Test Button -->
-                            <div class="text-center mt-4 student-learn-assessment-actions">
-                                @if($inProgressAttempt)
-                                    <a href="{{ route('student.question-module.take', $inProgressAttempt->id) }}" class="btn btn-lg btn-warning" data-turbo="false">
-                                        <i class="fas fa-play-circle me-2"></i>متابعة الاختبار
-                                    </a>
-                                    <p class="text-warning small mt-2 mb-0">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        لديك محاولة غير مكتملة، يرجى إكمالها أو إرسالها
-                                    </p>
-                                @elseif($canAttempt)
-                                    <a href="{{ route('student.question-module.start', $questionModule->id) }}?module_id={{ $module->id }}" class="btn btn-lg btn-primary" data-turbo="false">
-                                        <i class="fas fa-play me-2"></i>بدء الاختبار
-                                    </a>
-                                    <p class="text-muted small mt-2 mb-0">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        سيتم احتساب هذه المحاولة من المحاولات المسموحة
-                                    </p>
-                                @else
-                                    <button class="btn btn-lg btn-secondary" disabled>
-                                        <i class="fas fa-ban me-2"></i>استنفدت جميع المحاولات
-                                    </button>
-                                    <p class="text-danger small mt-2 mb-0">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        لقد استخدمت جميع المحاولات المسموحة ({{ $questionModule->attempts_allowed }})
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
+                    @include('shared.quizzes.intro-panel', [
+                        'title' => $questionModule->title,
+                        'description' => $questionModule->description,
+                        'instructions' => $questionModule->instructions,
+                        'heroVariant' => 'question_module',
+                        'heroIcon' => 'fe-clipboard',
+                        'stats' => $qmStats,
+                        'showHistory' => true,
+                        'completedAttempts' => $completedAttempts,
+                        'attemptsAllowed' => $questionModule->attempts_allowed,
+                        'lastScore' => ($lastAttempt && $lastAttempt->status === 'completed') ? number_format($lastAttempt->percentage, 1) . '%' : null,
+                        'lastPassed' => $lastAttempt ? $lastAttempt->is_passed : false,
+                        'reviewUrl' => ($lastAttempt && $lastAttempt->status === 'completed') ? route('student.question-module.result', $lastAttempt->id) : null,
+                        'inProgressAttempt' => $inProgressAttempt,
+                        'continueUrl' => $inProgressAttempt ? route('student.question-module.take', $inProgressAttempt->id) : null,
+                        'canAttempt' => $canAttempt,
+                        'startUrl' => route('student.question-module.start', $questionModule->id) . '?module_id=' . $module->id,
+                        'remainingAttempts' => $questionModule->attempts_allowed - $completedAttempts,
+                        'blockedLabel' => 'استنفدت جميع المحاولات',
+                        'blockedHint' => 'لقد استخدمت جميع المحاولات المسموحة (' . $questionModule->attempts_allowed . ')',
+                        'tips' => [
+                            ['icon' => 'fe-wifi', 'text' => 'اتصال إنترنت مستقر'],
+                            ['icon' => 'fe-clock', 'text' => 'الوقت يبدأ فور البدء'],
+                        ],
+                    ])
                 @endif
 
                 <!-- Quiz Module -->
@@ -563,146 +471,53 @@
                         $lastAttempt = $studentAttempts->where('status', 'completed')->first();
                     @endphp
 
-                    <!-- Quiz Info Card -->
-                    <div class="card mb-4 student-learn-assessment-card">
-                        <div class="card-header student-learn-assessment-header student-learn-assessment-header--quiz rounded-0">
-                            <h5 class="mb-0 fw-semibold"><i class="fas fa-question-circle me-2 opacity-90"></i>{{ $quiz->title }}</h5>
-                        </div>
-                        <div class="card-body p-4">
-                            @if($quiz->description)
-                                <p class="text-muted mb-3">{{ $quiz->description }}</p>
-                            @endif
+                    @php
+                        $quizStats = [
+                            ['icon' => 'fe-help-circle', 'label' => 'عدد الأسئلة', 'value' => $quiz->quizQuestions->count(), 'color' => 'blue'],
+                            ['icon' => 'fe-star', 'label' => 'إجمالي الدرجات', 'value' => number_format($quiz->max_score ?? $quiz->calculateMaxScore() ?? $quiz->quizQuestions->sum('max_score'), 2), 'color' => 'gold'],
+                        ];
+                        if ($quiz->time_limit) {
+                            $quizStats[] = ['icon' => 'fe-clock', 'label' => 'الوقت المحدد', 'value' => $quiz->time_limit . ' <small>دقيقة</small>', 'color' => 'red'];
+                        }
+                        if ($quiz->attempts_allowed) {
+                            $quizStats[] = ['icon' => 'fe-refresh-cw', 'label' => 'المحاولات المسموحة', 'value' => $quiz->attempts_allowed, 'color' => 'cyan'];
+                        }
+                        if ($quiz->passing_grade) {
+                            $quizStats[] = ['icon' => 'fe-award', 'label' => 'درجة النجاح', 'value' => $quiz->passing_grade . '%', 'color' => 'green'];
+                        }
+                    @endphp
 
-                            @if($quiz->instructions)
-                                <div class="alert alert-info mb-4">
-                                    <h6 class="mb-2"><i class="fas fa-clipboard-list me-2"></i>التعليمات:</h6>
-                                    <div>{!! nl2br(e($quiz->instructions)) !!}</div>
-                                </div>
-                            @endif
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 rounded student-learn-stat-tile">
-                                        <i class="fas fa-question-circle text-info fs-4 mb-2"></i>
-                                        <p class="mb-1 text-muted small">عدد الأسئلة</p>
-                                        <h4 class="mb-0">{{ $quiz->quizQuestions->count() }}</h4>
-                                    </div>
-                                </div>
-                                <div class="col-6 col-md-3">
-                                    <div class="text-center p-3 rounded student-learn-stat-tile">
-                                        <i class="fas fa-star text-warning fs-4 mb-2"></i>
-                                        <p class="mb-1 text-muted small">إجمالي الدرجات</p>
-                                        <h4 class="mb-0">{{ $quiz->max_score ?? $quiz->calculateMaxScore() ?? $quiz->quizQuestions->sum('max_score') }}</h4>
-                                    </div>
-                                </div>
-                                @if($quiz->time_limit)
-                                    <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 rounded student-learn-stat-tile">
-                                            <i class="fas fa-clock text-danger fs-4 mb-2"></i>
-                                            <p class="mb-1 text-muted small">الوقت المحدد</p>
-                                            <h4 class="mb-0">{{ $quiz->time_limit }} <small>دقيقة</small></h4>
-                                        </div>
-                                    </div>
-                                @endif
-                                @if($quiz->attempts_allowed)
-                                    <div class="col-6 col-md-3">
-                                        <div class="text-center p-3 rounded student-learn-stat-tile">
-                                            <i class="fas fa-redo text-primary fs-4 mb-2"></i>
-                                            <p class="mb-1 text-muted small">المحاولات المسموحة</p>
-                                            <h4 class="mb-0">{{ $quiz->attempts_allowed }}</h4>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Questions Preview -->
-                            @if($inProgressAttempt && $quiz->quizQuestions->count() > 0)
-                                <div class="mb-4">
-                                    <h6 class="fw-semibold mb-3"><i class="fas fa-list me-2"></i>الأسئلة ({{ $quiz->quizQuestions->count() }})</h6>
-                                    <div class="list-group">
-                                        @foreach($quiz->quizQuestions as $index => $quizQuestion)
-                                            @php
-                                                $question = $quizQuestion->question;
-                                            @endphp
-                                            <div class="list-group-item d-flex justify-content-between align-items-start">
-                                                <div class="flex-grow-1">
-                                <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
-                                <span class="student-learn-question-preview-text">
-                                                        {!! Str::limit(strip_tags($question->question_text ?? ''), 100) !!}
-                                                    </span>
-                                                </div>
-                                                <div class="text-end" style="min-width: 150px;">
-                                                    <span class="badge bg-info-transparent text-info me-1">
-                                                        {{ $question->questionType->display_name ?? 'غير محدد' }}
-                                                    </span>
-                                                    <span class="badge bg-success-transparent text-success">
-                                                        {{ $quizQuestion->max_score ?? $quizQuestion->question_grade ?? 1 }} نقطة
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            <!-- Attempts Info -->
-                            @if($completedAttempts > 0)
-                                <div class="alert alert-info mb-4">
-                                    <h6 class="mb-2"><i class="fas fa-history me-2"></i>محاولاتك السابقة:</h6>
-                                    <div class="d-flex justify-content-between">
-                                        <span>عدد المحاولات: <strong>{{ $completedAttempts }} / {{ $quiz->attempts_allowed ?? '∞' }}</strong></span>
-                                        @if($lastAttempt && $lastAttempt->status === 'completed')
-                                            <span>آخر درجة: <strong class="{{ ($lastAttempt->percentage_score ?? 0) >= ($quiz->passing_grade ?? 50) ? 'text-success' : 'text-danger' }}">{{ number_format($lastAttempt->percentage_score ?? 0, 1) }}%</strong></span>
-                                        @endif
-                                    </div>
-                                    @if($lastAttempt && $lastAttempt->status === 'completed')
-                                        <a href="{{ route('student.quizzes.review.show', $lastAttempt->id) }}" class="btn btn-sm btn-outline-info mt-2" data-turbo="false">
-                                            <i class="fas fa-eye me-1"></i>عرض آخر محاولة
-                                        </a>
-                                    @endif
-                                </div>
-                            @endif
-
-                            <!-- Start Quiz Button -->
-                            <div class="text-center mt-4 student-learn-assessment-actions">
-                                @if($inProgressAttempt)
-                                    <a href="{{ route('student.quizzes.take', $inProgressAttempt->id) }}" class="btn btn-lg btn-warning" data-turbo="false">
-                                        <i class="fas fa-play-circle me-2"></i>متابعة الاختبار
-                                    </a>
-                                    <p class="text-warning small mt-2 mb-0">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                        لديك محاولة غير مكتملة، يرجى إكمالها أو إرسالها
-                                    </p>
-                                @elseif($canAttempt)
-                                    <form action="{{ route('student.quizzes.start', $quiz->id) }}" method="POST" style="display: inline;" data-turbo="false">
-                                        @csrf
-                                        <input type="hidden" name="module_id" value="{{ $module->id }}">
-                                        <button type="submit" class="btn btn-lg btn-primary">
-                                            <i class="fas fa-play me-2"></i>بدء الاختبار
-                                        </button>
-                                    </form>
-                                    <p class="text-muted small mt-2 mb-0">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        @if($quiz->attempts_allowed)
-                                            المحاولات المتبقية: {{ $remainingAttempts }} / {{ $quiz->attempts_allowed }}
-                                        @else
-                                            سيتم احتساب هذه المحاولة
-                                        @endif
-                                    </p>
-                                @else
-                                    <button class="btn btn-lg btn-secondary" disabled>
-                                        <i class="fas fa-ban me-2"></i>استنفدت جميع المحاولات
-                                    </button>
-                                    <p class="text-danger small mt-2 mb-0">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        @if($quiz->attempts_allowed)
-                                            لقد استخدمت جميع المحاولات المسموحة ({{ $quiz->attempts_allowed }})
-                                        @else
-                                            لا يمكنك بدء هذا الاختبار
-                                        @endif
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
+                    @include('shared.quizzes.intro-panel', [
+                        'title' => $quiz->title,
+                        'description' => $quiz->description,
+                        'instructions' => $quiz->instructions,
+                        'heroVariant' => 'quiz',
+                        'stats' => $quizStats,
+                        'chips' => collect([
+                            $quiz->quiz_type === 'practice' ? ['icon' => 'fe-book-open', 'label' => 'تدريبي'] : null,
+                            $quiz->quiz_type === 'graded' ? ['icon' => 'fe-award', 'label' => 'مُقيّم'] : null,
+                            $quiz->quiz_type === 'final_exam' ? ['icon' => 'fe-flag', 'label' => 'اختبار نهائي'] : null,
+                        ])->filter()->values()->all(),
+                        'showHistory' => true,
+                        'completedAttempts' => $completedAttempts,
+                        'attemptsAllowed' => $quiz->attempts_allowed,
+                        'lastScore' => $lastAttempt ? number_format($lastAttempt->percentage_score ?? 0, 1) . '%' : null,
+                        'lastPassed' => $lastAttempt ? ($lastAttempt->percentage_score ?? 0) >= ($quiz->passing_grade ?? 50) : false,
+                        'reviewUrl' => ($lastAttempt && $lastAttempt->status === 'completed') ? route('student.quizzes.review.show', $lastAttempt->id) : null,
+                        'inProgressAttempt' => $inProgressAttempt,
+                        'continueUrl' => $inProgressAttempt ? route('student.quizzes.take', $inProgressAttempt->id) : null,
+                        'canAttempt' => $canAttempt,
+                        'startFormAction' => route('student.quizzes.start', $quiz->id),
+                        'startFormHidden' => ['module_id' => $module->id],
+                        'remainingAttempts' => $remainingAttempts,
+                        'blockedLabel' => 'استنفدت جميع المحاولات',
+                        'blockedHint' => $quiz->attempts_allowed
+                            ? 'لقد استخدمت جميع المحاولات المسموحة (' . $quiz->attempts_allowed . ')'
+                            : 'الاختبار غير متاح حالياً',
+                        'tips' => [
+                            ['icon' => 'fe-wifi', 'text' => 'اتصال إنترنت مستقر'],
+                            ['icon' => 'fe-clock', 'text' => 'الوقت يبدأ فور البدء'],
+                            ['icon' => 'fe-check-circle', 'text' => 'راجع إجاباتك قبل الإرسال'],
+                        ],
+                    ])
                 @endif
