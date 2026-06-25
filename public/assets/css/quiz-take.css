@@ -256,6 +256,14 @@
     margin-bottom: 0 !important;
     padding: 0.9rem 1rem !important;
     border-width: 2px !important;
+    cursor: pointer;
+    user-select: none;
+}
+
+.quiz-take-page .quiz-option-hit .flex-grow-1,
+.quiz-take-page .quiz-option-hit .form-check-label {
+    pointer-events: none;
+    cursor: pointer;
 }
 
 /* Navigation row */

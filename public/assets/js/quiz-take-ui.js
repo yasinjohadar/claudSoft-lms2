@@ -109,12 +109,17 @@
                 if (e.target.matches('input, textarea, select, a, button')) return;
                 var input = label.querySelector('input[type="radio"], input[type="checkbox"]');
                 if (!input || input.disabled) return;
-                if (input.type === 'radio') {
-                    input.checked = true;
-                } else {
-                    input.checked = !input.checked;
+
+                // Checkbox: <label> already toggles — manual toggle here double-fires and cancels selection
+                if (input.type === 'checkbox') {
+                    return;
                 }
-                input.dispatchEvent(new Event('change', { bubbles: true }));
+
+                if (input.type === 'radio' && !input.checked) {
+                    e.preventDefault();
+                    input.checked = true;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             });
         });
     }
