@@ -1,17 +1,17 @@
 @extends('student.layouts.master')
 
+@include('shared.platform-review.assets')
+
 @section('page-title')
     تقييمي للمنصة
 @stop
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content platform-review-page">
         <div class="container-fluid">
 
-            <!-- Alerts -->
             @include('student.components.alerts')
 
-            <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
                     <h5 class="page-title fs-21 mb-1">تقييمي للمنصة</h5>
@@ -24,101 +24,96 @@
                 </div>
                 <div class="mt-3 mt-md-0">
                     @if(!$review)
-                        <a href="{{ route('student.platform-review.create') }}" class="btn btn-primary">
+                        <a href="{{ route('student.platform-review.create') }}" class="btn btn-primary rounded-pill px-3">
                             <i class="fas fa-plus me-2"></i>إضافة تقييم
                         </a>
                     @else
-                        <a href="{{ route('student.platform-review.edit', $review->id) }}" class="btn btn-warning">
+                        <a href="{{ route('student.platform-review.edit', $review->id) }}" class="btn btn-warning rounded-pill px-3">
                             <i class="fas fa-edit me-2"></i>تعديل التقييم
                         </a>
                     @endif
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-xl-12">
+            <div class="row justify-content-center">
+                <div class="col-xl-10 col-lg-11">
                     @if($review)
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <i class="fas fa-star me-2"></i>تقييمك الحالي
-                                </div>
+                        <div class="platform-review-hero">
+                            <div class="platform-review-hero__top">
+                                <h2 class="platform-review-hero__title">
+                                    <i class="fas fa-star"></i>
+                                    تقييمك الحالي
+                                </h2>
+                                <p class="platform-review-hero__desc">
+                                    شكراً لمشاركتك رأيك — تقييمك يساعدنا على تحسين المنصة وتجربة التعلم.
+                                </p>
                             </div>
-                            <div class="card-body">
-                                <!-- Status Alert -->
+                        </div>
+
+                        <div class="platform-review-card">
+                            <div class="platform-review-card__header">
+                                <h3 class="platform-review-card__title">
+                                    <i class="fas fa-clipboard-check text-primary"></i>
+                                    ملخص التقييم
+                                </h3>
                                 @if($review->is_active)
-                                    <div class="alert alert-success mb-4">
-                                        <i class="fas fa-check-circle me-2"></i>
-                                        <strong>تم الموافقة على تقييمك</strong>
-                                        <p class="mb-0 mt-2">تم الموافقة على تقييمك وهو معروض الآن على صفحة آراء الطلاب.</p>
+                                    <span class="platform-review-status platform-review-status--approved">
+                                        <i class="fas fa-check-circle"></i>
+                                        معتمد ومنشور
+                                    </span>
+                                @else
+                                    <span class="platform-review-status platform-review-status--pending">
+                                        <i class="fas fa-clock"></i>
+                                        قيد المراجعة
+                                    </span>
+                                @endif
+                            </div>
+
+                            <div class="platform-review-card__body">
+                                @if($review->is_active)
+                                    <div class="platform-review-notice mb-4">
+                                        <span class="platform-review-notice__icon"><i class="fas fa-check"></i></span>
+                                        <div>تمت الموافقة على تقييمك وهو معروض الآن في صفحة آراء الطلاب.</div>
                                     </div>
                                 @else
-                                    <div class="alert alert-warning mb-4">
-                                        <i class="fas fa-clock me-2"></i>
-                                        <strong>تقييمك قيد المراجعة</strong>
-                                        <p class="mb-0 mt-2">تقييمك في انتظار مراجعة من قبل الإدارة قبل نشره على المنصة.</p>
+                                    <div class="platform-review-notice platform-review-notice--warning mb-4">
+                                        <span class="platform-review-notice__icon"><i class="fas fa-hourglass-half"></i></span>
+                                        <div>تقييمك في انتظار مراجعة الإدارة قبل نشره على المنصة.</div>
                                     </div>
                                 @endif
 
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <label class="form-label fw-semibold">التقييم</label>
-                                        <div class="d-flex align-items-center">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                @if($i <= $review->rating)
-                                                    <i class="fas fa-star text-warning fs-24 me-1"></i>
-                                                @else
-                                                    <i class="far fa-star text-warning fs-24 me-1"></i>
-                                                @endif
-                                            @endfor
-                                            <span class="ms-2 fw-semibold fs-18">({{ $review->rating }}/5)</span>
-                                        </div>
-                                    </div>
+                                <div class="platform-review-stars-display" aria-label="التقييم {{ $review->rating }} من 5">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="{{ $i <= $review->rating ? 'fas' : 'far' }} fa-star"></i>
+                                    @endfor
+                                    <span class="platform-review-stars-display__score">({{ $review->rating }}/5)</span>
                                 </div>
 
                                 @if($review->student_position)
-                                    <div class="row mb-4">
-                                        <div class="col-md-12">
-                                            <label class="form-label fw-semibold">المنصب</label>
-                                            <p class="text-muted">{{ $review->student_position }}</p>
-                                        </div>
+                                    <div class="platform-review-field-block">
+                                        <div class="platform-review-field-block__label">المسمى الوظيفي أو التعليمي</div>
+                                        <div class="platform-review-field-block__content">{{ $review->student_position }}</div>
                                     </div>
                                 @endif
 
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <label class="form-label fw-semibold">نص التقييم</label>
-                                        <div class="p-3 bg-light rounded">
-                                            <p class="mb-0">{{ $review->review_text }}</p>
-                                        </div>
-                                    </div>
+                                <div class="platform-review-field-block">
+                                    <div class="platform-review-field-block__label">رأيك حول المنصة والكورسات</div>
+                                    <div class="platform-review-field-block__content">{{ $review->review_text }}</div>
                                 </div>
 
                                 @if($review->suggestion)
-                                    <div class="row mb-4">
-                                        <div class="col-md-12">
-                                            <label class="form-label fw-semibold">الاقتراحات</label>
-                                            <div class="p-3 bg-light rounded">
-                                                <p class="mb-0">{{ $review->suggestion }}</p>
-                                            </div>
-                                        </div>
+                                    <div class="platform-review-field-block">
+                                        <div class="platform-review-field-block__label">اقتراحات التطوير</div>
+                                        <div class="platform-review-field-block__content">{{ $review->suggestion }}</div>
                                     </div>
                                 @endif
 
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold">تاريخ الإضافة</label>
-                                        <p class="text-muted">{{ $review->created_at->format('Y-m-d H:i') }}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold">آخر تحديث</label>
-                                        <p class="text-muted">{{ $review->updated_at->format('Y-m-d H:i') }}</p>
-                                    </div>
+                                <div class="platform-review-meta">
+                                    <span><i class="far fa-calendar-plus me-1"></i>تاريخ الإضافة: {{ $review->created_at->format('Y-m-d H:i') }}</span>
+                                    <span><i class="far fa-clock me-1"></i>آخر تحديث: {{ $review->updated_at->format('Y-m-d H:i') }}</span>
                                 </div>
 
-                                <hr>
-
-                                <div class="d-flex gap-2">
+                                <div class="platform-review-form-actions mt-4 pt-2">
                                     <a href="{{ route('student.platform-review.edit', $review->id) }}" class="btn btn-warning">
                                         <i class="fas fa-edit me-2"></i>تعديل التقييم
                                     </a>
@@ -126,15 +121,17 @@
                             </div>
                         </div>
                     @else
-                        <div class="card custom-card">
-                            <div class="card-body text-center py-5">
-                                <i class="fas fa-star fa-5x text-muted mb-4 opacity-25"></i>
-                                <h4 class="text-muted mb-3">لا يوجد تقييم</h4>
-                                <p class="text-muted mb-4">لم تقم بإضافة تقييم للمنصة بعد. شاركنا رأيك وتقييمك!</p>
-                                <a href="{{ route('student.platform-review.create') }}" class="btn btn-primary">
-                                    <i class="fas fa-plus me-2"></i>إضافة تقييم
-                                </a>
+                        <div class="platform-review-empty">
+                            <div class="platform-review-empty__icon">
+                                <i class="fas fa-star"></i>
                             </div>
+                            <h2 class="platform-review-empty__title">لا يوجد تقييم بعد</h2>
+                            <p class="platform-review-empty__text">
+                                لم تُضِف تقييماً للمنصة حتى الآن. شاركنا تجربتك ورأيك — ملاحظاتك تساعدنا على تطوير الكورسات وتحسين التجربة.
+                            </p>
+                            <a href="{{ route('student.platform-review.create') }}" class="btn btn-primary platform-review-empty__btn">
+                                <i class="fas fa-plus me-2"></i>إضافة تقييم
+                            </a>
                         </div>
                     @endif
                 </div>
@@ -143,4 +140,3 @@
         </div>
     </div>
 @endsection
-
