@@ -19,6 +19,11 @@ class ProgrammingLanguage extends Model
         'color',
         'is_active',
         'sort_order',
+        'monaco_language_id',
+        'execution_mode',
+        'runtime_slug',
+        'file_extension',
+        'default_filename',
     ];
 
     protected $casts = [
@@ -36,11 +41,29 @@ class ProgrammingLanguage extends Model
     }
 
     /**
+     * Get programming challenges that use this language
+     */
+    public function challenges()
+    {
+        return $this->belongsToMany(ProgrammingChallenge::class, 'programming_challenge_language')
+            ->withPivot(['is_default', 'editor_tab_label', 'sort_order'])
+            ->withTimestamps();
+    }
+
+    /**
      * Scope for active languages
      */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope for languages that can run in the IDE
+     */
+    public function scopeRunnable($query)
+    {
+        return $query->whereIn('execution_mode', ['client_web', 'server']);
     }
 
     /**

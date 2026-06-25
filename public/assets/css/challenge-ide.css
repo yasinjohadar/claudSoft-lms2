@@ -1,0 +1,299 @@
+/* ── Fullscreen mode (student work page) ── */
+body.challenge-ide-fullscreen {
+    overflow: hidden;
+}
+
+body.challenge-ide-fullscreen .app-sidebar,
+body.challenge-ide-fullscreen .main-header,
+body.challenge-ide-fullscreen .footer,
+body.challenge-ide-fullscreen .page > .container-fluid.mt-3,
+body.challenge-ide-fullscreen .profile-completion-wrapper,
+body.challenge-ide-fullscreen .due-invoices-wrapper {
+    display: none !important;
+}
+
+body.challenge-ide-fullscreen .page {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+
+body.challenge-ide-fullscreen .challenge-ide-page {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: var(--custom-white, #fff);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── IDE shell ── */
+.challenge-ide {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    background: var(--custom-white, #fff);
+    border: 1px solid var(--default-border, #e9ecef);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+body.challenge-ide-fullscreen .challenge-ide {
+    border: none;
+    border-radius: 0;
+}
+
+.challenge-ide__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--default-border, #e9ecef);
+    background: var(--gray-1, #f8f9fa);
+    flex-shrink: 0;
+    direction: rtl;
+}
+
+.challenge-ide__toolbar-start,
+.challenge-ide__toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.challenge-ide__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.challenge-ide__badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: #5e35b1;
+    color: #fff;
+}
+
+/* ── Workspace: editor left, preview right (LTR) ── */
+.challenge-ide__workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    direction: ltr;
+}
+
+.challenge-ide__editor-panel {
+    flex: 1 1 50%;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    min-height: 0;
+    overflow: hidden;
+    border-left: 1px solid var(--default-border, #e9ecef);
+}
+
+.challenge-ide__tabs {
+    flex-shrink: 0;
+    padding: 0 0.5rem;
+    border-bottom: 1px solid var(--default-border, #e9ecef);
+    margin-bottom: 0;
+}
+
+.challenge-ide__tabs .nav-link {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+}
+
+.challenge-ide__tabs .nav-link.active {
+    color: #5e35b1;
+    border-bottom: 2px solid #5e35b1;
+    font-weight: 600;
+}
+
+.challenge-ide__editors {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.challenge-ide__editor-pane {
+    display: none;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.challenge-ide__editor-pane.active {
+    display: flex;
+}
+
+.challenge-ide__monaco {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+.challenge-ide__monaco .monaco-editor,
+.challenge-ide__monaco .monaco-editor .overflow-guard {
+    position: absolute !important;
+    inset: 0 !important;
+}
+
+.challenge-ide__resizer {
+    width: 5px;
+    cursor: col-resize;
+    background: var(--default-border, #dee2e6);
+    flex-shrink: 0;
+    z-index: 2;
+}
+
+.challenge-ide__resizer:hover {
+    background: #5e35b1;
+}
+
+.challenge-ide__preview-panel {
+    flex: 1 1 50%;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.challenge-ide__panel-label {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    border-bottom: 1px solid var(--default-border, #e9ecef);
+    flex-shrink: 0;
+    direction: rtl;
+    text-align: right;
+}
+
+.challenge-ide__preview-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    border: none;
+    background: #fff;
+    display: block;
+}
+
+.challenge-ide__console {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 1rem;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.challenge-ide__instructions {
+    border-top: 1px solid var(--default-border, #e9ecef);
+    padding: 0.5rem 1rem;
+    flex-shrink: 0;
+    direction: rtl;
+}
+
+.challenge-ide__instructions summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.challenge-ide__instructions-body {
+    padding: 0.75rem 0;
+    font-size: 0.9rem;
+    color: #495057;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.challenge-ide__save-status.saving { color: #f57c00 !important; }
+.challenge-ide__save-status.saved { color: #43a047 !important; }
+.challenge-ide__save-status.error { color: #e53935 !important; }
+
+.challenge-ide__fallback-editor {
+    width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
+    min-height: 200px;
+    border: none;
+    resize: none;
+    padding: 12px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    box-sizing: border-box;
+}
+
+body.challenge-ide-fullscreen #loader,
+body.challenge-ide-fullscreen #responsive-overlay {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* Non-fullscreen fallback (if used elsewhere) */
+.challenge-ide-page {
+    min-height: calc(100vh - 120px);
+}
+
+.challenge-ide-page .main-content {
+    padding: 0 !important;
+}
+
+.challenge-ide-page .container-fluid {
+    padding: 0.5rem !important;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    body.challenge-ide-fullscreen .challenge-ide-page {
+        position: fixed;
+        inset: 0;
+    }
+
+    .challenge-ide__workspace {
+        flex-direction: column;
+    }
+
+    .challenge-ide__editor-panel {
+        flex: 1 1 55%;
+        border-left: none;
+        border-bottom: 1px solid var(--default-border, #e9ecef);
+    }
+
+    .challenge-ide__resizer {
+        display: none;
+    }
+
+    .challenge-ide__preview-panel {
+        flex: 1 1 45%;
+    }
+}

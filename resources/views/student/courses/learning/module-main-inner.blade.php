@@ -458,6 +458,50 @@
                     ])
                 @endif
 
+                <!-- Programming Challenge Module -->
+                @if($module->module_type == 'programming_challenge' && $module->modulable)
+                    @php
+                        $progChallenge = $module->modulable;
+                        $studentId = auth()->id();
+                        $pcAttempts = $progChallenge->studentAttempts($studentId)->get();
+                        $pcCompleted = $pcAttempts->whereIn('status', ['submitted', 'graded'])->count();
+                        $pcInProgress = $pcAttempts->where('status', 'in_progress')->where('course_module_id', $module->id)->first();
+                        $pcCanAttempt = $progChallenge->canStudentAttempt($studentId);
+                        $pcLastAttempt = $pcAttempts->first();
+                        $pcStats = [
+                            ['icon' => 'fe-star', 'label' => 'الدرجة القصوى', 'value' => $progChallenge->max_score, 'color' => 'gold'],
+                            ['icon' => 'fe-code', 'label' => 'النوع', 'value' => $progChallenge->challenge_type === 'web_sandbox' ? 'ويب' : 'كود', 'color' => 'blue'],
+                            ['icon' => 'fe-refresh-cw', 'label' => 'المحاولات', 'value' => $progChallenge->attempts_allowed, 'color' => 'cyan'],
+                        ];
+                    @endphp
+
+                    @include('shared.quizzes.intro-panel', [
+                        'title' => $progChallenge->title,
+                        'description' => $progChallenge->description,
+                        'instructions' => $progChallenge->instructions,
+                        'heroVariant' => 'question_module',
+                        'heroIcon' => 'fe-code',
+                        'stats' => $pcStats,
+                        'showHistory' => true,
+                        'completedAttempts' => $pcCompleted,
+                        'attemptsAllowed' => $progChallenge->attempts_allowed,
+                        'lastScore' => ($pcLastAttempt && $pcLastAttempt->isGraded()) ? $pcLastAttempt->score . '/' . $pcLastAttempt->max_score : null,
+                        'lastPassed' => false,
+                        'reviewUrl' => null,
+                        'inProgressAttempt' => $pcInProgress,
+                        'continueUrl' => $pcInProgress ? route('student.challenges.work', $progChallenge->id) . '?module_id=' . $module->id : null,
+                        'canAttempt' => $pcCanAttempt || $pcInProgress,
+                        'startUrl' => route('student.challenges.start', $progChallenge->id) . '?module_id=' . $module->id,
+                        'remainingAttempts' => $progChallenge->attempts_allowed - $pcCompleted,
+                        'blockedLabel' => 'استنفدت المحاولات',
+                        'blockedHint' => 'لقد استخدمت جميع المحاولات المسموحة',
+                        'tips' => [
+                            ['icon' => 'fe-monitor', 'text' => 'محرر كود تفاعلي'],
+                            ['icon' => 'fe-save', 'text' => 'حفظ تلقائي'],
+                        ],
+                    ])
+                @endif
+
                 <!-- Quiz Module -->
                 @if($module->module_type == 'quiz' && $module->modulable)
                     @php

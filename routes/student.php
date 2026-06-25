@@ -184,6 +184,43 @@ Route::prefix('student')
             Route::get('/{questionModule}/module', [QuestionModuleStatsController::class, 'showModuleStats'])->name('module'); // Specific module stats
         });
 
+        // ========== Programming Challenges Routes (Student) ==========
+
+        Route::prefix('challenges')->name('student.challenges.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'index'])->name('index');
+            Route::get('/{id}', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'show'])->name('show');
+            Route::get('/{id}/work', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'work'])->name('work');
+            Route::get('/{id}/start', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'startAttempt'])->name('start');
+            Route::post('/{id}/save-draft', [\App\Http\Controllers\Api\Student\ChallengeApiController::class, 'saveDraft'])->name('save-draft');
+            Route::post('/{id}/submit', [\App\Http\Controllers\Api\Student\ChallengeApiController::class, 'submit'])->name('submit');
+            Route::post('/{id}/run', [\App\Http\Controllers\Api\Student\ChallengeApiController::class, 'run'])->name('run');
+        });
+
+        // ========== Project Challenges Routes (Student) ==========
+
+        Route::prefix('project-challenges')->name('student.project-challenges.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Student\ProjectChallengeController::class, 'index'])->name('index');
+            Route::get('/{challengeId}/teams/create', [\App\Http\Controllers\Student\ProjectTeamController::class, 'create'])->name('teams.create');
+            Route::post('/{challengeId}/teams', [\App\Http\Controllers\Student\ProjectTeamController::class, 'store'])->name('teams.store');
+            Route::get('/{id}', [\App\Http\Controllers\Student\ProjectChallengeController::class, 'show'])->name('show');
+        });
+
+        Route::prefix('project-teams')->name('student.project-teams.')->group(function () {
+            Route::post('/{teamId}/join', [\App\Http\Controllers\Student\ProjectTeamController::class, 'requestJoin'])->name('join');
+            Route::get('/{teamId}/workspace', [\App\Http\Controllers\Student\ProjectTeamController::class, 'workspace'])->name('workspace');
+            Route::post('/{teamId}/stages/{stageId}/draft', [\App\Http\Controllers\Student\ProjectTeamController::class, 'saveDraft'])->name('save-draft');
+            Route::post('/{teamId}/stages/{stageId}/submit', [\App\Http\Controllers\Student\ProjectTeamController::class, 'submitStage'])->name('submit-stage');
+            Route::get('/{teamId}/showcase/publish', [\App\Http\Controllers\Student\ProjectShowcaseController::class, 'publishForm'])->name('showcase.publish-form');
+            Route::post('/{teamId}/showcase/publish', [\App\Http\Controllers\Student\ProjectShowcaseController::class, 'publish'])->name('showcase.publish');
+        });
+
+        Route::prefix('community-projects')->name('student.community-projects.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Student\CommunityProjectsController::class, 'index'])->name('index');
+            Route::get('/{slug}', [\App\Http\Controllers\Student\ProjectShowcaseController::class, 'show'])->name('show');
+            Route::post('/{slug}/comments', [\App\Http\Controllers\Student\ProjectShowcaseController::class, 'storeComment'])->name('comments.store');
+            Route::post('/comments/{commentId}/like', [\App\Http\Controllers\Student\ProjectShowcaseController::class, 'toggleCommentLike'])->name('comments.like');
+        });
+
         // ========== Gamification Routes (Student) ==========
 
         Route::prefix('gamification')->name('gamification.')->group(function () {

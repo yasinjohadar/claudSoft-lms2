@@ -639,6 +639,9 @@
                                             <a href="{{ route('question-modules.create', ['section_id' => $section->id]) }}" class="admin-course-content-chip">
                                                 <i class="fe fe-layers"></i><span>وحدة أسئلة</span>
                                             </a>
+                                            <a href="{{ route('programming-challenges.create', ['section_id' => $section->id]) }}" class="admin-course-content-chip">
+                                                <i class="fe fe-code"></i><span>تحدي برمجي</span>
+                                            </a>
                                             <a href="{{ route('sections.questions.manage', $section->id) }}" class="admin-course-content-chip">
                                                 <i class="fe fe-list"></i><span>أسئلة</span>
                                             </a>

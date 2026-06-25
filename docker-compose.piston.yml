@@ -1,0 +1,12 @@
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: claudsoft-piston
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston_data:/piston
+    restart: unless-stopped
+
+volumes:
+  piston_data:

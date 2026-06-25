@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (! Schema::hasTable('project_teams')) {
+            return;
+        }
+
+        if (Schema::hasColumn('project_teams', 'admin_unlocked_stage_ids')) {
+            return;
+        }
+
+        Schema::table('project_teams', function (Blueprint $table) {
+            $table->json('admin_unlocked_stage_ids')->nullable()->after('progress_percent');
+        });
+    }
+
+    public function down(): void
+    {
+        if (! Schema::hasTable('project_teams') || ! Schema::hasColumn('project_teams', 'admin_unlocked_stage_ids')) {
+            return;
+        }
+
+        Schema::table('project_teams', function (Blueprint $table) {
+            $table->dropColumn('admin_unlocked_stage_ids');
+        });
+    }
+};

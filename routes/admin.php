@@ -437,6 +437,54 @@ Route::prefix('admin')
             Route::post('/{attemptId}/complete', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'completeGrading'])->name('complete');
         });
 
+        // ========== Programming Challenges Routes ==========
+
+        Route::resource('programming-challenges', \App\Http\Controllers\Admin\ProgrammingChallengeController::class)->except(['show']);
+        Route::get('programming-challenges/{id}/languages', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageLanguages'])->name('programming-challenges.manage-languages');
+        Route::put('programming-challenges/{id}/languages', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateLanguages'])->name('programming-challenges.update-languages');
+        Route::get('programming-challenges/{id}/starter', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageStarter'])->name('programming-challenges.manage-starter');
+        Route::put('programming-challenges/{id}/starter', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateStarter'])->name('programming-challenges.update-starter');
+        Route::get('programming-challenges/{id}/test-cases', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageTestCases'])->name('programming-challenges.manage-test-cases');
+        Route::put('programming-challenges/{id}/test-cases', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateTestCases'])->name('programming-challenges.update-test-cases');
+
+        Route::prefix('challenge-grading')->name('admin.challenge-grading.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'show'])->name('show');
+            Route::post('/{attemptId}/grade', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'grade'])->name('grade');
+        });
+
+        // ========== Project Challenges Routes ==========
+
+        Route::prefix('project-challenges')->name('admin.project-challenges.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'store'])->name('store');
+            Route::get('/search-students', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'searchStudents'])->name('search-students');
+            Route::get('/{id}/edit', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'update'])->name('update');
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/publish', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'publish'])->name('publish');
+            Route::get('/{id}/stages', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'manageStages'])->name('manage-stages');
+            Route::put('/{id}/stages', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'updateStages'])->name('update-stages');
+            Route::get('/{id}/teams', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'manageTeams'])->name('manage-teams');
+            Route::post('/{challengeId}/teams', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'store'])->name('teams.store');
+            Route::get('/{challengeId}/teams/{teamId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'show'])->name('teams.show');
+            Route::put('/{challengeId}/teams/{teamId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'update'])->name('teams.update');
+            Route::post('/{challengeId}/teams/{teamId}/members', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'addMember'])->name('teams.members.store');
+            Route::delete('/{challengeId}/teams/{teamId}/members/{userId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'removeMember'])->name('teams.members.destroy');
+            Route::put('/{challengeId}/teams/{teamId}/members/{userId}/role', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'updateMemberRole'])->name('teams.members.update-role');
+            Route::post('/{challengeId}/teams/{teamId}/stages/{stageId}/unlock', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'unlockStage'])->name('teams.stages.unlock');
+            Route::post('/{challengeId}/join-requests/{requestId}/approve', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'approveJoinRequest'])->name('approve-join-request');
+            Route::post('/{challengeId}/join-requests/{requestId}/reject', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'rejectJoinRequest'])->name('reject-join-request');
+            Route::post('/{challengeId}/teams/{teamId}/activate', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'activateTeam'])->name('activate-team');
+        });
+
+        Route::prefix('project-grading')->name('admin.project-grading.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'index'])->name('index');
+            Route::get('/{submissionId}', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'show'])->name('show');
+            Route::post('/{submissionId}/grade', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'grade'])->name('grade');
+        });
+
         // ========== Gamification Routes ==========
 
         Route::prefix('gamification')->name('admin.gamification.')->group(function () {

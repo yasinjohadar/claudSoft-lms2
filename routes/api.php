@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\N8nWebhookController;
 use App\Http\Controllers\Api\Student\AssignmentApiController as StudentAssignmentApiController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
+use App\Http\Controllers\Api\Student\ChallengeApiController as ProgrammingChallengeApiController;
 use App\Http\Controllers\Api\Student\CertificateApiController as StudentCertificateApiController;
 use App\Http\Controllers\Api\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Api\Student\DashboardApiController as StudentDashboardApiController;
@@ -79,6 +80,10 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('assignments/{id}', [StudentAssignmentApiController::class, 'show'])->name('assignments.show');
         Route::post('assignments/{id}/submit', [StudentAssignmentApiController::class, 'submit'])->name('assignments.submit');
         Route::post('assignments/{id}/save-draft', [StudentAssignmentApiController::class, 'saveDraft'])->name('assignments.save-draft');
+
+        Route::post('challenges/{id}/save-draft', [ProgrammingChallengeApiController::class, 'saveDraft'])->name('challenges.save-draft');
+        Route::post('challenges/{id}/submit', [ProgrammingChallengeApiController::class, 'submit'])->name('challenges.submit');
+        Route::post('challenges/{id}/run', [ProgrammingChallengeApiController::class, 'run'])->name('challenges.run');
 
         Route::get('study-reports', [StudentStudyReportApiController::class, 'index'])->name('study-reports.index');
         Route::get('study-reports/{report}', [StudentStudyReportApiController::class, 'show'])->name('study-reports.show');

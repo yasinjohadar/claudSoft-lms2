@@ -17,6 +17,7 @@
         'quiz' => ['icon' => 'fe-help-circle', 'label' => 'اختبار', 'tone' => 'success'],
         'assignment' => ['icon' => 'fe-check-square', 'label' => 'واجب', 'tone' => 'warning'],
         'question_module' => ['icon' => 'fe-layers', 'label' => 'وحدة أسئلة', 'tone' => 'info'],
+        'programming_challenge' => ['icon' => 'fe-code', 'label' => 'تحدي برمجي', 'tone' => 'purple'],
         default => ['icon' => 'fe-file-text', 'label' => 'مورد', 'tone' => 'secondary'],
     };
 @endphp
@@ -91,6 +92,15 @@
                         @endif
                     @endif
 
+                    @if($module->module_type == 'programming_challenge' && $module->modulable)
+                        <span class="group-show-chip group-show-chip--sm" style="color:#5e35b1">
+                            {{ $module->modulable->challenge_type === 'web_sandbox' ? 'ويب' : 'كود' }}
+                        </span>
+                        <span class="group-show-chip group-show-chip--sm text-success">
+                            {{ $module->modulable->max_score }} نقطة
+                        </span>
+                    @endif
+
                     <span id="module-visibility-badge-{{ $module->id }}"
                           class="group-show-chip group-show-chip--sm {{ $module->is_visible ? 'text-success' : 'text-muted' }}">
                         <i class="fe fe-eye{{ $module->is_visible ? '' : '-off' }} me-1"></i>
@@ -134,6 +144,10 @@
                 <a href="{{ route('question-modules.show', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
                     <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
                 </a>
+            @elseif($module->module_type == 'programming_challenge' && $module->modulable_id)
+                <a href="{{ route('programming-challenges.edit', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
+                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
+                </a>
             @else
                 <a href="{{ route('sections.modules.show', [$section->id, $module->id]) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
                     <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
@@ -150,6 +164,10 @@
                 </a>
             @elseif($module->module_type == 'question_module' && $module->modulable_id)
                 <a href="{{ route('question-modules.manage-questions', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
+                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
+                </a>
+            @elseif($module->module_type == 'programming_challenge' && $module->modulable_id)
+                <a href="{{ route('programming-challenges.manage-languages', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
                     <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
                 </a>
             @elseif($module->module_type == 'video' && $module->modulable_id)

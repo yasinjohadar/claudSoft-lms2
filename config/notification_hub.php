@@ -63,6 +63,34 @@ return [
             'title' => '{{title}}',
             'body' => '{{body}}',
         ],
+        'project.team.join_requested' => [
+            'title' => 'طلب انضمام لفريق',
+            'body' => 'طلب {{user_name}} الانضمام إلى فريق «{{team_name}}» في تحدي «{{challenge_title}}».',
+        ],
+        'project.team.join_approved' => [
+            'title' => 'تم قبول طلب الانضمام',
+            'body' => 'تم قبول انضمامك إلى فريق «{{team_name}}» في تحدي «{{challenge_title}}».',
+        ],
+        'project.team.join_rejected' => [
+            'title' => 'تم رفض طلب الانضمام',
+            'body' => 'تم رفض طلب انضمامك إلى فريق «{{team_name}}» في تحدي «{{challenge_title}}».',
+        ],
+        'project.stage.submitted' => [
+            'title' => 'تسليم مرحلة مشروع',
+            'body' => 'قدّم فريق «{{team_name}}» مرحلة «{{stage_title}}» في تحدي «{{challenge_title}}».',
+        ],
+        'project.stage.graded' => [
+            'title' => 'تم تقييم مرحلة المشروع',
+            'body' => 'تم تقييم مرحلة «{{stage_title}}» لفريق «{{team_name}}»: {{score}} من {{max_score}}.',
+        ],
+        'project.showcase.published' => [
+            'title' => 'نُشر عرض المشروع',
+            'body' => 'تم نشر عرض «{{showcase_title}}» لفريق «{{team_name}}» في معرض المشاريع.',
+        ],
+        'project.comment.posted' => [
+            'title' => 'تعليق جديد على مشروعك',
+            'body' => 'علّق {{commenter_name}} على عرض «{{showcase_title}}».',
+        ],
     ],
 
     'activity_fallbacks' => [
@@ -90,5 +118,12 @@ return [
         'student.assignment.graded' => 'تقييم واجب',
         'student.assignment.submitted' => 'تسليم واجب',
         'student.assignment.available' => 'واجب جديد',
+        'project.team.join_requested' => 'طلب انضمام',
+        'project.team.join_approved' => 'قبول انضمام',
+        'project.team.join_rejected' => 'رفض انضمام',
+        'project.stage.submitted' => 'تسليم مرحلة',
+        'project.stage.graded' => 'تقييم مرحلة',
+        'project.showcase.published' => 'عرض منشور',
+        'project.comment.posted' => 'تعليق جديد',
     ],
 ];

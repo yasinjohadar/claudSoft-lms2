@@ -285,6 +285,10 @@ class CourseLearningController extends Controller
         if ($module->module_type === 'quiz' && $module->modulable) {
             $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
         }
+
+        if ($module->module_type === 'programming_challenge' && $module->modulable) {
+            $module->modulable->load(['languages', 'files']);
+        }
     }
 
     /**

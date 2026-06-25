@@ -363,6 +363,45 @@
                         </li>
                         <!-- End::slide -->
 
+
+                        <!-- Start::slide - التحديات البرمجية -->
+                        <li class="slide {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
+                                <i class="fe fe-code side-menu__icon"></i>
+                                <span class="side-menu__label">التحديات البرمجية</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - مشاريع التحدي -->
+                        <li class="slide has-sub student-sidebar-submenu {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'active' : '' }}">
+                                <i class="fe fe-layers side-menu__icon"></i>
+                                <span class="side-menu__label">مشاريع التحدي</span>
+                                <i class="fe fe-chevron-down side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">مشاريع التحدي</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.project-challenges.index', 'student.project-challenges.show') ? 'active' : '' }}">
+                                    <a href="{{ route('student.project-challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.project-challenges.index', 'student.project-challenges.show') ? 'active' : '' }}">
+                                        <i class="fe fe-flag student-submenu__icon"></i>
+                                        <span>التحديات المتاحة</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - مجتمع المشاريع -->
+                        <li class="slide {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.community-projects.index') }}" class="side-menu__item {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
+                                <i class="fe fe-globe side-menu__icon"></i>
+                                <span class="side-menu__label">مجتمع المشاريع</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
                         <!-- Start::slide - تقييمي للمنصة -->
                         <li class="slide {{ request()->routeIs('student.platform-review.*') ? 'active' : '' }}">
                             <a href="{{ route('student.platform-review.index') }}" class="side-menu__item {{ request()->routeIs('student.platform-review.*') ? 'active' : '' }}">

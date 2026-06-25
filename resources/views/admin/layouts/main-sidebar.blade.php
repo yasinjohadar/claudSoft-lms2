@@ -31,11 +31,17 @@
                             $assessmentsActive = request()->routeIs(
                                 'assignments.*',
                                 'quizzes.*',
+                                'programming-challenges.*',
+                                'admin.challenge-grading.*',
+                                'admin.project-challenges.*',
+                                'admin.project-grading.*',
                                 'admin.question-module-grading.*',
                                 'question-bank.*',
                                 'question-pools.*',
                                 'quiz-analytics.*'
                             );
+                            $programmingChallengesActive = request()->routeIs('programming-challenges.*', 'admin.challenge-grading.*');
+                            $projectChallengesActive = request()->routeIs('admin.project-challenges.*', 'admin.project-grading.*');
                             $enrollmentSectionActive = request()->routeIs(
                                 'enrollments.all',
                                 'training-camps.*',
@@ -186,6 +192,42 @@
                                         </li>
                                         <li class="slide {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">
                                             <a href="{{ route('quizzes.create') }}" class="side-menu__item {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">إضافة اختبار جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ $programmingChallengesActive ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ $programmingChallengesActive ? 'active' : '' }}">
+                                        <i class="fas fa-code me-2"></i>التحديات البرمجية
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ $programmingChallengesActive ? 'active' : '' }}" style="{{ $programmingChallengesActive ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('programming-challenges.index') ? 'active' : '' }}">
+                                            <a href="{{ route('programming-challenges.index') }}" class="side-menu__item {{ request()->routeIs('programming-challenges.index') ? 'active' : '' }}">جميع التحديات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('programming-challenges.create') ? 'active' : '' }}">
+                                            <a href="{{ route('programming-challenges.create') }}" class="side-menu__item {{ request()->routeIs('programming-challenges.create') ? 'active' : '' }}">إضافة تحدي جديد</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.challenge-grading.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.challenge-grading.index') }}" class="side-menu__item {{ request()->routeIs('admin.challenge-grading.*') ? 'active' : '' }}">تقييم التحديات</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ $projectChallengesActive ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ $projectChallengesActive ? 'active' : '' }}">
+                                        <i class="fas fa-project-diagram me-2"></i>مشاريع التحدي
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ $projectChallengesActive ? 'active' : '' }}" style="{{ $projectChallengesActive ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.project-challenges.index') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.project-challenges.index') }}" class="side-menu__item {{ request()->routeIs('admin.project-challenges.index') ? 'active' : '' }}">جميع المشاريع</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.project-challenges.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.project-challenges.create') }}" class="side-menu__item {{ request()->routeIs('admin.project-challenges.create') ? 'active' : '' }}">إضافة مشروع</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.project-grading.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.project-grading.index') }}" class="side-menu__item {{ request()->routeIs('admin.project-grading.*') ? 'active' : '' }}">تقييم التسليمات</a>
                                         </li>
                                     </ul>
                                 </li>
