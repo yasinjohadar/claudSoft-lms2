@@ -13,9 +13,10 @@
     --gr-warning: #d97706;
     --gr-warning-soft: #fffbeb;
     --gr-danger: #dc2626;
-    --gr-text: #0f172a;
+    --gr-text: #334155;
     --gr-text-muted: #64748b;
     --gr-border: #e2e8f0;
+    --gr-border-input: #cbd5e1;
     --gr-bg: #f1f5f9;
     --gr-card: #ffffff;
     --gr-radius: 16px;
@@ -119,15 +120,16 @@ html {
 
 .gr-hero__title {
     font-size: 1.15rem;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.55;
     margin: 0 0 8px;
-    color: var(--gr-text);
+    color: #1e293b;
 }
 
 .gr-hero__subtitle {
     margin: 0;
     font-size: 0.9rem;
+    font-weight: 400;
     color: var(--gr-text-muted);
 }
 
@@ -158,15 +160,16 @@ html {
 
 .gr-label {
     display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: var(--gr-text);
+    font-size: 0.925rem;
+    font-weight: 700;
+    margin-bottom: 7px;
+    color: #1e293b;
 }
 
 .gr-label.required::after {
     content: " *";
     color: var(--gr-danger);
+    font-weight: 700;
 }
 
 .gr-input,
@@ -175,8 +178,9 @@ html {
 .gr-body .form-select {
     min-height: var(--gr-touch);
     font-size: 16px !important;
+    font-weight: 400;
     border-radius: var(--gr-radius-sm);
-    border: 1.5px solid var(--gr-border);
+    border: 1.5px solid var(--gr-border-input);
     background: #fff;
     color: var(--gr-text);
     padding: 10px 14px;
@@ -220,11 +224,12 @@ html {
     min-height: var(--gr-touch);
     padding: 12px 14px;
     margin: 0;
-    border: 1.5px solid var(--gr-border);
+    border: 1.5px solid var(--gr-border-input);
     border-radius: var(--gr-radius-sm);
     background: #fff;
     font-size: 0.925rem;
-    font-weight: 500;
+    font-weight: 400;
+    color: var(--gr-text);
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
@@ -263,6 +268,7 @@ html {
 
 .gr-radio-item--danger label {
     color: var(--gr-danger);
+    font-weight: 500;
 }
 
 .gr-note {
@@ -322,13 +328,15 @@ html {
 .gr-body .select2-container--bootstrap-5 .select2-selection {
     min-height: var(--gr-touch);
     font-size: 16px;
+    font-weight: 400;
     border-radius: var(--gr-radius-sm);
-    border: 1.5px solid var(--gr-border);
+    border: 1.5px solid var(--gr-border-input);
 }
 
 .gr-body .select2-container--bootstrap-5 .select2-selection__rendered {
     line-height: calc(var(--gr-touch) - 8px);
     padding-right: 14px;
+    color: var(--gr-text);
 }
 
 .gr-body .select2-container--bootstrap-5.select2-container--focus .select2-selection,
@@ -361,6 +369,21 @@ html {
 }
 
 @media (max-width: 575.98px) {
+    .gr-label {
+        font-size: 0.975rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .gr-hero__title {
+        font-weight: 700;
+    }
+
+    .gr-section__title {
+        font-size: 0.975rem;
+        font-weight: 700;
+    }
+
     .gr-submit-wrap {
         position: sticky;
         bottom: 0;
