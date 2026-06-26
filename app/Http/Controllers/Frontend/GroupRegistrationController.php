@@ -77,7 +77,6 @@ class GroupRegistrationController extends Controller
             ],
             'phone' => 'required|string|max:20',
             'country_code' => ['required', 'string', 'max:8', \Illuminate\Validation\Rule::in(config('country_codes.allowed_codes'))],
-            'date_of_birth' => 'nullable|date|before:today',
             'commitment_to_training' => 'required|in:yes,no',
             'has_sufficient_time' => 'required|in:yes,no',
             'has_computer' => 'required|in:yes,no',
