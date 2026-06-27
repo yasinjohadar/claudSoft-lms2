@@ -27,7 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Marketing\MetaPixelService::class);
+        $this->app->singleton(\App\Services\Marketing\GoogleDataLayerService::class);
+        $this->app->singleton(\App\Services\Marketing\MarketingAnalyticsService::class);
     }
 
     /**
@@ -75,6 +77,41 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('dueInvoicesAlert', $alert);
         });
+
+        $metaPixelViews = [
+            'frontend2.layouts.master',
+            'frontend.group-registration.layout',
+            'frontend.layouts.master',
+            'frontend.layouts.standalone',
+        ];
+
+        View::composer($metaPixelViews, \App\View\Composers\MetaPixelComposer::class);
+        View::composer($metaPixelViews, \App\View\Composers\GoogleTagComposer::class);
+
+        View::composer('frontend2.pages.about', function ($view) {
+            app(\App\Services\Marketing\MetaPixelService::class)->trackViewContent(
+                'من نحن',
+                'about'
+            );
+        });
+
+        $servicePages = [
+            'frontend2.pages.service-detail' => 'تطوير الويب',
+            'frontend2.pages.service-detail-servers' => 'الخوادم',
+            'frontend2.pages.service-detail-security' => 'الأمن السيبراني',
+            'frontend2.pages.service-detail-mobile' => 'تطبيقات الموبايل',
+            'frontend2.pages.service-detail-devops' => 'DevOps',
+            'frontend2.pages.consultation' => 'الاستشارات',
+        ];
+
+        foreach ($servicePages as $viewName => $title) {
+            View::composer($viewName, function ($view) use ($title) {
+                app(\App\Services\Marketing\MetaPixelService::class)->trackViewContent(
+                    $title,
+                    'service'
+                );
+            });
+        }
 
         // Initialize WhatsApp settings defaults
         try {

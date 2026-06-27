@@ -5,7 +5,7 @@
 @stop
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/project-challenge.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/project-challenge.css') }}?v={{ filemtime(public_path('assets/css/project-challenge.css')) }}">
 @endpush
 
 @section('content')
@@ -13,32 +13,57 @@
         <div class="container-fluid">
             @include('admin.components.alerts')
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إنشاء تحدي مشروع جديد</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.project-challenges.index') }}">تحديات المشاريع</a></li>
-                            <li class="breadcrumb-item active">إنشاء</li>
-                        </ol>
-                    </nav>
+            <div class="my-3 page-header-breadcrumb">
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.project-challenges.index') }}">تحديات المشاريع</a></li>
+                        <li class="breadcrumb-item active">إنشاء</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="pc-form-hero dashboard-fade-in">
+                <div class="pc-form-hero__inner d-flex flex-wrap justify-content-between align-items-start gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                            <i class="fe fe-layers fa-lg"></i>
+                            <span class="pc-form-hero__badge">Project Challenge</span>
+                        </div>
+                        <h1 class="pc-form-hero__title">إنشاء تحدي مشروع جديد</h1>
+                        <p class="pc-form-hero__desc">
+                            عرّف التحدي، حدّد الفرق والجدول الزمني، ثم انتقل لإعداد المراحل بعد الحفظ.
+                        </p>
+                    </div>
+                    <a href="{{ route('admin.project-challenges.index') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        <i class="fe fe-arrow-right me-1"></i> العودة للقائمة
+                    </a>
                 </div>
             </div>
 
             @if ($errors->any())
-                <div class="alert alert-danger">
-                    <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                <div class="alert alert-danger border-0 shadow-sm rounded-3">
+                    <div class="d-flex align-items-center gap-2 mb-2 fw-bold">
+                        <i class="fe fe-alert-circle"></i> يرجى تصحيح الأخطاء التالية
+                    </div>
+                    <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
                 </div>
             @endif
 
             <form action="{{ route('admin.project-challenges.store') }}" method="POST" id="projectChallengeForm">
                 @csrf
                 @include('admin.pages.project-challenges._form-fields')
-                <div class="text-end mt-3">
-                    <a href="{{ route('admin.project-challenges.index') }}" class="btn btn-light me-2">إلغاء</a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fe fe-save me-1"></i>إنشاء والمتابعة للمراحل
-                    </button>
+
+                <div class="pc-form-sticky">
+                    <span class="text-muted small">
+                        <i class="fe fe-info me-1"></i>
+                        بعد الإنشاء ستنتقل لإعداد مراحل التحدي
+                    </span>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('admin.project-challenges.index') }}" class="btn btn-light">إلغاء</a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="fe fe-save me-1"></i> إنشاء والمتابعة للمراحل
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -53,4 +78,15 @@
             ['selector' => '#project_challenge_description', 'height' => 520],
         ],
     ])
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-switch-row]').forEach(function (row) {
+            var cb = row.querySelector('input[type="checkbox"]');
+            if (!cb) return;
+            cb.addEventListener('change', function () {
+                row.classList.toggle('on', cb.checked);
+            });
+        });
+    });
+    </script>
 @stop

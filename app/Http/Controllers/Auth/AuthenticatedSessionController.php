@@ -62,7 +62,6 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        // التحقق من تفعيل الحساب
         if (!$user->is_active) {
             Auth::logout();
             $request->session()->invalidate();
@@ -73,7 +72,6 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // حدّث بيانات آخر دخول (اختياري) - فقط إذا كانت الأعمدة موجودة
         try {
             $user->update([
                 'last_login_at' => now(),
@@ -84,15 +82,10 @@ class AuthenticatedSessionController extends Controller
             // Ignore if columns don't exist
         }
 
-        // Track device and start session
         try {
-            // Track device
             $this->deviceTrackingService->trackDeviceOnLogin($user, $request);
-            
-            // Start new session
             $this->sessionTrackingService->startSession($user, $request);
         } catch (\Exception $e) {
-            // Log error but don't prevent login
             \Log::error('Failed to track device/session on login', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -101,7 +94,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // إن وُجد رابط محفوظ (مثلاً بعد محاولة فتح /docs/... بدون جلسة)، العودة إليه بعد الدخول
         $fallback = route('frontend.home', absolute: false);
         if ($user->hasRole('admin')) {
             $fallback = route('admin.dashboard', absolute: false);

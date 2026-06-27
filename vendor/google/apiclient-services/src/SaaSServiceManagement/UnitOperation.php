@@ -94,6 +94,13 @@ class UnitOperation extends \Google\Collection
    * @var string
    */
   public $createTime;
+  /**
+   * Output only. The timestamp when the resource was marked for deletion
+   * (deletion is an asynchronous operation).
+   *
+   * @var string
+   */
+  public $deleteTime;
   protected $deprovisionType = Deprovision::class;
   protected $deprovisionDataType = '';
   /**
@@ -118,6 +125,8 @@ class UnitOperation extends \Google\Collection
    * @var string
    */
   public $etag;
+  protected $flagUpdateType = FlagUpdate::class;
+  protected $flagUpdateDataType = '';
   /**
    * Optional. The labels on the resource, which can be used for categorization.
    * similar to Kubernetes resource labels.
@@ -259,6 +268,25 @@ class UnitOperation extends \Google\Collection
     return $this->createTime;
   }
   /**
+   * Output only. The timestamp when the resource was marked for deletion
+   * (deletion is an asynchronous operation).
+   *
+   * @param string $deleteTime
+   */
+  public function setDeleteTime($deleteTime)
+  {
+    $this->deleteTime = $deleteTime;
+  }
+  /**
+   * @return string
+   */
+  public function getDeleteTime()
+  {
+    return $this->deleteTime;
+  }
+  /**
+   * Optional. Deprovision operation.
+   *
    * @param Deprovision $deprovision
    */
   public function setDeprovision(Deprovision $deprovision)
@@ -328,6 +356,22 @@ class UnitOperation extends \Google\Collection
     return $this->etag;
   }
   /**
+   * Optional. Flag update operation.
+   *
+   * @param FlagUpdate $flagUpdate
+   */
+  public function setFlagUpdate(FlagUpdate $flagUpdate)
+  {
+    $this->flagUpdate = $flagUpdate;
+  }
+  /**
+   * @return FlagUpdate
+   */
+  public function getFlagUpdate()
+  {
+    return $this->flagUpdate;
+  }
+  /**
    * Optional. The labels on the resource, which can be used for categorization.
    * similar to Kubernetes resource labels.
    *
@@ -382,6 +426,8 @@ class UnitOperation extends \Google\Collection
     return $this->parentUnitOperation;
   }
   /**
+   * Optional. Provision operation.
+   *
    * @param Provision $provision
    */
   public function setProvision(Provision $provision)
@@ -507,6 +553,8 @@ class UnitOperation extends \Google\Collection
     return $this->updateTime;
   }
   /**
+   * Optional. Upgrade operation.
+   *
    * @param Upgrade $upgrade
    */
   public function setUpgrade(Upgrade $upgrade)

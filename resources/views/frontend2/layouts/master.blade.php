@@ -17,8 +17,13 @@
     <link rel="stylesheet" href="{{ asset('frontend2/assets/css/style.css') }}">
 
     @stack('head')
+    @include('partials.marketing.google.search-console')
+    @include('partials.marketing.google.gtm-head')
+    @include('partials.marketing.meta-pixel.base')
+    @include('partials.marketing.google.datalayer-events')
 </head>
 <body>
+    @include('partials.marketing.google.gtm-body')
 
     <!-- Page Loader -->
     <div id="pageLoader" aria-hidden="true">

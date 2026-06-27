@@ -106,7 +106,9 @@ class UnicodeString extends AbstractUnicodeString
             return false;
         }
 
-        $grapheme = grapheme_extract($this->string, \strlen($suffix), \GRAPHEME_EXTR_MAXBYTES, \strlen($this->string) - \strlen($suffix)) ?: '';
+        if (false === $grapheme = grapheme_extract($this->string, \strlen($suffix), \GRAPHEME_EXTR_MAXBYTES, \strlen($this->string) - \strlen($suffix))) {
+            $grapheme = '';
+        }
 
         if ($this->ignoreCase) {
             return 0 === mb_stripos($grapheme, $suffix, 0, 'UTF-8');
@@ -357,7 +359,9 @@ class UnicodeString extends AbstractUnicodeString
             return false;
         }
 
-        $grapheme = grapheme_extract($this->string, \strlen($prefix), \GRAPHEME_EXTR_MAXBYTES) ?: '';
+        if (false === $grapheme = grapheme_extract($this->string, \strlen($prefix), \GRAPHEME_EXTR_MAXBYTES)) {
+            $grapheme = '';
+        }
 
         if ($this->ignoreCase) {
             return 0 === mb_stripos($grapheme, $prefix, 0, 'UTF-8');
@@ -410,6 +414,10 @@ class UnicodeString extends AbstractUnicodeString
             trigger_deprecation('symfony/string', '7.4', 'Implementing "%s::__wakeup()" is deprecated, use "__unserialize()" instead.', get_debug_type($this));
         }
 
+        if (($data['string'] ?? null) instanceof \Stringable || ($data["\0*\0string"] ?? null) instanceof \Stringable) {
+            throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
+        }
+
         try {
             if (\in_array(array_keys($data), [['string'], ["\0*\0string"]], true)) {
                 $this->string = $data['string'] ?? $data["\0*\0string"];
@@ -434,10 +442,6 @@ class UnicodeString extends AbstractUnicodeString
             }, $this, static::class)($data);
         } finally {
             if (!$wakeup) {
-                if (!\is_string($this->string)) {
-                    throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
-                }
-
                 normalizer_is_normalized($this->string) ?: $this->string = normalizer_normalize($this->string);
             }
         }

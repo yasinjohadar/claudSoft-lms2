@@ -99,6 +99,42 @@
                                 </div>
                             </div>
 
+                            @if($localDevLoginAvailable ?? false)
+                                <div class="card border mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0">
+                                            <i class="ri-code-box-line me-2"></i>التطوير المحلي
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <input type="hidden" name="local_dev_login_enabled" value="0">
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="local_dev_login_enabled"
+                                                   id="local_dev_login_enabled"
+                                                   value="1"
+                                                   {{ ($localDevLoginEnabled ?? false) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="local_dev_login_enabled">
+                                                <strong>تفعيل صفحة الدخول السريع (محلي فقط)</strong>
+                                            </label>
+                                        </div>
+                                        <div class="alert alert-warning mb-0">
+                                            <i class="ri-shield-keyhole-line me-2"></i>
+                                            <strong>للتطوير فقط:</strong> عند التفعيل، تظهر صفحة مخفية للدخول كأدمن أو طالب بدون كلمة مرور.
+                                            <strong>لا تعمل خارج بيئة <code>local</code></strong> حتى لو فُعّلت هنا.
+                                            @if(!empty($localDevLoginUrl))
+                                                <div class="mt-2">
+                                                    الرابط:
+                                                    <a href="{{ $localDevLoginUrl }}" target="_blank" rel="noopener">
+                                                        <code>{{ $localDevLoginUrl }}</code>
+                                                    </a>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
                             <!-- Submit Button -->
                             <div class="d-flex justify-content-end">
                                 <button type="submit" class="btn btn-primary btn-wave">

@@ -20,14 +20,27 @@ class ProjectChallengeController extends Controller
         protected ProjectTeamService $teamService
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $challenges = ProjectChallenge::with(['creator', 'stages'])
+        $query = ProjectChallenge::with(['creator', 'stages'])
             ->withCount('teams')
-            ->orderByDesc('created_at')
-            ->paginate(20);
+            ->orderByDesc('created_at');
 
-        return view('admin.pages.project-challenges.index', compact('challenges'));
+        $statusFilter = $request->get('status');
+        if (in_array($statusFilter, ['published', 'draft', 'archived', 'closed'], true)) {
+            $query->where('status', $statusFilter);
+        }
+
+        $challenges = $query->paginate(20)->withQueryString();
+
+        $stats = [
+            'total' => ProjectChallenge::count(),
+            'published' => ProjectChallenge::where('status', 'published')->count(),
+            'draft' => ProjectChallenge::where('status', 'draft')->count(),
+            'teams' => ProjectTeam::count(),
+        ];
+
+        return view('admin.pages.project-challenges.index', compact('challenges', 'stats', 'statusFilter'));
     }
 
     public function create()

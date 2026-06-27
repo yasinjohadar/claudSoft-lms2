@@ -109,13 +109,13 @@ class Str
             return $subject;
         }
 
-        $position = strrpos($subject, (string) $search);
+        $position = mb_strrpos($subject, $search);
 
         if ($position === false) {
             return $subject;
         }
 
-        return substr($subject, $position + strlen($search));
+        return static::substr($subject, $position + static::length($search));
     }
 
     /**
@@ -465,7 +465,7 @@ class Str
      *
      * @param  string  $value
      * @param  string  $cap
-     * @return string
+     * @return ($value is '' ? ($cap is '' ? '' : non-empty-string) : non-empty-string)
      */
     public static function finish($value, $cap)
     {
@@ -480,7 +480,7 @@ class Str
      * @param  string  $value
      * @param  string  $before
      * @param  string|null  $after
-     * @return string
+     * @return ($value is '' ? ($before is '' ? ($after is '' ? '' : ($after is null ? '' : non-empty-string)) : non-empty-string) : non-empty-string)
      */
     public static function wrap($value, $before, $after = null)
     {
@@ -609,10 +609,21 @@ class Str
             (LARAVEL_PROTOCOLS)://                                 # protocol
             (((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+:)?((?:[\_\.\pL\pN-]|%[0-9A-Fa-f]{2})+)@)?  # basic auth
             (
-                ([\pL\pN\pS\-\_\.])+(\.?([\pL\pN]|xn\-\-[\pL\pN-]+)+\.?) # a domain name
-                    |                                                 # or
-                \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}                    # an IP address
-                    |                                                 # or
+                (?:
+                    (?:
+                        (?:[\pL\pN\pS\pM\-\_]++\.)+
+                        (?:
+                            (?:xn--[a-z0-9-]++)     # punycode in tld
+                            |
+                            (?:[\pL\pN\pM]++)       # no punycode in tld
+                        )
+                    )                               # a multi-level domain name
+                        |
+                    [a-z0-9\-\_]++                  # a single-level domain name
+                )\.?
+                    |                               # or
+                \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}  # an IP address
+                    |                               # or
                 \[
                     (?:(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){6})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:::(?:(?:(?:[0-9a-f]{1,4})):){5})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){4})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,1}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){3})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,2}(?:(?:[0-9a-f]{1,4})))?::(?:(?:(?:[0-9a-f]{1,4})):){2})(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,3}(?:(?:[0-9a-f]{1,4})))?::(?:(?:[0-9a-f]{1,4})):)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,4}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:(?:(?:(?:[0-9a-f]{1,4})):(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9]))\.){3}(?:(?:25[0-5]|(?:[1-9]|1[0-9]|2[0-4])?[0-9])))))))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,5}(?:(?:[0-9a-f]{1,4})))?::)(?:(?:[0-9a-f]{1,4})))|(?:(?:(?:(?:(?:(?:[0-9a-f]{1,4})):){0,6}(?:(?:[0-9a-f]{1,4})))?::))))
                 \]  # an IPv6 address
@@ -744,7 +755,7 @@ class Str
      * Convert the given string to lower-case.
      *
      * @param  string  $value
-     * @return lowercase-string
+     * @return ($value is '' ? '' : non-empty-string&lowercase-string)
      */
     public static function lower($value)
     {
@@ -1081,7 +1092,7 @@ class Str
      * @param  string  $needle
      * @param  int  $offset
      * @param  string|null  $encoding
-     * @return ($haystack is '' ? false : ($needle is '' ? false : int|false) : int|false)
+     * @return ($haystack is '' ? false : ($needle is '' ? false : int|false))
      */
     public static function position($haystack, $needle, $offset = 0, $encoding = null)
     {
@@ -1350,9 +1361,9 @@ class Str
      *
      * @param  string|string[]  $pattern
      * @param  (\Closure(array): string)|string[]|string  $replace
-     * @param  array|string[]  $subject
+     * @param  string[]|string  $subject
      * @param  int  $limit
-     * @return ($subject is array ? string|null : string[]|null)
+     * @return ($subject is array ? string[]|null : string|null)
      */
     public static function replaceMatches($pattern, $replace, $subject, $limit = -1)
     {
@@ -1398,7 +1409,7 @@ class Str
      *
      * @param  string  $value
      * @param  string  $prefix
-     * @return string
+     * @return ($value is '' ? ($prefix is '' ? '' : non-empty-string): non-empty-string)
      */
     public static function start($value, $prefix)
     {
@@ -1411,7 +1422,7 @@ class Str
      * Convert the given string to upper-case.
      *
      * @param  string  $value
-     * @return uppercase-string
+     * @return ($value is '' ? '' : non-empty-string&uppercase-string)
      */
     public static function upper($value)
     {
@@ -1446,6 +1457,24 @@ class Str
         $collapsed = static::replace(['-', '_', ' '], '_', implode('_', $parts));
 
         return implode(' ', array_filter(explode('_', $collapsed)));
+    }
+
+    /**
+     * Get the "initials" representing each word in the provided string, optionally capitalizing.
+     *
+     * @param  string  $value
+     * @param  bool  $capitalize
+     * @return string
+     */
+    public static function initials($value, $capitalize = false)
+    {
+        $parts = mb_split("\s+", $value);
+
+        $parts = array_map(fn ($part) => mb_substr($part, 0, 1), $parts);
+
+        $initials = implode('', $parts);
+
+        return $capitalize ? static::upper($initials) : $initials;
     }
 
     /**
@@ -1757,7 +1786,7 @@ class Str
 
         return mb_substr($string, 0, $offset)
             .$replace
-            .mb_substr($string, $offset + $length);
+            .mb_substr(mb_substr($string, $offset), $length);
     }
 
     /**
@@ -1804,7 +1833,7 @@ class Str
      *
      * @param  string  $string
      * @param  bool  $strict
-     * @return ($strict is true ? string|false : string)
+     * @return ($strict is true ? ($string is '' ? '' : string|false) : ($string is '' ? '' : string))
      */
     public static function fromBase64($string, $strict = false)
     {
@@ -1815,7 +1844,7 @@ class Str
      * Make a string's first character lowercase.
      *
      * @param  string  $string
-     * @return ($string is '' ? '' : string)
+     * @return ($string is '' ? '' : non-empty-string)
      */
     public static function lcfirst($string)
     {
@@ -1826,7 +1855,7 @@ class Str
      * Make a string's first character uppercase.
      *
      * @param  string  $string
-     * @return ($string is '' ? '' : string)
+     * @return ($string is '' ? '' : non-empty-string)
      */
     public static function ucfirst($string)
     {
@@ -1838,7 +1867,7 @@ class Str
      *
      * @param  string  $string
      * @param  string  $separators
-     * @return ($string is '' ? '' : string)
+     * @return ($string is '' ? '' : non-empty-string)
      */
     public static function ucwords($string, $separators = " \t\r\n\f\v")
     {

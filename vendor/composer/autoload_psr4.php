@@ -7,7 +7,6 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'voku\\' => array($vendorDir . '/voku/portable-ascii/src/voku'),
-    'phpseclib3\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'phpDocumentor\\Reflection\\' => array($vendorDir . '/phpdocumentor/reflection-docblock/src', $vendorDir . '/phpdocumentor/type-resolver/src', $vendorDir . '/phpdocumentor/reflection-common/src'),
     'libphonenumber\\' => array($vendorDir . '/giggsey/libphonenumber-for-php/src'),
     'ZipStream\\' => array($vendorDir . '/maennchen/zipstream-php/src'),
@@ -85,8 +84,6 @@ return array(
     'Pest\\Laravel\\' => array($vendorDir . '/pestphp/pest-plugin-laravel/src'),
     'Pest\\Arch\\' => array($vendorDir . '/pestphp/pest-plugin-arch/src'),
     'Pest\\' => array($vendorDir . '/pestphp/pest/src'),
-    'ParagonIE\\Sodium\\' => array($vendorDir . '/paragonie/sodium_compat/namespaced'),
-    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'ParaTest\\' => array($vendorDir . '/brianium/paratest/src'),
     'PHPUnit\\Architecture\\' => array($vendorDir . '/ta-tikoma/phpunit-architecture-test/src'),
     'PHPStan\\PhpDocParser\\' => array($vendorDir . '/phpstan/phpdoc-parser/src'),

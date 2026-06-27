@@ -24,7 +24,19 @@ class ProjectGradingController extends Controller
             ->orderByDesc('submitted_at')
             ->paginate(20);
 
-        return view('admin.pages.project-grading.index', compact('submissions'));
+        $statusCounts = ProjectStageSubmission::query()
+            ->whereIn('status', ['submitted', 'under_review'])
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $stats = [
+            'submitted' => (int) ($statusCounts['submitted'] ?? 0),
+            'under_review' => (int) ($statusCounts['under_review'] ?? 0),
+            'total' => (int) (($statusCounts['submitted'] ?? 0) + ($statusCounts['under_review'] ?? 0)),
+        ];
+
+        return view('admin.pages.project-grading.index', compact('submissions', 'stats'));
     }
 
     public function show(string $submissionId)

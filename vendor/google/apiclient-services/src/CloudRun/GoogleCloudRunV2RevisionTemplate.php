@@ -57,6 +57,18 @@ class GoogleCloudRunV2RevisionTemplate extends \Google\Collection
    * @var string[]
    */
   public $annotations;
+  /**
+   * Optional. Arbitrary identifier for the API client.
+   *
+   * @var string
+   */
+  public $client;
+  /**
+   * Optional. Arbitrary version identifier for the API client.
+   *
+   * @var string
+   */
+  public $clientVersion;
   protected $containersType = GoogleCloudRunV2Container::class;
   protected $containersDataType = 'array';
   /**
@@ -130,6 +142,8 @@ class GoogleCloudRunV2RevisionTemplate extends \Google\Collection
    * @var string
    */
   public $revision;
+  protected $sandboxesType = GoogleCloudRunV2SandboxConfiguration::class;
+  protected $sandboxesDataType = '';
   protected $scalingType = GoogleCloudRunV2RevisionScaling::class;
   protected $scalingDataType = '';
   /**
@@ -184,8 +198,39 @@ class GoogleCloudRunV2RevisionTemplate extends \Google\Collection
     return $this->annotations;
   }
   /**
-   * Holds the single container that defines the unit of execution for this
-   * Revision.
+   * Optional. Arbitrary identifier for the API client.
+   *
+   * @param string $client
+   */
+  public function setClient($client)
+  {
+    $this->client = $client;
+  }
+  /**
+   * @return string
+   */
+  public function getClient()
+  {
+    return $this->client;
+  }
+  /**
+   * Optional. Arbitrary version identifier for the API client.
+   *
+   * @param string $clientVersion
+   */
+  public function setClientVersion($clientVersion)
+  {
+    $this->clientVersion = $clientVersion;
+  }
+  /**
+   * @return string
+   */
+  public function getClientVersion()
+  {
+    return $this->clientVersion;
+  }
+  /**
+   * Holds the list which define the units of execution for this Revision.
    *
    * @param GoogleCloudRunV2Container[] $containers
    */
@@ -380,6 +425,22 @@ class GoogleCloudRunV2RevisionTemplate extends \Google\Collection
   public function getRevision()
   {
     return $this->revision;
+  }
+  /**
+   * Optional. Configuration for sandboxes.
+   *
+   * @param GoogleCloudRunV2SandboxConfiguration $sandboxes
+   */
+  public function setSandboxes(GoogleCloudRunV2SandboxConfiguration $sandboxes)
+  {
+    $this->sandboxes = $sandboxes;
+  }
+  /**
+   * @return GoogleCloudRunV2SandboxConfiguration
+   */
+  public function getSandboxes()
+  {
+    return $this->sandboxes;
   }
   /**
    * Optional. Scaling settings for this Revision.

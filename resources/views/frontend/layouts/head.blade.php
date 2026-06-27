@@ -49,24 +49,8 @@
     <link rel="alternate" hreflang="x-default" href="{{ url()->current() }}">
     
     {{-- Google Settings (GTM & Search Console) --}}
-    @php
-        $googleSettings = \App\Models\GoogleSetting::getSettings();
-    @endphp
-    
-    @if($googleSettings->gtm_enabled && $googleSettings->gtm_container_id)
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','{{ $googleSettings->gtm_container_id }}');</script>
-    <!-- End Google Tag Manager -->
-    @endif
-    
-    @if($googleSettings->search_console_enabled && $googleSettings->search_console_verification)
-    <!-- Google Search Console Verification -->
-    <meta name="google-site-verification" content="{{ $googleSettings->search_console_verification }}" />
-    @endif
+    @include('partials.marketing.google.search-console')
+    @include('partials.marketing.google.gtm-head')
     
     {{-- Organization Schema (for all pages) --}}
     <script type="application/ld+json">
@@ -102,9 +86,6 @@
     {{-- Preconnect to external resources for faster loading --}}
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    @if($googleSettings->gtm_enabled && $googleSettings->gtm_container_id)
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-    @endif
 
     @php
         $cssVersion = config('app.version', '1.0.0');
@@ -134,5 +115,5 @@
         *:focus { outline: none !important; }
     </style>
 
-
-
+    @include('partials.marketing.meta-pixel.base')
+    @include('partials.marketing.google.datalayer-events')

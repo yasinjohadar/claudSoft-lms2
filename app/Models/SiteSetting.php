@@ -82,4 +82,9 @@ class SiteSetting extends Model
     {
         return (bool) static::getValue('force_student_profile_completion', false);
     }
+
+    public static function isLocalDevLoginEnabled(): bool
+    {
+        return (bool) static::getValue('local_dev_login_enabled', false);
+    }
 }

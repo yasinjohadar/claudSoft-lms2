@@ -9,6 +9,8 @@ use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
 use App\Models\User;
 use App\Services\GroupRegistrationService;
+use App\Services\Marketing\GoogleDataLayerService;
+use App\Services\Marketing\MetaPixelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -16,7 +18,9 @@ use Illuminate\Validation\Rule;
 class GroupRegistrationController extends Controller
 {
     public function __construct(
-        private GroupRegistrationService $registrationService
+        private GroupRegistrationService $registrationService,
+        private MetaPixelService $metaPixel,
+        private GoogleDataLayerService $googleDataLayer
     ) {}
 
     /**
@@ -30,6 +34,9 @@ class GroupRegistrationController extends Controller
         if (!$settings || !$settings->is_registration_enabled) {
             abort(404, 'التسجيل غير متاح لهذه المجموعة');
         }
+
+        $diplomaName = $settings->diploma_name ?? 'دبلوم البرمجة';
+        $this->metaPixel->trackLeadStarted("{$diplomaName} - {$group->name}");
 
         return view('frontend.group-registration.form', compact('group', 'settings'));
     }
@@ -121,6 +128,18 @@ class GroupRegistrationController extends Controller
             $validated['group_id'] = $group->id;
 
             $registration = $this->registrationService->createRegistration($validated);
+
+            $diplomaName = $settings->diploma_name ?? 'دبلوم البرمجة';
+            $this->metaPixel->trackLeadWithCapi(
+                $request,
+                "{$diplomaName} - {$group->name}",
+                $validated['email'],
+                ($validated['country_code'] ?? '') . ($validated['phone'] ?? ''),
+                $validated['name'],
+                $validated['name_ar']
+            );
+
+            $this->googleDataLayer->trackGenerateLead("{$diplomaName} - {$group->name}");
 
             return redirect()->route('frontend.group-registration.success', $registration)
                 ->with('success', 'تم إرسال طلب التسجيل بنجاح. سيتم مراجعته قريباً.');

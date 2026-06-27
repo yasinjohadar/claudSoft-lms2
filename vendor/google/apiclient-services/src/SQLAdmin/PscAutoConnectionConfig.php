@@ -37,8 +37,8 @@ class PscAutoConnectionConfig extends \Google\Model
   public $consumerNetworkStatus;
   /**
    * Optional. This is the project ID of consumer service project of this
-   * consumer endpoint. Optional. This is only applicable if consumer_network is
-   * a shared vpc network.
+   * consumer endpoint. This is only applicable if `consumer_network` is a
+   * shared VPC network.
    *
    * @var string
    */
@@ -49,6 +49,22 @@ class PscAutoConnectionConfig extends \Google\Model
    * @var string
    */
   public $ipAddress;
+  /**
+   * Output only. The service connection policy created automatically for the
+   * consumer network when `psc_auto_connection_policy_enabled` is true. It is
+   * in the format of:
+   * `projects/{project}/regions/{region}/serviceConnectionPolicies/{policy_id}`
+   * The `policy_id` is in format of `$NETWORK-$RANDOM`.
+   *
+   * @var string
+   */
+  public $serviceConnectionPolicy;
+  /**
+   * Output only. The status of service connection policy creation.
+   *
+   * @var string
+   */
+  public $serviceConnectionPolicyCreationResult;
   /**
    * The connection status of the consumer endpoint.
    *
@@ -94,8 +110,8 @@ class PscAutoConnectionConfig extends \Google\Model
   }
   /**
    * Optional. This is the project ID of consumer service project of this
-   * consumer endpoint. Optional. This is only applicable if consumer_network is
-   * a shared vpc network.
+   * consumer endpoint. This is only applicable if `consumer_network` is a
+   * shared VPC network.
    *
    * @param string $consumerProject
    */
@@ -125,6 +141,42 @@ class PscAutoConnectionConfig extends \Google\Model
   public function getIpAddress()
   {
     return $this->ipAddress;
+  }
+  /**
+   * Output only. The service connection policy created automatically for the
+   * consumer network when `psc_auto_connection_policy_enabled` is true. It is
+   * in the format of:
+   * `projects/{project}/regions/{region}/serviceConnectionPolicies/{policy_id}`
+   * The `policy_id` is in format of `$NETWORK-$RANDOM`.
+   *
+   * @param string $serviceConnectionPolicy
+   */
+  public function setServiceConnectionPolicy($serviceConnectionPolicy)
+  {
+    $this->serviceConnectionPolicy = $serviceConnectionPolicy;
+  }
+  /**
+   * @return string
+   */
+  public function getServiceConnectionPolicy()
+  {
+    return $this->serviceConnectionPolicy;
+  }
+  /**
+   * Output only. The status of service connection policy creation.
+   *
+   * @param string $serviceConnectionPolicyCreationResult
+   */
+  public function setServiceConnectionPolicyCreationResult($serviceConnectionPolicyCreationResult)
+  {
+    $this->serviceConnectionPolicyCreationResult = $serviceConnectionPolicyCreationResult;
+  }
+  /**
+   * @return string
+   */
+  public function getServiceConnectionPolicyCreationResult()
+  {
+    return $this->serviceConnectionPolicyCreationResult;
   }
   /**
    * The connection status of the consumer endpoint.

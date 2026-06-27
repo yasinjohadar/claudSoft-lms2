@@ -988,6 +988,12 @@ Route::prefix('admin')
         // ========== Google Settings Routes ==========
         Route::get('google-settings/edit', [GoogleSettingController::class, 'edit'])->name('admin.google-settings.edit');
         Route::put('google-settings', [GoogleSettingController::class, 'update'])->name('admin.google-settings.update');
+        Route::post('google-settings/test-api', [GoogleSettingController::class, 'testApi'])->name('admin.google-settings.test-api');
+        Route::get('marketing-analytics', [\App\Http\Controllers\Admin\MarketingAnalyticsController::class, 'index'])->name('admin.marketing-analytics.index');
+        Route::get('marketing-analytics/data', [\App\Http\Controllers\Admin\MarketingAnalyticsController::class, 'data'])->name('admin.marketing-analytics.data');
+        Route::get('meta-pixel-settings/edit', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'edit'])->name('admin.meta-pixel-settings.edit');
+        Route::put('meta-pixel-settings', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'update'])->name('admin.meta-pixel-settings.update');
+        Route::post('meta-pixel-settings/test-capi', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'testCapi'])->name('admin.meta-pixel-settings.test-capi');
 
         // ========== Site Settings Routes ==========
         Route::get('settings/site', [SiteSettingController::class, 'index'])->name('admin.settings.site.index');

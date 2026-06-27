@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\LocalDevLoginController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Auth\PhonePasswordResetOtpController;
 use App\Http\Controllers\Auth\RegisterOtpController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Support\LocalDevLoginGate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -57,6 +59,17 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
 });
+
+if (app()->environment('local')) {
+    Route::middleware(['guest', 'local.dev.login'])->group(function () {
+        $localDevPath = LocalDevLoginGate::path();
+
+        Route::get($localDevPath, [LocalDevLoginController::class, 'show'])
+            ->name('local-dev-login.show');
+        Route::post($localDevPath, [LocalDevLoginController::class, 'login'])
+            ->name('local-dev-login.login');
+    });
+}
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)

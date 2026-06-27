@@ -7,10 +7,16 @@ use App\Models\FrontendReview;
 use App\Models\FrontendCourse;
 use App\Models\BlogPost;
 use App\Models\Faq;
+use App\Services\Marketing\GoogleDataLayerService;
+use App\Services\Marketing\MetaPixelService;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
+    public function __construct(
+        protected MetaPixelService $metaPixel,
+        protected GoogleDataLayerService $googleDataLayer
+    ) {}
     public function index()
     {
         // Get general platform reviews (not linked to specific courses)
@@ -111,6 +117,16 @@ class HomeController extends Controller
 
         // Here you can send email or save to database
         // For now, we'll just return success
+
+        $this->metaPixel->trackContactWithCapi(
+            $request,
+            $request->input('subject'),
+            $request->input('email'),
+            $request->input('phone'),
+            $request->input('name')
+        );
+
+        $this->googleDataLayer->trackContact($request->input('subject'));
 
         return back()->with('success', 'تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.');
     }

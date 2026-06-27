@@ -127,6 +127,14 @@ class Interconnect extends \Google\Collection
    * @var string
    */
   public $description;
+  /**
+   * Output only. URL of the InterconnectLocation object that represents where
+   * this connection is to be provisioned. By default it will be the same as the
+   * location field.
+   *
+   * @var string
+   */
+  public $effectiveLocation;
   protected $expectedOutagesType = InterconnectOutageNotification::class;
   protected $expectedOutagesDataType = 'array';
   /**
@@ -342,8 +350,7 @@ class Interconnect extends \Google\Collection
    */
   public $state;
   /**
-   * Specific subzone in the InterconnectLocation that represents where this
-   * connection is to be provisioned.
+   * To be deprecated.
    *
    * @var string
    */
@@ -501,6 +508,24 @@ class Interconnect extends \Google\Collection
   public function getDescription()
   {
     return $this->description;
+  }
+  /**
+   * Output only. URL of the InterconnectLocation object that represents where
+   * this connection is to be provisioned. By default it will be the same as the
+   * location field.
+   *
+   * @param string $effectiveLocation
+   */
+  public function setEffectiveLocation($effectiveLocation)
+  {
+    $this->effectiveLocation = $effectiveLocation;
+  }
+  /**
+   * @return string
+   */
+  public function getEffectiveLocation()
+  {
+    return $this->effectiveLocation;
   }
   /**
    * Output only. [Output Only] A list of outages expected for this
@@ -1001,8 +1026,7 @@ class Interconnect extends \Google\Collection
     return $this->state;
   }
   /**
-   * Specific subzone in the InterconnectLocation that represents where this
-   * connection is to be provisioned.
+   * To be deprecated.
    *
    * Accepted values: SUBZONE_A, SUBZONE_B
    *

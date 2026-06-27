@@ -17,8 +17,13 @@
     <link rel="stylesheet" href="{{ asset('assets/css/group-registration-form.css') }}">
 
     @stack('head')
+    @include('partials.marketing.google.search-console')
+    @include('partials.marketing.google.gtm-head')
+    @include('partials.marketing.meta-pixel.base')
+    @include('partials.marketing.google.datalayer-events')
 </head>
 <body class="gr-body">
+    @include('partials.marketing.google.gtm-body')
     @yield('content')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

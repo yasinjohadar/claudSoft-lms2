@@ -56,7 +56,7 @@
             @endif
         </div>
     </div>
-    <div class="form-hint form-hint--warn">
+    <div class="form-hint auth-hint--warn">
         <strong>مهم:</strong> اختر الدولة من القائمة، ثم أدخل رقم الجوال <strong>بدون</strong> رمز الدولة و<strong>بدون</strong> صفر في البداية (مثال: 501234567).
     </div>
 </div>

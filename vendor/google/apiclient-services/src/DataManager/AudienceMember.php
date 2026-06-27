@@ -20,6 +20,8 @@ namespace Google\Service\DataManager;
 class AudienceMember extends \Google\Collection
 {
   protected $collection_key = 'destinationReferences';
+  protected $compositeDataType = CompositeData::class;
+  protected $compositeDataDataType = '';
   protected $consentType = Consent::class;
   protected $consentDataType = '';
   /**
@@ -32,9 +34,29 @@ class AudienceMember extends \Google\Collection
   protected $mobileDataDataType = '';
   protected $pairDataType = PairData::class;
   protected $pairDataDataType = '';
+  protected $ppidDataType = PpidData::class;
+  protected $ppidDataDataType = '';
   protected $userDataType = UserData::class;
   protected $userDataDataType = '';
+  protected $userIdDataType = UserIdData::class;
+  protected $userIdDataDataType = '';
 
+  /**
+   * Group of multiple identifier types.
+   *
+   * @param CompositeData $compositeData
+   */
+  public function setCompositeData(CompositeData $compositeData)
+  {
+    $this->compositeData = $compositeData;
+  }
+  /**
+   * @return CompositeData
+   */
+  public function getCompositeData()
+  {
+    return $this->compositeData;
+  }
   /**
    * Optional. The consent setting for the user.
    *
@@ -85,7 +107,8 @@ class AudienceMember extends \Google\Collection
   }
   /**
    * [Publisher Advertiser Identity Reconciliation (PAIR)
-   * IDs](//support.google.com/admanager/answer/15067908).
+   * IDs](//support.google.com/admanager/answer/15067908). This feature is only
+   * available to data partners.
    *
    * @param PairData $pairData
    */
@@ -99,6 +122,23 @@ class AudienceMember extends \Google\Collection
   public function getPairData()
   {
     return $this->pairData;
+  }
+  /**
+   * Data related to publisher provided identifiers. This feature is only
+   * available to data partners.
+   *
+   * @param PpidData $ppidData
+   */
+  public function setPpidData(PpidData $ppidData)
+  {
+    $this->ppidData = $ppidData;
+  }
+  /**
+   * @return PpidData
+   */
+  public function getPpidData()
+  {
+    return $this->ppidData;
   }
   /**
    * User-provided data that identifies the user.
@@ -115,6 +155,23 @@ class AudienceMember extends \Google\Collection
   public function getUserData()
   {
     return $this->userData;
+  }
+  /**
+   * Data related to unique identifiers for a user, as defined by the
+   * advertiser.
+   *
+   * @param UserIdData $userIdData
+   */
+  public function setUserIdData(UserIdData $userIdData)
+  {
+    $this->userIdData = $userIdData;
+  }
+  /**
+   * @return UserIdData
+   */
+  public function getUserIdData()
+  {
+    return $this->userIdData;
   }
 }
 

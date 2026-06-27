@@ -58,6 +58,8 @@ class Subscription extends \Google\Collection
   protected $analyticsHubSubscriptionInfoDataType = '';
   protected $bigqueryConfigType = BigQueryConfig::class;
   protected $bigqueryConfigDataType = '';
+  protected $bigtableConfigType = BigtableConfig::class;
+  protected $bigtableConfigDataType = '';
   protected $cloudStorageConfigType = CloudStorageConfig::class;
   protected $cloudStorageConfigDataType = '';
   protected $deadLetterPolicyType = DeadLetterPolicy::class;
@@ -162,16 +164,17 @@ class Subscription extends \Google\Collection
   /**
    * Optional. Input only. Immutable. Tag keys/values directly bound to this
    * resource. For example: "123/environment": "production", "123/costCenter":
-   * "marketing"
+   * "marketing" See
+   * https://{$universe.dns_names.final_documentation_domain}/pubsub/docs/tags
+   * for more information on using tags with Pub/Sub resources.
    *
    * @var string[]
    */
   public $tags;
   /**
-   * Required. Identifier. The name of the topic from which this subscription is
-   * receiving messages. Format is `projects/{project}/topics/{topic}`. The
-   * value of this field will be `_deleted-topic_` if the topic has been
-   * deleted.
+   * Required. The name of the topic from which this subscription is receiving
+   * messages. Format is `projects/{project}/topics/{topic}`. The value of this
+   * field will be `_deleted-topic_` if the topic has been deleted.
    *
    * @var string
    */
@@ -251,6 +254,23 @@ class Subscription extends \Google\Collection
   public function getBigqueryConfig()
   {
     return $this->bigqueryConfig;
+  }
+  /**
+   * Optional. If delivery to Bigtable is used with this subscription, this
+   * field is used to configure it.
+   *
+   * @param BigtableConfig $bigtableConfig
+   */
+  public function setBigtableConfig(BigtableConfig $bigtableConfig)
+  {
+    $this->bigtableConfig = $bigtableConfig;
+  }
+  /**
+   * @return BigtableConfig
+   */
+  public function getBigtableConfig()
+  {
+    return $this->bigtableConfig;
   }
   /**
    * Optional. If delivery to Google Cloud Storage is used with this
@@ -550,7 +570,9 @@ class Subscription extends \Google\Collection
   /**
    * Optional. Input only. Immutable. Tag keys/values directly bound to this
    * resource. For example: "123/environment": "production", "123/costCenter":
-   * "marketing"
+   * "marketing" See
+   * https://{$universe.dns_names.final_documentation_domain}/pubsub/docs/tags
+   * for more information on using tags with Pub/Sub resources.
    *
    * @param string[] $tags
    */
@@ -566,10 +588,9 @@ class Subscription extends \Google\Collection
     return $this->tags;
   }
   /**
-   * Required. Identifier. The name of the topic from which this subscription is
-   * receiving messages. Format is `projects/{project}/topics/{topic}`. The
-   * value of this field will be `_deleted-topic_` if the topic has been
-   * deleted.
+   * Required. The name of the topic from which this subscription is receiving
+   * messages. Format is `projects/{project}/topics/{topic}`. The value of this
+   * field will be `_deleted-topic_` if the topic has been deleted.
    *
    * @param string $topic
    */

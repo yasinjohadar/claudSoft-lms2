@@ -91,7 +91,10 @@ class FlysystemAdapterTest extends FilesystemAdapterTestCase
 
     public static function createFilesystemAdapter(): FilesystemAdapter
     {
-        return new BunnyCDNAdapter(self::bunnyCDNClient(), static::$publicUrl);
+        $adapter = new BunnyCDNAdapter(self::bunnyCDNClient(), static::$publicUrl);
+        $adapter->setTokenAuthKey('test-token-auth-key');
+
+        return $adapter;
     }
 
     /**
@@ -100,11 +103,6 @@ class FlysystemAdapterTest extends FilesystemAdapterTestCase
     public function setting_visibility(): void
     {
         $this->markTestSkipped('No visibility support is provided for BunnyCDN');
-    }
-
-    public function generating_a_temporary_url(): void
-    {
-        $this->markTestSkipped('No temporary URL support is provided for BunnyCDN');
     }
 
     /**
@@ -308,6 +306,21 @@ class FlysystemAdapterTest extends FilesystemAdapterTestCase
     /**
      * @test
      */
+    public function generating_a_temporary_url(): void
+    {
+        $adapter = new BunnyCDNAdapter(self::bunnyCDNClient(), '');
+        $adapter->setTokenAuthKey('test-key');
+
+        $expiresAt = new \DateTimeImmutable('+1 hour');
+        $url = $adapter->temporaryUrl('path.txt', $expiresAt, new Config());
+
+        $this->assertStringContainsString('path.txt?token=', $url);
+        $this->assertStringContainsString('&expires=', $url);
+    }
+
+    /**
+     * @test
+     */
     public function overwriting_a_file(): void
     {
         $this->runScenario(function () {
@@ -320,6 +333,28 @@ class FlysystemAdapterTest extends FilesystemAdapterTestCase
             $this->assertEquals('new contents', $contents);
             // $visibility = $adapter->visibility('path.txt')->visibility();
             // $this->assertEquals(Visibility::PRIVATE, $visibility); // Commented out of this test
+        });
+    }
+
+    /**
+     * @test
+     */
+    public function writing_a_file_using_a_stream(): void
+    {
+        $this->runScenario(function () {
+            $adapter = $this->adapter();
+
+            $stream = tmpfile();
+            fwrite($stream, 'contents');
+            rewind($stream);
+
+            $adapter->writeStream('path.txt', $stream, new Config());
+
+            $this->assertTrue($adapter->fileExists('path.txt'));
+            $this->assertEquals('contents', $adapter->read('path.txt'));
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         });
     }
 
@@ -375,6 +410,7 @@ class FlysystemAdapterTest extends FilesystemAdapterTestCase
     public function test_checksum_throws_error_with_empty_checksum_from_client(): void
     {
         $client = $this->createMock(BunnyCDNClient::class);
+
         $client->expects(self::exactly(1))->method('list')->willReturnCallback(
             function () {
                 ['file' => $file, 'dir' => $dir] = Util::splitPathIntoDirectoryAndFile('file.txt');

@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\FrontendCourse;
 use App\Models\FrontendCourseCategory;
 use App\Models\ContactSetting;
+use App\Services\Marketing\MetaPixelService;
 use Illuminate\Http\Request;
 
 class CourseController extends Controller
 {
+    public function __construct(
+        protected MetaPixelService $metaPixel
+    ) {}
     public function index(Request $request)
     {
         $categories = FrontendCourseCategory::active()
@@ -60,6 +64,8 @@ class CourseController extends Controller
 
         $courses = $query->paginate(12);
 
+        $this->metaPixel->trackViewContent('قائمة الكورسات', 'course_catalog');
+
         return view('frontend2.pages.courses', compact('courses', 'categories'));
     }
 
@@ -94,6 +100,15 @@ class CourseController extends Controller
         // Get social links from contact settings
         $contactSettings = ContactSetting::getSettings();
         $socialLinks = $contactSettings->social_links ?? [];
+
+        $price = $course->is_free ? 0 : (float) ($course->discount_price ?? $course->price ?? 0);
+        $this->metaPixel->trackViewContent(
+            $course->title,
+            'course',
+            (string) $course->id,
+            $price > 0 ? $price : null,
+            $course->currency ?? null
+        );
 
         return view('frontend2.pages.course-detail', compact('course', 'relatedCourses', 'reviews', 'socialLinks'));
     }

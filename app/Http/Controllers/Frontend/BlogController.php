@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
 use App\Models\BlogCategory;
 use App\Models\BlogTag;
+use App\Services\Marketing\MetaPixelService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class BlogController extends Controller
 {
+    public function __construct(
+        protected MetaPixelService $metaPixel
+    ) {}
     /**
      * Display a listing of all blog posts
      */
@@ -64,6 +68,10 @@ class BlogController extends Controller
                                 ->featured()
                                 ->limit(3)
                                 ->get();
+
+        if ($request->filled('search')) {
+            $this->metaPixel->trackSearch((string) $request->input('search'));
+        }
 
         return view('frontend2.pages.blog', compact(
             'posts',
@@ -119,6 +127,12 @@ class BlogController extends Controller
                                ->orderBy('views_count', 'desc')
                                ->limit(5)
                                ->get();
+
+        $this->metaPixel->trackViewContent(
+            $post->title,
+            'blog_post',
+            (string) $post->id
+        );
 
         return view('frontend2.pages.blog-show', compact(
             'post',
@@ -210,6 +224,10 @@ class BlogController extends Controller
     public function search(Request $request): View
     {
         $keyword = $request->input('q', '');
+
+        if (filled($keyword)) {
+            $this->metaPixel->trackSearch($keyword);
+        }
 
         $posts = BlogPost::with(['author', 'category', 'tags'])
                         ->published()

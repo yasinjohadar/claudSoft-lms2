@@ -64,3 +64,13 @@ Schedule::command('reports:weekly-close-overdue')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Marketing Analytics Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+Schedule::command('google-analytics:sync')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -19,8 +19,12 @@ namespace Google\Service\Backupdr;
 
 class DataSourceGcpResourceInfo extends \Google\Model
 {
+  protected $alloyDbClusterPropertiesType = AlloyDBClusterDataSourceReferenceProperties::class;
+  protected $alloyDbClusterPropertiesDataType = '';
   protected $cloudSqlInstancePropertiesType = CloudSqlInstanceDataSourceReferenceProperties::class;
   protected $cloudSqlInstancePropertiesDataType = '';
+  protected $filestoreInstancePropertiesType = FilestoreInstanceDataSourceReferenceProperties::class;
+  protected $filestoreInstancePropertiesDataType = '';
   /**
    * Output only. The resource name of the Google Cloud resource. Ex:
    * projects/{project}/zones/{zone}/instances/{instance}
@@ -44,6 +48,22 @@ class DataSourceGcpResourceInfo extends \Google\Model
   public $type;
 
   /**
+   * Output only. The properties of the AlloyDB cluster.
+   *
+   * @param AlloyDBClusterDataSourceReferenceProperties $alloyDbClusterProperties
+   */
+  public function setAlloyDbClusterProperties(AlloyDBClusterDataSourceReferenceProperties $alloyDbClusterProperties)
+  {
+    $this->alloyDbClusterProperties = $alloyDbClusterProperties;
+  }
+  /**
+   * @return AlloyDBClusterDataSourceReferenceProperties
+   */
+  public function getAlloyDbClusterProperties()
+  {
+    return $this->alloyDbClusterProperties;
+  }
+  /**
    * Output only. The properties of the Cloud SQL instance.
    *
    * @param CloudSqlInstanceDataSourceReferenceProperties $cloudSqlInstanceProperties
@@ -58,6 +78,22 @@ class DataSourceGcpResourceInfo extends \Google\Model
   public function getCloudSqlInstanceProperties()
   {
     return $this->cloudSqlInstanceProperties;
+  }
+  /**
+   * Output only. The properties of the Filestore instance.
+   *
+   * @param FilestoreInstanceDataSourceReferenceProperties $filestoreInstanceProperties
+   */
+  public function setFilestoreInstanceProperties(FilestoreInstanceDataSourceReferenceProperties $filestoreInstanceProperties)
+  {
+    $this->filestoreInstanceProperties = $filestoreInstanceProperties;
+  }
+  /**
+   * @return FilestoreInstanceDataSourceReferenceProperties
+   */
+  public function getFilestoreInstanceProperties()
+  {
+    return $this->filestoreInstanceProperties;
   }
   /**
    * Output only. The resource name of the Google Cloud resource. Ex:
