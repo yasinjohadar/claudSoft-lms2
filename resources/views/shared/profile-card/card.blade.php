@@ -4,8 +4,9 @@
     $displayNameAr = trim((string) ($user->name_ar ?? ''));
     $displayNameEn = trim((string) ($user->name ?? ''));
     $displayName = $displayNameAr ?: $displayNameEn ?: 'طالب';
-    $hasCustomPhoto = filled($user->photo) || filled($user->avatar);
-    $photoUrl = $hasCustomPhoto ? student_profile_photo_url($user) : null;
+    $photoPath = trim((string) ($user->photo ?: $user->avatar ?: ''));
+    $hasCustomPhoto = $photoPath !== '';
+    $photoUrl = $hasCustomPhoto ? student_profile_photo_url($user, $photoPath) : null;
     $genderAvatarView = student_gender_avatar_view($user);
     $siteName = config('app.name', 'أكاديمية كلاودسوفت');
     $socialLinks = $card->enabledSocialLinks();
@@ -297,9 +298,10 @@
     .profile-card__avatar,
     .profile-card__avatar-svg {
         position: absolute;
-        inset: 4px;
-        width: auto;
-        height: auto;
+        top: 4px;
+        left: 4px;
+        width: calc(100% - 8px);
+        height: calc(100% - 8px);
         border-radius: 50%;
         object-fit: cover;
         display: block;
@@ -308,7 +310,8 @@
         overflow: hidden;
     }
 
-    .profile-card__avatar-svg[hidden] {
+    .profile-card__avatar.is-hidden,
+    .profile-card__avatar-svg.is-hidden {
         display: none !important;
     }
 
@@ -589,13 +592,12 @@
             <div class="profile-card__avatar-wrap">
                 @if($hasCustomPhoto && $photoUrl)
                     <img src="{{ $photoUrl }}"
-                         alt=""
+                         alt="{{ $displayName }}"
                          class="profile-card__avatar"
                          id="profileCardAvatar"
-                         onerror="this.remove();var el=document.getElementById('profileCardAvatarDefault');if(el){el.hidden=false;}">
-                    <div class="profile-card__avatar-svg"
+                         onerror="this.classList.add('is-hidden');var el=document.getElementById('profileCardAvatarDefault');if(el){el.classList.remove('is-hidden');}">
+                    <div class="profile-card__avatar-svg is-hidden"
                          id="profileCardAvatarDefault"
-                         hidden
                          aria-hidden="true">
                         @include($genderAvatarView, ['uid' => 'profile-card'])
                     </div>

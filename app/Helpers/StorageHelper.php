@@ -57,6 +57,10 @@ if (!function_exists('storage_proxy_image_url')) {
             return route('profile.photo', ['filename' => $filename]);
         }
 
+        if (str_starts_with($imagePath, 'users/photos/')) {
+            return route('user.photo', ['filename' => $filename]);
+        }
+
         if (str_starts_with($imagePath, 'gifts/images/')) {
             return route('gift.image', ['filename' => $filename]);
         }

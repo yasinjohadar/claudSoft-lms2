@@ -119,6 +119,14 @@ Route::get('/storage/profile-photos/{filename}', function ($filename) {
     );
 })->where('filename', '[a-zA-Z0-9._-]+')->name('profile.photo');
 
+Route::get('/storage/users/photos/{filename}', function ($filename) {
+    return serve_storage_image_response(
+        ['public'],
+        'users/photos/' . $filename,
+        'users/photos/' . $filename
+    );
+})->where('filename', '[a-zA-Z0-9._-]+')->name('user.photo');
+
 // Session tracking routes
 Route::middleware('auth')->group(function () {
     Route::post('/api/session/track', [\App\Http\Controllers\SessionActivityController::class, 'track'])->name('session.track');
