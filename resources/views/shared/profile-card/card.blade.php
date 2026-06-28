@@ -278,6 +278,7 @@
     }
 
     .profile-card__avatar-wrap {
+        position: relative;
         width: 120px;
         height: 120px;
         margin: 0 auto 1.15rem;
@@ -286,6 +287,7 @@
         background: linear-gradient(145deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 40%, #cbd5e1));
         box-shadow: 0 8px 24px color-mix(in srgb, var(--card-accent) 28%, transparent);
         transition: transform 0.3s ease;
+        overflow: hidden;
     }
 
     .profile-card:hover .profile-card__avatar-wrap {
@@ -294,14 +296,20 @@
 
     .profile-card__avatar,
     .profile-card__avatar-svg {
-        width: 100%;
-        height: 100%;
+        position: absolute;
+        inset: 4px;
+        width: auto;
+        height: auto;
         border-radius: 50%;
         object-fit: cover;
         display: block;
         border: 3px solid #fff;
         background: #f1f5f9;
         overflow: hidden;
+    }
+
+    .profile-card__avatar-svg[hidden] {
+        display: none !important;
     }
 
     .profile-card__avatar-svg svg {
@@ -584,14 +592,18 @@
                          alt=""
                          class="profile-card__avatar"
                          id="profileCardAvatar"
-                         onerror="this.style.display='none';var el=document.getElementById('profileCardAvatarDefault');if(el){el.hidden=false;}">
+                         onerror="this.remove();var el=document.getElementById('profileCardAvatarDefault');if(el){el.hidden=false;}">
+                    <div class="profile-card__avatar-svg"
+                         id="profileCardAvatarDefault"
+                         hidden
+                         aria-hidden="true">
+                        @include($genderAvatarView, ['uid' => 'profile-card'])
+                    </div>
+                @else
+                    <div class="profile-card__avatar-svg" id="profileCardAvatarDefault" aria-hidden="false">
+                        @include($genderAvatarView, ['uid' => 'profile-card'])
+                    </div>
                 @endif
-                <div class="profile-card__avatar-svg"
-                     id="profileCardAvatarDefault"
-                     @if($hasCustomPhoto && $photoUrl) hidden @endif
-                     aria-hidden="{{ ($hasCustomPhoto && $photoUrl) ? 'true' : 'false' }}">
-                    @include($genderAvatarView, ['uid' => 'profile-card'])
-                </div>
             </div>
 
             @if($displayNameAr)
