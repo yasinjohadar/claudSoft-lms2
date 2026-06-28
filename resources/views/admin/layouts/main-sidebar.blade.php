@@ -558,6 +558,9 @@
                                         <li class="slide {{ request()->routeIs('admin.lesson-simulators.index', 'admin.lesson-simulators.edit', 'admin.lesson-simulators.preview') ? 'active' : '' }}">
                                             <a href="{{ route('admin.lesson-simulators.index') }}" class="side-menu__item">جميع المحاكيات</a>
                                         </li>
+                                        <li class="slide {{ request()->routeIs('admin.lesson-simulators.categories.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.lesson-simulators.categories.index') }}" class="side-menu__item">تصنيفات المحاكيات</a>
+                                        </li>
                                         <li class="slide {{ request()->routeIs('admin.lesson-simulators.create') ? 'active' : '' }}">
                                             <a href="{{ route('admin.lesson-simulators.create') }}" class="side-menu__item">إنشاء محاكاة</a>
                                         </li>

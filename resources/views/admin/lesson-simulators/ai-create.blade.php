@@ -46,6 +46,7 @@
                 'bundle' => $bundle,
                 'courses' => $courses,
                 'statuses' => $statuses,
+                'categoryOptions' => $categoryOptions,
             ])
         </div>
     </div>

@@ -24,6 +24,7 @@ class LessonSimulator extends Model
         'slug',
         'description',
         'topic_key',
+        'simulator_category_id',
         'spec_json',
         'spec_version',
         'render_mode',
@@ -76,6 +77,11 @@ class LessonSimulator extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(SimulatorCategory::class, 'simulator_category_id');
     }
 
     public function courses(): BelongsToMany

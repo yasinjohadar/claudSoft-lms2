@@ -150,7 +150,6 @@
     </div>
 </div>
 
-@push('scripts')
 <script>
 (function () {
     const panelId = @json($panelId);
@@ -378,4 +377,3 @@
     }
 })();
 </script>
-@endpush

@@ -12,6 +12,9 @@
                 <h5 class="page-title fs-21 mb-1">محاكيات الدروس التفاعلية</h5>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('admin.lesson-simulators.categories.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-folder-tree me-1"></i> التصنيفات
+                </a>
                 <a href="{{ route('admin.lesson-simulators.ai.create') }}" class="btn btn-outline-danger btn-sm">
                     <i class="fas fa-bolt me-1"></i> توليد بالذكاء الاصطناعي
                 </a>
@@ -37,6 +40,14 @@
                         </select>
                     </div>
                     <div class="col-md-3">
+                        <select name="simulator_category_id" class="form-select">
+                            <option value="">كل التصنيفات</option>
+                            @foreach($categoryOptions as $id => $label)
+                                <option value="{{ $id }}" @selected((string) request('simulator_category_id') === (string) $id)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <select name="topic_key" class="form-select">
                             <option value="">كل المواضيع</option>
                             @foreach($topics as $group => $items)
@@ -48,7 +59,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select name="course_id" class="form-select">
                             <option value="">كل الكورسات</option>
                             @foreach($courses as $course)
@@ -56,7 +67,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <button type="submit" class="btn btn-secondary w-100">تصفية</button>
                     </div>
                 </form>
@@ -69,6 +80,7 @@
                     <thead>
                         <tr>
                             <th>العنوان</th>
+                            <th>التصنيف</th>
                             <th>الموضوع</th>
                             <th>الحالة</th>
                             <th>المنشئ</th>
@@ -80,6 +92,7 @@
                         @forelse($simulators as $sim)
                             <tr>
                                 <td>{{ $sim->title }}</td>
+                                <td class="small">{{ $sim->category?->full_path ?? '—' }}</td>
                                 <td>{{ \App\Services\Simulator\SimulatorTopicRegistry::label($sim->topic_key) }}</td>
                                 <td><span class="badge bg-{{ $sim->status === 'published' ? 'success' : ($sim->status === 'draft' ? 'warning' : 'secondary') }}">{{ $statuses[$sim->status] ?? $sim->status }}</span></td>
                                 <td>{{ $sim->creator?->name ?? '—' }}</td>
@@ -95,7 +108,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">لا توجد محاكيات بعد.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">لا توجد محاكيات بعد.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

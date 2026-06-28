@@ -12,6 +12,7 @@ use App\Models\LessonSimulator;
 use App\Services\Ai\AIModelService;
 use App\Services\Simulator\SimulatorBundleStorage;
 use App\Services\Simulator\SimulatorGenerationService;
+use App\Services\Simulator\SimulatorCategoryTree;
 use App\Services\Simulator\SimulatorTopicRegistry;
 use App\Support\SimulatorAiWizard;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,7 @@ class LessonSimulatorAiController extends Controller
         return view('admin.lesson-simulators.ai-create', array_merge(SimulatorAiWizard::viewData(), [
             'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
             'statuses' => LessonSimulator::STATUSES,
+            'categoryOptions' => SimulatorCategoryTree::optionsForSelect(activeOnly: true),
             'bundle' => ['html' => '', 'css' => '', 'js' => ''],
         ]));
     }
@@ -127,6 +129,7 @@ class LessonSimulatorAiController extends Controller
                 'slug' => LessonSimulator::uniqueSlug($title),
                 'description' => $validated['topic_description'],
                 'topic_key' => $topicKey,
+                'simulator_category_id' => $validated['simulator_category_id'] ?? null,
                 'render_mode' => 'html_bundle',
                 'spec_json' => ['meta' => [], 'sections' => []],
                 'spec_version' => config('simulator.spec_version', '1.0'),
@@ -192,6 +195,7 @@ class LessonSimulatorAiController extends Controller
                 'bundle' => $bundle,
                 'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
                 'statuses' => LessonSimulator::STATUSES,
+                'categoryOptions' => SimulatorCategoryTree::optionsForSelect(activeOnly: true),
             ]
         ));
     }
@@ -417,6 +421,7 @@ class LessonSimulatorAiController extends Controller
             'level' => 'required|in:beginner,intermediate,advanced',
             'archetype' => 'nullable|in:playground,stepper,auto',
             'simulation_details' => 'nullable|string|max:2000',
+            'simulator_category_id' => 'nullable|exists:simulator_categories,id',
             'simulators_engine' => 'nullable|in:laravel_ai,legacy',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',

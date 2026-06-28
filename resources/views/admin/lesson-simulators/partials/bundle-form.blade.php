@@ -29,6 +29,18 @@
                         <input type="text" name="slug" class="form-control" value="{{ old('slug', $simulator->slug ?? '') }}" placeholder="يُولَّد تلقائياً من العنوان" dir="ltr">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">التصنيف</label>
+                        <select name="simulator_category_id" class="form-select">
+                            <option value="">— بدون تصنيف —</option>
+                            @foreach($categoryOptions ?? [] as $id => $label)
+                                <option value="{{ $id }}" @selected((string) old('simulator_category_id', $simulator->simulator_category_id ?? '') === (string) $id)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">
+                            <a href="{{ route('admin.lesson-simulators.categories.index') }}" target="_blank">إدارة التصنيفات</a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">الحالة</label>
                         <select name="status" class="form-select" required>
                             @foreach($statuses as $key => $label)
@@ -99,10 +111,15 @@
                     <span class="text-muted small" id="preview-status"></span>
                 </div>
                 <div class="card-body p-0 position-relative">
-                    <div id="preview-loading" class="position-absolute top-50 start-50 translate-middle text-muted d-none">
+                    <div id="preview-loading" class="position-absolute top-50 start-50 translate-middle text-muted d-none" style="z-index:2;">
                         <div class="spinner-border spinner-border-sm"></div>
                     </div>
-                    <iframe id="bundle-preview-frame" title="معاينة" style="width:100%;min-height:780px;border:0;background:#000;display:block;"></iframe>
+                    <div id="preview-placeholder" class="d-flex flex-column align-items-center justify-content-center text-muted text-center px-4" style="min-height:780px;background:#111;">
+                        <i class="fe fe-monitor mb-2 fs-24 opacity-50"></i>
+                        <span>الصق HTML ثم اضغط «تحديث المعاينة»</span>
+                        <span class="small opacity-75 mt-1">تُحدَّث تلقائياً عند الكتابة بعد إدخال المحتوى</span>
+                    </div>
+                    <iframe id="bundle-preview-frame" title="معاينة" sandbox="allow-scripts" class="d-none" style="width:100%;min-height:780px;border:0;background:#000;display:block;"></iframe>
                 </div>
             </div>
         </div>
@@ -117,7 +134,6 @@
     </form>
 @endif
 
-@push('scripts')
 <script>
 (function () {
     const previewUrl = @json(route('admin.lesson-simulators.preview-bundle'));
@@ -129,60 +145,105 @@
     const btn = document.getElementById('btn-update-preview');
     const statusEl = document.getElementById('preview-status');
     const loadingEl = document.getElementById('preview-loading');
+    const placeholderEl = document.getElementById('preview-placeholder');
     let previewTimer = null;
 
-    function updatePreview() {
+    function hasPreviewContent() {
+        return htmlEl && htmlEl.value.trim() !== '';
+    }
+
+    function showPreviewPlaceholder() {
+        if (placeholderEl) placeholderEl.classList.remove('d-none');
+        if (frame) {
+            frame.classList.add('d-none');
+            frame.removeAttribute('srcdoc');
+        }
+        if (statusEl) statusEl.textContent = '';
+    }
+
+    function showPreviewFrame(html) {
+        if (!frame) return;
+        if (placeholderEl) placeholderEl.classList.add('d-none');
+        frame.classList.remove('d-none');
+        frame.srcdoc = html;
+    }
+
+    function isAdminLayoutHtml(html) {
+        return /app-header|admin-portal|bundle-preview-frame|simulator-bundle-form/i.test(html || '');
+    }
+
+    function updatePreview(force) {
         clearTimeout(previewTimer);
         previewTimer = setTimeout(function () {
             if (!htmlEl || !frame) return;
+
+            if (!hasPreviewContent() && !force) {
+                showPreviewPlaceholder();
+                return;
+            }
+
             loadingEl.classList.remove('d-none');
             statusEl.textContent = 'جاري التحديث...';
 
             fetch(previewUrl, {
                 method: 'POST',
+                redirect: 'manual',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'text/html',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrf,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({
                     bundle_html: htmlEl.value,
-                    bundle_css: cssEl.value,
-                    bundle_js: jsEl.value,
+                    bundle_css: cssEl ? cssEl.value : '',
+                    bundle_js: jsEl ? jsEl.value : '',
                 }),
             })
                 .then(function (r) {
-                    if (!r.ok) throw new Error('preview failed');
-                    return r.text();
+                    if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+                        throw new Error('redirect');
+                    }
+                    if (!r.ok) {
+                        return r.json().catch(function () { return {}; }).then(function (data) {
+                            throw new Error(data.message || 'preview failed');
+                        });
+                    }
+                    return r.json();
                 })
-                .then(function (html) {
-                    frame.srcdoc = html;
+                .then(function (data) {
+                    var html = (data && data.html) ? data.html : '';
+                    if (!html || isAdminLayoutHtml(html)) {
+                        throw new Error('invalid preview');
+                    }
+                    showPreviewFrame(html);
                     statusEl.textContent = 'محدّث';
                 })
                 .catch(function () {
+                    showPreviewPlaceholder();
                     statusEl.textContent = 'فشل المعاينة';
                 })
                 .finally(function () {
                     loadingEl.classList.add('d-none');
                 });
-        }, 500);
+        }, force ? 0 : 500);
     }
 
     if (btn) {
         btn.addEventListener('click', function () {
             clearTimeout(previewTimer);
-            updatePreview();
+            updatePreview(true);
         });
     }
 
     [htmlEl, cssEl, jsEl].forEach(function (el) {
-        if (el) el.addEventListener('input', updatePreview);
+        if (el) el.addEventListener('input', function () { updatePreview(false); });
     });
 
     window.simulatorRefreshPreview = function () {
         clearTimeout(previewTimer);
-        updatePreview();
+        updatePreview(true);
     };
 
     document.addEventListener('simulator-ai-generated', function (e) {
@@ -202,7 +263,10 @@
         window.simulatorRefreshPreview();
     });
 
-    if (htmlEl) updatePreview();
+    if (htmlEl && hasPreviewContent()) {
+        updatePreview(false);
+    } else {
+        showPreviewPlaceholder();
+    }
 })();
 </script>
-@endpush

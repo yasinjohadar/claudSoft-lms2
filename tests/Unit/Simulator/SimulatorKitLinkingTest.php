@@ -124,5 +124,28 @@ HTML;
         $this->assertStringContainsString('textContent = "OK"', $doc);
         $this->assertStringNotContainsString('href="assets/page.css"', $doc);
         $this->assertStringNotContainsString('src="simulator.js"', $doc);
+        $this->assertStringContainsString('<base href="about:blank">', $doc);
+    }
+
+    public function test_inline_preview_wraps_fragments_in_isolated_document(): void
+    {
+        $doc = SimulatorKit::buildInlinePreviewDocument(
+            '<div id="app">Hi</div>',
+            '',
+            '',
+            'body { background: #000; }',
+            'console.log("ok");',
+        );
+
+        $this->assertStringContainsString('<!DOCTYPE html>', $doc);
+        $this->assertStringContainsString('<base href="about:blank">', $doc);
+        $this->assertStringContainsString('<div id="app">Hi</div>', $doc);
+        $this->assertStringNotContainsString('app-header', $doc);
+    }
+
+    public function test_contains_admin_layout_markers(): void
+    {
+        $this->assertTrue(SimulatorKit::containsAdminLayoutMarkers('<header class="app-header">'));
+        $this->assertFalse(SimulatorKit::containsAdminLayoutMarkers('<div class="sim-app"></div>'));
     }
 }

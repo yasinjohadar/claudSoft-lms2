@@ -77,6 +77,7 @@
                 'bundle' => $bundle,
                 'courses' => $courses,
                 'statuses' => $statuses,
+                'categoryOptions' => $categoryOptions,
             ])
         @else
             <div class="alert alert-warning">حالة التوليد غير معروفة ({{ $status }}).</div>

@@ -79,6 +79,7 @@ use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\LaravelAiModelController;
 use App\Http\Controllers\Admin\LessonSimulatorAiController;
 use App\Http\Controllers\Admin\LessonSimulatorController;
+use App\Http\Controllers\Admin\SimulatorCategoryController;
 use App\Http\Controllers\Admin\MarketingAnalyticsController;
 use App\Http\Controllers\Admin\MetaPixelSettingController;
 use App\Http\Controllers\Admin\ModuleCompletionReportController;
@@ -513,6 +514,8 @@ Route::prefix('admin')
 
         // ========== Lesson Simulators ==========
         Route::prefix('lesson-simulators')->name('admin.lesson-simulators.')->group(function () {
+            Route::resource('categories', SimulatorCategoryController::class)->except(['show']);
+
             Route::get('/ai/create', [LessonSimulatorAiController::class, 'create'])->name('ai.create');
             Route::post('/generate-bundle', [LessonSimulatorAiController::class, 'generateSync'])->name('generate-bundle');
             Route::post('/refine-bundle', [LessonSimulatorAiController::class, 'refineBundle'])->name('refine-bundle');

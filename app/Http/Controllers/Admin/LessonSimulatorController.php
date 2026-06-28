@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\LessonSimulator;
 use App\Services\Simulator\SimulatorBundleStorage;
 use App\Services\Simulator\SimulatorBundleValidator;
+use App\Services\Simulator\SimulatorCategoryTree;
 use App\Services\Simulator\SimulatorGlobalAssets;
 use App\Services\Simulator\SimulatorSpecValidator;
 use App\Services\Simulator\SimulatorTopicRegistry;
@@ -27,10 +28,14 @@ class LessonSimulatorController extends Controller
 
     public function index(Request $request)
     {
-        $query = LessonSimulator::query()->with('creator')->latest();
+        $query = LessonSimulator::query()->with(['creator', 'category'])->latest();
 
         if ($request->filled('status')) {
             $query->where('status', $request->get('status'));
+        }
+        if ($request->filled('simulator_category_id')) {
+            $categoryIds = SimulatorCategoryTree::selfAndDescendantIds((int) $request->get('simulator_category_id'));
+            $query->whereIn('simulator_category_id', $categoryIds);
         }
         if ($request->filled('topic_key')) {
             $query->where('topic_key', $request->get('topic_key'));
@@ -45,19 +50,21 @@ class LessonSimulatorController extends Controller
 
         $simulators = $query->paginate(20)->withQueryString();
         $topics = SimulatorTopicRegistry::groupedForSelect();
+        $categoryOptions = SimulatorCategoryTree::optionsForSelect(activeOnly: false);
         $courses = Course::query()->orderBy('title')->get(['id', 'title']);
         $statuses = LessonSimulator::STATUSES;
 
-        return view('admin.lesson-simulators.index', compact('simulators', 'topics', 'courses', 'statuses'));
+        return view('admin.lesson-simulators.index', compact('simulators', 'topics', 'categoryOptions', 'courses', 'statuses'));
     }
 
     public function create()
     {
         $courses = Course::query()->orderBy('title')->get(['id', 'title']);
         $statuses = LessonSimulator::STATUSES;
+        $categoryOptions = SimulatorCategoryTree::optionsForSelect(activeOnly: true);
         $bundle = ['html' => '', 'css' => '', 'js' => ''];
 
-        return view('admin.lesson-simulators.create', compact('courses', 'statuses', 'bundle'));
+        return view('admin.lesson-simulators.create', compact('courses', 'statuses', 'categoryOptions', 'bundle'));
     }
 
     public function store(Request $request)
@@ -82,6 +89,7 @@ class LessonSimulatorController extends Controller
             'slug' => $slug,
             'description' => $validated['description'] ?? null,
             'topic_key' => 'custom.'.Str::slug($validated['title']) ?: 'manual',
+            'simulator_category_id' => $validated['simulator_category_id'] ?? null,
             'render_mode' => 'html_bundle',
             'spec_json' => ['meta' => [], 'sections' => []],
             'spec_version' => config('simulator.spec_version', '1.0'),
@@ -107,16 +115,17 @@ class LessonSimulatorController extends Controller
         $lessonSimulator->load('courses');
         $courses = Course::query()->orderBy('title')->get(['id', 'title']);
         $statuses = LessonSimulator::STATUSES;
+        $categoryOptions = SimulatorCategoryTree::optionsForSelect(activeOnly: true);
 
         if (! $lessonSimulator->isHtmlBundle()) {
             $topics = SimulatorTopicRegistry::groupedForSelect();
 
-            return view('admin.lesson-simulators.edit-legacy', compact('lessonSimulator', 'topics', 'courses', 'statuses'));
+            return view('admin.lesson-simulators.edit-legacy', compact('lessonSimulator', 'topics', 'courses', 'statuses', 'categoryOptions'));
         }
 
         $bundle = $this->bundleStorage->load($lessonSimulator->slug) ?? ['html' => '', 'css' => '', 'js' => ''];
 
-        return view('admin.lesson-simulators.edit', compact('lessonSimulator', 'courses', 'statuses', 'bundle'));
+        return view('admin.lesson-simulators.edit', compact('lessonSimulator', 'courses', 'statuses', 'categoryOptions', 'bundle'));
     }
 
     public function update(Request $request, LessonSimulator $lessonSimulator)
@@ -145,6 +154,7 @@ class LessonSimulatorController extends Controller
             'title' => $validated['title'],
             'slug' => $newSlug,
             'description' => $validated['description'] ?? null,
+            'simulator_category_id' => $validated['simulator_category_id'] ?? null,
             'status' => $validated['status'] ?? 'published',
         ]);
 
@@ -281,10 +291,13 @@ class LessonSimulatorController extends Controller
             $global['js'],
         );
 
-        return response($html, 200, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-            'X-Frame-Options' => 'SAMEORIGIN',
-        ]);
+        if (SimulatorKit::containsAdminLayoutMarkers($html)) {
+            return response()->json([
+                'message' => 'المحتوى المُدخل يحتوي على عناصر لوحة التحكم ولا يمكن عرضه في المعاينة.',
+            ], 422);
+        }
+
+        return response()->json(['html' => $html]);
     }
 
     /**
@@ -296,6 +309,7 @@ class LessonSimulatorController extends Controller
             'title' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:lesson_simulators,slug'.($ignoreId ? ",{$ignoreId}" : ''),
             'description' => 'nullable|string',
+            'simulator_category_id' => 'nullable|exists:simulator_categories,id',
             'status' => 'required|in:'.implode(',', array_keys(LessonSimulator::STATUSES)),
             'bundle_html' => 'required|string',
             'bundle_css' => 'nullable|string',
@@ -312,6 +326,7 @@ class LessonSimulatorController extends Controller
             'slug' => 'nullable|string|max:255|unique:lesson_simulators,slug,'.$lessonSimulator->id,
             'description' => 'nullable|string',
             'topic_key' => 'required|string|max:128',
+            'simulator_category_id' => 'nullable|exists:simulator_categories,id',
             'status' => 'required|in:'.implode(',', array_keys(LessonSimulator::STATUSES)),
             'spec_json' => 'required|json',
             'course_ids' => 'nullable|array',
@@ -329,6 +344,7 @@ class LessonSimulatorController extends Controller
             'slug' => $validated['slug'] ?? $lessonSimulator->slug,
             'description' => $validated['description'] ?? null,
             'topic_key' => $validated['topic_key'],
+            'simulator_category_id' => $validated['simulator_category_id'] ?? null,
             'spec_json' => $spec,
             'status' => $validated['status'] ?? 'published',
             'languages' => $spec['meta']['languages'] ?? [],

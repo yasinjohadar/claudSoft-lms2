@@ -157,12 +157,61 @@ class SimulatorKit
         $css = trim($customCss) !== '' ? $customCss : $globalCss;
         $js = trim($customJs) !== '' ? $customJs : $globalJs;
 
-        return self::attachStylesAndScripts($html, [
+        $document = self::attachStylesAndScripts($html, [
             'cssUrl' => '',
             'jsUrl' => '',
             'cssInline' => $css,
             'jsInline' => $js,
         ]);
+
+        return self::wrapIsolatedPreviewDocument($document);
+    }
+
+    /**
+     * Wrap preview fragments in a minimal document so iframe srcdoc cannot resolve
+     * relative admin asset URLs against the parent page path.
+     */
+    public static function wrapIsolatedPreviewDocument(string $html): string
+    {
+        if (preg_match('/<html\b/i', $html)) {
+            return self::ensurePreviewDocumentBase($html);
+        }
+
+        return '<!DOCTYPE html>'."\n"
+            .'<html lang="ar" dir="rtl">'."\n"
+            .'<head>'."\n"
+            .'<meta charset="utf-8">'."\n"
+            .'<meta name="viewport" content="width=device-width, initial-scale=1">'."\n"
+            .'<base href="about:blank">'."\n"
+            .'</head>'."\n"
+            .'<body style="margin:0;padding:0;">'."\n"
+            .$html."\n"
+            .'</body>'."\n"
+            .'</html>';
+    }
+
+    public static function containsAdminLayoutMarkers(string $html): bool
+    {
+        foreach (['app-header', 'admin-portal', 'bundle-preview-frame', 'simulator-bundle-form'] as $marker) {
+            if (str_contains($html, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function ensurePreviewDocumentBase(string $html): string
+    {
+        if (preg_match('/<base\b/i', $html)) {
+            return $html;
+        }
+
+        if (preg_match('/<head\b[^>]*>/i', $html)) {
+            return preg_replace('/<head\b[^>]*>/i', '<head>'."\n".'<base href="about:blank">', $html, 1) ?? $html;
+        }
+
+        return self::wrapIsolatedPreviewDocument($html);
     }
 
     public static function resolveGlobalAssetPaths(string $html, ?string $globalBase = null): string
