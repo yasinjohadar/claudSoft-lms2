@@ -1,15 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Frontend\HomeController;
-use App\Http\Controllers\Frontend\CourseController;
-use App\Http\Controllers\Frontend\ReviewController;
-use App\Http\Controllers\Frontend\StudentController;
 use App\Http\Controllers\Frontend\BlogController;
-use App\Http\Controllers\Frontend\GroupRegistrationController;
+use App\Http\Controllers\Frontend\CourseController;
 use App\Http\Controllers\Frontend\DocumentationController;
-
-
+use App\Http\Controllers\Frontend\DocumentationExportController;
+use App\Http\Controllers\Frontend\GroupRegistrationController;
+use App\Http\Controllers\Frontend\HomeController;
+use App\Http\Controllers\Frontend\ProfileCardController;
+use App\Http\Controllers\Frontend\ReviewController;
+use App\Http\Controllers\Frontend\SimulatorPlayerController;
+use App\Http\Controllers\Frontend\StudentController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 Route::get('/about', [HomeController::class, 'about'])->name('frontend.about');
@@ -29,6 +30,7 @@ Route::get('/reviews/create', [ReviewController::class, 'create'])->name('fronte
 Route::post('/reviews', [ReviewController::class, 'store'])->name('frontend.reviews.store')->middleware('auth');
 Route::get('/students', [StudentController::class, 'index'])->name('frontend.students.index');
 Route::get('/students/{id}', [StudentController::class, 'show'])->name('frontend.students.show');
+Route::get('/card/{slug}', [ProfileCardController::class, 'show'])->name('frontend.profile-card.show');
 Route::get('/contact', [HomeController::class, 'contact'])->name('frontend.contact');
 Route::post('/contact', [HomeController::class, 'sendContact'])->name('frontend.contact.send');
 
@@ -55,26 +57,42 @@ Route::prefix('blog')->name('frontend.blog.')->group(function () {
     Route::get('/{slug}', [BlogController::class, 'show'])->name('show');
 });
 
+// Signed render for Browsershot PDF export (no auth — temporary signature only)
+Route::get('/docs/export-render/{documentation_page}/{context}', [DocumentationExportController::class, 'render'])
+    ->middleware('signed')
+    ->whereIn('context', ['public', 'admin'])
+    ->name('frontend.docs.export-render');
 
 // Documentation — للمستخدمين المسجّلين فقط؛ نفس تصميم public/docs/css/style.css
 // auth.query_token: ?token= للـ WebView (Flutter) يحقن Authorization: Bearer قبل auth:sanctum (نفس توكن Sanctum من التطبيق).
 // الجلسة عبر الكوكيز ما زالت مدعومة للمتصفح؛ طلبات Bearer لا تحتاج SANCTUM_STATEFUL_DOMAINS.
 Route::middleware(['auth.query_token', 'auth:sanctum'])->group(function () {
+    Route::get('/simulator/{slug}', [SimulatorPlayerController::class, 'show'])
+        ->name('frontend.simulator.show');
+    Route::get('/simulator/{slug}/play', [SimulatorPlayerController::class, 'play'])
+        ->name('frontend.simulator.play');
+    Route::get('/simulator/{slug}/assets/{file}', [SimulatorPlayerController::class, 'asset'])
+        ->where('file', 'page.css|simulator.js')
+        ->name('frontend.simulator.asset');
+
     Route::prefix('docs')->name('frontend.docs.')->group(function () {
         Route::get('/', [DocumentationController::class, 'index'])->name('index');
-        Route::get('/{categorySlug}/{pagePath?}', [DocumentationController::class, 'show'])
-            ->where('pagePath', '.*')
+        Route::get('/export/{documentation_page}/pdf', [DocumentationExportController::class, 'download'])
+            ->name('pdf');
+        Route::get('/{categorySlug}', [DocumentationController::class, 'category'])->name('category');
+        Route::get('/{categorySlug}/{pagePath}', [DocumentationController::class, 'show'])
+            ->where('pagePath', '.+')
             ->name('show');
     });
 });
 // Sitemap Route
-Route::get('/sitemap.xml', [\App\Http\Controllers\Frontend\SitemapController::class, 'index'])->name('frontend.sitemap');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('frontend.sitemap');
 
 // Robots.txt Route (dynamic)
-Route::get('/robots.txt', function() {
+Route::get('/robots.txt', function () {
     $content = "# robots.txt\n";
-    $content .= "# Generated automatically for " . config('app.name') . "\n\n";
-    
+    $content .= '# Generated automatically for '.config('app.name')."\n\n";
+
     $content .= "# Allow all search engines\n";
     $content .= "User-agent: *\n";
     $content .= "Allow: /\n";
@@ -84,23 +102,23 @@ Route::get('/robots.txt', function() {
     $content .= "Allow: /reviews\n";
     $content .= "Allow: /students\n";
     $content .= "Allow: /contact\n\n";
-    
+
     $content .= "# Disallow admin and student panels\n";
     $content .= "Disallow: /admin/\n";
     $content .= "Disallow: /student/\n";
     $content .= "Disallow: /api/\n";
     $content .= "Disallow: /docs\n\n";
-    
+
     $content .= "# Disallow private files\n";
     $content .= "Disallow: /storage/private/\n";
     $content .= "Disallow: /storage/temp/\n\n";
-    
+
     $content .= "# Crawl-delay (optional, helps with server load)\n";
     $content .= "# Crawl-delay: 1\n\n";
-    
+
     $content .= "# Sitemap location\n";
-    $content .= "Sitemap: " . url('/sitemap.xml') . "\n";
-    
+    $content .= 'Sitemap: '.url('/sitemap.xml')."\n";
+
     return response($content, 200)
         ->header('Content-Type', 'text/plain; charset=utf-8');
 })->name('frontend.robots');

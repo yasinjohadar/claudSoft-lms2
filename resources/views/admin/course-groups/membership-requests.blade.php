@@ -2,7 +2,6 @@
 
 @section('page-title')
     طلبات الانضمام - {{ $group->name }}
-@include('admin.course-groups.partials.membership-wa-invite-scripts')
 @stop
 
 @section('content')
@@ -158,60 +157,17 @@
 
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
-                    <h4 class="card-title mb-1">تصفية الطلبات</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو الإيميل أو الهاتف، أو فلتر حسب الحالة أو حالة الانضمام لواتساب.</p>
+                    <h4 class="card-title mb-1">تصفية وترتيب الطلبات</h4>
+                    <p class="fs-12 text-muted mb-0">ابحث في بيانات الطالب والفورم، فلتر حسب الحالة أو حقول التسجيل، ورتّب النتائج.</p>
                 </div>
                 <div class="card-body pt-3">
-                    <form id="membershipRequestsFilterForm" method="GET"
-                          action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}"
-                          class="group-show-filters mb-0">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label">البحث</label>
-                                <input type="text"
-                                       id="membershipRequestsSearchInput"
-                                       name="search"
-                                       class="form-control"
-                                       placeholder="البحث بالاسم، الإيميل أو الهاتف..."
-                                       value="{{ request('search') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">الحالة</label>
-                                <select name="status" class="form-select">
-                                    <option value="">جميع الحالات</option>
-                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>قيد المراجعة</option>
-                                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>مقبول</option>
-                                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>مرفوض</option>
-                                </select>
-                            </div>
-                            @if($waSelectedJid ?? '')
-                                <div class="col-md-3">
-                                    <label class="form-label">انضمام واتساب</label>
-                                    <select name="wa_membership" class="form-select" id="membershipWaMembershipFilter">
-                                        <option value="">جميع الطلاب</option>
-                                        <option value="not_in_group" {{ request('wa_membership') === 'not_in_group' ? 'selected' : '' }}>غير منضمين فقط ({{ $waContext['wa_stats']['not_in_group'] ?? 0 }})</option>
-                                        <option value="invite_sent" {{ request('wa_membership') === 'invite_sent' ? 'selected' : '' }}>دُعوا ولم ينضموا ({{ $waContext['wa_stats']['invite_pending'] ?? 0 }})</option>
-                                        <option value="in_group" {{ request('wa_membership') === 'in_group' ? 'selected' : '' }}>منضمين فقط ({{ $waContext['wa_stats']['in_group'] ?? 0 }})</option>
-                                        <option value="no_phone" {{ request('wa_membership') === 'no_phone' ? 'selected' : '' }}>بدون رقم واتساب ({{ $waContext['wa_stats']['no_phone'] ?? 0 }})</option>
-                                    </select>
-                                </div>
-                            @endif
-                            @if($waSelectedJid ?? '')
-                                <input type="hidden" name="whatsapp_jid" value="{{ $waSelectedJid }}">
-                            @endif
-                            <div class="col-md-{{ ($waSelectedJid ?? '') ? '3' : '6' }}">
-                                <div class="d-flex flex-wrap gap-2">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fe fe-search me-1"></i>بحث
-                                    </button>
-                                    <button type="button" id="membershipRequestsResetBtn" class="btn btn-outline-secondary">
-                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                    <small id="membershipRequestsFeedback" class="text-muted d-block mt-2"></small>
+                    @include('admin.course-groups.partials.membership-requests-filters', [
+                        'course' => $course,
+                        'group' => $group,
+                        'waContext' => $waContext ?? [],
+                        'waSelectedJid' => $waSelectedJid ?? '',
+                        'nationalities' => $nationalities ?? collect(),
+                    ])
                 </div>
             </div>
 
@@ -222,6 +178,9 @@
                         <span class="group-show-members-card__count" id="membershipRequestsTotal">{{ $requests->total() }}</span>
                     </h6>
                     <div class="group-show-member-actions">
+                        @include('admin.course-groups.partials.membership-requests-column-picker', [
+                            'waContext' => $waContext ?? [],
+                        ])
                         <div id="approve-selected-container" style="display: none;">
                             <form id="approve-selected-form" action="{{ route('courses.groups.membership-requests.approve-multiple', [$course->id, $group->id]) }}" method="POST" class="d-inline">
                                 @csrf
@@ -255,6 +214,7 @@
                             'course' => $course,
                             'group' => $group,
                             'otherGroupsByStudentId' => $otherGroupsByStudentId ?? collect(),
+                            'registrationsByRequestId' => $registrationsByRequestId ?? [],
                             'waContext' => $waContext ?? [],
                         ])
                     </div>
@@ -343,10 +303,14 @@
         'whatsappTemplates' => $whatsappTemplates ?? collect(),
         'defaultWhatsappTemplateId' => $defaultWhatsappTemplateId ?? null,
     ])
+
+    @include('admin.course-groups.partials.membership-request-detail-modal')
 @stop
 
 @section('script')
 @include('admin.course-groups.partials.membership-wa-invite-scripts')
+@include('admin.course-groups.partials.membership-request-detail-scripts')
+@include('admin.course-groups.partials.membership-requests-columns-scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     function animateCountup(el, target, duration) {
@@ -484,6 +448,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.initMembershipWaInviteButtons === 'function') {
                     window.initMembershipWaInviteButtons();
                 }
+                if (typeof window.initMembershipRequestColumns === 'function') {
+                    window.initMembershipRequestColumns();
+                }
                 updateBulkActions();
                 updateSelectAll();
                 setFeedback('تم تحديث النتائج');
@@ -499,6 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!filterForm) return;
         const formData = new FormData(filterForm);
         formData.set('search', (formData.get('search') || '').toString().trim());
+        formData.delete('page');
         const waJidEl = document.getElementById('membershipWhatsappJid');
         if (waJidEl && waJidEl.value) {
             formData.set('whatsapp_jid', waJidEl.value);
@@ -510,11 +478,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const debouncedSearch = debounce(requestFromFilterForm, 350);
 
-    if (searchInput) searchInput.addEventListener('input', debouncedSearch);
-
     if (filterForm) {
-        filterForm.querySelectorAll('select[name="status"], select[name="wa_membership"]').forEach(sel => {
-            sel.addEventListener('change', requestFromFilterForm);
+        filterForm.querySelectorAll('.js-mr-filter-text').forEach(function (input) {
+            input.addEventListener('input', debouncedSearch);
+        });
+        filterForm.querySelectorAll('.js-mr-filter:not(.js-mr-filter-text)').forEach(function (el) {
+            el.addEventListener('change', requestFromFilterForm);
         });
         filterForm.addEventListener('submit', function(e) {
             e.preventDefault();

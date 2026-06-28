@@ -134,6 +134,149 @@ PROMPT;
         return $result;
     }
 
+    /**
+     * إضافة أفكار ومحتوى جديد مع الحفاظ على المحتوى القديم (وضع enhance).
+     *
+     * @param  array{
+     *   user_notes?: string|null,
+     *   tone?: string,
+     *   language?: string,
+     *   update_excerpt?: bool
+     * }  $options
+     * @return array{content: string, excerpt?: string, stats: array<string, int>}
+     */
+    public function enhanceDocumentationContent(
+        string $rawHtml,
+        AIModel $model,
+        array $options = []
+    ): array {
+        $len = mb_strlen($rawHtml);
+        if ($len > self::MAX_REFINE_SOURCE_CHARS) {
+            throw new \InvalidArgumentException(
+                'المحتوى أطول من الحد المسموح ('.number_format(self::MAX_REFINE_SOURCE_CHARS).' حرف، طولك الحالي: '.number_format($len).'). قلّص النص أو قسّمه إلى أجزاء.'
+            );
+        }
+
+        $userNotes = trim((string) ($options['user_notes'] ?? ''));
+        if ($userNotes === '' || mb_strlen($userNotes) < 10) {
+            throw new \InvalidArgumentException('صف الأفكار أو الإضافات المطلوبة (10 أحرف على الأقل).');
+        }
+
+        $tone = $options['tone'] ?? 'professional';
+        $language = $options['language'] ?? 'ar';
+        $updateExcerpt = (bool) ($options['update_excerpt'] ?? false);
+
+        set_time_limit(500);
+
+        $toneMap = [
+            'professional' => 'احترافي وواضح',
+            'friendly' => 'ودود ومبسّط',
+            'technical' => 'تقني ودقيق',
+            'casual' => 'عادي',
+            'formal' => 'رسمي',
+        ];
+        $toneLabel = $toneMap[$tone] ?? $toneMap['professional'];
+
+        $langLine = $language === 'en'
+            ? 'Output documentation body in clear English where appropriate; keep code and identifiers as needed.'
+            : 'المخرجات بالعربية الفصحى الواضحة حيث يناسب؛ احتفظ بالرموز البرمجية كما هي.';
+
+        $styleGuide = $this->documentationStyleGuideBlock();
+
+        $excerptInstruction = $updateExcerpt
+            ? 'أدرج في JSON مفتاح excerpt: نص عادي قصير (جملة أو اثنتان) يلخص الصفحة بدون HTML.'
+            : 'لا تُدرج مفتاح excerpt في JSON.';
+
+        $jsonShape = $updateExcerpt
+            ? '{"content":"...","excerpt":"..."}'
+            : '{"content":"..."}';
+
+        $prompt = <<<PROMPT
+أنت محرر توثيق تقني خبير في وضع «إضافة أفكار». لديك HTML لصفحة توثيق موجودة.
+
+قواعد صارمة — الأولوية للحفاظ على المحتوى القديم:
+1. احتفظ بكل الأقسام والفقرات والجداول وأكواد SOURCE_HTML كما هي (نفس المعنى والترتيب) ما لم يطلب المحرر صراحةً حذف شيء.
+2. لا تعِد هيكلة الصفحة بالكامل ولا تختصر المحتوى الموجود.
+3. أضف فقط ما طلبه المحرر في «تعليمات الإضافة» أدناه — بأسلوب احترافي متسق مع بقية الصفحة.
+4. ضع الإضافات في المواضع المنطقية (بعد مقدمة، قبل خاتمة، أو في قسم جديد `<section class="content-section">` في النهاية إن لم يُحدد موضع).
+5. طبّق تنسيق HTML حسب الدليل أدناه للمحتوى الجديد.
+6. الأسلوب: {$toneLabel}
+7. {$langLine}
+8. {$excerptInstruction}
+
+تعليمات الإضافة من المحرر (نفّذها بدقة):
+{$userNotes}
+
+دليل التنسيق (HTML فقط داخل content):
+{$styleGuide}
+
+المحتوى الأصلي (HTML) — يجب الحفاظ عليه مع الإضافات:
+<<<SOURCE_HTML>>>
+{$rawHtml}
+<<<END_SOURCE_HTML>>>
+
+أعد JSON فقط بدون markdown أو شرح، بالشكل:
+{$jsonShape}
+PROMPT;
+
+        $provider = AIProviderFactory::create($model);
+        $response = $provider->generateText($prompt, [
+            'max_tokens' => $model->max_tokens ?? 8000,
+            'temperature' => min(0.35, (float) ($model->temperature ?? 0.35)),
+        ]);
+
+        if (empty($response)) {
+            throw new \Exception('لم يتم استلام استجابة من موديل AI. يرجى المحاولة مرة أخرى.');
+        }
+
+        $data = $this->parseJSONResponse($response);
+        $content = isset($data['content'])
+            ? $this->normalizeGeneratedHtmlContent((string) $data['content'])
+            : '';
+
+        if ($content === '') {
+            $content = $this->normalizeGeneratedHtmlContent($response);
+            if ($content === '') {
+                throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
+            }
+        }
+
+        $result = [
+            'content' => $content,
+            'stats' => self::computeEnhanceStats($rawHtml, $content),
+        ];
+
+        if ($updateExcerpt && ! empty($data['excerpt'])) {
+            $result['excerpt'] = Str::limit(trim(strip_tags((string) $data['excerpt'])), 500);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{old_length: int, new_length: int, old_sections: int, new_sections: int}
+     */
+    public static function computeEnhanceStats(string $oldHtml, string $newHtml): array
+    {
+        return [
+            'old_length' => mb_strlen($oldHtml),
+            'new_length' => mb_strlen($newHtml),
+            'old_sections' => self::countDocumentationSections($oldHtml),
+            'new_sections' => self::countDocumentationSections($newHtml),
+        ];
+    }
+
+    private static function countDocumentationSections(string $html): int
+    {
+        $lower = strtolower($html);
+        $sections = substr_count($lower, 'content-section');
+        if ($sections > 0) {
+            return $sections;
+        }
+
+        return substr_count($lower, '<section');
+    }
+
     private function documentationStyleGuideBlock(): string
     {
         return <<<'GUIDE'

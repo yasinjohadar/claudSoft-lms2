@@ -10,10 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
+use App\Models\CourseSection;
+use App\Models\DocumentationPageLink;
 use App\Models\ModuleCompletion;
 use App\Models\Resource;
 use App\Models\SectionCompletion;
 use App\Services\AccessControlService;
+use App\Services\Gamification\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -97,11 +100,14 @@ class CourseLearningController extends Controller
                 ->pluck('module_id')
                 ->toArray();
 
+            $courseReferenceDocs = $this->referenceDocumentationForCourse($course->id);
+
             return view('student.courses.learning.show', compact(
                 'course',
                 'enrollment',
                 'currentModule',
-                'completedModules'
+                'completedModules',
+                'courseReferenceDocs'
             ));
 
         } catch (\Exception $e) {
@@ -177,12 +183,17 @@ class CourseLearningController extends Controller
                 ->toArray()
             : [];
 
+        $courseReferenceDocs = $this->referenceDocumentationForCourse($module->course_id);
+        $lessonReferenceDocs = $this->referenceDocumentationForModule($module);
+
         return response()
             ->view('student.courses.learning.module-main', compact(
                 'module',
                 'enrollment',
                 'isCompleted',
-                'completedModules'
+                'completedModules',
+                'courseReferenceDocs',
+                'lessonReferenceDocs'
             ))
             ->header('Content-Type', 'text/html; charset=UTF-8');
     }
@@ -268,11 +279,16 @@ class CourseLearningController extends Controller
                 ->toArray()
             : [];
 
+        $courseReferenceDocs = $this->referenceDocumentationForCourse($module->course_id);
+        $lessonReferenceDocs = $this->referenceDocumentationForModule($module);
+
         return view('student.courses.learning.module', compact(
             'module',
             'enrollment',
             'isCompleted',
-            'completedModules'
+            'completedModules',
+            'courseReferenceDocs',
+            'lessonReferenceDocs'
         ));
     }
 
@@ -289,6 +305,34 @@ class CourseLearningController extends Controller
         if ($module->module_type === 'programming_challenge' && $module->modulable) {
             $module->modulable->load(['languages', 'files']);
         }
+
+        if ($module->module_type === 'documentation' && $module->modulable) {
+            $module->modulable->load('category');
+        }
+    }
+
+    protected function referenceDocumentationForCourse(int $courseId)
+    {
+        return DocumentationPageLink::with(['documentationPage.category'])
+            ->reference()
+            ->where('linkable_type', Course::class)
+            ->where('linkable_id', $courseId)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    protected function referenceDocumentationForModule(CourseModule $module)
+    {
+        if ($module->module_type !== 'lesson') {
+            return collect();
+        }
+
+        return DocumentationPageLink::with(['documentationPage.category'])
+            ->reference()
+            ->where('linkable_type', CourseModule::class)
+            ->where('linkable_id', $module->id)
+            ->orderBy('sort_order')
+            ->get();
     }
 
     /**
@@ -515,7 +559,7 @@ class CourseLearningController extends Controller
                 $this->updateCourseCompletion($module->course_id, $student->id);
             }
 
-            app(\App\Services\Gamification\GamificationService::class)->dispatchVideoWatchIfEligible(
+            app(GamificationService::class)->dispatchVideoWatchIfEligible(
                 $student,
                 $module,
                 $percentage,
@@ -637,7 +681,7 @@ class CourseLearningController extends Controller
      */
     private function updateSectionCompletion($sectionId, $studentId)
     {
-        $section = \App\Models\CourseSection::with('modules')->find($sectionId);
+        $section = CourseSection::with('modules')->find($sectionId);
 
         if (! $section) {
             return;

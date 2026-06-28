@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DocumentationPage extends Model
@@ -51,6 +52,30 @@ class DocumentationPage extends Model
     public function editor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function links(): HasMany
+    {
+        return $this->hasMany(DocumentationPageLink::class);
+    }
+
+    public function courseModules(): MorphMany
+    {
+        return $this->morphMany(CourseModule::class, 'modulable');
+    }
+
+    public function publicUrl(): string
+    {
+        $this->loadMissing('category');
+
+        if (! $this->category) {
+            return route('frontend.docs.index');
+        }
+
+        return route('frontend.docs.show', [
+            'categorySlug' => $this->category->slug,
+            'pagePath' => $this->slugPathUnderCategory(),
+        ]);
     }
 
     public function scopePublished($query)

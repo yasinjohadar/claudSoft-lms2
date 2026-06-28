@@ -1,9 +1,54 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl"@if($pdfExport ?? false) data-theme="light"@endif>
+@php
+    $pdfExport = $pdfExport ?? false;
+    $forcedTheme = $forcedTheme ?? null;
+@endphp
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    @unless($pdfExport)
+    {{-- تطبيق الثيم قبل أي CSS لتجنب وميض الوضع الليلي/النهاري --}}
+    <script>
+        (function () {
+            var forcedTheme = @json($forcedTheme);
+            var theme = forcedTheme || 'dark';
+            if (!forcedTheme) {
+                try {
+                    theme = localStorage.getItem('claudsoft-docs-theme') || 'dark';
+                } catch (e) { /* ignore */ }
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.classList.add('docs-theme-init');
+        })();
+    </script>
+    @endunless
+    <style>
+        html.docs-theme-init { color-scheme: dark; }
+        html.docs-theme-init[data-theme="light"] { color-scheme: light; }
+        html.docs-theme-init,
+        html.docs-theme-init body {
+            background-color: #0a0e17;
+            color: #e8eaf0;
+        }
+        html.docs-theme-init[data-theme="light"],
+        html.docs-theme-init[data-theme="light"] body {
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        html.docs-theme-init *,
+        html.docs-theme-init *::before,
+        html.docs-theme-init *::after {
+            transition: none !important;
+        }
+        html.docs-theme-init .content-section {
+            opacity: 1 !important;
+            transform: none !important;
+            animation: none !important;
+        }
+    </style>
+
     <title>@yield('title', 'التوثيق')</title>
     @stack('meta')
 
@@ -12,24 +57,114 @@
         rel="stylesheet">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        .docs-content pre[class*="language-"]:not(.code-block pre),
+        .docs-content code[class*="language-"]:not(.code-block code) {
+            background: transparent;
+        }
+    </style>
 
-    <link href="{{ asset('docs/css/style.css') }}" rel="stylesheet">
+    <link href="{{ asset('docs/css/style.css') }}?v={{ filemtime(public_path('docs/css/style.css')) }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     @stack('styles')
 </head>
 
-<body>
+<body @class([
+    'docs-pdf-export' => $pdfExport,
+])>
 
-    <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="تبديل الوضع">
-        <span class="icon moon">🌙</span>
-        <span class="icon sun">☀️</span>
-        <span class="text">الوضع</span>
-    </button>
+    @if($pdfExport ?? false)
+        @include('frontend.docs.partials.pdf-running-header')
+    @endif
 
+    @unless($pdfExport)
+    <div class="docs-top-toolbar">
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="تبديل الوضع">
+            <span class="icon moon">🌙</span>
+            <span class="icon sun">☀️</span>
+            <span class="text">الوضع</span>
+        </button>
+        @stack('docs-toolbar')
+    </div>
+    @endunless
+
+    @unless($pdfExport)
     <div class="glow-blob blob-1"></div>
     <div class="glow-blob blob-2"></div>
     <div class="glow-blob blob-3"></div>
+    @endunless
 
     @yield('content')
+
+    {{-- تغليف أكواد pre فوراً بعد المحتوى قبل Prism لتقليل وميض التنسيق --}}
+    <script>
+        function detectCodeLanguage(codeEl, pre) {
+            var className = (codeEl && codeEl.className) || (pre && pre.className) || '';
+            var match = className.match(/language-([\w-]+)/);
+            var lang = match ? match[1].toLowerCase() : '';
+            var sample = ((codeEl && codeEl.textContent) || (pre && pre.textContent) || '').trim().slice(0, 1200);
+            var languageNames = {
+                'php': 'PHP', 'javascript': 'JavaScript', 'js': 'JavaScript',
+                'typescript': 'TypeScript', 'ts': 'TypeScript', 'python': 'Python',
+                'java': 'Java', 'cpp': 'C++', 'c': 'C', 'csharp': 'C#', 'cs': 'C#',
+                'sql': 'SQL', 'json': 'JSON', 'bash': 'Bash', 'shell': 'Shell', 'sh': 'Shell',
+                'html': 'HTML', 'css': 'CSS', 'markup': 'HTML', 'xml': 'XML', 'dart': 'Dart',
+                'ruby': 'Ruby', 'go': 'Go', 'rust': 'Rust', 'swift': 'Swift', 'kotlin': 'Kotlin',
+                'yaml': 'YAML', 'markdown': 'Markdown', 'text': 'Text', 'plaintext': 'Text'
+            };
+            var detectedLang = '';
+            if (/\b(const|let|var|function|=>|console\.log|document\.|window\.)\b/.test(sample)) {
+                detectedLang = 'javascript';
+            } else if (/^\s*<\?php/m.test(sample) || (/\$\w+/.test(sample) && /\b(echo|function|namespace|use |public |private )\b/.test(sample))) {
+                detectedLang = 'php';
+            } else if (/^\s*def \w+\(/m.test(sample) || /\bprint\s*\(/.test(sample)) {
+                detectedLang = 'python';
+            } else if (/\bvoid main\s*\(/.test(sample) || /\bimport\s+'package:/.test(sample)) {
+                detectedLang = 'dart';
+            } else if (/^\s*<!DOCTYPE|<html|<div|<span/i.test(sample)) {
+                detectedLang = 'markup';
+            } else if (/^\s*[\w-]+\s*:\s*[^;]+;/m.test(sample) && /\{|\}/.test(sample) && !/\bfunction\b/.test(sample)) {
+                detectedLang = 'css';
+            } else if (/^\s*\{[\s\S]*"[\w-]+"\s*:/m.test(sample)) {
+                detectedLang = 'json';
+            } else if (lang) {
+                detectedLang = lang;
+            }
+            if (codeEl && detectedLang) {
+                codeEl.className = codeEl.className.replace(/\blanguage-[\w-]+\b/g, '').trim();
+                codeEl.className = (codeEl.className + ' language-' + detectedLang).trim();
+            }
+            return languageNames[detectedLang] || (detectedLang ? detectedLang.replace(/-/g, ' ').toUpperCase() : 'CODE');
+        }
+
+        function wrapDocsContentPreBlocks() {
+            document.querySelectorAll('.docs-content pre').forEach(function (pre) {
+                if (pre.closest('.code-block')) return;
+                var codeEl = pre.querySelector('code');
+                if (!codeEl) {
+                    codeEl = document.createElement('code');
+                    codeEl.textContent = pre.textContent;
+                    pre.textContent = '';
+                    pre.appendChild(codeEl);
+                }
+                if (!codeEl.className.match(/language-/)) {
+                    codeEl.className = (codeEl.className + ' language-javascript').trim();
+                }
+                var block = document.createElement('div');
+                block.className = 'code-block';
+                var header = document.createElement('div');
+                header.className = 'code-header';
+                header.innerHTML = '<div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CODE</span>';
+                header.querySelector('.code-lang').textContent = detectCodeLanguage(codeEl, pre);
+                pre.parentNode.insertBefore(block, pre);
+                block.appendChild(header);
+                block.appendChild(pre);
+            });
+        }
+
+        wrapDocsContentPreBlocks();
+    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
@@ -42,6 +177,10 @@
 
     <script>
         function toggleTheme() {
+            if (@json($pdfExport)) {
+                return;
+            }
+
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -49,36 +188,7 @@
             localStorage.setItem('claudsoft-docs-theme', newTheme);
         }
 
-        (function () {
-            const savedTheme = localStorage.getItem('claudsoft-docs-theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-
-        function wrapDocsContentPreBlocks() {
-            document.querySelectorAll('.docs-content pre').forEach(function (pre) {
-                if (pre.closest('.code-block')) {
-                    return;
-                }
-                const block = document.createElement('div');
-                block.className = 'code-block';
-                const header = document.createElement('div');
-                header.className = 'code-header';
-                header.innerHTML = '<div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CODE</span>';
-                const codeEl = pre.querySelector('code');
-                if (codeEl) {
-                    const m = codeEl.className.match(/language-(\w+)/);
-                    if (m) {
-                        header.querySelector('.code-lang').textContent = m[1].toUpperCase();
-                    }
-                }
-                pre.parentNode.insertBefore(block, pre);
-                block.appendChild(header);
-                block.appendChild(pre);
-            });
-        }
-
         function initCodeBlocks() {
-            wrapDocsContentPreBlocks();
             try {
                 if (typeof Prism !== 'undefined') {
                     Prism.highlightAll();
@@ -98,7 +208,7 @@
                 const copyBtn = document.createElement('button');
                 copyBtn.type = 'button';
                 copyBtn.className = 'copy-btn';
-                copyBtn.innerHTML = '<span class="copy-icon">📋</span> <span class="btn-text">نسخ</span>';
+                copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span class="btn-text">نسخ</span>';
                 target.appendChild(copyBtn);
 
                 copyBtn.addEventListener('click', async function () {
@@ -111,7 +221,7 @@
                     try {
                         await navigator.clipboard.writeText(code);
                         const originalHTML = copyBtn.innerHTML;
-                        copyBtn.innerHTML = '<span class="copy-icon">✅</span> <span class="btn-text">تم النسخ</span>';
+                        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg> <span class="btn-text">تم</span>';
                         copyBtn.classList.add('copied');
 
                         setTimeout(function () {
@@ -123,6 +233,8 @@
                     }
                 });
             });
+
+            document.documentElement.classList.remove('docs-theme-init');
         }
 
         if (document.readyState === 'loading') {
@@ -132,6 +244,7 @@
         }
     </script>
     {{-- إبقاء ?token= على روابط /docs للتنقل داخل WebView (Flutter) --}}
+    @unless($pdfExport)
     <script>
         (function () {
             function pathIsUnderDocs(path) {
@@ -175,6 +288,7 @@
             }
         })();
     </script>
+    @endunless
     @stack('scripts')
 </body>
 

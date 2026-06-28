@@ -4,86 +4,130 @@
 
 @section('styles')
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
-<style>
-    .loading-spinner { display: none; }
-    .loading-spinner.active { display: inline-block; }
-</style>
+@include('admin.docs.categories.partials.styles')
+@include('admin.docs.pages.partials.ai-page-styles')
 @endsection
 
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">توليد صفحة توثيق بالذكاء الاصطناعي</h4>
-                <p class="mb-0 text-muted">نفس آلية توليد المدونة: إعدادات ثم توليد ثم مراجعة وحفظ</p>
-                @if(!empty($docsEngineChoiceAvailable))
-                    <p class="mb-0 mt-1"><span class="badge bg-secondary">محركان</span> يمكنك اختيار <strong>Laravel AI SDK</strong> أو <strong>موديلات بنك الموديلات القديمة</strong> لكل عملية توليد.</p>
-                @elseif(!empty($useLaravelAiEngine))
-                    <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK» (قدرة docs.refine مفضّلة عند الاختيار الافتراضي).</p>
-                @endif
-            </div>
-            <div class="ms-auto d-flex gap-2">
-                <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary">قائمة الصفحات</a>
-                <a href="{{ route('admin.docs.pages.create') }}" class="btn btn-outline-primary">إضافة يدوية</a>
-            </div>
+
+        @include('admin.components.alerts')
+
+        <div class="my-4 page-header-breadcrumb doc-ai-animate dashboard-fade-in">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.docs.pages.index') }}">التوثيق</a></li>
+                    <li class="breadcrumb-item active">توليد بالذكاء الاصطناعي</li>
+                </ol>
+            </nav>
         </div>
 
-        @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show">
-            <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="group-show-hero dashboard-fade-in doc-ai-animate mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-zap me-1"></i>
+                        مساعد التوثيق
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">توليد صفحة توثيق بالذكاء الاصطناعي</h2>
+                    <p class="group-show-hero__desc mb-2">
+                        اكتب الموضوع، اختر القسم والإعدادات، ثم ولّد المحتوى وراجعه قبل الحفظ — بنفس تنسيق صفحات التوثيق العامة.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @if(!empty($docsEngineChoiceAvailable))
+                            <span class="doc-ai-badge"><i class="fe fe-layers"></i>محركان متاحان</span>
+                        @elseif(!empty($useLaravelAiEngine))
+                            <span class="doc-ai-badge"><i class="fe fe-cpu"></i>Laravel AI SDK</span>
+                        @else
+                            <span class="doc-ai-badge"><i class="fe fe-database"></i>بنك الموديلات</span>
+                        @endif
+                        <span class="doc-ai-badge"><i class="fe fe-file-text"></i>HTML جاهز للتوثيق</span>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-light border">
+                            <i class="fe fe-list me-1"></i>قائمة الصفحات
+                        </a>
+                        <a href="{{ route('admin.docs.pages.create') }}" class="btn btn-outline-primary">
+                            <i class="fe fe-edit me-1"></i>إضافة يدوية
+                        </a>
+                        <a href="{{ route('admin.docs.ai-pages.improve') }}" class="btn btn-outline-secondary">
+                            <i class="fe fe-tool me-1"></i>فحص وتعديل
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-        @endif
 
         <form action="{{ route('admin.docs.ai-pages.store') }}" method="POST" id="aiDocPageForm">
             @csrf
 
-            <div class="row">
+            <div class="row g-4">
                 <div class="col-lg-8">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <div class="card-title mb-0"><i class="fas fa-robot me-2"></i>إعدادات التوليد</div>
+                    <div class="card custom-card doc-ai-panel doc-cat-filter-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--ai"><i class="fe fe-zap"></i></span>
+                                إعدادات التوليد
+                            </h6>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">الموضوع أو ما تريد شرحه <span class="text-danger">*</span></label>
-                                <input type="text" id="topic" class="form-control" placeholder="مثال: التوجيه في Laravel، أنواع البيانات في PHP">
-                                <small class="text-muted">للتوليد فقط — لن يُرسل مع الحفظ</small>
+                        <div class="card-body pt-2">
+                            <div class="mb-4">
+                                <label class="form-label" for="topic">الموضوع أو ما تريد شرحه <span class="text-danger">*</span></label>
+                                <input type="text" id="topic" class="form-control doc-ai-topic-input" placeholder="مثال: التوجيه في Laravel، أنواع البيانات في PHP، النماذج في HTML">
+                                <p class="doc-ai-hint mb-0">يُستخدم للتوليد فقط — لا يُحفظ مع الصفحة.</p>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    @if(!empty($docsEngineChoiceAvailable))
-                                        <label class="form-label">محرك التوثيق</label>
-                                        <div class="mb-2">
-                                            <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_laravel_ai" value="laravel_ai" {{ !empty($useLaravelAiEngine) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="docs_engine_laravel_ai">Laravel AI SDK</label>
-                                            </div>
-                                            <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_legacy" value="legacy" {{ empty($useLaravelAiEngine) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="docs_engine_legacy">موديلات قديمة (بنك الموديلات)</label>
-                                            </div>
+
+                            @if(!empty($docsEngineChoiceAvailable))
+                                <div class="mb-4">
+                                    <label class="form-label d-block">محرك التوثيق</label>
+                                    <div class="doc-ai-engine-pills">
+                                        <div class="doc-ai-engine-pill">
+                                            <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_laravel_ai" value="laravel_ai" {{ !empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                            <label for="docs_engine_laravel_ai">
+                                                <i class="fe fe-cpu"></i>
+                                                Laravel AI SDK
+                                            </label>
                                         </div>
-                                    @endif
-                                    @if($models->isEmpty() && $laravelAiModels->isEmpty())
-                                        <div class="alert alert-warning mb-0 small">لا يوجد موديل نشط في كلا النظامين. أضف موديلاً من «إدارة موديلات AI» أو «موديلات Laravel AI SDK».</div>
-                                    @else
-                                        @if(!empty($docsEngineChoiceAvailable) || ($laravelAiModels->isNotEmpty() && $models->isEmpty()))
+                                        <div class="doc-ai-engine-pill">
+                                            <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_legacy" value="legacy" {{ empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                            <label for="docs_engine_legacy">
+                                                <i class="fe fe-database"></i>
+                                                موديلات قديمة
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($models->isEmpty() && $laravelAiModels->isEmpty())
+                                <div class="alert alert-warning border-0 mb-4">
+                                    <i class="fe fe-alert-triangle me-1"></i>
+                                    لا يوجد موديل نشط. أضف موديلاً من «إدارة موديلات AI» أو «موديلات Laravel AI SDK».
+                                </div>
+                            @else
+                                <div class="row g-3 mb-4">
+                                    @if(!empty($docsEngineChoiceAvailable) || ($laravelAiModels->isNotEmpty() && $models->isEmpty()))
+                                        <div class="col-md-6">
                                             <div id="docs_engine_laravel_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && empty($useLaravelAiEngine) ? 'display:none' : '' }}">
-                                                <label class="form-label">موديل Laravel AI SDK</label>
+                                                <label class="form-label" for="laravel_ai_model_id">موديل Laravel AI SDK</label>
                                                 <select id="laravel_ai_model_id" class="form-select" @if($laravelAiModels->isEmpty()) disabled @endif>
-                                                    <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
+                                                    <option value="">افتراضي (أولوية + docs.refine)</option>
                                                     @foreach($laravelAiModels as $lmodel)
                                                         <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
                                                     @endforeach
                                                 </select>
-                                                <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
+                                                <p class="doc-ai-hint mb-0">من لوحة «موديلات Laravel AI SDK»</p>
                                             </div>
-                                        @endif
-                                        @if(!empty($docsEngineChoiceAvailable) || ($models->isNotEmpty() && $laravelAiModels->isEmpty()))
+                                        </div>
+                                    @endif
+                                    @if(!empty($docsEngineChoiceAvailable) || ($models->isNotEmpty() && $laravelAiModels->isEmpty()))
+                                        <div class="col-md-6">
                                             <div id="docs_engine_legacy_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && !empty($useLaravelAiEngine) ? 'display:none' : '' }}">
-                                                <label class="form-label">موديل AI (بنك الموديلات)</label>
+                                                <label class="form-label" for="ai_model_id">موديل AI (بنك الموديلات)</label>
                                                 <select id="ai_model_id" class="form-select" @if($models->isEmpty()) disabled @endif>
                                                     <option value="">الافتراضي</option>
                                                     @foreach($models as $model)
@@ -91,85 +135,104 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-                                        @endif
+                                        </div>
                                     @endif
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="content_length">طول المحتوى</label>
+                                        <select id="content_length" class="form-select">
+                                            <option value="short">قصير</option>
+                                            <option value="medium" selected>متوسط</option>
+                                            <option value="long">طويل</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="tone">الأسلوب</label>
+                                        <select id="tone" class="form-select">
+                                            <option value="professional" selected>احترافي</option>
+                                            <option value="friendly">ودود</option>
+                                            <option value="technical">تقني</option>
+                                            <option value="casual">عادي</option>
+                                            <option value="formal">رسمي</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="language">اللغة</label>
+                                        <select id="language" class="form-select">
+                                            <option value="ar" selected>العربية</option>
+                                            <option value="en">English</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">طول المحتوى</label>
-                                    <select id="content_length" class="form-select">
-                                        <option value="short">قصير</option>
-                                        <option value="medium" selected>متوسط</option>
-                                        <option value="long">طويل</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">الأسلوب</label>
-                                    <select id="tone" class="form-select">
-                                        <option value="professional" selected>احترافي</option>
-                                        <option value="friendly">ودود</option>
-                                        <option value="technical">تقني</option>
-                                        <option value="casual">عادي</option>
-                                        <option value="formal">رسمي</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">اللغة</label>
-                                    <select id="language" class="form-select">
-                                        <option value="ar" selected>العربية</option>
-                                        <option value="en">English</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-check mb-3">
+                            @endif
+
+                            <div class="form-check mb-0">
                                 <input class="form-check-input" type="checkbox" id="generate_meta" checked>
-                                <label class="form-check-label" for="generate_meta">توليد meta_title و meta_description</label>
+                                <label class="form-check-label" for="generate_meta">توليد meta_title و meta_description تلقائياً</label>
                             </div>
-                            <button type="button" class="btn btn-success" id="generateBtn">
-                                <span class="loading-spinner spinner-border spinner-border-sm me-1" role="status"></span>
-                                <span class="btn-text">توليد المحتوى</span>
-                            </button>
+
+                            <div class="doc-ai-generate-bar">
+                                <p class="doc-ai-hint mb-0">
+                                    <i class="fe fe-info me-1"></i>
+                                    اختر القسم من الشريط الجانبي قبل التوليد.
+                                </p>
+                                <button type="button" class="doc-ai-generate-btn" id="generateBtn">
+                                    <span class="loading-spinner spinner-border spinner-border-sm" role="status"></span>
+                                    <i class="fe fe-zap"></i>
+                                    <span class="btn-text">توليد المحتوى</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">المحتوى</div></div>
-                        <div class="card-body">
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--content"><i class="fe fe-file-text"></i></span>
+                                المحتوى
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2">
                             <div class="mb-3">
-                                <label class="form-label">العنوان <span class="text-danger">*</span></label>
+                                <label class="form-label" for="doc_title">العنوان <span class="text-danger">*</span></label>
                                 <input type="text" name="title" id="doc_title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" required>
                                 @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">الرابط (slug)</label>
+                                <label class="form-label" for="doc_slug">الرابط (slug)</label>
                                 <div class="input-group">
                                     <input type="text" name="slug" id="doc_slug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug') }}">
-                                    <button type="button" class="btn btn-outline-secondary" id="doc_generate_slug">توليد</button>
+                                    <button type="button" class="btn btn-light border" id="doc_generate_slug">
+                                        <i class="fe fe-refresh-cw me-1"></i>توليد
+                                    </button>
                                 </div>
                                 @error('slug')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">المقتطف</label>
+                                <label class="form-label" for="doc_excerpt">المقتطف</label>
                                 <textarea name="excerpt" id="doc_excerpt" rows="2" class="form-control">{{ old('excerpt') }}</textarea>
                             </div>
                             <div class="mb-0">
-                                <label class="form-label">المحتوى <span class="text-danger">*</span></label>
+                                <label class="form-label" for="doc_content">المحتوى <span class="text-danger">*</span></label>
                                 <textarea name="content" id="doc_content" class="form-control @error('content') is-invalid @enderror" rows="12">{{ old('content') }}</textarea>
                                 @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
                     </div>
 
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">SEO</div></div>
-                        <div class="card-body">
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--seo"><i class="fe fe-search"></i></span>
+                                SEO
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2">
                             <div class="mb-3">
-                                <label class="form-label">عنوان Meta</label>
+                                <label class="form-label" for="meta_title">عنوان Meta</label>
                                 <input type="text" name="meta_title" id="meta_title" class="form-control" value="{{ old('meta_title') }}" maxlength="255">
                             </div>
                             <div class="mb-0">
-                                <label class="form-label">وصف Meta</label>
+                                <label class="form-label" for="meta_description">وصف Meta</label>
                                 <textarea name="meta_description" id="meta_description" rows="2" class="form-control">{{ old('meta_description') }}</textarea>
                             </div>
                         </div>
@@ -177,51 +240,60 @@
                 </div>
 
                 <div class="col-lg-4">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">التصنيف والهيكل</div></div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">القسم <span class="text-danger">*</span></label>
-                                <select name="documentation_category_id" id="doc_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
-                                    <option value="">— اختر —</option>
-                                    @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ (string) old('documentation_category_id', $categoryId) === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('documentation_category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="doc-ai-sidebar-sticky">
+                        <div class="card custom-card doc-ai-panel doc-cat-filter-card doc-ai-animate mb-4">
+                            <div class="card-header doc-ai-panel__header border-0">
+                                <h6 class="doc-ai-panel__title">
+                                    <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--meta"><i class="fe fe-layers"></i></span>
+                                    التصنيف والهيكل
+                                </h6>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">صفحة أب (اختياري)</label>
-                                <select name="parent_id" id="doc_parent_id" class="form-select">
-                                    <option value="">— بدون —</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الترتيب</label>
-                                <input type="number" name="sort_order" class="form-control" value="{{ old('sort_order', 0) }}" min="0">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الحالة <span class="text-danger">*</span></label>
-                                <select name="status" class="form-select" required>
-                                    <option value="draft" {{ old('status', 'draft') === 'draft' ? 'selected' : '' }}>مسودة</option>
-                                    <option value="published" {{ old('status') === 'published' ? 'selected' : '' }}>منشور</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">تاريخ النشر</label>
-                                <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at') }}">
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_indexable" value="1" id="is_indexable" {{ old('is_indexable', true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_indexable">قابلة للفهرسة</label>
+                            <div class="card-body pt-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="doc_category_id">القسم <span class="text-danger">*</span></label>
+                                    <select name="documentation_category_id" id="doc_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
+                                        <option value="">— اختر القسم —</option>
+                                        @foreach($categories as $cat)
+                                            <option value="{{ $cat->id }}" {{ (string) old('documentation_category_id', $categoryId) === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('documentation_category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="doc_parent_id">صفحة أب (اختياري)</label>
+                                    <select name="parent_id" id="doc_parent_id" class="form-select">
+                                        <option value="">— بدون —</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">الترتيب</label>
+                                    <input type="number" name="sort_order" class="form-control" value="{{ old('sort_order', 0) }}" min="0">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">الحالة <span class="text-danger">*</span></label>
+                                    <select name="status" class="form-select" required>
+                                        <option value="draft" {{ old('status', 'draft') === 'draft' ? 'selected' : '' }}>مسودة</option>
+                                        <option value="published" {{ old('status') === 'published' ? 'selected' : '' }}>منشور</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">تاريخ النشر</label>
+                                    <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at') }}">
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="is_indexable" value="1" id="is_indexable" {{ old('is_indexable', true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_indexable">قابلة للفهرسة</label>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <button type="submit" class="btn btn-primary w-100 mb-2"><i class="bi bi-save me-2"></i>حفظ الصفحة</button>
-                            <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary w-100">إلغاء</a>
+                        <div class="card custom-card doc-ai-panel doc-ai-save-card doc-ai-animate">
+                            <div class="card-body">
+                                <button type="submit" class="btn btn-primary w-100 mb-2">
+                                    <i class="fe fe-save me-1"></i>حفظ الصفحة
+                                </button>
+                                <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-light border w-100">إلغاء</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -233,6 +305,9 @@
 
 @section('scripts')
 @include('admin.docs.partials.tinymce-doc')
+<script>
+document.documentElement.classList.add('loaded');
+</script>
 <script>
 (function () {
     const useLaravelAiEngineDefault = @json(!empty($useLaravelAiEngine));

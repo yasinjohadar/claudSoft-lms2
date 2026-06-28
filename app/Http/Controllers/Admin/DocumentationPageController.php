@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveDocumentationPageRequest;
+use App\Models\Course;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
+use App\Services\Documentation\DocumentationPdfExportService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class DocumentationPageController extends Controller
 {
@@ -15,6 +19,7 @@ class DocumentationPageController extends Controller
     {
         $pages = $this->paginatedDocumentationPages($request);
         $categories = DocumentationCategory::ordered()->get();
+        $allCourses = Course::query()->select('id', 'title')->orderBy('title')->get();
 
         if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
@@ -25,7 +30,14 @@ class DocumentationPageController extends Controller
             ]);
         }
 
-        return view('admin.docs.pages.index', compact('pages', 'categories'));
+        $stats = [
+            'total' => DocumentationPage::count(),
+            'published' => DocumentationPage::where('status', 'published')->count(),
+            'draft' => DocumentationPage::where('status', 'draft')->count(),
+            'categories' => DocumentationCategory::count(),
+        ];
+
+        return view('admin.docs.pages.index', compact('pages', 'categories', 'allCourses', 'stats'));
     }
 
     private function paginatedDocumentationPages(Request $request): LengthAwarePaginator
@@ -140,7 +152,7 @@ class DocumentationPageController extends Controller
         $options = [];
         foreach ($pages as $p) {
             $cat = $p->category->name ?? '—';
-            $options[$p->id] = $cat . ' — ' . $p->title;
+            $options[$p->id] = $cat.' — '.$p->title;
         }
 
         return $options;
@@ -166,7 +178,7 @@ class DocumentationPageController extends Controller
             }
             $depth = $this->pageDepth($pages, $p);
             $prefix = str_repeat('— ', $depth);
-            $options[$p->id] = $prefix . $p->title;
+            $options[$p->id] = $prefix.$p->title;
         }
 
         return $options;
@@ -202,5 +214,64 @@ class DocumentationPageController extends Controller
         }
 
         return false;
+    }
+
+    public function exportPdf(
+        DocumentationPage $documentation_page,
+        DocumentationPdfExportService $pdfExportService
+    ): Response|RedirectResponse {
+        set_time_limit((int) config('browsershot.timeout', 120) + 30);
+
+        $documentation_page->loadMissing('category');
+
+        if (! $documentation_page->category) {
+            return redirect()
+                ->back()
+                ->with('error', 'لا يمكن تصدير صفحة بدون قسم.');
+        }
+
+        try {
+            $pdf = $pdfExportService->export($documentation_page, allowDraft: true);
+
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$pdfExportService->filename($documentation_page).'"',
+                'Content-Length' => (string) strlen($pdf),
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            $message = $e->getMessage() ?: 'تعذّر تصدير PDF.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 500);
+            }
+
+            abort(500, $message);
+        }
+    }
+
+    public function aiSourceJson(DocumentationPage $documentation_page)
+    {
+        $documentation_page->loadMissing('category:id,name');
+
+        return response()->json([
+            'id' => $documentation_page->id,
+            'title' => $documentation_page->title,
+            'slug' => $documentation_page->slug,
+            'status' => $documentation_page->status,
+            'category_name' => $documentation_page->category->name ?? '—',
+            'category_id' => $documentation_page->documentation_category_id,
+            'parent_id' => $documentation_page->parent_id,
+            'sort_order' => $documentation_page->sort_order,
+            'published_at' => $documentation_page->published_at?->format('Y-m-d\TH:i'),
+            'meta_title' => $documentation_page->meta_title,
+            'meta_description' => $documentation_page->meta_description,
+            'is_indexable' => (bool) $documentation_page->is_indexable,
+            'excerpt' => $documentation_page->excerpt,
+            'content' => $documentation_page->content,
+            'update_url' => route('admin.docs.pages.update', $documentation_page),
+        ]);
     }
 }

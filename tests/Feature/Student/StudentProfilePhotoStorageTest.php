@@ -25,6 +25,15 @@ class StudentProfilePhotoStorageTest extends TestCase
         $this->assertSame(student_default_avatar_url(), $url);
     }
 
+    public function test_student_profile_photo_url_returns_gender_avatar_for_student_without_photo(): void
+    {
+        $male = User::factory()->make(['gender' => 'male']);
+        $female = User::factory()->make(['gender' => 'female']);
+
+        $this->assertStringContainsString('profile-avatars/male.svg', student_profile_photo_url($male));
+        $this->assertStringContainsString('profile-avatars/female.svg', student_profile_photo_url($female));
+    }
+
     public function test_profile_photo_service_store_uses_failover_upload(): void
     {
         $user = User::factory()->make(['id' => 42]);

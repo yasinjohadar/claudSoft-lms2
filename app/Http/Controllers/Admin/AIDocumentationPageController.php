@@ -103,18 +103,80 @@ class AIDocumentationPageController extends Controller
         ));
     }
 
+    public function enhance(Request $request)
+    {
+        $models = $this->modelService->getAvailableModels('all');
+        $prefillPage = null;
+
+        if ($request->filled('documentation_page_id')) {
+            $prefillPage = DocumentationPage::query()
+                ->with('category')
+                ->find((int) $request->get('documentation_page_id'));
+        }
+
+        $allPages = DocumentationPage::query()
+            ->with('category:id,name')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $pagesJson = $allPages->map(fn (DocumentationPage $p) => [
+            'id' => $p->id,
+            'title' => $p->title,
+            'slug' => $p->slug,
+            'status' => $p->status,
+            'category_name' => $p->category->name ?? '—',
+            'category_id' => $p->documentation_category_id,
+            'parent_id' => $p->parent_id,
+            'sort_order' => $p->sort_order,
+            'published_at' => $p->published_at?->format('Y-m-d\TH:i'),
+            'meta_title' => $p->meta_title,
+            'meta_description' => $p->meta_description,
+            'is_indexable' => (bool) $p->is_indexable,
+            'excerpt' => $p->excerpt,
+            'update_url' => route('admin.docs.pages.update', $p),
+            'edit_url' => route('admin.docs.pages.edit', $p),
+            'source_url' => route('admin.docs.pages.ai-source', $p),
+        ])->values()->all();
+
+        $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
+        $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
+        $docsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
+
+        if ($laravelAiModels->isNotEmpty() && $models->isEmpty()) {
+            $useLaravelAiEngine = true;
+        } elseif ($models->isNotEmpty() && $laravelAiModels->isEmpty()) {
+            $useLaravelAiEngine = false;
+        }
+
+        return view('admin.docs.pages.ai-enhance', compact(
+            'models',
+            'prefillPage',
+            'pagesJson',
+            'useLaravelAiEngine',
+            'laravelAiModels',
+            'docsEngineChoiceAvailable',
+        ));
+    }
+
     public function refine(Request $request)
     {
+        $mode = $request->input('mode', 'refine');
+
         $validated = $request->validate([
             'source_html' => 'required|string|max:'.AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS,
-            'user_notes' => 'nullable|string|max:5000',
+            'user_notes' => $mode === 'enhance'
+                ? 'required|string|min:10|max:5000'
+                : 'nullable|string|max:5000',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
             'docs_engine' => 'nullable|in:laravel_ai,legacy',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
             'update_excerpt' => 'boolean',
+            'mode' => 'nullable|in:refine,enhance',
         ]);
+
+        $mode = $validated['mode'] ?? 'refine';
 
         try {
             $refineOptions = [
@@ -124,6 +186,8 @@ class AIDocumentationPageController extends Controller
                 'update_excerpt' => $validated['update_excerpt'] ?? false,
             ];
 
+            $sourceHtml = $validated['source_html'];
+
             $requestedEngine = $validated['docs_engine'] ?? null;
             if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
                 return response()->json([
@@ -132,7 +196,11 @@ class AIDocumentationPageController extends Controller
                 ], 400);
             }
 
-            if ($this->resolveWizardAiEngine($requestedEngine, 'docs_engine')) {
+            if ($this->resolveDocumentationAiEngine(
+                $requestedEngine,
+                ! empty($validated['laravel_ai_model_id']) ? (int) $validated['laravel_ai_model_id'] : null,
+                ! empty($validated['ai_model_id']) ? (int) $validated['ai_model_id'] : null,
+            )) {
                 $laraModel = null;
                 if (! empty($validated['laravel_ai_model_id'])) {
                     $laraModel = LaravelAiModel::query()
@@ -147,12 +215,10 @@ class AIDocumentationPageController extends Controller
                     }
                 }
 
-                $data = app(LaravelAiDocumentationService::class)->refineForLegacy(
-                    $validated['source_html'],
-                    $refineOptions,
-                    Auth::user(),
-                    $laraModel,
-                );
+                $laravelService = app(LaravelAiDocumentationService::class);
+                $data = $mode === 'enhance'
+                    ? $laravelService->enhanceForLegacy($sourceHtml, $refineOptions, Auth::user(), $laraModel)
+                    : $laravelService->refineForLegacy($sourceHtml, $refineOptions, Auth::user(), $laraModel);
             } else {
                 $model = $validated['ai_model_id']
                     ? AIModel::find($validated['ai_model_id'])
@@ -165,11 +231,13 @@ class AIDocumentationPageController extends Controller
                     ], 400);
                 }
 
-                $data = $this->docService->refineDocumentationContent(
-                    $validated['source_html'],
-                    $model,
-                    $refineOptions
-                );
+                $data = $mode === 'enhance'
+                    ? $this->docService->enhanceDocumentationContent($sourceHtml, $model, $refineOptions)
+                    : $this->docService->refineDocumentationContent($sourceHtml, $model, $refineOptions);
+
+                if ($mode === 'enhance' && ! isset($data['stats'])) {
+                    $data['stats'] = AIDocumentationPageService::computeEnhanceStats($sourceHtml, $data['content']);
+                }
             }
 
             $data = $this->cleanUtf8Data($data);
@@ -252,7 +320,11 @@ class AIDocumentationPageController extends Controller
                 ], 400);
             }
 
-            if ($this->resolveWizardAiEngine($requestedEngine, 'docs_engine')) {
+            if ($this->resolveDocumentationAiEngine(
+                $requestedEngine,
+                ! empty($validated['laravel_ai_model_id']) ? (int) $validated['laravel_ai_model_id'] : null,
+                ! empty($validated['ai_model_id']) ? (int) $validated['ai_model_id'] : null,
+            )) {
                 $laraModel = null;
                 if (! empty($validated['laravel_ai_model_id'])) {
                     $laraModel = LaravelAiModel::query()
@@ -372,5 +444,4 @@ class AIDocumentationPageController extends Controller
 
         return array_values(array_unique($forbidden));
     }
-
 }

@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '9d92ed7dc4c39ea06393067f27225d2d52c993b1',
+        'reference' => '53a60f4f56d20615a00aaabb0b5b02e938d0c796',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -631,7 +631,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '9d92ed7dc4c39ea06393067f27225d2d52c993b1',
+            'reference' => '53a60f4f56d20615a00aaabb0b5b02e938d0c796',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -1517,6 +1517,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'spatie/browsershot' => array(
+            'pretty_version' => '5.4.0',
+            'version' => '5.4.0.0',
+            'reference' => 'dcf7a65fd1d0fc8fd113739b84982377728d0b2f',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../spatie/browsershot',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'spatie/laravel-package-tools' => array(
             'pretty_version' => '1.93.1',
             'version' => '1.93.1.0',
@@ -1540,6 +1549,15 @@
             'replaced' => array(
                 0 => '*',
             ),
+        ),
+        'spatie/temporary-directory' => array(
+            'pretty_version' => '2.4.0',
+            'version' => '2.4.0.0',
+            'reference' => '32cbb9645b28839cf4f476708e99a2c70e6802c9',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../spatie/temporary-directory',
+            'aliases' => array(),
+            'dev_requirement' => false,
         ),
         'staabm/side-effects-detector' => array(
             'pretty_version' => '1.0.5',

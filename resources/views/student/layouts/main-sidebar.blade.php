@@ -179,6 +179,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - بطاقتي التعريفية -->
+                        <li class="slide">
+                            <a href="{{ route('student.profile-card.edit') }}" class="side-menu__item {{ request()->routeIs('student.profile-card.*') ? 'active' : '' }}">
+                                <i class="fe fe-credit-card side-menu__icon"></i>
+                                <span class="side-menu__label">بطاقتي التعريفية</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - إعدادات الإشعارات -->
                         <li class="slide">
                             <a href="{{ route('student.settings.notifications') }}" class="side-menu__item">

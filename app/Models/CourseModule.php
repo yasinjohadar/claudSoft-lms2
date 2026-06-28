@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class CourseModule extends Model
 {
@@ -68,6 +68,11 @@ class CourseModule extends Model
         return $this->morphTo();
     }
 
+    public function documentationLinks()
+    {
+        return $this->morphMany(DocumentationPageLink::class, 'linkable');
+    }
+
     /**
      * Get the completion records for the module.
      */
@@ -100,9 +105,10 @@ class CourseModule extends Model
     public function scopeAvailable($query)
     {
         $now = now();
-        return $query->where(function($q) use ($now) {
+
+        return $query->where(function ($q) use ($now) {
             $q->whereNull('available_from')->orWhere('available_from', '<=', $now);
-        })->where(function($q) use ($now) {
+        })->where(function ($q) use ($now) {
             $q->whereNull('available_until')->orWhere('available_until', '>=', $now);
         });
     }
@@ -133,9 +139,9 @@ class CourseModule extends Model
     public function isCompletedBy(User $user): bool
     {
         return $this->completions()
-                    ->where('student_id', $user->id)
-                    ->where('completion_status', 'completed')
-                    ->exists();
+            ->where('student_id', $user->id)
+            ->where('completion_status', 'completed')
+            ->exists();
     }
 
     /**
@@ -144,8 +150,8 @@ class CourseModule extends Model
     public function getCompletionFor(User $user)
     {
         return $this->completions()
-                    ->where('student_id', $user->id)
-                    ->first();
+            ->where('student_id', $user->id)
+            ->first();
     }
 
     /**

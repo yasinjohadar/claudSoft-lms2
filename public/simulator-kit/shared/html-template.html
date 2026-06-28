@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="محاكيات تفاعلية لتعلم CSS و JavaScript">
+    <title>محاكيات التعلم التفاعلية</title>
+
+    <!-- ========== FONTS ========== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700&family=Cairo:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- ========== SHARED STYLES ========== -->
+    <link rel="stylesheet" href="../shared/css/tokens.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="../shared/css/components.css">
+    <link rel="stylesheet" href="../shared/css/theme-system.css">
+    <link rel="stylesheet" href="../shared/css/utilities.css">
+    <link rel="stylesheet" href="../shared/css/navigation.css">
+
+    <!-- ========== SECTION SPECIFIC STYLES ========== -->
+    <!-- سيتم إضافة هنا حسب القسم -->
+
+    <style>
+        /* Custom animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        body {
+            animation: fadeIn 0.3s ease-in;
+        }
+    </style>
+</head>
+<body>
+    <!-- ========== NAVIGATION BAR ========== -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="../index.html" class="navbar-logo">
+                <span class="navbar-logo-icon">🎓</span>
+                <span class="navbar-logo-text">محاكيات التعلم</span>
+            </a>
+
+            <div class="navbar-sections" id="navSections">
+                <a href="../css/index.html" class="navbar-section" data-section="css">
+                    🎨 CSS
+                </a>
+                <a href="../javascript/index.html" class="navbar-section" data-section="js">
+                    ⚡ JavaScript
+                </a>
+                <a href="../dart-basics/index.html" class="navbar-section" data-section="dart">
+                    🎯 Dart
+                </a>
+                <a href="../flutter-widgets/index.html" class="navbar-section" data-section="flutter">
+                    📱 Flutter
+                </a>
+                <a href="../javascript-basics/index.html" class="navbar-section" data-section="js-basics">
+                    📚 JS Basics
+                </a>
+            </div>
+
+            <div class="navbar-actions">
+                <button class="theme-toggle" id="themeBtn" title="تبديل الوضع">🌙</button>
+                <button class="navbar-mobile-toggle" id="mobileMenuBtn">☰</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="container section" id="mainContent">
+        <!-- سيتم إضافة المحتوى هنا -->
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer style="
+        background-color: var(--color-surface);
+        border-top: 1px solid var(--color-border);
+        padding: var(--space-8) var(--space-4);
+        margin-top: var(--space-12);
+        text-align: center;
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    ">
+        <div class="container">
+            <p>
+                🚀 مشروع محاكيات التعلم التفاعلية
+                <br>
+                جميع الحقوق محفوظة © 2024
+            </p>
+            <p style="margin-top: var(--space-4);">
+                <a href="#" style="color: var(--color-primary);">حول المشروع</a> •
+                <a href="#" style="color: var(--color-primary);">التواصل</a> •
+                <a href="#" style="color: var(--color-primary);">المساهمة</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- ========== BACK TO TOP BUTTON ========== -->
+    <button class="back-to-top" id="backToTopBtn" title="العودة للأعلى" aria-label="العودة للأعلى">
+        ↑
+    </button>
+
+    <!-- ========== SHARED SCRIPTS ========== -->
+    <script src="../shared/js/constants.js"></script>
+    <script src="../shared/js/utils.js"></script>
+    <script src="../shared/js/components.js"></script>
+    <script src="../shared/js/theme-manager.js"></script>
+
+    <!-- ========== SECTION SPECIFIC SCRIPTS ========== -->
+    <!-- سيتم إضافة هنا حسب القسم -->
+
+    <script>
+        /**
+         * 📱 Mobile Menu Toggle
+         */
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navSections = document.getElementById('navSections');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                navSections.classList.toggle('mobile-open');
+                mobileMenuBtn.textContent = navSections.classList.contains('mobile-open') ? '✕' : '☰';
+            });
+
+            // Close menu when clicking on a section
+            document.querySelectorAll('.navbar-section').forEach(section => {
+                section.addEventListener('click', () => {
+                    navSections.classList.remove('mobile-open');
+                    mobileMenuBtn.textContent = '☰';
+                });
+            });
+        }
+
+        /**
+         * 🔝 Back to Top Button
+         */
+        const backToTopBtn = document.getElementById('backToTopBtn');
+
+        if (backToTopBtn) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    backToTopBtn.classList.add('visible');
+                } else {
+                    backToTopBtn.classList.remove('visible');
+                }
+            });
+
+            backToTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        /**
+         * 🧭 Set Active Navigation
+         */
+        function setActiveNav() {
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.navbar-section');
+
+            navItems.forEach(item => {
+                const href = item.getAttribute('href');
+                if (currentPath.includes(href.split('/')[1])) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        setActiveNav();
+
+        /**
+         * ✅ Initialize app
+         */
+        console.log('✅ Template loaded successfully');
+    </script>
+</body>
+</html>

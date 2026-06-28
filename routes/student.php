@@ -25,6 +25,7 @@ use App\Http\Controllers\Student\GroupMembershipRequestController;
 use App\Http\Controllers\Student\InvoiceController;
 use App\Http\Controllers\Student\NoteController;
 use App\Http\Controllers\Student\NotificationPreferencesController;
+use App\Http\Controllers\Student\ProfileCardController;
 use App\Http\Controllers\Student\PlatformReviewController;
 use App\Http\Controllers\Student\QuestionModuleAttemptController;
 use App\Http\Controllers\Student\QuestionModuleStatsController;
@@ -73,6 +74,14 @@ Route::prefix('student')
             Route::post('/upload-photo', [StudentProfileController::class, 'uploadPhoto'])->name('upload-photo');
             Route::put('/change-password', [StudentProfileController::class, 'changePassword'])->name('change-password');
             Route::delete('/delete-photo', [StudentProfileController::class, 'deletePhoto'])->name('delete-photo');
+        });
+
+        Route::prefix('profile-card')->name('student.profile-card.')->group(function () {
+            Route::get('/', [ProfileCardController::class, 'edit'])->name('edit');
+            Route::put('/', [ProfileCardController::class, 'update'])->name('update');
+            Route::post('/toggle-public', [ProfileCardController::class, 'togglePublic'])->name('toggle-public');
+            Route::post('/regenerate-qr', [ProfileCardController::class, 'regenerateQr'])->name('regenerate-qr');
+            Route::get('/preview', [ProfileCardController::class, 'preview'])->name('preview');
         });
 
         // Training Camps Routes

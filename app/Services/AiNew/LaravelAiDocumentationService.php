@@ -3,6 +3,7 @@
 namespace App\Services\AiNew;
 
 use App\Ai\Agents\DocumentationDraftAgent;
+use App\Ai\Agents\DocumentationEnhanceContentAgent;
 use App\Ai\Agents\DocumentationPageWizardAgent;
 use App\Ai\Agents\DocumentationRefineContentAgent;
 use App\Models\DocumentationCategory;
@@ -158,6 +159,112 @@ class LaravelAiDocumentationService
     }
 
     /**
+     * Same contract as AIDocumentationPageService::enhanceDocumentationContent (admin enhance JSON).
+     *
+     * @param  array{
+     *     user_notes?: string|null,
+     *     tone?: string,
+     *     language?: string,
+     *     update_excerpt?: bool
+     * }  $options
+     * @return array{content: string, excerpt?: string, stats: array<string, int>}
+     */
+    public function enhanceForLegacy(
+        string $rawHtml,
+        array $options,
+        ?Authenticatable $user = null,
+        ?LaravelAiModel $explicitModel = null,
+        int $timeout = 300,
+    ): array {
+        $len = mb_strlen($rawHtml);
+        if ($len > AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS) {
+            throw new \InvalidArgumentException(
+                'المحتوى أطول من الحد المسموح ('.number_format(AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS).' حرف، طولك الحالي: '.number_format($len).'). قلّص النص أو قسّمه إلى أجزاء.'
+            );
+        }
+
+        $userNotes = trim((string) ($options['user_notes'] ?? ''));
+        if ($userNotes === '' || mb_strlen($userNotes) < 10) {
+            throw new \InvalidArgumentException('صف الأفكار أو الإضافات المطلوبة (10 أحرف على الأقل).');
+        }
+
+        set_time_limit(500);
+
+        $prompt = $this->buildEnhancePrompt($rawHtml, $options);
+        $structured = $this->executeRefineDraft($prompt, $user, $explicitModel, $timeout, [
+            'enhance' => true,
+            'source_chars' => $len,
+        ], 'enhance');
+
+        $result = $this->expandRefinePayload($structured, $options);
+        $result['stats'] = AIDocumentationPageService::computeEnhanceStats($rawHtml, $result['content']);
+
+        return $result;
+    }
+
+    /**
+     * @param  array{
+     *     user_notes?: string|null,
+     *     tone?: string,
+     *     language?: string,
+     *     update_excerpt?: bool
+     * }  $options
+     */
+    private function buildEnhancePrompt(string $rawHtml, array $options): string
+    {
+        $tone = $options['tone'] ?? 'professional';
+        $language = $options['language'] ?? 'ar';
+        $userNotes = trim((string) ($options['user_notes'] ?? ''));
+        $updateExcerpt = (bool) ($options['update_excerpt'] ?? false);
+
+        $toneMap = [
+            'professional' => 'احترافي وواضح',
+            'friendly' => 'ودود ومبسّط',
+            'technical' => 'تقني ودقيق',
+            'casual' => 'عادي',
+            'formal' => 'رسمي',
+        ];
+        $toneLabel = $toneMap[$tone] ?? $toneMap['professional'];
+
+        $langLine = $language === 'en'
+            ? 'Output documentation body in clear English where appropriate; keep code and identifiers as needed.'
+            : 'المخرجات بالعربية الفصحى الواضحة حيث يناسب؛ احتفظ بالرموز البرمجية كما هي.';
+
+        $styleGuide = $this->documentationStyleGuideBlock();
+
+        $excerptInstruction = $updateExcerpt
+            ? 'أعد في الحقل المنظم excerpt نصاً عادياً قصيراً (جملة أو اثنتان) يلخص الصفحة بدون HTML.'
+            : 'اجعل excerpt قيمة null (لا تقترح مقتطفاً).';
+
+        return <<<PROMPT
+أنت محرر توثيق تقني خبير في وضع «إضافة أفكار». لديك HTML لصفحة توثيق موجودة.
+
+قواعد صارمة — الأولوية للحفاظ على المحتوى القديم:
+1. احتفظ بكل الأقسام والفقرات والجداول وأكواد SOURCE_HTML كما هي (نفس المعنى والترتيب) ما لم يطلب المحرر صراحةً حذف شيء.
+2. لا تعِد هيكلة الصفحة بالكامل ولا تختصر المحتوى الموجود.
+3. أضف فقط ما طلبه المحرر في «تعليمات الإضافة» أدناه — بأسلوب احترافي متسق مع بقية الصفحة.
+4. ضع الإضافات في المواضع المنطقية (بعد مقدمة، قبل خاتمة، أو في قسم جديد `<section class="content-section">` في النهاية إن لم يُحدد موضع).
+5. طبّق تنسيق HTML حسب الدليل أدناه للمحتوى الجديد.
+6. الأسلوب: {$toneLabel}
+7. {$langLine}
+8. {$excerptInstruction}
+
+تعليمات الإضافة من المحرر (نفّذها بدقة):
+{$userNotes}
+
+دليل التنسيق (HTML فقط داخل content):
+{$styleGuide}
+
+المحتوى الأصلي (HTML) — يجب الحفاظ عليه مع الإضافات:
+<<<SOURCE_HTML>>>
+{$rawHtml}
+<<<END_SOURCE_HTML>>>
+
+أعد الحقول المنظمة: content (HTML كامل مع الإضافات)، وexcerpt (نص عادي بدون HTML أو null حسب البند 8 أعلاه).
+PROMPT;
+    }
+
+    /**
      * @param  array{
      *     user_notes?: string|null,
      *     tone?: string,
@@ -236,6 +343,7 @@ PROMPT;
         ?LaravelAiModel $model,
         int $timeout,
         array $logContext,
+        string $mode = 'refine',
     ): array {
         $model ??= LaravelAiModel::query()->activeOrdered()->forCapability('docs.refine')->first()
             ?? LaravelAiModel::query()->activeOrdered()->first();
@@ -245,18 +353,23 @@ PROMPT;
         }
 
         $started = hrtime(true);
-        $operation = 'docs.refine';
+        $operation = $mode === 'enhance' ? 'docs.enhance' : 'docs.refine';
 
         try {
             /** @var StructuredAgentResponse $response */
-            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $timeout) {
-                $agent = new DocumentationRefineContentAgent;
+            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $timeout, $mode) {
+                $agent = $mode === 'enhance'
+                    ? new DocumentationEnhanceContentAgent
+                    : new DocumentationRefineContentAgent;
 
                 return $this->promptRunner->runStructured($model, $agent, $prompt, $timeout);
             });
 
             $latency = (int) ((hrtime(true) - $started) / 1_000_000);
             $structured = $response->toArray();
+            if (empty($structured['content']) && $response->text !== '') {
+                $structured['text'] = $response->text;
+            }
 
             $this->logger->logSuccess(
                 $model,
@@ -302,6 +415,15 @@ PROMPT;
     {
         $updateExcerpt = (bool) ($options['update_excerpt'] ?? false);
         $content = $this->normalizeGeneratedHtmlContent((string) ($structured['content'] ?? ''));
+        if ($content === '' && ! empty($structured['text'])) {
+            $parsed = json_decode((string) $structured['text'], true);
+            if (is_array($parsed) && ! empty($parsed['content'])) {
+                $content = $this->normalizeGeneratedHtmlContent((string) $parsed['content']);
+            }
+            if ($content === '') {
+                $content = $this->normalizeGeneratedHtmlContent((string) $structured['text']);
+            }
+        }
         if ($content === '') {
             throw new \RuntimeException('لم يُرجع الموديل محتوى HTML صالحاً. حاول مجدداً أو قلّل حجم النص.');
         }

@@ -29,6 +29,10 @@ return [
          */
         'questions_engine' => env('AI_QUESTIONS_ENGINE'),
         /*
+         | Lesson simulator AI wizard: same semantics as blog_engine.
+         */
+        'simulators_engine' => env('AI_SIMULATORS_ENGINE'),
+        /*
          | Student progress AI reports (admin batch): same semantics as blog_engine.
          */
         'reports_engine' => env('AI_REPORTS_ENGINE'),

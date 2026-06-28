@@ -98,6 +98,8 @@
             quiz: { icon: 'fe-help-circle', text: 'اختبار', color: 'success' },
             question_module: { icon: 'fe-file-text', text: 'اختبار', color: 'info' },
             resource: { icon: 'fe-link', text: 'مورد', color: 'secondary' },
+            documentation: { icon: 'fe-book', text: 'توثيق', color: 'info' },
+            simulator: { icon: 'fe-cpu', text: 'محاكاة', color: 'info' },
             default: { icon: 'fe-file', text: 'محتوى', color: 'secondary' },
         };
 

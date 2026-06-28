@@ -87,4 +87,14 @@ class SiteSetting extends Model
     {
         return (bool) static::getValue('local_dev_login_enabled', false);
     }
+
+    public static function isProfileCardEnabledForSilver(): bool
+    {
+        return (bool) static::getValue('profile_card_enabled_silver', false);
+    }
+
+    public static function isProfileCardEnabledForGold(): bool
+    {
+        return (bool) static::getValue('profile_card_enabled_gold', true);
+    }
 }

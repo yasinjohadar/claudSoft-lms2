@@ -18,6 +18,8 @@
         'assignment' => ['icon' => 'fe-check-square', 'label' => 'واجب', 'tone' => 'warning'],
         'question_module' => ['icon' => 'fe-layers', 'label' => 'وحدة أسئلة', 'tone' => 'info'],
         'programming_challenge' => ['icon' => 'fe-code', 'label' => 'تحدي برمجي', 'tone' => 'purple'],
+        'documentation' => ['icon' => 'fe-book', 'label' => 'توثيق', 'tone' => 'info'],
+        'simulator' => ['icon' => 'fe-cpu', 'label' => 'محاكاة', 'tone' => 'info'],
         default => ['icon' => 'fe-file-text', 'label' => 'مورد', 'tone' => 'secondary'],
     };
 @endphp
@@ -148,6 +150,14 @@
                 <a href="{{ route('programming-challenges.edit', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
                     <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
                 </a>
+            @elseif($module->module_type == 'documentation' && $module->modulable)
+                <a href="{{ $module->modulable->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-sm btn-info-light rounded-pill" title="عرض التوثيق">
+                    <i class="fe fe-external-link"></i><span class="admin-course-module-card__action-text">عرض</span>
+                </a>
+            @elseif($module->module_type == 'simulator' && $module->modulable)
+                <a href="{{ route('admin.lesson-simulators.preview', $module->modulable_id) }}" target="_blank" class="btn btn-sm btn-info-light rounded-pill" title="معاينة المحاكاة">
+                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
+                </a>
             @else
                 <a href="{{ route('sections.modules.show', [$section->id, $module->id]) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
                     <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
@@ -169,6 +179,20 @@
             @elseif($module->module_type == 'programming_challenge' && $module->modulable_id)
                 <a href="{{ route('programming-challenges.manage-languages', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
                     <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
+                </a>
+            @elseif($module->module_type == 'documentation' && $module->modulable)
+                <a href="{{ route('admin.docs.pages.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير التوثيق">
+                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">التوثيق</span>
+                </a>
+                <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير الوحدة">
+                    <i class="fe fe-layers"></i><span class="admin-course-module-card__action-text">الوحدة</span>
+                </a>
+            @elseif($module->module_type == 'simulator' && $module->modulable)
+                <a href="{{ route('admin.lesson-simulators.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير المحاكاة">
+                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">المحاكاة</span>
+                </a>
+                <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير الوحدة">
+                    <i class="fe fe-layers"></i><span class="admin-course-module-card__action-text">الوحدة</span>
                 </a>
             @elseif($module->module_type == 'video' && $module->modulable_id)
                 <a href="{{ route('videos.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تعديل الفيديو">

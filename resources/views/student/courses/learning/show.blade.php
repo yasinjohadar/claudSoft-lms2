@@ -149,6 +149,26 @@
                     </div>
                 @endif
 
+                @if(($courseReferenceDocs ?? collect())->isNotEmpty())
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-book me-2"></i>توثيقات مرتبطة</h5>
+                        </div>
+                        <div class="card-body">
+                            @foreach($courseReferenceDocs as $link)
+                                @php $doc = $link->documentationPage; @endphp
+                                @if($doc)
+                                    <a href="{{ $doc->publicUrl() }}" target="_blank" rel="noopener"
+                                       class="nav-module d-flex align-items-center">
+                                        <i class="fas fa-book me-3"></i>
+                                        <span class="flex-grow-1">{{ $doc->title }}</span>
+                                    </a>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Course Sections -->
                 <div class="card">
                     <div class="card-header">
@@ -172,6 +192,10 @@
                                             <i class="fas fa-file-alt me-3"></i>
                                         @elseif($module->module_type == 'quiz')
                                             <i class="fas fa-question-circle me-3"></i>
+                                        @elseif($module->module_type == 'documentation')
+                                            <i class="fas fa-book me-3"></i>
+                                        @elseif($module->module_type == 'simulator')
+                                            <i class="fas fa-microchip me-3"></i>
                                         @else
                                             <i class="fas fa-circle me-3"></i>
                                         @endif

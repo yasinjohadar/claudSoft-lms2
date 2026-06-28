@@ -12,40 +12,44 @@ class DocumentationController extends Controller
     public function index(): View
     {
         $categories = DocumentationCategory::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->active()
+            ->ordered()
+            ->withCount(['pages as published_pages_count' => fn ($query) => $query->published()])
             ->get();
 
-        return view('frontend.docs.index', compact('categories'));
+        $technologies = $categories->where('kind', 'technology')->values();
+        $sections = $categories->where('kind', '!=', 'technology')->values();
+
+        return view('frontend.docs.index', compact('technologies', 'sections', 'categories'));
     }
 
-    public function show(string $categorySlug, ?string $pagePath = null): View
+    public function category(string $categorySlug): View
     {
         $category = DocumentationCategory::query()
             ->where('slug', $categorySlug)
-            ->where('is_active', true)
+            ->active()
             ->firstOrFail();
 
-        $pagePath = $pagePath !== null ? trim($pagePath, '/') : '';
+        $pageTree = $category->publishedPageTree();
+        $pagesCount = $category->publishedPagesCount();
 
-        $page = $pagePath !== ''
-            ? DocumentationPage::resolvePublishedFromCategoryPath($category, $pagePath)
-            : null;
+        return view('frontend.docs.category', compact('category', 'pageTree', 'pagesCount'));
+    }
 
-        if ($pagePath !== '' && ! $page) {
+    public function show(string $categorySlug, string $pagePath): View
+    {
+        $category = DocumentationCategory::query()
+            ->where('slug', $categorySlug)
+            ->active()
+            ->firstOrFail();
+
+        $pagePath = trim($pagePath, '/');
+
+        if ($pagePath === '') {
             abort(404);
         }
 
-        if ($page === null && $pagePath === '') {
-            $page = DocumentationPage::query()
-                ->where('documentation_category_id', $category->id)
-                ->whereNull('parent_id')
-                ->published()
-                ->orderBy('sort_order')
-                ->orderBy('title')
-                ->first();
-        }
+        $page = DocumentationPage::resolvePublishedFromCategoryPath($category, $pagePath);
 
         if (! $page) {
             abort(404);

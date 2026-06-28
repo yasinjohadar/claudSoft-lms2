@@ -55,6 +55,65 @@
                     </div>
                 @endif
 
+                <!-- Documentation page -->
+                @if($module->module_type == 'documentation' && $module->modulable)
+                    @php /** @var \App\Models\DocumentationPage $docPage */ $docPage = $module->modulable; @endphp
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fe fe-book me-2"></i>{{ $docPage->title ?? $module->title }}
+                            </h5>
+                            @if($docPage->category)
+                                <span class="badge bg-primary-transparent text-primary">{{ $docPage->category->name }}</span>
+                            @endif
+                        </div>
+                        <div class="card-body">
+                            @if($docPage->excerpt)
+                                <p class="text-muted mb-3">{{ $docPage->excerpt }}</p>
+                            @endif
+                            <a href="{{ $docPage->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-primary">
+                                <i class="fe fe-external-link me-2"></i>فتح صفحة التوثيق
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Interactive lesson simulator -->
+                @if($module->module_type == 'simulator' && $module->modulable)
+                    @php /** @var \App\Models\LessonSimulator $simulator */ $simulator = $module->modulable; @endphp
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fe fe-cpu me-2"></i>{{ $simulator->title ?? $module->title }}
+                            </h5>
+                            <span class="badge bg-info-transparent text-info">محاكاة تفاعلية</span>
+                        </div>
+                        <div class="card-body">
+                            @if($simulator->description)
+                                <p class="text-muted mb-3">{{ $simulator->description }}</p>
+                            @endif
+
+                            @if($simulator->hasPlayableContent())
+                                <div class="simulator-embed-wrap mb-3" style="min-height:75vh;border-radius:12px;overflow:hidden;background:#f8f9fa;border:1px solid rgba(0,0,0,.08);">
+                                    <iframe
+                                        src="{{ $simulator->playUrl($module) }}"
+                                        title="{{ $simulator->title }}"
+                                        style="width:100%;min-height:75vh;border:0;display:block;"
+                                        allow="clipboard-write"
+                                        loading="lazy"
+                                    ></iframe>
+                                </div>
+                            @else
+                                <div class="alert alert-warning mb-3">المحاكاة لا تحتوي على محتوى قابل للعرض بعد.</div>
+                            @endif
+
+                            <a href="{{ $simulator->playerUrl($module) }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                                <i class="fe fe-external-link me-2"></i>فتح في نافذة جديدة
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Resource (external link / embedded) -->
                 @if($module->module_type == 'resource' && $module->modulable)
                     @php

@@ -6,6 +6,8 @@
         'quiz' => ['icon' => 'fe-help-circle', 'label' => 'اختبار', 'color' => 'success'],
         'question_module' => ['icon' => 'fe-file-text', 'label' => 'اختبار', 'color' => 'info'],
         'resource' => ['icon' => 'fe-link', 'label' => 'مورد', 'color' => 'secondary'],
+        'documentation' => ['icon' => 'fe-book', 'label' => 'توثيق', 'color' => 'info'],
+        'simulator' => ['icon' => 'fe-cpu', 'label' => 'محاكاة', 'color' => 'info'],
     ];
     $currentMeta = $moduleTypeMeta[$module->module_type] ?? ['icon' => 'fe-file', 'label' => 'محتوى', 'color' => 'secondary'];
 @endphp
@@ -110,5 +112,7 @@
                 </div>
             </div>
         @endif
+
+        @include('student.courses.learning.partials.reference-documentation')
     </div>
 </div>

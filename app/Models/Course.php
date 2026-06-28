@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Course extends Model
 {
@@ -92,6 +92,22 @@ class Course extends Model
         );
     }
 
+    public function documentationLinks()
+    {
+        return $this->morphMany(DocumentationPageLink::class, 'linkable');
+    }
+
+    public function referenceDocumentationLinks()
+    {
+        return $this->documentationLinks()->reference()->orderBy('sort_order');
+    }
+
+    public function lessonSimulators()
+    {
+        return $this->belongsToMany(LessonSimulator::class, 'course_lesson_simulator')
+            ->withTimestamps();
+    }
+
     /**
      * Get the enrollments for the course.
      */
@@ -106,8 +122,8 @@ class Course extends Model
     public function students()
     {
         return $this->belongsToMany(User::class, 'course_enrollments', 'course_id', 'student_id')
-                    ->withPivot(['enrollment_status', 'completion_percentage', 'enrolled_at', 'completed_at'])
-                    ->withTimestamps();
+            ->withPivot(['enrollment_status', 'completion_percentage', 'enrolled_at', 'completed_at'])
+            ->withTimestamps();
     }
 
     /**
@@ -124,8 +140,8 @@ class Course extends Model
     public function instructors()
     {
         return $this->belongsToMany(User::class, 'course_instructors', 'course_id', 'instructor_id')
-                    ->withPivot(['role', 'permissions'])
-                    ->withTimestamps();
+            ->withPivot(['role', 'permissions'])
+            ->withTimestamps();
     }
 
     /**
@@ -134,7 +150,7 @@ class Course extends Model
     public function groups()
     {
         return $this->belongsToMany(CourseGroup::class, 'course_group_courses', 'course_id', 'group_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -209,9 +225,10 @@ class Course extends Model
     public function scopeAvailable($query)
     {
         $now = now();
-        return $query->where(function($q) use ($now) {
+
+        return $query->where(function ($q) use ($now) {
             $q->whereNull('available_from')->orWhere('available_from', '<=', $now);
-        })->where(function($q) use ($now) {
+        })->where(function ($q) use ($now) {
             $q->whereNull('available_until')->orWhere('available_until', '>=', $now);
         });
     }
@@ -222,9 +239,10 @@ class Course extends Model
     public function scopeEnrollmentOpen($query)
     {
         $now = now();
-        return $query->where(function($q) use ($now) {
+
+        return $query->where(function ($q) use ($now) {
             $q->whereNull('enrollment_start_date')->orWhere('enrollment_start_date', '<=', $now);
-        })->where(function($q) use ($now) {
+        })->where(function ($q) use ($now) {
             $q->whereNull('enrollment_end_date')->orWhere('enrollment_end_date', '>=', $now);
         });
     }
@@ -288,7 +306,7 @@ class Course extends Model
      */
     public function getDiscountPercentage(): ?int
     {
-        if (!$this->hasDiscount() || !$this->price) {
+        if (! $this->hasDiscount() || ! $this->price) {
             return null;
         }
 
@@ -308,7 +326,7 @@ class Course extends Model
      */
     public function isFull(): bool
     {
-        if (!$this->max_students) {
+        if (! $this->max_students) {
             return false;
         }
 
@@ -340,6 +358,7 @@ class Course extends Model
         for ($i = 1; $i <= 5; $i++) {
             $distribution[$i] = $this->approvedReviews()->where('rating', $i)->count();
         }
+
         return $distribution;
     }
 }

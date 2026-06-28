@@ -87,6 +87,7 @@ class AIModel extends Model
      */
     public const CAPABILITIES = [
         'question_generation' => 'توليد الأسئلة',
+        'simulator_generation' => 'توليد محاكيات الدروس',
         'question_solving' => 'حل الأسئلة',
         'essay_grading' => 'تصحيح المقالات',
         'content_summary' => 'تلخيص المحتوى',

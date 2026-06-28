@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عنوان المحاكاة</title>
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700&family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- SHARED_KIT_CSS -->
+<link rel="stylesheet" href="__BUNDLE_ASSETS__/page.css">
+<!-- SHARED_KIT_THEME_JS -->
+</head>
+<body>
+<button type="button" class="theme-toggle" aria-label="تبديل الثيم"></button>
+<div class="sim-app sim-page">
+  <header class="sim-header">
+    <h1>عنوان الموضوع</h1>
+    <p>وصف بالعربية</p>
+  </header>
+  <div class="sim-toolbar">
+    <button type="button" id="btnRun" class="sim-btn sim-btn--run">تشغيل</button>
+    <button type="button" id="btnStep" class="sim-btn sim-btn--step">خطوة</button>
+    <button type="button" id="btnReset" class="sim-btn sim-btn--reset">إعادة</button>
+  </div>
+  <div class="sim-layout">
+    <aside class="sim-panel" id="scenarioList"><!-- scenario buttons --></aside>
+    <main class="sim-panel">
+      <div id="codeDisplay" class="code-display"></div>
+      <div id="visualArea"></div>
+    </main>
+    <aside class="sim-panel">
+      <div id="varsPanel"></div>
+      <div id="traceBox" class="trace-box"></div>
+    </aside>
+  </div>
+</div>
+<script defer src="__BUNDLE_ASSETS__/simulator.js"></script>
+</body>
+</html>

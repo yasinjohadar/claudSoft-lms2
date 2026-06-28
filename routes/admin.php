@@ -1,27 +1,37 @@
 <?php
 
+use App\Http\Controllers\Admin\AccessRestrictionController;
 use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AIDocumentationPageController;
 use App\Http\Controllers\Admin\AIFrontendCourseController;
 use App\Http\Controllers\Admin\AIGradingSettingsController;
 use App\Http\Controllers\Admin\AIModelController;
+use App\Http\Controllers\Admin\AIQuestionCreationController;
 use App\Http\Controllers\Admin\AIQuestionGenerationController;
 use App\Http\Controllers\Admin\AIQuestionSolvingController;
 use App\Http\Controllers\Admin\AISettingsController;
 use App\Http\Controllers\Admin\AIStudentFeedbackController;
+use App\Http\Controllers\Admin\AppStorageAnalyticsController;
+use App\Http\Controllers\Admin\AppStorageController;
+use App\Http\Controllers\Admin\AssignmentController;
+use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\BackupScheduleController;
+use App\Http\Controllers\Admin\BackupStorageAnalyticsController;
+use App\Http\Controllers\Admin\BackupStorageController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\BulkEmailController;
 use App\Http\Controllers\Admin\BulkEmailSettingsController;
-use App\Http\Controllers\Admin\UserSendEmailController;
-use App\Http\Controllers\Admin\UserSendWhatsAppController;
 use App\Http\Controllers\Admin\BulkUserImportController;
 use App\Http\Controllers\Admin\CalendarController;
+use App\Http\Controllers\Admin\ChallengeGradingController;
 use App\Http\Controllers\Admin\ContactSettingController;
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\CourseDocumentationLinkController;
+use App\Http\Controllers\Admin\CourseSimulatorLinkController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseGroupController;
 use App\Http\Controllers\Admin\CourseModuleCompletionSummaryController;
@@ -29,13 +39,25 @@ use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CourseReviewController as AdminCourseReviewController;
 use App\Http\Controllers\Admin\CourseSectionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DatabaseInfoController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationPageController;
+use App\Http\Controllers\Admin\DocumentationPageDocumentationLinkController;
+use App\Http\Controllers\Admin\EmailSettingController;
 use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\EvolutionChatsController;
+use App\Http\Controllers\Admin\EvolutionContactsController;
+use App\Http\Controllers\Admin\EvolutionGroupCompareController;
+use App\Http\Controllers\Admin\EvolutionGroupsController;
+use App\Http\Controllers\Admin\EvolutionInstanceController;
+use App\Http\Controllers\Admin\EvolutionSendController;
+use App\Http\Controllers\Admin\EvolutionSettingsController;
+use App\Http\Controllers\Admin\EvolutionWebhookAdminController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FlaxxaWapiController;
 use App\Http\Controllers\Admin\FlaxxaWapiSettingsController;
 use App\Http\Controllers\Admin\FrontendCourseController;
+use App\Http\Controllers\Admin\FrontendReviewController;
 use App\Http\Controllers\Admin\Gamification\AchievementController as AdminAchievementController;
 use App\Http\Controllers\Admin\Gamification\AnalyticsController as AdminAnalyticsController;
 use App\Http\Controllers\Admin\Gamification\BadgeController as AdminBadgeController;
@@ -55,28 +77,60 @@ use App\Http\Controllers\Admin\GroupRegistrationSettingController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\LaravelAiModelController;
-use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\LessonSimulatorController;
+use App\Http\Controllers\Admin\MarketingAnalyticsController;
+use App\Http\Controllers\Admin\MetaPixelSettingController;
 use App\Http\Controllers\Admin\ModuleCompletionReportController;
 use App\Http\Controllers\Admin\N8nWebhookController;
 use App\Http\Controllers\Admin\NotificationHubAdminController;
+use App\Http\Controllers\Admin\NotificationManagementController;
+use App\Http\Controllers\Admin\PasswordResetMessageSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController;
+use App\Http\Controllers\Admin\PhoneOtpSettingsController;
+use App\Http\Controllers\Admin\ProgrammingChallengeController;
+use App\Http\Controllers\Admin\ProjectChallengeController;
+use App\Http\Controllers\Admin\ProjectGradingController;
+use App\Http\Controllers\Admin\ProjectTeamController;
+use App\Http\Controllers\Admin\QuestionBankController;
+use App\Http\Controllers\Admin\QuestionBankTypeImportController;
+use App\Http\Controllers\Admin\QuestionModuleController;
+use App\Http\Controllers\Admin\QuestionModuleGradingController;
+use App\Http\Controllers\Admin\QuestionPoolController;
+use App\Http\Controllers\Admin\QuizAnalyticsController;
+use App\Http\Controllers\Admin\QuizController;
+use App\Http\Controllers\Admin\QuizGradingController;
+use App\Http\Controllers\Admin\QuizPreviewController;
 use App\Http\Controllers\Admin\ReminderController;
 use App\Http\Controllers\Admin\ResourceController as AdminResourceController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SiteSettingController;
-use App\Http\Controllers\Admin\StudentGiftController;
+use App\Http\Controllers\Admin\StorageDiskMappingController;
+use App\Http\Controllers\Admin\StorageInventoryController;
 use App\Http\Controllers\Admin\StudentCourseAiReportController;
+use App\Http\Controllers\Admin\StudentGiftController;
+use App\Http\Controllers\Admin\StudentProfileCardController;
+use App\Http\Controllers\Admin\StudentProfileCardSettingController;
 use App\Http\Controllers\Admin\StudentWeeklyReportController as AdminStudentWeeklyReportController;
 use App\Http\Controllers\Admin\StudentWeeklyReportScheduleController as AdminStudentWeeklyReportScheduleController;
 use App\Http\Controllers\Admin\StudentWorkController;
 use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserDeviceController;
+use App\Http\Controllers\Admin\UserSendEmailController;
+use App\Http\Controllers\Admin\UserSendWhatsAppController;
+use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\WapiAutomationRuleController;
 use App\Http\Controllers\Admin\WapiTemplateController;
 use App\Http\Controllers\Admin\WebhookManagementController;
+use App\Http\Controllers\Admin\WebhookTokenController;
+use App\Http\Controllers\Admin\WhatsAppMessageController;
+use App\Http\Controllers\Admin\WhatsAppMessageTemplateController;
+use App\Http\Controllers\Admin\WhatsAppSettingsController;
+use App\Http\Controllers\Admin\WhatsAppWebController;
+use App\Http\Controllers\Admin\WhatsAppWebSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')
@@ -186,11 +240,20 @@ Route::prefix('admin')
         Route::post('courses/{id}/toggle-publish', [CourseController::class, 'togglePublish'])->name('courses.toggle-publish');
         Route::post('courses/{id}/toggle-visibility', [CourseController::class, 'toggleVisibility'])->name('courses.toggle-visibility');
         Route::get('courses/{id}/modules', [CourseController::class, 'getModules'])->name('courses.modules');
-        Route::get('courses/{course}/restrictions/groups', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionGroups'])->name('courses.restrictions.groups');
-        Route::get('courses/{course}/restrictions/bulk-state', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getCourseRestrictionBulkState'])->name('courses.restrictions.bulk-state');
-        Route::post('courses/{course}/modules/restrictions/sync-bulk', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncBulkModuleRestrictions'])->name('courses.modules.restrictions.sync-bulk');
+        Route::get('courses/{course}/restrictions/groups', [AccessRestrictionController::class, 'getCourseRestrictionGroups'])->name('courses.restrictions.groups');
+        Route::get('courses/{course}/restrictions/bulk-state', [AccessRestrictionController::class, 'getCourseRestrictionBulkState'])->name('courses.restrictions.bulk-state');
+        Route::post('courses/{course}/modules/restrictions/sync-bulk', [AccessRestrictionController::class, 'syncBulkModuleRestrictions'])->name('courses.modules.restrictions.sync-bulk');
         Route::get('courses/{course}/modules/{module}/completions', [ModuleCompletionReportController::class, 'index'])->name('courses.modules.completions');
         Route::get('courses/{course}/completion-summary', [CourseModuleCompletionSummaryController::class, 'index'])->name('courses.completion-summary');
+
+        Route::get('courses/{course}/documentation-links/search', [CourseDocumentationLinkController::class, 'searchPages'])->name('courses.documentation-links.search');
+        Route::get('courses/{course}/documentation-links/categories', [CourseDocumentationLinkController::class, 'categories'])->name('courses.documentation-links.categories');
+        Route::get('courses/{course}/documentation-links/sections', [CourseDocumentationLinkController::class, 'sections'])->name('courses.documentation-links.sections');
+        Route::get('courses/{course}/documentation-links/lesson-modules', [CourseDocumentationLinkController::class, 'lessonModules'])->name('courses.documentation-links.lesson-modules');
+        Route::post('courses/{course}/documentation-links', [CourseDocumentationLinkController::class, 'store'])->name('courses.documentation-links.store');
+        Route::delete('documentation-links/{documentation_page_link}', [CourseDocumentationLinkController::class, 'destroy'])->name('documentation-page-links.destroy');
+        Route::get('courses/{course}/simulator-links/search', [CourseSimulatorLinkController::class, 'search'])->name('courses.simulator-links.search');
+        Route::post('courses/{course}/simulator-links', [CourseSimulatorLinkController::class, 'store'])->name('courses.simulator-links.store');
 
         // Course Sections routes
         Route::resource('courses.sections', CourseSectionController::class)->except(['index']);
@@ -199,12 +262,12 @@ Route::prefix('admin')
         Route::post('sections/reorder', [CourseSectionController::class, 'reorder'])->name('sections.reorder');
 
         // Section Access Restrictions routes
-        Route::get('sections/{section}/restrictions', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getSectionRestrictions'])->name('sections.restrictions.get');
-        Route::post('sections/{section}/restrictions/sync', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncSectionRestrictions'])->name('sections.restrictions.sync');
+        Route::get('sections/{section}/restrictions', [AccessRestrictionController::class, 'getSectionRestrictions'])->name('sections.restrictions.get');
+        Route::post('sections/{section}/restrictions/sync', [AccessRestrictionController::class, 'syncSectionRestrictions'])->name('sections.restrictions.sync');
 
         // Module Access Restrictions routes
-        Route::get('modules/{module}/restrictions', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'getModuleRestrictions'])->name('modules.restrictions.get');
-        Route::post('modules/{module}/restrictions/sync', [\App\Http\Controllers\Admin\AccessRestrictionController::class, 'syncModuleRestrictions'])->name('modules.restrictions.sync');
+        Route::get('modules/{module}/restrictions', [AccessRestrictionController::class, 'getModuleRestrictions'])->name('modules.restrictions.get');
+        Route::post('modules/{module}/restrictions/sync', [AccessRestrictionController::class, 'syncModuleRestrictions'])->name('modules.restrictions.sync');
 
         // Section Questions Management routes
         Route::get('sections/{sectionId}/questions', [CourseSectionController::class, 'manageQuestions'])->name('sections.questions.manage');
@@ -326,163 +389,184 @@ Route::prefix('admin')
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
 
         // ========== Assignments Routes ==========
-        Route::resource('assignments', \App\Http\Controllers\Admin\AssignmentController::class);
-        Route::post('assignments/{id}/toggle-publish', [\App\Http\Controllers\Admin\AssignmentController::class, 'togglePublish'])->name('assignments.toggle-publish');
-        Route::get('assignments/course/{courseId}/lessons', [\App\Http\Controllers\Admin\AssignmentController::class, 'getLessons'])->name('assignments.get-lessons');
-        Route::post('assignments/{id}/delete-attachment', [\App\Http\Controllers\Admin\AssignmentController::class, 'deleteAttachment'])->name('assignments.delete-attachment');
-        Route::post('submissions/{submissionId}/grade', [\App\Http\Controllers\Admin\AssignmentController::class, 'gradeSubmission'])->name('submissions.grade');
-        Route::post('submissions/{submissionId}/grant-resubmission', [\App\Http\Controllers\Admin\AssignmentController::class, 'grantResubmission'])->name('submissions.grant-resubmission');
+        Route::resource('assignments', AssignmentController::class);
+        Route::post('assignments/{id}/toggle-publish', [AssignmentController::class, 'togglePublish'])->name('assignments.toggle-publish');
+        Route::get('assignments/course/{courseId}/lessons', [AssignmentController::class, 'getLessons'])->name('assignments.get-lessons');
+        Route::post('assignments/{id}/delete-attachment', [AssignmentController::class, 'deleteAttachment'])->name('assignments.delete-attachment');
+        Route::post('submissions/{submissionId}/grade', [AssignmentController::class, 'gradeSubmission'])->name('submissions.grade');
+        Route::post('submissions/{submissionId}/grant-resubmission', [AssignmentController::class, 'grantResubmission'])->name('submissions.grant-resubmission');
 
         // ========== Quizzes Routes ==========
 
         // Quizzes Management
-        Route::resource('quizzes', \App\Http\Controllers\Admin\QuizController::class);
-        Route::post('quizzes/{id}/toggle-publish', [\App\Http\Controllers\Admin\QuizController::class, 'togglePublish'])->name('quizzes.toggle-publish');
-        Route::get('quizzes/course/{courseId}/lessons', [\App\Http\Controllers\Admin\QuizController::class, 'getLessons'])->name('quizzes.get-lessons');
-        Route::post('quizzes/{id}/recalculate-score', [\App\Http\Controllers\Admin\QuizController::class, 'recalculateScore'])->name('quizzes.recalculate-score');
+        Route::resource('quizzes', QuizController::class);
+        Route::post('quizzes/{id}/toggle-publish', [QuizController::class, 'togglePublish'])->name('quizzes.toggle-publish');
+        Route::get('quizzes/course/{courseId}/lessons', [QuizController::class, 'getLessons'])->name('quizzes.get-lessons');
+        Route::post('quizzes/{id}/recalculate-score', [QuizController::class, 'recalculateScore'])->name('quizzes.recalculate-score');
 
         // Quiz Questions Management
-        Route::get('quizzes/{id}/manage-questions', [\App\Http\Controllers\Admin\QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');
-        Route::get('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
-        Route::post('quizzes/{id}/import-questions', [\App\Http\Controllers\Admin\QuizController::class, 'importQuestionsBulk'])->name('quizzes.import-questions.bulk');
-        Route::post('quizzes/{id}/add-question', [\App\Http\Controllers\Admin\QuizController::class, 'addQuestion'])->name('quizzes.add-question');
-        Route::delete('quizzes/{id}/remove-question/{questionId}', [\App\Http\Controllers\Admin\QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
-        Route::post('quizzes/{id}/remove-multiple-questions', [\App\Http\Controllers\Admin\QuizController::class, 'removeMultipleQuestions'])->name('quizzes.remove-multiple-questions');
-        Route::post('quizzes/{id}/reorder-questions', [\App\Http\Controllers\Admin\QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
+        Route::get('quizzes/{id}/manage-questions', [QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');
+        Route::get('quizzes/{id}/import-questions', [QuizController::class, 'importQuestions'])->name('quizzes.import-questions');
+        Route::post('quizzes/{id}/import-questions', [QuizController::class, 'importQuestionsBulk'])->name('quizzes.import-questions.bulk');
+        Route::post('quizzes/{id}/add-question', [QuizController::class, 'addQuestion'])->name('quizzes.add-question');
+        Route::delete('quizzes/{id}/remove-question/{questionId}', [QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
+        Route::post('quizzes/{id}/remove-multiple-questions', [QuizController::class, 'removeMultipleQuestions'])->name('quizzes.remove-multiple-questions');
+        Route::post('quizzes/{id}/reorder-questions', [QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
 
         // Quiz preview (admin test-taking — separate from student routes)
-        Route::post('quizzes/{id}/preview/start', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'start'])->name('quizzes.preview.start');
-        Route::get('quizzes/preview/{attemptId}/take', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'take'])->name('quizzes.preview.take');
-        Route::post('quizzes/preview/{attemptId}/save-answer', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'saveAnswer'])->name('quizzes.preview.save-answer');
-        Route::post('quizzes/preview/{attemptId}/submit', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'submit'])->name('quizzes.preview.submit');
-        Route::get('quizzes/preview/{attemptId}/review', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'review'])->name('quizzes.preview.review');
+        Route::post('quizzes/{id}/preview/start', [QuizPreviewController::class, 'start'])->name('quizzes.preview.start');
+        Route::get('quizzes/preview/{attemptId}/take', [QuizPreviewController::class, 'take'])->name('quizzes.preview.take');
+        Route::post('quizzes/preview/{attemptId}/save-answer', [QuizPreviewController::class, 'saveAnswer'])->name('quizzes.preview.save-answer');
+        Route::post('quizzes/preview/{attemptId}/submit', [QuizPreviewController::class, 'submit'])->name('quizzes.preview.submit');
+        Route::get('quizzes/preview/{attemptId}/review', [QuizPreviewController::class, 'review'])->name('quizzes.preview.review');
 
         // Question Bank Management
-        Route::get('question-bank/create/{type}', [\App\Http\Controllers\Admin\QuestionBankController::class, 'createByType'])->name('question-bank.create.type');
-        Route::resource('question-bank', \App\Http\Controllers\Admin\QuestionBankController::class);
-        Route::post('question-bank/{id}/duplicate', [\App\Http\Controllers\Admin\QuestionBankController::class, 'duplicate'])->name('question-bank.duplicate');
-        Route::get('question-bank/{id}/preview', [\App\Http\Controllers\Admin\QuestionBankController::class, 'preview'])->name('question-bank.preview');
-        Route::get('question-bank/course/{courseId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByCourse'])->name('question-bank.by-course');
-        Route::get('question-bank/type/{typeId}/questions', [\App\Http\Controllers\Admin\QuestionBankController::class, 'getQuestionsByType'])->name('question-bank.by-type');
-        Route::post('question-bank/bulk-action', [\App\Http\Controllers\Admin\QuestionBankController::class, 'bulkAction'])->name('question-bank.bulk-action');
-        Route::post('question-bank/delete-multiple', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyMultiple'])->name('question-bank.delete-multiple');
-        Route::post('question-bank/delete-all', [\App\Http\Controllers\Admin\QuestionBankController::class, 'destroyAll'])->name('question-bank.delete-all');
+        Route::get('question-bank/create/{type}', [QuestionBankController::class, 'createByType'])->name('question-bank.create.type');
+        Route::resource('question-bank', QuestionBankController::class);
+        Route::post('question-bank/{id}/duplicate', [QuestionBankController::class, 'duplicate'])->name('question-bank.duplicate');
+        Route::get('question-bank/{id}/preview', [QuestionBankController::class, 'preview'])->name('question-bank.preview');
+        Route::get('question-bank/course/{courseId}/questions', [QuestionBankController::class, 'getQuestionsByCourse'])->name('question-bank.by-course');
+        Route::get('question-bank/type/{typeId}/questions', [QuestionBankController::class, 'getQuestionsByType'])->name('question-bank.by-type');
+        Route::post('question-bank/bulk-action', [QuestionBankController::class, 'bulkAction'])->name('question-bank.bulk-action');
+        Route::post('question-bank/delete-multiple', [QuestionBankController::class, 'destroyMultiple'])->name('question-bank.delete-multiple');
+        Route::post('question-bank/delete-all', [QuestionBankController::class, 'destroyAll'])->name('question-bank.delete-all');
 
         // Excel Import/Export
-        Route::get('question-bank/import/excel', [\App\Http\Controllers\Admin\QuestionBankController::class, 'showImportForm'])->name('question-bank.import.excel');
-        Route::post('question-bank/import/preview', [\App\Http\Controllers\Admin\QuestionBankController::class, 'previewImport'])->name('question-bank.import.preview');
-        Route::post('question-bank/import/process', [\App\Http\Controllers\Admin\QuestionBankController::class, 'processImport'])->name('question-bank.import.process');
-        Route::get('question-bank/export/template', [\App\Http\Controllers\Admin\QuestionBankController::class, 'downloadTemplate'])->name('question-bank.export.template');
+        Route::get('question-bank/import/excel', [QuestionBankController::class, 'showImportForm'])->name('question-bank.import.excel');
+        Route::post('question-bank/import/preview', [QuestionBankController::class, 'previewImport'])->name('question-bank.import.preview');
+        Route::post('question-bank/import/process', [QuestionBankController::class, 'processImport'])->name('question-bank.import.process');
+        Route::get('question-bank/export/template', [QuestionBankController::class, 'downloadTemplate'])->name('question-bank.export.template');
 
         // Type-specific Import (Excel + JSON)
         Route::prefix('question-bank/import/type')->name('question-bank.import.type.')->group(function () {
-            Route::get('{format}', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'selectType'])->name('select');
-            Route::get('{format}/{type}', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'showImportForm'])->name('show');
-            Route::get('{format}/{type}/template', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'downloadTemplate'])->name('template');
-            Route::post('{format}/{type}/preview', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'previewImport'])->name('preview');
-            Route::post('{format}/{type}/process', [\App\Http\Controllers\Admin\QuestionBankTypeImportController::class, 'processImport'])->name('process');
+            Route::get('{format}', [QuestionBankTypeImportController::class, 'selectType'])->name('select');
+            Route::get('{format}/{type}', [QuestionBankTypeImportController::class, 'showImportForm'])->name('show');
+            Route::get('{format}/{type}/template', [QuestionBankTypeImportController::class, 'downloadTemplate'])->name('template');
+            Route::post('{format}/{type}/preview', [QuestionBankTypeImportController::class, 'previewImport'])->name('preview');
+            Route::post('{format}/{type}/process', [QuestionBankTypeImportController::class, 'processImport'])->name('process');
         });
 
         // Question Pools Management
-        Route::resource('question-pools', \App\Http\Controllers\Admin\QuestionPoolController::class);
-        Route::post('question-pools/{id}/duplicate', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'duplicate'])->name('question-pools.duplicate');
-        Route::post('question-pools/{id}/add-question', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'addQuestion'])->name('question-pools.add-question');
-        Route::delete('question-pools/{id}/remove-question/{itemId}', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'removeQuestion'])->name('question-pools.remove-question');
-        Route::post('question-pools/{id}/update-order', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'updateOrder'])->name('question-pools.update-order');
-        Route::post('question-pools/{id}/generate-questions', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'generateQuestions'])->name('question-pools.generate-questions');
-        Route::get('question-pools/{id}/statistics', [\App\Http\Controllers\Admin\QuestionPoolController::class, 'getStatistics'])->name('question-pools.statistics');
+        Route::resource('question-pools', QuestionPoolController::class);
+        Route::post('question-pools/{id}/duplicate', [QuestionPoolController::class, 'duplicate'])->name('question-pools.duplicate');
+        Route::post('question-pools/{id}/add-question', [QuestionPoolController::class, 'addQuestion'])->name('question-pools.add-question');
+        Route::delete('question-pools/{id}/remove-question/{itemId}', [QuestionPoolController::class, 'removeQuestion'])->name('question-pools.remove-question');
+        Route::post('question-pools/{id}/update-order', [QuestionPoolController::class, 'updateOrder'])->name('question-pools.update-order');
+        Route::post('question-pools/{id}/generate-questions', [QuestionPoolController::class, 'generateQuestions'])->name('question-pools.generate-questions');
+        Route::get('question-pools/{id}/statistics', [QuestionPoolController::class, 'getStatistics'])->name('question-pools.statistics');
 
         // Quiz Grading
         Route::prefix('grading')->name('grading.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\QuizGradingController::class, 'index'])->name('index');
-            Route::get('/{attemptId}/report', [\App\Http\Controllers\Admin\QuizGradingController::class, 'attemptReport'])->name('attempt-report');
-            Route::get('/{attemptId}', [\App\Http\Controllers\Admin\QuizGradingController::class, 'show'])->name('show');
-            Route::post('/responses/{responseId}/grade', [\App\Http\Controllers\Admin\QuizGradingController::class, 'gradeResponse'])->name('grade-response');
-            Route::post('/bulk-grade', [\App\Http\Controllers\Admin\QuizGradingController::class, 'gradeBulk'])->name('bulk-grade');
-            Route::post('/{attemptId}/complete', [\App\Http\Controllers\Admin\QuizGradingController::class, 'completeGrading'])->name('complete');
-            Route::post('/{attemptId}/regrade', [\App\Http\Controllers\Admin\QuizGradingController::class, 'regradeAttempt'])->name('regrade');
-            Route::get('/quiz/{quizId}/stats', [\App\Http\Controllers\Admin\QuizGradingController::class, 'getQuizStats'])->name('quiz-stats');
-            Route::post('/export-report', [\App\Http\Controllers\Admin\QuizGradingController::class, 'exportReport'])->name('export-report');
+            Route::get('/', [QuizGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}/report', [QuizGradingController::class, 'attemptReport'])->name('attempt-report');
+            Route::get('/{attemptId}', [QuizGradingController::class, 'show'])->name('show');
+            Route::post('/responses/{responseId}/grade', [QuizGradingController::class, 'gradeResponse'])->name('grade-response');
+            Route::post('/bulk-grade', [QuizGradingController::class, 'gradeBulk'])->name('bulk-grade');
+            Route::post('/{attemptId}/complete', [QuizGradingController::class, 'completeGrading'])->name('complete');
+            Route::post('/{attemptId}/regrade', [QuizGradingController::class, 'regradeAttempt'])->name('regrade');
+            Route::get('/quiz/{quizId}/stats', [QuizGradingController::class, 'getQuizStats'])->name('quiz-stats');
+            Route::post('/export-report', [QuizGradingController::class, 'exportReport'])->name('export-report');
         });
 
         // Quiz Analytics
         Route::prefix('quiz-analytics')->name('quiz-analytics.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'index'])->name('index');
-            Route::get('/quiz/{quizId}', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'quiz'])->name('quiz');
-            Route::get('/student/{studentId}', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'student'])->name('student');
-            Route::get('/course/{courseId}', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'course'])->name('course');
-            Route::post('/compare', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'compare'])->name('compare');
-            Route::post('/export', [\App\Http\Controllers\Admin\QuizAnalyticsController::class, 'export'])->name('export');
+            Route::get('/', [QuizAnalyticsController::class, 'index'])->name('index');
+            Route::get('/quiz/{quizId}', [QuizAnalyticsController::class, 'quiz'])->name('quiz');
+            Route::get('/student/{studentId}', [QuizAnalyticsController::class, 'student'])->name('student');
+            Route::get('/course/{courseId}', [QuizAnalyticsController::class, 'course'])->name('course');
+            Route::post('/compare', [QuizAnalyticsController::class, 'compare'])->name('compare');
+            Route::post('/export', [QuizAnalyticsController::class, 'export'])->name('export');
         });
 
         // ========== Question Modules Routes ==========
 
         // Question Modules Management
-        Route::resource('question-modules', \App\Http\Controllers\Admin\QuestionModuleController::class);
-        Route::get('question-modules/{id}/manage-questions', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'manageQuestions'])->name('question-modules.manage-questions');
-        Route::get('question-modules/{id}/import-questions', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'importQuestions'])->name('question-modules.import-questions');
-        Route::post('question-modules/{id}/add-question', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'addQuestion'])->name('question-modules.add-question');
-        Route::delete('question-modules/{id}/remove-question/{questionId}', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'removeQuestion'])->name('question-modules.remove-question');
-        Route::put('question-modules/{id}/update-question-settings/{questionId}', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'updateQuestionSettings'])->name('question-modules.update-question-settings');
-        Route::post('question-modules/{id}/reorder-questions', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'reorderQuestions'])->name('question-modules.reorder-questions');
-        Route::post('question-modules/{id}/toggle-publish', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'togglePublish'])->name('question-modules.toggle-publish');
-        Route::post('question-modules/{id}/toggle-visibility', [\App\Http\Controllers\Admin\QuestionModuleController::class, 'toggleVisibility'])->name('question-modules.toggle-visibility');
+        Route::resource('question-modules', QuestionModuleController::class);
+        Route::get('question-modules/{id}/manage-questions', [QuestionModuleController::class, 'manageQuestions'])->name('question-modules.manage-questions');
+        Route::get('question-modules/{id}/import-questions', [QuestionModuleController::class, 'importQuestions'])->name('question-modules.import-questions');
+        Route::post('question-modules/{id}/add-question', [QuestionModuleController::class, 'addQuestion'])->name('question-modules.add-question');
+        Route::delete('question-modules/{id}/remove-question/{questionId}', [QuestionModuleController::class, 'removeQuestion'])->name('question-modules.remove-question');
+        Route::put('question-modules/{id}/update-question-settings/{questionId}', [QuestionModuleController::class, 'updateQuestionSettings'])->name('question-modules.update-question-settings');
+        Route::post('question-modules/{id}/reorder-questions', [QuestionModuleController::class, 'reorderQuestions'])->name('question-modules.reorder-questions');
+        Route::post('question-modules/{id}/toggle-publish', [QuestionModuleController::class, 'togglePublish'])->name('question-modules.toggle-publish');
+        Route::post('question-modules/{id}/toggle-visibility', [QuestionModuleController::class, 'toggleVisibility'])->name('question-modules.toggle-visibility');
 
         // Question Module Grading
         Route::prefix('question-module-grading')->name('admin.question-module-grading.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'index'])->name('index');
-            Route::get('/{attemptId}', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'show'])->name('show');
-            Route::post('/responses/{responseId}/grade', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'gradeResponse'])->name('grade-response');
-            Route::post('/bulk-grade', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'gradeBulk'])->name('bulk-grade');
-            Route::post('/{attemptId}/complete', [\App\Http\Controllers\Admin\QuestionModuleGradingController::class, 'completeGrading'])->name('complete');
+            Route::get('/', [QuestionModuleGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}', [QuestionModuleGradingController::class, 'show'])->name('show');
+            Route::post('/responses/{responseId}/grade', [QuestionModuleGradingController::class, 'gradeResponse'])->name('grade-response');
+            Route::post('/bulk-grade', [QuestionModuleGradingController::class, 'gradeBulk'])->name('bulk-grade');
+            Route::post('/{attemptId}/complete', [QuestionModuleGradingController::class, 'completeGrading'])->name('complete');
         });
 
         // ========== Programming Challenges Routes ==========
 
-        Route::resource('programming-challenges', \App\Http\Controllers\Admin\ProgrammingChallengeController::class)->except(['show']);
-        Route::get('programming-challenges/{id}/languages', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageLanguages'])->name('programming-challenges.manage-languages');
-        Route::put('programming-challenges/{id}/languages', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateLanguages'])->name('programming-challenges.update-languages');
-        Route::get('programming-challenges/{id}/starter', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageStarter'])->name('programming-challenges.manage-starter');
-        Route::put('programming-challenges/{id}/starter', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateStarter'])->name('programming-challenges.update-starter');
-        Route::get('programming-challenges/{id}/test-cases', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'manageTestCases'])->name('programming-challenges.manage-test-cases');
-        Route::put('programming-challenges/{id}/test-cases', [\App\Http\Controllers\Admin\ProgrammingChallengeController::class, 'updateTestCases'])->name('programming-challenges.update-test-cases');
+        Route::resource('programming-challenges', ProgrammingChallengeController::class)->except(['show']);
+        Route::get('programming-challenges/{id}/languages', [ProgrammingChallengeController::class, 'manageLanguages'])->name('programming-challenges.manage-languages');
+        Route::put('programming-challenges/{id}/languages', [ProgrammingChallengeController::class, 'updateLanguages'])->name('programming-challenges.update-languages');
+        Route::get('programming-challenges/{id}/starter', [ProgrammingChallengeController::class, 'manageStarter'])->name('programming-challenges.manage-starter');
+        Route::put('programming-challenges/{id}/starter', [ProgrammingChallengeController::class, 'updateStarter'])->name('programming-challenges.update-starter');
+        Route::get('programming-challenges/{id}/test-cases', [ProgrammingChallengeController::class, 'manageTestCases'])->name('programming-challenges.manage-test-cases');
+        Route::put('programming-challenges/{id}/test-cases', [ProgrammingChallengeController::class, 'updateTestCases'])->name('programming-challenges.update-test-cases');
+
+        // ========== Lesson Simulators ==========
+        Route::prefix('lesson-simulators')->name('admin.lesson-simulators.')->group(function () {
+            Route::get('/ai/create', fn () => redirect()->route('admin.lesson-simulators.create'));
+            Route::get('/ai/{lessonSimulator}/review', fn (\App\Models\LessonSimulator $lessonSimulator) => redirect()->route('admin.lesson-simulators.edit', $lessonSimulator));
+
+            Route::post('/preview-bundle', [LessonSimulatorController::class, 'previewBundle'])->name('preview-bundle');
+            Route::get('/global-assets', [LessonSimulatorController::class, 'globalAssets'])->name('global-assets');
+            Route::put('/global-assets', [LessonSimulatorController::class, 'updateGlobalAssets'])->name('global-assets.update');
+            Route::get('/', [LessonSimulatorController::class, 'index'])->name('index');
+            Route::get('/create', [LessonSimulatorController::class, 'create'])->name('create');
+            Route::post('/', [LessonSimulatorController::class, 'store'])->name('store');
+            Route::get('/{lessonSimulator}/preview', [LessonSimulatorController::class, 'preview'])->name('preview');
+            Route::get('/{lessonSimulator}/play', [LessonSimulatorController::class, 'playDocument'])->name('play-document');
+            Route::get('/{lessonSimulator}/assets/{file}', [LessonSimulatorController::class, 'playAsset'])
+                ->where('file', 'page.css|simulator.js')
+                ->name('play-asset');
+            Route::get('/{lessonSimulator}/edit', [LessonSimulatorController::class, 'edit'])->name('edit');
+            Route::put('/{lessonSimulator}', [LessonSimulatorController::class, 'update'])->name('update');
+            Route::delete('/{lessonSimulator}', [LessonSimulatorController::class, 'destroy'])->name('destroy');
+        });
 
         Route::prefix('challenge-grading')->name('admin.challenge-grading.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'index'])->name('index');
-            Route::get('/{attemptId}', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'show'])->name('show');
-            Route::post('/{attemptId}/grade', [\App\Http\Controllers\Admin\ChallengeGradingController::class, 'grade'])->name('grade');
+            Route::get('/', [ChallengeGradingController::class, 'index'])->name('index');
+            Route::get('/{attemptId}', [ChallengeGradingController::class, 'show'])->name('show');
+            Route::post('/{attemptId}/grade', [ChallengeGradingController::class, 'grade'])->name('grade');
         });
 
         // ========== Project Challenges Routes ==========
 
         Route::prefix('project-challenges')->name('admin.project-challenges.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'store'])->name('store');
-            Route::get('/search-students', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'searchStudents'])->name('search-students');
-            Route::get('/{id}/edit', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'edit'])->name('edit');
-            Route::put('/{id}', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'update'])->name('update');
-            Route::delete('/{id}', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'destroy'])->name('destroy');
-            Route::post('/{id}/publish', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'publish'])->name('publish');
-            Route::get('/{id}/stages', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'manageStages'])->name('manage-stages');
-            Route::put('/{id}/stages', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'updateStages'])->name('update-stages');
-            Route::get('/{id}/teams', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'manageTeams'])->name('manage-teams');
-            Route::post('/{challengeId}/teams', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'store'])->name('teams.store');
-            Route::get('/{challengeId}/teams/{teamId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'show'])->name('teams.show');
-            Route::put('/{challengeId}/teams/{teamId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'update'])->name('teams.update');
-            Route::post('/{challengeId}/teams/{teamId}/members', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'addMember'])->name('teams.members.store');
-            Route::delete('/{challengeId}/teams/{teamId}/members/{userId}', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'removeMember'])->name('teams.members.destroy');
-            Route::put('/{challengeId}/teams/{teamId}/members/{userId}/role', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'updateMemberRole'])->name('teams.members.update-role');
-            Route::post('/{challengeId}/teams/{teamId}/stages/{stageId}/unlock', [\App\Http\Controllers\Admin\ProjectTeamController::class, 'unlockStage'])->name('teams.stages.unlock');
-            Route::post('/{challengeId}/join-requests/{requestId}/approve', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'approveJoinRequest'])->name('approve-join-request');
-            Route::post('/{challengeId}/join-requests/{requestId}/reject', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'rejectJoinRequest'])->name('reject-join-request');
-            Route::post('/{challengeId}/teams/{teamId}/activate', [\App\Http\Controllers\Admin\ProjectChallengeController::class, 'activateTeam'])->name('activate-team');
+            Route::get('/', [ProjectChallengeController::class, 'index'])->name('index');
+            Route::get('/create', [ProjectChallengeController::class, 'create'])->name('create');
+            Route::post('/', [ProjectChallengeController::class, 'store'])->name('store');
+            Route::get('/search-students', [ProjectTeamController::class, 'searchStudents'])->name('search-students');
+            Route::get('/{id}/edit', [ProjectChallengeController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [ProjectChallengeController::class, 'update'])->name('update');
+            Route::delete('/{id}', [ProjectChallengeController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/publish', [ProjectChallengeController::class, 'publish'])->name('publish');
+            Route::get('/{id}/stages', [ProjectChallengeController::class, 'manageStages'])->name('manage-stages');
+            Route::put('/{id}/stages', [ProjectChallengeController::class, 'updateStages'])->name('update-stages');
+            Route::get('/{id}/teams', [ProjectChallengeController::class, 'manageTeams'])->name('manage-teams');
+            Route::post('/{challengeId}/teams', [ProjectTeamController::class, 'store'])->name('teams.store');
+            Route::get('/{challengeId}/teams/{teamId}', [ProjectTeamController::class, 'show'])->name('teams.show');
+            Route::put('/{challengeId}/teams/{teamId}', [ProjectTeamController::class, 'update'])->name('teams.update');
+            Route::post('/{challengeId}/teams/{teamId}/members', [ProjectTeamController::class, 'addMember'])->name('teams.members.store');
+            Route::delete('/{challengeId}/teams/{teamId}/members/{userId}', [ProjectTeamController::class, 'removeMember'])->name('teams.members.destroy');
+            Route::put('/{challengeId}/teams/{teamId}/members/{userId}/role', [ProjectTeamController::class, 'updateMemberRole'])->name('teams.members.update-role');
+            Route::post('/{challengeId}/teams/{teamId}/stages/{stageId}/unlock', [ProjectTeamController::class, 'unlockStage'])->name('teams.stages.unlock');
+            Route::post('/{challengeId}/join-requests/{requestId}/approve', [ProjectChallengeController::class, 'approveJoinRequest'])->name('approve-join-request');
+            Route::post('/{challengeId}/join-requests/{requestId}/reject', [ProjectChallengeController::class, 'rejectJoinRequest'])->name('reject-join-request');
+            Route::post('/{challengeId}/teams/{teamId}/activate', [ProjectChallengeController::class, 'activateTeam'])->name('activate-team');
         });
 
         Route::prefix('project-grading')->name('admin.project-grading.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'index'])->name('index');
-            Route::get('/{submissionId}', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'show'])->name('show');
-            Route::post('/{submissionId}/grade', [\App\Http\Controllers\Admin\ProjectGradingController::class, 'grade'])->name('grade');
+            Route::get('/', [ProjectGradingController::class, 'index'])->name('index');
+            Route::get('/{submissionId}', [ProjectGradingController::class, 'show'])->name('show');
+            Route::post('/{submissionId}/grade', [ProjectGradingController::class, 'grade'])->name('grade');
         });
 
         // ========== Gamification Routes ==========
@@ -651,20 +735,20 @@ Route::prefix('admin')
 
         // ========== Notification Management Routes ==========
         Route::prefix('notifications')->name('admin.notifications.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'index'])->name('index');
-            Route::get('/history', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'history'])->name('history');
-            Route::get('/statistics', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'statistics'])->name('statistics');
+            Route::get('/', [NotificationManagementController::class, 'index'])->name('index');
+            Route::get('/history', [NotificationManagementController::class, 'history'])->name('history');
+            Route::get('/statistics', [NotificationManagementController::class, 'statistics'])->name('statistics');
 
             // Send notifications
-            Route::post('/send-to-student', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'sendToStudent'])->name('send.student');
-            Route::post('/send-to-course', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'sendToCourse'])->name('send.course');
-            Route::post('/send-to-group', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'sendToGroup'])->name('send.group');
-            Route::post('/send-broadcast', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'sendBroadcast'])->name('send.broadcast');
+            Route::post('/send-to-student', [NotificationManagementController::class, 'sendToStudent'])->name('send.student');
+            Route::post('/send-to-course', [NotificationManagementController::class, 'sendToCourse'])->name('send.course');
+            Route::post('/send-to-group', [NotificationManagementController::class, 'sendToGroup'])->name('send.group');
+            Route::post('/send-broadcast', [NotificationManagementController::class, 'sendBroadcast'])->name('send.broadcast');
 
             // API endpoints
-            Route::get('/api/students', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getStudents'])->name('api.students');
-            Route::get('/api/courses', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getCourses'])->name('api.courses');
-            Route::get('/api/groups', [\App\Http\Controllers\Admin\NotificationManagementController::class, 'getGroups'])->name('api.groups');
+            Route::get('/api/students', [NotificationManagementController::class, 'getStudents'])->name('api.students');
+            Route::get('/api/courses', [NotificationManagementController::class, 'getCourses'])->name('api.courses');
+            Route::get('/api/groups', [NotificationManagementController::class, 'getGroups'])->name('api.groups');
         });
 
         Route::prefix('notification-hub')->name('admin.notification-hub.')->group(function () {
@@ -683,32 +767,32 @@ Route::prefix('admin')
 
         // ========== Email Settings Routes ==========
         Route::prefix('settings/email')->name('admin.settings.email.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\EmailSettingController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\EmailSettingController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\EmailSettingController::class, 'store'])->name('store');
-            Route::post('/test-temp', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testTemp'])->name('test-temp');
-            Route::post('/test-connection-temp', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testConnectionTemp'])->name('test-connection-temp');
-            Route::get('/{emailSetting}/edit', [\App\Http\Controllers\Admin\EmailSettingController::class, 'edit'])->name('edit');
-            Route::put('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'update'])->name('update');
-            Route::delete('/{emailSetting}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'destroy'])->name('destroy');
-            Route::post('/{emailSetting}/activate', [\App\Http\Controllers\Admin\EmailSettingController::class, 'activate'])->name('activate');
-            Route::post('/{emailSetting}/test-connection', [\App\Http\Controllers\Admin\EmailSettingController::class, 'testConnection'])->name('test-connection');
-            Route::post('/{emailSetting}/test', [\App\Http\Controllers\Admin\EmailSettingController::class, 'test'])->name('test');
-            Route::get('/provider/{provider}', [\App\Http\Controllers\Admin\EmailSettingController::class, 'getProviderPreset'])->name('provider.preset');
+            Route::get('/', [EmailSettingController::class, 'index'])->name('index');
+            Route::get('/create', [EmailSettingController::class, 'create'])->name('create');
+            Route::post('/', [EmailSettingController::class, 'store'])->name('store');
+            Route::post('/test-temp', [EmailSettingController::class, 'testTemp'])->name('test-temp');
+            Route::post('/test-connection-temp', [EmailSettingController::class, 'testConnectionTemp'])->name('test-connection-temp');
+            Route::get('/{emailSetting}/edit', [EmailSettingController::class, 'edit'])->name('edit');
+            Route::put('/{emailSetting}', [EmailSettingController::class, 'update'])->name('update');
+            Route::delete('/{emailSetting}', [EmailSettingController::class, 'destroy'])->name('destroy');
+            Route::post('/{emailSetting}/activate', [EmailSettingController::class, 'activate'])->name('activate');
+            Route::post('/{emailSetting}/test-connection', [EmailSettingController::class, 'testConnection'])->name('test-connection');
+            Route::post('/{emailSetting}/test', [EmailSettingController::class, 'test'])->name('test');
+            Route::get('/provider/{provider}', [EmailSettingController::class, 'getProviderPreset'])->name('provider.preset');
         });
 
-        Route::get('settings/password-reset-message', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'edit'])->name('admin.settings.password-reset-message.edit');
-        Route::put('settings/password-reset-message', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'update'])->name('admin.settings.password-reset-message.update');
-        Route::post('settings/password-reset-message/restore-defaults', [\App\Http\Controllers\Admin\PasswordResetMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.password-reset-message.restore-defaults');
+        Route::get('settings/password-reset-message', [PasswordResetMessageSettingsController::class, 'edit'])->name('admin.settings.password-reset-message.edit');
+        Route::put('settings/password-reset-message', [PasswordResetMessageSettingsController::class, 'update'])->name('admin.settings.password-reset-message.update');
+        Route::post('settings/password-reset-message/restore-defaults', [PasswordResetMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.password-reset-message.restore-defaults');
 
-        Route::get('settings/payment-whatsapp-message', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'edit'])->name('admin.settings.payment-whatsapp-message.edit');
-        Route::put('settings/payment-whatsapp-message', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'update'])->name('admin.settings.payment-whatsapp-message.update');
-        Route::post('settings/payment-whatsapp-message/restore-defaults', [\App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.payment-whatsapp-message.restore-defaults');
+        Route::get('settings/payment-whatsapp-message', [PaymentWhatsAppMessageSettingsController::class, 'edit'])->name('admin.settings.payment-whatsapp-message.edit');
+        Route::put('settings/payment-whatsapp-message', [PaymentWhatsAppMessageSettingsController::class, 'update'])->name('admin.settings.payment-whatsapp-message.update');
+        Route::post('settings/payment-whatsapp-message/restore-defaults', [PaymentWhatsAppMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.payment-whatsapp-message.restore-defaults');
 
-        Route::get('settings/phone-otp', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'edit'])->name('admin.settings.phone-otp.edit');
-        Route::put('settings/phone-otp', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'update'])->name('admin.settings.phone-otp.update');
-        Route::post('settings/phone-otp/test-send', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'testSend'])->name('admin.settings.phone-otp.test-send');
-        Route::post('settings/phone-otp/restore-defaults', [\App\Http\Controllers\Admin\PhoneOtpSettingsController::class, 'restoreDefaults'])->name('admin.settings.phone-otp.restore-defaults');
+        Route::get('settings/phone-otp', [PhoneOtpSettingsController::class, 'edit'])->name('admin.settings.phone-otp.edit');
+        Route::put('settings/phone-otp', [PhoneOtpSettingsController::class, 'update'])->name('admin.settings.phone-otp.update');
+        Route::post('settings/phone-otp/test-send', [PhoneOtpSettingsController::class, 'testSend'])->name('admin.settings.phone-otp.test-send');
+        Route::post('settings/phone-otp/restore-defaults', [PhoneOtpSettingsController::class, 'restoreDefaults'])->name('admin.settings.phone-otp.restore-defaults');
 
         // ========== Email Templates Routes ==========
         Route::resource('email-templates', EmailTemplateController::class)->names([
@@ -773,6 +857,13 @@ Route::prefix('admin')
             Route::post('/{studentWork}/toggle-active', [StudentWorkController::class, 'toggleActive'])->name('toggle-active');
         });
 
+        Route::prefix('student-profile-cards')->name('admin.student-profile-cards.')->group(function () {
+            Route::get('/', [StudentProfileCardController::class, 'index'])->name('index');
+            Route::get('/settings', [StudentProfileCardSettingController::class, 'edit'])->name('settings');
+            Route::post('/settings', [StudentProfileCardSettingController::class, 'update'])->name('settings.update');
+            Route::post('/{studentProfileCard}/toggle-admin-enabled', [StudentProfileCardController::class, 'toggleAdminEnabled'])->name('toggle-admin-enabled');
+        });
+
         // ========== Course Reviews Routes ==========
         Route::prefix('course-reviews')->name('admin.course-reviews.')->group(function () {
             Route::get('/', [AdminCourseReviewController::class, 'index'])->name('index');
@@ -785,12 +876,12 @@ Route::prefix('admin')
 
         // ========== Platform Reviews Routes ==========
         Route::prefix('platform-reviews')->name('admin.platform-reviews.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'index'])->name('index');
-            Route::get('/{review}', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'show'])->name('show');
-            Route::post('/{review}/approve', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'approve'])->name('approve');
-            Route::post('/{review}/reject', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'reject'])->name('reject');
-            Route::post('/{review}/toggle-featured', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'toggleFeatured'])->name('toggle-featured');
-            Route::delete('/{review}', [\App\Http\Controllers\Admin\FrontendReviewController::class, 'destroy'])->name('destroy');
+            Route::get('/', [FrontendReviewController::class, 'index'])->name('index');
+            Route::get('/{review}', [FrontendReviewController::class, 'show'])->name('show');
+            Route::post('/{review}/approve', [FrontendReviewController::class, 'approve'])->name('approve');
+            Route::post('/{review}/reject', [FrontendReviewController::class, 'reject'])->name('reject');
+            Route::post('/{review}/toggle-featured', [FrontendReviewController::class, 'toggleFeatured'])->name('toggle-featured');
+            Route::delete('/{review}', [FrontendReviewController::class, 'destroy'])->name('destroy');
         });
 
         // ========== Webhooks Management Routes ==========
@@ -806,15 +897,15 @@ Route::prefix('admin')
 
             // Webhook Tokens Management
             Route::prefix('tokens')->name('tokens.')->group(function () {
-                Route::get('/', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'index'])->name('index');
-                Route::get('/create', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'create'])->name('create');
-                Route::post('/', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'store'])->name('store');
-                Route::get('/{token}', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'show'])->name('show');
-                Route::get('/{token}/edit', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'edit'])->name('edit');
-                Route::put('/{token}', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'update'])->name('update');
-                Route::delete('/{token}', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'destroy'])->name('destroy');
-                Route::post('/{token}/toggle', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'toggleActive'])->name('toggle');
-                Route::get('/generate/token', [\App\Http\Controllers\Admin\WebhookTokenController::class, 'generateToken'])->name('generate');
+                Route::get('/', [WebhookTokenController::class, 'index'])->name('index');
+                Route::get('/create', [WebhookTokenController::class, 'create'])->name('create');
+                Route::post('/', [WebhookTokenController::class, 'store'])->name('store');
+                Route::get('/{token}', [WebhookTokenController::class, 'show'])->name('show');
+                Route::get('/{token}/edit', [WebhookTokenController::class, 'edit'])->name('edit');
+                Route::put('/{token}', [WebhookTokenController::class, 'update'])->name('update');
+                Route::delete('/{token}', [WebhookTokenController::class, 'destroy'])->name('destroy');
+                Route::post('/{token}/toggle', [WebhookTokenController::class, 'toggleActive'])->name('toggle');
+                Route::get('/generate/token', [WebhookTokenController::class, 'generateToken'])->name('generate');
             });
         });
 
@@ -921,11 +1012,12 @@ Route::prefix('admin')
         Route::prefix('docs')->name('admin.docs.')->group(function () {
             Route::resource('categories', DocumentationCategoryController::class)
                 ->parameters(['categories' => 'documentation_category'])
-                ->except(['show'])
+                ->except([])
                 ->names([
                     'index' => 'categories.index',
                     'create' => 'categories.create',
                     'store' => 'categories.store',
+                    'show' => 'categories.show',
                     'edit' => 'categories.edit',
                     'update' => 'categories.update',
                     'destroy' => 'categories.destroy',
@@ -935,6 +1027,7 @@ Route::prefix('admin')
 
             Route::get('ai-pages/create', [AIDocumentationPageController::class, 'create'])->name('ai-pages.create');
             Route::get('ai-pages/improve', [AIDocumentationPageController::class, 'improve'])->name('ai-pages.improve');
+            Route::get('ai-pages/enhance', [AIDocumentationPageController::class, 'enhance'])->name('ai-pages.enhance');
             Route::post('ai-pages/generate', [AIDocumentationPageController::class, 'generate'])->name('ai-pages.generate');
             Route::post('ai-pages/refine', [AIDocumentationPageController::class, 'refine'])->name('ai-pages.refine');
             Route::post('ai-pages', [AIDocumentationPageController::class, 'store'])->name('ai-pages.store');
@@ -952,6 +1045,12 @@ Route::prefix('admin')
                 ]);
             Route::post('pages/{documentation_page}/toggle-publish', [DocumentationPageController::class, 'togglePublish'])
                 ->name('pages.toggle-publish');
+            Route::post('pages/{documentation_page}/documentation-links', [DocumentationPageDocumentationLinkController::class, 'store'])
+                ->name('pages.documentation-links.store');
+            Route::get('pages/{documentation_page}/pdf', [DocumentationPageController::class, 'exportPdf'])
+                ->name('pages.pdf');
+            Route::get('pages/{documentation_page}/ai-source', [DocumentationPageController::class, 'aiSourceJson'])
+                ->name('pages.ai-source');
         });
 
         // ========== FAQs Management Routes ==========
@@ -989,11 +1088,11 @@ Route::prefix('admin')
         Route::get('google-settings/edit', [GoogleSettingController::class, 'edit'])->name('admin.google-settings.edit');
         Route::put('google-settings', [GoogleSettingController::class, 'update'])->name('admin.google-settings.update');
         Route::post('google-settings/test-api', [GoogleSettingController::class, 'testApi'])->name('admin.google-settings.test-api');
-        Route::get('marketing-analytics', [\App\Http\Controllers\Admin\MarketingAnalyticsController::class, 'index'])->name('admin.marketing-analytics.index');
-        Route::get('marketing-analytics/data', [\App\Http\Controllers\Admin\MarketingAnalyticsController::class, 'data'])->name('admin.marketing-analytics.data');
-        Route::get('meta-pixel-settings/edit', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'edit'])->name('admin.meta-pixel-settings.edit');
-        Route::put('meta-pixel-settings', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'update'])->name('admin.meta-pixel-settings.update');
-        Route::post('meta-pixel-settings/test-capi', [\App\Http\Controllers\Admin\MetaPixelSettingController::class, 'testCapi'])->name('admin.meta-pixel-settings.test-capi');
+        Route::get('marketing-analytics', [MarketingAnalyticsController::class, 'index'])->name('admin.marketing-analytics.index');
+        Route::get('marketing-analytics/data', [MarketingAnalyticsController::class, 'data'])->name('admin.marketing-analytics.data');
+        Route::get('meta-pixel-settings/edit', [MetaPixelSettingController::class, 'edit'])->name('admin.meta-pixel-settings.edit');
+        Route::put('meta-pixel-settings', [MetaPixelSettingController::class, 'update'])->name('admin.meta-pixel-settings.update');
+        Route::post('meta-pixel-settings/test-capi', [MetaPixelSettingController::class, 'testCapi'])->name('admin.meta-pixel-settings.test-capi');
 
         // ========== Site Settings Routes ==========
         Route::get('settings/site', [SiteSettingController::class, 'index'])->name('admin.settings.site.index');
@@ -1018,8 +1117,8 @@ Route::prefix('admin')
             Route::post('models/fetch-groq-models', [AIModelController::class, 'fetchGroqModels'])->name('models.fetch-groq-models');
 
             // Question Creation (Direct creation to question bank)
-            Route::get('question-creation/create', [\App\Http\Controllers\Admin\AIQuestionCreationController::class, 'create'])->name('question-creation.create');
-            Route::post('question-creation', [\App\Http\Controllers\Admin\AIQuestionCreationController::class, 'store'])->name('question-creation.store');
+            Route::get('question-creation/create', [AIQuestionCreationController::class, 'create'])->name('question-creation.create');
+            Route::post('question-creation', [AIQuestionCreationController::class, 'store'])->name('question-creation.store');
 
             Route::resource('question-generations', AIQuestionGenerationController::class)->names([
                 'index' => 'question-generations.index',
@@ -1090,38 +1189,38 @@ Route::prefix('admin')
 
         // ========== WhatsApp Routes ==========
         Route::prefix('whatsapp-settings')->name('admin.whatsapp-settings.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
-            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
-            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
-            Route::get('/queue-worker/status', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'queueWorkerStatus'])->name('queue-worker.status');
-            Route::post('/queue-worker/start', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'queueWorkerStart'])->name('queue-worker.start');
-            Route::post('/queue-worker/stop', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'queueWorkerStop'])->name('queue-worker.stop');
+            Route::get('/', [WhatsAppSettingsController::class, 'index'])->name('index');
+            Route::post('/', [WhatsAppSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::get('/queue-worker/status', [WhatsAppSettingsController::class, 'queueWorkerStatus'])->name('queue-worker.status');
+            Route::post('/queue-worker/start', [WhatsAppSettingsController::class, 'queueWorkerStart'])->name('queue-worker.start');
+            Route::post('/queue-worker/stop', [WhatsAppSettingsController::class, 'queueWorkerStop'])->name('queue-worker.stop');
         });
 
         Route::prefix('whatsapp-messages')->name('admin.whatsapp-messages.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
-            Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
-            Route::get('/search-students', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'searchStudents'])->name('search-students');
-            Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
-            Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
-            Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
-            Route::get('/broadcasts', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcastsIndex'])->name('broadcasts.index');
-            Route::get('/broadcasts/{broadcast}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'showBroadcast'])->name('broadcasts.show');
-            Route::post('/{message}/retry', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'retry'])->name('retry');
-            Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
+            Route::get('/', [WhatsAppMessageController::class, 'index'])->name('index');
+            Route::get('/send', [WhatsAppMessageController::class, 'create'])->name('create');
+            Route::get('/search-students', [WhatsAppMessageController::class, 'searchStudents'])->name('search-students');
+            Route::post('/send', [WhatsAppMessageController::class, 'send'])->name('send');
+            Route::post('/broadcast', [WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
+            Route::get('/broadcast/students-count', [WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
+            Route::get('/broadcasts', [WhatsAppMessageController::class, 'broadcastsIndex'])->name('broadcasts.index');
+            Route::get('/broadcasts/{broadcast}', [WhatsAppMessageController::class, 'showBroadcast'])->name('broadcasts.show');
+            Route::post('/{message}/retry', [WhatsAppMessageController::class, 'retry'])->name('retry');
+            Route::get('/{message}', [WhatsAppMessageController::class, 'show'])->name('show');
         });
 
         // WhatsApp Message Templates (قوالب رسائل واتساب)
         Route::prefix('whatsapp-templates')->name('admin.whatsapp-templates.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'store'])->name('store');
-            Route::get('/{whatsapp_template}/edit', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'edit'])->name('edit');
-            Route::put('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'update'])->name('update');
-            Route::post('/{whatsapp_template}/test/preview', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'previewTest'])->name('test.preview');
-            Route::post('/{whatsapp_template}/test/send', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'sendTest'])->name('test.send');
-            Route::delete('/{whatsapp_template}', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'destroy'])->name('destroy');
-            Route::get('/{whatsapp_template}/json', [\App\Http\Controllers\Admin\WhatsAppMessageTemplateController::class, 'getTemplate'])->name('get');
+            Route::get('/', [WhatsAppMessageTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [WhatsAppMessageTemplateController::class, 'create'])->name('create');
+            Route::post('/', [WhatsAppMessageTemplateController::class, 'store'])->name('store');
+            Route::get('/{whatsapp_template}/edit', [WhatsAppMessageTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{whatsapp_template}', [WhatsAppMessageTemplateController::class, 'update'])->name('update');
+            Route::post('/{whatsapp_template}/test/preview', [WhatsAppMessageTemplateController::class, 'previewTest'])->name('test.preview');
+            Route::post('/{whatsapp_template}/test/send', [WhatsAppMessageTemplateController::class, 'sendTest'])->name('test.send');
+            Route::delete('/{whatsapp_template}', [WhatsAppMessageTemplateController::class, 'destroy'])->name('destroy');
+            Route::get('/{whatsapp_template}/json', [WhatsAppMessageTemplateController::class, 'getTemplate'])->name('get');
         });
 
         // Flaxxa WAPI (مزود wapi.flaxxa.com)
@@ -1157,78 +1256,78 @@ Route::prefix('admin')
 
         // WhatsApp Web Routes
         Route::prefix('whatsapp-web')->name('admin.whatsapp-web.')->group(function () {
-            Route::get('/connect', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'connect'])->name('connect');
-            Route::post('/start-connection', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'startConnection'])->name('start-connection');
-            Route::get('/qr/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'getQrCode'])->name('qr');
-            Route::get('/status/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'getStatus'])->name('status');
-            Route::post('/disconnect/{sessionId}', [\App\Http\Controllers\Admin\WhatsAppWebController::class, 'disconnect'])->name('disconnect');
+            Route::get('/connect', [WhatsAppWebController::class, 'connect'])->name('connect');
+            Route::post('/start-connection', [WhatsAppWebController::class, 'startConnection'])->name('start-connection');
+            Route::get('/qr/{sessionId}', [WhatsAppWebController::class, 'getQrCode'])->name('qr');
+            Route::get('/status/{sessionId}', [WhatsAppWebController::class, 'getStatus'])->name('status');
+            Route::post('/disconnect/{sessionId}', [WhatsAppWebController::class, 'disconnect'])->name('disconnect');
         });
 
         // WhatsApp Web Settings Routes
         Route::prefix('whatsapp-web-settings')->name('admin.whatsapp-web-settings.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'index'])->name('index');
-            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'update'])->name('update');
-            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::get('/', [WhatsAppWebSettingsController::class, 'index'])->name('index');
+            Route::post('/', [WhatsAppWebSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
         });
 
         // Evolution API
         Route::prefix('evolution-api')->name('admin.evolution-api.')->group(function () {
             Route::get('/', fn () => redirect()->route('admin.evolution-api.settings.index'))->name('home');
-            Route::get('settings', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'index'])->name('settings.index');
-            Route::post('settings', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'update'])->name('settings.update');
-            Route::post('settings/test-connection', [\App\Http\Controllers\Admin\EvolutionSettingsController::class, 'testConnection'])->name('settings.test-connection');
+            Route::get('settings', [EvolutionSettingsController::class, 'index'])->name('settings.index');
+            Route::post('settings', [EvolutionSettingsController::class, 'update'])->name('settings.update');
+            Route::post('settings/test-connection', [EvolutionSettingsController::class, 'testConnection'])->name('settings.test-connection');
 
-            Route::get('instances', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'index'])->name('instances.index');
-            Route::post('instances', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'store'])->name('instances.store');
-            Route::post('instances/sync', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'sync'])->name('instances.sync');
-            Route::get('instances/{instanceName}/connect', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'connect'])->name('instances.connect');
-            Route::get('instances/{instanceName}/qr', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'fetchQr'])->name('instances.qr');
-            Route::get('instances/{instanceName}/status', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'status'])->name('instances.status');
-            Route::post('instances/{instanceName}/restart', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'restart'])->name('instances.restart');
-            Route::post('instances/{instanceName}/logout', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'logout'])->name('instances.logout');
-            Route::delete('instances/{instanceName}', [\App\Http\Controllers\Admin\EvolutionInstanceController::class, 'destroy'])->name('instances.destroy');
+            Route::get('instances', [EvolutionInstanceController::class, 'index'])->name('instances.index');
+            Route::post('instances', [EvolutionInstanceController::class, 'store'])->name('instances.store');
+            Route::post('instances/sync', [EvolutionInstanceController::class, 'sync'])->name('instances.sync');
+            Route::get('instances/{instanceName}/connect', [EvolutionInstanceController::class, 'connect'])->name('instances.connect');
+            Route::get('instances/{instanceName}/qr', [EvolutionInstanceController::class, 'fetchQr'])->name('instances.qr');
+            Route::get('instances/{instanceName}/status', [EvolutionInstanceController::class, 'status'])->name('instances.status');
+            Route::post('instances/{instanceName}/restart', [EvolutionInstanceController::class, 'restart'])->name('instances.restart');
+            Route::post('instances/{instanceName}/logout', [EvolutionInstanceController::class, 'logout'])->name('instances.logout');
+            Route::delete('instances/{instanceName}', [EvolutionInstanceController::class, 'destroy'])->name('instances.destroy');
 
-            Route::get('send/text', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'textForm'])->name('send.text');
-            Route::post('send/text', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendText'])->name('send.text.store');
-            Route::get('send/media', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'mediaForm'])->name('send.media');
-            Route::post('send/media', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendMedia'])->name('send.media.store');
-            Route::get('send/{type}', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'advancedForm'])->name('send.advanced');
-            Route::post('send/{type}', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'sendAdvanced'])->name('send.advanced.store');
+            Route::get('send/text', [EvolutionSendController::class, 'textForm'])->name('send.text');
+            Route::post('send/text', [EvolutionSendController::class, 'sendText'])->name('send.text.store');
+            Route::get('send/media', [EvolutionSendController::class, 'mediaForm'])->name('send.media');
+            Route::post('send/media', [EvolutionSendController::class, 'sendMedia'])->name('send.media.store');
+            Route::get('send/{type}', [EvolutionSendController::class, 'advancedForm'])->name('send.advanced');
+            Route::post('send/{type}', [EvolutionSendController::class, 'sendAdvanced'])->name('send.advanced.store');
 
-            Route::get('groups', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'index'])->name('groups.index');
-            Route::get('groups/show', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'show'])->name('groups.show');
-            Route::get('groups/members', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'members'])->name('groups.members');
-            Route::get('groups/compare', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'index'])->name('groups.compare');
-            Route::get('groups/compare/export', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'export'])->name('groups.compare.export');
-            Route::post('groups/compare/message-missing', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'messageMissing'])->name('groups.compare.message-missing');
-            Route::get('groups/compare/campaigns', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'campaigns'])->name('groups.compare.campaigns');
-            Route::get('groups/compare/campaigns/{broadcast}', [\App\Http\Controllers\Admin\EvolutionGroupCompareController::class, 'showCampaign'])->name('groups.compare.campaigns.show');
-            Route::post('groups/send', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'sendMessage'])->name('groups.send');
-            Route::post('groups/send-member', [\App\Http\Controllers\Admin\EvolutionGroupsController::class, 'sendMemberMessage'])->name('groups.send-member');
+            Route::get('groups', [EvolutionGroupsController::class, 'index'])->name('groups.index');
+            Route::get('groups/show', [EvolutionGroupsController::class, 'show'])->name('groups.show');
+            Route::get('groups/members', [EvolutionGroupsController::class, 'members'])->name('groups.members');
+            Route::get('groups/compare', [EvolutionGroupCompareController::class, 'index'])->name('groups.compare');
+            Route::get('groups/compare/export', [EvolutionGroupCompareController::class, 'export'])->name('groups.compare.export');
+            Route::post('groups/compare/message-missing', [EvolutionGroupCompareController::class, 'messageMissing'])->name('groups.compare.message-missing');
+            Route::get('groups/compare/campaigns', [EvolutionGroupCompareController::class, 'campaigns'])->name('groups.compare.campaigns');
+            Route::get('groups/compare/campaigns/{broadcast}', [EvolutionGroupCompareController::class, 'showCampaign'])->name('groups.compare.campaigns.show');
+            Route::post('groups/send', [EvolutionGroupsController::class, 'sendMessage'])->name('groups.send');
+            Route::post('groups/send-member', [EvolutionGroupsController::class, 'sendMemberMessage'])->name('groups.send-member');
 
-            Route::get('contacts', [\App\Http\Controllers\Admin\EvolutionContactsController::class, 'index'])->name('contacts.index');
-            Route::post('contacts/sync', [\App\Http\Controllers\Admin\EvolutionContactsController::class, 'sync'])->name('contacts.sync');
+            Route::get('contacts', [EvolutionContactsController::class, 'index'])->name('contacts.index');
+            Route::post('contacts/sync', [EvolutionContactsController::class, 'sync'])->name('contacts.sync');
 
-            Route::get('chats', [\App\Http\Controllers\Admin\EvolutionChatsController::class, 'index'])->name('chats.index');
+            Route::get('chats', [EvolutionChatsController::class, 'index'])->name('chats.index');
 
-            Route::get('messages', [\App\Http\Controllers\Admin\EvolutionSendController::class, 'messagesIndex'])->name('messages.index');
+            Route::get('messages', [EvolutionSendController::class, 'messagesIndex'])->name('messages.index');
 
-            Route::get('webhook', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
-            Route::post('webhook/url', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'saveUrl'])->name('webhook.save-url');
-            Route::post('webhook/activate', [\App\Http\Controllers\Admin\EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
+            Route::get('webhook', [EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
+            Route::post('webhook/url', [EvolutionWebhookAdminController::class, 'saveUrl'])->name('webhook.save-url');
+            Route::post('webhook/activate', [EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
         });
 
         // ========== User Sessions Routes ==========
         Route::prefix('user-sessions')->name('admin.user-sessions.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\UserSessionController::class, 'index'])->name('index');
-            Route::get('/active', [\App\Http\Controllers\Admin\UserSessionController::class, 'activeSessions'])->name('active');
-            Route::get('/statistics', [\App\Http\Controllers\Admin\UserSessionController::class, 'statistics'])->name('statistics');
-            Route::get('/user/{userId}', [\App\Http\Controllers\Admin\UserSessionController::class, 'userSessions'])->name('user');
-            Route::get('/{id}', [\App\Http\Controllers\Admin\UserSessionController::class, 'show'])->name('show');
-            Route::post('/bulk-delete', [\App\Http\Controllers\Admin\UserSessionController::class, 'bulkDelete'])->name('bulk-delete');
-            Route::post('/delete-all', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteAll'])->name('delete-all');
-            Route::post('/delete-completed', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteCompleted'])->name('delete-completed');
-            Route::post('/delete-disconnected', [\App\Http\Controllers\Admin\UserSessionController::class, 'deleteDisconnected'])->name('delete-disconnected');
+            Route::get('/', [UserSessionController::class, 'index'])->name('index');
+            Route::get('/active', [UserSessionController::class, 'activeSessions'])->name('active');
+            Route::get('/statistics', [UserSessionController::class, 'statistics'])->name('statistics');
+            Route::get('/user/{userId}', [UserSessionController::class, 'userSessions'])->name('user');
+            Route::get('/{id}', [UserSessionController::class, 'show'])->name('show');
+            Route::post('/bulk-delete', [UserSessionController::class, 'bulkDelete'])->name('bulk-delete');
+            Route::post('/delete-all', [UserSessionController::class, 'deleteAll'])->name('delete-all');
+            Route::post('/delete-completed', [UserSessionController::class, 'deleteCompleted'])->name('delete-completed');
+            Route::post('/delete-disconnected', [UserSessionController::class, 'deleteDisconnected'])->name('delete-disconnected');
         });
 
         // ========== User Devices Routes ==========
@@ -1251,69 +1350,69 @@ Route::prefix('admin')
         // نظام النسخ الاحتياطي
         // ===============================================
         Route::prefix('backups')->name('backups.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\BackupController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\BackupController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\BackupController::class, 'store'])->name('store');
-            Route::get('/{backup}', [\App\Http\Controllers\Admin\BackupController::class, 'show'])->name('show');
-            Route::get('/{backup}/status', [\App\Http\Controllers\Admin\BackupController::class, 'status'])->name('status');
-            Route::post('/{backup}/run', [\App\Http\Controllers\Admin\BackupController::class, 'run'])->name('run');
-            Route::post('/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('restore');
-            Route::get('/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('download');
-            Route::delete('/{backup}', [\App\Http\Controllers\Admin\BackupController::class, 'destroy'])->name('destroy');
-            Route::get('/stats/overview', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('stats');
+            Route::get('/', [BackupController::class, 'index'])->name('index');
+            Route::get('/create', [BackupController::class, 'create'])->name('create');
+            Route::post('/', [BackupController::class, 'store'])->name('store');
+            Route::get('/{backup}', [BackupController::class, 'show'])->name('show');
+            Route::get('/{backup}/status', [BackupController::class, 'status'])->name('status');
+            Route::post('/{backup}/run', [BackupController::class, 'run'])->name('run');
+            Route::post('/{backup}/restore', [BackupController::class, 'restore'])->name('restore');
+            Route::get('/{backup}/download', [BackupController::class, 'download'])->name('download');
+            Route::delete('/{backup}', [BackupController::class, 'destroy'])->name('destroy');
+            Route::get('/stats/overview', [BackupController::class, 'stats'])->name('stats');
         });
 
         Route::prefix('backup-schedules')->name('backup-schedules.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'store'])->name('store');
-            Route::get('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'show'])->name('show');
-            Route::get('/{schedule}/edit', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'edit'])->name('edit');
-            Route::put('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'update'])->name('update');
-            Route::delete('/{schedule}', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'destroy'])->name('destroy');
-            Route::post('/{schedule}/execute', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'execute'])->name('execute');
-            Route::post('/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('toggle-active');
+            Route::get('/', [BackupScheduleController::class, 'index'])->name('index');
+            Route::get('/create', [BackupScheduleController::class, 'create'])->name('create');
+            Route::post('/', [BackupScheduleController::class, 'store'])->name('store');
+            Route::get('/{schedule}', [BackupScheduleController::class, 'show'])->name('show');
+            Route::get('/{schedule}/edit', [BackupScheduleController::class, 'edit'])->name('edit');
+            Route::put('/{schedule}', [BackupScheduleController::class, 'update'])->name('update');
+            Route::delete('/{schedule}', [BackupScheduleController::class, 'destroy'])->name('destroy');
+            Route::post('/{schedule}/execute', [BackupScheduleController::class, 'execute'])->name('execute');
+            Route::post('/{schedule}/toggle-active', [BackupScheduleController::class, 'toggleActive'])->name('toggle-active');
         });
 
         Route::prefix('backup-storage')->name('backup-storage.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\BackupStorageController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\BackupStorageController::class, 'store'])->name('store');
-            Route::get('/{config}/edit', [\App\Http\Controllers\Admin\BackupStorageController::class, 'edit'])->name('edit');
-            Route::put('/{config}', [\App\Http\Controllers\Admin\BackupStorageController::class, 'update'])->name('update');
-            Route::delete('/{config}', [\App\Http\Controllers\Admin\BackupStorageController::class, 'destroy'])->name('destroy');
-            Route::post('/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('test');
-            Route::post('/test-connection', [\App\Http\Controllers\Admin\BackupStorageController::class, 'testConnection'])->name('test-connection');
-            Route::get('/analytics', [\App\Http\Controllers\Admin\BackupStorageAnalyticsController::class, 'index'])->name('analytics');
+            Route::get('/', [BackupStorageController::class, 'index'])->name('index');
+            Route::get('/create', [BackupStorageController::class, 'create'])->name('create');
+            Route::post('/', [BackupStorageController::class, 'store'])->name('store');
+            Route::get('/{config}/edit', [BackupStorageController::class, 'edit'])->name('edit');
+            Route::put('/{config}', [BackupStorageController::class, 'update'])->name('update');
+            Route::delete('/{config}', [BackupStorageController::class, 'destroy'])->name('destroy');
+            Route::post('/{config}/test', [BackupStorageController::class, 'test'])->name('test');
+            Route::post('/test-connection', [BackupStorageController::class, 'testConnection'])->name('test-connection');
+            Route::get('/analytics', [BackupStorageAnalyticsController::class, 'index'])->name('analytics');
         });
 
         // App Storage
         Route::prefix('app-storage')->name('app-storage.')->group(function () {
-            Route::get('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'index'])->name('configs.index');
-            Route::get('/configs/create', [\App\Http\Controllers\Admin\AppStorageController::class, 'create'])->name('configs.create');
-            Route::post('/configs', [\App\Http\Controllers\Admin\AppStorageController::class, 'store'])->name('configs.store');
-            Route::get('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'show'])->name('configs.show');
-            Route::get('/configs/{config}/edit', [\App\Http\Controllers\Admin\AppStorageController::class, 'edit'])->name('configs.edit');
-            Route::put('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'update'])->name('configs.update');
-            Route::delete('/configs/{config}', [\App\Http\Controllers\Admin\AppStorageController::class, 'destroy'])->name('configs.destroy');
-            Route::post('/configs/test-connection', [\App\Http\Controllers\Admin\AppStorageController::class, 'testConnection'])->name('configs.test-connection');
-            Route::post('/configs/{config}/test', [\App\Http\Controllers\Admin\AppStorageController::class, 'test'])->name('configs.test');
-            Route::get('/analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
+            Route::get('/configs', [AppStorageController::class, 'index'])->name('configs.index');
+            Route::get('/configs/create', [AppStorageController::class, 'create'])->name('configs.create');
+            Route::post('/configs', [AppStorageController::class, 'store'])->name('configs.store');
+            Route::get('/configs/{config}', [AppStorageController::class, 'show'])->name('configs.show');
+            Route::get('/configs/{config}/edit', [AppStorageController::class, 'edit'])->name('configs.edit');
+            Route::put('/configs/{config}', [AppStorageController::class, 'update'])->name('configs.update');
+            Route::delete('/configs/{config}', [AppStorageController::class, 'destroy'])->name('configs.destroy');
+            Route::post('/configs/test-connection', [AppStorageController::class, 'testConnection'])->name('configs.test-connection');
+            Route::post('/configs/{config}/test', [AppStorageController::class, 'test'])->name('configs.test');
+            Route::get('/analytics', [AppStorageAnalyticsController::class, 'index'])->name('analytics');
 
-            Route::get('/inventory', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'index'])->name('inventory.index');
-            Route::post('/inventory/scan', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'scan'])->name('inventory.scan');
-            Route::post('/inventory/migrate', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'migrate'])->name('inventory.migrate');
-            Route::get('/inventory/progress', [\App\Http\Controllers\Admin\StorageInventoryController::class, 'progress'])->name('inventory.progress');
+            Route::get('/inventory', [StorageInventoryController::class, 'index'])->name('inventory.index');
+            Route::post('/inventory/scan', [StorageInventoryController::class, 'scan'])->name('inventory.scan');
+            Route::post('/inventory/migrate', [StorageInventoryController::class, 'migrate'])->name('inventory.migrate');
+            Route::get('/inventory/progress', [StorageInventoryController::class, 'progress'])->name('inventory.progress');
         });
 
         Route::prefix('storage-disk-mappings')->name('storage-disk-mappings.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'index'])->name('index');
-            Route::get('/create', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'create'])->name('create');
-            Route::post('/', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'store'])->name('store');
-            Route::get('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'show'])->name('show');
-            Route::get('/{mapping}/edit', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'edit'])->name('edit');
-            Route::put('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'update'])->name('update');
-            Route::delete('/{mapping}', [\App\Http\Controllers\Admin\StorageDiskMappingController::class, 'destroy'])->name('destroy');
+            Route::get('/', [StorageDiskMappingController::class, 'index'])->name('index');
+            Route::get('/create', [StorageDiskMappingController::class, 'create'])->name('create');
+            Route::post('/', [StorageDiskMappingController::class, 'store'])->name('store');
+            Route::get('/{mapping}', [StorageDiskMappingController::class, 'show'])->name('show');
+            Route::get('/{mapping}/edit', [StorageDiskMappingController::class, 'edit'])->name('edit');
+            Route::put('/{mapping}', [StorageDiskMappingController::class, 'update'])->name('update');
+            Route::delete('/{mapping}', [StorageDiskMappingController::class, 'destroy'])->name('destroy');
         });
 
         // Weekly Student Reports
@@ -1335,9 +1434,9 @@ Route::prefix('admin')
         });
 
         Route::prefix('database-info')->name('admin.database-info.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'index'])->name('index');
-            Route::post('/optimize/{table}', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'optimize'])->name('optimize');
-            Route::post('/analyze/{table}', [\App\Http\Controllers\Admin\DatabaseInfoController::class, 'analyze'])->name('analyze');
+            Route::get('/', [DatabaseInfoController::class, 'index'])->name('index');
+            Route::post('/optimize/{table}', [DatabaseInfoController::class, 'optimize'])->name('optimize');
+            Route::post('/analyze/{table}', [DatabaseInfoController::class, 'analyze'])->name('analyze');
         });
 
     });

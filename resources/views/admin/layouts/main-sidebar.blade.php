@@ -55,7 +55,7 @@
                                 'admin.reminders.*',
                                 'admin.calendar.*'
                             );
-                            $contentActive = request()->routeIs('admin.blog.*', 'admin.docs.*', 'admin.faqs.*');
+                            $contentActive = request()->routeIs('admin.blog.*', 'admin.docs.*', 'admin.faqs.*', 'admin.lesson-simulators.*');
                             $gamificationActive = request()->routeIs('admin.gamification.*');
                         @endphp
 
@@ -353,13 +353,13 @@
                         </li>
 
                         <!-- المستخدمون -->
-                        <li class="slide has-sub {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') || request()->routeIs('admin.student-profile-cards.*') ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') || request()->routeIs('admin.student-profile-cards.*') ? 'active' : '' }}">
                                 <i class="fe fe-users side-menu__icon"></i>
                                 <span class="side-menu__label">المستخدمون</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1 {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'active' : '' }}" style="{{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') ? 'display: block;' : '' }}">
+                            <ul class="slide-menu child1 {{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') || request()->routeIs('admin.student-profile-cards.*') ? 'active' : '' }}" style="{{ request()->routeIs('users.*') || request()->routeIs('admin.user-sessions.*') || request()->routeIs('admin.user-devices.*') || request()->routeIs('admin.student-profile-cards.*') ? 'display: block;' : '' }}">
                                 <li class="slide {{ request()->routeIs('users.index') && !request()->routeIs('users.bulk-import.*') ? 'active' : '' }}">
                                     <a href="{{ route('users.index') }}" class="side-menu__item {{ request()->routeIs('users.index') && !request()->routeIs('users.bulk-import.*') ? 'active' : '' }}">جميع المستخدمين</a>
                                 </li>
@@ -377,6 +377,11 @@
                                 <li class="slide {{ request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.user-devices.index') }}" class="side-menu__item {{ request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
                                         <i class="fas fa-mobile-alt me-2"></i>أجهزة المستخدمين
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.student-profile-cards.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.student-profile-cards.index') }}" class="side-menu__item {{ request()->routeIs('admin.student-profile-cards.*') ? 'active' : '' }}">
+                                        <i class="fe fe-credit-card me-2"></i>البطاقات التعريفية
                                     </a>
                                 </li>
                             </ul>
@@ -529,6 +534,9 @@
                                         <li class="slide {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.ai-pages.create') }}" class="side-menu__item">توليد بالذكاء الاصطناعي</a>
                                         </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.ai-pages.enhance') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.ai-pages.enhance') }}" class="side-menu__item">إضافة أفكار (AI)</a>
+                                        </li>
                                         <li class="slide {{ request()->routeIs('admin.docs.ai-pages.improve') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.ai-pages.improve') }}" class="side-menu__item">تحسين محتوى (AI)</a>
                                         </li>
@@ -537,6 +545,24 @@
                                         </li>
                                         <li class="slide {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.categories.create') }}" class="side-menu__item">إضافة قسم</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ request()->routeIs('admin.lesson-simulators.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('admin.lesson-simulators.*') ? 'active' : '' }}">
+                                        <i class="fe fe-cpu me-2"></i>محاكيات الدروس
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('admin.lesson-simulators.*') ? 'active' : '' }}" style="{{ request()->routeIs('admin.lesson-simulators.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('admin.lesson-simulators.index', 'admin.lesson-simulators.edit', 'admin.lesson-simulators.preview') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.lesson-simulators.index') }}" class="side-menu__item">جميع المحاكيات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.lesson-simulators.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.lesson-simulators.create') }}" class="side-menu__item">إنشاء محاكاة</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.lesson-simulators.global-assets') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.lesson-simulators.global-assets') }}" class="side-menu__item">CSS/JS مركزي</a>
                                         </li>
                                     </ul>
                                 </li>

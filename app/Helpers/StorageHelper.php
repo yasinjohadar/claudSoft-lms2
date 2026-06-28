@@ -436,6 +436,38 @@ if (!function_exists('student_default_avatar_url')) {
     }
 }
 
+if (!function_exists('student_gender_default_avatar_url')) {
+    /**
+     * Gender-aware default avatar illustration when no profile photo is set.
+     */
+    function student_gender_default_avatar_url($student = null, ?string $gender = null): string
+    {
+        $gender = $gender ?? ($student?->gender ?? null);
+
+        return match ($gender) {
+            'female' => asset('assets/images/profile-avatars/female.svg'),
+            'male' => asset('assets/images/profile-avatars/male.svg'),
+            default => asset('assets/images/profile-avatars/neutral.svg'),
+        };
+    }
+}
+
+if (!function_exists('student_gender_avatar_view')) {
+    /**
+     * Blade partial name for the inline gender default avatar SVG.
+     */
+    function student_gender_avatar_view($student = null, ?string $gender = null): string
+    {
+        $gender = $gender ?? ($student?->gender ?? null);
+
+        return match ($gender) {
+            'female' => 'shared.profile-avatars.female',
+            'male' => 'shared.profile-avatars.male',
+            default => 'shared.profile-avatars.neutral',
+        };
+    }
+}
+
 if (!function_exists('student_profile_photo_url')) {
     /**
      * Get the URL for a student profile photo
@@ -453,14 +485,18 @@ if (!function_exists('student_profile_photo_url')) {
             }
 
             if (empty($photoPath)) {
-                return student_default_avatar_url();
+                return $student
+                    ? student_gender_default_avatar_url($student)
+                    : student_default_avatar_url();
             }
         }
 
         return resolve_storage_image_url(
             ['public'],
             $photoPath,
-            student_default_avatar_url()
+            $student
+                ? student_gender_default_avatar_url($student)
+                : student_default_avatar_url()
         );
     }
 }

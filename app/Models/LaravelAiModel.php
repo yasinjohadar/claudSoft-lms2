@@ -71,6 +71,7 @@ class LaravelAiModel extends Model
             'blog.generate' => 'توليد مقالات (Laravel AI)',
             'docs.refine' => 'توثيق / أقسام (Laravel AI)',
             'questions.generate' => 'توليد أسئلة (Laravel AI)',
+            'simulator.generate' => 'توليد محاكيات الدروس (Laravel AI)',
             'reports.student_progress' => 'تقارير تقدم الطلاب (Laravel AI)',
             'content.general' => 'نص عام (Laravel AI)',
         ];

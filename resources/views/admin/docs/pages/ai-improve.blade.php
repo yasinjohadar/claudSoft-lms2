@@ -4,90 +4,122 @@
 
 @section('styles')
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
-<style>
-    .loading-spinner { display: none; }
-    .loading-spinner.active { display: inline-block; }
-</style>
+@include('admin.docs.categories.partials.styles')
+@include('admin.docs.pages.partials.ai-page-styles')
 @endsection
 
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">فحص المستند وتعديله بالذكاء الاصطناعي</h4>
-                <p class="mb-0 text-muted">يُرسل النظام <strong>محتوى المصدر بالكامل</strong> إلى النموذج دفعة واحدة. اكتب <strong>تعليمات محددة</strong> لتطبيقها على كل الأقسام (حذف، إعادة هيكلة، توحيد المصطلحات، تقليل التكرار…) ثم اضغط «تحسين المحتوى» وراجع النتيجة قبل الحفظ.</p>
-                @if(!empty($docsEngineChoiceAvailable))
-                    <p class="mb-0 mt-1"><span class="badge bg-secondary">محركان</span> يمكنك اختيار <strong>Laravel AI SDK</strong> أو <strong>موديلات بنك الموديلات القديمة</strong> لكل عملية تحسين.</p>
-                @elseif(!empty($useLaravelAiEngine))
-                    <p class="mb-0 mt-1"><span class="badge bg-info text-dark">Laravel AI SDK</span> — الموديلات من لوحة «موديلات Laravel AI SDK»؛ يُفضّل اختيار موديل بقدرة docs.refine عند الافتراضي.</p>
-                @endif
-            </div>
-            <div class="ms-auto d-flex flex-wrap gap-2">
-                <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary">قائمة الصفحات</a>
-                <a href="{{ route('admin.docs.ai-pages.create') }}" class="btn btn-outline-primary">توليد صفحة جديدة</a>
-            </div>
+
+        @include('admin.components.alerts')
+
+        <div class="my-4 page-header-breadcrumb doc-ai-animate dashboard-fade-in">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.docs.pages.index') }}">التوثيق</a></li>
+                    <li class="breadcrumb-item active">فحص وتعديل بالذكاء</li>
+                </ol>
+            </nav>
         </div>
 
-        @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show">
-            <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="group-show-hero dashboard-fade-in doc-ai-animate mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-tool me-1"></i>
+                        تحسين المحتوى
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">فحص المستند وتعديله بالذكاء الاصطناعي</h2>
+                    <p class="group-show-hero__desc mb-2">
+                        يُرسل <strong>المصدر HTML بالكامل</strong> إلى النموذج دفعة واحدة. اكتب تعليمات محددة (حذف، إعادة هيكلة، توحيد مصطلحات…) ثم راجع النتيجة قبل الحفظ.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @if(!empty($docsEngineChoiceAvailable))
+                            <span class="doc-ai-badge"><i class="fe fe-layers"></i>محركان متاحان</span>
+                        @elseif(!empty($useLaravelAiEngine))
+                            <span class="doc-ai-badge"><i class="fe fe-cpu"></i>Laravel AI SDK</span>
+                        @endif
+                        <span class="doc-ai-badge"><i class="fe fe-file-text"></i>حد {{ number_format(\App\Services\Ai\AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS) }} حرف</span>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-light border">
+                            <i class="fe fe-list me-1"></i>قائمة الصفحات
+                        </a>
+                        <a href="{{ route('admin.docs.ai-pages.create') }}" class="btn btn-outline-primary">
+                            <i class="fe fe-zap me-1"></i>توليد صفحة جديدة
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-        @endif
 
         @if($prefillPage)
-        <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <span>تم تحميل محتوى الصفحة: <strong>{{ $prefillPage->title }}</strong></span>
-            <a href="{{ route('admin.docs.pages.edit', $prefillPage) }}" class="btn btn-sm btn-outline-primary">فتح التحرير الكامل</a>
-        </div>
+            <div class="doc-ai-prefill-banner doc-ai-animate">
+                <p class="doc-ai-prefill-banner__text mb-0">
+                    <i class="fe fe-download-cloud me-1 text-primary"></i>
+                    تم تحميل محتوى الصفحة: <strong>{{ $prefillPage->title }}</strong>
+                </p>
+                <a href="{{ route('admin.docs.pages.edit', $prefillPage) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fe fe-edit me-1"></i>فتح التحرير الكامل
+                </a>
+            </div>
         @endif
 
         <form id="improveSaveForm" method="POST" action="{{ $prefillPage ? route('admin.docs.pages.update', $prefillPage) : route('admin.docs.ai-pages.store') }}">
             @csrf
             @if($prefillPage)
-            @method('PUT')
+                @method('PUT')
             @endif
 
-            <div class="row">
-                <div class="col-lg-4 mb-4">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <div class="card-title mb-0"><i class="fas fa-sliders-h me-2"></i>إعدادات التحسين</div>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
+            <div class="row g-4">
+                <div class="col-lg-4 order-lg-2">
+                    <div class="doc-ai-sidebar-sticky">
+                        <div class="card custom-card doc-ai-panel doc-cat-filter-card doc-ai-animate mb-4">
+                            <div class="card-header doc-ai-panel__header border-0">
+                                <h6 class="doc-ai-panel__title">
+                                    <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--ai"><i class="fe fe-sliders"></i></span>
+                                    إعدادات التحسين
+                                    <span class="doc-ai-step-badge">1</span>
+                                </h6>
+                            </div>
+                            <div class="card-body pt-2">
                                 @if(!empty($docsEngineChoiceAvailable))
-                                    <label class="form-label">محرك التوثيق</label>
-                                    <div class="mb-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_laravel_ai" value="laravel_ai" {{ !empty($useLaravelAiEngine) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="docs_engine_laravel_ai">Laravel AI SDK</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="docs_engine" id="docs_engine_legacy" value="legacy" {{ empty($useLaravelAiEngine) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="docs_engine_legacy">موديلات قديمة (بنك الموديلات)</label>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">محرك التوثيق</label>
+                                        <div class="doc-ai-engine-pills">
+                                            <div class="doc-ai-engine-pill">
+                                                <input type="radio" name="docs_engine" id="docs_engine_laravel_ai" value="laravel_ai" {{ !empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                                <label for="docs_engine_laravel_ai"><i class="fe fe-cpu"></i>Laravel AI SDK</label>
+                                            </div>
+                                            <div class="doc-ai-engine-pill">
+                                                <input type="radio" name="docs_engine" id="docs_engine_legacy" value="legacy" {{ empty($useLaravelAiEngine) ? 'checked' : '' }}>
+                                                <label for="docs_engine_legacy"><i class="fe fe-database"></i>موديلات قديمة</label>
+                                            </div>
                                         </div>
                                     </div>
                                 @endif
+
                                 @if($models->isEmpty() && $laravelAiModels->isEmpty())
-                                    <div class="alert alert-warning mb-0 small">لا يوجد موديل نشط في كلا النظامين.</div>
+                                    <div class="alert alert-warning border-0 mb-3">لا يوجد موديل نشط في كلا النظامين.</div>
                                 @else
                                     @if(!empty($docsEngineChoiceAvailable) || ($laravelAiModels->isNotEmpty() && $models->isEmpty()))
-                                        <div id="docs_engine_laravel_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && empty($useLaravelAiEngine) ? 'display:none' : '' }}">
-                                            <label class="form-label">موديل Laravel AI SDK</label>
+                                        <div id="docs_engine_laravel_wrap" class="docs-engine-model-wrap mb-3" style="{{ !empty($docsEngineChoiceAvailable) && empty($useLaravelAiEngine) ? 'display:none' : '' }}">
+                                            <label class="form-label" for="laravel_ai_model_id">موديل Laravel AI SDK</label>
                                             <select id="laravel_ai_model_id" class="form-select" @if($laravelAiModels->isEmpty()) disabled @endif>
-                                                <option value="">افتراضي (أولوية + قدرة docs.refine)</option>
+                                                <option value="">افتراضي (docs.refine)</option>
                                                 @foreach($laravelAiModels as $lmodel)
                                                     <option value="{{ $lmodel->id }}">{{ $lmodel->name }} — {{ $lmodel->provider }}/{{ $lmodel->model }}</option>
                                                 @endforeach
                                             </select>
-                                            <small class="text-muted">إدارة الموديلات: موديلات Laravel AI SDK</small>
                                         </div>
                                     @endif
                                     @if(!empty($docsEngineChoiceAvailable) || ($models->isNotEmpty() && $laravelAiModels->isEmpty()))
-                                        <div id="docs_engine_legacy_wrap" class="docs-engine-model-wrap" style="{{ !empty($docsEngineChoiceAvailable) && !empty($useLaravelAiEngine) ? 'display:none' : '' }}">
-                                            <label class="form-label">موديل AI (بنك الموديلات)</label>
+                                        <div id="docs_engine_legacy_wrap" class="docs-engine-model-wrap mb-3" style="{{ !empty($docsEngineChoiceAvailable) && !empty($useLaravelAiEngine) ? 'display:none' : '' }}">
+                                            <label class="form-label" for="ai_model_id">موديل AI (بنك الموديلات)</label>
                                             <select id="ai_model_id" class="form-select" @if($models->isEmpty()) disabled @endif>
                                                 <option value="">الافتراضي</option>
                                                 @foreach($models as $model)
@@ -97,72 +129,94 @@
                                         </div>
                                     @endif
                                 @endif
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الأسلوب</label>
-                                <select id="tone" class="form-select">
-                                    <option value="professional" selected>احترافي</option>
-                                    <option value="friendly">ودود</option>
-                                    <option value="technical">تقني</option>
-                                    <option value="casual">عادي</option>
-                                    <option value="formal">رسمي</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">اللغة</label>
-                                <select id="language" class="form-select">
-                                    <option value="ar" selected>العربية</option>
-                                    <option value="en">English</option>
-                                </select>
-                            </div>
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="update_excerpt">
-                                <label class="form-check-label" for="update_excerpt">طلب مقتطف (excerpt) مقترح في الاستجابة</label>
-                            </div>
-                            <button type="button" class="btn btn-success w-100" id="refineBtn">
-                                <span class="loading-spinner spinner-border spinner-border-sm me-1" role="status"></span>
-                                <span class="btn-text">تحسين المحتوى</span>
-                            </button>
-                            <p class="text-muted small mt-2 mb-0">الحد الأقصى لطول المصدر: {{ number_format(\App\Services\Ai\AIDocumentationPageService::MAX_REFINE_SOURCE_CHARS) }} حرفاً.</p>
-                        </div>
-                    </div>
 
-                    <div class="card custom-card">
-                        <div class="card-header"><div class="card-title">التعليمات المحددة (فحص المستند كاملاً)</div></div>
-                        <div class="card-body">
-                            <label class="form-label">توجيهات للنموذج على كامل المحتوى</label>
-                            <p class="text-muted small mb-2">اترك الحقل فارغاً إن أردت تحسيناً عاماً فقط. عند الكتابة، صف ما يجب تغييره أو حذفه أو إضافته في <strong>كل</strong> الصفحة.</p>
-                            <textarea id="user_notes" class="form-control" rows="10" placeholder="أمثلة: احذف القسم الفلاني بالكامل؛ وحّد مصطلح «المتغير» في كل الفقرات؛ أضف جدول مقارنة بعد المقدمة؛ اختصر الملحقات؛ صحح العناوين لتتبع تسلسلاً منطقياً؛ أزل الجمل المكررة بين الأقسام…"></textarea>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label" for="tone">الأسلوب</label>
+                                        <select id="tone" class="form-select">
+                                            <option value="professional" selected>احترافي</option>
+                                            <option value="friendly">ودود</option>
+                                            <option value="technical">تقني</option>
+                                            <option value="casual">عادي</option>
+                                            <option value="formal">رسمي</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label" for="language">اللغة</label>
+                                        <select id="language" class="form-select">
+                                            <option value="ar" selected>العربية</option>
+                                            <option value="en">English</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="update_excerpt">
+                                    <label class="form-check-label" for="update_excerpt">طلب مقتطف (excerpt) مقترح</label>
+                                </div>
+
+                                <button type="button" class="doc-ai-refine-btn" id="refineBtn">
+                                    <span class="loading-spinner spinner-border spinner-border-sm" role="status"></span>
+                                    <i class="fe fe-zap"></i>
+                                    <span class="btn-text">تحسين المحتوى</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate">
+                            <div class="card-header doc-ai-panel__header border-0">
+                                <h6 class="doc-ai-panel__title">
+                                    <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--meta"><i class="fe fe-message-square"></i></span>
+                                    التعليمات المحددة
+                                    <span class="doc-ai-step-badge">2</span>
+                                </h6>
+                            </div>
+                            <div class="card-body pt-2">
+                                <p class="doc-ai-hint mb-2">اترك الحقل فارغاً للتحسين العام. أو صف التغييرات على <strong>كامل</strong> الصفحة.</p>
+                                <textarea id="user_notes" class="form-control doc-ai-notes-area" placeholder="أمثلة: احذف القسم الفلاني؛ وحّد مصطلح «المتغير»؛ أضف جدول مقارنة بعد المقدمة؛ اختصر الملحقات…"></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-lg-8">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div>
-                                <div class="card-title mb-0">المصدر (HTML)</div>
-                                <small class="text-muted">المحتوى الكامل للصفحة؛ يُعاد صياغته دفعة واحدة وفق التعليمات أعلاه.</small>
-                            </div>
+                <div class="col-lg-8 order-lg-1">
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title mb-1">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--content"><i class="fe fe-code"></i></span>
+                                المصدر (HTML)
+                            </h6>
+                            <p class="doc-ai-hint mb-0">المحتوى الكامل للصفحة — يُعاد صياغته دفعة واحدة.</p>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body pt-2">
                             <textarea id="doc_source" class="form-control" rows="14">{{ old('source', $prefillPage?->content ?? '') }}</textarea>
                         </div>
                     </div>
 
-                    <div class="card custom-card mb-4">
-                        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div class="card-title mb-0">النتيجة بعد التحسين (يُحفظ هذا المحتوى عند الضغط على حفظ)</div>
-                            <div class="d-flex flex-wrap gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnReplaceSource" title="نسخ النتيجة إلى المصدر">استبدال المصدر بالنتيجة</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCopyResult">نسخ HTML</button>
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0 d-flex flex-wrap align-items-start justify-content-between gap-2">
+                            <div>
+                                <h6 class="doc-ai-panel__title mb-1">
+                                    <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--seo"><i class="fe fe-check-circle"></i></span>
+                                    النتيجة بعد التحسين
+                                    <span class="doc-ai-step-badge">3</span>
+                                </h6>
+                                <p class="doc-ai-hint mb-0">يُحفظ هذا المحتوى عند الضغط على «حفظ».</p>
+                            </div>
+                            <div class="doc-ai-editor-actions">
+                                <button type="button" class="btn btn-sm btn-light border" id="btnReplaceSource" title="نسخ النتيجة إلى المصدر">
+                                    <i class="fe fe-repeat me-1"></i>استبدال المصدر
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border" id="btnCopyResult">
+                                    <i class="fe fe-copy me-1"></i>نسخ HTML
+                                </button>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <textarea name="content" id="doc_result" class="form-control @error('content') is-invalid @enderror" rows="14" placeholder="يظهر هنا المحتوى المحسّن بعد الضغط على «تحسين المحتوى»">{{ old('content') }}</textarea>
+                        <div class="card-body pt-2">
+                            <textarea name="content" id="doc_result" class="form-control @error('content') is-invalid @enderror" rows="14" placeholder="يظهر هنا المحتوى المحسّن بعد «تحسين المحتوى»">{{ old('content') }}</textarea>
                             @error('content')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             <div class="mt-3" id="excerptWrap" style="display: none;">
-                                <label class="form-label">مقتطف مقترح (excerpt)</label>
+                                <label class="form-label" for="doc_excerpt_result">مقتطف مقترح (excerpt)</label>
                                 <textarea id="doc_excerpt_result" class="form-control" rows="2" readonly></textarea>
                             </div>
                         </div>
@@ -170,35 +224,47 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-lg-8 mb-4">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">بيانات الصفحة للحفظ</div></div>
-                        <div class="card-body">
+            <div class="row g-4 mt-1">
+                <div class="col-lg-8">
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--content"><i class="fe fe-edit"></i></span>
+                                بيانات الصفحة للحفظ
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2">
                             <div class="mb-3">
-                                <label class="form-label">العنوان <span class="text-danger">*</span></label>
+                                <label class="form-label" for="doc_title">العنوان <span class="text-danger">*</span></label>
                                 <input type="text" name="title" id="doc_title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $prefillPage->title ?? '') }}" required>
                                 @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">الرابط (slug)</label>
+                                <label class="form-label" for="doc_slug">الرابط (slug)</label>
                                 <div class="input-group">
                                     <input type="text" name="slug" id="doc_slug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug', $prefillPage?->slug ?? '') }}" placeholder="يُولَّد من العنوان إن وُجد فارغاً">
-                                    <button type="button" class="btn btn-outline-secondary" id="doc_generate_slug">توليد</button>
+                                    <button type="button" class="btn btn-light border" id="doc_generate_slug">
+                                        <i class="fe fe-refresh-cw me-1"></i>توليد
+                                    </button>
                                 </div>
                                 @error('slug')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">المقتطف</label>
+                            <div class="mb-0">
+                                <label class="form-label" for="save_excerpt">المقتطف</label>
                                 <textarea name="excerpt" id="save_excerpt" rows="2" class="form-control @error('excerpt') is-invalid @enderror">{{ old('excerpt', $prefillPage?->excerpt ?? '') }}</textarea>
                                 @error('excerpt')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
                     </div>
 
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">SEO</div></div>
-                        <div class="card-body">
+                    <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
+                        <div class="card-header doc-ai-panel__header border-0">
+                            <h6 class="doc-ai-panel__title">
+                                <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--seo"><i class="fe fe-search"></i></span>
+                                SEO
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2">
                             <div class="mb-3">
                                 <label class="form-label">عنوان Meta</label>
                                 <input type="text" name="meta_title" class="form-control" value="{{ old('meta_title', $prefillPage?->meta_title ?? '') }}" maxlength="255">
@@ -211,54 +277,63 @@
                     </div>
                 </div>
 
-                <div class="col-lg-4 mb-4">
-                    <div class="card custom-card mb-4">
-                        <div class="card-header"><div class="card-title">التصنيف والهيكل</div></div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">القسم <span class="text-danger">*</span></label>
-                                <select name="documentation_category_id" id="doc_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
-                                    <option value="">— اختر —</option>
-                                    @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ (string) old('documentation_category_id', $categoryId) === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('documentation_category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="col-lg-4">
+                    <div class="doc-ai-sidebar-sticky">
+                        <div class="card custom-card doc-ai-panel doc-cat-filter-card doc-ai-animate mb-4">
+                            <div class="card-header doc-ai-panel__header border-0">
+                                <h6 class="doc-ai-panel__title">
+                                    <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--meta"><i class="fe fe-layers"></i></span>
+                                    التصنيف والهيكل
+                                </h6>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">صفحة أب (اختياري)</label>
-                                <select name="parent_id" id="doc_parent_id" class="form-select">
-                                    <option value="">— بدون —</option>
-                                </select>
-                                <small class="text-muted">يجب أن تنتمي لنفس القسم عند الحفظ</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الترتيب</label>
-                                <input type="number" name="sort_order" class="form-control" value="{{ old('sort_order', $prefillPage?->sort_order ?? 0) }}" min="0">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الحالة <span class="text-danger">*</span></label>
-                                <select name="status" class="form-select" required>
-                                    <option value="draft" {{ old('status', $prefillPage?->status ?? 'draft') === 'draft' ? 'selected' : '' }}>مسودة</option>
-                                    <option value="published" {{ old('status', $prefillPage?->status ?? 'draft') === 'published' ? 'selected' : '' }}>منشور</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">تاريخ النشر</label>
-                                <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at', $prefillPage?->published_at?->format('Y-m-d\TH:i') ?? '') }}">
-                                <small class="text-muted">عند اختيار «منشور» يُعبَّأ تلقائياً إن تُرك فارغاً</small>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_indexable" value="1" id="is_indexable" {{ old('is_indexable', $prefillPage?->is_indexable ?? true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_indexable">قابلة للفهرسة (SEO)</label>
+                            <div class="card-body pt-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="doc_category_id">القسم <span class="text-danger">*</span></label>
+                                    <select name="documentation_category_id" id="doc_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
+                                        <option value="">— اختر القسم —</option>
+                                        @foreach($categories as $cat)
+                                            <option value="{{ $cat->id }}" {{ (string) old('documentation_category_id', $categoryId) === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('documentation_category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="doc_parent_id">صفحة أب (اختياري)</label>
+                                    <select name="parent_id" id="doc_parent_id" class="form-select">
+                                        <option value="">— بدون —</option>
+                                    </select>
+                                    <p class="doc-ai-hint mb-0">يجب أن تنتمي لنفس القسم عند الحفظ.</p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">الترتيب</label>
+                                    <input type="number" name="sort_order" class="form-control" value="{{ old('sort_order', $prefillPage?->sort_order ?? 0) }}" min="0">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">الحالة <span class="text-danger">*</span></label>
+                                    <select name="status" class="form-select" required>
+                                        <option value="draft" {{ old('status', $prefillPage?->status ?? 'draft') === 'draft' ? 'selected' : '' }}>مسودة</option>
+                                        <option value="published" {{ old('status', $prefillPage?->status ?? 'draft') === 'published' ? 'selected' : '' }}>منشور</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">تاريخ النشر</label>
+                                    <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at', $prefillPage?->published_at?->format('Y-m-d\TH:i') ?? '') }}">
+                                    <p class="doc-ai-hint mb-0">يُعبَّأ تلقائياً عند «منشور» إن تُرك فارغاً.</p>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="is_indexable" value="1" id="is_indexable" {{ old('is_indexable', $prefillPage?->is_indexable ?? true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_indexable">قابلة للفهرسة (SEO)</label>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="card custom-card">
-                        <div class="card-body">
-                            <button type="submit" class="btn btn-primary w-100 mb-2"><i class="bi bi-save me-2"></i>{{ $prefillPage ? 'تحديث الصفحة' : 'حفظ صفحة جديدة' }}</button>
-                            <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-secondary w-100">إلغاء</a>
+                        <div class="card custom-card doc-ai-panel doc-ai-save-card doc-ai-animate">
+                            <div class="card-body">
+                                <button type="submit" class="btn btn-primary w-100 mb-2">
+                                    <i class="fe fe-save me-1"></i>{{ $prefillPage ? 'تحديث الصفحة' : 'حفظ صفحة جديدة' }}
+                                </button>
+                                <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-light border w-100">إلغاء</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -271,6 +346,9 @@
 @section('scripts')
 @php($tinymceSelector = '#doc_source, #doc_result')
 @include('admin.docs.partials.tinymce-doc')
+<script>
+document.documentElement.classList.add('loaded');
+</script>
 <script>
 (function () {
     const useLaravelAiEngineDefault = @json(!empty($useLaravelAiEngine));

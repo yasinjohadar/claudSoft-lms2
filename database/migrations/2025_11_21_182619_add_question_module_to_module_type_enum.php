@@ -10,6 +10,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE course_modules MODIFY COLUMN module_type ENUM('lesson','video','quiz','programming_challenge','assignment','resource','forum','live_session','question_module') NOT NULL");
     }
 
@@ -18,6 +22,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE course_modules MODIFY COLUMN module_type ENUM('lesson','video','quiz','programming_challenge','assignment','resource','forum','live_session') NOT NULL");
     }
 };

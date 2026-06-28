@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عنوان المحاكاة</title>
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700&family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- SHARED_KIT_CSS -->
+<link rel="stylesheet" href="__BUNDLE_ASSETS__/page.css">
+<!-- SHARED_KIT_THEME_JS -->
+</head>
+<body>
+<button type="button" class="theme-toggle" aria-label="تبديل الثيم"></button>
+<div class="sim-app">
+  <header class="sim-header">
+    <div class="sim-header-badge">🎯</div>
+    <div>
+      <h1>عنوان الموضوع</h1>
+      <p>وصف قصير بالعربية</p>
+    </div>
+  </header>
+  <div class="sim-main">
+    <aside class="sim-controls panel">
+      <div class="phead"><span>عناصر التحكم</span></div>
+      <div class="pbody"><!-- inputs, sliders, selects --></div>
+    </aside>
+    <main class="sim-preview panel">
+      <div class="phead"><span>المعاينة الحية</span></div>
+      <div class="pbody" id="livePreview"></div>
+    </main>
+    <aside class="sim-code panel">
+      <div class="phead"><span>الكود</span></div>
+      <div class="pbody"><pre id="codeOutput"></pre></div>
+    </aside>
+  </div>
+</div>
+<script defer src="__BUNDLE_ASSETS__/simulator.js"></script>
+</body>
+</html>

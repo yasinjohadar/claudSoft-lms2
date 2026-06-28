@@ -1,41 +1,50 @@
 @php
+    use App\Support\MembershipRequestFormColumns;
+
     $waContext = $waContext ?? [];
     $waSelectedJid = $waContext['selected_jid'] ?? '';
     $waStatusMap = $waContext['wa_status_by_student_id'] ?? [];
     $phoneDigitsMap = $waContext['phone_digits_by_student_id'] ?? [];
     $defaultInviteMessage = $waContext['default_invite_message'] ?? '';
     $showWaColumn = $waSelectedJid !== '' && empty($waContext['wa_load_error']);
+    $formColumns = MembershipRequestFormColumns::definitions();
+    $registrationsByRequestId = $registrationsByRequestId ?? [];
 @endphp
 <div class="table-responsive">
-    <table class="table table-hover text-nowrap dashboard-table mb-0">
+    <table class="table table-hover text-nowrap dashboard-table mb-0"
+           id="membershipRequestsTable"
+           data-columns-storage-key="mr-cols-{{ $course->id }}-{{ $group->id }}">
         <thead>
             <tr>
-                <th width="40">
+                <th width="40" data-mr-col="select">
                     <input type="checkbox" id="select-all-checkbox" title="تحديد الكل">
                 </th>
-                <th>#</th>
-                <th>اسم الطالب</th>
-                <th>مجموعات أخرى</th>
-                <th>البريد الإلكتروني</th>
-                <th>رقم الهاتف</th>
+                <th data-mr-col="id">#</th>
+                <th data-mr-col="student">اسم الطالب</th>
+                <th data-mr-col="other_groups">مجموعات أخرى</th>
+                <th data-mr-col="email">البريد الإلكتروني</th>
+                <th data-mr-col="phone">رقم الهاتف</th>
                 @if($showWaColumn)
-                    <th>واتساب</th>
+                    <th data-mr-col="whatsapp">واتساب</th>
                 @endif
-                <th>تاريخ الطلب</th>
-                <th>موعد تسديد الرسوم</th>
-                <th>عرض الفورم</th>
-                <th>الحالة</th>
-                <th>الإجراءات</th>
+                @foreach($formColumns as $colKey => $colDef)
+                    <th data-mr-col="{{ $colKey }}" class="d-none">{{ $colDef['label'] }}</th>
+                @endforeach
+                <th data-mr-col="request_date">تاريخ الطلب</th>
+                <th data-mr-col="payment_date">موعد تسديد الرسوم</th>
+                <th data-mr-col="form">عرض الفورم</th>
+                <th data-mr-col="status">الحالة</th>
+                <th data-mr-col="actions">الإجراءات</th>
             </tr>
         </thead>
         <tbody>
             @forelse($requests as $request)
                 <tr>
-                    <td>
+                    <td data-mr-col="select">
                         <input type="checkbox" class="request-checkbox" name="request_ids[]" value="{{ $request->id }}" data-status="{{ $request->status }}">
                     </td>
-                    <td>{{ $request->id }}</td>
-                    <td>
+                    <td data-mr-col="id">{{ $request->id }}</td>
+                    <td data-mr-col="student">
                         <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
                            class="fw-semibold text-decoration-none admin-camps-table__name">
                             {{ $request->student->name }}
@@ -44,7 +53,7 @@
                             <br><small class="text-muted">{{ $request->student->name_ar }}</small>
                         @endif
                     </td>
-                    <td>
+                    <td data-mr-col="other_groups">
                         @php
                             $map = $otherGroupsByStudentId ?? collect();
                             $sidOg = (int) $request->student_id;
@@ -71,7 +80,7 @@
                             <span class="text-muted">—</span>
                         @endif
                     </td>
-                    <td>
+                    <td data-mr-col="email">
                         <div class="d-flex align-items-center gap-1">
                             @if($request->student->email)
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1 copy-email-btn"
@@ -82,7 +91,7 @@
                             <span class="text-break">{{ $request->student->email }}</span>
                         </div>
                     </td>
-                    <td>
+                    <td data-mr-col="phone">
                         @if($request->student->phone)
                             {{ $request->student->phone }}
                             @if($request->student->country_code)
@@ -101,7 +110,7 @@
                                 ?: trim(($request->student->country_code ?? '').($request->student->phone ?? ''))
                                 ?: ($request->student->phone ?? '—');
                         @endphp
-                        <td>
+                        <td data-mr-col="whatsapp">
                             @if($waStatus === 'in_group')
                                 <span class="badge bg-success-transparent text-success">
                                     <i class="ri-check-line me-1"></i>منضم
@@ -131,21 +140,48 @@
                             @endif
                         </td>
                     @endif
-                    <td><small>{{ $request->created_at->format('Y-m-d H:i') }}</small></td>
-                    <td>
+                    @php
+                        $registration = $registrationsByRequestId[$request->id] ?? null;
+                    @endphp
+                    @foreach($formColumns as $colKey => $colDef)
+                        @php
+                            $formCellValue = MembershipRequestFormColumns::displayValue($registration, $colKey);
+                        @endphp
+                        <td data-mr-col="{{ $colKey }}" class="d-none">
+                            @if(in_array($colKey, ['reg_has_computer', 'reg_commitment', 'reg_sufficient_time', 'reg_bootcamp'], true) && in_array($formCellValue, ['نعم', 'لا'], true))
+                                <span class="badge bg-{{ $formCellValue === 'نعم' ? 'success' : 'secondary' }}-transparent text-{{ $formCellValue === 'نعم' ? 'success' : 'secondary' }}">
+                                    {{ $formCellValue }}
+                                </span>
+                            @else
+                                <span class="text-break">{{ $formCellValue }}</span>
+                            @endif
+                        </td>
+                    @endforeach
+                    <td data-mr-col="request_date"><small>{{ $request->created_at->format('Y-m-d H:i') }}</small></td>
+                    <td data-mr-col="payment_date">
                         @if($request->payment_date)
                             <span class="badge bg-info-transparent text-info">{{ $request->payment_date->format('Y-m-d') }}</span>
                         @else
                             <span class="text-muted">—</span>
                         @endif
                     </td>
-                    <td>
-                        <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
-                           class="btn btn-sm btn-primary-light">
-                            <i class="fe fe-eye me-1"></i>عرض البيانات
-                        </a>
+                    <td data-mr-col="form">
+                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                            <button type="button"
+                                    class="btn btn-sm btn-primary-light js-membership-request-detail"
+                                    title="عرض سريع في نافذة منبثقة"
+                                    data-url="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
+                                    data-student-name="{{ $request->student->name }}">
+                                <i class="fe fe-eye me-1"></i>عرض البيانات
+                            </button>
+                            <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
+                               class="btn btn-sm btn-light border"
+                               title="فتح صفحة المراجعة الكاملة">
+                                <i class="fe fe-external-link"></i>
+                            </a>
+                        </div>
                     </td>
-                    <td>
+                    <td data-mr-col="status">
                         @if($request->status === 'pending')
                             <span class="badge bg-warning-transparent text-warning">
                                 <i class="fe fe-clock me-1"></i>قيد المراجعة
@@ -166,10 +202,10 @@
                             @endif
                         @endif
                     </td>
-                    <td>
+                    <td data-mr-col="actions">
                         <div class="d-flex flex-wrap gap-1">
                             <a href="{{ route('courses.groups.membership-requests.show', [$course->id, $group->id, $request->id]) }}"
-                               class="btn btn-sm btn-info-light" title="مراجعة بيانات الفورم">
+                               class="btn btn-sm btn-info-light" title="مراجعة بيانات الفورم (صفحة كاملة)">
                                 <i class="fe fe-file-text"></i>
                             </a>
                             @if($request->status === 'pending')
@@ -251,7 +287,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="{{ $showWaColumn ? 12 : 11 }}">
+                    <td colspan="20">
                         <div class="group-show-empty">
                             <div class="group-show-empty__icon">
                                 <i class="fe fe-inbox"></i>

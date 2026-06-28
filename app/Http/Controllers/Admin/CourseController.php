@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\N8nWebhookEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
-use App\Models\User;
+use App\Models\CourseModule;
+use App\Models\DocumentationPageLink;
 use App\Models\Lesson;
-use App\Events\N8nWebhookEvent;
+use App\Models\Resource;
+use App\Models\User;
+use App\Services\Storage\StorageHelperService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\Storage\StorageHelperService;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
@@ -35,10 +39,10 @@ class CourseController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
@@ -99,7 +103,7 @@ class CourseController extends Controller
                 'activeCourses'
             ));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل الكورسات: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل الكورسات: '.$e->getMessage());
         }
     }
 
@@ -123,7 +127,7 @@ class CourseController extends Controller
                 'enrollmentTypes'
             ));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: '.$e->getMessage());
         }
     }
 
@@ -162,7 +166,7 @@ class CourseController extends Controller
             $originalSlug = $validated['slug'];
             $count = 1;
             while (Course::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $count;
+                $validated['slug'] = $originalSlug.'-'.$count;
                 $count++;
             }
 
@@ -203,6 +207,7 @@ class CourseController extends Controller
             if ($imageUploadWarning) {
                 $redirect->with('warning', $imageUploadWarning);
             }
+
             return $redirect;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -215,7 +220,7 @@ class CourseController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء إنشاء الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء الكورس: '.$e->getMessage());
         }
     }
 
@@ -231,7 +236,7 @@ class CourseController extends Controller
                 'enrollments.student',
                 'instructors',
                 'sections.modules.modulable',
-                'sections.questions.questionType' // Load questions directly linked to sections
+                'sections.questions.questionType', // Load questions directly linked to sections
             ])->withCount('enrollments')->findOrFail($id);
 
             // Load questions only for question modules
@@ -240,15 +245,18 @@ class CourseController extends Controller
                     if ($module->module_type === 'question_module' && $module->modulable) {
                         $module->modulable->load(['questions.questionType']);
                     }
+                    if ($module->module_type === 'documentation' && $module->modulable) {
+                        $module->modulable->load('category');
+                    }
                 });
             });
 
             // Load access restrictions for sections and modules (group-based, allow only) مع المجموعات المرتبطة
             $course->sections->each(function ($section) {
                 $section->load([
-                    'accessRestrictions' => function($query) {
+                    'accessRestrictions' => function ($query) {
                         $query->where('restriction_type', 'group')
-                              ->where('access_type', 'allow');
+                            ->where('access_type', 'allow');
                     },
                     // تحميل المجموعات المرتبطة بقيود القسم (إن وُجدت)
                     'accessRestrictions.group',
@@ -256,9 +264,9 @@ class CourseController extends Controller
 
                 $section->modules->each(function ($module) {
                     $module->load([
-                        'accessRestrictions' => function($query) {
+                        'accessRestrictions' => function ($query) {
                             $query->where('restriction_type', 'group')
-                                  ->where('access_type', 'allow');
+                                ->where('access_type', 'allow');
                         },
                         // تحميل المجموعات المرتبطة بقيود هذه الوحدة
                         'accessRestrictions.group',
@@ -283,15 +291,22 @@ class CourseController extends Controller
                 ->get();
             $allCourses = Course::select('id', 'title')->get();
 
+            $courseReferenceLinks = DocumentationPageLink::with(['documentationPage.category'])
+                ->reference()
+                ->where('linkable_type', Course::class)
+                ->where('linkable_id', $course->id)
+                ->orderBy('sort_order')
+                ->get();
+
             // Check if registration is enabled for this course
             $isRegistrationEnabled = false;
             $registrationUrl = null;
 
-            return view('admin.pages.courses.show', compact('course', 'stats', 'existingResources', 'allCourses', 'isRegistrationEnabled', 'registrationUrl'));
+            return view('admin.pages.courses.show', compact('course', 'stats', 'existingResources', 'allCourses', 'courseReferenceLinks', 'isRegistrationEnabled', 'registrationUrl'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.index')
-                ->with('error', 'حدث خطأ أثناء تحميل الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الكورس: '.$e->getMessage());
         }
     }
 
@@ -319,7 +334,7 @@ class CourseController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.index')
-                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل نموذج التعديل: '.$e->getMessage());
         }
     }
 
@@ -334,7 +349,7 @@ class CourseController extends Controller
         $validated = $request->validate([
             'category_id' => 'required|exists:course_categories,id',
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:courses,slug,' . $id,
+            'slug' => 'nullable|string|max:255|unique:courses,slug,'.$id,
             // use same image field as in store()
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'level' => 'nullable|in:beginner,intermediate,advanced,expert',
@@ -364,7 +379,7 @@ class CourseController extends Controller
                 $originalSlug = $validated['slug'];
                 $count = 1;
                 while (Course::where('slug', $validated['slug'])->where('id', '!=', $id)->exists()) {
-                    $validated['slug'] = $originalSlug . '-' . $count;
+                    $validated['slug'] = $originalSlug.'-'.$count;
                     $count++;
                 }
             }
@@ -404,7 +419,7 @@ class CourseController extends Controller
             $course->update($validated);
 
             // Dispatch n8n webhook event when course is published
-            if ($course->is_published && !$wasPublished) {
+            if ($course->is_published && ! $wasPublished) {
                 event(new N8nWebhookEvent('course.published', [
                     'course_id' => $course->id,
                     'course_title' => $course->title,
@@ -424,6 +439,7 @@ class CourseController extends Controller
             if ($imageUploadWarning) {
                 $redirect->with('warning', $imageUploadWarning);
             }
+
             return $redirect;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -431,7 +447,7 @@ class CourseController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء تحديث الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث الكورس: '.$e->getMessage());
         }
     }
 
@@ -448,9 +464,10 @@ class CourseController extends Controller
             $activeEnrollments = $course->enrollments()->where('enrollment_status', 'active')->count();
             if ($activeEnrollments > 0) {
                 DB::rollBack();
+
                 return redirect()
                     ->back()
-                    ->with('error', 'لا يمكن حذف الكورس لوجود ' . $activeEnrollments . ' طالب مسجل فيه. يرجى إلغاء تسجيل الطلاب أولاً.');
+                    ->with('error', 'لا يمكن حذف الكورس لوجود '.$activeEnrollments.' طالب مسجل فيه. يرجى إلغاء تسجيل الطلاب أولاً.');
             }
 
             $courseTitle = $course->title;
@@ -460,23 +477,24 @@ class CourseController extends Controller
 
             return redirect()
                 ->route('courses.index')
-                ->with('success', 'تم حذف الكورس "' . $courseTitle . '" بنجاح.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                ->with('success', 'تم حذف الكورس "'.$courseTitle.'" بنجاح.');
+        } catch (ModelNotFoundException $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
                 ->with('error', 'الكورس المطلوب غير موجود.');
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            \Log::error('Error deleting course: ' . $e->getMessage(), [
+
+            \Log::error('Error deleting course: '.$e->getMessage(), [
                 'course_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء حذف الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف الكورس: '.$e->getMessage());
         }
     }
 
@@ -514,7 +532,7 @@ class CourseController extends Controller
 
             // Create duplicate
             $newCourse = $originalCourse->replicate();
-            $newCourse->title = $originalCourse->title . ' (نسخة)';
+            $newCourse->title = $originalCourse->title.' (نسخة)';
             $newCourse->slug = Str::slug($newCourse->title);
             $newCourse->code = null;
             $newCourse->is_published = false;
@@ -525,7 +543,7 @@ class CourseController extends Controller
             $originalSlug = $newCourse->slug;
             $count = 1;
             while (Course::where('slug', $newCourse->slug)->exists()) {
-                $newCourse->slug = $originalSlug . '-' . $count;
+                $newCourse->slug = $originalSlug.'-'.$count;
                 $count++;
             }
 
@@ -555,7 +573,7 @@ class CourseController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء نسخ الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء نسخ الكورس: '.$e->getMessage());
         }
     }
 
@@ -567,14 +585,14 @@ class CourseController extends Controller
         try {
             $course = Course::findOrFail($id);
             $wasPublished = $course->is_published;
-            $course->is_published = !$course->is_published;
+            $course->is_published = ! $course->is_published;
             $course->updated_by = auth()->id();
             $course->save();
 
             $status = $course->is_published ? 'منشور' : 'مسودة';
 
             // Dispatch n8n webhook event when course is published
-            if ($course->is_published && !$wasPublished) {
+            if ($course->is_published && ! $wasPublished) {
                 event(new N8nWebhookEvent('course.published', [
                     'course_id' => $course->id,
                     'course_title' => $course->title,
@@ -594,14 +612,14 @@ class CourseController extends Controller
                 'message' => "تم تحديث حالة النشر إلى: {$status}",
             ]);
         } catch (\Exception $e) {
-            \Log::error('Course toggle publish error: ' . $e->getMessage(), [
+            \Log::error('Course toggle publish error: '.$e->getMessage(), [
                 'course_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تحديث حالة النشر: ' . $e->getMessage(),
+                'message' => 'حدث خطأ أثناء تحديث حالة النشر: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -613,7 +631,7 @@ class CourseController extends Controller
     {
         try {
             $course = Course::findOrFail($id);
-            $course->is_visible = !$course->is_visible;
+            $course->is_visible = ! $course->is_visible;
             $course->updated_by = auth()->id();
             $course->save();
 
@@ -623,17 +641,17 @@ class CourseController extends Controller
                 'success' => true,
                 'message' => "تم تحديث الظهور إلى: {$status}",
                 'is_visible' => $course->is_visible,
-                'status_text' => $status
+                'status_text' => $status,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Course toggle visibility error: ' . $e->getMessage(), [
+            \Log::error('Course toggle visibility error: '.$e->getMessage(), [
                 'course_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تحديث الظهور: ' . $e->getMessage(),
+                'message' => 'حدث خطأ أثناء تحديث الظهور: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -647,28 +665,28 @@ class CourseController extends Controller
             $course = Course::findOrFail($id);
 
             // Get all modules for this course through sections
-            $modules = \App\Models\CourseModule::whereHas('section', function($query) use ($id) {
+            $modules = CourseModule::whereHas('section', function ($query) use ($id) {
                 $query->where('course_id', $id);
             })
-            ->with('section')
-            ->orderBy('sort_order')
-            ->get()
-            ->map(function($module) {
-                return [
-                    'id' => $module->id,
-                    'title' => $module->title,
-                    'section_title' => $module->section ? $module->section->title : '',
-                ];
-            });
+                ->with('section')
+                ->orderBy('sort_order')
+                ->get()
+                ->map(function ($module) {
+                    return [
+                        'id' => $module->id,
+                        'title' => $module->title,
+                        'section_title' => $module->section ? $module->section->title : '',
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
-                'modules' => $modules
+                'modules' => $modules,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء جلب الموديولات: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء جلب الموديولات: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -678,11 +696,11 @@ class CourseController extends Controller
      */
     public function getLessons(Course $course)
     {
-        $lessons = Lesson::whereHas('module.section', function($q) use ($course) {
+        $lessons = Lesson::whereHas('module.section', function ($q) use ($course) {
             $q->where('course_id', $course->id);
         })->where('is_published', true)
-          ->select('id', 'title')
-          ->get();
+            ->select('id', 'title')
+            ->get();
 
         return response()->json($lessons);
     }

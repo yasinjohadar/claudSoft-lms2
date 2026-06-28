@@ -584,6 +584,8 @@
                         </div>
                     </div>
 
+                    @include('admin.pages.courses.partials.documentation-links-panel')
+
                     <!-- Sections Accordion -->
                     <div class="accordion admin-course-sections-accordion" id="sectionsAccordion">
                     @forelse($course->sections()->orderBy('order_index')->get() as $section)
@@ -652,6 +654,16 @@
                                                     data-bs-toggle="modal" data-bs-target="#addResourceModal"
                                                     data-section-id="{{ $section->id }}" data-course-id="{{ $section->course_id }}">
                                                 <i class="fe fe-file-plus"></i><span>مورد سريع</span>
+                                            </button>
+                                            <button type="button" class="admin-course-content-chip border-0"
+                                                    data-bs-toggle="modal" data-bs-target="#attachDocumentationModal"
+                                                    data-section-id="{{ $section->id }}">
+                                                <i class="fe fe-book"></i><span>توثيق</span>
+                                            </button>
+                                            <button type="button" class="admin-course-content-chip border-0"
+                                                    data-bs-toggle="modal" data-bs-target="#attachSimulatorModal"
+                                                    data-section-id="{{ $section->id }}">
+                                                <i class="fe fe-cpu"></i><span>محاكاة</span>
                                             </button>
                                         </div>
                                     </div>
@@ -2293,6 +2305,9 @@
         </div>
     </div>
 </div>
+
+@include('admin.pages.courses.partials.documentation-link-modal')
+@include('admin.pages.courses.partials.simulator-link-modal')
 
 @section('scripts')
 <script>

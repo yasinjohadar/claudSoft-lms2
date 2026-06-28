@@ -210,6 +210,15 @@ class User extends Authenticatable
     }
 
     // ========================================
+    // Student Profile Card
+    // ========================================
+
+    public function profileCard()
+    {
+        return $this->hasOne(StudentProfileCard::class);
+    }
+
+    // ========================================
     // Gamification System Relationships
     // ========================================
 

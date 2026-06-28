@@ -19,6 +19,9 @@ use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
 use App\Services\WhatsApp\MembershipWhatsAppInviteService;
+use App\Models\Nationality;
+use App\Support\MembershipRequestFilters;
+use App\Support\MembershipRequestFormColumns;
 use App\Support\WhatsAppSendErrorMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -1384,20 +1387,7 @@ class CourseGroupController extends Controller
                 $query->where('status', $request->status);
             }
 
-            // Search
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->whereHas('student', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                });
-            }
-
-            // Sort
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $query->orderBy($sortBy, $sortOrder);
+            MembershipRequestFilters::apply($query, (int) $groupId, $request);
 
             $whatsappJid = trim((string) $request->input('whatsapp_jid', ''));
             $waContext = $this->resolveMembershipWhatsAppContext($group, $whatsappJid);
@@ -1505,6 +1495,13 @@ class CourseGroupController extends Controller
                     });
             }
 
+            $registrationsByRequestId = MembershipRequestFormColumns::mapRegistrationsForRequests(
+                (int) $groupId,
+                $requests->getCollection()
+            );
+
+            $nationalities = Nationality::query()->orderBy('name')->get(['id', 'name']);
+
             // Get count of pending requests for "Approve All" button
             $pendingCount = GroupMembershipRequest::where('group_id', $groupId)
                 ->where('status', 'pending')
@@ -1516,6 +1513,7 @@ class CourseGroupController extends Controller
                     'course' => $course,
                     'group' => $group,
                     'otherGroupsByStudentId' => $otherGroupsByStudentId,
+                    'registrationsByRequestId' => $registrationsByRequestId,
                     'waContext' => $waContext,
                 ])->render();
 
@@ -1535,6 +1533,8 @@ class CourseGroupController extends Controller
                 'requests',
                 'pendingCount',
                 'otherGroupsByStudentId',
+                'registrationsByRequestId',
+                'nationalities',
                 'waContext',
                 'whatsappTemplates',
                 'defaultWhatsappTemplateId',
@@ -1708,7 +1708,7 @@ class CourseGroupController extends Controller
         return [$course, $group, $student];
     }
 
-    public function showMembershipRequest($courseId, $groupId, $requestId)
+    public function showMembershipRequest(Request $request, $courseId, $groupId, $requestId)
     {
         try {
             $course = Course::findOrFail($courseId);
@@ -1751,6 +1751,22 @@ class CourseGroupController extends Controller
                     ->values();
             }
 
+            if ($request->ajax() || $request->wantsJson()) {
+                $html = view('admin.course-groups.partials.membership-request-detail-body', compact(
+                    'course',
+                    'group',
+                    'membershipRequest',
+                    'registration',
+                    'otherGroups'
+                ))->render();
+
+                return response()->json([
+                    'success' => true,
+                    'html' => $html,
+                    'student_name' => $membershipRequest->student->name ?? null,
+                ]);
+            }
+
             return view('admin.course-groups.membership-request-show', compact(
                 'course',
                 'group',
@@ -1759,6 +1775,13 @@ class CourseGroupController extends Controller
                 'otherGroups'
             ));
         } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحميل بيانات الطلب.',
+                ], 500);
+            }
+
             return redirect()
                 ->route('courses.groups.membership-requests', [$courseId, $groupId])
                 ->with('error', 'حدث خطأ أثناء تحميل بيانات الطلب: '.$e->getMessage());
