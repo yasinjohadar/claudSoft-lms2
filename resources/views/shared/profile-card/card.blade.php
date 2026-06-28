@@ -57,10 +57,13 @@
     .profile-card-page-body {
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         color: #0f172a;
         font-family: 'Cairo', sans-serif;
         -webkit-font-smoothing: antialiased;
         background: #ffffff;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
     }
 
     .profile-card-shell {
@@ -69,6 +72,7 @@
         --site-primary-light: #3399E0;
         --site-primary-dark: #004C8A;
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -78,27 +82,15 @@
 
     .profile-card {
         position: relative;
-        isolation: isolate;
         width: 100%;
         max-width: 440px;
-        background: linear-gradient(
-            145deg,
-            rgba(255, 255, 255, 0.82) 0%,
-            rgba(255, 255, 255, 0.58) 42%,
-            rgba(0, 102, 179, 0.1) 100%
-        );
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.72);
-        border-radius: 5px;
-        box-shadow:
-            0 8px 32px rgba(0, 76, 138, 0.14),
-            0 2px 10px rgba(0, 102, 179, 0.08),
-            inset 0 1px 0 rgba(255, 255, 255, 0.85),
-            inset 0 -1px 0 rgba(0, 102, 179, 0.06);
+        background: #ffffff;
+        border: 1px solid rgba(0, 102, 179, 0.1);
+        border-radius: 12px;
+        box-shadow: 0 8px 28px rgba(0, 76, 138, 0.12);
         overflow: hidden;
-        transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease;
-        animation: profileCardIn 0.55s ease both;
+        animation: profileCardIn 0.35s ease both;
+        contain: layout paint;
     }
 
     .profile-card > :not(.profile-card__bg-pattern) {
@@ -125,7 +117,6 @@
     .profile-card__grid-layer {
         position: absolute;
         inset: 0;
-        will-change: background-position;
     }
 
     .profile-card__grid-layer--h {
@@ -133,11 +124,10 @@
             180deg,
             transparent 0,
             transparent 31px,
-            rgba(0, 102, 179, 0.045) 31px,
-            rgba(0, 102, 179, 0.045) 32px
+            rgba(0, 102, 179, 0.04) 31px,
+            rgba(0, 102, 179, 0.04) 32px
         );
         background-size: 100% 32px;
-        animation: profileCardGridWeaveH 24s linear infinite;
     }
 
     .profile-card__grid-layer--v {
@@ -145,132 +135,67 @@
             90deg,
             transparent 0,
             transparent 31px,
-            rgba(51, 153, 224, 0.04) 31px,
-            rgba(51, 153, 224, 0.04) 32px
+            rgba(51, 153, 224, 0.035) 31px,
+            rgba(51, 153, 224, 0.035) 32px
         );
         background-size: 32px 100%;
-        animation: profileCardGridWeaveV 28s linear infinite;
     }
 
     .profile-card__grid-glow {
         position: absolute;
         inset: 0;
-        background: radial-gradient(circle at 30% 20%, rgba(51, 153, 224, 0.04), transparent 42%),
-                    radial-gradient(circle at 75% 75%, rgba(0, 102, 179, 0.035), transparent 38%);
-        animation: profileCardGridGlow 12s ease-in-out infinite alternate;
-    }
-
-    @keyframes profileCardGridWeaveH {
-        0% { background-position: 0 0; }
-        100% { background-position: 0 32px; }
-    }
-
-    @keyframes profileCardGridWeaveV {
-        0% { background-position: 0 0; }
-        100% { background-position: 32px 0; }
-    }
-
-    @keyframes profileCardGridGlow {
-        0% { opacity: 0.45; }
-        100% { opacity: 0.7; }
-    }
-
-    .profile-card__bg-orbs {
-        position: absolute;
-        inset: 0;
-    }
-
-    .profile-card__orb {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(28px);
-        opacity: 0.45;
-        will-change: transform;
-    }
-
-    .profile-card__orb--1 {
-        width: 160px;
-        height: 160px;
-        top: -40px;
-        right: -30px;
-        background: radial-gradient(circle, rgba(51, 153, 224, 0.55), rgba(51, 153, 224, 0));
-        animation: profileCardOrbFloat1 14s ease-in-out infinite;
-    }
-
-    .profile-card__orb--2 {
-        width: 130px;
-        height: 130px;
-        bottom: 60px;
-        left: -35px;
-        background: radial-gradient(circle, rgba(0, 102, 179, 0.4), rgba(0, 102, 179, 0));
-        animation: profileCardOrbFloat2 18s ease-in-out infinite;
-    }
-
-    .profile-card__orb--3 {
-        width: 100px;
-        height: 100px;
-        top: 42%;
-        left: 58%;
-        background: radial-gradient(circle, rgba(142, 197, 239, 0.5), rgba(142, 197, 239, 0));
-        animation: profileCardOrbFloat3 16s ease-in-out infinite;
-    }
-
-    @keyframes profileCardOrbFloat1 {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(-12px, 18px) scale(1.06); }
-    }
-
-    @keyframes profileCardOrbFloat2 {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(16px, -14px) scale(1.08); }
-    }
-
-    @keyframes profileCardOrbFloat3 {
-        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
-        50% { transform: translate(-10px, 12px) scale(1.1); opacity: 0.55; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .profile-card__orb,
-        .profile-card__grid-layer,
-        .profile-card__grid-glow,
-        .profile-card__accent-bar::after {
-            animation: none !important;
-        }
-    }
-
-    .profile-card:hover {
-        transform: translateY(-4px);
-        box-shadow:
-            0 14px 40px rgba(0, 76, 138, 0.18),
-            0 4px 14px rgba(0, 102, 179, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9),
-            inset 0 -1px 0 rgba(0, 102, 179, 0.08);
+        background: radial-gradient(circle at 30% 20%, rgba(51, 153, 224, 0.05), transparent 42%),
+                    radial-gradient(circle at 75% 75%, rgba(0, 102, 179, 0.04), transparent 38%);
+        opacity: 0.6;
     }
 
     @keyframes profileCardIn {
-        from { opacity: 0; transform: translateY(16px); }
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
     .profile-card__accent-bar {
         height: 4px;
         background: linear-gradient(90deg, var(--site-primary), var(--site-primary-light));
-        position: relative;
-        overflow: hidden;
     }
 
-    .profile-card__accent-bar::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-        animation: profileCardBarShimmer 4s ease-in-out infinite;
+    @media (prefers-reduced-motion: reduce) {
+        .profile-card {
+            animation: none;
+        }
     }
 
-    @keyframes profileCardBarShimmer {
-        0% { transform: translateX(-120%); }
-        100% { transform: translateX(120%); }
+    @media (hover: hover) and (pointer: fine) {
+        .profile-card {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0, 76, 138, 0.16);
+        }
+
+        .profile-card:hover .profile-card__avatar-wrap {
+            transform: scale(1.03);
+        }
+
+        .profile-card__social-link:hover {
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+        }
+
+        .profile-card__share:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.04);
+        }
+
+        .profile-card__qr:hover {
+            transform: scale(1.02);
+        }
+
+        .profile-card__brand:hover {
+            color: var(--site-primary);
+        }
     }
 
     .profile-card__hero {
@@ -286,13 +211,8 @@
         border-radius: 50%;
         padding: 4px;
         background: linear-gradient(145deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 40%, #cbd5e1));
-        box-shadow: 0 8px 24px color-mix(in srgb, var(--card-accent) 28%, transparent);
-        transition: transform 0.3s ease;
+        box-shadow: 0 6px 18px color-mix(in srgb, var(--card-accent) 22%, transparent);
         overflow: hidden;
-    }
-
-    .profile-card:hover .profile-card__avatar-wrap {
-        transform: scale(1.03);
     }
 
     .profile-card__avatar,
@@ -344,14 +264,12 @@
         align-items: center;
         gap: 0.35rem;
         padding: 0.4rem 0.9rem;
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.55);
-        border: 1px solid rgba(0, 102, 179, 0.18);
+        border-radius: 8px;
+        background: rgba(0, 102, 179, 0.06);
+        border: 1px solid rgba(0, 102, 179, 0.14);
         color: var(--site-primary);
         font-size: 0.875rem;
         font-weight: 600;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
     }
 
     .profile-card__bio {
@@ -411,48 +329,26 @@
         justify-content: center;
         width: 46px;
         height: 46px;
-        border-radius: 5px;
+        border-radius: 10px;
         border: none;
         color: #ffffff;
         text-decoration: none;
         font-size: 1.2rem;
-        transition: transform 0.22s ease, filter 0.22s ease, box-shadow 0.22s ease;
         position: relative;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .profile-card__social-link:hover {
-        transform: translateY(-3px) scale(1.04);
-        filter: brightness(1.08);
-        color: #ffffff;
-        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2);
-    }
-
-    .profile-card__social-link .social-tooltip {
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%) scale(0.9);
-        opacity: 0;
-        pointer-events: none;
-        background: #0f172a;
-        color: #fff;
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 5px;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-    }
-
-    .profile-card__social-link:hover .social-tooltip {
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
+    .profile-card__social-link:active {
+        transform: scale(0.92);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
     }
 
     .profile-card__footer {
         padding: 1.15rem 1.75rem 1.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.5);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(0, 102, 179, 0.06));
+        border-top: 1px solid rgba(0, 102, 179, 0.08);
+        background: rgba(0, 102, 179, 0.03);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -477,11 +373,6 @@
         font-size: 0.72rem;
         color: #94a3b8;
         text-decoration: none;
-        transition: color 0.2s ease;
-    }
-
-    .profile-card__brand:hover {
-        color: var(--site-primary);
     }
 
     .profile-card__brand img {
@@ -493,18 +384,11 @@
 
     .profile-card__qr {
         padding: 0.65rem;
-        background: rgba(255, 255, 255, 0.62);
-        border: 1px solid rgba(255, 255, 255, 0.75);
-        border-radius: 5px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 102, 179, 0.1);
+        border-radius: 10px;
         line-height: 0;
-        transition: transform 0.25s ease;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 4px 16px rgba(0, 102, 179, 0.08);
-    }
-
-    .profile-card__qr:hover {
-        transform: scale(1.02);
+        box-shadow: 0 2px 10px rgba(0, 102, 179, 0.06);
     }
 
     .profile-card__qr svg {
@@ -517,29 +401,25 @@
         font-family: 'Cairo', sans-serif;
         width: 100%;
         border: none;
-        border-radius: 5px;
-        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
         font-size: 0.95rem;
         font-weight: 600;
         cursor: pointer;
         color: #fff;
         background: linear-gradient(135deg, var(--site-primary), var(--site-primary-dark));
-        box-shadow: 0 8px 20px rgba(0, 102, 179, 0.28);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        box-shadow: 0 6px 16px rgba(0, 102, 179, 0.22);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-    }
-
-    .profile-card__share:hover {
-        transform: translateY(-1px);
-        filter: brightness(1.05);
-        box-shadow: 0 10px 24px rgba(0, 102, 179, 0.34);
+        -webkit-tap-highlight-color: transparent;
     }
 
     .profile-card__share:active {
-        transform: translateY(0);
+        transform: scale(0.98);
+        box-shadow: 0 3px 10px rgba(0, 102, 179, 0.18);
     }
 
     .profile-card__share.is-success {
@@ -561,10 +441,18 @@
     }
 
     @media (max-width: 480px) {
-        .profile-card-shell { padding: 1rem 0.75rem; }
-        .profile-card__hero { padding: 1.5rem 1.25rem 1rem; }
-        .profile-card__bio { padding: 0 1.25rem 1rem; }
-        .profile-card__social-section { padding: 0 1.25rem 1rem; }
+        .profile-card-shell { padding: 0.75rem 0.65rem; }
+        .profile-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 18px rgba(0, 76, 138, 0.1);
+        }
+        .profile-card__hero { padding: 1.35rem 1.15rem 0.85rem; }
+        .profile-card__name-ar { font-size: 1.45rem; }
+        .profile-card__bio { padding: 0 1.15rem 0.85rem; font-size: 0.9rem; }
+        .profile-card__social-section { padding: 0 1.15rem 0.85rem; }
+        .profile-card__footer { padding: 1rem 1.15rem 1.25rem; }
+        .profile-card__social-link { width: 44px; height: 44px; }
+        .profile-card__qr svg { width: 100px; height: 100px; }
     }
 </style>
 
@@ -580,11 +468,6 @@
                 <div class="profile-card__grid-layer profile-card__grid-layer--v"></div>
                 <div class="profile-card__grid-glow"></div>
             </div>
-            <div class="profile-card__bg-orbs">
-                <span class="profile-card__orb profile-card__orb--1"></span>
-                <span class="profile-card__orb profile-card__orb--2"></span>
-                <span class="profile-card__orb profile-card__orb--3"></span>
-            </div>
         </div>
         <div class="profile-card__accent-bar" aria-hidden="true"></div>
 
@@ -595,6 +478,10 @@
                          alt="{{ $displayName }}"
                          class="profile-card__avatar"
                          id="profileCardAvatar"
+                         width="112"
+                         height="112"
+                         decoding="async"
+                         fetchpriority="high"
                          onerror="this.classList.add('is-hidden');var el=document.getElementById('profileCardAvatarDefault');if(el){el.classList.remove('is-hidden');}">
                     <div class="profile-card__avatar-svg is-hidden"
                          id="profileCardAvatarDefault"
@@ -648,7 +535,6 @@
                        target="_blank"
                        rel="noopener noreferrer"
                        aria-label="{{ $link['label'] ?? 'رابط' }}">
-                        <span class="social-tooltip">{{ $link['label'] ?? 'رابط' }}</span>
                         <i class="{{ $link['icon'] ?? ($preset['default_icon'] ?? 'fas fa-link') }}" aria-hidden="true"></i>
                     </a>
                 @endforeach
@@ -690,6 +576,9 @@
 
     shareBtn.addEventListener('click', function () {
         var title = document.title;
+        shareBtn.classList.add('is-pressed');
+        setTimeout(function () { shareBtn.classList.remove('is-pressed'); }, 150);
+
         if (navigator.share) {
             navigator.share({ title: title, url: publicUrl }).catch(function () {});
             return;
@@ -697,7 +586,7 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(publicUrl).then(function () {
                 shareBtn.classList.add('is-success');
-                if (shareLabel) shareLabel.textContent = 'تم نسخ الرابط للمشاركة';
+                if (shareLabel) shareLabel.textContent = 'تم نسخ الرابط';
                 setTimeout(function () {
                     shareBtn.classList.remove('is-success');
                     if (shareLabel) shareLabel.textContent = 'مشاركة البطاقة';
@@ -705,17 +594,6 @@
             });
         }
     });
-
-    var avatar = document.getElementById('profileCardAvatar');
-    if (avatar) {
-        avatar.addEventListener('error', function () {
-            avatar.style.display = 'none';
-            var fallback = document.getElementById('profileCardAvatarDefault');
-            if (fallback) {
-                fallback.hidden = false;
-            }
-        });
-    }
 })();
 </script>
 @endif
