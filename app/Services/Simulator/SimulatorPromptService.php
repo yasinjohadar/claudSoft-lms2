@@ -62,6 +62,7 @@ RULE;
 
         $kit = SimulatorKit::PLACEHOLDER_KIT;
         $assets = SimulatorKit::PLACEHOLDER_BUNDLE_ASSETS;
+        $global = SimulatorKit::PLACEHOLDER_GLOBAL;
 
         return <<<PROMPT
 You are an expert front-end educator building interactive Arabic RTL lesson simulators (same quality as ClaudSoft simulation_langs).
@@ -88,21 +89,25 @@ topic_key: {$topicKey}
 
 === REQUIRED HTML RULES ===
 1. lang="ar" dir="rtl" on <html>, data-theme="light"
-2. Google fonts ONLY via <link href="https://fonts.googleapis.com/..."> (never script tags for fonts)
-3. Link shared kit CSS using exact placeholder paths (copy from skeleton):
+2. html and body: margin:0; padding:0; width:100%; min-height:100vh — full viewport, no white margins
+3. Root container MUST use class "sim-app" with min-height:100vh
+4. Google fonts ONLY via <link href="https://fonts.googleapis.com/..."> (never script tags for fonts)
+5. Link shared kit CSS using exact placeholder paths (copy from skeleton):
    - href="{$kit}/css/tokens.css" (and base, components, theme-system, utilities)
-4. Link page CSS: href="{$assets}/page.css"
-5. Theme script: defer src="{$kit}/js/theme-manager.js"
-6. Page script: defer src="{$assets}/simulator.js"
-7. Root container MUST use class "sim-app"
-8. All labels, headings, buttons in Arabic
-9. Include <button type="button" class="theme-toggle" aria-label="تبديل الثيم"></button>
-10. NEVER use http:// or https:// in script src — ONLY {$kit} and {$assets} placeholders for scripts
+6. Link page CSS: href="{$assets}/page.css" OR global placeholder href="{$global}/page.css" via __GLOBAL_ASSETS__
+7. Theme script: defer src="{$kit}/js/theme-manager.js"
+8. Page script: defer src="{$assets}/simulator.js" OR __GLOBAL_ASSETS__/simulator.js when logic is minimal
+9. All labels, headings, buttons in Arabic
+10. Include <button type="button" class="theme-toggle" aria-label="تبديل الثيم"></button>
+11. NEVER use http:// or https:// in script src — ONLY {$kit}, {$assets}, and __GLOBAL_ASSETS__ placeholders for scripts
 
 === CSS RULES ===
 - Style sim-header, sim-main/sim-layout, panels, controls — polished glass/card look
+- html, body { margin:0; padding:0; width:100%; min-height:100vh; }
+- .sim-app { min-height:100vh; width:100%; }
 - Responsive: stack columns on mobile
 - Do NOT redefine CSS variables already in tokens.css
+- CSS and JS files are REQUIRED for AI generation (interactivity)
 
 === JS RULES ===
 - No eval(), no document.write(), no external script loads
@@ -117,6 +122,80 @@ topic_key: {$topicKey}
 
 Generate complete, working files now.
 PROMPT;
+    }
+
+    /**
+     * @param  array{html: string, css: string, js: string}  $bundle
+     * @param  array{title?: string}  $options
+     */
+    public function buildBundleRefinePrompt(array $bundle, string $instructions, array $options = []): string
+    {
+        $instructions = trim($instructions);
+        $title = trim($options['title'] ?? '');
+        $kit = SimulatorKit::PLACEHOLDER_KIT;
+        $assets = SimulatorKit::PLACEHOLDER_BUNDLE_ASSETS;
+        $global = SimulatorKit::PLACEHOLDER_GLOBAL;
+
+        $html = $this->excerptForPrompt($bundle['html'] ?? '', 50000);
+        $css = $this->excerptForPrompt($bundle['css'] ?? '', 18000);
+        $js = $this->excerptForPrompt($bundle['js'] ?? '', 18000);
+
+        $titleLine = $title !== '' ? "Simulator title: {$title}\n" : '';
+
+        return <<<PROMPT
+You are an expert front-end educator editing an existing Arabic RTL interactive lesson simulator (HTML + CSS + JS).
+
+The admin wants SPECIFIC changes. Apply ONLY what they ask; preserve everything else (layout, ids, logic, Arabic copy) unless the instruction requires changing it.
+
+Return EXACTLY three markdown code blocks — no other text:
+
+```html
+(complete updated index.html)
+```
+```css
+(complete updated page CSS)
+```
+```javascript
+(complete updated simulator logic)
+```
+
+{$titleLine}=== EDITOR INSTRUCTIONS (follow precisely) ===
+{$instructions}
+
+=== RULES ===
+1. lang="ar" dir="rtl", root class "sim-app", full viewport (html/body margin:0, min-height:100vh)
+2. Placeholders only for local assets: {$kit}, {$assets}, {$global}
+3. Google Fonts via <link> only; NO external CDN scripts
+4. No eval(), no document.write()
+5. Return COMPLETE files (not diffs), ready to run
+6. Keep existing functionality unless instructions say to remove/change it
+
+=== CURRENT HTML ===
+```html
+{$html}
+```
+
+=== CURRENT CSS ===
+```css
+{$css}
+```
+
+=== CURRENT JS ===
+```javascript
+{$js}
+```
+
+Apply the editor instructions and return the three complete updated files.
+PROMPT;
+    }
+
+    private function excerptForPrompt(string $text, int $limit): string
+    {
+        if (mb_strlen($text) <= $limit) {
+            return $text;
+        }
+
+        return Str::limit($text, $limit)."\n\n/* ... truncated for prompt; preserve structure and apply edits consistently ... */";
     }
 
     /**

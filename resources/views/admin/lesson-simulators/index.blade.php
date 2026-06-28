@@ -12,6 +12,9 @@
                 <h5 class="page-title fs-21 mb-1">محاكيات الدروس التفاعلية</h5>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('admin.lesson-simulators.ai.create') }}" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-bolt me-1"></i> توليد بالذكاء الاصطناعي
+                </a>
                 <a href="{{ route('admin.lesson-simulators.create') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i> إنشاء محاكاة
                 </a>

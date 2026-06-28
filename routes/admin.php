@@ -77,6 +77,7 @@ use App\Http\Controllers\Admin\GroupRegistrationSettingController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\LaravelAiModelController;
+use App\Http\Controllers\Admin\LessonSimulatorAiController;
 use App\Http\Controllers\Admin\LessonSimulatorController;
 use App\Http\Controllers\Admin\MarketingAnalyticsController;
 use App\Http\Controllers\Admin\MetaPixelSettingController;
@@ -512,8 +513,13 @@ Route::prefix('admin')
 
         // ========== Lesson Simulators ==========
         Route::prefix('lesson-simulators')->name('admin.lesson-simulators.')->group(function () {
-            Route::get('/ai/create', fn () => redirect()->route('admin.lesson-simulators.create'));
-            Route::get('/ai/{lessonSimulator}/review', fn (\App\Models\LessonSimulator $lessonSimulator) => redirect()->route('admin.lesson-simulators.edit', $lessonSimulator));
+            Route::get('/ai/create', [LessonSimulatorAiController::class, 'create'])->name('ai.create');
+            Route::post('/generate-bundle', [LessonSimulatorAiController::class, 'generateSync'])->name('generate-bundle');
+            Route::post('/refine-bundle', [LessonSimulatorAiController::class, 'refineBundle'])->name('refine-bundle');
+            Route::post('/ai/store', [LessonSimulatorAiController::class, 'storeAsync'])->name('ai.store');
+            Route::get('/ai/{lessonSimulator}/review', [LessonSimulatorAiController::class, 'review'])->name('ai.review');
+            Route::get('/ai/{lessonSimulator}/status', [LessonSimulatorAiController::class, 'status'])->name('ai.status');
+            Route::post('/ai/{lessonSimulator}/regenerate', [LessonSimulatorAiController::class, 'regenerate'])->name('ai.regenerate');
 
             Route::post('/preview-bundle', [LessonSimulatorController::class, 'previewBundle'])->name('preview-bundle');
             Route::get('/global-assets', [LessonSimulatorController::class, 'globalAssets'])->name('global-assets');

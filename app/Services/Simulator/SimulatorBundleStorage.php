@@ -87,18 +87,21 @@ class SimulatorBundleStorage
         Storage::disk('local')->deleteDirectory($this->diskPath($slug));
     }
 
-    public function playHtml(string $slug, string $assetsBaseUrl): ?string
+    public function playHtml(string $slug, string $assetsBaseUrl = ''): ?string
     {
         $bundle = $this->load($slug);
         if (! $bundle) {
             return null;
         }
 
-        return SimulatorKit::buildPlayDocument(
+        $global = app(SimulatorGlobalAssets::class)->load();
+
+        return SimulatorKit::buildInlinePreviewDocument(
             $bundle['html'],
             $bundle['css'],
             $bundle['js'],
-            $assetsBaseUrl
+            $global['css'],
+            $global['js'],
         );
     }
 

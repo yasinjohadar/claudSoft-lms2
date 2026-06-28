@@ -119,8 +119,16 @@ class SimulatorKit
         $assets = rtrim($perSimulatorAssetsBaseUrl, '/');
         $html = self::resolveHtmlPaths($html, $assets);
 
-        $cssUrl = trim($customCss) !== '' ? $assets.'/page.css' : self::globalPageCssUrl();
-        $jsUrl = trim($customJs) !== '' ? $assets.'/simulator.js' : self::globalSimulatorJsUrl();
+        $hasCustomCss = trim($customCss) !== '';
+        $hasCustomJs = trim($customJs) !== '';
+
+        if ($hasCustomCss || $hasCustomJs) {
+            $html = self::stripBundleAssetReferences($html);
+            $html = self::stripGlobalAssetReferences($html);
+        }
+
+        $cssUrl = $hasCustomCss ? $assets.'/page.css' : self::globalPageCssUrl();
+        $jsUrl = $hasCustomJs ? $assets.'/simulator.js' : self::globalSimulatorJsUrl();
 
         return self::attachStylesAndScripts($html, [
             'cssUrl' => $cssUrl,
@@ -231,6 +239,22 @@ class SimulatorKit
         $patterns = [
             '#<link[^>]+href=["\'][^"\']*(?:page\.css|__BUNDLE_ASSETS__[^"\']*)["\'][^>]*>#i',
             '#<script[^>]+src=["\'][^"\']*(?:simulator\.js|__BUNDLE_ASSETS__[^"\']*)["\'][^>]*>\s*</script>#i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $html = preg_replace($pattern, '', $html) ?? $html;
+        }
+
+        return $html;
+    }
+
+    public static function stripGlobalAssetReferences(string $html): string
+    {
+        $patterns = [
+            '#<link[^>]+href=["\'][^"\']*simulator-kit/global/page\.css[^"\']*["\'][^>]*>#i',
+            '#<link[^>]+href=["\'][^"\']*global/page\.css[^"\']*["\'][^>]*>#i',
+            '#<script[^>]+src=["\'][^"\']*simulator-kit/global/simulator\.js[^"\']*["\'][^>]*>\s*</script>#i',
+            '#<script[^>]+src=["\'][^"\']*global/simulator\.js[^"\']*["\'][^>]*>\s*</script>#i',
         ];
 
         foreach ($patterns as $pattern) {

@@ -40,9 +40,12 @@ HTML,
         $loaded = $storage->load('demo-slug');
         $this->assertStringContainsString('sim-app', $loaded['html']);
 
-        $assetsBase = 'https://example.test/simulator/demo-slug/assets/';
-        $playHtml = $storage->playHtml('demo-slug', $assetsBase);
+        $playHtml = $storage->playHtml('demo-slug');
         $this->assertStringContainsString(url('simulator-kit/shared/css/tokens.css'), $playHtml);
-        $this->assertStringContainsString(rtrim($assetsBase, '/').'/page.css', $playHtml);
+        $this->assertStringContainsString('<style id="bundle-page-css">', $playHtml);
+        $this->assertStringContainsString('.sim-app { color: red; }', $playHtml);
+        $this->assertStringContainsString('<script id="bundle-simulator-js">', $playHtml);
+        $this->assertStringContainsString('console.log(1);', $playHtml);
+        $this->assertStringNotContainsString('page.css', $playHtml);
     }
 }

@@ -134,6 +134,7 @@
     function updatePreview() {
         clearTimeout(previewTimer);
         previewTimer = setTimeout(function () {
+            if (!htmlEl || !frame) return;
             loadingEl.classList.remove('d-none');
             statusEl.textContent = 'جاري التحديث...';
 
@@ -168,16 +169,40 @@
         }, 500);
     }
 
-    btn.addEventListener('click', function () {
-        clearTimeout(previewTimer);
-        updatePreview();
-    });
+    if (btn) {
+        btn.addEventListener('click', function () {
+            clearTimeout(previewTimer);
+            updatePreview();
+        });
+    }
 
     [htmlEl, cssEl, jsEl].forEach(function (el) {
-        el.addEventListener('input', updatePreview);
+        if (el) el.addEventListener('input', updatePreview);
     });
 
-    updatePreview();
+    window.simulatorRefreshPreview = function () {
+        clearTimeout(previewTimer);
+        updatePreview();
+    };
+
+    document.addEventListener('simulator-ai-generated', function (e) {
+        const data = e.detail || {};
+        const titleEl = document.querySelector('#simulator-bundle-form [name="title"]');
+        const descEl = document.querySelector('#simulator-bundle-form [name="description"]');
+        const customPanel = document.getElementById('custom-assets-panel');
+
+        if (titleEl && data.title) titleEl.value = data.title;
+        if (descEl && data.description) descEl.value = data.description;
+        if (htmlEl) htmlEl.value = data.html || '';
+        if (cssEl) cssEl.value = data.css || '';
+        if (jsEl) jsEl.value = data.js || '';
+        if (customPanel && ((data.css && data.css.trim()) || (data.js && data.js.trim()))) {
+            customPanel.classList.add('show');
+        }
+        window.simulatorRefreshPreview();
+    });
+
+    if (htmlEl) updatePreview();
 })();
 </script>
 @endpush

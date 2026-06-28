@@ -66,6 +66,31 @@ class SimulatorGenerationService
     }
 
     /**
+     * @param  array{html: string, css: string, js: string}  $bundle
+     * @param  array<string, mixed>  $options
+     * @return array{bundle: array{html: string, css: string, js: string}, meta: array, title: string}
+     */
+    public function refineHtmlBundle(array $bundle, string $instructions, array $options = []): array
+    {
+        set_time_limit(300);
+
+        $prompt = $this->promptService->buildBundleRefinePrompt($bundle, $instructions, $options);
+        $topicKey = $options['topic_key'] ?? 'custom.refine';
+        $archetype = $options['archetype'] ?? 'playground';
+        $engine = $options['engine'] ?? 'laravel_ai';
+
+        if ($engine === 'legacy') {
+            $result = $this->runLegacyBundleGeneration($prompt, $topicKey, $options, $archetype);
+        } else {
+            $result = $this->runLaravelBundleGeneration($prompt, $topicKey, $options, $archetype);
+        }
+
+        $result['meta']['operation'] = 'refine';
+
+        return $result;
+    }
+
+    /**
      * @param  array<string, mixed>  $options
      * @return array{spec: array, meta: array, title: string}
      */

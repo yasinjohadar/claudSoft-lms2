@@ -203,12 +203,23 @@ class LessonSimulatorController extends Controller
 
     public function preview(LessonSimulator $lessonSimulator)
     {
-        return view('simulator.html-bundle', [
-            'simulator' => $lessonSimulator,
-            'playUrl' => route('admin.lesson-simulators.play-document', $lessonSimulator),
-            'hasContent' => $lessonSimulator->hasPlayableContent(),
-            'generationMeta' => [],
-            'isPreview' => true,
+        if (! $lessonSimulator->isHtmlBundle() || ! $lessonSimulator->hasPlayableContent()) {
+            return view('simulator.html-bundle', [
+                'simulator' => $lessonSimulator,
+                'playUrl' => '',
+                'hasContent' => false,
+                'generationMeta' => [],
+                'isPreview' => true,
+            ]);
+        }
+
+        $html = $this->bundleStorage->playHtml($lessonSimulator->slug);
+        if (! $html) {
+            abort(404);
+        }
+
+        return response($html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
         ]);
     }
 
@@ -218,8 +229,7 @@ class LessonSimulatorController extends Controller
             abort(404);
         }
 
-        $assetsBase = SimulatorKit::adminBundleAssetsBaseUrl($lessonSimulator->id);
-        $html = $this->bundleStorage->playHtml($lessonSimulator->slug, $assetsBase);
+        $html = $this->bundleStorage->playHtml($lessonSimulator->slug);
         if (! $html) {
             abort(404);
         }

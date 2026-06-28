@@ -79,7 +79,7 @@ class SimulatorPlayerController extends Controller
         }
 
         $assetsBase = SimulatorKit::bundleAssetsBaseUrl($slug);
-        $html = $this->bundleStorage->playHtml($simulator->slug, $assetsBase);
+        $html = $this->bundleStorage->playHtml($simulator->slug);
         if (! $html) {
             abort(404);
         }
