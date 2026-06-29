@@ -77,6 +77,7 @@ use App\Http\Controllers\Admin\GroupRegistrationSettingController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\LaravelAiModelController;
+use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\LessonSimulatorAiController;
 use App\Http\Controllers\Admin\LessonSimulatorController;
 use App\Http\Controllers\Admin\SimulatorCategoryController;
@@ -96,6 +97,7 @@ use App\Http\Controllers\Admin\ProjectChallengeController;
 use App\Http\Controllers\Admin\ProjectGradingController;
 use App\Http\Controllers\Admin\ProjectTeamController;
 use App\Http\Controllers\Admin\QuestionBankController;
+use App\Http\Controllers\Admin\QuestionBankAiGenerationController;
 use App\Http\Controllers\Admin\QuestionBankTypeImportController;
 use App\Http\Controllers\Admin\QuestionModuleController;
 use App\Http\Controllers\Admin\QuestionModuleGradingController;
@@ -422,7 +424,15 @@ Route::prefix('admin')
         Route::post('quizzes/preview/{attemptId}/submit', [QuizPreviewController::class, 'submit'])->name('quizzes.preview.submit');
         Route::get('quizzes/preview/{attemptId}/review', [QuizPreviewController::class, 'review'])->name('quizzes.preview.review');
 
-        // Question Bank Management
+        // Question Bank Management — AI generation (must be before question-bank resource)
+        Route::get('question-bank/ai-generate', [QuestionBankAiGenerationController::class, 'create'])->name('question-bank.ai-generate.create');
+        Route::post('question-bank/ai-generate', [QuestionBankAiGenerationController::class, 'store'])->name('question-bank.ai-generate.store');
+        Route::get('question-bank/ai-generate/{generation}/review', [QuestionBankAiGenerationController::class, 'review'])->name('question-bank.ai-generate.review');
+        Route::post('question-bank/ai-generate/{generation}/save-all', [QuestionBankAiGenerationController::class, 'saveAll'])->name('question-bank.ai-generate.save-all');
+        Route::post('question-bank/ai-generate/{generation}/save-selected', [QuestionBankAiGenerationController::class, 'saveSelected'])->name('question-bank.ai-generate.save-selected');
+        Route::post('question-bank/ai-generate/{generation}/save-one/{index}', [QuestionBankAiGenerationController::class, 'saveOne'])->name('question-bank.ai-generate.save-one');
+        Route::post('question-bank/ai-generate/{generation}/regenerate', [QuestionBankAiGenerationController::class, 'regenerate'])->name('question-bank.ai-generate.regenerate');
+
         Route::get('question-bank/create/{type}', [QuestionBankController::class, 'createByType'])->name('question-bank.create.type');
         Route::resource('question-bank', QuestionBankController::class);
         Route::post('question-bank/{id}/duplicate', [QuestionBankController::class, 'duplicate'])->name('question-bank.duplicate');

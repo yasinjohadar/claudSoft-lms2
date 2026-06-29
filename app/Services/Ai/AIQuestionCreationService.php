@@ -25,6 +25,44 @@ class AIQuestionCreationService
     ) {}
 
     /**
+     * بناء prompt لتوليد الأسئلة (للاستخدام من مسار المعاينة في بنك الأسئلة).
+     */
+    public function buildQuestionGenerationPrompt(
+        string $text,
+        ProgrammingLanguage $programmingLanguage,
+        Collection $questionTypes,
+        int $numberOfQuestions,
+        string $difficultyLevel
+    ): string {
+        $questionTypeNamesStr = $questionTypes->pluck('display_name')->implode('، ');
+
+        return $this->buildPrompt(
+            $text,
+            $programmingLanguage->display_name ?? $programmingLanguage->name,
+            $questionTypeNamesStr,
+            $numberOfQuestions,
+            $difficultyLevel
+        );
+    }
+
+    /**
+     * حفظ أسئلة مُحلَّلة في بنك الأسئلة مع دعم كل الأنواع.
+     */
+    public function saveParsedQuestionsToBank(
+        array $generatedQuestions,
+        ProgrammingLanguage $programmingLanguage,
+        Collection $questionTypes,
+        array $options = []
+    ): Collection {
+        return $this->saveQuestionsToBank(
+            $generatedQuestions,
+            $programmingLanguage,
+            $questionTypes,
+            $options
+        );
+    }
+
+    /**
      * إنشاء أسئلة من درس
      */
     public function createQuestionsFromLesson(

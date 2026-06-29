@@ -33,7 +33,7 @@
                     </td>
                     <td>
                         <span class="qb-type-chip">
-                            <i class="{{ $question->questionType->icon ?? 'fe fe-help-circle' }}"></i>
+                            <i class="{{ $question->questionType?->featherIconClass() ?? 'fe fe-help-circle' }}"></i>
                             {{ $question->questionType->display_name }}
                         </span>
                     </td>

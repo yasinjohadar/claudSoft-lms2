@@ -107,6 +107,10 @@
                                 <span class="group-show-action__icon"><i class="fe fe-plus"></i></span>
                                 <span class="group-show-action__text">إضافة سؤال جديد</span>
                             </a>
+                            <a href="{{ route('question-bank.ai-generate.create', request()->only(['course_id', 'difficulty', 'language_id'])) }}" class="group-show-action group-show-action--primary">
+                                <span class="group-show-action__icon"><i class="fe fe-cpu"></i></span>
+                                <span class="group-show-action__text">توليد بالذكاء الاصطناعي</span>
+                            </a>
                             <a href="{{ route('question-bank.import.excel') }}" class="group-show-action group-show-action--success">
                                 <span class="group-show-action__icon"><i class="fe fe-file-text"></i></span>
                                 <span class="group-show-action__text">استيراد من Excel</span>

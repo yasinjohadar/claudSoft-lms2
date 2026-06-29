@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Laravel Deployment Script
 # استخدم هذا السكريبت بعد رفع الملفات على السيرفر
@@ -30,8 +31,14 @@ php artisan storage:link
 # 5. إنشاء الـ Cache للإنتاج
 echo "💾 إنشاء الـ Cache للإنتاج..."
 php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan route:cache || {
+    echo "❌ فشل route:cache — امسح الكاش ثم أعد المحاولة: php artisan route:clear"
+    exit 1
+}
+php artisan view:cache || {
+    echo "❌ فشل view:cache — راجع storage/logs/laravel.log ثم: php artisan view:clear"
+    exit 1
+}
 
 # 6. مسح Permission Cache
 echo "🔐 مسح Permission Cache..."

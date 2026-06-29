@@ -7,8 +7,10 @@ use App\Models\AIQuestionGeneration;
 use App\Models\Course;
 use App\Models\LaravelAiModel;
 use App\Models\Lesson;
+use App\Models\ProgrammingLanguage;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
+use App\Models\QuestionType;
 use App\Services\AiNew\LaravelAiPromptRunner;
 use App\Services\AiNew\LaravelAiProviderManager;
 use Illuminate\Support\Collection;
@@ -20,6 +22,7 @@ class AIQuestionGenerationService
     public function __construct(
         private AIModelService $modelService,
         private AIPromptService $promptService,
+        private AIQuestionCreationService $creationService,
         private LaravelAiProviderManager $providerManager,
         private LaravelAiPromptRunner $promptRunner,
     ) {}
@@ -109,6 +112,57 @@ class AIQuestionGenerationService
     }
 
     /**
+     * إنشاء طلب توليد من بنك الأسئلة (معاينة ثم حفظ).
+     */
+    public function createQuestionBankGeneration(array $options): AIQuestionGeneration
+    {
+        $user = $options['user'] ?? auth()->user();
+        $laraModel = $options['laravel_model'] ?? null;
+        $questionTypeIds = array_values(array_map('intval', $options['question_type_ids'] ?? []));
+        $lessonNameRaw = isset($options['lesson_name']) ? trim((string) $options['lesson_name']) : '';
+        $lessonName = $lessonNameRaw !== '' ? $lessonNameRaw : null;
+
+        $base = [
+            'user_id' => $user->id,
+            'course_id' => $options['course_id'] ?? null,
+            'lesson_id' => $options['lesson_id'] ?? null,
+            'lesson_name' => $lessonName,
+            'programming_language_id' => $options['programming_language_id'],
+            'source_type' => $options['source_type'] ?? 'manual_text',
+            'source_content' => $options['source_content'],
+            'question_type' => 'mixed',
+            'question_type_ids' => $questionTypeIds,
+            'number_of_questions' => $options['number_of_questions'] ?? 5,
+            'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+            'default_grade' => $options['default_grade'] ?? 1,
+            'status' => 'pending',
+            'saved_indices' => [],
+            'saved_question_ids' => [],
+        ];
+
+        if ($laraModel instanceof LaravelAiModel) {
+            $generation = AIQuestionGeneration::create(array_merge($base, [
+                'ai_model_id' => null,
+                'laravel_ai_model_id' => $laraModel->id,
+            ]));
+        } else {
+            $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
+            if (! $model) {
+                throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
+            }
+
+            $generation = AIQuestionGeneration::create(array_merge($base, [
+                'ai_model_id' => $model->id,
+                'laravel_ai_model_id' => null,
+            ]));
+        }
+
+        $this->processGeneration($generation);
+
+        return $generation->fresh();
+    }
+
+    /**
      * معالجة التوليد
      */
     public function processGeneration(AIQuestionGeneration $generation): array
@@ -137,14 +191,7 @@ class AIQuestionGenerationService
             }
 
             // بناء الـ prompt
-            $prompt = $this->promptService->getQuestionGenerationPrompt(
-                $generation->source_content,
-                [
-                    'question_type' => $generation->question_type,
-                    'number_of_questions' => $generation->number_of_questions,
-                    'difficulty_level' => $generation->difficulty_level,
-                ]
-            );
+            $prompt = $this->resolvePrompt($generation);
 
             // حساب max_tokens بناءً على عدد الأسئلة (تقريباً 800 token لكل سؤال للأسئلة الطويلة)
             // زيادة العدد لضمان عدم قطع الاستجابة
@@ -259,14 +306,7 @@ class AIQuestionGenerationService
         $generation->update(['status' => 'processing']);
 
         try {
-            $prompt = $this->promptService->getQuestionGenerationPrompt(
-                $generation->source_content,
-                [
-                    'question_type' => $generation->question_type,
-                    'number_of_questions' => $generation->number_of_questions,
-                    'difficulty_level' => $generation->difficulty_level,
-                ]
-            );
+            $prompt = $this->resolvePrompt($generation);
 
             Log::info('Question generation (Laravel AI SDK) starting', [
                 'generation_id' => $generation->id,
@@ -342,28 +382,143 @@ class AIQuestionGenerationService
             throw new \Exception('التوليد لم يكتمل بعد');
         }
 
-        $questions = $generation->generated_questions ?? [];
-        $savedQuestions = collect();
-
-        // إذا تم تحديد indices، احفظ فقط المحددة
-        if ($selectedIndices !== null && ! empty($selectedIndices)) {
-            $filteredQuestions = [];
-            foreach ($questions as $index => $questionData) {
-                if (in_array($index, $selectedIndices)) {
-                    $filteredQuestions[] = $questionData;
-                }
-            }
-            $questions = $filteredQuestions;
+        $allQuestions = $generation->generated_questions ?? [];
+        if (empty($allQuestions)) {
+            return collect();
         }
 
-        // تحويل نوع السؤال إلى question_type_id
+        $alreadySaved = $generation->getSavedIndices();
+        $indicesToProcess = $this->resolveIndicesToSave($allQuestions, $alreadySaved, $selectedIndices);
+
+        if (empty($indicesToProcess)) {
+            return collect();
+        }
+
+        $questionsToSave = [];
+        foreach ($indicesToProcess as $index) {
+            $questionData = $allQuestions[$index] ?? null;
+            if (! is_array($questionData)) {
+                continue;
+            }
+
+            if (! isset($questionData['points'])) {
+                $questionData['points'] = (float) ($generation->default_grade ?? 1);
+            }
+
+            $questionsToSave[] = $questionData;
+        }
+
+        if (empty($questionsToSave)) {
+            return collect();
+        }
+
+        if ($generation->usesQuestionBankFields()) {
+            $programmingLanguage = $generation->programmingLanguage
+                ?? ProgrammingLanguage::findOrFail($generation->programming_language_id);
+            $questionTypes = QuestionType::whereIn('id', $generation->question_type_ids ?? [])->get();
+
+            if ($questionTypes->isEmpty()) {
+                throw new \Exception('أنواع الأسئلة المحددة غير متوفرة');
+            }
+
+            $lessonName = $generation->lesson_name;
+            if (! $lessonName && $generation->lesson) {
+                $lessonName = $generation->lesson->title;
+            }
+
+            $savedQuestions = $this->creationService->saveParsedQuestionsToBank(
+                $questionsToSave,
+                $programmingLanguage,
+                $questionTypes,
+                [
+                    'user' => $generation->user,
+                    'course_id' => $generation->course_id,
+                    'lesson_name' => $lessonName,
+                ]
+            );
+        } else {
+            $savedQuestions = $this->saveLegacyGeneratedQuestions($generation, $questionsToSave);
+        }
+
+        $this->markIndicesAsSaved($generation, $indicesToProcess, $savedQuestions);
+
+        return $savedQuestions;
+    }
+
+    public function saveSingleQuestion(AIQuestionGeneration $generation, int $index): ?QuestionBank
+    {
+        $saved = $this->saveGeneratedQuestions($generation, [$index]);
+
+        return $saved->first();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $allQuestions
+     * @param  array<int, int>  $alreadySaved
+     * @param  array<int, int>|null  $selectedIndices
+     * @return array<int, int>
+     */
+    private function resolveIndicesToSave(array $allQuestions, array $alreadySaved, ?array $selectedIndices): array
+    {
+        $candidateIndices = $selectedIndices !== null
+            ? array_map('intval', $selectedIndices)
+            : array_map('intval', array_keys($allQuestions));
+
+        $indices = [];
+        foreach ($candidateIndices as $index) {
+            if (! array_key_exists($index, $allQuestions)) {
+                continue;
+            }
+            if (in_array($index, $alreadySaved, true)) {
+                continue;
+            }
+            $indices[] = $index;
+        }
+
+        return $indices;
+    }
+
+    private function markIndicesAsSaved(
+        AIQuestionGeneration $generation,
+        array $indicesToProcess,
+        Collection $savedQuestions
+    ): void {
+        $savedIndices = $generation->getSavedIndices();
+        $savedQuestionIds = $generation->saved_question_ids ?? [];
+
+        foreach ($indicesToProcess as $position => $index) {
+            $question = $savedQuestions->get($position);
+            if (! $question instanceof QuestionBank) {
+                continue;
+            }
+
+            if (! in_array($index, $savedIndices, true)) {
+                $savedIndices[] = $index;
+            }
+
+            $savedQuestionIds[(string) $index] = $question->id;
+        }
+
+        $generation->update([
+            'saved_indices' => array_values(array_unique($savedIndices)),
+            'saved_question_ids' => $savedQuestionIds,
+        ]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $questions
+     */
+    private function saveLegacyGeneratedQuestions(AIQuestionGeneration $generation, array $questions): Collection
+    {
         $questionTypeMap = [
-            'single_choice' => 1,     // multiple_choice_single
-            'multiple_choice' => 2,   // multiple_choice_multiple
-            'true_false' => 3,        // true_false
-            'short_answer' => 4,      // short_answer
-            'essay' => 5,             // essay
+            'single_choice' => 1,
+            'multiple_choice' => 2,
+            'true_false' => 3,
+            'short_answer' => 4,
+            'essay' => 5,
         ];
+
+        $savedQuestions = collect();
 
         DB::beginTransaction();
         try {
@@ -387,10 +542,9 @@ class AIQuestionGenerationService
                     ],
                 ]);
 
-                // إضافة الخيارات إذا كانت موجودة
                 if (isset($questionData['options']) && is_array($questionData['options'])) {
                     $correctAnswer = $questionData['correct_answer'] ?? '';
-                    foreach ($questionData['options'] as $index => $optionText) {
+                    foreach ($questionData['options'] as $optionIndex => $optionText) {
                         $isCorrect = false;
                         if (is_array($correctAnswer)) {
                             $isCorrect = in_array($optionText, $correctAnswer);
@@ -402,7 +556,7 @@ class AIQuestionGenerationService
                             'question_id' => $question->id,
                             'option_text' => $optionText,
                             'is_correct' => $isCorrect,
-                            'option_order' => $index + 1,
+                            'option_order' => $optionIndex + 1,
                             'grade_percentage' => $isCorrect ? 100 : 0,
                         ]);
                     }
@@ -413,7 +567,7 @@ class AIQuestionGenerationService
 
             DB::commit();
 
-            Log::info('Questions saved successfully', [
+            Log::info('Questions saved successfully (legacy generation)', [
                 'generation_id' => $generation->id,
                 'saved_count' => $savedQuestions->count(),
             ]);
@@ -426,6 +580,32 @@ class AIQuestionGenerationService
             ]);
             throw $e;
         }
+    }
+
+    private function resolvePrompt(AIQuestionGeneration $generation): string
+    {
+        if ($generation->usesQuestionBankFields()) {
+            $programmingLanguage = $generation->programmingLanguage
+                ?? ProgrammingLanguage::findOrFail($generation->programming_language_id);
+            $questionTypes = QuestionType::whereIn('id', $generation->question_type_ids ?? [])->get();
+
+            return $this->creationService->buildQuestionGenerationPrompt(
+                $generation->source_content,
+                $programmingLanguage,
+                $questionTypes,
+                $generation->number_of_questions,
+                $generation->difficulty_level
+            );
+        }
+
+        return $this->promptService->getQuestionGenerationPrompt(
+            $generation->source_content,
+            [
+                'question_type' => $generation->question_type,
+                'number_of_questions' => $generation->number_of_questions,
+                'difficulty_level' => $generation->difficulty_level,
+            ]
+        );
     }
 
     /**
