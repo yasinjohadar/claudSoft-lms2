@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\QuestionBank;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Models\QuizSettings;
 use App\Models\QuizAnalytics;
+use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Events\QuizCompleted;
 
 class QuizAttemptController extends Controller
 {
+    public function __construct(
+        protected QuizAttemptStartService $attemptStartService,
+    ) {}
     /**
      * Display available quizzes for student.
      */
@@ -174,68 +179,39 @@ class QuizAttemptController extends Controller
                 ->where('student_id', $studentId)
                 ->count() + 1;
 
-            // Prepare questions order
-            $questionIds = $quiz->quizQuestions()->pluck('question_id')->toArray();
+            $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
+            $questionIds = $startData['question_ids'];
 
-            if ($quiz->shuffle_questions) {
-                shuffle($questionIds);
-            }
-
-            // Create attempt
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->id,
                 'student_id' => $studentId,
                 'attempt_number' => $attemptNumber,
                 'status' => 'in_progress',
                 'started_at' => now(),
-                'max_score' => $quiz->max_score,
+                'max_score' => $startData['max_score'],
                 'questions_order' => $questionIds,
+                'selection_meta' => $startData['selection_meta'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'is_completed' => false,
             ]);
 
-            // Create responses for all questions
-            foreach ($questionIds as $index => $questionId) {
-                $quizQuestion = $quiz->quizQuestions()
-                    ->where('question_id', $questionId)
-                    ->with('question.questionType')
-                    ->first();
-
-                if (!$quizQuestion || !$quizQuestion->question) {
-                    \Illuminate\Support\Facades\Log::warning('Quiz question not found', [
-                        'quiz_id' => $quiz->id,
-                        'question_id' => $questionId,
-                    ]);
-                    continue; // Skip if question not found
-                }
-
-                // Get question_type_id - required field
-                $questionTypeId = $quizQuestion->question->question_type_id;
-                if (!$questionTypeId) {
-                    \Illuminate\Support\Facades\Log::warning('Question has no question_type_id', [
-                        'question_id' => $questionId,
-                    ]);
-                    continue; // Skip if question has no type
-                }
-
-                // Get max_score from quizQuestion (question_grade) or question default_grade or 1.0
-                $maxScore = $quizQuestion->getGrade(); // This method handles null values and returns 1.0 as default
-
-                QuizResponse::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $questionId,
-                    'question_type_id' => $questionTypeId,
-                    'max_score' => $maxScore,
-                    'answer_order' => $index + 1,
-                    'marked_for_review' => false,
-                ]);
-            }
+            $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $questionIds);
 
             DB::commit();
 
-            return redirect()->route('student.quizzes.take', $attempt->id)
+            $redirect = redirect()->route('student.quizzes.take', $attempt->id)
                 ->with('success', 'تم بدء الاختبار بنجاح');
+
+            if (! empty($startData['selection_meta']['recycled'])) {
+                $redirect->with('pool_recycled', true);
+            }
+
+            return $redirect;
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+
+            return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage()]);
@@ -342,11 +318,23 @@ class QuizAttemptController extends Controller
                     ->first();
 
                 if (!$quizQuestion) {
-                    \Log::warning('Quiz question not found in questions_order', [
-                        'attempt_id' => $attempt->id,
-                        'question_id' => $questionId
+                    $question = QuestionBank::with(['questionType', 'options' => fn ($q) => $q->orderBy('option_order', 'asc')])
+                        ->find($questionId);
+
+                    if (! $question) {
+                        \Log::warning('Quiz question not found in questions_order', [
+                            'attempt_id' => $attempt->id,
+                            'question_id' => $questionId,
+                        ]);
+
+                        return null;
+                    }
+
+                    $question->setRelation('pivot', (object) [
+                        'question_grade' => $this->attemptStartService->gradeForQuestion($attempt->quiz, (int) $questionId),
                     ]);
-                    return null;
+
+                    return $question;
                 }
 
                 $response = $attempt->responses()

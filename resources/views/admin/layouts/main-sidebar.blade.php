@@ -31,6 +31,7 @@
                             $assessmentsActive = request()->routeIs(
                                 'assignments.*',
                                 'quizzes.*',
+                                'random-pool-quizzes.*',
                                 'programming-challenges.*',
                                 'admin.challenge-grading.*',
                                 'admin.project-challenges.*',
@@ -192,6 +193,21 @@
                                         </li>
                                         <li class="slide {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">
                                             <a href="{{ route('quizzes.create') }}" class="side-menu__item {{ request()->routeIs('quizzes.create') ? 'active' : '' }}">إضافة اختبار جديد</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="slide has-sub {{ request()->routeIs('random-pool-quizzes.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('random-pool-quizzes.*') ? 'active' : '' }}">
+                                        <i class="fas fa-random me-2"></i>بنك عشوائي
+                                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                                    </a>
+                                    <ul class="slide-menu child2 {{ request()->routeIs('random-pool-quizzes.*') ? 'active' : '' }}" style="{{ request()->routeIs('random-pool-quizzes.*') ? 'display: block;' : '' }}">
+                                        <li class="slide {{ request()->routeIs('random-pool-quizzes.index') ? 'active' : '' }}">
+                                            <a href="{{ route('random-pool-quizzes.index') }}" class="side-menu__item {{ request()->routeIs('random-pool-quizzes.index') ? 'active' : '' }}">جميع اختبارات البنك</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('random-pool-quizzes.create') ? 'active' : '' }}">
+                                            <a href="{{ route('random-pool-quizzes.create') }}" class="side-menu__item {{ request()->routeIs('random-pool-quizzes.create') ? 'active' : '' }}">إضافة اختبار بنك عشوائي</a>
                                         </li>
                                     </ul>
                                 </li>

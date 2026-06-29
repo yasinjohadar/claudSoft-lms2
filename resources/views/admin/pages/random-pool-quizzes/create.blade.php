@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    إضافة اختبار جديد
+    إضافة اختبار بنك عشوائي
 @stop
 
 @section('styles')
@@ -20,7 +20,7 @@
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('random-pool-quizzes.index') }}">اختبارات بنك عشوائي</a></li>
                         <li class="breadcrumb-item active">إضافة اختبار</li>
                     </ol>
                 </nav>
@@ -29,13 +29,13 @@
             <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
                 <div class="row align-items-start g-3">
                     <div class="col-lg-8">
-                        <span class="group-show-hero__eyebrow"><i class="fe fe-plus me-1"></i>اختبار جديد</span>
-                        <h2 class="group-show-hero__title mb-2">إضافة اختبار جديد</h2>
-                        <p class="group-show-hero__desc mb-0">حدد الكورس ونوع الاختبار، اضبط الدرجات والوقت، ثم انشره للطلاب.</p>
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-shuffle me-1"></i>بنك عشوائي</span>
+                        <h2 class="group-show-hero__title mb-2">إضافة اختبار بنك عشوائي</h2>
+                        <p class="group-show-hero__desc mb-0">يُعرض للطالب عدد محدد من الأسئلة عشوائياً من بنك أكبر (أسئلة مباشرة + مجموعات).</p>
                     </div>
                     <div class="col-lg-4">
                         <div class="group-show-actions">
-                            <a href="{{ route('quizzes.index') }}" class="group-show-action">
+                            <a href="{{ route('random-pool-quizzes.index') }}" class="group-show-action">
                                 <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
                                 <span class="group-show-action__text">العودة للقائمة</span>
                             </a>
@@ -44,7 +44,7 @@
                 </div>
             </div>
 
-            <form action="{{ route('quizzes.store') }}" method="POST">
+            <form action="{{ route('random-pool-quizzes.store') }}" method="POST">
                 @csrf
 
                 <!-- إخفاء section_id للإرسال -->
@@ -114,15 +114,12 @@
                             @endif
 
                             <div class="col-md-6">
-                                <label class="form-label">نوع الاختبار <span class="text-danger">*</span></label>
-                                <select name="quiz_type" id="quiz_type" class="form-select @error('quiz_type') is-invalid @enderror" required>
-                                    <option value="practice" {{ old('quiz_type') == 'practice' ? 'selected' : '' }}>تدريبي (Practice)</option>
-                                    <option value="graded" {{ old('quiz_type', 'graded') == 'graded' ? 'selected' : '' }}>مُقيّم (Graded)</option>
-                                    <option value="final_exam" {{ old('quiz_type') == 'final_exam' ? 'selected' : '' }}>اختبار نهائي (Final Exam)</option>
-                                    <option value="survey" {{ old('quiz_type') == 'survey' ? 'selected' : '' }}>استبيان (Survey)</option>
-                                </select>
-                                <small class="text-muted">التدريبي: للممارسة فقط، المُقيّم: يحتسب للدرجة النهائية</small>
-                                @error('quiz_type')
+                                <label class="form-label">عدد الأسئلة لكل محاولة <span class="text-danger">*</span></label>
+                                <input type="number" name="questions_per_attempt" id="questions_per_attempt"
+                                       class="form-control @error('questions_per_attempt') is-invalid @enderror"
+                                       value="{{ old('questions_per_attempt') }}" min="1" required>
+                                <small class="text-muted">عدد الأسئلة التي يراها الطالب في كل محاولة من البنك</small>
+                                @error('questions_per_attempt')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -339,11 +336,11 @@
                 <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in quizzes-page-animate">
                     <div class="card-body">
                         <div class="d-flex justify-content-end gap-2 flex-wrap">
-                            <a href="{{ route('quizzes.index') }}" class="btn btn-light">
+                            <a href="{{ route('random-pool-quizzes.index') }}" class="btn btn-light">
                                 <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fe fe-save me-1"></i>حفظ الاختبار
+                                <i class="fe fe-save me-1"></i>حفظ وإدارة البنك
                             </button>
                         </div>
                     </div>

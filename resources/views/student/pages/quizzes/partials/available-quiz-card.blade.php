@@ -3,6 +3,7 @@
         'practice' => ['class' => 'info', 'label' => 'تدريبي'],
         'graded' => ['class' => 'warning', 'label' => 'مُقيّم'],
         'final_exam' => ['class' => 'danger', 'label' => 'نهائي'],
+        'random_pool' => ['class' => 'purple', 'label' => 'بنك عشوائي'],
     ];
     $type = $typeMap[$quiz->quiz_type] ?? ['class' => 'secondary', 'label' => $quiz->quiz_type];
     $bestPct = $quiz->best_attempt ? (float) $quiz->best_attempt->percentage_score : 0;

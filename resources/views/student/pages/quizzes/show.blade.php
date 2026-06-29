@@ -24,9 +24,17 @@
 
             @php
                 $lastCompleted = $attempts->where('status', '!=', 'in_progress')->first();
+                $questionStat = $quiz->isRandomPool()
+                    ? [
+                        'icon' => 'fe-help-circle',
+                        'label' => 'أسئلة المحاولة',
+                        'value' => $quiz->questions_per_attempt . ' <small class="text-muted">من بنك ' . $quiz->getPoolSize() . '</small>',
+                        'color' => 'blue',
+                    ]
+                    : ['icon' => 'fe-help-circle', 'label' => 'عدد الأسئلة', 'value' => $quiz->getQuestionCount(), 'color' => 'blue'];
                 $introStats = [
-                    ['icon' => 'fe-help-circle', 'label' => 'عدد الأسئلة', 'value' => $quiz->getQuestionCount(), 'color' => 'blue'],
-                    ['icon' => 'fe-star', 'label' => 'الدرجة الكلية', 'value' => number_format($quiz->max_score, 0), 'color' => 'gold'],
+                    $questionStat,
+                    ['icon' => 'fe-star', 'label' => $quiz->isRandomPool() ? 'الدرجة المتوقعة' : 'الدرجة الكلية', 'value' => number_format($quiz->max_score, 0), 'color' => 'gold'],
                     ['icon' => 'fe-award', 'label' => 'درجة النجاح', 'value' => $quiz->passing_grade . '%', 'color' => 'green'],
                     ['icon' => 'fe-clock', 'label' => 'الوقت المحدد', 'value' => $quiz->time_limit ? $quiz->time_limit . ' <small>دقيقة</small>' : 'غير محدد', 'color' => 'red'],
                 ];
@@ -47,6 +55,7 @@
                             $quiz->quiz_type === 'practice' ? ['icon' => 'fe-book-open', 'label' => 'تدريبي'] : null,
                             $quiz->quiz_type === 'graded' ? ['icon' => 'fe-award', 'label' => 'مُقيّم'] : null,
                             $quiz->quiz_type === 'final_exam' ? ['icon' => 'fe-flag', 'label' => 'اختبار نهائي'] : null,
+                            $quiz->quiz_type === 'random_pool' ? ['icon' => 'fe-shuffle', 'label' => 'بنك عشوائي'] : null,
                         ])->filter(fn ($c) => $c && ($c['label'] ?? '') !== '')->values()->all(),
                         'showHistory' => true,
                         'completedAttempts' => $attempts->where('status', '!=', 'in_progress')->count(),

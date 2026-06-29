@@ -14,11 +14,22 @@
 
             @include('admin.components.alerts')
 
+            @if(!empty($poolStats['config_error']))
+                <div class="alert alert-warning alert-dismissible fade show dashboard-fade-in" role="alert">
+                    <i class="fe fe-alert-triangle me-2"></i>
+                    <strong>لا يمكن بدء تجربة الاختبار:</strong> {{ $poolStats['config_error'] }}
+                    <a href="{{ route('random-pool-quizzes.edit', $quiz->id) }}" class="alert-link ms-1">تعديل الإعدادات</a>
+                    أو
+                    <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="alert-link">إضافة أسئلة للبنك</a>.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <div class="my-4 page-header-breadcrumb quizzes-page-animate dashboard-fade-in">
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('random-pool-quizzes.index') }}">اختبارات بنك عشوائي</a></li>
                         <li class="breadcrumb-item active">عرض الاختبار</li>
                     </ol>
                 </nav>
@@ -27,7 +38,7 @@
             <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
                 <div class="row align-items-start g-3">
                     <div class="col-lg-8">
-                        <span class="group-show-hero__eyebrow"><i class="fe fe-help-circle me-1"></i>تفاصيل الاختبار</span>
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-shuffle me-1"></i>اختبار بنك عشوائي</span>
                         <h2 class="group-show-hero__title mb-2">{{ $quiz->title }}</h2>
                         <p class="group-show-hero__desc mb-0">
                             @if($quiz->course)
@@ -40,18 +51,27 @@
                     </div>
                     <div class="col-lg-4">
                         <div class="group-show-actions">
-                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="group-show-action group-show-action--success">
+                            <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="group-show-action group-show-action--success">
                                 <span class="group-show-action__icon"><i class="fe fe-list"></i></span>
                                 <span class="group-show-action__text">إدارة الأسئلة</span>
                             </a>
-                            <form method="POST" action="{{ route('quizzes.preview.start', $quiz->id) }}" class="d-inline">
-                                @csrf
-                                <button type="submit" class="group-show-action group-show-action--warning border-0">
+                            @if(!empty($poolStats['config_error']))
+                                <span class="group-show-action group-show-action--warning opacity-50"
+                                      title="{{ $poolStats['config_error'] }}"
+                                      style="cursor: not-allowed;">
                                     <span class="group-show-action__icon"><i class="fe fe-play-circle"></i></span>
                                     <span class="group-show-action__text">تجربة الاختبار</span>
-                                </button>
-                            </form>
-                            <a href="{{ route('quizzes.edit', $quiz->id) }}" class="group-show-action group-show-action--primary">
+                                </span>
+                            @else
+                                <form method="POST" action="{{ route('quizzes.preview.start', $quiz->id) }}" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="group-show-action group-show-action--warning border-0">
+                                        <span class="group-show-action__icon"><i class="fe fe-play-circle"></i></span>
+                                        <span class="group-show-action__text">تجربة الاختبار</span>
+                                    </button>
+                                </form>
+                            @endif
+                            <a href="{{ route('random-pool-quizzes.edit', $quiz->id) }}" class="group-show-action group-show-action--primary">
                                 <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                                 <span class="group-show-action__text">تعديل</span>
                             </a>
@@ -94,19 +114,21 @@
                                 <div class="assignments-info-item">
                                     <div class="assignments-info-item__label">نوع الاختبار</div>
                                     <div class="assignments-info-item__value">
-                                        @if($quiz->quiz_type == 'practice')
-                                            <span class="quizzes-type-chip quizzes-type-chip--practice">تدريبي</span>
-                                        @elseif($quiz->quiz_type == 'graded')
-                                            <span class="quizzes-type-chip quizzes-type-chip--graded">مُقيّم</span>
-                                        @elseif($quiz->quiz_type == 'final_exam')
-                                            <span class="quizzes-type-chip quizzes-type-chip--final">اختبار نهائي</span>
-                                        @elseif($quiz->quiz_type == 'random_pool')
-                                            <span class="quizzes-type-chip quizzes-type-chip--random">بنك عشوائي</span>
-                                        @else
-                                            <span class="quizzes-type-chip quizzes-type-chip--survey">استبيان</span>
-                                        @endif
+                                        <span class="quizzes-type-chip quizzes-type-chip--random">بنك عشوائي</span>
                                     </div>
                                 </div>
+                                <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">حجم البنك / لكل محاولة</div>
+                                    <div class="assignments-info-item__value fw-semibold">
+                                        {{ $poolStats['pool_size'] ?? $quiz->getPoolSize() }} / {{ $quiz->questions_per_attempt }}
+                                    </div>
+                                </div>
+                                @if(!empty($poolStats['config_error']))
+                                    <div class="assignments-info-item">
+                                        <div class="assignments-info-item__label">حالة البنك</div>
+                                        <div class="assignments-info-item__value text-warning">{{ $poolStats['config_error'] }}</div>
+                                    </div>
+                                @endif
                                 <div class="assignments-info-item">
                                     <div class="assignments-info-item__label">الحالة</div>
                                     <div class="assignments-info-item__value">
@@ -215,7 +237,7 @@
                                 الأسئلة
                                 <span class="group-show-members-card__count">{{ $quiz->quizQuestions->count() }}</span>
                             </h6>
-                            <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
+                            <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
                                 <i class="fe fe-settings me-1"></i>إدارة الأسئلة
                             </a>
                         </div>
@@ -277,7 +299,7 @@
                                 <div class="text-center py-5 px-3">
                                     <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-help-circle"></i></span>
                                     <p class="text-muted mb-3">لم يتم إضافة أسئلة بعد</p>
-                                    <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-primary btn-sm">
+                                    <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="btn btn-primary btn-sm">
                                         <i class="fe fe-plus me-1"></i>إضافة أسئلة
                                     </a>
                                 </div>
@@ -471,7 +493,7 @@
                                         <i class="fe fe-refresh-cw me-1"></i>إعادة حساب الدرجات
                                     </button>
                                 </form>
-                                <form action="{{ route('quizzes.toggle-publish', $quiz->id) }}" method="POST">
+                                <form action="{{ route('random-pool-quizzes.toggle-publish', $quiz->id) }}" method="POST">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-{{ $quiz->is_published ? 'warning' : 'success' }} btn-sm w-100">
                                         <i class="fe fe-{{ $quiz->is_published ? 'eye-off' : 'check' }} me-1"></i>
@@ -479,7 +501,7 @@
                                     </button>
                                 </form>
                                 <hr class="my-2">
-                                <form action="{{ route('quizzes.destroy', $quiz->id) }}" method="POST"
+                                <form action="{{ route('random-pool-quizzes.destroy', $quiz->id) }}" method="POST"
                                       onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟')">
                                     @csrf
                                     @method('DELETE')

@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    إضافة اختبار جديد
+    تعديل اختبار بنك عشوائي
 @stop
 
 @section('styles')
@@ -20,8 +20,9 @@
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('quizzes.index') }}">الاختبارات</a></li>
-                        <li class="breadcrumb-item active">إضافة اختبار</li>
+                        <li class="breadcrumb-item"><a href="{{ route('random-pool-quizzes.index') }}">اختبارات بنك عشوائي</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('random-pool-quizzes.show', $quiz->id) }}">{{ Str::limit($quiz->title, 30) }}</a></li>
+                        <li class="breadcrumb-item active">تعديل</li>
                     </ol>
                 </nav>
             </div>
@@ -29,37 +30,24 @@
             <div class="group-show-hero dashboard-fade-in quizzes-page-animate mb-4">
                 <div class="row align-items-start g-3">
                     <div class="col-lg-8">
-                        <span class="group-show-hero__eyebrow"><i class="fe fe-plus me-1"></i>اختبار جديد</span>
-                        <h2 class="group-show-hero__title mb-2">إضافة اختبار جديد</h2>
-                        <p class="group-show-hero__desc mb-0">حدد الكورس ونوع الاختبار، اضبط الدرجات والوقت، ثم انشره للطلاب.</p>
+                        <span class="group-show-hero__eyebrow"><i class="fe fe-edit-2 me-1"></i>تعديل الاختبار</span>
+                        <h2 class="group-show-hero__title mb-2">{{ $quiz->title }}</h2>
+                        <p class="group-show-hero__desc mb-0">حدّث بيانات الاختبار، إعدادات الدرجات، المواعيد وخيارات النشر.</p>
                     </div>
                     <div class="col-lg-4">
                         <div class="group-show-actions">
-                            <a href="{{ route('quizzes.index') }}" class="group-show-action">
-                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
-                                <span class="group-show-action__text">العودة للقائمة</span>
+                            <a href="{{ route('random-pool-quizzes.show', $quiz->id) }}" class="group-show-action">
+                                <span class="group-show-action__icon"><i class="fe fe-eye"></i></span>
+                                <span class="group-show-action__text">عرض الاختبار</span>
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <form action="{{ route('quizzes.store') }}" method="POST">
+            <form action="{{ route('random-pool-quizzes.update', $quiz->id) }}" method="POST">
                 @csrf
-
-                <!-- إخفاء section_id للإرسال -->
-                @if(isset($selectedSection) && $selectedSection)
-                    <input type="hidden" name="section_id" value="{{ $selectedSection->id }}">
-                @endif
-
-                <!-- رسالة تنبيه إذا تم التحديد من القسم -->
-                @if(isset($selectedSection) && $selectedSection)
-                    <div class="alert alert-info mb-4 quizzes-page-animate">
-                        <i class="fe fe-info me-2"></i>
-                        <strong>إضافة اختبار للقسم:</strong> {{ $selectedSection->title }} -
-                        <strong>الكورس:</strong> {{ $selectedCourse->title }}
-                    </div>
-                @endif
+                @method('PUT')
 
                 <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate mb-4">
                     <div class="card-header border-0 pb-0">
@@ -73,7 +61,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">عنوان الاختبار <span class="text-danger">*</span></label>
                                 <input type="text" name="title" class="form-control @error('title') is-invalid @enderror"
-                                       value="{{ old('title') }}" placeholder="مثال: اختبار الوحدة الأولى" required>
+                                       value="{{ old('title', $quiz->title) }}" required>
                                 @error('title')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -81,48 +69,48 @@
 
                             <div class="col-md-3">
                                 <label class="form-label">الكورس <span class="text-danger">*</span></label>
-                                <select name="course_id" id="course_id" class="form-select @error('course_id') is-invalid @enderror"
-                                        {{ isset($selectedSection) && $selectedSection ? 'disabled' : '' }} required>
+                                <select name="course_id" id="course_id" class="form-select @error('course_id') is-invalid @enderror" required>
                                     <option value="">اختر الكورس</option>
                                     @foreach($courses as $course)
-                                        <option value="{{ $course->id }}"
-                                            {{ old('course_id', $selectedCourse?->id) == $course->id ? 'selected' : '' }}>
+                                        <option value="{{ $course->id }}" {{ old('course_id', $quiz->course_id) == $course->id ? 'selected' : '' }}>
                                             {{ $course->title }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <!-- إرسال القيمة حتى لو disabled -->
-                                @if(isset($selectedSection) && $selectedSection)
-                                    <input type="hidden" name="course_id" value="{{ $selectedCourse->id }}">
-                                @endif
                                 @error('course_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            @if(!isset($selectedSection) || !$selectedSection)
-                                <div class="col-md-3">
-                                    <label class="form-label">الدرس (اختياري)</label>
-                                    <select name="lesson_id" id="lesson_id" class="form-select @error('lesson_id') is-invalid @enderror">
-                                        <option value="">لا يوجد دروس مرتبطة</option>
-                                    </select>
-                                    <small class="text-muted">الدروس مرتبطة بالأقسام عبر course_modules</small>
-                                    @error('lesson_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            @endif
+                            <div class="col-md-3">
+                                <label class="form-label">الدرس (اختياري)</label>
+                                <select name="lesson_id" id="lesson_id" class="form-select @error('lesson_id') is-invalid @enderror">
+                                    <option value="">لا يوجد دروس مرتبطة</option>
+                                    @foreach($lessons as $lesson)
+                                        <option value="{{ $lesson->id }}" {{ old('lesson_id', $quiz->lesson_id) == $lesson->id ? 'selected' : '' }}>
+                                            {{ $lesson->title }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('lesson_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">نوع الاختبار <span class="text-danger">*</span></label>
-                                <select name="quiz_type" id="quiz_type" class="form-select @error('quiz_type') is-invalid @enderror" required>
-                                    <option value="practice" {{ old('quiz_type') == 'practice' ? 'selected' : '' }}>تدريبي (Practice)</option>
-                                    <option value="graded" {{ old('quiz_type', 'graded') == 'graded' ? 'selected' : '' }}>مُقيّم (Graded)</option>
-                                    <option value="final_exam" {{ old('quiz_type') == 'final_exam' ? 'selected' : '' }}>اختبار نهائي (Final Exam)</option>
-                                    <option value="survey" {{ old('quiz_type') == 'survey' ? 'selected' : '' }}>استبيان (Survey)</option>
-                                </select>
-                                <small class="text-muted">التدريبي: للممارسة فقط، المُقيّم: يحتسب للدرجة النهائية</small>
-                                @error('quiz_type')
+                                <label class="form-label">عدد الأسئلة لكل محاولة <span class="text-danger">*</span></label>
+                                <input type="number" name="questions_per_attempt" id="questions_per_attempt"
+                                       class="form-control @error('questions_per_attempt') is-invalid @enderror"
+                                       value="{{ old('questions_per_attempt', $quiz->questions_per_attempt) }}" min="1"
+                                       @if(($poolSize ?? 0) > 0) max="{{ $poolSize }}" @endif
+                                       required>
+                                <small class="text-muted">
+                                    عدد الأسئلة المعروضة للطالب في كل محاولة
+                                    @if(($poolSize ?? 0) > 0)
+                                        (الحد الأقصى حسب البنك الحالي: {{ $poolSize }})
+                                    @endif
+                                </small>
+                                @error('questions_per_attempt')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -130,8 +118,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">الترتيب</label>
                                 <input type="number" name="sort_order" class="form-control @error('sort_order') is-invalid @enderror"
-                                       value="{{ old('sort_order', 0) }}" min="0">
-                                <small class="text-muted">الترتيب في عرض الاختبارات (الأصغر يظهر أولاً)</small>
+                                       value="{{ old('sort_order', $quiz->sort_order) }}" min="0">
                                 @error('sort_order')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -140,7 +127,7 @@
                             <div class="col-12">
                                 <label class="form-label">الوصف</label>
                                 <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                                          rows="3" placeholder="وصف مختصر عن الاختبار...">{{ old('description') }}</textarea>
+                                          rows="3">{{ old('description', $quiz->description) }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -149,8 +136,7 @@
                             <div class="col-12">
                                 <label class="form-label">التعليمات</label>
                                 <textarea name="instructions" class="form-control @error('instructions') is-invalid @enderror"
-                                          rows="4" placeholder="تعليمات الاختبار للطلاب...">{{ old('instructions') }}</textarea>
-                                <small class="text-muted">سيتم عرض هذه التعليمات للطالب قبل بدء الاختبار</small>
+                                          rows="4">{{ old('instructions', $quiz->instructions) }}</textarea>
                                 @error('instructions')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -171,8 +157,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">درجة النجاح (%) <span class="text-danger">*</span></label>
                                 <input type="number" name="passing_grade" class="form-control @error('passing_grade') is-invalid @enderror"
-                                       value="{{ old('passing_grade', 60) }}" min="0" max="100" step="0.01" required>
-                                <small class="text-muted">النسبة المئوية المطلوبة للنجاح (0-100)</small>
+                                       value="{{ old('passing_grade', $quiz->passing_grade) }}" min="0" max="100" step="0.01" required>
                                 @error('passing_grade')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -181,10 +166,10 @@
                             <div class="col-md-6">
                                 <label class="form-label">وقت عرض الإجابات الصحيحة <span class="text-danger">*</span></label>
                                 <select name="show_correct_answers_after" class="form-select @error('show_correct_answers_after') is-invalid @enderror" required>
-                                    <option value="immediately" {{ old('show_correct_answers_after') == 'immediately' ? 'selected' : '' }}>فوراً بعد التسليم</option>
-                                    <option value="after_due" {{ old('show_correct_answers_after', 'after_due') == 'after_due' ? 'selected' : '' }}>بعد موعد التسليم</option>
-                                    <option value="after_graded" {{ old('show_correct_answers_after') == 'after_graded' ? 'selected' : '' }}>بعد التصحيح</option>
-                                    <option value="never" {{ old('show_correct_answers_after') == 'never' ? 'selected' : '' }}>عدم العرض</option>
+                                    <option value="immediately" {{ old('show_correct_answers_after', $quiz->show_correct_answers_after) == 'immediately' ? 'selected' : '' }}>فوراً بعد التسليم</option>
+                                    <option value="after_due" {{ old('show_correct_answers_after', $quiz->show_correct_answers_after) == 'after_due' ? 'selected' : '' }}>بعد موعد التسليم</option>
+                                    <option value="after_graded" {{ old('show_correct_answers_after', $quiz->show_correct_answers_after) == 'after_graded' ? 'selected' : '' }}>بعد التصحيح</option>
+                                    <option value="never" {{ old('show_correct_answers_after', $quiz->show_correct_answers_after) == 'never' ? 'selected' : '' }}>عدم العرض</option>
                                 </select>
                                 @error('show_correct_answers_after')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -194,10 +179,10 @@
                             <div class="col-md-6">
                                 <label class="form-label">طريقة عرض النتيجة <span class="text-danger">*</span></label>
                                 <select name="feedback_mode" class="form-select @error('feedback_mode') is-invalid @enderror" required>
-                                    <option value="immediate" {{ old('feedback_mode') == 'immediate' ? 'selected' : '' }}>فورية (مع كل سؤال)</option>
-                                    <option value="after_submission" {{ old('feedback_mode', 'after_submission') == 'after_submission' ? 'selected' : '' }}>بعد التسليم</option>
-                                    <option value="after_due" {{ old('feedback_mode') == 'after_due' ? 'selected' : '' }}>بعد موعد الاستحقاق</option>
-                                    <option value="manual" {{ old('feedback_mode') == 'manual' ? 'selected' : '' }}>يدوي (بعد التصحيح اليدوي)</option>
+                                    <option value="immediate" {{ old('feedback_mode', $quiz->feedback_mode) == 'immediate' ? 'selected' : '' }}>فورية</option>
+                                    <option value="after_submission" {{ old('feedback_mode', $quiz->feedback_mode) == 'after_submission' ? 'selected' : '' }}>بعد التسليم</option>
+                                    <option value="after_due" {{ old('feedback_mode', $quiz->feedback_mode) == 'after_due' ? 'selected' : '' }}>بعد موعد الاستحقاق</option>
+                                    <option value="manual" {{ old('feedback_mode', $quiz->feedback_mode) == 'manual' ? 'selected' : '' }}>يدوي</option>
                                 </select>
                                 @error('feedback_mode')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -207,24 +192,18 @@
                             <div class="col-md-6">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" name="show_grade_immediately"
-                                           id="show_grade_immediately" {{ old('show_grade_immediately') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="show_grade_immediately">
-                                        عرض الدرجة فوراً بعد التسليم
-                                    </label>
+                                           id="show_grade_immediately" {{ old('show_grade_immediately', $quiz->show_grade_immediately) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_grade_immediately">عرض الدرجة فوراً</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="allow_review"
-                                           id="allow_review" {{ old('allow_review', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="allow_review">
-                                        السماح بمراجعة الاختبار
-                                    </label>
+                                           id="allow_review" {{ old('allow_review', $quiz->allow_review) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="allow_review">السماح بالمراجعة</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="show_correct_answers"
-                                           id="show_correct_answers" {{ old('show_correct_answers', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="show_correct_answers">
-                                        عرض الإجابات الصحيحة
-                                    </label>
+                                           id="show_correct_answers" {{ old('show_correct_answers', $quiz->show_correct_answers) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_correct_answers">عرض الإجابات الصحيحة</label>
                                 </div>
                             </div>
                         </div>
@@ -243,8 +222,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">الوقت المحدد (بالدقائق)</label>
                                 <input type="number" name="time_limit" class="form-control @error('time_limit') is-invalid @enderror"
-                                       value="{{ old('time_limit') }}" min="1" placeholder="غير محدد">
-                                <small class="text-muted">اتركه فارغاً إذا لم يكن هناك حد زمني</small>
+                                       value="{{ old('time_limit', $quiz->time_limit) }}" min="1">
                                 @error('time_limit')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -253,8 +231,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">عدد المحاولات المسموحة</label>
                                 <input type="number" name="attempts_allowed" class="form-control @error('attempts_allowed') is-invalid @enderror"
-                                       value="{{ old('attempts_allowed') }}" min="1" placeholder="غير محدود">
-                                <small class="text-muted">اتركه فارغاً للسماح بمحاولات غير محدودة</small>
+                                       value="{{ old('attempts_allowed', $quiz->attempts_allowed) }}" min="1">
                                 @error('attempts_allowed')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -263,24 +240,20 @@
                             <div class="col-md-4">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" name="shuffle_questions"
-                                           id="shuffle_questions" {{ old('shuffle_questions') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffle_questions">
-                                        ترتيب الأسئلة عشوائياً
-                                    </label>
+                                           id="shuffle_questions" {{ old('shuffle_questions', $quiz->shuffle_questions) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="shuffle_questions">ترتيب الأسئلة عشوائياً</label>
                                 </div>
                                 <div class="form-check mt-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_answers"
-                                           id="shuffle_answers" {{ old('shuffle_answers') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffle_answers">
-                                        ترتيب الخيارات عشوائياً
-                                    </label>
+                                           id="shuffle_answers" {{ old('shuffle_answers', $quiz->shuffle_answers) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="shuffle_answers">ترتيب الخيارات عشوائياً</label>
                                 </div>
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">متاح من</label>
                                 <input type="datetime-local" name="available_from" class="form-control @error('available_from') is-invalid @enderror"
-                                       value="{{ old('available_from') }}">
+                                       value="{{ old('available_from', $quiz->available_from ? $quiz->available_from->format('Y-m-d\TH:i') : '') }}">
                                 @error('available_from')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -289,7 +262,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">موعد الاستحقاق</label>
                                 <input type="datetime-local" name="due_date" class="form-control @error('due_date') is-invalid @enderror"
-                                       value="{{ old('due_date') }}">
+                                       value="{{ old('due_date', $quiz->due_date ? $quiz->due_date->format('Y-m-d\TH:i') : '') }}">
                                 @error('due_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -298,7 +271,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">متاح حتى</label>
                                 <input type="datetime-local" name="available_until" class="form-control @error('available_until') is-invalid @enderror"
-                                       value="{{ old('available_until') }}">
+                                       value="{{ old('available_until', $quiz->available_until ? $quiz->available_until->format('Y-m-d\TH:i') : '') }}">
                                 @error('available_until')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -319,17 +292,15 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_published"
-                                           id="is_published" {{ old('is_published') ? 'checked' : '' }}>
+                                           id="is_published" {{ old('is_published', $quiz->is_published) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_published">نشر الاختبار</label>
-                                    <small class="d-block text-muted mt-1">الاختبار المنشور يمكن للطلاب رؤيته</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="is_visible"
-                                           id="is_visible" {{ old('is_visible', true) ? 'checked' : '' }}>
+                                           id="is_visible" {{ old('is_visible', $quiz->is_visible) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_visible">ظاهر في القائمة</label>
-                                    <small class="d-block text-muted mt-1">إذا كان مخفياً، يمكن الوصول إليه فقط عبر الرابط المباشر</small>
                                 </div>
                             </div>
                         </div>
@@ -339,11 +310,11 @@
                 <div class="card custom-card group-show-members-card assignments-form-actions dashboard-fade-in quizzes-page-animate">
                     <div class="card-body">
                         <div class="d-flex justify-content-end gap-2 flex-wrap">
-                            <a href="{{ route('quizzes.index') }}" class="btn btn-light">
+                            <a href="{{ route('random-pool-quizzes.show', $quiz->id) }}" class="btn btn-light">
                                 <i class="fe fe-x me-1"></i>إلغاء
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fe fe-save me-1"></i>حفظ الاختبار
+                                <i class="fe fe-save me-1"></i>حفظ التعديلات
                             </button>
                         </div>
                     </div>
@@ -358,5 +329,5 @@
 @stop
 
 @section('script')
-    @include('admin.pages.quizzes.partials.form-scripts', ['currentLessonId' => old('lesson_id')])
+    @include('admin.pages.quizzes.partials.form-scripts', ['currentLessonId' => old('lesson_id', $quiz->lesson_id)])
 @stop

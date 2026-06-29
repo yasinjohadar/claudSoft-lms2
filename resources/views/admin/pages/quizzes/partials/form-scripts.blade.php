@@ -34,5 +34,25 @@
             });
         });
     }
+
+    const quizTypeSelect = document.getElementById('quiz_type');
+    const perAttemptWrap = document.getElementById('questions-per-attempt-wrap');
+    const perAttemptInput = document.getElementById('questions_per_attempt');
+
+    function toggleQuestionsPerAttempt() {
+        if (!quizTypeSelect || !perAttemptWrap) {
+            return;
+        }
+        const isRandomPool = quizTypeSelect.value === 'random_pool';
+        perAttemptWrap.style.display = isRandomPool ? 'block' : 'none';
+        if (perAttemptInput) {
+            perAttemptInput.required = isRandomPool;
+        }
+    }
+
+    if (quizTypeSelect) {
+        quizTypeSelect.addEventListener('change', toggleQuestionsPerAttempt);
+        toggleQuestionsPerAttempt();
+    }
 })();
 </script>

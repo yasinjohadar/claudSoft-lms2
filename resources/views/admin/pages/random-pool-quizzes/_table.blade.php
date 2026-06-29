@@ -21,7 +21,7 @@
                         <div class="d-flex align-items-center gap-2">
                             <span class="quizzes-quiz-icon"><i class="fe fe-file-text"></i></span>
                             <div class="min-w-0">
-                                <a href="{{ route('quizzes.show', $quiz->id) }}" class="fw-semibold text-truncate d-block" style="max-width: 260px;" title="{{ $quiz->title }}">
+                                <a href="{{ route('random-pool-quizzes.show', $quiz->id) }}" class="fw-semibold text-truncate d-block" style="max-width: 260px;" title="{{ $quiz->title }}">
                                     {{ $quiz->title }}
                                 </a>
                                 <small class="text-muted">
@@ -48,7 +48,7 @@
                         @elseif($quiz->quiz_type == 'final_exam')
                             <span class="quizzes-type-chip quizzes-type-chip--final">نهائي</span>
                         @else
-                            <span class="quizzes-type-chip quizzes-type-chip--survey">استبيان</span>
+                            <span class="quizzes-type-chip quizzes-type-chip--random">بنك عشوائي</span>
                         @endif
                     </td>
                     <td>
@@ -63,7 +63,7 @@
                     </td>
                     <td><span class="assignments-grade-chip">{{ number_format($quiz->max_score, 1) }}</span></td>
                     <td>
-                        <a href="{{ route('quizzes.show', $quiz->id) }}" class="quizzes-attempts-chip">
+                        <a href="{{ route('random-pool-quizzes.show', $quiz->id) }}" class="quizzes-attempts-chip">
                             {{ $quiz->attempts_count }} محاولة
                         </a>
                     </td>
@@ -76,20 +76,20 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1 flex-wrap">
-                            <a href="{{ route('quizzes.show', $quiz->id) }}" class="btn btn-info-light btn-sm assignments-actions__btn" title="عرض">
+                            <a href="{{ route('random-pool-quizzes.show', $quiz->id) }}" class="btn btn-info-light btn-sm assignments-actions__btn" title="عرض">
                                 <i class="fe fe-eye"></i>
                             </a>
-                            <a href="{{ route('quizzes.edit', $quiz->id) }}" class="btn btn-primary-light btn-sm assignments-actions__btn" title="تعديل">
+                            <a href="{{ route('random-pool-quizzes.edit', $quiz->id) }}" class="btn btn-primary-light btn-sm assignments-actions__btn" title="تعديل">
                                 <i class="fe fe-edit-2"></i>
                             </a>
-                            <form action="{{ route('quizzes.toggle-publish', $quiz->id) }}" method="POST" class="d-inline">
+                            <form action="{{ route('random-pool-quizzes.toggle-publish', $quiz->id) }}" method="POST" class="d-inline">
                                 @csrf
                                 <button type="submit" class="btn btn-{{ $quiz->is_published ? 'warning' : 'success' }}-light btn-sm assignments-actions__btn"
                                         title="{{ $quiz->is_published ? 'إلغاء النشر' : 'نشر' }}">
                                     <i class="fe fe-{{ $quiz->is_published ? 'eye-off' : 'check' }}"></i>
                                 </button>
                             </form>
-                            <form action="{{ route('quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline"
+                            <form action="{{ route('random-pool-quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline"
                                   onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟')">
                                 @csrf
                                 @method('DELETE')
@@ -105,7 +105,7 @@
                     <td colspan="9" class="text-center py-5">
                         <span class="assignments-empty-state__icon d-inline-flex"><i class="fe fe-file-text"></i></span>
                         <p class="mb-2 text-muted">لا توجد اختبارات</p>
-                        <a href="{{ route('quizzes.create') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('random-pool-quizzes.create') }}" class="btn btn-primary btn-sm">
                             <i class="fe fe-plus me-1"></i>إضافة اختبار جديد
                         </a>
                     </td>

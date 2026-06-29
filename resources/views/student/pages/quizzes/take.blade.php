@@ -125,6 +125,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
+            @if(session('pool_recycled') || ($attempt->selection_meta['recycled'] ?? false))
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                    <i class="fe fe-alert-triangle fs-18"></i>
+                    <span>تمت إعادة استخدام بعض الأسئلة لعدم وجود أسئلة جديدة كافية في البنك.</span>
+                </div>
+            @endif
+
             @include('shared.quizzes.take-mobile-chrome', ['questions' => $questions])
 
             <div class="row quiz-take-layout">

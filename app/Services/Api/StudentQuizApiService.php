@@ -12,6 +12,7 @@ use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\User;
 use App\Services\Api\StudentModuleProgressApiService;
+use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Log;
  */
 class StudentQuizApiService
 {
+    public function __construct(
+        protected QuizAttemptStartService $attemptStartService,
+    ) {}
+
     public function userCanAccessQuiz(User $user, Quiz $quiz): bool
     {
         $isEnrolled = $user->enrollments()
@@ -65,18 +70,30 @@ class StudentQuizApiService
         }
 
         return collect($attempt->questions_order)->map(function ($questionId) use ($attempt) {
+            $questionId = (int) $questionId;
             $quizQuestion = $attempt->quiz->quizQuestions()
                 ->where('question_id', $questionId)
                 ->with(['question.questionType', 'question.options' => fn ($q) => $q->orderBy('option_order')])
                 ->first();
 
-            if (! $quizQuestion || ! $quizQuestion->question) {
+            if ($quizQuestion && $quizQuestion->question) {
+                $question = $quizQuestion->question;
+                $question->setRelation('pivot', (object) [
+                    'question_grade' => $quizQuestion->getGrade(),
+                ]);
+
+                return $question;
+            }
+
+            $question = QuestionBank::with(['questionType', 'options' => fn ($q) => $q->orderBy('option_order')])
+                ->find($questionId);
+
+            if (! $question) {
                 return null;
             }
 
-            $question = $quizQuestion->question;
             $question->setRelation('pivot', (object) [
-                'question_grade' => $quizQuestion->getGrade(),
+                'question_grade' => $this->attemptStartService->gradeForQuestion($attempt->quiz, $questionId),
             ]);
 
             return $question;

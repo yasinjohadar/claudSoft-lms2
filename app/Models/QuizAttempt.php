@@ -37,6 +37,7 @@ class QuizAttempt extends Model
         'grade_status',
         'is_late',
         'questions_order',
+        'selection_meta',
         'feedback',
         'graded_by',
         'graded_at',
@@ -63,6 +64,7 @@ class QuizAttempt extends Model
         'passed' => 'boolean',
         'is_late' => 'boolean',
         'questions_order' => 'array',
+        'selection_meta' => 'array',
         'graded_at' => 'datetime',
         'completed_at' => 'datetime',
         'is_completed' => 'boolean',
@@ -346,7 +348,11 @@ class QuizAttempt extends Model
      */
     public function getCompletionPercentage(): float
     {
-        $totalQuestions = $this->quiz->getQuestionCount();
+        $totalQuestions = count($this->questions_order ?? []);
+
+        if ($totalQuestions === 0) {
+            $totalQuestions = $this->quiz->getQuestionCount();
+        }
 
         if ($totalQuestions === 0) {
             return 0;

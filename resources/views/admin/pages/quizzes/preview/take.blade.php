@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <i class="fe fe-eye fs-4"></i>
                 <div>
                     <strong>وضع معاينة للأدمن</strong> — هذه التجربة لن تُحسب في إحصائيات الطلاب ولا في التصحيح.
-                    <a href="{{ route('quizzes.show', $quiz->id) }}" class="alert-link ms-2">العودة لتفاصيل الاختبار</a>
+                    <a href="{{ $quiz->adminShowRoute() }}" class="alert-link ms-2">العودة لتفاصيل الاختبار</a>
                 </div>
             </div>
 

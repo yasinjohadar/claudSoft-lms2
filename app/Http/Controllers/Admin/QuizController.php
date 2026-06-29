@@ -9,9 +9,12 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\ProgrammingLanguage;
 use App\Models\QuestionBank;
+use App\Models\QuestionPool;
 use App\Models\QuestionType;
 use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use App\Models\QuizSettings;
+use App\Services\Quiz\QuizRandomSelectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +28,7 @@ class QuizController extends Controller
     {
         $query = Quiz::with(['course', 'lesson', 'creator'])
             ->withCount('attempts')
+            ->where('quiz_type', '!=', Quiz::TYPE_RANDOM_POOL)
             ->orderBy('created_at', 'desc');
 
         // Filter by course
@@ -54,9 +58,9 @@ class QuizController extends Controller
         $quizzes = $query->paginate(15)->withQueryString();
         $courses = Course::where('is_published', true)->get();
 
-        $totalQuizzes = Quiz::count();
-        $publishedQuizzes = Quiz::where('is_published', true)->count();
-        $draftQuizzes = Quiz::where('is_published', false)->count();
+        $totalQuizzes = Quiz::where('quiz_type', '!=', Quiz::TYPE_RANDOM_POOL)->count();
+        $publishedQuizzes = Quiz::where('quiz_type', '!=', Quiz::TYPE_RANDOM_POOL)->where('is_published', true)->count();
+        $draftQuizzes = Quiz::where('quiz_type', '!=', Quiz::TYPE_RANDOM_POOL)->where('is_published', false)->count();
         $questionBankCount = \App\Models\QuestionBank::count();
 
         if ($request->ajax()) {
@@ -150,6 +154,7 @@ class QuizController extends Controller
 
         // Set max_score (will be calculated later from questions)
         $validated['max_score'] = 100.00;
+        $validated['questions_per_attempt'] = null;
 
         // Set creator
         $validated['created_by'] = auth()->id();
@@ -220,6 +225,10 @@ class QuizController extends Controller
             'settings'
         ])->findOrFail($id);
 
+        if ($quiz->isRandomPool()) {
+            return redirect()->route('random-pool-quizzes.show', $quiz->id);
+        }
+
         // Get attempts statistics (exclude admin preview attempts)
         $attempts = $quiz->attempts()
             ->realAttempts()
@@ -251,6 +260,11 @@ class QuizController extends Controller
     {
         try {
             $quiz = Quiz::with('settings')->findOrFail($id);
+
+            if ($quiz->isRandomPool()) {
+                return redirect()->route('random-pool-quizzes.edit', $quiz->id);
+            }
+
             $courses = Course::where('is_published', true)->get();
             
             $lessons = collect([]);
@@ -321,6 +335,11 @@ class QuizController extends Controller
     {
         $quiz = Quiz::findOrFail($id);
 
+        if ($quiz->isRandomPool()) {
+            return redirect()->route('random-pool-quizzes.edit', $quiz->id)
+                ->withErrors(['error' => 'استخدم صفحة اختبارات بنك عشوائي لتعديل هذا الاختبار.']);
+        }
+
         // Handle checkboxes before validation (convert to boolean)
         $request->merge([
             'shuffle_questions' => $request->has('shuffle_questions'),
@@ -356,6 +375,8 @@ class QuizController extends Controller
             'is_visible' => 'sometimes|boolean',
             'sort_order' => 'nullable|integer|min:0',
         ]);
+
+        $validated['questions_per_attempt'] = null;
 
         // Set updater
         $validated['updated_by'] = auth()->id();
@@ -471,7 +492,7 @@ class QuizController extends Controller
     /**
      * Create quiz settings.
      */
-    private function createQuizSettings(Quiz $quiz, Request $request): void
+    protected function createQuizSettings(Quiz $quiz, Request $request): void
     {
         $settings = $request->input('settings', []);
 
@@ -496,7 +517,7 @@ class QuizController extends Controller
     /**
      * Update quiz settings.
      */
-    private function updateQuizSettings(Quiz $quiz, Request $request): void
+    protected function updateQuizSettings(Quiz $quiz, Request $request): void
     {
         $settings = $request->input('settings', []);
 
@@ -523,7 +544,7 @@ class QuizController extends Controller
     /**
      * Calculate pass rate for a quiz.
      */
-    private function calculatePassRate(Quiz $quiz): float
+    protected function calculatePassRate(Quiz $quiz): float
     {
         $completedAttempts = $quiz->attempts()
             ->realAttempts()
@@ -548,12 +569,82 @@ class QuizController extends Controller
      */
     public function manageQuestions($id)
     {
-        $quiz = Quiz::with(['questions.questionType', 'questions.options', 'course'])
-            ->findOrFail($id);
+        $quiz = Quiz::with([
+            'questions.questionType',
+            'questions.options',
+            'course',
+        ])->findOrFail($id);
+
+        if ($quiz->isRandomPool()) {
+            return redirect()->route('random-pool-quizzes.manage-questions', $quiz->id);
+        }
 
         $questionTypes = QuestionType::where('is_active', true)->get();
 
-        return view('admin.pages.quizzes.manage-questions', compact('quiz', 'questionTypes'));
+        return view('admin.pages.quizzes.manage-questions', compact(
+            'quiz',
+            'questionTypes',
+        ));
+    }
+
+    public function attachQuestionPool(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'question_pool_id' => 'required|exists:question_pools,id',
+        ]);
+
+        $quiz = Quiz::findOrFail($id);
+
+        if (! $quiz->isRandomPool()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ربط المجموعات متاح فقط لاختبارات بنك عشوائي.',
+            ], 422);
+        }
+
+        $pool = QuestionPool::findOrFail($validated['question_pool_id']);
+        if ((int) $pool->course_id !== (int) $quiz->course_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المجموعة يجب أن تكون من نفس كورس الاختبار.',
+            ], 422);
+        }
+
+        if ($quiz->quizQuestions()->where('question_pool_id', $pool->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذه المجموعة مربوطة بالفعل.',
+            ], 422);
+        }
+
+        $maxOrder = (int) $quiz->quizQuestions()->max('question_order');
+
+        QuizQuestion::create([
+            'quiz_id' => $quiz->id,
+            'question_pool_id' => $pool->id,
+            'question_order' => $maxOrder + 1,
+        ]);
+
+        $quiz->update(['max_score' => $quiz->calculateMaxScore()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم ربط مجموعة الأسئلة بنجاح.',
+        ]);
+    }
+
+    public function detachQuestionPool($id, $quizQuestionId): JsonResponse
+    {
+        $quiz = Quiz::findOrFail($id);
+        $row = $quiz->quizQuestions()->where('id', $quizQuestionId)->whereNotNull('question_pool_id')->firstOrFail();
+        $row->delete();
+
+        $quiz->update(['max_score' => $quiz->calculateMaxScore()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إزالة مجموعة الأسئلة من الاختبار.',
+        ]);
     }
 
     /**

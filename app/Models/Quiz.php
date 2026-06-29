@@ -34,6 +34,7 @@ class Quiz extends Model
         'max_score',
         'time_limit',
         'attempts_allowed',
+        'questions_per_attempt',
         'shuffle_questions',
         'shuffle_answers',
         'show_correct_answers',
@@ -61,6 +62,7 @@ class Quiz extends Model
         'max_score' => 'decimal:2',
         'time_limit' => 'integer',
         'attempts_allowed' => 'integer',
+        'questions_per_attempt' => 'integer',
         'shuffle_questions' => 'boolean',
         'shuffle_answers' => 'boolean',
         'show_correct_answers' => 'boolean',
@@ -293,22 +295,83 @@ class Quiz extends Model
         return $remaining === null || $remaining > 0;
     }
 
+    public const TYPE_RANDOM_POOL = 'random_pool';
+
+    public const QUIZ_TYPES = [
+        'practice',
+        'graded',
+        'final_exam',
+        'survey',
+        self::TYPE_RANDOM_POOL,
+    ];
+
+    /**
+     * Check if this is a random pool quiz.
+     */
+    public function isRandomPool(): bool
+    {
+        return $this->quiz_type === self::TYPE_RANDOM_POOL;
+    }
+
+    public static function quizTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'practice' => 'تدريبي',
+            'graded' => 'مُقيّم',
+            'final_exam' => 'اختبار نهائي',
+            'survey' => 'استبيان',
+            self::TYPE_RANDOM_POOL => 'بنك عشوائي',
+            default => $type,
+        };
+    }
+
+    /**
+     * Get linked question pool rows (not direct questions).
+     */
+    public function linkedQuestionPools()
+    {
+        return $this->quizQuestions()->whereNotNull('question_pool_id');
+    }
+
     /**
      * Calculate total score from questions.
      */
     public function calculateMaxScore(): float
     {
+        if ($this->isRandomPool()) {
+            return app(\App\Services\Quiz\QuizRandomSelectionService::class)
+                ->estimateMaxScore($this);
+        }
+
         return $this->quizQuestions()
             ->join('question_bank', 'quiz_questions.question_id', '=', 'question_bank.id')
             ->sum(DB::raw('COALESCE(quiz_questions.question_grade, question_bank.default_grade)'));
     }
 
     /**
-     * Get the number of questions in quiz.
+     * Get the number of questions in quiz (shown to student for random_pool).
      */
     public function getQuestionCount(): int
     {
-        return $this->quizQuestions()->count();
+        if ($this->isRandomPool()) {
+            return (int) ($this->questions_per_attempt ?? 0);
+        }
+
+        return $this->quizQuestions()->whereNotNull('question_id')->count();
+    }
+
+    /**
+     * Total unique questions in the random pool bank.
+     */
+    public function getPoolSize(): int
+    {
+        if (! $this->isRandomPool()) {
+            return $this->quizQuestions()->whereNotNull('question_id')->count();
+        }
+
+        return app(\App\Services\Quiz\QuizRandomSelectionService::class)
+            ->buildCandidatePool($this)
+            ->count();
     }
 
     /**
@@ -333,5 +396,12 @@ class Quiz extends Model
     public function getTimeLimitInSeconds(): ?int
     {
         return $this->time_limit ? $this->time_limit * 60 : null;
+    }
+
+    public function adminShowRoute(): string
+    {
+        return $this->isRandomPool()
+            ? route('random-pool-quizzes.show', $this->id)
+            : route('quizzes.show', $this->id);
     }
 }

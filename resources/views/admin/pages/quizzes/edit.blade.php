@@ -99,7 +99,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">نوع الاختبار <span class="text-danger">*</span></label>
-                                <select name="quiz_type" class="form-select @error('quiz_type') is-invalid @enderror" required>
+                                <select name="quiz_type" id="quiz_type" class="form-select @error('quiz_type') is-invalid @enderror" required>
                                     <option value="practice" {{ old('quiz_type', $quiz->quiz_type) == 'practice' ? 'selected' : '' }}>تدريبي</option>
                                     <option value="graded" {{ old('quiz_type', $quiz->quiz_type) == 'graded' ? 'selected' : '' }}>مُقيّم</option>
                                     <option value="final_exam" {{ old('quiz_type', $quiz->quiz_type) == 'final_exam' ? 'selected' : '' }}>اختبار نهائي</option>

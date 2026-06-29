@@ -416,6 +416,21 @@ Route::prefix('admin')
         Route::delete('quizzes/{id}/remove-question/{questionId}', [QuizController::class, 'removeQuestion'])->name('quizzes.remove-question');
         Route::post('quizzes/{id}/remove-multiple-questions', [QuizController::class, 'removeMultipleQuestions'])->name('quizzes.remove-multiple-questions');
         Route::post('quizzes/{id}/reorder-questions', [QuizController::class, 'reorderQuestions'])->name('quizzes.reorder-questions');
+        Route::post('quizzes/{id}/attach-question-pool', [QuizController::class, 'attachQuestionPool'])->name('quizzes.attach-question-pool');
+        Route::delete('quizzes/{id}/detach-question-pool/{quizQuestionId}', [QuizController::class, 'detachQuestionPool'])->name('quizzes.detach-question-pool');
+
+        // Random Pool Quizzes (separate admin section)
+        Route::get('random-pool-quizzes', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'index'])->name('random-pool-quizzes.index');
+        Route::get('random-pool-quizzes/create', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'create'])->name('random-pool-quizzes.create');
+        Route::post('random-pool-quizzes', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'store'])->name('random-pool-quizzes.store');
+        Route::get('random-pool-quizzes/{id}', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'show'])->name('random-pool-quizzes.show');
+        Route::get('random-pool-quizzes/{id}/edit', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'edit'])->name('random-pool-quizzes.edit');
+        Route::put('random-pool-quizzes/{id}', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'update'])->name('random-pool-quizzes.update');
+        Route::delete('random-pool-quizzes/{id}', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'destroy'])->name('random-pool-quizzes.destroy');
+        Route::post('random-pool-quizzes/{id}/toggle-publish', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'togglePublish'])->name('random-pool-quizzes.toggle-publish');
+        Route::get('random-pool-quizzes/{id}/manage-questions', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'manageQuestions'])->name('random-pool-quizzes.manage-questions');
+        Route::post('random-pool-quizzes/{id}/attach-question-pool', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'attachQuestionPool'])->name('random-pool-quizzes.attach-question-pool');
+        Route::delete('random-pool-quizzes/{id}/detach-question-pool/{quizQuestionId}', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'detachQuestionPool'])->name('random-pool-quizzes.detach-question-pool');
 
         // Quiz preview (admin test-taking — separate from student routes)
         Route::post('quizzes/{id}/preview/start', [QuizPreviewController::class, 'start'])->name('quizzes.preview.start');

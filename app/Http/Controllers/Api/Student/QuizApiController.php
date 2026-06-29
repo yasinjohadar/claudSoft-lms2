@@ -9,6 +9,7 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Services\Api\StudentQuizApiService;
+use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,8 @@ use Illuminate\Support\Facades\DB;
 class QuizApiController extends Controller
 {
     public function __construct(
-        protected StudentQuizApiService $quizApi
+        protected StudentQuizApiService $quizApi,
+        protected QuizAttemptStartService $attemptStartService,
     ) {}
 
     public function preview(Request $request, int $id): JsonResponse
@@ -125,10 +127,7 @@ class QuizApiController extends Controller
                 ->where('student_id', $studentId)
                 ->count() + 1;
 
-            $questionIds = $quiz->quizQuestions()->pluck('question_id')->toArray();
-            if ($quiz->shuffle_questions) {
-                shuffle($questionIds);
-            }
+            $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
 
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->id,
@@ -136,39 +135,15 @@ class QuizApiController extends Controller
                 'attempt_number' => $attemptNumber,
                 'status' => 'in_progress',
                 'started_at' => now(),
-                'max_score' => $quiz->max_score,
-                'questions_order' => $questionIds,
+                'max_score' => $startData['max_score'],
+                'questions_order' => $startData['question_ids'],
+                'selection_meta' => $startData['selection_meta'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'is_completed' => false,
             ]);
 
-            foreach ($questionIds as $index => $questionId) {
-                $quizQuestion = $quiz->quizQuestions()
-                    ->where('question_id', $questionId)
-                    ->with('question.questionType')
-                    ->first();
-
-                if (! $quizQuestion || ! $quizQuestion->question) {
-                    continue;
-                }
-
-                $questionTypeId = $quizQuestion->question->question_type_id;
-                if (! $questionTypeId) {
-                    continue;
-                }
-
-                $maxScore = $quizQuestion->getGrade();
-
-                QuizResponse::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $questionId,
-                    'question_type_id' => $questionTypeId,
-                    'max_score' => $maxScore,
-                    'answer_order' => $index + 1,
-                    'marked_for_review' => false,
-                ]);
-            }
+            $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $startData['question_ids']);
 
             DB::commit();
 
@@ -179,9 +154,16 @@ class QuizApiController extends Controller
                 'data' => [
                     'attempt_id' => (int) $attempt->id,
                     'attempt_number' => (int) $attempt->attempt_number,
+                    'questions_count' => count($startData['question_ids']),
+                    'max_score' => (float) $startData['max_score'],
+                    'pool_recycled' => (bool) ($startData['selection_meta']['recycled'] ?? false),
                     'resumed' => false,
                 ],
             ], 201);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
 

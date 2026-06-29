@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Services\Quiz\QuizPreviewFlowService;
+use App\Services\Quiz\QuizRandomSelectionService;
 use Illuminate\Http\Request;
 
 class QuizPreviewController extends Controller
@@ -16,24 +17,40 @@ class QuizPreviewController extends Controller
 
     public function start(Request $request, $id)
     {
-        $quiz = Quiz::with(['settings', 'quizQuestions.question.questionType'])->findOrFail($id);
+        $quiz = Quiz::with([
+            'settings',
+            'quizQuestions.question.questionType',
+            'quizQuestions.questionPool.poolItems.question',
+            'quizQuestions.questionPool.questions',
+        ])->findOrFail($id);
 
-        if ($quiz->quizQuestions->isEmpty()) {
+        if ($reason = $this->previewBlockedReason($quiz)) {
             return redirect()
-                ->route('quizzes.show', $quiz->id)
-                ->withErrors(['error' => 'لا يمكن تجربة اختبار بدون أسئلة. أضف أسئلة أولاً.']);
+                ->to($quiz->adminShowRoute())
+                ->with('error', $reason)
+                ->withErrors(['error' => $reason]);
         }
 
         try {
             $attempt = $this->previewFlow->startPreviewAttempt($quiz, $request->user(), $request);
 
+            if (empty($attempt->questions_order)) {
+                return redirect()
+                    ->to($quiz->adminShowRoute())
+                    ->with('error', 'لم يتم اختيار أي أسئلة للمعاينة. تحقق من إعدادات البنك.')
+                    ->withErrors(['error' => 'لم يتم اختيار أي أسئلة للمعاينة. تحقق من إعدادات البنك.']);
+            }
+
             return redirect()
                 ->route('quizzes.preview.take', $attempt->id)
                 ->with('success', 'تم بدء تجربة الاختبار (وضع معاينة)');
         } catch (\Throwable $e) {
+            $message = 'حدث خطأ أثناء بدء تجربة الاختبار: '.$e->getMessage();
+
             return redirect()
-                ->route('quizzes.show', $quiz->id)
-                ->withErrors(['error' => 'حدث خطأ أثناء بدء تجربة الاختبار: '.$e->getMessage()]);
+                ->to($quiz->adminShowRoute())
+                ->with('error', $message)
+                ->withErrors(['error' => $message]);
         }
     }
 
@@ -53,6 +70,12 @@ class QuizPreviewController extends Controller
             return redirect()
                 ->route('quizzes.preview.review', $attempt->id)
                 ->with('warning', 'انتهى وقت الاختبار وتم تسليمه تلقائياً');
+        }
+
+        if ($takeData['questions']->isEmpty()) {
+            return redirect()
+                ->to($attempt->quiz->adminShowRoute())
+                ->withErrors(['error' => 'لا توجد أسئلة لعرضها في المعاينة.']);
         }
 
         return view('admin.pages.quizzes.preview.take', [
@@ -136,6 +159,19 @@ class QuizPreviewController extends Controller
             'orderedResponses' => $reviewData['orderedResponses'],
             'stats' => $reviewData['stats'],
         ]);
+    }
+
+    protected function previewBlockedReason(Quiz $quiz): ?string
+    {
+        if ($quiz->isRandomPool()) {
+            return app(QuizRandomSelectionService::class)->validateQuizConfiguration($quiz);
+        }
+
+        if (! $quiz->quizQuestions()->whereNotNull('question_id')->exists()) {
+            return 'لا يمكن تجربة اختبار بدون أسئلة. أضف أسئلة أولاً.';
+        }
+
+        return null;
     }
 
     protected function resolvePreviewAttempt($attemptId): QuizAttempt

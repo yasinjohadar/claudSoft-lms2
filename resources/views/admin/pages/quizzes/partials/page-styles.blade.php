@@ -22,6 +22,7 @@
     .quizzes-type-chip--graded { background: rgba(255, 193, 7, 0.15); color: #cc9a00; }
     .quizzes-type-chip--final { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
     .quizzes-type-chip--survey { background: rgba(108, 117, 125, 0.14); color: #6c757d; }
+    .quizzes-type-chip--random { background: rgba(111, 66, 193, 0.12); color: #6f42c1; }
 
     .quizzes-questions-chip,
     .quizzes-attempts-chip {

@@ -7,6 +7,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Models\User;
 use App\Services\Api\StudentQuizApiService;
+use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 class QuizPreviewFlowService
 {
     public function __construct(
-        protected StudentQuizApiService $quizApiService
+        protected StudentQuizApiService $quizApiService,
+        protected QuizAttemptStartService $attemptStartService,
     ) {}
 
     public function startPreviewAttempt(Quiz $quiz, User $admin, Request $request): QuizAttempt
@@ -26,7 +28,11 @@ class QuizPreviewFlowService
             ->first();
 
         if ($existingAttempt) {
-            return $existingAttempt;
+            if (empty($existingAttempt->questions_order)) {
+                $existingAttempt->update(['status' => 'abandoned']);
+            } else {
+                return $existingAttempt;
+            }
         }
 
         DB::beginTransaction();
@@ -37,11 +43,7 @@ class QuizPreviewFlowService
                 ->where('student_id', $admin->id)
                 ->count() + 1;
 
-            $questionIds = $quiz->quizQuestions()->pluck('question_id')->toArray();
-
-            if ($quiz->shuffle_questions) {
-                shuffle($questionIds);
-            }
+            $startData = $this->attemptStartService->prepareStart($quiz, $admin->id, isPreview: true);
 
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->id,
@@ -49,38 +51,16 @@ class QuizPreviewFlowService
                 'attempt_number' => $attemptNumber,
                 'status' => 'in_progress',
                 'started_at' => now(),
-                'max_score' => $quiz->max_score,
-                'questions_order' => $questionIds,
+                'max_score' => $startData['max_score'],
+                'questions_order' => $startData['question_ids'],
+                'selection_meta' => $startData['selection_meta'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'is_completed' => false,
                 'is_preview' => true,
             ]);
 
-            foreach ($questionIds as $index => $questionId) {
-                $quizQuestion = $quiz->quizQuestions()
-                    ->where('question_id', $questionId)
-                    ->with('question.questionType')
-                    ->first();
-
-                if (! $quizQuestion || ! $quizQuestion->question) {
-                    continue;
-                }
-
-                $questionTypeId = $quizQuestion->question->question_type_id;
-                if (! $questionTypeId) {
-                    continue;
-                }
-
-                QuizResponse::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $questionId,
-                    'question_type_id' => $questionTypeId,
-                    'max_score' => $quizQuestion->getGrade(),
-                    'answer_order' => $index + 1,
-                    'marked_for_review' => false,
-                ]);
-            }
+            $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $startData['question_ids']);
 
             DB::commit();
 
