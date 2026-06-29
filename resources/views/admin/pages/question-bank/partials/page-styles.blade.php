@@ -127,4 +127,23 @@
         font-size: 0.78rem;
         color: var(--text-muted);
     }
+
+    .qb-lang-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.22rem 0.55rem;
+        border-radius: 999px;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .qb-lang-chip__svg {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
 </style>

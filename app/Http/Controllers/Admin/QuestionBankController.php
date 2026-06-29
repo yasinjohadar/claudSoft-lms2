@@ -330,6 +330,7 @@ class QuestionBankController extends Controller
             'course',
             'creator',
             'options',
+            'programmingLanguages',
             'quizQuestions.quiz',
             'responses',
             'pools'
@@ -571,7 +572,7 @@ class QuestionBankController extends Controller
      */
     public function preview($id)
     {
-        $question = QuestionBank::with(['questionType', 'options', 'course'])->findOrFail($id);
+        $question = QuestionBank::with(['questionType', 'options', 'course', 'programmingLanguages'])->findOrFail($id);
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([

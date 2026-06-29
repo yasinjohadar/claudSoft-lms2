@@ -9,6 +9,9 @@
         @if($question->questionType)
             <span class="qb-type-chip">{{ $question->questionType->display_name }}</span>
         @endif
+        @include('admin.pages.question-bank.partials.programming-language-chips', [
+            'languages' => $question->programmingLanguages ?? collect(),
+        ])
         <span class="badge bg-secondary-transparent">{{ $question->default_grade ?? 0 }} نقطة</span>
         @if($question->difficulty_level)
             <span class="badge bg-info-transparent">{{ $question->difficulty_level }}</span>

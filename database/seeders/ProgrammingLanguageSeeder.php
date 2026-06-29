@@ -36,6 +36,7 @@ class ProgrammingLanguageSeeder extends Seeder
 
             // Mobile
             ['name' => 'Flutter', 'display_name' => 'Flutter', 'description' => 'إطار عمل لبناء تطبيقات متعددة المنصات', 'category' => 'mobile', 'icon' => 'fas fa-mobile-alt', 'color' => '#02569B'],
+            ['name' => 'Dart', 'display_name' => 'Dart', 'description' => 'لغة برمجة Flutter لتطبيقات الموبايل', 'category' => 'mobile', 'icon' => 'qb-lang-icon--dart', 'color' => '#0175C2'],
             ['name' => 'React Native', 'display_name' => 'React Native', 'description' => 'بناء تطبيقات الموبايل باستخدام React', 'category' => 'mobile', 'icon' => 'fab fa-react', 'color' => '#61DAFB'],
             ['name' => 'Kotlin', 'display_name' => 'Kotlin', 'description' => 'لغة برمجة Android الحديثة', 'category' => 'mobile', 'icon' => 'fab fa-android', 'color' => '#0095D5'],
             ['name' => 'Swift', 'display_name' => 'Swift', 'description' => 'لغة برمجة تطبيقات iOS', 'category' => 'mobile', 'icon' => 'fab fa-apple', 'color' => '#FA7343'],

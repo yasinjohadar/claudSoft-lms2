@@ -106,7 +106,14 @@
                                 <tr><td class="text-muted">الدرس</td><td>{{ $generation->lesson_name ?? $generation->lesson?->title }}</td></tr>
                             @endif
                             @if($generation->programmingLanguage)
-                                <tr><td class="text-muted">اللغة</td><td>{{ $generation->programmingLanguage->display_name ?? $generation->programmingLanguage->name }}</td></tr>
+                                <tr>
+                                    <td class="text-muted">اللغة</td>
+                                    <td>
+                                        @include('admin.pages.question-bank.partials.programming-language-chips', [
+                                            'languages' => collect([$generation->programmingLanguage]),
+                                        ])
+                                    </td>
+                                </tr>
                             @endif
                             <tr><td class="text-muted">الصعوبة</td><td>{{ \App\Models\AIQuestionGeneration::DIFFICULTIES[$generation->difficulty_level] ?? $generation->difficulty_level }}</td></tr>
                             <tr><td class="text-muted">الدرجة</td><td>{{ number_format((float) $generation->default_grade, 2) }}</td></tr>

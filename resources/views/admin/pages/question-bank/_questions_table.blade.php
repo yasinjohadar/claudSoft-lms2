@@ -38,15 +38,10 @@
                         </span>
                     </td>
                     <td>
-                        @if($question->programmingLanguages->count() > 0)
-                            @foreach($question->programmingLanguages as $lang)
-                                <span class="qb-lang-chip" style="background-color: {{ $lang->color ?? '#6c757d' }};">
-                                    <i class="{{ $lang->icon ?? 'fe fe-code' }}"></i>{{ $lang->name }}
-                                </span>
-                            @endforeach
-                        @else
-                            <span class="text-muted">—</span>
-                        @endif
+                        @include('admin.pages.question-bank.partials.programming-language-chips', [
+                            'languages' => $question->programmingLanguages,
+                            'emptyText' => '—',
+                        ])
                     </td>
                     <td>
                         @if($question->course)

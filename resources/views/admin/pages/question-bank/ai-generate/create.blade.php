@@ -100,10 +100,26 @@
                             <label for="programming_language_id" class="form-label">لغة البرمجة <span class="text-danger">*</span></label>
                             <select class="form-select" id="programming_language_id" name="programming_language_id" required>
                                 <option value="">اختر اللغة</option>
-                                @foreach($programmingLanguages as $language)
-                                    <option value="{{ $language->id }}" @selected((string) old('programming_language_id', $prefillLanguageId ?? '') === (string) $language->id)>
-                                        {{ $language->display_name ?? $language->name }}
-                                    </option>
+                                @php
+                                    $languageCategoryLabels = [
+                                        'frontend' => 'واجهات أمامية',
+                                        'backend' => 'خلفية',
+                                        'mobile' => 'موبايل',
+                                        'database' => 'قواعد بيانات',
+                                        'ai' => 'ذكاء اصطناعي',
+                                        'devops' => 'DevOps',
+                                        'design' => 'تصميم',
+                                    ];
+                                    $groupedLanguages = $programmingLanguages->groupBy('category');
+                                @endphp
+                                @foreach($groupedLanguages as $category => $languagesInCategory)
+                                    <optgroup label="{{ $languageCategoryLabels[$category] ?? $category }}">
+                                        @foreach($languagesInCategory as $language)
+                                            <option value="{{ $language->id }}" @selected((string) old('programming_language_id', $prefillLanguageId ?? '') === (string) $language->id)>
+                                                {{ $language->display_name ?? $language->name }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>

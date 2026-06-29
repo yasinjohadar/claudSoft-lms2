@@ -83,6 +83,13 @@
                                 @endif
                             </div>
                             <div class="card-body pt-3">
+                                @if($question->programmingLanguages->isNotEmpty())
+                                    <div class="mb-3">
+                                        @include('admin.pages.question-bank.partials.programming-language-chips', [
+                                            'languages' => $question->programmingLanguages,
+                                        ])
+                                    </div>
+                                @endif
                                 <div class="qb-show-question-text mb-3">
                                     {!! mixed_bidi_html($question->question_text) !!}
                                 </div>
@@ -216,6 +223,15 @@
                                         <div class="qb-show-meta-list__label">نوع السؤال</div>
                                         <div class="qb-show-meta-list__value">
                                             <span class="qb-type-chip">{{ $question->questionType->display_name ?? 'غير محدد' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="qb-show-meta-list__item">
+                                        <div class="qb-show-meta-list__label">لغة البرمجة</div>
+                                        <div class="qb-show-meta-list__value">
+                                            @include('admin.pages.question-bank.partials.programming-language-chips', [
+                                                'languages' => $question->programmingLanguages,
+                                                'emptyText' => 'غير محددة',
+                                            ])
                                         </div>
                                     </div>
                                     <div class="qb-show-meta-list__item">
