@@ -11,12 +11,14 @@ use App\Models\LaravelAiModel;
 use App\Models\Lesson;
 use App\Models\ProgrammingLanguage;
 use App\Models\QuestionType;
+use App\Models\Quiz;
 use App\Services\Ai\AIModelService;
 use App\Services\Ai\AIQuestionGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class QuestionBankAiGenerationController extends Controller
 {
@@ -28,6 +30,86 @@ class QuestionBankAiGenerationController extends Controller
     ) {}
 
     public function create(Request $request)
+    {
+        return $this->renderCreateForm($request);
+    }
+
+    public function createForQuiz(Quiz $quiz, Request $request)
+    {
+        return $this->renderCreateForm($request, $quiz);
+    }
+
+    public function store(Request $request)
+    {
+        return $this->processStore($request);
+    }
+
+    public function storeForQuiz(Quiz $quiz, Request $request)
+    {
+        return $this->processStore($request, $quiz);
+    }
+
+    public function review(AIQuestionGeneration $generation)
+    {
+        return $this->renderReview($generation);
+    }
+
+    public function reviewForQuiz(Quiz $quiz, AIQuestionGeneration $generation)
+    {
+        $this->ensureGenerationBelongsToQuiz($generation, $quiz);
+
+        return $this->renderReview($generation, $quiz);
+    }
+
+    public function saveAll(AIQuestionGeneration $generation)
+    {
+        return $this->processSaveAll($generation);
+    }
+
+    public function saveAllForQuiz(Quiz $quiz, AIQuestionGeneration $generation)
+    {
+        $this->ensureGenerationBelongsToQuiz($generation, $quiz);
+
+        return $this->processSaveAll($generation, $quiz);
+    }
+
+    public function saveSelected(Request $request, AIQuestionGeneration $generation)
+    {
+        return $this->processSaveSelected($request, $generation);
+    }
+
+    public function saveSelectedForQuiz(Request $request, Quiz $quiz, AIQuestionGeneration $generation)
+    {
+        $this->ensureGenerationBelongsToQuiz($generation, $quiz);
+
+        return $this->processSaveSelected($request, $generation, $quiz);
+    }
+
+    public function saveOne(AIQuestionGeneration $generation, int $index)
+    {
+        return $this->processSaveOne($generation, $index);
+    }
+
+    public function saveOneForQuiz(Quiz $quiz, AIQuestionGeneration $generation, int $index)
+    {
+        $this->ensureGenerationBelongsToQuiz($generation, $quiz);
+
+        return $this->processSaveOne($generation, $index, $quiz);
+    }
+
+    public function regenerate(AIQuestionGeneration $generation)
+    {
+        return $this->processRegenerate($generation);
+    }
+
+    public function regenerateForQuiz(Quiz $quiz, AIQuestionGeneration $generation)
+    {
+        $this->ensureGenerationBelongsToQuiz($generation, $quiz);
+
+        return $this->processRegenerate($generation, $quiz);
+    }
+
+    private function renderCreateForm(Request $request, ?Quiz $quiz = null)
     {
         $courses = Course::where('is_published', true)->orderBy('title')->get();
         $lessons = collect();
@@ -45,7 +127,10 @@ class QuestionBankAiGenerationController extends Controller
         $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
         $questionsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
 
-        $prefillCourseId = $request->query('course_id', old('course_id'));
+        $prefillCourseId = $quiz?->course_id
+            ?? $request->query('course_id', old('course_id'));
+        $prefillLessonId = $quiz?->lesson_id
+            ?? $request->query('lesson_id', old('lesson_id'));
         $prefillDifficulty = $request->query('difficulty', old('difficulty_level'));
         $prefillLanguageId = $request->query('language_id', old('programming_language_id'));
 
@@ -66,12 +151,14 @@ class QuestionBankAiGenerationController extends Controller
             'laravelAiModels',
             'questionsEngineChoiceAvailable',
             'prefillCourseId',
+            'prefillLessonId',
             'prefillDifficulty',
             'prefillLanguageId',
+            'quiz',
         ));
     }
 
-    public function store(Request $request)
+    private function processStore(Request $request, ?Quiz $quiz = null)
     {
         $validated = $request->validate([
             'source_type' => 'required|in:lesson_content,manual_text,topic',
@@ -107,6 +194,14 @@ class QuestionBankAiGenerationController extends Controller
             'question_types.required' => 'يجب اختيار نوع واحد على الأقل من أنواع الأسئلة',
             'lesson_name.required' => 'اسم الدرس مطلوب',
         ]);
+
+        if ($quiz !== null) {
+            if ((int) $validated['course_id'] !== (int) $quiz->course_id) {
+                return redirect()->back()
+                    ->with('error', 'يجب أن يطابق الكورس المحدد كورس الاختبار.')
+                    ->withInput();
+            }
+        }
 
         try {
             $requestedEngine = $validated['questions_engine'] ?? null;
@@ -157,6 +252,10 @@ class QuestionBankAiGenerationController extends Controller
                 'source_type' => $validated['source_type'],
             ];
 
+            if ($quiz !== null) {
+                $baseOptions['quiz_id'] = $quiz->id;
+            }
+
             if ($useLaravel) {
                 $baseOptions['laravel_model'] = $laraModel;
             } else {
@@ -183,8 +282,8 @@ class QuestionBankAiGenerationController extends Controller
             }
 
             return redirect()
-                ->route('question-bank.ai-generate.review', $generation)
-                ->with('success', $this->completedFlashMessage($generation));
+                ->to($this->reviewRoute($generation, $quiz))
+                ->with('success', $this->completedFlashMessage($generation, quiz: $quiz));
         } catch (\Exception $e) {
             Log::error('Question bank AI generation failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -196,30 +295,36 @@ class QuestionBankAiGenerationController extends Controller
         }
     }
 
-    public function review(AIQuestionGeneration $generation)
+    private function renderReview(AIQuestionGeneration $generation, ?Quiz $quiz = null)
     {
         $generation->refresh();
-        $generation->load(['user', 'course', 'lesson', 'model', 'laravelAiModel', 'programmingLanguage']);
+        $generation->load(['user', 'course', 'lesson', 'model', 'laravelAiModel', 'programmingLanguage', 'quiz']);
 
         if (! is_array($generation->generated_questions)) {
             $generation->generated_questions = json_decode($generation->generated_questions ?? '[]', true) ?? [];
         }
 
-        return view('admin.pages.question-bank.ai-generate.review', compact('generation'));
+        if ($quiz === null && $generation->quiz_id) {
+            $quiz = $generation->quiz;
+        }
+
+        return view('admin.pages.question-bank.ai-generate.review', compact('generation', 'quiz'));
     }
 
-    public function saveAll(AIQuestionGeneration $generation)
+    private function processSaveAll(AIQuestionGeneration $generation, ?Quiz $quiz = null)
     {
+        $quiz = $this->resolveQuizForGeneration($generation, $quiz);
+
         try {
             $questions = $this->generationService->saveGeneratedQuestions($generation);
 
             if ($questions->isEmpty()) {
-                return redirect()->back()->with('info', 'جميع الأسئلة محفوظة مسبقاً في بنك الأسئلة.');
+                return redirect()->back()->with('info', $this->alreadySavedMessage($quiz));
             }
 
             return redirect()
-                ->route('question-bank.ai-generate.review', $generation)
-                ->with('success', 'تم حفظ '.$questions->count().' سؤال في بنك الأسئلة.');
+                ->to($this->reviewRoute($generation, $quiz))
+                ->with('success', $this->savedSuccessMessage($questions->count(), $quiz));
         } catch (\Exception $e) {
             Log::error('Error saving all AI questions: '.$e->getMessage());
 
@@ -227,8 +332,10 @@ class QuestionBankAiGenerationController extends Controller
         }
     }
 
-    public function saveSelected(Request $request, AIQuestionGeneration $generation)
+    private function processSaveSelected(Request $request, AIQuestionGeneration $generation, ?Quiz $quiz = null)
     {
+        $quiz = $this->resolveQuizForGeneration($generation, $quiz);
+
         $validated = $request->validate([
             'selected_questions' => 'required|array|min:1',
             'selected_questions.*' => 'integer|min:0',
@@ -243,8 +350,8 @@ class QuestionBankAiGenerationController extends Controller
             }
 
             return redirect()
-                ->route('question-bank.ai-generate.review', $generation)
-                ->with('success', 'تم حفظ '.$questions->count().' سؤال في بنك الأسئلة.');
+                ->to($this->reviewRoute($generation, $quiz))
+                ->with('success', $this->savedSuccessMessage($questions->count(), $quiz));
         } catch (\Exception $e) {
             Log::error('Error saving selected AI questions: '.$e->getMessage());
 
@@ -252,11 +359,13 @@ class QuestionBankAiGenerationController extends Controller
         }
     }
 
-    public function saveOne(AIQuestionGeneration $generation, int $index)
+    private function processSaveOne(AIQuestionGeneration $generation, int $index, ?Quiz $quiz = null)
     {
+        $quiz = $this->resolveQuizForGeneration($generation, $quiz);
+
         try {
             if ($generation->isIndexSaved($index)) {
-                return redirect()->back()->with('info', 'هذا السؤال محفوظ مسبقاً في بنك الأسئلة.');
+                return redirect()->back()->with('info', $this->alreadySavedMessage($quiz));
             }
 
             $question = $this->generationService->saveSingleQuestion($generation, $index);
@@ -266,8 +375,10 @@ class QuestionBankAiGenerationController extends Controller
             }
 
             return redirect()
-                ->route('question-bank.ai-generate.review', $generation)
-                ->with('success', 'تم حفظ السؤال في بنك الأسئلة بنجاح.');
+                ->to($this->reviewRoute($generation, $quiz))
+                ->with('success', $quiz
+                    ? 'تم حفظ السؤال في بنك الأسئلة وربطه بالاختبار بنجاح.'
+                    : 'تم حفظ السؤال في بنك الأسئلة بنجاح.');
         } catch (\Exception $e) {
             Log::error('Error saving single AI question: '.$e->getMessage());
 
@@ -275,7 +386,7 @@ class QuestionBankAiGenerationController extends Controller
         }
     }
 
-    public function regenerate(AIQuestionGeneration $generation)
+    private function processRegenerate(AIQuestionGeneration $generation, ?Quiz $quiz = null)
     {
         set_time_limit(180);
 
@@ -291,8 +402,8 @@ class QuestionBankAiGenerationController extends Controller
             $this->generationService->processGeneration($generation->fresh());
 
             return redirect()
-                ->route('question-bank.ai-generate.review', $generation)
-                ->with('success', $this->completedFlashMessage($generation->fresh(), 'تم إعادة التوليد.'));
+                ->to($this->reviewRoute($generation, $quiz))
+                ->with('success', $this->completedFlashMessage($generation->fresh(), 'تم إعادة التوليد.', $quiz));
         } catch (\Exception $e) {
             Log::error('Error regenerating question bank AI batch: '.$e->getMessage());
 
@@ -300,15 +411,71 @@ class QuestionBankAiGenerationController extends Controller
         }
     }
 
-    private function completedFlashMessage(AIQuestionGeneration $generation, string $lead = 'تم إكمال التوليد.'): string
+    private function ensureGenerationBelongsToQuiz(AIQuestionGeneration $generation, Quiz $quiz): void
+    {
+        if ((int) $generation->quiz_id !== (int) $quiz->id) {
+            throw new NotFoundHttpException();
+        }
+    }
+
+    private function reviewRoute(AIQuestionGeneration $generation, ?Quiz $quiz = null): string
+    {
+        if ($quiz !== null) {
+            return route('quizzes.ai-generate.review', [$quiz, $generation]);
+        }
+
+        if ($generation->quiz_id) {
+            return route('quizzes.ai-generate.review', [$generation->quiz_id, $generation]);
+        }
+
+        return route('question-bank.ai-generate.review', $generation);
+    }
+
+    private function savedSuccessMessage(int $count, ?Quiz $quiz = null): string
+    {
+        if ($quiz) {
+            return 'تم حفظ '.$count.' سؤال في بنك الأسئلة وربطها بالاختبار «'.$quiz->title.'».';
+        }
+
+        return 'تم حفظ '.$count.' سؤال في بنك الأسئلة.';
+    }
+
+    private function resolveQuizForGeneration(AIQuestionGeneration $generation, ?Quiz $quiz = null): ?Quiz
+    {
+        if ($quiz !== null) {
+            return $quiz;
+        }
+
+        if ($generation->quiz_id) {
+            return Quiz::find($generation->quiz_id);
+        }
+
+        return null;
+    }
+
+    private function alreadySavedMessage(?Quiz $quiz = null): string
+    {
+        if ($quiz) {
+            return 'جميع الأسئلة محفوظة مسبقاً في بنك الأسئلة ومربوطة بالاختبار.';
+        }
+
+        return 'جميع الأسئلة محفوظة مسبقاً في بنك الأسئلة.';
+    }
+
+    private function completedFlashMessage(AIQuestionGeneration $generation, string $lead = 'تم إكمال التوليد.', ?Quiz $quiz = null): string
     {
         $count = is_array($generation->generated_questions) ? count($generation->generated_questions) : 0;
 
         $parts = [
             $lead,
             "تم توليد {$count} سؤالاً جاهزاً للمراجعة.",
-            'راجع الأسئلة ثم احفظ الكل أو احفظ كل سؤال على حدة.',
         ];
+
+        if ($quiz) {
+            $parts[] = 'راجع الأسئلة ثم احفظها — ستُضاف تلقائياً للاختبار وبنك الأسئلة.';
+        } else {
+            $parts[] = 'راجع الأسئلة ثم احفظ الكل أو احفظ كل سؤال على حدة.';
+        }
 
         if ($generation->status === 'completed' && filled($generation->error_message) && str_contains((string) $generation->error_message, 'سؤال')) {
             $parts[] = 'تنبيه: '.$generation->error_message;

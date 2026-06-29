@@ -104,8 +104,8 @@
                                 <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions" disabled>
                                     <i class="fe fe-trash-2 me-1"></i>حذف المحدد
                                 </button>
-                                <a href="{{ route('admin.ai.question-creation.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-info-light btn-sm">
-                                    <i class="fe fe-zap me-1"></i>إنشاء بالذكاء الاصطناعي
+                                <a href="{{ route('quizzes.ai-generate.create', $quiz) }}" class="btn btn-info-light btn-sm">
+                                    <i class="fe fe-cpu me-1"></i>توليد بالذكاء الاصطناعي
                                 </a>
                                 <button type="button" class="btn btn-success-light btn-sm" data-bs-toggle="modal" data-bs-target="#createQuestionModal">
                                     <i class="fe fe-plus me-1"></i>سؤال جديد

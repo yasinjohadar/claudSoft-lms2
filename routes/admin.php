@@ -419,6 +419,17 @@ Route::prefix('admin')
         Route::post('quizzes/{id}/attach-question-pool', [QuizController::class, 'attachQuestionPool'])->name('quizzes.attach-question-pool');
         Route::delete('quizzes/{id}/detach-question-pool/{quizQuestionId}', [QuizController::class, 'detachQuestionPool'])->name('quizzes.detach-question-pool');
 
+        // Quiz AI question generation (review flow + auto-attach to quiz)
+        Route::prefix('quizzes/{quiz}')->group(function () {
+            Route::get('ai-generate', [QuestionBankAiGenerationController::class, 'createForQuiz'])->name('quizzes.ai-generate.create');
+            Route::post('ai-generate', [QuestionBankAiGenerationController::class, 'storeForQuiz'])->name('quizzes.ai-generate.store');
+            Route::get('ai-generate/{generation}/review', [QuestionBankAiGenerationController::class, 'reviewForQuiz'])->name('quizzes.ai-generate.review');
+            Route::post('ai-generate/{generation}/save-all', [QuestionBankAiGenerationController::class, 'saveAllForQuiz'])->name('quizzes.ai-generate.save-all');
+            Route::post('ai-generate/{generation}/save-selected', [QuestionBankAiGenerationController::class, 'saveSelectedForQuiz'])->name('quizzes.ai-generate.save-selected');
+            Route::post('ai-generate/{generation}/save-one/{index}', [QuestionBankAiGenerationController::class, 'saveOneForQuiz'])->name('quizzes.ai-generate.save-one');
+            Route::post('ai-generate/{generation}/regenerate', [QuestionBankAiGenerationController::class, 'regenerateForQuiz'])->name('quizzes.ai-generate.regenerate');
+        });
+
         // Random Pool Quizzes (separate admin section)
         Route::get('random-pool-quizzes', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'index'])->name('random-pool-quizzes.index');
         Route::get('random-pool-quizzes/create', [\App\Http\Controllers\Admin\RandomPoolQuizController::class, 'create'])->name('random-pool-quizzes.create');

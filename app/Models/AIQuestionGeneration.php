@@ -15,6 +15,7 @@ class AIQuestionGeneration extends Model
     protected $fillable = [
         'user_id',
         'course_id',
+        'quiz_id',
         'lesson_id',
         'lesson_name',
         'programming_language_id',
@@ -101,6 +102,11 @@ class AIQuestionGeneration extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'course_id');
+    }
+
+    public function quiz(): BelongsTo
+    {
+        return $this->belongsTo(Quiz::class, 'quiz_id');
     }
 
     /**

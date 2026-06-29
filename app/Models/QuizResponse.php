@@ -373,11 +373,12 @@ class QuizResponse extends Model
             $answer = $this->response_text;
         }
         
-        if (!$answer) {
+        if ($answer === null || $answer === '') {
             \Log::warning('No answer found for true/false question', [
                 'response_id' => $this->id,
                 'question_id' => $this->question_id,
             ]);
+
             return false;
         }
 

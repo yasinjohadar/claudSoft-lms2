@@ -331,8 +331,8 @@ class AIQuestionCreationService
   \"type\": \"true_false\",
   \"question\": \"نص السؤال\",
   \"options\": [\"صح\", \"خطأ\"],
-  \"correct_answer\": \"صح\" أو \"خطأ\",
-  \"explanation\": \"شرح الإجابة\",
+  \"correct_answer\": \"صح\" أو \"خطأ\" (يجب أن يكون بالعربية فقط، وليس true/false),
+  \"explanation\": \"شرح واضح يوضح لماذا الإجابة صحيحة (جملة أو أكثر — ممنوع كتابة «صح وخطأ» أو اسم نوع السؤال فقط)\",
   \"difficulty\": \"easy|medium|hard\",
   \"points\": 10
 }
@@ -384,9 +384,9 @@ class AIQuestionCreationService
 8. **fill_blanks** (ملء الفراغات):
 {
   \"type\": \"fill_blanks\",
-  \"question\": \"نص السؤال مع [___] للفراغات\",
+  \"question\": \"نص السؤال مع [[blank]] لكل فراغ (استخدم [[blank]] وليس [___])\",
   \"correct_answers\": [\"الإجابة 1\", \"الإجابة 2\", \"الإجابة 3\"],
-  \"explanation\": \"شرح الإجابات\",
+  \"explanation\": \"شرح الإجابات بجمل واضحة\",
   \"difficulty\": \"easy|medium|hard\",
   \"points\": 10
 }
@@ -421,11 +421,11 @@ class AIQuestionCreationService
 - تأكد من إنشاء الأسئلة بالأنواع المطلوبة فقط: {$questionTypes}
 - إذا كان النوع المطلوب \"مطابقة\"، استخدم type: \"matching\" مع pairs
 - إذا كان النوع المطلوب \"ترتيب\"، استخدم type: \"ordering\" مع items و correct_order
-- إذا كان النوع المطلوب \"ملء الفراغات\"، استخدم type: \"fill_blanks\" مع correct_answers
+- إذا كان النوع المطلوب \"ملء الفراغات\"، استخدم type: \"fill_blanks\" مع correct_answers وضع [[blank]] في نص السؤال لكل فراغ
 - إذا كان النوع المطلوب \"إجابة رقمية\"، استخدم type: \"numerical\" مع expected_value
 - إذا كان النوع المطلوب \"محسوب\"، استخدم type: \"calculated\" مع formula و variables
-- الإجابات الصحيحة يجب أن تكون دقيقة
-- الشرح يجب أن يكون واضحاً ومفيداً
+- الإجابات الصحيحة يجب أن تكون دقيقة ومتسقة مع المحتوى المصدر
+- الشرح يجب أن يكون واضحاً ومفيداً ويفسر **لماذا** الإجابة صحيحة (ممنوع كتابة «صح وخطأ» أو اسم نوع السؤال فقط)
 - استخدم مصطلحات متعلقة بـ {$languageName}
 - أنشئ عدد الأسئلة المطلوب ({$numberOfQuestions}) مع التنويع في الأنواع المحددة";
     }
@@ -456,7 +456,9 @@ class AIQuestionCreationService
                 'total_questions' => count($generatedQuestions),
             ]);
 
-            foreach ($generatedQuestions as $index => $questionData) {
+            foreach ($generatedQuestions as $index => $rawQuestionData) {
+                $questionData = GeneratedQuestionValidator::normalize($rawQuestionData);
+
                 Log::info('Processing question', [
                     'index' => $index + 1,
                     'type' => $questionData['type'] ?? 'unknown',
@@ -480,6 +482,9 @@ class AIQuestionCreationService
                     continue;
                 }
 
+                $questionTypeName = QuestionType::find($questionTypeId)->name ?? '';
+                $explanation = GeneratedQuestionValidator::sanitizeExplanation($questionData['explanation'] ?? null);
+
                 Log::info('Creating question', [
                     'question_type_id' => $questionTypeId,
                     'question_text_length' => strlen($questionData['question'] ?? ''),
@@ -491,7 +496,7 @@ class AIQuestionCreationService
                     'lesson_name' => $lessonName,
                     'question_type_id' => $questionTypeId,
                     'question_text' => $questionData['question'] ?? '',
-                    'explanation' => $questionData['explanation'] ?? '',
+                    'explanation' => $explanation,
                     'difficulty_level' => $questionData['difficulty'] ?? 'medium',
                     'default_grade' => $questionData['points'] ?? 10,
                     'is_active' => true,
@@ -508,8 +513,6 @@ class AIQuestionCreationService
                 $question->programmingLanguages()->attach($programmingLanguage->id);
 
                 // معالجة خاصة لكل نوع من أنواع الأسئلة
-                $questionTypeName = QuestionType::find($questionTypeId)->name ?? '';
-
                 // Matching questions
                 if ($questionTypeName === 'matching' && isset($questionData['pairs']) && is_array($questionData['pairs'])) {
                     $pairOrder = 1;
@@ -560,9 +563,10 @@ class AIQuestionCreationService
                 }
                 // Numerical questions
                 elseif ($questionTypeName === 'numerical') {
-                    $expectedValue = $questionData['expected_value'] ?? null;
+                    $expectedValue = $questionData['expected_value'] ?? $questionData['correct_answer'] ?? null;
                     $tolerance = $questionData['tolerance'] ?? 0.1;
-                    if ($expectedValue !== null) {
+                    if ($expectedValue !== null && $expectedValue !== '') {
+                        $numericValue = floatval(str_replace(',', '.', (string) $expectedValue));
                         QuestionOption::create([
                             'question_id' => $question->id,
                             'option_text' => (string) $expectedValue,
@@ -570,10 +574,10 @@ class AIQuestionCreationService
                             'option_order' => 1,
                             'grade_percentage' => 100,
                         ]);
-                        // Store tolerance in metadata
                         $metadata = $question->metadata ?? [];
-                        $metadata['expected_value'] = $expectedValue;
-                        $metadata['tolerance'] = $tolerance;
+                        $metadata['correct_answer'] = $numericValue;
+                        $metadata['expected_value'] = $numericValue;
+                        $metadata['tolerance'] = floatval(str_replace(',', '.', (string) $tolerance));
                         $question->update(['metadata' => $metadata]);
                     }
                 }
@@ -591,7 +595,15 @@ class AIQuestionCreationService
                 elseif ($questionTypeName === 'essay') {
                     // Essay questions don't need options
                 }
-                // Regular questions with options (multiple choice, true/false, short answer)
+                // True/false — always صح / خطأ (matches manual creation)
+                elseif ($questionTypeName === 'true_false') {
+                    $this->createTrueFalseOptions($question, $questionData['correct_answer'] ?? null);
+                }
+                // Short answer — persist acceptable answers as options
+                elseif ($questionTypeName === 'short_answer') {
+                    $this->createShortAnswerOptions($question, $questionData['correct_answer'] ?? null);
+                }
+                // Regular questions with options (multiple choice, etc.)
                 elseif (isset($questionData['options']) && is_array($questionData['options']) && ! empty($questionData['options'])) {
                     $correctAnswer = $questionData['correct_answer'] ?? '';
 
@@ -630,39 +642,6 @@ class AIQuestionCreationService
                             'grade_percentage' => $isCorrect ? 100 : 0,
                         ]);
                     }
-                } elseif ($questionTypeId && $questionTypeId == QuestionType::where('name', 'true_false')->first()?->id) {
-                    // إذا كان السؤال من نوع true_false ولم تكن هناك خيارات، أنشئ خيارين افتراضيين
-                    $correctAnswer = $questionData['correct_answer'] ?? '';
-
-                    Log::info('Creating default true/false options', [
-                        'question_id' => $question->id,
-                        'correct_answer' => $correctAnswer,
-                    ]);
-
-                    $trueIsCorrect = $this->isOptionCorrect('صح', $correctAnswer, $questionTypeId);
-                    $falseIsCorrect = $this->isOptionCorrect('خطأ', $correctAnswer, $questionTypeId);
-
-                    Log::info('True/False options correctness', [
-                        'question_id' => $question->id,
-                        'true_is_correct' => $trueIsCorrect,
-                        'false_is_correct' => $falseIsCorrect,
-                    ]);
-
-                    QuestionOption::create([
-                        'question_id' => $question->id,
-                        'option_text' => 'صح',
-                        'is_correct' => $trueIsCorrect,
-                        'option_order' => 1,
-                        'grade_percentage' => $trueIsCorrect ? 100 : 0,
-                    ]);
-
-                    QuestionOption::create([
-                        'question_id' => $question->id,
-                        'option_text' => 'خطأ',
-                        'is_correct' => $falseIsCorrect,
-                        'option_order' => 2,
-                        'grade_percentage' => $falseIsCorrect ? 100 : 0,
-                    ]);
                 }
 
                 $savedQuestions->push($question);
@@ -670,6 +649,13 @@ class AIQuestionCreationService
                 // التحقق من حفظ الخيارات بشكل صحيح
                 $optionsCount = $question->options()->count();
                 $correctOptionsCount = $question->options()->where('is_correct', true)->count();
+
+                if ($questionTypeName === 'true_false' && $correctOptionsCount !== 1) {
+                    Log::warning('AI true/false question saved without exactly one correct option', [
+                        'question_id' => $question->id,
+                        'correct_options_count' => $correctOptionsCount,
+                    ]);
+                }
 
                 Log::info('Question saved with options', [
                     'question_id' => $question->id,
@@ -758,6 +744,65 @@ class AIQuestionCreationService
     }
 
     /**
+     * إنشاء خيارات صح/خطأ بشكل موحّد مع الإنشاء اليدوي.
+     */
+    private function createTrueFalseOptions(QuestionBank $question, mixed $correctAnswer): void
+    {
+        $normalized = GeneratedQuestionValidator::normalizeTrueFalseAnswer($correctAnswer);
+
+        if ($normalized === null) {
+            Log::warning('Unrecognized true/false correct_answer for AI question', [
+                'question_id' => $question->id,
+                'correct_answer' => $correctAnswer,
+            ]);
+            $normalized = 'صح';
+        }
+
+        $trueIsCorrect = $normalized === 'صح';
+        $falseIsCorrect = $normalized === 'خطأ';
+
+        QuestionOption::create([
+            'question_id' => $question->id,
+            'option_text' => 'صح',
+            'is_correct' => $trueIsCorrect,
+            'option_order' => 1,
+            'grade_percentage' => $trueIsCorrect ? 100 : 0,
+        ]);
+
+        QuestionOption::create([
+            'question_id' => $question->id,
+            'option_text' => 'خطأ',
+            'is_correct' => $falseIsCorrect,
+            'option_order' => 2,
+            'grade_percentage' => $falseIsCorrect ? 100 : 0,
+        ]);
+    }
+
+    /**
+     * @param  mixed  $correctAnswer  string or list of acceptable answers
+     */
+    private function createShortAnswerOptions(QuestionBank $question, mixed $correctAnswer): void
+    {
+        $answers = is_array($correctAnswer) ? $correctAnswer : [$correctAnswer];
+        $order = 1;
+
+        foreach ($answers as $answer) {
+            $text = trim((string) $answer);
+            if ($text === '') {
+                continue;
+            }
+
+            QuestionOption::create([
+                'question_id' => $question->id,
+                'option_text' => $text,
+                'is_correct' => true,
+                'option_order' => $order++,
+                'grade_percentage' => 100,
+            ]);
+        }
+    }
+
+    /**
      * التحقق من صحة الخيار
      * مطابق لمنطق AIQuestionGenerationService (GLM) مع دعم true/false variants
      */
@@ -826,7 +871,7 @@ class AIQuestionCreationService
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             Log::info('JSON parsed successfully (direct)', ['count' => count($decoded)]);
 
-            return $this->validateGeneratedQuestions($decoded);
+            return GeneratedQuestionValidator::validate($decoded);
         }
 
         // محاولة 2: استخراج JSON array باستخدام balanced bracket matching
@@ -837,7 +882,7 @@ class AIQuestionCreationService
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
                 Log::info('JSON parsed successfully (balanced bracket extraction)', ['count' => count($decoded)]);
 
-                return $this->validateGeneratedQuestions($decoded);
+                return GeneratedQuestionValidator::validate($decoded);
             }
         }
 
@@ -854,7 +899,7 @@ class AIQuestionCreationService
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
                 Log::info('JSON parsed successfully (manual extraction)', ['count' => count($decoded)]);
 
-                return $this->validateGeneratedQuestions($decoded);
+                return GeneratedQuestionValidator::validate($decoded);
             }
 
             // إذا فشل، حاول استخدام balanced bracket matching على الجزء المستخرج
@@ -865,7 +910,7 @@ class AIQuestionCreationService
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded) > 0) {
                     Log::info('JSON parsed successfully (manual + balanced bracket)', ['count' => count($decoded)]);
 
-                    return $this->validateGeneratedQuestions($decoded);
+                    return GeneratedQuestionValidator::validate($decoded);
                 }
             }
         }
@@ -876,7 +921,7 @@ class AIQuestionCreationService
         if (! empty($objects)) {
             Log::info('JSON parsed successfully (multiple objects)', ['count' => count($objects)]);
 
-            return $this->validateGeneratedQuestions($objects);
+            return GeneratedQuestionValidator::validate($objects);
         }
 
         // محاولة 4.5: البحث عن JSON object واحد (fallback أخير)
@@ -886,7 +931,7 @@ class AIQuestionCreationService
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 Log::info('JSON parsed successfully (single object fallback)', ['count' => count($decoded)]);
 
-                return $this->validateGeneratedQuestions($decoded);
+                return GeneratedQuestionValidator::validate($decoded);
             }
         }
 
@@ -895,7 +940,7 @@ class AIQuestionCreationService
         if (! empty($questions)) {
             Log::info('Questions parsed from text format', ['count' => count($questions)]);
 
-            return $this->validateGeneratedQuestions($questions);
+            return GeneratedQuestionValidator::validate($questions);
         }
 
         Log::error('Failed to parse questions from response', [
@@ -1075,70 +1120,5 @@ class AIQuestionCreationService
         }
 
         return $questions;
-    }
-
-    /**
-     * التحقق من صحة الأسئلة المولدة
-     */
-    private function validateGeneratedQuestions(array $questions): array
-    {
-        $validated = [];
-
-        foreach ($questions as $question) {
-            if (! isset($question['question']) || empty($question['question'])) {
-                continue;
-            }
-
-            $type = $question['type'] ?? 'single_choice';
-            $validatedQuestion = [
-                'type' => $type,
-                'question' => $question['question'],
-                'options' => $question['options'] ?? [],
-                'correct_answer' => $question['correct_answer'] ?? '',
-                'explanation' => $question['explanation'] ?? '',
-                'difficulty' => $question['difficulty'] ?? 'medium',
-                'points' => $question['points'] ?? 10,
-            ];
-
-            // إضافة الحقول الخاصة لكل نوع
-            if ($type === 'matching' && isset($question['pairs'])) {
-                $validatedQuestion['pairs'] = $question['pairs'];
-            }
-
-            if ($type === 'ordering') {
-                if (isset($question['items'])) {
-                    $validatedQuestion['items'] = $question['items'];
-                }
-                if (isset($question['correct_order'])) {
-                    $validatedQuestion['correct_order'] = $question['correct_order'];
-                }
-            }
-
-            if ($type === 'fill_blanks' && isset($question['correct_answers'])) {
-                $validatedQuestion['correct_answers'] = $question['correct_answers'];
-            }
-
-            if ($type === 'numerical') {
-                if (isset($question['expected_value'])) {
-                    $validatedQuestion['expected_value'] = $question['expected_value'];
-                }
-                if (isset($question['tolerance'])) {
-                    $validatedQuestion['tolerance'] = $question['tolerance'];
-                }
-            }
-
-            if ($type === 'calculated') {
-                if (isset($question['formula'])) {
-                    $validatedQuestion['formula'] = $question['formula'];
-                }
-                if (isset($question['variables'])) {
-                    $validatedQuestion['variables'] = $question['variables'];
-                }
-            }
-
-            $validated[] = $validatedQuestion;
-        }
-
-        return $validated;
     }
 }

@@ -13,9 +13,9 @@ use App\Models\QuestionType;
 use App\Models\Quiz;
 use App\Services\Ai\AIModelService;
 use App\Services\Ai\AIQuestionCreationService;
+use App\Services\Quiz\QuizQuestionAttachmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +25,8 @@ class AIQuestionCreationController extends Controller
 
     public function __construct(
         private AIQuestionCreationService $creationService,
-        private AIModelService $modelService
+        private AIModelService $modelService,
+        private QuizQuestionAttachmentService $quizAttachmentService,
     ) {}
 
     /**
@@ -209,34 +210,8 @@ class AIQuestionCreationController extends Controller
             if ($request->filled('quiz_id')) {
                 $quiz = Quiz::findOrFail($validated['quiz_id']);
 
-                DB::beginTransaction();
                 try {
-                    $maxOrder = DB::table('quiz_questions')
-                        ->where('quiz_id', $quiz->id)
-                        ->max('question_order') ?? 0;
-
-                    $addedCount = 0;
-                    foreach ($questions as $question) {
-                        $exists = DB::table('quiz_questions')
-                            ->where('quiz_id', $quiz->id)
-                            ->where('question_id', $question->id)
-                            ->exists();
-
-                        if (! $exists) {
-                            $maxOrder++;
-                            $quiz->questions()->attach($question->id, [
-                                'question_order' => $maxOrder,
-                                'question_grade' => $question->default_grade,
-                                'is_required' => false,
-                            ]);
-                            $addedCount++;
-                        }
-                    }
-
-                    $maxScore = $quiz->calculateMaxScore();
-                    $quiz->update(['max_score' => $maxScore]);
-
-                    DB::commit();
+                    $addedCount = $this->quizAttachmentService->attachQuestionBankItems($quiz, $questions);
 
                     $message = $addedCount > 0
                         ? 'تم إنشاء '.$questions->count().' سؤال بنجاح وربط '.$addedCount.' سؤال بالاختبار "'.$quiz->title.'".'
@@ -245,7 +220,6 @@ class AIQuestionCreationController extends Controller
                     return redirect()->route('quizzes.manage-questions', $quiz->id)
                         ->with('success', $message);
                 } catch (\Exception $e) {
-                    DB::rollBack();
                     Log::error('Error linking questions to quiz: '.$e->getMessage());
 
                     return redirect()->route('quizzes.manage-questions', $quiz->id)

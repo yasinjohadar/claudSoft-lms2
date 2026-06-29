@@ -44,6 +44,10 @@
                                 <span class="group-show-action__icon"><i class="fe fe-list"></i></span>
                                 <span class="group-show-action__text">إدارة الأسئلة</span>
                             </a>
+                            <a href="{{ route('quizzes.ai-generate.create', $quiz) }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-cpu"></i></span>
+                                <span class="group-show-action__text">توليد بالذكاء الاصطناعي</span>
+                            </a>
                             <form method="POST" action="{{ route('quizzes.preview.start', $quiz->id) }}" class="d-inline">
                                 @csrf
                                 <button type="submit" class="group-show-action group-show-action--warning border-0">
@@ -217,6 +221,9 @@
                             </h6>
                             <a href="{{ route('quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
                                 <i class="fe fe-settings me-1"></i>إدارة الأسئلة
+                            </a>
+                            <a href="{{ route('quizzes.ai-generate.create', $quiz) }}" class="btn btn-info-light btn-sm">
+                                <i class="fe fe-cpu me-1"></i>توليد بالذكاء الاصطناعي
                             </a>
                         </div>
                         <div class="card-body pt-3 p-0">

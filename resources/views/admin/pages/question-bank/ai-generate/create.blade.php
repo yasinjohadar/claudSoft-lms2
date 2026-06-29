@@ -42,6 +42,20 @@
 @stop
 
 @section('content')
+@php
+    $isQuizContext = isset($quiz) && $quiz;
+    $quizShowRoute = $isQuizContext
+        ? ($quiz->isRandomPool() ? route('random-pool-quizzes.show', $quiz) : route('quizzes.show', $quiz))
+        : null;
+    $quizManageRoute = $isQuizContext
+        ? ($quiz->isRandomPool() ? route('random-pool-quizzes.manage-questions', $quiz) : route('quizzes.manage-questions', $quiz))
+        : null;
+    $storeRoute = $isQuizContext
+        ? route('quizzes.ai-generate.store', $quiz)
+        : route('question-bank.ai-generate.store');
+    $cancelRoute = $isQuizContext ? $quizShowRoute : route('question-bank.index');
+    $lockCourse = $isQuizContext && $quiz->course_id;
+@endphp
 <div class="main-content app-content">
     <div class="container-fluid">
 
@@ -51,8 +65,16 @@
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
-                    <li class="breadcrumb-item active">توليد بالذكاء الاصطناعي</li>
+                    @if($isQuizContext)
+                        <li class="breadcrumb-item">
+                            <a href="{{ $quiz->isRandomPool() ? route('random-pool-quizzes.index') : route('quizzes.index') }}">الاختبارات</a>
+                        </li>
+                        <li class="breadcrumb-item"><a href="{{ $quizShowRoute }}">{{ $quiz->title }}</a></li>
+                        <li class="breadcrumb-item active">توليد بالذكاء الاصطناعي</li>
+                    @else
+                        <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
+                        <li class="breadcrumb-item active">توليد بالذكاء الاصطناعي</li>
+                    @endif
                 </ol>
             </nav>
         </div>
@@ -61,23 +83,34 @@
             <div class="row align-items-start g-3">
                 <div class="col-lg-8">
                     <span class="group-show-hero__eyebrow"><i class="fe fe-cpu me-1"></i>الذكاء الاصطناعي</span>
-                    <h2 class="group-show-hero__title mb-2">توليد أسئلة لبنك الأسئلة</h2>
+                    <h2 class="group-show-hero__title mb-2">
+                        @if($isQuizContext)
+                            توليد أسئلة للاختبار
+                        @else
+                            توليد أسئلة لبنك الأسئلة
+                        @endif
+                    </h2>
                     <p class="group-show-hero__desc mb-0">
-                        حدد الكورس والدرس واللغة وأنواع الأسئلة، ثم راجع النتائج قبل الحفظ في البنك.
+                        @if($isQuizContext)
+                            حدد اللغة وأنواع الأسئلة والمصدر، ثم راجع النتائج قبل الحفظ.
+                            ستُحفظ الأسئلة في بنك الأسئلة وتُضاف تلقائياً إلى اختبار «{{ $quiz->title }}».
+                        @else
+                            حدد الكورس والدرس واللغة وأنواع الأسئلة، ثم راجع النتائج قبل الحفظ في البنك.
+                        @endif
                     </p>
                 </div>
                 <div class="col-lg-4">
                     <div class="group-show-actions">
-                        <a href="{{ route('question-bank.index') }}" class="group-show-action">
+                        <a href="{{ $cancelRoute }}" class="group-show-action">
                             <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
-                            <span class="group-show-action__text">العودة للقائمة</span>
+                            <span class="group-show-action__text">{{ $isQuizContext ? 'العودة للاختبار' : 'العودة للقائمة' }}</span>
                         </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <form action="{{ route('question-bank.ai-generate.store') }}" method="POST" id="qbAiGenerateForm" class="qb-ai-generate-form">
+        <form action="{{ $storeRoute }}" method="POST" id="qbAiGenerateForm" class="qb-ai-generate-form">
             @csrf
 
             <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4">
@@ -89,12 +122,17 @@
                     <div class="row g-3 mb-3">
                         <div class="col-sm-6 col-lg-3">
                             <label for="course_id" class="form-label">الكورس <span class="text-danger">*</span></label>
-                            <select class="form-select" id="course_id" name="course_id" required>
-                                <option value="">اختر الكورس</option>
-                                @foreach($courses as $course)
-                                    <option value="{{ $course->id }}" @selected((string) old('course_id', $prefillCourseId ?? '') === (string) $course->id)>{{ $course->title }}</option>
-                                @endforeach
-                            </select>
+                            @if($lockCourse)
+                                <input type="hidden" name="course_id" value="{{ $quiz->course_id }}">
+                                <input type="text" class="form-control" value="{{ $quiz->course?->title ?? '—' }}" readonly disabled>
+                            @else
+                                <select class="form-select" id="course_id" name="course_id" required>
+                                    <option value="">اختر الكورس</option>
+                                    @foreach($courses as $course)
+                                        <option value="{{ $course->id }}" @selected((string) old('course_id', $prefillCourseId ?? '') === (string) $course->id)>{{ $course->title }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
                         <div class="col-sm-6 col-lg-3">
                             <label for="programming_language_id" class="form-label">لغة البرمجة <span class="text-danger">*</span></label>
@@ -161,7 +199,7 @@
                                     <option value="">اختر الكورس أولاً</option>
                                     @if(isset($lessons) && $lessons->isNotEmpty())
                                         @foreach($lessons as $lesson)
-                                            <option value="{{ $lesson->id }}" @selected((string) old('lesson_id') === (string) $lesson->id)>{{ $lesson->title }}</option>
+                                            <option value="{{ $lesson->id }}" @selected((string) old('lesson_id', $prefillLessonId ?? '') === (string) $lesson->id)>{{ $lesson->title }}</option>
                                         @endforeach
                                     @endif
                                 </select>
@@ -267,7 +305,7 @@
                                 <button type="submit" class="btn btn-primary" id="submitBtn">
                                     <i class="fe fe-zap me-1"></i> توليد للمعاينة
                                 </button>
-                                <a href="{{ route('question-bank.index') }}" class="btn btn-outline-secondary">إلغاء</a>
+                                <a href="{{ $cancelRoute }}" class="btn btn-outline-secondary">إلغاء</a>
                             </div>
                         </div>
                     </div>
@@ -294,7 +332,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const questionTypeCheckboxes = document.querySelectorAll('.question-type-checkbox');
     const questionTypesError = document.getElementById('question_types_error');
     const submitBtn = document.getElementById('submitBtn');
-    const initialOldLessonId = @json(old('lesson_id'));
+    const initialOldLessonId = @json(old('lesson_id', $prefillLessonId ?? null));
+    const courseLocked = @json($lockCourse ?? false);
 
     function syncQuestionsEngineModelVisibility() {
         if (!questionsEngineChoiceAvailable) return;
@@ -338,9 +377,15 @@ document.addEventListener('DOMContentLoaded', function() {
             lessonNameInput.value = '';
             textSource.style.display = 'none';
             sourceContent.removeAttribute('required');
-            if (courseSelect.value) {
+            if (courseSelect && courseSelect.value) {
                 lessonIdSelect.disabled = false;
                 if (lessonIdSelect.options.length <= 1) loadLessonsForCourse(courseSelect.value, initialOldLessonId);
+            } else if (courseLocked && lessonIdSelect) {
+                lessonIdSelect.disabled = false;
+                const lockedCourseId = @json($prefillCourseId ?? null);
+                if (lockedCourseId && lessonIdSelect.options.length <= 1) {
+                    loadLessonsForCourse(lockedCourseId, initialOldLessonId);
+                }
             }
         } else {
             lessonSelectBlock.style.display = 'none';
@@ -355,9 +400,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sourceType.addEventListener('change', toggleSourceFields);
     toggleSourceFields();
-    courseSelect.addEventListener('change', function() {
-        if (sourceType.value === 'lesson_content') loadLessonsForCourse(this.value, null);
-    });
+    if (courseSelect) {
+        courseSelect.addEventListener('change', function() {
+            if (sourceType.value === 'lesson_content') loadLessonsForCourse(this.value, null);
+        });
+    }
 
     function validateQuestionTypes() {
         const checked = Array.from(questionTypeCheckboxes).some(cb => cb.checked);

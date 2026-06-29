@@ -35,6 +35,32 @@
         'numerical' => 'إجابة رقمية',
         'calculated' => 'محسوب',
     ];
+
+    if (! isset($quiz) && $generation->quiz_id) {
+        $quiz = $generation->quiz;
+    }
+    $isQuizContext = isset($quiz) && $quiz;
+    $quizShowRoute = $isQuizContext
+        ? ($quiz->isRandomPool() ? route('random-pool-quizzes.show', $quiz) : route('quizzes.show', $quiz))
+        : null;
+    $quizManageRoute = $isQuizContext
+        ? ($quiz->isRandomPool() ? route('random-pool-quizzes.manage-questions', $quiz) : route('quizzes.manage-questions', $quiz))
+        : null;
+    $regenerateRoute = $isQuizContext
+        ? route('quizzes.ai-generate.regenerate', [$quiz, $generation])
+        : route('question-bank.ai-generate.regenerate', $generation);
+    $saveSelectedRoute = $isQuizContext
+        ? route('quizzes.ai-generate.save-selected', [$quiz, $generation])
+        : route('question-bank.ai-generate.save-selected', $generation);
+    $saveAllRoute = $isQuizContext
+        ? route('quizzes.ai-generate.save-all', [$quiz, $generation])
+        : route('question-bank.ai-generate.save-all', $generation);
+    $createRoute = $isQuizContext
+        ? route('quizzes.ai-generate.create', $quiz)
+        : route('question-bank.ai-generate.create');
+    $saveConfirmSuffix = $isQuizContext
+        ? ' في بنك الأسئلة وربطها بالاختبار؟'
+        : ' في بنك الأسئلة؟';
 @endphp
 
 <div class="main-content app-content">
@@ -46,8 +72,16 @@
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('question-bank.ai-generate.create') }}">توليد AI</a></li>
+                    @if($isQuizContext)
+                        <li class="breadcrumb-item">
+                            <a href="{{ $quiz->isRandomPool() ? route('random-pool-quizzes.index') : route('quizzes.index') }}">الاختبارات</a>
+                        </li>
+                        <li class="breadcrumb-item"><a href="{{ $quizShowRoute }}">{{ $quiz->title }}</a></li>
+                        <li class="breadcrumb-item"><a href="{{ $createRoute }}">توليد AI</a></li>
+                    @else
+                        <li class="breadcrumb-item"><a href="{{ route('question-bank.index') }}">بنك الأسئلة</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('question-bank.ai-generate.create') }}">توليد AI</a></li>
+                    @endif
                     <li class="breadcrumb-item active">مراجعة #{{ $generation->id }}</li>
                 </ol>
             </nav>
@@ -56,19 +90,31 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <div>
                 <h2 class="mb-1">مراجعة الأسئلة المولدة</h2>
-                <p class="text-muted mb-0">راجع الأسئلة ثم احفظ الكل أو كل سؤال على حدة في بنك الأسئلة.</p>
+                <p class="text-muted mb-0">
+                    @if($isQuizContext)
+                        راجع الأسئلة ثم احفظها — ستُحفظ في بنك الأسئلة وتُضاف تلقائياً إلى الاختبار «{{ $quiz->title }}».
+                    @else
+                        راجع الأسئلة ثم احفظ الكل أو كل سؤال على حدة في بنك الأسئلة.
+                    @endif
+                </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 @if($generation->status === 'completed' || $generation->status === 'failed')
-                    <form action="{{ route('question-bank.ai-generate.regenerate', $generation) }}" method="POST" class="d-inline">
+                    <form action="{{ $regenerateRoute }}" method="POST" class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('إعادة التوليد ستحذف حالة الحفظ الحالية. متابعة؟')">
                             <i class="fe fe-refresh-cw me-1"></i> إعادة التوليد
                         </button>
                     </form>
                 @endif
-                <a href="{{ route('question-bank.index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fe fe-database me-1"></i> بنك الأسئلة
+                @if($isQuizContext && $quizManageRoute)
+                    <a href="{{ $quizManageRoute }}" class="btn btn-success btn-sm">
+                        <i class="fe fe-list me-1"></i> إدارة أسئلة الاختبار
+                    </a>
+                @endif
+                <a href="{{ $isQuizContext ? $quizShowRoute : route('question-bank.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fe fe-{{ $isQuizContext ? 'arrow-right' : 'database' }} me-1"></i>
+                    {{ $isQuizContext ? 'العودة للاختبار' : 'بنك الأسئلة' }}
                 </a>
             </div>
         </div>
@@ -99,6 +145,9 @@
                                     @endif
                                 </td>
                             </tr>
+                            @if($isQuizContext)
+                                <tr><td class="text-muted">الاختبار</td><td>{{ $quiz->title }}</td></tr>
+                            @endif
                             @if($generation->course)
                                 <tr><td class="text-muted">الكورس</td><td>{{ $generation->course->title }}</td></tr>
                             @endif
@@ -147,16 +196,16 @@
                             <div class="d-flex flex-wrap gap-2">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAll()">تحديد الكل</button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAll()">إلغاء التحديد</button>
-                                <form action="{{ route('question-bank.ai-generate.save-selected', $generation) }}" method="POST" id="saveSelectedForm" class="d-inline" onsubmit="return saveSelected()">
+                                <form action="{{ $saveSelectedRoute }}" method="POST" id="saveSelectedForm" class="d-inline" onsubmit="return saveSelected()">
                                     @csrf
                                     <button type="submit" class="btn btn-warning btn-sm">
                                         <i class="fe fe-check-square me-1"></i> حفظ المحدد (<span id="selectedCount">0</span>)
                                     </button>
                                 </form>
                                 @if($unsavedCount > 0)
-                                    <form action="{{ route('question-bank.ai-generate.save-all', $generation) }}" method="POST" class="d-inline">
+                                    <form action="{{ $saveAllRoute }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('حفظ كل الأسئلة غير المحفوظة في بنك الأسئلة؟')">
+                                        <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('حفظ كل الأسئلة غير المحفوظة{{ $saveConfirmSuffix }}')">
                                             <i class="fe fe-save me-1"></i> حفظ الكل
                                         </button>
                                     </form>
@@ -173,6 +222,11 @@
                             $typeLabel = $aiTypeLabels[$typeKey] ?? $typeKey;
                             $diffKey = $question['difficulty'] ?? 'medium';
                             $diffLabel = \App\Models\AIQuestionGeneration::DIFFICULTIES[$diffKey] ?? $diffKey;
+                            $normalizedTfAnswer = $typeKey === 'true_false'
+                                ? \App\Services\Ai\GeneratedQuestionValidator::normalizeTrueFalseAnswer($question['correct_answer'] ?? null)
+                                : null;
+                            $explanationIsStub = ! empty($question['explanation'])
+                                && \App\Services\Ai\GeneratedQuestionValidator::isStubExplanation((string) $question['explanation']);
                         @endphp
                         <div class="card custom-card group-show-members-card mb-3 border-start border-3 border-primary qb-ai-review-card {{ $isSaved ? 'qb-ai-review-card--saved' : '' }}" data-index="{{ $index }}">
                             <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -191,7 +245,12 @@
                                     @if($isSaved && $bankId)
                                         <a href="{{ route('question-bank.preview', $bankId) }}" class="btn btn-outline-primary btn-sm" target="_blank">عرض في البنك</a>
                                     @elseif(! $isSaved)
-                                        <form action="{{ route('question-bank.ai-generate.save-one', [$generation, $index]) }}" method="POST" class="d-inline">
+                                        @php
+                                            $saveOneRoute = $isQuizContext
+                                                ? route('quizzes.ai-generate.save-one', [$quiz, $generation, $index])
+                                                : route('question-bank.ai-generate.save-one', [$generation, $index]);
+                                        @endphp
+                                        <form action="{{ $saveOneRoute }}" method="POST" class="d-inline">
                                             @csrf
                                             <button type="submit" class="btn btn-primary btn-sm">
                                                 <i class="fe fe-save me-1"></i> حفظ هذا السؤال
@@ -201,9 +260,32 @@
                                 </div>
                             </div>
                             <div class="card-body">
+                                @if($typeKey === 'true_false' && $normalizedTfAnswer === null)
+                                    <div class="alert alert-warning py-2 small mb-3">
+                                        <i class="fe fe-alert-triangle me-1"></i>
+                                        الإجابة الصحيحة لصح/خطأ غير معروفة — راجع السؤال قبل الحفظ.
+                                    </div>
+                                @endif
+                                @if($explanationIsStub)
+                                    <div class="alert alert-warning py-2 small mb-3">
+                                        <i class="fe fe-alert-triangle me-1"></i>
+                                        الشرح يبدو وهمياً (مثل «صح وخطأ») ولن يُحفظ في بنك الأسئلة.
+                                    </div>
+                                @endif
+
                                 <p class="fw-semibold fs-6 mb-3">{{ $question['question'] ?? '—' }}</p>
 
-                                @if(!empty($question['options']) && is_array($question['options']))
+                                @if($typeKey === 'true_false')
+                                    <ul class="list-group list-group-flush mb-3">
+                                        @foreach(['صح', 'خطأ'] as $tfIndex => $tfOption)
+                                            <li class="list-group-item {{ $normalizedTfAnswer === $tfOption ? 'list-group-item-success' : '' }}">
+                                                <span class="badge bg-secondary me-1">{{ $tfIndex === 0 ? 'أ' : 'ب' }}</span>
+                                                {{ $tfOption }}
+                                                @if($normalizedTfAnswer === $tfOption)<i class="fe fe-check text-success ms-1"></i>@endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @elseif(!empty($question['options']) && is_array($question['options']))
                                     <ul class="list-group list-group-flush mb-3">
                                         @foreach($question['options'] as $optIndex => $option)
                                             @php
@@ -243,8 +325,34 @@
                                     </div>
                                 @endif
 
+                                @if(!empty($question['correct_answers']) && is_array($question['correct_answers']))
+                                    <div class="mb-3">
+                                        <strong class="text-muted small">إجابات الفراغات:</strong>
+                                        <ol class="mb-0 mt-1">
+                                            @foreach($question['correct_answers'] as $blankAnswer)
+                                                <li>{{ $blankAnswer }}</li>
+                                            @endforeach
+                                        </ol>
+                                    </div>
+                                @endif
+
+                                @if(isset($question['expected_value']))
+                                    <div class="mb-3 small bg-light rounded p-2">
+                                        <strong>القيمة المتوقعة:</strong> {{ $question['expected_value'] }}
+                                        @if(isset($question['tolerance']))
+                                            <span class="text-muted">(هامش: {{ $question['tolerance'] }})</span>
+                                        @endif
+                                    </div>
+                                @endif
+
                                 <div class="row g-2">
-                                    @if(isset($question['correct_answer']) && $question['correct_answer'] !== '')
+                                    @if($typeKey === 'true_false' && $normalizedTfAnswer)
+                                        <div class="col-md-6">
+                                            <div class="small bg-success bg-opacity-10 rounded p-2">
+                                                <strong>الإجابة الصحيحة:</strong> {{ $normalizedTfAnswer }}
+                                            </div>
+                                        </div>
+                                    @elseif(isset($question['correct_answer']) && $question['correct_answer'] !== '')
                                         <div class="col-md-6">
                                             <div class="small bg-success bg-opacity-10 rounded p-2">
                                                 <strong>الإجابة الصحيحة:</strong>
@@ -252,7 +360,7 @@
                                             </div>
                                         </div>
                                     @endif
-                                    @if(!empty($question['explanation']))
+                                    @if(!empty($question['explanation']) && ! $explanationIsStub)
                                         <div class="col-md-6">
                                             <div class="small bg-info bg-opacity-10 rounded p-2">
                                                 <strong>الشرح:</strong> {{ $question['explanation'] }}
@@ -269,7 +377,7 @@
                             <i class="fe fe-x-circle text-danger" style="font-size: 3rem;"></i>
                             <h5 class="mt-3">فشل التوليد</h5>
                             <p class="text-danger">{{ $generation->error_message ?? 'حدث خطأ غير معروف' }}</p>
-                            <a href="{{ route('question-bank.ai-generate.create') }}" class="btn btn-primary">العودة للنموذج</a>
+                            <a href="{{ $createRoute }}" class="btn btn-primary">العودة للنموذج</a>
                         </div>
                     </div>
                 @else
@@ -289,6 +397,8 @@
 
 @section('scripts')
 <script>
+const saveConfirmSuffix = @json($saveConfirmSuffix);
+
 function updateSelectedCount() {
     const count = document.querySelectorAll('.question-checkbox:checked').length;
     const el = document.getElementById('selectedCount');
@@ -320,7 +430,7 @@ function saveSelected() {
         input.value = index;
         form.appendChild(input);
     });
-    return confirm('حفظ ' + selected.length + ' سؤال في بنك الأسئلة؟');
+    return confirm('حفظ ' + selected.length + ' سؤال' + saveConfirmSuffix);
 }
 
 document.addEventListener('DOMContentLoaded', updateSelectedCount);

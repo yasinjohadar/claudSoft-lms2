@@ -55,6 +55,10 @@
                                 <span class="group-show-action__icon"><i class="fe fe-list"></i></span>
                                 <span class="group-show-action__text">إدارة الأسئلة</span>
                             </a>
+                            <a href="{{ route('quizzes.ai-generate.create', $quiz) }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-cpu"></i></span>
+                                <span class="group-show-action__text">توليد بالذكاء الاصطناعي</span>
+                            </a>
                             @if(!empty($poolStats['config_error']))
                                 <span class="group-show-action group-show-action--warning opacity-50"
                                       title="{{ $poolStats['config_error'] }}"
@@ -237,9 +241,14 @@
                                 الأسئلة
                                 <span class="group-show-members-card__count">{{ $quiz->quizQuestions->count() }}</span>
                             </h6>
-                            <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
-                                <i class="fe fe-settings me-1"></i>إدارة الأسئلة
-                            </a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('quizzes.ai-generate.create', $quiz) }}" class="btn btn-info-light btn-sm">
+                                    <i class="fe fe-cpu me-1"></i>توليد بالذكاء الاصطناعي
+                                </a>
+                                <a href="{{ route('random-pool-quizzes.manage-questions', $quiz->id) }}" class="btn btn-success-light btn-sm">
+                                    <i class="fe fe-settings me-1"></i>إدارة الأسئلة
+                                </a>
+                            </div>
                         </div>
                         <div class="card-body pt-3 p-0">
                             @if($quiz->quizQuestions->count() > 0)

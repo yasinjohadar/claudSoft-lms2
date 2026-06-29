@@ -11,8 +11,10 @@ use App\Models\ProgrammingLanguage;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use App\Models\QuestionType;
+use App\Models\Quiz;
 use App\Services\AiNew\LaravelAiPromptRunner;
 use App\Services\AiNew\LaravelAiProviderManager;
+use App\Services\Quiz\QuizQuestionAttachmentService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +27,7 @@ class AIQuestionGenerationService
         private AIQuestionCreationService $creationService,
         private LaravelAiProviderManager $providerManager,
         private LaravelAiPromptRunner $promptRunner,
+        private QuizQuestionAttachmentService $quizAttachmentService,
     ) {}
 
     /**
@@ -125,6 +128,7 @@ class AIQuestionGenerationService
         $base = [
             'user_id' => $user->id,
             'course_id' => $options['course_id'] ?? null,
+            'quiz_id' => $options['quiz_id'] ?? null,
             'lesson_id' => $options['lesson_id'] ?? null,
             'lesson_name' => $lessonName,
             'programming_language_id' => $options['programming_language_id'],
@@ -442,6 +446,13 @@ class AIQuestionGenerationService
 
         $this->markIndicesAsSaved($generation, $indicesToProcess, $savedQuestions);
 
+        if ($generation->quiz_id && $savedQuestions->isNotEmpty()) {
+            $quiz = Quiz::find($generation->quiz_id);
+            if ($quiz) {
+                $this->quizAttachmentService->attachQuestionBankItems($quiz, $savedQuestions);
+            }
+        }
+
         return $savedQuestions;
     }
 
@@ -613,25 +624,7 @@ class AIQuestionGenerationService
      */
     public function validateGeneratedQuestions(array $questions): array
     {
-        $validated = [];
-
-        foreach ($questions as $question) {
-            if (! isset($question['question']) || empty($question['question'])) {
-                continue;
-            }
-
-            $validated[] = [
-                'type' => $question['type'] ?? 'single_choice',
-                'question' => $question['question'],
-                'options' => $question['options'] ?? [],
-                'correct_answer' => $question['correct_answer'] ?? '',
-                'explanation' => $question['explanation'] ?? '',
-                'difficulty' => $question['difficulty'] ?? 'medium',
-                'points' => $question['points'] ?? 10,
-            ];
-        }
-
-        return $validated;
+        return GeneratedQuestionValidator::validate($questions);
     }
 
     /**
