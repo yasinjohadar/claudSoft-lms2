@@ -12,6 +12,15 @@ use Carbon\Carbon;
 
 class UserSessionController extends Controller
 {
+    private const PER_PAGE_OPTIONS = [25, 50, 100, 150, 200];
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = (int) $request->get('per_page', 25);
+
+        return in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 25;
+    }
+
     /**
      * Display a listing of all user sessions.
      */
@@ -64,7 +73,7 @@ class UserSessionController extends Controller
                 });
             }
 
-            $sessions = $query->paginate($request->get('per_page', 20))->withQueryString();
+            $sessions = $query->paginate($this->resolvePerPage($request))->withQueryString();
 
             // Statistics
             $stats = [
@@ -87,6 +96,9 @@ class UserSessionController extends Controller
                 return response()->json([
                     'table_html' => view('admin.user-sessions._sessions_table', compact('sessions'))->render(),
                     'count' => $sessions->total(),
+                    'from' => $sessions->firstItem(),
+                    'to' => $sessions->lastItem(),
+                    'per_page' => $sessions->perPage(),
                 ]);
             }
 

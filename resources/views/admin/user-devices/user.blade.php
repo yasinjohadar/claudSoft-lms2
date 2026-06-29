@@ -1,289 +1,315 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    أجهزة المستخدم
+    أجهزة {{ $user->name }}
+@stop
+
+@section('styles')
+    @include('admin.user-devices.partials.page-styles')
 @stop
 
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
 
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('admin.components.alerts')
 
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">أجهزة {{ $user->name }}</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('admin.user-devices.index') }}">أجهزة المستخدمين</a></li>
-                        <li class="breadcrumb-item active">أجهزة المستخدم</li>
-                    </ol>
-                </nav>
-            </div>
-            <div>
-                <a href="{{ route('admin.user-devices.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-right me-1"></i>العودة
-                </a>
-            </div>
+        <div class="my-4 page-header-breadcrumb ud-page-animate dashboard-fade-in">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.user-devices.index') }}">أجهزة المستخدمين</a></li>
+                    <li class="breadcrumb-item active">أجهزة المستخدم</li>
+                </ol>
+            </nav>
         </div>
 
-        <!-- User Info Card -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    @if($user->avatar)
-                        <img src="{{ asset('storage/' . $user->avatar) }}" 
-                             alt="{{ $user->name }}" 
-                             class="avatar avatar-lg rounded-circle me-3">
-                    @else
-                        <div class="avatar avatar-lg rounded-circle bg-primary-transparent me-3">
-                            <span class="fw-bold fs-24">{{ substr($user->name, 0, 1) }}</span>
-                        </div>
-                    @endif
-                    <div class="flex-grow-1">
-                        <h4 class="mb-1">{{ $user->name }}</h4>
-                        <p class="text-muted mb-0">{{ $user->email }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">إجمالي الأجهزة</p>
-                                <h4 class="mb-0">{{ number_format($stats['total']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-primary-transparent rounded-circle">
-                                    <i class="fas fa-mobile-alt fs-18"></i>
-                                </div>
+        <div class="group-show-hero dashboard-fade-in ud-page-animate mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="ud-user-avatar flex-shrink-0" style="width: 3rem; height: 3rem; min-width: 3rem; font-size: 1.1rem;">
+                            @if($user->avatar)
+                                <img src="{{ asset('storage/' . $user->avatar) }}" alt="">
+                            @else
+                                {{ mb_substr($user->name, 0, 1) }}
+                            @endif
+                        </span>
+                        <div class="min-w-0">
+                            <span class="group-show-hero__eyebrow">
+                                <i class="fe fe-user me-1"></i>
+                                أجهزة المستخدم
+                            </span>
+                            <h2 class="group-show-hero__title mb-2">{{ $user->name }}</h2>
+                            <p class="group-show-hero__desc mb-2">{{ $user->email }}</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-smartphone me-1"></i>{{ number_format($stats['total']) }} جهاز
+                                </span>
+                                @if($stats['trusted'] > 0)
+                                    <span class="group-show-chip group-show-chip--sm text-success">
+                                        <i class="fe fe-shield me-1"></i>{{ number_format($stats['trusted']) }} موثوق
+                                    </span>
+                                @endif
+                                @if($stats['blocked'] > 0)
+                                    <span class="group-show-chip group-show-chip--sm text-danger">
+                                        <i class="fe fe-slash me-1"></i>{{ number_format($stats['blocked']) }} محظور
+                                    </span>
+                                @endif
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">الأجهزة الموثوقة</p>
-                                <h4 class="mb-0 text-success">{{ number_format($stats['trusted']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-success-transparent rounded-circle">
-                                    <i class="fas fa-shield-check fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">الأجهزة المحظورة</p>
-                                <h4 class="mb-0 text-danger">{{ number_format($stats['blocked']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-danger-transparent rounded-circle">
-                                    <i class="fas fa-ban fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">آخر جهاز مستخدم</p>
-                                <h4 class="mb-0">
-                                    @if($stats['last_used'])
-                                        <small class="text-muted">{{ $stats['last_used']->last_used_at->diffForHumans() }}</small>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-info-transparent rounded-circle">
-                                    <i class="fas fa-clock fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
+                <div class="col-lg-4">
+                    <div class="group-show-actions">
+                        <a href="{{ route('admin.user-devices.index') }}" class="group-show-action">
+                            <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                            <span class="group-show-action__text">كل الأجهزة</span>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-filter me-2"></i>الفلاتر
-                </h5>
+        <div id="userDevicesUserStatsContainer" class="mb-4 ud-page-animate">
+            @include('admin.user-devices.partials.stats-user', ['stats' => $stats])
+        </div>
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in ud-page-animate mb-4">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">تصفية الأجهزة</h4>
+                <p class="fs-12 text-muted mb-0">جميع الفلاتر تعمل فوراً عبر AJAX.</p>
             </div>
-            <div class="card-body">
-                <form method="GET" action="{{ route('admin.user-devices.user', $user->id) }}">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">نوع الجهاز</label>
-                            <select name="device_type" class="form-select">
+            <div class="card-body pt-3">
+                <div class="d-flex flex-wrap gap-2 mb-3" id="userDevicesUserQuickFilters">
+                    @php
+                        $quickStatuses = [
+                            '' => 'الكل',
+                            'active' => 'نشطة',
+                            'trusted' => 'موثوقة',
+                            'blocked' => 'محظورة',
+                        ];
+                    @endphp
+                    @foreach($quickStatuses as $value => $label)
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary ud-quick-filter {{ request('status', '') === $value ? 'active' : '' }}"
+                                data-status="{{ $value }}">
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+
+                <form method="GET" action="{{ route('admin.user-devices.user', $user->id) }}" id="userDevicesUserFilterForm" class="group-show-filters mb-0">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-xl-3 col-lg-4 col-md-6">
+                            <label class="form-label" for="userDevicesUserType">نوع الجهاز</label>
+                            <select name="device_type" id="userDevicesUserType" class="form-select">
                                 <option value="">الكل</option>
                                 <option value="mobile" {{ request('device_type') == 'mobile' ? 'selected' : '' }}>جوال</option>
                                 <option value="tablet" {{ request('device_type') == 'tablet' ? 'selected' : '' }}>تابلت</option>
                                 <option value="desktop" {{ request('device_type') == 'desktop' ? 'selected' : '' }}>سطح مكتب</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">الحالة</label>
-                            <select name="status" class="form-select">
+                        <div class="col-xl-3 col-lg-4 col-md-6">
+                            <label class="form-label" for="userDevicesUserStatus">الحالة</label>
+                            <select name="status" id="userDevicesUserStatus" class="form-select">
                                 <option value="">الكل</option>
                                 <option value="trusted" {{ request('status') == 'trusted' ? 'selected' : '' }}>موثوق</option>
                                 <option value="blocked" {{ request('status') == 'blocked' ? 'selected' : '' }}>محظور</option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>نشط</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search me-1"></i>بحث
-                            </button>
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesUserPerPage">عدد السجلات</label>
+                            <select name="per_page" id="userDevicesUserPerPage" class="form-select">
+                                @foreach([25, 50, 100, 150, 200] as $size)
+                                    <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>
+                                        {{ $size }} سجل
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fe fe-search me-1"></i>بحث
+                                </button>
+                                <button type="button" id="userDevicesUserResetBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                </button>
+                                <span id="userDevicesUserSearchFeedback" class="fs-12 text-muted"></span>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Devices Table -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">قائمة الأجهزة</h5>
-            </div>
-            <div class="card-body">
-                @if($devices->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>معلومات الجهاز</th>
-                                    <th>عدد مرات الدخول</th>
-                                    <th>أول استخدام</th>
-                                    <th>آخر استخدام</th>
-                                    <th>الموقع</th>
-                                    <th>الحالة</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($devices as $device)
-                                    <tr>
-                                        <td>{{ $devices->firstItem() + $loop->index }}</td>
-                                        <td>
-                                            <small>{{ $device->device_info }}</small>
-                                            @if($device->device_name)
-                                                <br>
-                                                <strong class="text-primary">{{ $device->device_name }}</strong>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info-transparent text-info">
-                                                {{ number_format($device->total_logins) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small>{{ $device->first_used_human }}</small>
-                                        </td>
-                                        <td>
-                                            <small>{{ $device->last_used_human }}</small>
-                                        </td>
-                                        <td>
-                                            <small>{{ $device->location_formatted }}</small>
-                                            @if($device->last_ip_address)
-                                                <br>
-                                                <small class="text-muted">{{ $device->last_ip_address }}</small>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="{{ $device->status_badge['class'] }}">
-                                                <i class="fas {{ $device->status_badge['icon'] }} me-1"></i>
-                                                {{ $device->status_badge['text'] }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('admin.user-devices.show', $device->id) }}" 
-                                                   class="btn btn-sm btn-outline-primary" 
-                                                   title="عرض التفاصيل">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($device->is_blocked)
-                                                    <form action="{{ route('admin.user-devices.unblock', $device->id) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من إلغاء حظر هذا الجهاز؟');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-outline-success" title="إلغاء الحظر">
-                                                            <i class="fas fa-unlock"></i>
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <form action="{{ route('admin.user-devices.block', $device->id) }}" 
-                                                          method="POST" 
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('هل أنت متأكد من حظر هذا الجهاز؟');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حظر">
-                                                            <i class="fas fa-ban"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="mt-4">
-                        {{ $devices->links() }}
-                    </div>
+        <div class="card custom-card group-show-members-card dashboard-fade-in ud-page-animate">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                <h6 class="group-show-members-card__title mb-0">
+                    قائمة الأجهزة
+                    <span class="group-show-members-card__count" id="userDevicesUserCountBadge">{{ $devices->total() }}</span>
+                </h6>
+                @if($devices->total() > 0)
+                    <span class="fs-12 text-muted" id="userDevicesUserRangeInfo">
+                        عرض {{ $devices->firstItem() }}–{{ $devices->lastItem() }} · {{ $devices->perPage() }} لكل صفحة
+                    </span>
                 @else
-                    <div class="text-center py-5">
-                        <i class="fas fa-mobile-alt fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">لا توجد أجهزة لهذا المستخدم</p>
-                    </div>
+                    <span class="fs-12 text-muted d-none" id="userDevicesUserRangeInfo"></span>
                 @endif
             </div>
+            <div class="card-body pt-3" id="userDevicesUserTableContainer">
+                @include('admin.user-devices._user_devices_table', ['devices' => $devices])
+            </div>
         </div>
+
     </div>
 </div>
-@stop
+@endsection
+
+@push('scripts')
+<script>
+function initUserDevicesUserCountup(root) {
+    (root || document).querySelectorAll('[data-countup]').forEach(function (el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        const duration = 800;
+        const start = performance.now();
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
+}
+
+initUserDevicesUserCountup();
+
+(function () {
+    function syncQuickFilters(status) {
+        document.querySelectorAll('.ud-quick-filter').forEach(function (btn) {
+            btn.classList.toggle('active', (btn.dataset.status || '') === (status || ''));
+        });
+    }
+
+    function initUserDevicesUserAjaxFilter() {
+        const form = document.getElementById('userDevicesUserFilterForm');
+        const tableContainer = document.getElementById('userDevicesUserTableContainer');
+        const countBadge = document.getElementById('userDevicesUserCountBadge');
+        const rangeInfo = document.getElementById('userDevicesUserRangeInfo');
+        const statusSelect = document.getElementById('userDevicesUserStatus');
+        const feedback = document.getElementById('userDevicesUserSearchFeedback');
+        const resetBtn = document.getElementById('userDevicesUserResetBtn');
+        const quickFilters = document.querySelectorAll('.ud-quick-filter');
+
+        if (!form || !tableContainer) return;
+
+        let currentController = null;
+
+        const getQueryString = function () {
+            return new URLSearchParams(new FormData(form)).toString();
+        };
+
+        const updateBrowserUrl = function (queryString) {
+            const nextUrl = queryString ? (form.action + '?' + queryString) : form.action;
+            window.history.replaceState({}, '', nextUrl);
+        };
+
+        const fetchAndRender = function (url) {
+            if (currentController) currentController.abort();
+            currentController = new AbortController();
+            if (feedback) feedback.textContent = 'جاري التحميل...';
+
+            fetch(url, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('فشل جلب النتائج');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data || typeof data.table_html !== 'string') throw new Error('صيغة غير متوقعة');
+
+                    tableContainer.innerHTML = data.table_html;
+
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
+                    }
+
+                    if (rangeInfo) {
+                        if (data.from && data.to && data.per_page) {
+                            rangeInfo.textContent = 'عرض ' + data.from + '–' + data.to + ' · ' + data.per_page + ' لكل صفحة';
+                            rangeInfo.classList.remove('d-none');
+                        } else if (data.count === 0) {
+                            rangeInfo.classList.add('d-none');
+                        }
+                    }
+
+                    updateBrowserUrl(url.includes('?') ? url.split('?')[1] : '');
+                    if (feedback) feedback.textContent = 'تم تحديث النتائج';
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError') return;
+                    if (feedback) feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                });
+        };
+
+        const triggerSearch = function () {
+            const queryString = getQueryString();
+            fetchAndRender(queryString ? (form.action + '?' + queryString) : form.action);
+            syncQuickFilters(statusSelect ? statusSelect.value : '');
+        };
+
+        quickFilters.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (statusSelect) statusSelect.value = btn.dataset.status || '';
+                triggerSearch();
+            });
+        });
+
+        form.querySelectorAll('select').forEach(function (field) {
+            field.addEventListener('change', triggerSearch);
+        });
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function () {
+                syncQuickFilters(statusSelect.value);
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                syncQuickFilters('');
+                if (feedback) feedback.textContent = '';
+                triggerSearch();
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        tableContainer.addEventListener('click', function (event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) return;
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserDevicesUserAjaxFilter);
+    } else {
+        initUserDevicesUserAjaxFilter();
+    }
+})();
+</script>
+@endpush

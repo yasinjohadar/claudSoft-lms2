@@ -37,8 +37,9 @@
         };
     @endphp
 
-    <form method="POST" action="{{ $verifyAction }}">
+    <form method="POST" action="{{ $verifyAction }}" data-device-token>
         @csrf
+        <input type="hidden" name="device_token" value="">
         <input type="hidden" name="phone" value="{{ $phone }}">
         @if($purpose !== \App\Enums\OtpPurpose::ChangePhone)
             <input type="hidden" name="purpose" value="{{ $purpose->value }}">
@@ -55,5 +56,6 @@
         <a href="{{ route('login') }}">العودة لتسجيل الدخول</a>
     </p>
 </div>
+<script src="{{ asset('assets/js/device-token.js') }}?v={{ filemtime(public_path('assets/js/device-token.js')) }}"></script>
 </body>
 </html>

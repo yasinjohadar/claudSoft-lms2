@@ -581,7 +581,54 @@ public function toggleVisibility(Request $request, $id)
     }
 
     /**
-     * Update module order.
+     * Reorder modules within a section (drag & drop).
+     */
+    public function reorder(Request $request, CourseSection $section)
+    {
+        $validated = $request->validate([
+            'module_ids' => 'required|array|min:1',
+            'module_ids.*' => 'integer|exists:course_modules,id',
+        ]);
+
+        $moduleIds = array_map('intval', $validated['module_ids']);
+        $validCount = CourseModule::query()
+            ->where('section_id', $section->id)
+            ->whereIn('id', $moduleIds)
+            ->count();
+
+        if ($validCount !== count($moduleIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بعض الوحدات لا تنتمي لهذا القسم',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($moduleIds as $index => $moduleId) {
+                CourseModule::where('id', $moduleId)
+                    ->where('section_id', $section->id)
+                    ->update(['sort_order' => $index + 1]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إعادة ترتيب عناصر القسم بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تحديث الترتيب: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @deprecated Use reorder() scoped by section instead.
      */
     public function updateOrder(Request $request)
     {
@@ -595,7 +642,7 @@ public function toggleVisibility(Request $request, $id)
         try {
             foreach ($validated['modules'] as $moduleData) {
                 CourseModule::where('id', $moduleData['id'])->update([
-                    'sort_order' => $moduleData['sort_order']
+                    'sort_order' => $moduleData['sort_order'],
                 ]);
             }
 
@@ -603,14 +650,14 @@ public function toggleVisibility(Request $request, $id)
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث ترتيب الوحدات بنجاح'
+                'message' => 'تم تحديث ترتيب الوحدات بنجاح',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء تحديث الترتيب: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء تحديث الترتيب: '.$e->getMessage(),
             ], 500);
         }
     }

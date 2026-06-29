@@ -22,110 +22,167 @@ class PaymentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Payment::with([
-                'invoice.student',
-                'invoice.items.campEnrollment.camp',
-                'paymentMethod',
-                'receivedBy'
-            ])
-            ->orderBy('payment_date', 'desc');
+        $query = $this->buildPaymentsQuery($request);
+        $stats = $this->computePaymentStats($request);
+        $payments = $query->paginate(20)->withQueryString();
 
-        // Filter by payment number or generic search
-        if ($request->filled('payment_number') || $request->filled('search')) {
-            $search = $request->payment_number ?? $request->search;
-            $query->where(function($q) use ($search) {
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
+        $camps = TrainingCamp::query()->orderBy('name')->get(['id', 'name']);
+        $globalPendingReviewCount = Payment::where('status', 'pending')
+            ->whereNotNull('receipt_path')
+            ->count();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => view('admin.pages.payments.partials.stats', compact('stats'))->render(),
+                'table' => view('admin.pages.payments.partials.table', compact('payments'))->render(),
+                'pagination' => $payments->hasPages() ? $payments->links()->render() : '',
+                'count' => $payments->total(),
+            ]);
+        }
+
+        return view('admin.pages.payments.index', compact(
+            'payments',
+            'paymentMethods',
+            'camps',
+            'stats',
+            'globalPendingReviewCount'
+        ));
+    }
+
+    private function buildPaymentsQuery(Request $request)
+    {
+        $query = Payment::with([
+            'invoice.student',
+            'invoice.items.campEnrollment.camp',
+            'paymentMethod',
+            'receivedBy',
+            'student',
+        ])->orderBy('payment_date', 'desc');
+
+        $searchTerms = array_filter([
+            $request->input('search'),
+            $request->input('payment_number'),
+        ]);
+
+        if (!empty($searchTerms)) {
+            $search = end($searchTerms);
+            $query->where(function ($q) use ($search) {
                 $q->where('payment_number', 'like', "%{$search}%")
-                  ->orWhere('transaction_id', 'like', "%{$search}%")
-                  ->orWhereHas('invoice', function($q2) use ($search) {
-                      $q2->where('invoice_number', 'like', "%{$search}%")
-                         ->orWhereHas('student', function($q3) use ($search) {
-                             $q3->where('name', 'like', "%{$search}%");
-                         });
-                  });
+                    ->orWhere('transaction_id', 'like', "%{$search}%")
+                    ->orWhere('reference', 'like', "%{$search}%")
+                    ->orWhere('receipt_number', 'like', "%{$search}%")
+                    ->orWhereHas('invoice', function ($q2) use ($search) {
+                        $q2->where('invoice_number', 'like', "%{$search}%")
+                            ->orWhereHas('student', function ($q3) use ($search) {
+                                $q3->where('name', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%");
+                            });
+                    })
+                    ->orWhereHas('student', function ($q4) use ($search) {
+                        $q4->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('invoice_number')) {
+            $invoiceNumber = $request->invoice_number;
+            $query->whereHas('invoice', function ($q) use ($invoiceNumber) {
+                $q->where('invoice_number', 'like', "%{$invoiceNumber}%");
+            });
         }
 
-        // Filter by payment status (invoice payment status)
-        if ($request->filled('payment_status')) {
-            if ($request->payment_status == 'fully_paid') {
-                $query->whereHas('invoice', function($q) {
-                    $q->where('status', 'paid');
-                });
-            } elseif ($request->payment_status == 'partially_paid') {
-                $query->whereHas('invoice', function($q) {
-                    $q->where('status', 'partial');
-                });
-            } elseif ($request->payment_status == 'unpaid') {
-                $query->whereHas('invoice', function($q) {
-                    $q->whereIn('status', ['issued', 'draft']);
-                });
+        if ($request->filled('status')) {
+            if ($request->status === 'pending_review') {
+                $query->where('status', 'pending')->whereNotNull('receipt_path');
+            } else {
+                $query->where('status', $request->status);
             }
         }
 
-        // Filter by payment method
+        if ($request->filled('has_receipt')) {
+            if ($request->has_receipt === '1') {
+                $query->whereNotNull('receipt_path');
+            } elseif ($request->has_receipt === '0') {
+                $query->whereNull('receipt_path');
+            }
+        }
+
+        if ($request->filled('source')) {
+            if ($request->source === 'student') {
+                $query->whereNotNull('receipt_path');
+            } elseif ($request->source === 'admin') {
+                $query->whereNotNull('received_by')->whereNull('receipt_path');
+            }
+        }
+
+        if ($request->filled('payment_status')) {
+            if ($request->payment_status === 'fully_paid') {
+                $query->whereHas('invoice', fn ($q) => $q->where('status', 'paid'));
+            } elseif ($request->payment_status === 'partially_paid') {
+                $query->whereHas('invoice', fn ($q) => $q->where('status', 'partial'));
+            } elseif ($request->payment_status === 'unpaid') {
+                $query->whereHas('invoice', fn ($q) => $q->whereIn('status', ['issued', 'draft']));
+            }
+        }
+
         if ($request->filled('payment_method_id')) {
             $query->where('payment_method_id', $request->payment_method_id);
         }
 
-        // Filter by associated training camp
         if ($request->filled('camp_id')) {
             $query->whereHas('invoice.items.campEnrollment', function ($q) use ($request) {
                 $q->where('camp_id', $request->camp_id);
             });
         }
 
-        // Filter by date range
         if ($request->filled('from_date')) {
             $query->whereDate('payment_date', '>=', $request->from_date);
         }
+
         if ($request->filled('to_date')) {
             $query->whereDate('payment_date', '<=', $request->to_date);
         }
 
-        $statsBaseQuery = clone $query;
-        $completedStatsQuery = clone $query;
-        $pendingStatsQuery = clone $query;
-        $cancelledStatsQuery = clone $query;
-        $refundedStatsQuery = clone $query;
+        if ($request->filled('min_amount')) {
+            $query->where('amount', '>=', (float) $request->min_amount);
+        }
 
-        $invoiceIds = (clone $query)
+        if ($request->filled('max_amount')) {
+            $query->where('amount', '<=', (float) $request->max_amount);
+        }
+
+        return $query;
+    }
+
+    private function computePaymentStats(Request $request): array
+    {
+        $base = $this->buildPaymentsQuery($request);
+
+        $invoiceIds = (clone $base)
             ->reorder()
             ->select('invoice_id')
             ->whereNotNull('invoice_id')
             ->distinct()
             ->pluck('invoice_id');
 
-        $stats = [
-            'completed_amount' => (float) $completedStatsQuery->where('status', 'completed')->sum('amount'),
-            'completed_count' => (int) (clone $query)->where('status', 'completed')->count(),
-            'pending_amount' => (float) $pendingStatsQuery->where('status', 'pending')->sum('amount'),
-            'pending_count' => (int) (clone $query)->where('status', 'pending')->count(),
-            'cancelled_amount' => (float) $cancelledStatsQuery->where('status', 'cancelled')->sum('amount'),
-            'cancelled_count' => (int) (clone $query)->where('status', 'cancelled')->count(),
-            'refunded_amount' => (float) $refundedStatsQuery->where('status', 'refunded')->sum('amount'),
-            'refunded_count' => (int) (clone $query)->where('status', 'refunded')->count(),
-            'paid_amount' => (float) $statsBaseQuery->sum('amount'),
+        $pendingReviewQuery = (clone $base)->where('status', 'pending')->whereNotNull('receipt_path');
+
+        return [
+            'completed_amount' => (float) (clone $base)->where('status', 'completed')->sum('amount'),
+            'completed_count' => (int) (clone $base)->where('status', 'completed')->count(),
+            'pending_amount' => (float) (clone $base)->where('status', 'pending')->sum('amount'),
+            'pending_count' => (int) (clone $base)->where('status', 'pending')->count(),
+            'pending_review_amount' => (float) (clone $pendingReviewQuery)->sum('amount'),
+            'pending_review_count' => (int) (clone $pendingReviewQuery)->count(),
+            'cancelled_amount' => (float) (clone $base)->where('status', 'cancelled')->sum('amount'),
+            'cancelled_count' => (int) (clone $base)->where('status', 'cancelled')->count(),
+            'refunded_amount' => (float) (clone $base)->where('status', 'refunded')->sum('amount'),
+            'refunded_count' => (int) (clone $base)->where('status', 'refunded')->count(),
+            'paid_amount' => (float) (clone $base)->sum('amount'),
             'remaining_amount' => (float) Invoice::whereIn('id', $invoiceIds)->sum('remaining_amount'),
         ];
-
-        $payments = $query->paginate(20);
-        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
-        $camps = TrainingCamp::query()->orderBy('name')->get(['id', 'name']);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'stats' => view('admin.pages.payments.partials.stats', compact('stats'))->render(),
-                'table' => view('admin.pages.payments.partials.table', compact('payments'))->render(),
-                'pagination' => $payments->hasPages() ? $payments->links()->render() : ''
-            ]);
-        }
-
-        return view('admin.pages.payments.index', compact('payments', 'paymentMethods', 'camps', 'stats'));
     }
 
     /**

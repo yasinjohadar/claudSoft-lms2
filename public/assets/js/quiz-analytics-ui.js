@@ -112,6 +112,18 @@
         var dataEl = qs('#quiz-analytics-trends-data');
         if (!el || !dataEl || typeof ApexCharts === 'undefined') return;
 
+        renderTrendsChart(el, dataEl);
+    }
+
+    function initOverallTrendsChart() {
+        var el = qs('#overallAnalyticsTrendsChart');
+        var dataEl = qs('#overall-analytics-trends-data');
+        if (!el || !dataEl || typeof ApexCharts === 'undefined') return;
+
+        renderTrendsChart(el, dataEl);
+    }
+
+    function renderTrendsChart(el, dataEl) {
         var data;
         try {
             data = JSON.parse(dataEl.textContent || '[]');
@@ -167,12 +179,13 @@
     }
 
     function init() {
-        if (!qs('.quiz-analytics-page')) return;
+        if (!qs('.quiz-analytics-page') && !qs('.quiz-analytics-dashboard')) return;
         initCountup();
         initGradeBars();
         initQuestionFilters();
         initQuestionAccordions();
         initTrendsChart();
+        initOverallTrendsChart();
     }
 
     if (document.readyState === 'loading') {

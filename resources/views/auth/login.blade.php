@@ -76,8 +76,9 @@
                     <div class="auth-alert auth-alert--danger" role="alert">{{ session('error') }}</div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" novalidate>
+                <form method="POST" action="{{ route('login') }}" novalidate data-device-token>
                     @csrf
+                    <input type="hidden" name="device_token" value="">
 
                     <div class="auth-field">
                         <label for="email">البريد الإلكتروني</label>
@@ -195,5 +196,6 @@
             });
         })();
     </script>
+    <script src="{{ asset('assets/js/device-token.js') }}?v={{ filemtime(public_path('assets/js/device-token.js')) }}"></script>
 </body>
 </html>

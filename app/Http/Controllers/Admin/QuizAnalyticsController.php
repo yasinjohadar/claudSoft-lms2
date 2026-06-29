@@ -12,6 +12,7 @@ use App\Models\QuestionModuleAttempt;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class QuizAnalyticsController extends Controller
@@ -21,85 +22,89 @@ class QuizAnalyticsController extends Controller
      */
     public function index(Request $request)
     {
-        // Filter options
-        $courses = Course::where('is_published', true)->get();
-        $quizzes = Quiz::where('is_published', true)->orderBy('title')->get(['id', 'title']);
+        $courses = Course::where('is_published', true)->orderBy('title')->get();
+        $quizzes = Quiz::where('is_published', true)->orderBy('title')->get(['id', 'title', 'course_id']);
 
-        // Overall statistics - combine both Quiz and QuestionModule
-        $totalQuizzes = Quiz::where('is_published', true)->count();
-        $totalQuestionModules = QuestionModule::count();
+        $quizAttemptsQuery = $this->filteredQuizAttempts($request);
+        $moduleAttemptsQuery = $this->filteredModuleAttempts($request);
 
-        $totalQuizAttempts = QuizAttempt::count();
-        $totalModuleAttempts = QuestionModuleAttempt::count();
+        $totalQuizAttempts = (clone $quizAttemptsQuery)->count();
+        $totalModuleAttempts = (clone $moduleAttemptsQuery)->count();
 
-        $completedQuizAttempts = QuizAttempt::where('is_completed', true)->count();
-        $completedModuleAttempts = QuestionModuleAttempt::where('status', 'completed')->count();
+        $completedQuizAttempts = (clone $quizAttemptsQuery)->where('is_completed', true)->count();
+        $completedModuleAttempts = (clone $moduleAttemptsQuery)->where('status', 'completed')->count();
 
-        $avgQuizScore = QuizAttempt::where('is_completed', true)
+        $passedQuizAttempts = (clone $quizAttemptsQuery)->where('is_completed', true)->where('passed', true)->count();
+        $passedModuleAttempts = (clone $moduleAttemptsQuery)->where('status', 'completed')->where('is_passed', true)->count();
+
+        $avgQuizScore = (clone $quizAttemptsQuery)->where('is_completed', true)
             ->whereNotNull('percentage_score')
             ->avg('percentage_score') ?? 0;
 
-        $avgModuleScore = QuestionModuleAttempt::where('status', 'completed')
+        $avgModuleScore = (clone $moduleAttemptsQuery)->where('status', 'completed')
             ->whereNotNull('percentage')
             ->avg('percentage') ?? 0;
 
+        $avgQuizTime = (clone $quizAttemptsQuery)->where('is_completed', true)
+            ->whereNotNull('time_spent')
+            ->avg('time_spent') ?? 0;
+
+        $avgModuleTime = (clone $moduleAttemptsQuery)->where('status', 'completed')
+            ->whereNotNull('time_spent')
+            ->avg('time_spent') ?? 0;
+
         $totalAttempts = $totalQuizAttempts + $totalModuleAttempts;
         $completedAttempts = $completedQuizAttempts + $completedModuleAttempts;
+        $passedAttempts = $passedQuizAttempts + $passedModuleAttempts;
 
-        // Calculate weighted average score
         $averageScore = 0;
         if ($completedAttempts > 0) {
             $averageScore = (($avgQuizScore * $completedQuizAttempts) + ($avgModuleScore * $completedModuleAttempts)) / $completedAttempts;
         }
 
+        $averageTime = 0;
+        if ($completedAttempts > 0) {
+            $averageTime = (($avgQuizTime * $completedQuizAttempts) + ($avgModuleTime * $completedModuleAttempts)) / $completedAttempts;
+        }
+
+        $activeStudentIds = (clone $quizAttemptsQuery)->distinct()->pluck('student_id')
+            ->merge((clone $moduleAttemptsQuery)->distinct()->pluck('student_id'))
+            ->unique()
+            ->filter();
+
+        $courseFilter = $request->filled('course_id');
+        $totalAssessments = Quiz::where('is_published', true)
+            ->when($courseFilter, fn ($q) => $q->where('course_id', $request->course_id))
+            ->count();
+
+        if (!$courseFilter) {
+            $totalAssessments += QuestionModule::count();
+        }
+
         $stats = [
-            'total_quizzes' => $totalQuizzes + $totalQuestionModules,
+            'total_quizzes' => $totalAssessments,
             'total_attempts' => $totalAttempts,
             'completed_attempts' => $completedAttempts,
             'average_score' => $averageScore,
+            'pass_rate' => $completedAttempts > 0 ? ($passedAttempts / $completedAttempts) * 100 : 0,
+            'completion_rate' => $totalAttempts > 0 ? ($completedAttempts / $totalAttempts) * 100 : 0,
+            'average_time' => $averageTime,
+            'active_students' => $activeStudentIds->count(),
             'total_students' => User::whereHas('enrollments')->count(),
+            'in_progress' => (clone $quizAttemptsQuery)->where('status', 'in_progress')->count()
+                + (clone $moduleAttemptsQuery)->where('status', 'in_progress')->count(),
         ];
 
-        // Recent activity - combine both systems
-        $recentQuizAttempts = QuizAttempt::with(['quiz', 'student'])
-            ->orderBy('started_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function($attempt) {
-                return [
-                    'student' => $attempt->student,
-                    'title' => $attempt->quiz->title ?? 'N/A',
-                    'type' => 'quiz',
-                    'is_completed' => $attempt->is_completed,
-                    'score' => $attempt->percentage_score,
-                    'started_at' => $attempt->started_at,
-                ];
-            });
+        $recentAttempts = $this->getRecentAttempts($request, 12);
+        $topStudents = $this->getTopStudents($request, 10);
+        $atRiskStudents = $this->getAtRiskStudents($request, 8);
+        $difficultQuizzes = $this->getDifficultQuizzes($request, 8);
+        $bestQuizzes = $this->getBestQuizzes($request, 8);
+        $scoreDistribution = $this->getOverallScoreDistribution($request);
+        $attemptTrends = $this->getOverallAttemptTrends($request);
+        $coursePerformance = $this->getPerformanceByCourse($request, 8);
 
-        $recentModuleAttempts = QuestionModuleAttempt::with(['questionModule', 'student'])
-            ->orderBy('started_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function($attempt) {
-                return [
-                    'student' => $attempt->student,
-                    'title' => $attempt->questionModule->title ?? 'N/A',
-                    'type' => 'module',
-                    'is_completed' => $attempt->status === 'completed',
-                    'score' => $attempt->percentage,
-                    'started_at' => $attempt->started_at,
-                ];
-            });
-
-        $recentAttempts = $recentQuizAttempts->concat($recentModuleAttempts)
-            ->sortByDesc('started_at')
-            ->take(10);
-
-        // Top performing students
-        $topStudents = $this->getTopStudents(10);
-
-        // Worst performing quizzes
-        $difficultQuizzes = $this->getDifficultQuizzes(5);
+        [$dateFrom, $dateTo] = $this->resolveDateRange($request);
 
         return view('admin.pages.analytics.index', compact(
             'courses',
@@ -107,7 +112,14 @@ class QuizAnalyticsController extends Controller
             'stats',
             'recentAttempts',
             'topStudents',
-            'difficultQuizzes'
+            'atRiskStudents',
+            'difficultQuizzes',
+            'bestQuizzes',
+            'scoreDistribution',
+            'attemptTrends',
+            'coursePerformance',
+            'dateFrom',
+            'dateTo'
         ));
     }
 
@@ -327,107 +339,462 @@ class QuizAnalyticsController extends Controller
     }
 
     /**
-     * Get top performing students.
+     * Resolve date range from request filters.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon}
      */
-    private function getTopStudents(int $limit = 10)
+    private function resolveDateRange(Request $request): array
     {
-        // Get all students who have completed attempts in either system
-        $students = User::whereHas('courseEnrollments')->get();
-
-        $studentStats = $students->map(function($student) {
-            // Quiz attempts
-            $quizAvg = QuizAttempt::where('student_id', $student->id)
-                ->where('is_completed', true)
-                ->avg('percentage_score') ?? 0;
-            $quizCount = QuizAttempt::where('student_id', $student->id)
-                ->where('is_completed', true)
-                ->count();
-
-            // Question module attempts
-            $moduleAvg = QuestionModuleAttempt::where('student_id', $student->id)
-                ->where('status', 'completed')
-                ->avg('percentage') ?? 0;
-            $moduleCount = QuestionModuleAttempt::where('student_id', $student->id)
-                ->where('status', 'completed')
-                ->count();
-
-            $totalAttempts = $quizCount + $moduleCount;
-
-            // Calculate weighted average
-            $averageScore = 0;
-            if ($totalAttempts > 0) {
-                $averageScore = (($quizAvg * $quizCount) + ($moduleAvg * $moduleCount)) / $totalAttempts;
-            }
-
-            return (object)[
-                'id' => $student->id,
-                'name' => $student->name,
-                'average_score' => $averageScore,
-                'attempts_count' => $totalAttempts,
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            return [
+                Carbon::parse($request->from_date)->startOfDay(),
+                Carbon::parse($request->to_date)->endOfDay(),
             ];
-        })
-        ->filter(function($stat) {
-            return $stat->attempts_count > 0;
-        })
-        ->sortByDesc('average_score')
-        ->take($limit);
+        }
 
-        return $studentStats;
+        $period = $request->input('period', '30');
+        if ($period === 'all') {
+            return [null, null];
+        }
+
+        $days = max(1, (int) $period);
+
+        return [now()->subDays($days)->startOfDay(), now()->endOfDay()];
     }
 
-    /**
-     * Get most difficult quizzes.
-     */
-    private function getDifficultQuizzes(int $limit = 5)
+    private function filteredQuizAttempts(Request $request)
     {
-        // Get difficult quizzes
-        $quizzes = Quiz::select('quizzes.*')
-            ->join('quiz_attempts', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
-            ->where('quiz_attempts.is_completed', true)
-            ->groupBy('quizzes.id')
-            ->havingRaw('COUNT(quiz_attempts.id) >= 1')
-            ->orderByRaw('AVG(quiz_attempts.percentage_score) ASC')
+        [$from, $to] = $this->resolveDateRange($request);
+
+        $query = QuizAttempt::query();
+
+        if ($request->filled('course_id')) {
+            $query->whereHas('quiz', fn ($q) => $q->where('course_id', $request->course_id));
+        }
+
+        if ($request->filled('quiz_id')) {
+            $query->where('quiz_id', $request->quiz_id);
+        }
+
+        if ($from) {
+            $query->where('started_at', '>=', $from);
+        }
+
+        if ($to) {
+            $query->where('started_at', '<=', $to);
+        }
+
+        return $query;
+    }
+
+    private function filteredModuleAttempts(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+
+        $query = QuestionModuleAttempt::query();
+
+        if ($request->filled('course_id')) {
+            $query->whereHas('questionModule.courseModules', fn ($q) => $q->where('course_id', $request->course_id));
+        }
+
+        if ($from) {
+            $query->where('started_at', '>=', $from);
+        }
+
+        if ($to) {
+            $query->where('started_at', '<=', $to);
+        }
+
+        return $query;
+    }
+
+    private function getRecentAttempts(Request $request, int $limit = 10)
+    {
+        $recentQuizAttempts = $this->filteredQuizAttempts($request)
+            ->with(['quiz', 'student'])
+            ->orderBy('started_at', 'desc')
             ->limit($limit)
             ->get()
-            ->map(function($quiz) {
-                $avgScore = $quiz->attempts()->where('is_completed', true)->avg('percentage_score') ?? 0;
-                $attemptsCount = $quiz->attempts()->where('is_completed', true)->count();
-                return (object)[
-                    'id' => $quiz->id,
-                    'title' => $quiz->title,
-                    'average_score' => $avgScore,
-                    'attempts_count' => $attemptsCount,
+            ->map(function ($attempt) {
+                return [
+                    'student' => $attempt->student,
+                    'student_id' => $attempt->student_id,
+                    'title' => $attempt->quiz->title ?? 'N/A',
+                    'type' => 'quiz',
+                    'type_id' => $attempt->quiz_id,
+                    'is_completed' => $attempt->is_completed,
+                    'passed' => $attempt->passed,
+                    'score' => $attempt->percentage_score,
+                    'started_at' => $attempt->started_at,
+                    'time_spent' => $attempt->time_spent,
                 ];
             });
 
-        // Get difficult question modules
-        $modules = QuestionModule::select('question_modules.*')
-            ->join('question_module_attempts', 'question_modules.id', '=', 'question_module_attempts.question_module_id')
-            ->where('question_module_attempts.status', 'completed')
-            ->groupBy('question_modules.id')
-            ->havingRaw('COUNT(question_module_attempts.id) >= 1')
-            ->orderByRaw('AVG(question_module_attempts.percentage) ASC')
+        $recentModuleAttempts = $this->filteredModuleAttempts($request)
+            ->with(['questionModule', 'student'])
+            ->orderBy('started_at', 'desc')
             ->limit($limit)
             ->get()
-            ->map(function($module) {
+            ->map(function ($attempt) {
+                return [
+                    'student' => $attempt->student,
+                    'student_id' => $attempt->student_id,
+                    'title' => $attempt->questionModule->title ?? 'N/A',
+                    'type' => 'module',
+                    'type_id' => $attempt->question_module_id,
+                    'is_completed' => $attempt->status === 'completed',
+                    'passed' => $attempt->is_passed,
+                    'score' => $attempt->percentage,
+                    'started_at' => $attempt->started_at,
+                    'time_spent' => $attempt->time_spent,
+                ];
+            });
+
+        return $recentQuizAttempts->concat($recentModuleAttempts)
+            ->sortByDesc('started_at')
+            ->take($limit)
+            ->values();
+    }
+
+    private function mergeStudentAttemptStats($quizStats, $moduleStats): array
+    {
+        $merged = [];
+
+        foreach ($quizStats as $stat) {
+            $merged[$stat->student_id] = [
+                'weighted_sum' => ($stat->avg_score ?? 0) * ($stat->attempts_count ?? 0),
+                'attempts_count' => (int) ($stat->attempts_count ?? 0),
+            ];
+        }
+
+        foreach ($moduleStats as $stat) {
+            if (!isset($merged[$stat->student_id])) {
+                $merged[$stat->student_id] = ['weighted_sum' => 0, 'attempts_count' => 0];
+            }
+
+            $merged[$stat->student_id]['weighted_sum'] += ($stat->avg_score ?? 0) * ($stat->attempts_count ?? 0);
+            $merged[$stat->student_id]['attempts_count'] += (int) ($stat->attempts_count ?? 0);
+        }
+
+        return $merged;
+    }
+
+    private function mapStudentStats(array $merged, string $sort = 'desc', ?int $limit = null, ?callable $filter = null)
+    {
+        if (empty($merged)) {
+            return collect();
+        }
+
+        $students = User::whereIn('id', array_keys($merged))->get()->keyBy('id');
+
+        $collection = collect($merged)->map(function ($data, $studentId) use ($students) {
+            $attemptsCount = $data['attempts_count'];
+
+            return (object) [
+                'id' => (int) $studentId,
+                'name' => $students[$studentId]->name ?? 'غير محدد',
+                'average_score' => $attemptsCount > 0 ? $data['weighted_sum'] / $attemptsCount : 0,
+                'attempts_count' => $attemptsCount,
+            ];
+        });
+
+        if ($filter) {
+            $collection = $collection->filter($filter);
+        }
+
+        $collection = $sort === 'asc'
+            ? $collection->sortBy('average_score')
+            : $collection->sortByDesc('average_score');
+
+        if ($limit !== null) {
+            $collection = $collection->take($limit);
+        }
+
+        return $collection->values();
+    }
+
+    private function getStudentAttemptStats(Request $request)
+    {
+        $quizStats = $this->filteredQuizAttempts($request)
+            ->where('is_completed', true)
+            ->whereNotNull('percentage_score')
+            ->select('student_id', DB::raw('AVG(percentage_score) as avg_score'), DB::raw('COUNT(*) as attempts_count'))
+            ->groupBy('student_id')
+            ->get();
+
+        $moduleStats = $this->filteredModuleAttempts($request)
+            ->where('status', 'completed')
+            ->whereNotNull('percentage')
+            ->select('student_id', DB::raw('AVG(percentage) as avg_score'), DB::raw('COUNT(*) as attempts_count'))
+            ->groupBy('student_id')
+            ->get();
+
+        return $this->mergeStudentAttemptStats($quizStats, $moduleStats);
+    }
+
+    /**
+     * Get top performing students.
+     */
+    private function getTopStudents(Request $request, int $limit = 10)
+    {
+        return $this->mapStudentStats(
+            $this->getStudentAttemptStats($request),
+            'desc',
+            $limit,
+            fn ($stat) => $stat->attempts_count > 0
+        );
+    }
+
+    private function getAtRiskStudents(Request $request, int $limit = 8)
+    {
+        return $this->mapStudentStats(
+            $this->getStudentAttemptStats($request),
+            'asc',
+            $limit,
+            fn ($stat) => $stat->attempts_count >= 2 && $stat->average_score < 60
+        );
+    }
+
+    /**
+     * Get most difficult assessments.
+     */
+    private function getDifficultQuizzes(Request $request, int $limit = 5)
+    {
+        return $this->getRankedAssessments($request, 'asc', $limit);
+    }
+
+    private function getBestQuizzes(Request $request, int $limit = 5)
+    {
+        return $this->getRankedAssessments($request, 'desc', $limit);
+    }
+
+    private function getRankedAssessments(Request $request, string $direction, int $limit)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+        $courseId = $request->input('course_id');
+
+        $quizQuery = Quiz::query()
+            ->select('quizzes.*')
+            ->join('quiz_attempts', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+            ->where('quiz_attempts.is_completed', true)
+            ->whereNotNull('quiz_attempts.percentage_score');
+
+        if ($courseId) {
+            $quizQuery->where('quizzes.course_id', $courseId);
+        }
+
+        if ($from) {
+            $quizQuery->where('quiz_attempts.started_at', '>=', $from);
+        }
+
+        if ($to) {
+            $quizQuery->where('quiz_attempts.started_at', '<=', $to);
+        }
+
+        if ($request->filled('quiz_id')) {
+            $quizQuery->where('quizzes.id', $request->quiz_id);
+        }
+
+        $quizzes = $quizQuery
+            ->with('course')
+            ->groupBy('quizzes.id')
+            ->havingRaw('COUNT(quiz_attempts.id) >= 1')
+            ->orderByRaw('AVG(quiz_attempts.percentage_score) ' . ($direction === 'asc' ? 'ASC' : 'DESC'))
+            ->limit($limit)
+            ->get()
+            ->map(function ($quiz) {
+                $avgScore = $quiz->attempts()->where('is_completed', true)->avg('percentage_score') ?? 0;
+                $attemptsCount = $quiz->attempts()->where('is_completed', true)->count();
+
+                return (object) [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'type' => 'quiz',
+                    'average_score' => $avgScore,
+                    'attempts_count' => $attemptsCount,
+                    'course' => $quiz->course?->title,
+                ];
+            });
+
+        $moduleQuery = QuestionModule::query()
+            ->select('question_modules.*')
+            ->join('question_module_attempts', 'question_modules.id', '=', 'question_module_attempts.question_module_id')
+            ->where('question_module_attempts.status', 'completed')
+            ->whereNotNull('question_module_attempts.percentage');
+
+        if ($courseId) {
+            $moduleQuery->whereHas('courseModules', fn ($q) => $q->where('course_id', $courseId));
+        }
+
+        if ($from) {
+            $moduleQuery->where('question_module_attempts.started_at', '>=', $from);
+        }
+
+        if ($to) {
+            $moduleQuery->where('question_module_attempts.started_at', '<=', $to);
+        }
+
+        $modules = $moduleQuery
+            ->groupBy('question_modules.id')
+            ->havingRaw('COUNT(question_module_attempts.id) >= 1')
+            ->orderByRaw('AVG(question_module_attempts.percentage) ' . ($direction === 'asc' ? 'ASC' : 'DESC'))
+            ->limit($limit)
+            ->get()
+            ->map(function ($module) {
                 $avgScore = QuestionModuleAttempt::where('question_module_id', $module->id)
                     ->where('status', 'completed')
                     ->avg('percentage') ?? 0;
                 $attemptsCount = QuestionModuleAttempt::where('question_module_id', $module->id)
                     ->where('status', 'completed')
                     ->count();
-                return (object)[
+
+                return (object) [
                     'id' => $module->id,
                     'title' => $module->title,
+                    'type' => 'module',
                     'average_score' => $avgScore,
                     'attempts_count' => $attemptsCount,
+                    'course' => null,
                 ];
             });
 
-        // Combine and sort by average score
-        return $quizzes->concat($modules)
-            ->sortBy('average_score')
-            ->take($limit);
+        $sorted = $quizzes->concat($modules)->sortBy('average_score', SORT_REGULAR, $direction === 'desc');
+
+        return $sorted->take($limit)->values();
+    }
+
+    private function getOverallScoreDistribution(Request $request): array
+    {
+        $ranges = [
+            '0-20' => [0, 20],
+            '21-40' => [21, 40],
+            '41-60' => [41, 60],
+            '61-80' => [61, 80],
+            '81-100' => [81, 100],
+        ];
+
+        $distribution = array_fill_keys(array_keys($ranges), 0);
+
+        $quizScores = $this->filteredQuizAttempts($request)
+            ->where('is_completed', true)
+            ->whereNotNull('percentage_score')
+            ->pluck('percentage_score');
+
+        $moduleScores = $this->filteredModuleAttempts($request)
+            ->where('status', 'completed')
+            ->whereNotNull('percentage')
+            ->pluck('percentage');
+
+        foreach ($quizScores->concat($moduleScores) as $score) {
+            foreach ($ranges as $label => [$min, $max]) {
+                if ($score >= $min && $score <= $max) {
+                    $distribution[$label]++;
+                    break;
+                }
+            }
+        }
+
+        return $distribution;
+    }
+
+    private function getOverallAttemptTrends(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+
+        $quizTrends = $this->filteredQuizAttempts($request)
+            ->where('is_completed', true)
+            ->selectRaw('DATE(started_at) as date, COUNT(*) as count, AVG(percentage_score) as avg_score')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $moduleTrends = $this->filteredModuleAttempts($request)
+            ->where('status', 'completed')
+            ->selectRaw('DATE(started_at) as date, COUNT(*) as count, AVG(percentage) as avg_score')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $dates = $quizTrends->keys()->merge($moduleTrends->keys())->unique()->sort()->values();
+
+        if ($dates->isEmpty() && $from && $to) {
+            $cursor = $from->copy();
+            while ($cursor->lte($to)) {
+                $dates->push($cursor->toDateString());
+                $cursor->addDay();
+            }
+        }
+
+        return $dates->map(function ($date) use ($quizTrends, $moduleTrends) {
+            $quiz = $quizTrends->get($date);
+            $module = $moduleTrends->get($date);
+            $quizCount = (int) ($quiz->count ?? 0);
+            $moduleCount = (int) ($module->count ?? 0);
+            $totalCount = $quizCount + $moduleCount;
+
+            $weightedScore = 0;
+            if ($totalCount > 0) {
+                $weightedScore = (
+                    (($quiz->avg_score ?? 0) * $quizCount) +
+                    (($module->avg_score ?? 0) * $moduleCount)
+                ) / $totalCount;
+            }
+
+            return (object) [
+                'date' => $date,
+                'count' => $totalCount,
+                'avg_score' => $weightedScore,
+            ];
+        })->values();
+    }
+
+    private function getPerformanceByCourse(Request $request, int $limit = 8)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+
+        $query = QuizAttempt::query()
+            ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
+            ->join('courses', 'quizzes.course_id', '=', 'courses.id')
+            ->where('quiz_attempts.is_completed', true)
+            ->whereNotNull('quiz_attempts.percentage_score');
+
+        if ($from) {
+            $query->where('quiz_attempts.started_at', '>=', $from);
+        }
+
+        if ($to) {
+            $query->where('quiz_attempts.started_at', '<=', $to);
+        }
+
+        if ($request->filled('course_id')) {
+            $query->where('courses.id', $request->course_id);
+        }
+
+        return $query
+            ->select(
+                'courses.id',
+                'courses.title',
+                DB::raw('COUNT(quiz_attempts.id) as attempts_count'),
+                DB::raw('AVG(quiz_attempts.percentage_score) as average_score'),
+                DB::raw('SUM(CASE WHEN quiz_attempts.passed = 1 THEN 1 ELSE 0 END) as passed_count')
+            )
+            ->groupBy('courses.id', 'courses.title')
+            ->orderByDesc('attempts_count')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) {
+                $attempts = (int) $row->attempts_count;
+
+                return (object) [
+                    'id' => $row->id,
+                    'title' => $row->title,
+                    'attempts_count' => $attempts,
+                    'average_score' => (float) $row->average_score,
+                    'pass_rate' => $attempts > 0 ? ((int) $row->passed_count / $attempts) * 100 : 0,
+                ];
+            });
     }
 
     /**

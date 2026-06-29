@@ -16,7 +16,8 @@
             'value' => round($stats['pending_amount'] ?? 0, 2),
             'prefix' => '$',
             'decimals' => true,
-            'sub' => ($stats['pending_count'] ?? 0) . ' دفعة',
+            'sub' => ($stats['pending_count'] ?? 0) . ' دفعة · ' . ($stats['pending_review_count'] ?? 0) . ' بانتظار المراجعة',
+            'filter' => 'pending_review',
         ],
         [
             'variant' => 'cyan',

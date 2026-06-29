@@ -13,6 +13,7 @@
         'cancelled' => 'ملغاة',
         'refunded' => 'مستردة',
     ];
+    $isPendingReview = fn ($payment) => $payment->status === 'pending' && $payment->has_receipt;
     $invoiceStatusLabels = [
         'paid' => 'كامل',
         'partial' => 'جزئي',
@@ -101,12 +102,13 @@
         </td>
         <td><small>{{ $payment->payment_date->format('Y-m-d') }}</small></td>
         <td>
-            <span class="badge {{ $paymentStatusColors[$payment->status] ?? 'bg-secondary-transparent text-secondary' }}">
-                {{ $paymentStatusLabels[$payment->status] ?? $payment->status }}
-            </span>
-            @if($payment->status === 'pending' && $payment->has_receipt)
-                <span class="badge bg-info-transparent text-info ms-1" title="طلب من الطالب">
-                    <i class="fe fe-upload"></i>
+            @if($isPendingReview($payment))
+                <span class="badge bg-warning-transparent text-warning">
+                    <i class="fe fe-upload me-1"></i>بانتظار المراجعة
+                </span>
+            @else
+                <span class="badge {{ $paymentStatusColors[$payment->status] ?? 'bg-secondary-transparent text-secondary' }}">
+                    {{ $paymentStatusLabels[$payment->status] ?? $payment->status }}
                 </span>
             @endif
         </td>
@@ -116,6 +118,20 @@
                    class="btn btn-sm btn-info-light" title="عرض">
                     <i class="fe fe-eye"></i>
                 </a>
+
+                @if($isPendingReview($payment))
+                    <a href="{{ route('payments.receipt', $payment->id) }}"
+                       class="btn btn-sm btn-primary-light" title="عرض الإيصال" target="_blank">
+                        <i class="fe fe-file-text"></i>
+                    </a>
+                    <form action="{{ route('payments.approve', $payment->id) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('الموافقة على هذه الدفعة وتسجيلها في حساب الطالب؟');">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-success-light" title="موافقة">
+                            <i class="fe fe-check"></i>
+                        </button>
+                    </form>
+                @endif
 
                 @if($payment->invoice_id && $payment->invoice && $payment->invoice->remaining_amount > 0)
                     <a href="{{ route('payments.create', ['invoice_id' => $payment->invoice_id]) }}"

@@ -232,6 +232,17 @@
                                 </div>
                             </div>
 
+                            <div class="col-md-6">
+                                <label class="form-label mt-3" for="device_lock_mode">سياسة الأجهزة الموثوقة</label>
+                                <select name="device_lock_mode" id="device_lock_mode" class="form-select">
+                                    @php $lockMode = old('device_lock_mode', $user->device_lock_mode ?? 'inherit'); @endphp
+                                    <option value="inherit" @selected($lockMode === 'inherit')>اتباع إعداد النظام</option>
+                                    <option value="enabled" @selected($lockMode === 'enabled')>مفعّل لهذا المستخدم</option>
+                                    <option value="disabled" @selected($lockMode === 'disabled')>معطّل (مستثنى)</option>
+                                </select>
+                                <div class="form-text">يتحكم في السماح بالدخول من الأجهزة الموثوقة فقط.</div>
+                            </div>
+
                             <!-- الأدوار -->
                             <div class="col-12">
                                 <label class="form-label mt-3">الأدوار (Roles)</label>

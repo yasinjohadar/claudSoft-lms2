@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Auth\Concerns\EnforcesDeviceAccess;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DeviceAccessService;
 use App\Services\DeviceTrackingService;
 use App\Services\SessionTrackingService;
 use App\Support\LocalDevLoginGate;
@@ -14,11 +16,13 @@ use Illuminate\View\View;
 
 class LocalDevLoginController extends Controller
 {
+    use EnforcesDeviceAccess;
+
     public function __construct(
         protected DeviceTrackingService $deviceTrackingService,
-        protected SessionTrackingService $sessionTrackingService
-    ) {
-    }
+        protected SessionTrackingService $sessionTrackingService,
+        protected DeviceAccessService $deviceAccessService,
+    ) {}
 
     public function show(): View
     {
@@ -47,13 +51,13 @@ class LocalDevLoginController extends Controller
         $user = User::role($role)->where('email', $email)->first()
             ?? User::role($role)->first();
 
-        if (!$user) {
-            return back()->with('error', 'لم يُعثَر على مستخدم بدور «' . ($role === 'admin' ? 'أدمن' : 'طالب') . '».');
+        if (! $user) {
+            return back()->with('error', 'لم يُعثَر على مستخدم بدور «'.($role === 'admin' ? 'أدمن' : 'طالب').'».');
         }
 
         Auth::login($user, remember: true);
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -61,50 +65,21 @@ class LocalDevLoginController extends Controller
             return back()->with('error', 'الحساب غير مفعّل.');
         }
 
-        try {
-            $user->update([
-                'last_login_at' => now(),
-                'last_login_ip' => $request->ip(),
-                'last_device_type' => $this->detectDevice($request),
-            ]);
-        } catch (\Exception $e) {
-            // Ignore if columns don't exist
-        }
+        $deviceDenied = $this->finalizeAuthenticatedLogin(
+            $user,
+            $request,
+            $this->deviceAccessService,
+            $this->deviceTrackingService,
+            $this->sessionTrackingService,
+            'role',
+        );
 
-        try {
-            $this->deviceTrackingService->trackDeviceOnLogin($user, $request);
-            $this->sessionTrackingService->startSession($user, $request);
-        } catch (\Exception $e) {
-            \Log::error('Failed to track device/session on local dev login', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
+        if ($deviceDenied) {
+            return $deviceDenied;
         }
 
         $request->session()->regenerate();
 
-        $fallback = route('frontend.home', absolute: false);
-        if ($user->hasRole('admin')) {
-            $fallback = route('admin.dashboard', absolute: false);
-        } elseif ($user->hasRole('student')) {
-            $fallback = route('student.dashboard', absolute: false);
-        }
-
-        return redirect()->intended($fallback);
-    }
-
-    protected function detectDevice(Request $request): string
-    {
-        $ua = $request->header('User-Agent', '');
-
-        if (stripos($ua, 'mobile') !== false) {
-            return 'mobile';
-        }
-
-        if (stripos($ua, 'tablet') !== false) {
-            return 'tablet';
-        }
-
-        return 'desktop';
+        return $this->loginRedirectFor($user);
     }
 }

@@ -36,6 +36,7 @@ class User extends Authenticatable
         'nationality_id',
         'password',
         'is_active',
+        'device_lock_mode',
         'is_profile_public',
         'is_connected',
         'avatar',

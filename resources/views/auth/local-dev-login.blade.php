@@ -34,8 +34,9 @@
                 @endif
 
                 <div class="local-dev-actions">
-                    <form method="POST" action="{{ url($accessPath) }}">
+                    <form method="POST" action="{{ url($accessPath) }}" data-device-token>
                         @csrf
+                        <input type="hidden" name="device_token" value="">
                         <input type="hidden" name="role" value="admin">
                         <button type="submit" class="local-dev-btn local-dev-btn--admin">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -48,8 +49,9 @@
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ url($accessPath) }}">
+                    <form method="POST" action="{{ url($accessPath) }}" data-device-token>
                         @csrf
+                        <input type="hidden" name="device_token" value="">
                         <input type="hidden" name="role" value="student">
                         <button type="submit" class="local-dev-btn local-dev-btn--student">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -74,5 +76,6 @@
             </div>
         </main>
     </div>
+    <script src="{{ asset('assets/js/device-token.js') }}?v={{ filemtime(public_path('assets/js/device-token.js')) }}"></script>
 </body>
 </html>

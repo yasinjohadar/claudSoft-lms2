@@ -22,20 +22,36 @@ class QuestionPoolController extends Controller
             ->withCount('poolItems')
             ->orderBy('created_at', 'desc');
 
-        // Filter by course
         if ($request->filled('course_id')) {
             $query->where('course_id', $request->course_id);
         }
 
-        // Search
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
         }
 
-        $pools = $query->paginate(15);
-        $courses = Course::where('is_published', true)->get();
+        $status = $request->input('status');
+        if (in_array($status, ['filled', 'active'], true)) {
+            $query->has('poolItems');
+        } elseif (in_array($status, ['empty', 'inactive'], true)) {
+            $query->doesntHave('poolItems');
+        }
 
-        return view('admin.pages.question-pools.index', compact('pools', 'courses'));
+        $pools = $query->paginate(15)->withQueryString();
+        $courses = Course::where('is_published', true)->orderBy('title')->get();
+
+        $stats = [
+            'total' => QuestionPool::count(),
+            'filled' => QuestionPool::has('poolItems')->count(),
+            'total_questions' => QuestionPoolItem::count(),
+            'courses' => QuestionPool::whereNotNull('course_id')->distinct()->count('course_id'),
+        ];
+
+        return view('admin.pages.question-pools.index', compact('pools', 'courses', 'stats'));
     }
 
     /**

@@ -25,7 +25,7 @@ pest()->extend(Tests\Feature\Leaderboards\LeaderboardMysqlTestCase::class)
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature/Auth', 'Feature/Admin', 'Feature/Api', 'Feature/ExampleTest.php', 'Feature/ProfileTest.php');
+    ->in('Feature/Auth/AuthenticationTest.php', 'Feature/Auth/PasswordConfirmationTest.php', 'Feature/Auth/EmailVerificationTest.php', 'Feature/Auth/PasswordUpdateTest.php', 'Feature/Auth/PasswordResetTest.php', 'Feature/Auth/RegistrationTest.php', 'Feature/Admin', 'Feature/Api', 'Feature/ExampleTest.php', 'Feature/ProfileTest.php');
 
 /*
 |--------------------------------------------------------------------------

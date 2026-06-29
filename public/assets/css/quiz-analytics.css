@@ -635,3 +635,87 @@
         transition: none;
     }
 }
+
+/* ── Overall analytics dashboard (index) ── */
+.qp-questions-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(108, 117, 125, 0.12);
+    color: #495057;
+}
+
+.qa-score-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+}
+
+.qa-score-chip--high { background: rgba(25, 135, 84, 0.12); color: #198754; }
+.qa-score-chip--mid { background: rgba(255, 193, 7, 0.15); color: #cc9a00; }
+.qa-score-chip--low { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+
+.qa-index-rank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.qa-index-rank--gold {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #fff;
+}
+
+.qa-index-rank--silver {
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    color: #334155;
+}
+
+.qa-index-rank--bronze {
+    background: linear-gradient(135deg, #fdba74, #ea580c);
+    color: #fff;
+}
+
+.qa-index-rank--default {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+}
+
+.qa-index-student-icon {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    font-size: 0.9rem;
+}
+
+.qa-index-icon--gold { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.qa-index-icon--danger { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+.qa-index-icon--success { background: rgba(25, 135, 84, 0.12); color: #198754; }
+
+.qa-index-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.quiz-analytics-dashboard .group-show-action[type="submit"],
+.quiz-analytics-dashboard form.d-inline .group-show-action {
+    cursor: pointer;
+}
+

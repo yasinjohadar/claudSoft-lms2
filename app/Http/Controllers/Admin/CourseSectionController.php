@@ -249,33 +249,50 @@ class CourseSectionController extends Controller
     /**
      * Reorder sections (drag & drop).
      */
-    public function reorder(Request $request, $courseId)
+    public function reorder(Request $request, Course $course)
     {
         $validated = $request->validate([
-            'sections' => 'required|array',
-            'sections.*' => 'exists:course_sections,id',
+            'sections' => 'required|array|min:1',
+            'sections.*' => 'integer|exists:course_sections,id',
         ]);
+
+        $sectionIds = array_map('intval', $validated['sections']);
+        $validCount = CourseSection::query()
+            ->where('course_id', $course->id)
+            ->whereIn('id', $sectionIds)
+            ->count();
+
+        if ($validCount !== count($sectionIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بعض الأقسام لا تنتمي لهذا الكورس',
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
-            foreach ($validated['sections'] as $index => $sectionId) {
+            foreach ($sectionIds as $index => $sectionId) {
+                $order = $index + 1;
                 CourseSection::where('id', $sectionId)
-                    ->where('course_id', $courseId)
-                    ->update(['sort_order' => $index + 1]);
+                    ->where('course_id', $course->id)
+                    ->update([
+                        'sort_order' => $order,
+                        'order_index' => $order,
+                    ]);
             }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إعادة ترتيب الأقسام بنجاح'
+                'message' => 'تم إعادة ترتيب الأقسام بنجاح',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إعادة الترتيب: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء إعادة الترتيب: '.$e->getMessage(),
             ], 500);
         }
     }

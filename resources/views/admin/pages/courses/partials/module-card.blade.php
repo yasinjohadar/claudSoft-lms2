@@ -24,7 +24,7 @@
     };
 @endphp
 
-<div id="module-container-{{ $module->id }}" class="admin-course-module-card">
+<div id="module-container-{{ $module->id }}" class="admin-course-module-card" data-module-id="{{ $module->id }}">
     <div class="admin-course-module-card__row">
         <div class="admin-course-module-card__main">
             <div class="form-check admin-course-module-card__check flex-shrink-0">
@@ -37,6 +37,15 @@
                        aria-label="تحديد الوحدة">
             </div>
 
+            <button type="button"
+                    class="admin-course-module-card__drag-handle"
+                    title="اسحب لإعادة الترتيب"
+                    aria-label="سحب لإعادة الترتيب">
+                <i class="fe fe-menu"></i>
+            </button>
+
+            <span class="admin-course-module-card__order" data-order>{{ $loop->iteration }}</span>
+
             <span class="admin-course-module-card__icon admin-course-module-card__icon--{{ $moduleTypeMeta['tone'] }}">
                 <i class="fe {{ $moduleTypeMeta['icon'] }}"></i>
             </span>
@@ -47,7 +56,6 @@
                     @if($isResourceUrl)
                         <i class="fe fe-link text-info" title="رابط خارجي"></i>
                     @endif
-                    <span class="group-show-chip group-show-chip--sm text-muted">#{{ $loop->iteration }}</span>
                 </div>
 
                 <div class="admin-course-module-card__chips">

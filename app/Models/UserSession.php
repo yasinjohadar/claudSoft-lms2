@@ -118,10 +118,12 @@ class UserSession extends Model
         
         if ($seconds == 0 && $this->started_at && !$this->ended_at) {
             // Calculate from timestamps if duration_seconds is not set
-            $seconds = now()->diffInSeconds($this->started_at);
+            $seconds = max(0, (int) now()->diffInSeconds($this->started_at, false));
         } elseif ($seconds == 0 && $this->started_at && $this->ended_at) {
-            $seconds = $this->ended_at->diffInSeconds($this->started_at);
+            $seconds = max(0, (int) $this->ended_at->diffInSeconds($this->started_at, false));
         }
+
+        $seconds = max(0, (int) $seconds);
 
         $hours = floor($seconds / 3600);
         $minutes = floor(($seconds % 3600) / 60);

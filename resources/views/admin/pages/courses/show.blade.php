@@ -588,15 +588,21 @@
 
                     <!-- Sections Accordion -->
                     <div class="accordion admin-course-sections-accordion" id="sectionsAccordion">
-                    @forelse($course->sections()->orderBy('order_index')->get() as $section)
-                        <div class="accordion-item admin-course-section-item">
+                    @forelse($course->sections()->orderBy('sort_order')->get() as $section)
+                        <div class="accordion-item admin-course-section-item" data-section-id="{{ $section->id }}">
                             <h2 class="accordion-header d-flex align-items-stretch" id="heading-{{ $section->id }}">
+                                <span class="admin-course-section-item__drag-handle"
+                                      title="اسحب لإعادة ترتيب القسم"
+                                      aria-label="سحب لإعادة ترتيب القسم">
+                                    <i class="fe fe-menu"></i>
+                                </span>
                                 <button class="accordion-button collapsed flex-grow-1 admin-course-section-item__toggle" type="button"
                                         data-bs-toggle="collapse" data-bs-target="#section-{{ $section->id }}"
                                         aria-expanded="false" aria-controls="section-{{ $section->id }}">
                                     <div class="d-flex align-items-center w-100 justify-content-between gap-3 me-2">
                                         <div class="min-w-0 text-start">
                                             <span class="d-flex align-items-center gap-2 flex-wrap">
+                                                <span class="admin-course-section-item__order" data-order>{{ $loop->iteration }}</span>
                                                 <i class="fe fe-folder text-primary"></i>
                                                 <span class="fw-semibold">{{ $section->title }}</span>
                                                 <span id="section-restrictions-badge-{{ $section->id }}" class="group-show-chip group-show-chip--sm text-warning" title="هذا القسم له قيود وصول" style="display: {{ $section->accessRestrictions && $section->accessRestrictions->count() > 0 ? 'inline-flex' : 'none' }};">
@@ -761,7 +767,9 @@
                                         </div>
                                     </div>
 
-                                    <div class="admin-course-modules-list">
+                                    <div class="admin-course-modules-list"
+                                         id="section-modules-list-{{ $section->id }}"
+                                         data-section-id="{{ $section->id }}">
                                     @forelse($section->modules()->orderBy('sort_order')->get() as $module)
                                         @include('admin.pages.courses.partials.module-card', [
                                             'module' => $module,
@@ -941,6 +949,14 @@
 @stop
 
 @section('script')
+@php
+    $moduleReorderUrlPattern = str_replace(
+        '/sections/0/',
+        '/sections/__ID__/',
+        route('sections.modules.reorder', ['section' => 0])
+    );
+@endphp
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     document.querySelectorAll('.admin-course-show-page [data-countup]').forEach(function (el) {
         var target = parseFloat(el.dataset.countup || '0');
@@ -2601,6 +2617,113 @@
             }
         });
     }
+
+    (function initCourseContentSortable() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const sectionsReorderUrl = @json(route('courses.sections.reorder', $course));
+        const moduleReorderUrlPattern = @json($moduleReorderUrlPattern);
+
+        function notify(type, message) {
+            if (typeof toastr !== 'undefined') {
+                toastr[type](message);
+            }
+        }
+
+        function updateOrderLabels(container, selector) {
+            if (!container) {
+                return;
+            }
+            container.querySelectorAll(selector).forEach(function (el, index) {
+                el.textContent = String(index + 1);
+            });
+        }
+
+        function postReorder(url, body, onSuccess) {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(body),
+            })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { ok: response.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (result.ok && result.data.success) {
+                        if (typeof onSuccess === 'function') {
+                            onSuccess();
+                        }
+                        notify('success', result.data.message || 'تم حفظ الترتيب');
+                        return;
+                    }
+                    throw new Error(result.data.message || 'فشل حفظ الترتيب');
+                });
+        }
+
+        const sectionsAccordion = document.getElementById('sectionsAccordion');
+        if (sectionsAccordion && typeof Sortable !== 'undefined') {
+            Sortable.create(sectionsAccordion, {
+                animation: 150,
+                handle: '.admin-course-section-item__drag-handle',
+                draggable: '.admin-course-section-item',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    const sectionIds = Array.from(
+                        sectionsAccordion.querySelectorAll('.admin-course-section-item[data-section-id]')
+                    ).map(function (item) {
+                        return parseInt(item.getAttribute('data-section-id'), 10);
+                    });
+
+                    postReorder(sectionsReorderUrl, { sections: sectionIds }, function () {
+                        updateOrderLabels(sectionsAccordion, '.admin-course-section-item__order[data-order]');
+                    }).catch(function (error) {
+                        notify('error', error.message || 'حدث خطأ أثناء إعادة ترتيب الأقسام');
+                        window.location.reload();
+                    });
+                },
+            });
+        }
+
+        document.querySelectorAll('.admin-course-modules-list[data-section-id]').forEach(function (listEl) {
+            if (typeof Sortable === 'undefined') {
+                return;
+            }
+
+            const sectionId = listEl.getAttribute('data-section-id');
+            if (!sectionId || listEl.querySelectorAll('.admin-course-module-card').length === 0) {
+                return;
+            }
+
+            Sortable.create(listEl, {
+                animation: 150,
+                handle: '.admin-course-module-card__drag-handle',
+                draggable: '.admin-course-module-card',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    const moduleIds = Array.from(listEl.querySelectorAll('.admin-course-module-card[data-module-id]'))
+                        .map(function (card) {
+                            return parseInt(card.getAttribute('data-module-id'), 10);
+                        });
+
+                    const url = moduleReorderUrlPattern.replace('__ID__', sectionId);
+
+                    postReorder(url, { module_ids: moduleIds }, function () {
+                        updateOrderLabels(listEl, '.admin-course-module-card__order[data-order]');
+                    }).catch(function (error) {
+                        notify('error', error.message || 'حدث خطأ أثناء إعادة ترتيب العناصر');
+                        window.location.reload();
+                    });
+                },
+            });
+        });
+    })();
 </script>
 @stop
 

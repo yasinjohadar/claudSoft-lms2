@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\OtpPurpose;
+use App\Http\Controllers\Auth\Concerns\EnforcesDeviceAccess;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Auth\PhoneOtpService;
 use App\Services\Auth\PasswordResetDeliveryService;
+use App\Services\DeviceAccessService;
 use App\Services\DeviceTrackingService;
 use App\Services\SessionTrackingService;
 use Illuminate\Http\RedirectResponse;
@@ -16,10 +18,13 @@ use Illuminate\View\View;
 
 class PhoneLoginController extends Controller
 {
+    use EnforcesDeviceAccess;
+
     public function __construct(
         private PhoneOtpService $otpService,
         private DeviceTrackingService $deviceTrackingService,
-        private SessionTrackingService $sessionTrackingService
+        private SessionTrackingService $sessionTrackingService,
+        private DeviceAccessService $deviceAccessService,
     ) {}
 
     public function create(): View|RedirectResponse
@@ -102,27 +107,25 @@ class PhoneLoginController extends Controller
         }
 
         Auth::login($user, $request->boolean('remember'));
-        $request->session()->regenerate();
 
+        $deviceDenied = $this->finalizeAuthenticatedLogin(
+            $user,
+            $request,
+            $this->deviceAccessService,
+            $this->deviceTrackingService,
+            $this->sessionTrackingService,
+            'code',
+        );
+
+        if ($deviceDenied) {
+            session()->forget(['phone_login_user_id', 'phone_login_phone']);
+
+            return $deviceDenied;
+        }
+
+        $request->session()->regenerate();
         session()->forget(['phone_login_user_id', 'phone_login_phone']);
 
-        try {
-            $user->update([
-                'last_login_at' => now(),
-                'last_login_ip' => $request->ip(),
-            ]);
-            $this->deviceTrackingService->trackDeviceOnLogin($user, $request);
-            $this->sessionTrackingService->startSession($user, $request);
-        } catch (\Throwable) {
-        }
-
-        $fallback = route('frontend.home', absolute: false);
-        if ($user->hasRole('admin')) {
-            $fallback = route('admin.dashboard', absolute: false);
-        } elseif ($user->hasRole('student')) {
-            $fallback = route('student.dashboard', absolute: false);
-        }
-
-        return redirect()->intended($fallback);
+        return $this->loginRedirectFor($user);
     }
 }

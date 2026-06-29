@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\GroupRegistration;
 use App\Models\CourseGroup;
+use App\Models\Nationality;
 use App\Jobs\ProcessGroupRegistrationJob;
 use App\Jobs\SendGroupRegistrationEmailJob;
 use App\Jobs\SendGroupRegistrationWhatsAppJob;
@@ -18,17 +19,43 @@ class GroupRegistrationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = GroupRegistration::with(['group', 'user', 'createdBy'])
+        $query = $this->buildRegistrationsQuery($request);
+        $registrations = $query->paginate(15)->withQueryString();
+        $stats = $this->computeRegistrationStats($request);
+
+        $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
+        $nationalities = Nationality::orderBy('name')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'table_html' => view('admin.group-registrations._table', compact('registrations'))->render(),
+                'stats_html' => view('admin.group-registrations.partials.stats', compact('stats'))->render(),
+                'count' => $registrations->total(),
+            ]);
+        }
+
+        return view('admin.group-registrations.index', compact(
+            'registrations',
+            'groups',
+            'nationalities',
+            'stats'
+        ));
+    }
+
+    private function buildRegistrationsQuery(Request $request)
+    {
+        $query = GroupRegistration::with(['group.courses', 'user', 'createdBy', 'nationality'])
             ->orderBy('created_at', 'desc');
 
-        // Filters
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('name_ar', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('name_ar', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('full_phone', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%");
             });
         }
 
@@ -40,10 +67,61 @@ class GroupRegistrationController extends Controller
             $query->where('group_id', $request->group_id);
         }
 
-        $registrations = $query->paginate(15);
-        $groups = CourseGroup::where('is_active', true)->orderBy('name')->get();
+        if ($request->filled('has_computer')) {
+            $query->where('has_computer', $request->has_computer);
+        }
 
-        return view('admin.group-registrations.index', compact('registrations', 'groups'));
+        if ($request->filled('user_created')) {
+            $query->where('user_created', $request->user_created === '1');
+        }
+
+        if ($request->filled('email_sent')) {
+            $query->where('email_sent', $request->email_sent === '1');
+        }
+
+        if ($request->filled('whatsapp_status')) {
+            match ($request->whatsapp_status) {
+                'sent' => $query->where('whatsapp_sent', true),
+                'not_sent' => $query->where('whatsapp_sent', false)->whereNull('whatsapp_error'),
+                'failed' => $query->whereNotNull('whatsapp_error'),
+                default => null,
+            };
+        }
+
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('nationality_id')) {
+            $query->where('nationality_id', $request->nationality_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        return $query;
+    }
+
+    private function computeRegistrationStats(Request $request): array
+    {
+        $base = $this->buildRegistrationsQuery($request);
+
+        return [
+            'total' => (clone $base)->count(),
+            'pending' => (clone $base)->where('status', GroupRegistration::STATUS_PENDING)->count(),
+            'processing' => (clone $base)->where('status', GroupRegistration::STATUS_PROCESSING)->count(),
+            'completed' => (clone $base)->where('status', GroupRegistration::STATUS_COMPLETED)->count(),
+            'failed' => (clone $base)->where('status', GroupRegistration::STATUS_FAILED)->count(),
+            'user_created' => (clone $base)->where('user_created', true)->count(),
+            'email_sent' => (clone $base)->where('email_sent', true)->count(),
+            'whatsapp_sent' => (clone $base)->where('whatsapp_sent', true)->count(),
+            'whatsapp_failed' => (clone $base)->whereNotNull('whatsapp_error')->count(),
+        ];
     }
 
     /**

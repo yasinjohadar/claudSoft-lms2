@@ -62,28 +62,43 @@
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية المدفوعات</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث برقم الدفعة أو فلتر حسب الحالة والمعسكر والتاريخ.</p>
+                    <p class="fs-12 text-muted mb-0">جميع الفلاتر تعمل فوراً عبر AJAX — ركّز على طلبات الطلاب «بانتظار المراجعة».</p>
                 </div>
                 <div class="card-body pt-3">
+                    <div class="d-flex flex-wrap gap-2 mb-3" id="paymentsQuickFilters">
+                        <button type="button" class="btn btn-sm btn-outline-secondary payments-quick-filter {{ !request('status') ? 'active' : '' }}" data-status="">
+                            الكل
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning payments-quick-filter {{ request('status') === 'pending_review' ? 'active' : '' }}" data-status="pending_review">
+                            <i class="fe fe-upload me-1"></i>بانتظار المراجعة
+                            <span class="badge bg-warning text-dark ms-1" id="pendingReviewBadge">{{ $globalPendingReviewCount ?? 0 }}</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary payments-quick-filter {{ request('status') === 'pending' ? 'active' : '' }}" data-status="pending">
+                            معلقة
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success payments-quick-filter {{ request('status') === 'completed' ? 'active' : '' }}" data-status="completed">
+                            مكتملة
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger payments-quick-filter {{ request('status') === 'failed' ? 'active' : '' }}" data-status="failed">
+                            فاشلة
+                        </button>
+                    </div>
+
                     <form method="GET" action="{{ route('payments.index') }}" id="paymentsFilterForm" class="group-show-filters mb-0">
+                        <input type="hidden" name="status" id="paymentsStatusHidden" value="{{ request('status') }}">
                         <div class="row g-3 align-items-end">
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label" for="paymentsSearchInput">رقم الدفعة</label>
-                                <input type="text" name="payment_number" id="paymentsSearchInput" class="form-control"
-                                       value="{{ request('payment_number') }}" placeholder="البحث برقم الدفعة">
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="paymentsSearchInput">بحث شامل</label>
+                                <input type="text" name="search" id="paymentsSearchInput" class="form-control"
+                                       value="{{ request('search', request('payment_number')) }}"
+                                       placeholder="رقم الدفعة، الفاتورة، الطالب، البريد...">
                             </div>
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-                                <label class="form-label" for="paymentsStatus">الحالة</label>
-                                <select name="status" id="paymentsStatus" class="form-select">
-                                    <option value="">جميع الحالات</option>
-                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>معلقة</option>
-                                    <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>مكتملة</option>
-                                    <option value="failed" {{ request('status') == 'failed' ? 'selected' : '' }}>فاشلة</option>
-                                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>ملغاة</option>
-                                    <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مستردة</option>
-                                </select>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsInvoiceNumber">رقم الفاتورة</label>
+                                <input type="text" name="invoice_number" id="paymentsInvoiceNumber" class="form-control"
+                                       value="{{ request('invoice_number') }}" placeholder="INV-...">
                             </div>
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="paymentsPaymentStatus">حالة السداد</label>
                                 <select name="payment_status" id="paymentsPaymentStatus" class="form-select">
                                     <option value="">جميع الحالات</option>
@@ -92,7 +107,18 @@
                                     <option value="unpaid" {{ request('payment_status') == 'unpaid' ? 'selected' : '' }}>غير مسدد</option>
                                 </select>
                             </div>
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsMethod">طريقة الدفع</label>
+                                <select name="payment_method_id" id="paymentsMethod" class="form-select">
+                                    <option value="">الكل</option>
+                                    @foreach($paymentMethods as $method)
+                                        <option value="{{ $method->id }}" {{ (string) request('payment_method_id') === (string) $method->id ? 'selected' : '' }}>
+                                            {{ $method->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="paymentsCampId">المعسكر</label>
                                 <select name="camp_id" id="paymentsCampId" class="form-select">
                                     <option value="">جميع المعسكرات</option>
@@ -103,11 +129,37 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsSource">مصدر الدفعة</label>
+                                <select name="source" id="paymentsSource" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="student" {{ request('source') === 'student' ? 'selected' : '' }}>طلب من الطالب</option>
+                                    <option value="admin" {{ request('source') === 'admin' ? 'selected' : '' }}>تسجيل إداري</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsHasReceipt">إيصال مرفق</label>
+                                <select name="has_receipt" id="paymentsHasReceipt" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="1" {{ request('has_receipt') === '1' ? 'selected' : '' }}>نعم</option>
+                                    <option value="0" {{ request('has_receipt') === '0' ? 'selected' : '' }}>لا</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsMinAmount">من مبلغ ($)</label>
+                                <input type="number" step="0.01" min="0" name="min_amount" id="paymentsMinAmount" class="form-control"
+                                       value="{{ request('min_amount') }}" placeholder="0">
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="paymentsMaxAmount">إلى مبلغ ($)</label>
+                                <input type="number" step="0.01" min="0" name="max_amount" id="paymentsMaxAmount" class="form-control"
+                                       value="{{ request('max_amount') }}" placeholder="">
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="paymentsFromDate">من تاريخ</label>
                                 <input type="date" name="from_date" id="paymentsFromDate" class="form-control" value="{{ request('from_date') }}">
                             </div>
-                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                            <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="paymentsToDate">إلى تاريخ</label>
                                 <input type="date" name="to_date" id="paymentsToDate" class="form-control" value="{{ request('to_date') }}">
                             </div>
@@ -115,9 +167,10 @@
                                 <button type="submit" class="btn btn-primary btn-sm" id="paymentsSearchBtn">
                                     <i class="fe fe-search me-1"></i>بحث
                                 </button>
-                                <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary btn-sm" id="paymentsResetBtn">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="paymentsResetBtn">
                                     <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
-                                </a>
+                                </button>
+                                <span id="paymentsFilterFeedback" class="fs-12 text-muted ms-2"></span>
                             </div>
                         </div>
                     </form>
@@ -128,11 +181,10 @@
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
                     <h6 class="group-show-members-card__title mb-0">
                         قائمة المدفوعات
-                        <span class="group-show-members-card__count">{{ $payments->total() }}</span>
+                        <span class="group-show-members-card__count" id="paymentsCountBadge">{{ $payments->total() }}</span>
                     </h6>
                 </div>
                 <div class="card-body pt-3">
-                    <div id="paymentsFilterFeedback" class="small text-muted mb-2"></div>
                     <div class="table-responsive">
                         <table class="table table-hover text-nowrap dashboard-table mb-0">
                             <thead>
@@ -278,9 +330,25 @@
         const paginationContainer = document.getElementById('paymentsPagination');
         const statsContainer = document.getElementById('paymentsStatsContainer');
         const feedback = document.getElementById('paymentsFilterFeedback');
+        const countBadge = document.getElementById('paymentsCountBadge');
+        const statusHidden = document.getElementById('paymentsStatusHidden');
         const searchInput = document.getElementById('paymentsSearchInput');
         const resetBtn = document.getElementById('paymentsResetBtn');
+        const quickFilters = document.querySelectorAll('.payments-quick-filter');
         let activeController = null;
+
+        const syncQuickFilterButtons = function () {
+            const currentStatus = statusHidden ? statusHidden.value : '';
+            quickFilters.forEach(function (btn) {
+                btn.classList.toggle('active', (btn.dataset.status || '') === currentStatus);
+            });
+        };
+
+        const updateBrowserUrl = function (url) {
+            const queryString = url.includes('?') ? url.split('?')[1] : '';
+            const nextUrl = queryString ? (form.action + '?' + queryString) : form.action;
+            window.history.replaceState({}, '', nextUrl);
+        };
 
         const debounce = (fn, wait = 400) => {
             let timeout;
@@ -296,7 +364,7 @@
 
             const params = new URLSearchParams(new FormData(form));
             const targetUrl = url || `${form.action}?${params.toString()}`;
-            feedback.textContent = 'جاري تحميل النتائج...';
+            if (feedback) feedback.textContent = 'جاري تحميل النتائج...';
 
             try {
                 const response = await fetch(targetUrl, {
@@ -316,14 +384,34 @@
                 }
                 tableBody.innerHTML = data.table || '';
                 paginationContainer.innerHTML = data.pagination || '';
-                feedback.textContent = '';
+                if (countBadge && typeof data.count === 'number') {
+                    countBadge.textContent = data.count;
+                }
+                updateBrowserUrl(targetUrl);
+                syncQuickFilterButtons();
+                if (feedback) feedback.textContent = 'تم تحديث النتائج';
             } catch (error) {
                 if (error.name === 'AbortError') return;
-                feedback.textContent = 'حدث خطأ أثناء تحميل النتائج';
+                if (feedback) feedback.textContent = 'حدث خطأ أثناء تحميل النتائج';
             }
         };
 
         const debouncedLoad = debounce(() => loadPayments(), 450);
+
+        quickFilters.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (statusHidden) {
+                    statusHidden.value = btn.dataset.status || '';
+                }
+                if (btn.dataset.status === 'pending_review') {
+                    const hasReceipt = document.getElementById('paymentsHasReceipt');
+                    const source = document.getElementById('paymentsSource');
+                    if (hasReceipt) hasReceipt.value = '1';
+                    if (source) source.value = 'student';
+                }
+                loadPayments();
+            });
+        });
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -334,7 +422,7 @@
             searchInput.addEventListener('input', debouncedLoad);
         }
 
-        form.querySelectorAll('select, input[type="date"]').forEach((element) => {
+        form.querySelectorAll('select, input[type="date"], input[type="number"]').forEach((element) => {
             element.addEventListener('change', () => loadPayments());
         });
 
@@ -342,6 +430,7 @@
             resetBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 form.reset();
+                if (statusHidden) statusHidden.value = '';
                 loadPayments(form.action);
             });
         }
@@ -352,6 +441,8 @@
             e.preventDefault();
             loadPayments(link.href);
         });
+
+        syncQuickFilterButtons();
     });
 </script>
 @stop

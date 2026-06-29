@@ -122,6 +122,7 @@ use App\Http\Controllers\Admin\StudentWorkController;
 use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserDeviceController;
+use App\Http\Controllers\Admin\DeviceSecuritySettingsController;
 use App\Http\Controllers\Admin\UserSendEmailController;
 use App\Http\Controllers\Admin\UserSendWhatsAppController;
 use App\Http\Controllers\Admin\UserSessionController;
@@ -263,7 +264,7 @@ Route::prefix('admin')
         Route::resource('courses.sections', CourseSectionController::class)->except(['index']);
         Route::post('sections/{id}/toggle-visibility', [CourseSectionController::class, 'toggleVisibility'])->name('sections.toggle-visibility');
         Route::post('sections/{id}/toggle-lock', [CourseSectionController::class, 'toggleLock'])->name('sections.toggle-lock');
-        Route::post('sections/reorder', [CourseSectionController::class, 'reorder'])->name('sections.reorder');
+        Route::post('courses/{course}/sections/reorder', [CourseSectionController::class, 'reorder'])->name('courses.sections.reorder');
 
         // Section Access Restrictions routes
         Route::get('sections/{section}/restrictions', [AccessRestrictionController::class, 'getSectionRestrictions'])->name('sections.restrictions.get');
@@ -286,7 +287,7 @@ Route::prefix('admin')
         Route::resource('sections.modules', CourseModuleController::class)->except(['index']);
         Route::post('modules/{id}/duplicate', [CourseModuleController::class, 'duplicate'])->name('modules.duplicate');
         Route::post('modules/{id}/toggle-visibility', [CourseModuleController::class, 'toggleVisibility'])->name('modules.toggle-visibility');
-        Route::post('modules/reorder', [CourseModuleController::class, 'reorder'])->name('modules.reorder');
+        Route::post('sections/{section}/modules/reorder', [CourseModuleController::class, 'reorder'])->name('sections.modules.reorder');
         Route::get('courses/{courseId}/sections-ajax', [CourseModuleController::class, 'getSectionsByCourse'])->name('modules.sections-ajax');
 
         // Lessons routes
@@ -1378,6 +1379,8 @@ Route::prefix('admin')
         // ========== User Devices Routes ==========
         Route::prefix('user-devices')->name('admin.user-devices.')->group(function () {
             Route::get('/', [UserDeviceController::class, 'index'])->name('index');
+            Route::get('/security-settings', [DeviceSecuritySettingsController::class, 'edit'])->name('security-settings');
+            Route::post('/security-settings', [DeviceSecuritySettingsController::class, 'update'])->name('security-settings.update');
             Route::get('/user/{userId}', [UserDeviceController::class, 'userDevices'])->name('user');
             Route::get('/{id}', [UserDeviceController::class, 'show'])->name('show');
             Route::post('/{id}/block', [UserDeviceController::class, 'block'])->name('block');

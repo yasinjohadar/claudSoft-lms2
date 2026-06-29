@@ -577,6 +577,7 @@ class UserController extends Controller
             'national_id' => 'nullable|string|max:20|unique:users,national_id,'.$id,
             'nationality_id' => 'nullable|exists:nationalities,id',
             'is_active' => 'boolean',
+            'device_lock_mode' => 'nullable|in:inherit,enabled,disabled',
             'roles' => 'array',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ], [
@@ -602,6 +603,7 @@ class UserController extends Controller
             'national_id' => $request->national_id,
             'nationality_id' => $request->nationality_id,
             'is_active' => $request->boolean('is_active'),
+            'device_lock_mode' => $request->input('device_lock_mode', 'inherit'),
         ];
 
         // معالجة الصورة باستخدام النظام الديناميكي

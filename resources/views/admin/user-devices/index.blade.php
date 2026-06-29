@@ -4,140 +4,107 @@
     أجهزة المستخدمين
 @stop
 
+@section('styles')
+    @include('admin.user-devices.partials.page-styles')
+@stop
+
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
 
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+        @include('admin.components.alerts')
 
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">أجهزة المستخدمين</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active">أجهزة المستخدمين</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="btn-list mt-3 mt-md-0">
-                <button type="button" class="btn btn-danger btn-wave" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
-                    <i class="fas fa-trash-alt me-2"></i>حذف الكل
-                </button>
-                <button type="button" class="btn btn-warning btn-wave" data-bs-toggle="modal" data-bs-target="#deleteOldModal">
-                    <i class="fas fa-clock me-2"></i>حذف الأجهزة القديمة
-                </button>
-                <button type="button" class="btn btn-info btn-wave" data-bs-toggle="modal" data-bs-target="#deleteInactiveModal">
-                    <i class="fas fa-power-off me-2"></i>حذف الأجهزة غير النشطة
-                </button>
-            </div>
+        <div class="my-4 page-header-breadcrumb ud-page-animate dashboard-fade-in">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item active">أجهزة المستخدمين</li>
+                </ol>
+            </nav>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="row">
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">إجمالي الأجهزة</p>
-                                <h4 class="mb-0">{{ number_format($stats['total']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-primary-transparent rounded-circle">
-                                    <i class="fas fa-mobile-alt fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div class="group-show-hero dashboard-fade-in ud-page-animate mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-7">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-smartphone me-1"></i>
+                        إدارة الأجهزة
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">أجهزة المستخدمين</h2>
+                    <p class="group-show-hero__desc mb-0">
+                        تتبع أجهزة الطلاب المسجّلة: المتصفح، المنصة، الموقع، وعدد مرات الدخول — مع حظر وثقة وإدارة جماعية.
+                    </p>
                 </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">الأجهزة الموثوقة</p>
-                                <h4 class="mb-0 text-success">{{ number_format($stats['trusted']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-success-transparent rounded-circle">
-                                    <i class="fas fa-shield-check fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">الأجهزة المحظورة</p>
-                                <h4 class="mb-0 text-danger">{{ number_format($stats['blocked']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-danger-transparent rounded-circle">
-                                    <i class="fas fa-ban fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <p class="text-muted mb-1">الأجهزة النشطة</p>
-                                <h4 class="mb-0 text-info">{{ number_format($stats['active']) }}</h4>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <div class="avatar avatar-md bg-info-transparent rounded-circle">
-                                    <i class="fas fa-circle fs-18"></i>
-                                </div>
-                            </div>
-                        </div>
+                <div class="col-lg-5">
+                    <div class="group-show-actions">
+                        <a href="{{ route('admin.user-devices.security-settings') }}" class="group-show-action group-show-action--primary">
+                            <span class="group-show-action__icon"><i class="fe fe-shield"></i></span>
+                            <span class="group-show-action__text">إعدادات الأمان</span>
+                        </a>
+                        <button type="button" class="group-show-action group-show-action--primary border-0" data-bs-toggle="modal" data-bs-target="#deleteInactiveModal">
+                            <span class="group-show-action__icon"><i class="fe fe-power"></i></span>
+                            <span class="group-show-action__text">حذف غير النشطة</span>
+                        </button>
+                        <button type="button" class="group-show-action group-show-action--warning border-0" data-bs-toggle="modal" data-bs-target="#deleteOldModal">
+                            <span class="group-show-action__icon"><i class="fe fe-clock"></i></span>
+                            <span class="group-show-action__text">حذف القديمة</span>
+                        </button>
+                        <button type="button" class="group-show-action group-show-action--danger border-0" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
+                            <span class="group-show-action__icon"><i class="fe fe-trash-2"></i></span>
+                            <span class="group-show-action__text">حذف الكل</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-filter me-2"></i>الفلاتر
-                </h5>
+        <div id="userDevicesStatsContainer" class="mb-4 ud-page-animate">
+            @include('admin.user-devices.partials.stats', ['stats' => $stats])
+        </div>
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in ud-page-animate mb-4">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">تصفية الأجهزة</h4>
+                <p class="fs-12 text-muted mb-0">جميع الفلاتر تعمل فوراً عبر AJAX.</p>
             </div>
-            <div class="card-body">
-                <form method="GET" action="{{ route('admin.user-devices.index') }}">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">البحث</label>
-                            <input type="text" name="search" class="form-control" 
-                                   value="{{ request('search') }}" 
+            <div class="card-body pt-3">
+                <div class="d-flex flex-wrap gap-2 mb-3" id="userDevicesQuickFilters">
+                    @php
+                        $quickStatuses = [
+                            '' => 'الكل',
+                            'pending_trust' => 'بانتظار الموافقة',
+                            'active' => 'نشطة',
+                            'trusted' => 'موثوقة',
+                            'blocked' => 'محظورة',
+                        ];
+                    @endphp
+                    @foreach($quickStatuses as $value => $label)
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary ud-quick-filter {{ request('status', '') === $value ? 'active' : '' }}"
+                                data-status="{{ $value }}">
+                            @if($value === 'trusted')
+                                <i class="fe fe-shield me-1"></i>
+                            @elseif($value === 'blocked')
+                                <i class="fe fe-slash me-1"></i>
+                            @elseif($value === 'pending_trust')
+                                <i class="fe fe-clock me-1"></i>
+                            @endif
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+
+                <form method="GET" action="{{ route('admin.user-devices.index') }}" id="userDevicesFilterForm" class="group-show-filters mb-0">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-xl-3 col-lg-4 col-md-6">
+                            <label class="form-label" for="userDevicesSearch">البحث</label>
+                            <input type="text" name="search" id="userDevicesSearch" class="form-control"
+                                   value="{{ request('search') }}"
                                    placeholder="اسم المستخدم، البريد، IP...">
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">المستخدم</label>
-                            <select name="user_id" class="form-select">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesUser">المستخدم</label>
+                            <select name="user_id" id="userDevicesUser" class="form-select">
                                 <option value="">الكل</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
@@ -146,201 +113,98 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">نوع الجهاز</label>
-                            <select name="device_type" class="form-select">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesType">نوع الجهاز</label>
+                            <select name="device_type" id="userDevicesType" class="form-select">
                                 <option value="">الكل</option>
                                 <option value="mobile" {{ request('device_type') == 'mobile' ? 'selected' : '' }}>جوال</option>
                                 <option value="tablet" {{ request('device_type') == 'tablet' ? 'selected' : '' }}>تابلت</option>
                                 <option value="desktop" {{ request('device_type') == 'desktop' ? 'selected' : '' }}>سطح مكتب</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">الحالة</label>
-                            <select name="status" class="form-select">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesStatus">الحالة</label>
+                            <select name="status" id="userDevicesStatus" class="form-select">
                                 <option value="">الكل</option>
                                 <option value="trusted" {{ request('status') == 'trusted' ? 'selected' : '' }}>موثوق</option>
+                                <option value="pending_trust" {{ request('status') == 'pending_trust' ? 'selected' : '' }}>بانتظار الموافقة</option>
                                 <option value="blocked" {{ request('status') == 'blocked' ? 'selected' : '' }}>محظور</option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>نشط</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">من تاريخ</label>
-                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesDateFrom">من تاريخ</label>
+                            <input type="date" name="date_from" id="userDevicesDateFrom" class="form-control" value="{{ request('date_from') }}">
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search"></i>
-                            </button>
+                        <div class="col-xl-2 col-lg-3 col-md-6">
+                            <label class="form-label" for="userDevicesPerPage">عدد السجلات</label>
+                            <select name="per_page" id="userDevicesPerPage" class="form-select">
+                                @foreach([25, 50, 100, 150, 200] as $size)
+                                    <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>
+                                        {{ $size }} سجل
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-xl-12">
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fe fe-search me-1"></i>بحث
+                                </button>
+                                <button type="button" id="userDevicesResetBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                </button>
+                                <span id="userDevicesSearchFeedback" class="fs-12 text-muted"></span>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Bulk Action Bar -->
-        <div class="card d-none" id="bulkActionBar">
-            <div class="card-body py-2">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <span class="me-3 fw-semibold">
+        <div class="card custom-card ud-bulk-bar dashboard-fade-in ud-page-animate mb-4 d-none" id="bulkActionBar">
+            <div class="card-body py-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <span class="fw-semibold">
+                            <i class="fe fe-check-square me-1 text-primary"></i>
                             <span id="selectedCount">0</span> جهاز محدد
                         </span>
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-primary btn-wave" onclick="selectAll()">
-                                <i class="fas fa-check-double me-1"></i>تحديد الكل
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAll()">
+                                <i class="fe fe-check me-1"></i>تحديد الكل
                             </button>
-                            <button type="button" class="btn btn-outline-secondary btn-wave" onclick="deselectAll()">
-                                <i class="fas fa-times me-1"></i>إلغاء التحديد
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAll()">
+                                <i class="fe fe-x me-1"></i>إلغاء
                             </button>
                         </div>
                     </div>
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-danger btn-wave" onclick="bulkDeleteSelected()">
-                            <i class="fas fa-trash-alt me-1"></i>حذف المحدد
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteSelected()">
+                        <i class="fe fe-trash-2 me-1"></i>حذف المحدد
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Devices Table -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">قائمة الأجهزة</h5>
-            </div>
-            <div class="card-body">
-                @if($devices->count() > 0)
-                    <form id="bulkDeleteForm" action="{{ route('admin.user-devices.bulk-delete') }}" method="POST">
-                        @csrf
-                        <div class="table-responsive">
-                            <table class="table table-hover text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th width="40">
-                                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
-                                        </th>
-                                        <th>#</th>
-                                        <th>المستخدم</th>
-                                        <th>معلومات الجهاز</th>
-                                        <th>عدد مرات الدخول</th>
-                                        <th>أول استخدام</th>
-                                        <th>آخر استخدام</th>
-                                        <th>الموقع</th>
-                                        <th>الحالة</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($devices as $device)
-                                        <tr>
-                                            <td>
-                                                <input type="checkbox" class="form-check-input device-checkbox" value="{{ $device->id }}" onchange="updateBulkActionBar()">
-                                            </td>
-                                            <td>{{ $devices->firstItem() + $loop->index }}</td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    @if($device->user)
-                                                        @if($device->user->avatar)
-                                                            <img src="{{ asset('storage/' . $device->user->avatar) }}" 
-                                                                 alt="{{ $device->user->name }}" 
-                                                                 class="avatar avatar-sm rounded-circle me-2">
-                                                        @else
-                                                            <div class="avatar avatar-sm rounded-circle bg-primary-transparent me-2">
-                                                                <span class="fw-bold">{{ substr($device->user->name, 0, 1) }}</span>
-                                                            </div>
-                                                        @endif
-                                                        <div>
-                                                            <strong>{{ $device->user->name }}</strong>
-                                                            <br>
-                                                            <small class="text-muted">{{ $device->user->email }}</small>
-                                                        </div>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <small>{{ $device->device_info }}</small>
-                                                @if($device->device_name)
-                                                    <br>
-                                                    <strong class="text-primary">{{ $device->device_name }}</strong>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info-transparent text-info">
-                                                    {{ number_format($device->total_logins) }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <small>{{ $device->first_used_human }}</small>
-                                            </td>
-                                            <td>
-                                                <small>{{ $device->last_used_human }}</small>
-                                            </td>
-                                            <td>
-                                                <small>{{ $device->location_formatted }}</small>
-                                                @if($device->last_ip_address)
-                                                    <br>
-                                                    <small class="text-muted">{{ $device->last_ip_address }}</small>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="{{ $device->status_badge['class'] }}">
-                                                    <i class="fas {{ $device->status_badge['icon'] }} me-1"></i>
-                                                    {{ $device->status_badge['text'] }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <a href="{{ route('admin.user-devices.show', $device->id) }}" 
-                                                       class="btn btn-sm btn-outline-primary" 
-                                                       title="عرض التفاصيل">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if($device->is_blocked)
-                                                        <form action="{{ route('admin.user-devices.unblock', $device->id) }}" 
-                                                              method="POST" 
-                                                              class="d-inline"
-                                                              onsubmit="return confirm('هل أنت متأكد من إلغاء حظر هذا الجهاز؟');">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-outline-success" title="إلغاء الحظر">
-                                                                <i class="fas fa-unlock"></i>
-                                                            </button>
-                                                        </form>
-                                                    @else
-                                                        <form action="{{ route('admin.user-devices.block', $device->id) }}" 
-                                                              method="POST" 
-                                                              class="d-inline"
-                                                              onsubmit="return confirm('هل أنت متأكد من حظر هذا الجهاز؟');">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="حظر">
-                                                                <i class="fas fa-ban"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </form>
-
-                    <!-- Pagination -->
-                    <div class="mt-4">
-                        {{ $devices->links() }}
-                    </div>
+        <div class="card custom-card group-show-members-card dashboard-fade-in ud-page-animate">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                <h6 class="group-show-members-card__title mb-0">
+                    قائمة الأجهزة
+                    <span class="group-show-members-card__count" id="userDevicesCountBadge">{{ $devices->total() }}</span>
+                </h6>
+                @if($devices->total() > 0)
+                    <span class="fs-12 text-muted" id="userDevicesRangeInfo">
+                        عرض {{ $devices->firstItem() }}–{{ $devices->lastItem() }} · {{ $devices->perPage() }} لكل صفحة
+                    </span>
                 @else
-                    <div class="text-center py-5">
-                        <i class="fas fa-mobile-alt fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">لا توجد أجهزة</p>
-                    </div>
+                    <span class="fs-12 text-muted d-none" id="userDevicesRangeInfo"></span>
                 @endif
             </div>
+            <div class="card-body pt-3" id="userDevicesTableContainer">
+                @include('admin.user-devices._devices_table', ['devices' => $devices])
+            </div>
         </div>
+
     </div>
 </div>
 
@@ -349,14 +213,14 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>تحذير: حذف جميع الأجهزة</h5>
+                <h5 class="modal-title"><i class="fe fe-alert-triangle me-2"></i>تحذير: حذف جميع الأجهزة</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('admin.user-devices.delete-all') }}" method="POST">
                 @csrf
                 <div class="modal-body">
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle me-2"></i>
+                    <div class="alert alert-danger mb-3">
+                        <i class="fe fe-alert-circle me-2"></i>
                         <strong>هذا الإجراء لا يمكن التراجع عنه!</strong>
                     </div>
                     <p>سيتم حذف <strong>جميع الأجهزة</strong> المسجلة في النظام ({{ number_format($stats['total']) }} جهاز).</p>
@@ -365,7 +229,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-danger" onclick="return confirm('هل أنت متأكد تماماً؟ سيتم حذف جميع الأجهزة نهائياً!')">
-                        <i class="fas fa-trash-alt me-1"></i>نعم، حذف الكل
+                        <i class="fe fe-trash-2 me-1"></i>نعم، حذف الكل
                     </button>
                 </div>
             </form>
@@ -378,14 +242,14 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="fas fa-clock me-2"></i>حذف الأجهزة القديمة</h5>
+                <h5 class="modal-title"><i class="fe fe-clock me-2"></i>حذف الأجهزة القديمة</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('admin.user-devices.delete-old') }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <p>حذف الأجهزة التي لم تُستخدم منذ فترة محددة.</p>
-                    <div class="mb-3">
+                    <div class="mb-0">
                         <label class="form-label fw-semibold">حذف الأجهزة غير المستخدمة منذ (بالأيام):</label>
                         <input type="number" name="days" class="form-control" value="90" min="1" max="365" required>
                         <small class="text-muted">مثال: 90 يوم = حذف الأجهزة التي لم تُستخدم منذ 3 أشهر</small>
@@ -394,7 +258,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-warning" onclick="return confirm('هل أنت متأكد من حذف الأجهزة القديمة؟')">
-                        <i class="fas fa-trash-alt me-1"></i>حذف الأجهزة القديمة
+                        <i class="fe fe-trash-2 me-1"></i>حذف الأجهزة القديمة
                     </button>
                 </div>
             </form>
@@ -406,15 +270,15 @@
 <div class="modal fade" id="deleteInactiveModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-info">
-                <h5 class="modal-title"><i class="fas fa-power-off me-2"></i>حذف الأجهزة غير النشطة</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fe fe-power me-2"></i>حذف الأجهزة غير النشطة</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('admin.user-devices.delete-inactive') }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <p>حذف الأجهزة ذات النشاط المنخفض جداً.</p>
-                    <div class="mb-3">
+                    <div class="mb-0">
                         <label class="form-label fw-semibold">الحد الأقصى لعدد تسجيلات الدخول:</label>
                         <input type="number" name="max_logins" class="form-control" value="1" min="0" max="100" required>
                         <small class="text-muted">سيتم حذف الأجهزة التي سجلت دخولها هذا العدد أو أقل</small>
@@ -422,8 +286,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-info" onclick="return confirm('هل أنت متأكد من حذف الأجهزة غير النشطة؟')">
-                        <i class="fas fa-trash-alt me-1"></i>حذف الأجهزة غير النشطة
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('هل أنت متأكد من حذف الأجهزة غير النشطة؟')">
+                        <i class="fe fe-trash-2 me-1"></i>حذف الأجهزة غير النشطة
                     </button>
                 </div>
             </form>
@@ -435,70 +299,222 @@
 
 @push('scripts')
 <script>
+function initUserDevicesCountup(root) {
+    (root || document).querySelectorAll('[data-countup]').forEach(function (el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        const duration = 800;
+        const start = performance.now();
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = new Intl.NumberFormat('ar-EG').format(Math.round(target * eased));
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
+}
+
+initUserDevicesCountup();
+
 function toggleSelectAll(source) {
-    const checkboxes = document.querySelectorAll('.device-checkbox');
-    checkboxes.forEach(checkbox => {
+    document.querySelectorAll('.device-checkbox').forEach(function (checkbox) {
         checkbox.checked = source.checked;
     });
     updateBulkActionBar();
 }
 
 function selectAll() {
-    const checkboxes = document.querySelectorAll('.device-checkbox');
-    checkboxes.forEach(checkbox => {
+    document.querySelectorAll('.device-checkbox').forEach(function (checkbox) {
         checkbox.checked = true;
     });
-    document.getElementById('selectAllCheckbox').checked = true;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = true;
     updateBulkActionBar();
 }
 
 function deselectAll() {
-    const checkboxes = document.querySelectorAll('.device-checkbox');
-    checkboxes.forEach(checkbox => {
+    document.querySelectorAll('.device-checkbox').forEach(function (checkbox) {
         checkbox.checked = false;
     });
-    document.getElementById('selectAllCheckbox').checked = false;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
     updateBulkActionBar();
 }
 
 function updateBulkActionBar() {
-    const checkboxes = document.querySelectorAll('.device-checkbox:checked');
-    const count = checkboxes.length;
+    const count = document.querySelectorAll('.device-checkbox:checked').length;
     const bulkActionBar = document.getElementById('bulkActionBar');
     const selectedCount = document.getElementById('selectedCount');
-    
-    selectedCount.textContent = count;
-    
-    if (count > 0) {
-        bulkActionBar.classList.remove('d-none');
-    } else {
-        bulkActionBar.classList.add('d-none');
-    }
+    if (selectedCount) selectedCount.textContent = count;
+    if (bulkActionBar) bulkActionBar.classList.toggle('d-none', count === 0);
 }
 
 function bulkDeleteSelected() {
     const checkboxes = document.querySelectorAll('.device-checkbox:checked');
-    const count = checkboxes.length;
-    
-    if (count === 0) {
+    if (checkboxes.length === 0) {
         alert('يرجى تحديد جهاز واحد على الأقل');
         return;
     }
-    
-    if (!confirm(`هل أنت متأكد من حذف ${count} جهاز؟`)) {
-        return;
-    }
-    
+    if (!confirm('هل أنت متأكد من حذف ' + checkboxes.length + ' جهاز؟')) return;
+
     const form = document.getElementById('bulkDeleteForm');
-    checkboxes.forEach(checkbox => {
+    if (!form) return;
+
+    form.querySelectorAll('input[name="device_ids[]"]').forEach(function (el) { el.remove(); });
+    checkboxes.forEach(function (checkbox) {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'device_ids[]';
         input.value = checkbox.value;
         form.appendChild(input);
     });
-    
     form.submit();
 }
+
+window.initUserDevicesTableHandlers = function () {
+    deselectAll();
+};
+
+(function () {
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(this, args); }, delay);
+        };
+    }
+
+    function syncQuickFilters(status) {
+        document.querySelectorAll('.ud-quick-filter').forEach(function (btn) {
+            btn.classList.toggle('active', (btn.dataset.status || '') === (status || ''));
+        });
+    }
+
+    function initUserDevicesAjaxFilter() {
+        const form = document.getElementById('userDevicesFilterForm');
+        const tableContainer = document.getElementById('userDevicesTableContainer');
+        const countBadge = document.getElementById('userDevicesCountBadge');
+        const rangeInfo = document.getElementById('userDevicesRangeInfo');
+        const statusSelect = document.getElementById('userDevicesStatus');
+        const searchInput = document.getElementById('userDevicesSearch');
+        const feedback = document.getElementById('userDevicesSearchFeedback');
+        const resetBtn = document.getElementById('userDevicesResetBtn');
+        const quickFilters = document.querySelectorAll('.ud-quick-filter');
+
+        if (!form || !tableContainer) return;
+
+        let currentController = null;
+
+        const getQueryString = function () {
+            const formData = new FormData(form);
+            formData.set('search', (formData.get('search') || '').toString().trim());
+            return new URLSearchParams(formData).toString();
+        };
+
+        const updateBrowserUrl = function (queryString) {
+            const nextUrl = queryString ? (form.action + '?' + queryString) : form.action;
+            window.history.replaceState({}, '', nextUrl);
+        };
+
+        const fetchAndRender = function (url) {
+            if (currentController) currentController.abort();
+            currentController = new AbortController();
+            if (feedback) feedback.textContent = 'جاري البحث...';
+
+            fetch(url, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                signal: currentController.signal,
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('فشل جلب النتائج');
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data || typeof data.table_html !== 'string') throw new Error('صيغة غير متوقعة');
+
+                    tableContainer.innerHTML = data.table_html;
+
+                    if (countBadge && typeof data.count === 'number') {
+                        countBadge.textContent = data.count;
+                    }
+
+                    if (rangeInfo) {
+                        if (data.from && data.to && data.per_page) {
+                            rangeInfo.textContent = 'عرض ' + data.from + '–' + data.to + ' · ' + data.per_page + ' لكل صفحة';
+                            rangeInfo.classList.remove('d-none');
+                        } else if (data.count === 0) {
+                            rangeInfo.classList.add('d-none');
+                        }
+                    }
+
+                    if (typeof window.initUserDevicesTableHandlers === 'function') {
+                        window.initUserDevicesTableHandlers();
+                    }
+
+                    updateBrowserUrl(url.includes('?') ? url.split('?')[1] : '');
+                    if (feedback) feedback.textContent = 'تم تحديث النتائج';
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError') return;
+                    if (feedback) feedback.textContent = 'تعذر تحميل النتائج، حاول مرة أخرى.';
+                });
+        };
+
+        const triggerSearch = function () {
+            const queryString = getQueryString();
+            fetchAndRender(queryString ? (form.action + '?' + queryString) : form.action);
+            syncQuickFilters(statusSelect ? statusSelect.value : '');
+        };
+
+        quickFilters.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (statusSelect) statusSelect.value = btn.dataset.status || '';
+                triggerSearch();
+            });
+        });
+
+        if (searchInput) searchInput.addEventListener('input', debounce(triggerSearch, 350));
+
+        form.querySelectorAll('select, input[type="date"]').forEach(function (field) {
+            field.addEventListener('change', triggerSearch);
+        });
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function () {
+                syncQuickFilters(statusSelect.value);
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                form.reset();
+                syncQuickFilters('');
+                if (feedback) feedback.textContent = '';
+                triggerSearch();
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            triggerSearch();
+        });
+
+        tableContainer.addEventListener('click', function (event) {
+            const paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) return;
+            event.preventDefault();
+            fetchAndRender(paginationLink.href);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserDevicesAjaxFilter);
+    } else {
+        initUserDevicesAjaxFilter();
+    }
+})();
 </script>
 @endpush

@@ -120,6 +120,14 @@ class UserDevice extends Model
     }
 
     /**
+     * Devices awaiting admin trust approval.
+     */
+    public function scopePendingTrust($query)
+    {
+        return $query->where('is_trusted', false)->where('is_blocked', false);
+    }
+
+    /**
      * Increment the total logins count.
      */
     public function incrementLogins(): void

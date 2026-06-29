@@ -11,6 +11,15 @@ use Carbon\Carbon;
 
 class UserDeviceController extends Controller
 {
+    private const PER_PAGE_OPTIONS = [25, 50, 100, 150, 200];
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = (int) $request->get('per_page', 25);
+
+        return in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 25;
+    }
+
     /**
      * Display a listing of all user devices.
      */
@@ -38,6 +47,8 @@ class UserDeviceController extends Controller
                     $query->trusted();
                 } elseif ($request->status === 'active') {
                     $query->active();
+                } elseif ($request->status === 'pending_trust') {
+                    $query->pendingTrust();
                 }
             }
 
@@ -65,7 +76,7 @@ class UserDeviceController extends Controller
                 });
             }
 
-            $devices = $query->paginate($request->get('per_page', 20));
+            $devices = $query->paginate($this->resolvePerPage($request))->withQueryString();
 
             // Statistics
             $stats = [
@@ -73,11 +84,22 @@ class UserDeviceController extends Controller
                 'trusted' => UserDevice::trusted()->count(),
                 'blocked' => UserDevice::blocked()->count(),
                 'active' => UserDevice::active()->count(),
+                'pending_trust' => UserDevice::pendingTrust()->count(),
             ];
 
             // Get filter options
             $users = User::role('student')->orderBy('name')->get();
             $deviceTypes = ['mobile', 'tablet', 'desktop'];
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'table_html' => view('admin.user-devices._devices_table', compact('devices'))->render(),
+                    'count' => $devices->total(),
+                    'from' => $devices->firstItem(),
+                    'to' => $devices->lastItem(),
+                    'per_page' => $devices->perPage(),
+                ]);
+            }
 
             return view('admin.user-devices.index', compact(
                 'devices',
@@ -139,21 +161,34 @@ class UserDeviceController extends Controller
                     $query->trusted();
                 } elseif ($request->status === 'active') {
                     $query->active();
+                } elseif ($request->status === 'pending_trust') {
+                    $query->pendingTrust();
                 }
             }
 
-            $devices = $query->paginate($request->get('per_page', 20));
+            $devices = $query->paginate($this->resolvePerPage($request))->withQueryString();
 
             // User-specific statistics
             $stats = [
                 'total' => UserDevice::byUser($userId)->count(),
                 'trusted' => UserDevice::byUser($userId)->trusted()->count(),
                 'blocked' => UserDevice::byUser($userId)->blocked()->count(),
+                'active' => UserDevice::byUser($userId)->active()->count(),
                 'last_used' => UserDevice::byUser($userId)
                     ->whereNotNull('last_used_at')
                     ->latest('last_used_at')
                     ->first(),
             ];
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'table_html' => view('admin.user-devices._user_devices_table', compact('devices'))->render(),
+                    'count' => $devices->total(),
+                    'from' => $devices->firstItem(),
+                    'to' => $devices->lastItem(),
+                    'per_page' => $devices->perPage(),
+                ]);
+            }
 
             return view('admin.user-devices.user', compact(
                 'user',
