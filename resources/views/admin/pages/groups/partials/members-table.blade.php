@@ -30,9 +30,9 @@
                     <th>اسم الطالب</th>
                     <th>البريد الإلكتروني</th>
                     <th>رقم الهاتف</th>
-                    <th>الدور</th>
                     <th>تاريخ الانضمام</th>
                     <th>آخر دخول</th>
+                    <th>اكتمال البروفايل</th>
                     <th>الحالة</th>
                     <th>المبلغ المستحق</th>
                     <th>المجموعات الأخرى</th>
@@ -84,13 +84,6 @@
                                     -
                                 @endif
                             </td>
-                            <td>
-                                @if($memberRecord->role == 'leader')
-                                    <span class="badge bg-warning">قائد</span>
-                                @else
-                                    <span class="badge bg-info">عضو</span>
-                                @endif
-                            </td>
                             <td>{{ $memberRecord->joined_at ? $memberRecord->joined_at->format('Y-m-d') : '-' }}</td>
                             <td>
                                 @php
@@ -109,6 +102,9 @@
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
+                            </td>
+                            <td>
+                                @include('admin.pages.users.partials.profile-completion-cell', ['user' => $memberRecord->student])
                             </td>
                             <td>
                                 @if($isOnline)
