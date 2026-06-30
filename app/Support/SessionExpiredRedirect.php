@@ -2,13 +2,14 @@
 
 namespace App\Support;
 
+use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 class SessionExpiredRedirect
 {
     /**
-     * @return array{url: string, label: string, secondary_url: string, secondary_label: string}
+     * @return array{url: string, label: string, secondary_url: string|null, secondary_label: string|null}
      */
     public static function resolve(Request $request): array
     {
@@ -18,8 +19,8 @@ class SessionExpiredRedirect
         $candidates = [
             'register' => [
                 'match' => ['register', 'phone-otp'],
-                'url' => self::routeUrl('register'),
-                'label' => 'العودة لصفحة التسجيل',
+                'url' => self::registrationUrl(),
+                'label' => self::registrationEnabled() ? 'العودة لصفحة التسجيل' : 'تحديث الصفحة وتسجيل الدخول',
                 'secondary_url' => self::routeUrl('login'),
                 'secondary_label' => 'تسجيل الدخول',
             ],
@@ -41,30 +42,63 @@ class SessionExpiredRedirect
                 'match' => ['login', 'simple-login', 'local-dev-login'],
                 'url' => self::routeUrl('login'),
                 'label' => 'تحديث الصفحة وتسجيل الدخول',
-                'secondary_url' => self::routeUrl('register'),
-                'secondary_label' => 'إنشاء حساب جديد',
+                'secondary_url' => self::registrationEnabled() ? self::routeUrl('register') : self::routeUrl('phone-login'),
+                'secondary_label' => self::registrationEnabled() ? 'إنشاء حساب جديد' : 'تسجيل الدخول بالهاتف',
             ],
         ];
 
         foreach ($candidates as $candidate) {
             foreach ($candidate['match'] as $segment) {
                 if ($segment !== '' && str_contains($path, $segment)) {
-                    return [
-                        'url' => self::freshUrl($candidate['url']),
-                        'label' => $candidate['label'],
-                        'secondary_url' => self::freshUrl($candidate['secondary_url']),
-                        'secondary_label' => $candidate['secondary_label'],
-                    ];
+                    return self::formatCandidate($candidate);
                 }
             }
         }
 
-        return [
-            'url' => self::freshUrl(self::routeUrl('login')),
+        return self::formatCandidate([
+            'url' => self::routeUrl('login'),
             'label' => 'تحديث الصفحة وتسجيل الدخول',
-            'secondary_url' => self::freshUrl(self::routeUrl('register')),
-            'secondary_label' => 'إنشاء حساب جديد',
+            'secondary_url' => self::registrationEnabled() ? self::routeUrl('register') : self::routeUrl('phone-login'),
+            'secondary_label' => self::registrationEnabled() ? 'إنشاء حساب جديد' : 'تسجيل الدخول بالهاتف',
+        ]);
+    }
+
+    /**
+     * @param  array{url: string, label: string, secondary_url: string, secondary_label: string}  $candidate
+     * @return array{url: string, label: string, secondary_url: string|null, secondary_label: string|null}
+     */
+    protected static function formatCandidate(array $candidate): array
+    {
+        $primaryUrl = self::freshUrl($candidate['url']);
+        $secondaryUrl = self::freshUrl($candidate['secondary_url']);
+
+        if ($secondaryUrl === $primaryUrl) {
+            return [
+                'url' => $primaryUrl,
+                'label' => $candidate['label'],
+                'secondary_url' => null,
+                'secondary_label' => null,
+            ];
+        }
+
+        return [
+            'url' => $primaryUrl,
+            'label' => $candidate['label'],
+            'secondary_url' => $secondaryUrl,
+            'secondary_label' => $candidate['secondary_label'],
         ];
+    }
+
+    protected static function registrationEnabled(): bool
+    {
+        return SiteSetting::isPublicRegistrationEnabled();
+    }
+
+    protected static function registrationUrl(): string
+    {
+        return self::registrationEnabled()
+            ? self::routeUrl('register')
+            : self::routeUrl('login');
     }
 
     public static function freshUrl(string $url): string

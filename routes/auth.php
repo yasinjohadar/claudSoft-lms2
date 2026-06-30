@@ -19,10 +19,14 @@ use App\Support\LocalDevLoginGate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
+    Route::middleware('public.registration')->group(function () {
+        Route::get('register', [RegisteredUserController::class, 'create'])
+            ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+        Route::post('register', [RegisteredUserController::class, 'store']);
+
+        Route::post('register/otp/complete', [RegisterOtpController::class, 'verifyAndRegister'])->name('register.otp.complete');
+    });
 
     // Simple login page for testing
     Route::get('simple-login', function () {
@@ -41,8 +45,6 @@ Route::middleware('guest')->group(function () {
     Route::get('phone-otp/verify', [PhoneOtpController::class, 'showVerify'])->name('phone-otp.verify');
     Route::post('phone-otp/send', [PhoneOtpController::class, 'send'])->name('phone-otp.send');
     Route::post('phone-otp/verify', [PhoneOtpController::class, 'verify'])->name('phone-otp.verify.submit');
-
-    Route::post('register/otp/complete', [RegisterOtpController::class, 'verifyAndRegister'])->name('register.otp.complete');
 
     Route::post('password/otp/send', [PhonePasswordResetOtpController::class, 'send'])->name('password.otp.send');
     Route::post('password/otp/verify', [PhonePasswordResetOtpController::class, 'verify'])->name('password.otp.verify');

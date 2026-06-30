@@ -175,9 +175,11 @@
                     </a>
                 @endif
 
-                <div class="auth-footer">
-                    ليس لديك حساب؟ <a href="{{ route('register') }}">إنشاء حساب جديد</a>
-                </div>
+                @if (\App\Models\SiteSetting::isPublicRegistrationEnabled())
+                    <div class="auth-footer">
+                        ليس لديك حساب؟ <a href="{{ route('register') }}">إنشاء حساب جديد</a>
+                    </div>
+                @endif
             </div>
         </main>
     </div>

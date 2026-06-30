@@ -2,9 +2,9 @@
 
 use App\Support\SessionExpiredRedirect;
 use Illuminate\Http\Request;
-use Tests\TestCase;
+use Tests\Feature\Auth\AuthSiteSettingTestCase;
 
-uses(TestCase::class);
+uses(AuthSiteSettingTestCase::class);
 
 test('session expired redirect resolves login by default', function () {
     $request = Request::create('/login', 'POST');

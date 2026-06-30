@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
+use App\Models\SiteSetting;
 use App\Services\Auth\PhoneOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,11 @@ class PhoneOtpController extends Controller
             return redirect()->route('login')->with('error', 'جلسة التحقق غير صالحة.');
         }
 
+        if ($purpose === OtpPurpose::Register && ! SiteSetting::isPublicRegistrationEnabled()) {
+            return redirect()->route('login')
+                ->with('error', 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة أو استخدام حساب موجود.');
+        }
+
         return view('auth.phone-otp-verify', [
             'purpose' => $purpose,
             'phone' => $phone,
@@ -43,6 +49,10 @@ class PhoneOtpController extends Controller
         $purpose = OtpPurpose::tryFrom($validated['purpose']);
         if (! $purpose) {
             return $this->otpError($request, 'نوع التحقق غير صالح.');
+        }
+
+        if ($purpose === OtpPurpose::Register && ! SiteSetting::isPublicRegistrationEnabled()) {
+            return $this->otpError($request, 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة.');
         }
 
         $phone = $validated['phone'];
@@ -82,6 +92,10 @@ class PhoneOtpController extends Controller
         $purpose = OtpPurpose::tryFrom($validated['purpose']);
         if (! $purpose) {
             return $this->otpError($request, 'نوع التحقق غير صالح.');
+        }
+
+        if ($purpose === OtpPurpose::Register && ! SiteSetting::isPublicRegistrationEnabled()) {
+            return $this->otpError($request, 'التسجيل العام معطل حالياً. يرجى التواصل مع الإدارة.');
         }
 
         try {

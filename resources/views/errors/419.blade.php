@@ -46,9 +46,11 @@
                     </svg>
                     {{ $redirect['label'] }}
                 </a>
-                <a href="{{ $redirect['secondary_url'] }}" class="session-expired-btn session-expired-btn--ghost">
-                    {{ $redirect['secondary_label'] }}
-                </a>
+                @if (! empty($redirect['secondary_url']) && ! empty($redirect['secondary_label']))
+                    <a href="{{ $redirect['secondary_url'] }}" class="session-expired-btn session-expired-btn--ghost">
+                        {{ $redirect['secondary_label'] }}
+                    </a>
+                @endif
             </div>
 
             <p class="session-expired-card__countdown" id="session-expired-countdown">
