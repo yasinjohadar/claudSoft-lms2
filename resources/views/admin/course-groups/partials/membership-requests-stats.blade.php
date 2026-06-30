@@ -2,6 +2,7 @@
     $waContext = $waContext ?? [];
     $waSelectedJid = $waContext['selected_jid'] ?? '';
     $waStats = $waContext['wa_stats'] ?? ['not_in_group' => 0, 'in_group' => 0, 'no_phone' => 0, 'invite_pending' => 0];
+    $emailStats = $emailStats ?? ['not_invited' => 0, 'invite_sent' => 0, 'no_email' => 0];
 
     $kpiCards = [
         [
@@ -25,6 +26,28 @@
             'value' => $group->members_count ?? 0,
             'sub' => $group->max_members ? 'الحد الأقصى: ' . $group->max_members : 'بدون حد أقصى',
         ],
+    ];
+
+    $kpiCards[] = [
+        'variant' => 'red',
+        'icon' => 'fe-mail',
+        'label' => 'لم يُدعَ بالبريد',
+        'value' => $emailStats['not_invited'] ?? 0,
+        'sub' => 'لديهم بريد — لم تُرسل دعوة بعد',
+    ];
+    $kpiCards[] = [
+        'variant' => 'orange',
+        'icon' => 'fe-send',
+        'label' => 'دُعوا بالبريد',
+        'value' => $emailStats['invite_sent'] ?? 0,
+        'sub' => 'أُرسلت دعوة بريد إلكتروني',
+    ];
+    $kpiCards[] = [
+        'variant' => 'blue',
+        'icon' => 'fe-at-sign',
+        'label' => 'بدون بريد',
+        'value' => $emailStats['no_email'] ?? 0,
+        'sub' => 'لا يمكن إرسال دعوة بريد',
     ];
 
     if ($waSelectedJid !== '' && empty($waContext['wa_load_error'] ?? null)) {

@@ -71,9 +71,12 @@ class PhoneOtpService
 
         $this->sender->send($phone, $code);
 
-        Cache::put($this->resendCacheKey($phone, $purpose), true, now()->addSeconds(
-            max(30, (int) ($settings['resend_cooldown_seconds'] ?? 60))
-        ));
+        $cooldown = max(30, (int) ($settings['resend_cooldown_seconds'] ?? 60));
+        Cache::put(
+            $this->resendCacheKey($phone, $purpose),
+            now()->addSeconds($cooldown)->timestamp,
+            now()->addSeconds($cooldown)
+        );
 
         $this->incrementRateLimit($phone, $ip);
 
@@ -164,6 +167,22 @@ class PhoneOtpService
         return '+'.$codeDigits.$localDigits;
     }
 
+    public function getResendCooldownRemaining(string $phoneInput, OtpPurpose $purpose): int
+    {
+        try {
+            $phone = $this->normalizePhone($phoneInput);
+        } catch (InvalidArgumentException) {
+            return 0;
+        }
+
+        $until = Cache::get($this->resendCacheKey($phone, $purpose));
+        if (! is_numeric($until)) {
+            return 0;
+        }
+
+        return max(0, (int) $until - now()->timestamp);
+    }
+
     private function generateNumericCode(int $length): string
     {
         $max = (10 ** $length) - 1;
@@ -174,9 +193,9 @@ class PhoneOtpService
 
     private function assertRateLimit(string $phone, ?string $ip): void
     {
-        $config = config('phone_otp.rate_limit', []);
-        $max = (int) ($config['max_per_phone'] ?? 3);
-        $window = (int) ($config['window_minutes'] ?? 15);
+        $settings = $this->settingsService->getSettings();
+        $max = max(1, (int) ($settings['rate_limit_max_per_phone'] ?? 3));
+        $window = max(1, (int) ($settings['rate_limit_window_minutes'] ?? 15));
 
         $count = PhoneOtpCode::query()
             ->where('phone', $phone)
@@ -201,7 +220,7 @@ class PhoneOtpService
 
     private function assertResendCooldown(string $phone, OtpPurpose $purpose): void
     {
-        if (Cache::has($this->resendCacheKey($phone, $purpose))) {
+        if ($this->getResendCooldownRemaining($phone, $purpose) > 0) {
             throw new InvalidArgumentException('يرجى الانتظار قبل إعادة إرسال الرمز.');
         }
     }

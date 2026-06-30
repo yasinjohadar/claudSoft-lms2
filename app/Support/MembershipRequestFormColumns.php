@@ -43,6 +43,7 @@ class MembershipRequestFormColumns
             'student' => true,
             'other_groups' => true,
             'email' => true,
+            'email_invite' => true,
             'phone' => true,
             'whatsapp' => true,
             'request_date' => true,

@@ -74,6 +74,7 @@
                 'group' => $group,
                 'pendingCount' => $pendingCount ?? 0,
                 'waContext' => $waContext ?? [],
+                'emailStats' => $emailStats ?? [],
             ])
 
             @php
@@ -167,6 +168,7 @@
                         'waContext' => $waContext ?? [],
                         'waSelectedJid' => $waSelectedJid ?? '',
                         'nationalities' => $nationalities ?? collect(),
+                        'emailStats' => $emailStats ?? [],
                     ])
                 </div>
             </div>
@@ -304,11 +306,21 @@
         'defaultWhatsappTemplateId' => $defaultWhatsappTemplateId ?? null,
     ])
 
+    @include('admin.course-groups.partials.membership-email-invite-modal', [
+        'course' => $course,
+        'group' => $group,
+        'emailTemplates' => $emailTemplates ?? collect(),
+        'emailSettings' => $emailSettings ?? collect(),
+        'defaultEmailSetting' => $defaultEmailSetting ?? null,
+        'defaultEmailTemplateId' => $defaultEmailTemplateId ?? null,
+    ])
+
     @include('admin.course-groups.partials.membership-request-detail-modal')
 @stop
 
 @section('script')
 @include('admin.course-groups.partials.membership-wa-invite-scripts')
+@include('admin.course-groups.partials.membership-email-invite-scripts')
 @include('admin.course-groups.partials.membership-request-detail-scripts')
 @include('admin.course-groups.partials.membership-requests-columns-scripts')
 <script>
@@ -448,6 +460,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.initMembershipWaInviteButtons === 'function') {
                     window.initMembershipWaInviteButtons();
                 }
+                if (typeof window.initMembershipEmailInviteButtons === 'function') {
+                    window.initMembershipEmailInviteButtons();
+                }
+                if (typeof window.updateMembershipEmailFilterCounts === 'function' && data.meta && data.meta.email_stats) {
+                    window.updateMembershipEmailFilterCounts(data.meta.email_stats);
+                }
                 if (typeof window.initMembershipRequestColumns === 'function') {
                     window.initMembershipRequestColumns();
                 }
@@ -586,12 +604,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof window.initMembershipWaInviteButtons === 'function') {
         window.initMembershipWaInviteButtons();
     }
+    if (typeof window.initMembershipEmailInviteButtons === 'function') {
+        window.initMembershipEmailInviteButtons();
+    }
     updateBulkActions();
     updateSelectAll();
 
     window.reloadMembershipRequestsTable = function() {
         lastRequestUrl = null;
         requestFromFilterForm();
+    };
+
+    window.updateMembershipEmailFilterCounts = function(stats) {
+        var select = document.getElementById('membershipEmailInviteFilter');
+        if (!select || !stats) return;
+        Array.from(select.options).forEach(function(opt) {
+            if (opt.value === 'not_invited') {
+                opt.textContent = 'لم يُدعَ (' + (stats.not_invited || 0) + ')';
+            } else if (opt.value === 'invite_sent') {
+                opt.textContent = 'دُعوا بالبريد (' + (stats.invite_sent || 0) + ')';
+            } else if (opt.value === 'no_email') {
+                opt.textContent = 'بدون بريد (' + (stats.no_email || 0) + ')';
+            }
+        });
     };
 });
 </script>

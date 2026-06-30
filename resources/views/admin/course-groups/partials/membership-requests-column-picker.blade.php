@@ -7,6 +7,7 @@
         'student' => 'اسم الطالب',
         'other_groups' => 'مجموعات أخرى',
         'email' => 'البريد الإلكتروني',
+        'email_invite' => 'دعوة بريد',
         'phone' => 'رقم الهاتف',
         'request_date' => 'تاريخ الطلب',
         'payment_date' => 'موعد تسديد الرسوم',
@@ -15,9 +16,9 @@
     ];
     if ($showWaPicker) {
         $tableColumnOptions = array_merge(
-            array_slice($tableColumnOptions, 0, 5, true),
+            array_slice($tableColumnOptions, 0, 6, true),
             ['whatsapp' => 'واتساب'],
-            array_slice($tableColumnOptions, 5, null, true)
+            array_slice($tableColumnOptions, 6, null, true)
         );
     }
 

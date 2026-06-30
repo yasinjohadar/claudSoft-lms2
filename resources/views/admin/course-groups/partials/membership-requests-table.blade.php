@@ -23,6 +23,7 @@
                 <th data-mr-col="student">اسم الطالب</th>
                 <th data-mr-col="other_groups">مجموعات أخرى</th>
                 <th data-mr-col="email">البريد الإلكتروني</th>
+                <th data-mr-col="email_invite">دعوة بريد</th>
                 <th data-mr-col="phone">رقم الهاتف</th>
                 @if($showWaColumn)
                     <th data-mr-col="whatsapp">واتساب</th>
@@ -90,6 +91,29 @@
                             @endif
                             <span class="text-break">{{ $request->student->email }}</span>
                         </div>
+                    </td>
+                    <td data-mr-col="email_invite">
+                        @if($request->student->email)
+                            @if($request->email_invite_sent_at)
+                                <span class="badge bg-warning-transparent text-warning d-block mb-1">
+                                    <i class="fe fe-mail me-1"></i>دُعي بالبريد
+                                </span>
+                                <small class="text-muted d-block mb-1">آخر دعوة: {{ $request->email_invite_sent_at->format('Y-m-d H:i') }}</small>
+                            @else
+                                <span class="badge bg-danger-transparent text-danger d-block mb-1">
+                                    <i class="fe fe-mail me-1"></i>لم يُدعَ
+                                </span>
+                            @endif
+                            <button type="button"
+                                    class="btn btn-sm btn-{{ $request->email_invite_sent_at ? 'outline-primary' : 'primary' }} js-membership-email-invite"
+                                    data-student-id="{{ $request->student_id }}"
+                                    data-student-name="{{ $request->student->name }}"
+                                    data-student-email="{{ $request->student->email }}">
+                                <i class="fe fe-send me-1"></i>{{ $request->email_invite_sent_at ? 'إعادة الدعوة' : 'دعوة' }}
+                            </button>
+                        @else
+                            <span class="badge bg-secondary-transparent text-secondary">لا بريد</span>
+                        @endif
                     </td>
                     <td data-mr-col="phone">
                         @if($request->student->phone)

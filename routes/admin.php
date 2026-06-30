@@ -367,6 +367,8 @@ Route::prefix('admin')
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-all', [CourseGroupController::class, 'approveAllPendingRequests'])->name('courses.groups.membership-requests.approve-all');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-whatsapp-invite', [CourseGroupController::class, 'previewMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.preview-whatsapp-invite');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-whatsapp-invite', [CourseGroupController::class, 'sendMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.send-whatsapp-invite');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-email-invite', [CourseGroupController::class, 'previewMembershipEmailInvite'])->name('courses.groups.membership-requests.preview-email-invite');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-email-invite', [CourseGroupController::class, 'sendMembershipEmailInvite'])->name('courses.groups.membership-requests.send-email-invite');
 
         // General management routes (all courses)
         Route::get('all-enrollments', [CourseEnrollmentController::class, 'allEnrollments'])->name('enrollments.all');

@@ -4,8 +4,9 @@
     $formFilters = MembershipRequestFilters::formFilterDefinitions();
     $sortOptions = MembershipRequestFilters::sortOptions();
     $activeFilterCount = MembershipRequestFilters::activeFilterCount(request());
+    $emailStats = $emailStats ?? ['not_invited' => 0, 'invite_sent' => 0, 'no_email' => 0];
     $showAdvanced = $activeFilterCount > 0
-        || request()->hasAny(array_merge(array_keys($formFilters), ['other_groups', 'request_from', 'request_to', 'payment_from', 'payment_to', 'sort_by', 'sort_order', 'per_page']));
+        || request()->hasAny(array_merge(array_keys($formFilters), ['other_groups', 'request_from', 'request_to', 'payment_from', 'payment_to', 'sort_by', 'sort_order', 'per_page', 'email_invite']));
 @endphp
 
 <form id="membershipRequestsFilterForm" method="GET"
@@ -36,6 +37,15 @@
                 <option value="">الكل</option>
                 <option value="yes" @selected(request('other_groups') === 'yes')>منضم لمجموعات أخرى</option>
                 <option value="no" @selected(request('other_groups') === 'no')>غير منضم لمجموعات أخرى</option>
+            </select>
+        </div>
+        <div class="col-lg-2 col-md-3">
+            <label class="form-label">دعوة البريد</label>
+            <select name="email_invite" class="form-select js-mr-filter" id="membershipEmailInviteFilter">
+                <option value="">جميع الطلاب</option>
+                <option value="not_invited" @selected(request('email_invite') === 'not_invited')>لم يُدعَ ({{ $emailStats['not_invited'] ?? 0 }})</option>
+                <option value="invite_sent" @selected(request('email_invite') === 'invite_sent')>دُعوا بالبريد ({{ $emailStats['invite_sent'] ?? 0 }})</option>
+                <option value="no_email" @selected(request('email_invite') === 'no_email')>بدون بريد ({{ $emailStats['no_email'] ?? 0 }})</option>
             </select>
         </div>
         @if($waSelectedJid ?? '')

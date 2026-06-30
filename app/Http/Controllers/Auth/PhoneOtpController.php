@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PhoneOtpController extends Controller
 {
@@ -35,6 +36,7 @@ class PhoneOtpController extends Controller
             'purpose' => $purpose,
             'phone' => $phone,
             'phoneDisplay' => '+'.$phone,
+            'resendCooldownRemaining' => $this->otpService->getResendCooldownRemaining($phone, $purpose),
         ]);
     }
 
@@ -66,17 +68,19 @@ class PhoneOtpController extends Controller
         try {
             $result = $this->otpService->send($phone, $purpose, $request->user(), $request->ip());
         } catch (\InvalidArgumentException $e) {
-            return $this->otpError($request, $e->getMessage());
+            return $this->otpSendError($request, $e->getMessage(), $purpose, $phone);
         }
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, ...$result]);
         }
 
+        $normalizedPhone = $this->otpService->normalizePhone($phone);
+
         return redirect()
             ->route('phone-otp.verify', [
                 'purpose' => $purpose->value,
-                'phone' => $this->otpService->normalizePhone($phone),
+                'phone' => $normalizedPhone,
             ])
             ->with('status', 'تم إرسال رمز التحقق إلى واتساب.');
     }
@@ -129,5 +133,23 @@ class PhoneOtpController extends Controller
         }
 
         return back()->withInput($input)->withErrors(['code' => $message]);
+    }
+
+    private function otpSendError(Request $request, string $message, OtpPurpose $purpose, string $phone): JsonResponse|RedirectResponse
+    {
+        if ($request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        try {
+            $normalizedPhone = $this->otpService->normalizePhone($phone);
+        } catch (InvalidArgumentException) {
+            return back()->with('error', $message);
+        }
+
+        return redirect()->route('phone-otp.verify', [
+            'purpose' => $purpose->value,
+            'phone' => $normalizedPhone,
+        ])->with('error', $message);
     }
 }

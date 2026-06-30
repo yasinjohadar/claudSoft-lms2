@@ -66,6 +66,37 @@ class BulkEmailSender
         $this->deliverMail($user, $rendered['subject'], $rendered['body']);
     }
 
+    /**
+     * @return array{subject: string, body: string}
+     */
+    public function renderTemplateForUserWithContext(
+        EmailTemplate $template,
+        User $user,
+        \App\Models\Course $course,
+        \App\Models\CourseGroup $group
+    ): array {
+        $variables = $this->variableBuilder->build($user, $course, $group);
+        $settings = \App\Models\GroupRegistrationSetting::where('group_id', $group->id)->first();
+        $variables['group_link'] = $settings?->whatsapp_group_link ?? '';
+
+        return [
+            'subject' => $template->renderSubject($variables),
+            'body' => $template->render($variables),
+        ];
+    }
+
+    public function sendTemplateToUserWithContext(
+        User $user,
+        EmailTemplate $template,
+        \App\Models\Course $course,
+        \App\Models\CourseGroup $group,
+        ?int $emailSettingId = null
+    ): void {
+        $rendered = $this->renderTemplateForUserWithContext($template, $user, $course, $group);
+        $this->applyEmailSetting($emailSettingId);
+        $this->deliverMail($user, $rendered['subject'], $rendered['body']);
+    }
+
     private function deliverMail(User $user, string $subject, string $body): void
     {
         $toEmail = trim((string) ($user->email ?? ''));

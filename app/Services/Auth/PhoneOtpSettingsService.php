@@ -47,6 +47,8 @@ class PhoneOtpSettingsService
         $merged['max_attempts'] = (int) ($merged['max_attempts'] ?? config('phone_otp.max_attempts', 5));
         $merged['resend_cooldown_seconds'] = (int) ($merged['resend_cooldown_seconds'] ?? config('phone_otp.resend_cooldown_seconds', 60));
         $merged['code_length'] = (int) ($merged['code_length'] ?? config('phone_otp.code_length', 6));
+        $merged['rate_limit_max_per_phone'] = (int) ($merged['rate_limit_max_per_phone'] ?? config('phone_otp.rate_limit.max_per_phone', 3));
+        $merged['rate_limit_window_minutes'] = (int) ($merged['rate_limit_window_minutes'] ?? config('phone_otp.rate_limit.window_minutes', 15));
 
         return $merged;
     }
@@ -122,6 +124,16 @@ class PhoneOtpSettingsService
                 'type' => 'string',
                 'description' => 'طول رمز OTP',
             ],
+            'rate_limit_max_per_phone' => [
+                'value' => (string) config('phone_otp.rate_limit.max_per_phone', 3),
+                'type' => 'string',
+                'description' => 'أقصى طلبات OTP لكل رقم خلال النافذة الزمنية',
+            ],
+            'rate_limit_window_minutes' => [
+                'value' => (string) config('phone_otp.rate_limit.window_minutes', 15),
+                'type' => 'string',
+                'description' => 'نافذة حد المعدل بالدقائق',
+            ],
             'register_enabled' => [
                 'value' => '1',
                 'type' => 'boolean',
@@ -149,7 +161,15 @@ class PhoneOtpSettingsService
     {
         $settings = $this->getSettings();
 
-        return ($settings['enabled'] ?? false) && config('phone_otp.enabled', true);
+        if (! ($settings['enabled'] ?? false)) {
+            return false;
+        }
+
+        if (config('phone_otp.enabled', true) === false) {
+            return false;
+        }
+
+        return true;
     }
 
     public function restoreDefaults(): void

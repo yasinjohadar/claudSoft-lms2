@@ -18,7 +18,10 @@ use App\Models\WhatsAppMessageTemplate;
 use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
+use App\Services\BulkEmail\MembershipEmailInviteService;
 use App\Services\WhatsApp\MembershipWhatsAppInviteService;
+use App\Models\EmailSetting;
+use App\Models\EmailTemplate;
 use App\Models\Nationality;
 use App\Support\MembershipRequestFilters;
 use App\Support\MembershipRequestFormColumns;
@@ -1374,6 +1377,8 @@ class CourseGroupController extends Controller
                     'rejected_at',
                     'whatsapp_invite_sent_at',
                     'whatsapp_invite_sent_by',
+                    'email_invite_sent_at',
+                    'email_invite_sent_by',
                 ])
                 ->with([
                     'student:id,name,name_ar,email,phone,country_code,full_phone',
@@ -1388,6 +1393,37 @@ class CourseGroupController extends Controller
             }
 
             MembershipRequestFilters::apply($query, (int) $groupId, $request);
+
+            $emailStats = ['not_invited' => 0, 'invite_sent' => 0, 'no_email' => 0];
+            $emailStatsRows = (clone $query)->with(['student:id,email'])->get([
+                'id', 'student_id', 'email_invite_sent_at',
+            ]);
+            foreach ($emailStatsRows as $statsRow) {
+                $studentEmail = trim((string) ($statsRow->student?->email ?? ''));
+                if ($studentEmail === '') {
+                    $emailStats['no_email']++;
+                } elseif ($statsRow->email_invite_sent_at) {
+                    $emailStats['invite_sent']++;
+                } else {
+                    $emailStats['not_invited']++;
+                }
+            }
+
+            $emailInviteFilter = $request->input('email_invite');
+            if (in_array($emailInviteFilter, ['not_invited', 'invite_sent', 'no_email'], true)) {
+                if ($emailInviteFilter === 'invite_sent') {
+                    $query->whereNotNull('email_invite_sent_at');
+                } elseif ($emailInviteFilter === 'not_invited') {
+                    $query->whereNull('email_invite_sent_at')
+                        ->whereHas('student', fn ($q) => $q->whereNotNull('email')->where('email', '!=', ''));
+                } else {
+                    $query->whereHas('student', function ($q) {
+                        $q->where(function ($q2) {
+                            $q2->whereNull('email')->orWhere('email', '');
+                        });
+                    });
+                }
+            }
 
             $whatsappJid = trim((string) $request->input('whatsapp_jid', ''));
             $waContext = $this->resolveMembershipWhatsAppContext($group, $whatsappJid);
@@ -1474,6 +1510,11 @@ class CourseGroupController extends Controller
                 ->get(['id', 'name']);
             $defaultWhatsappTemplateId = $registrationSettings?->whatsapp_template_id;
 
+            $emailTemplates = EmailTemplate::active()->orderBy('name_ar')->orderBy('name')->get(['id', 'name', 'name_ar', 'subject']);
+            $emailSettings = EmailSetting::orderByDesc('is_active')->orderBy('id')->get();
+            $defaultEmailSetting = EmailSetting::getActive();
+            $defaultEmailTemplateId = $registrationSettings?->email_template_id;
+
             $studentIds = $requests->pluck('student_id')->unique()->filter()->values();
             $otherGroupsByStudentId = collect();
             if ($studentIds->isNotEmpty()) {
@@ -1523,6 +1564,7 @@ class CourseGroupController extends Controller
                         'total' => $requests->total(),
                         'current_page' => $requests->currentPage(),
                         'last_page' => $requests->lastPage(),
+                        'email_stats' => $emailStats,
                     ],
                 ]);
             }
@@ -1538,6 +1580,11 @@ class CourseGroupController extends Controller
                 'waContext',
                 'whatsappTemplates',
                 'defaultWhatsappTemplateId',
+                'emailTemplates',
+                'emailSettings',
+                'defaultEmailSetting',
+                'defaultEmailTemplateId',
+                'emailStats',
             ));
         } catch (\Exception $e) {
             return redirect()->back()
@@ -1683,6 +1730,105 @@ class CourseGroupController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'تعذر إرسال الرسالة: '.WhatsAppSendErrorMessage::fromThrowable($e),
+            ], 500);
+        }
+    }
+
+    public function previewMembershipEmailInvite(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipEmailInviteService $inviteService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'email_template_id' => 'required|exists:email_templates,id',
+        ]);
+
+        try {
+            [$course, $group, $student] = $this->resolveMembershipInviteContext(
+                $courseId,
+                $groupId,
+                (int) $validated['student_id']
+            );
+
+            $template = EmailTemplate::where('id', $validated['email_template_id'])
+                ->where('is_active', true)
+                ->firstOrFail();
+
+            $rendered = $inviteService->renderTemplate($template, $student, $course, $group);
+
+            return response()->json([
+                'success' => true,
+                'subject' => $rendered['subject'],
+                'body' => $rendered['body'],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر تحميل المعاينة: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendMembershipEmailInvite(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipEmailInviteService $inviteService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'email_template_id' => 'required|exists:email_templates,id',
+            'email_setting_id' => 'nullable|exists:email_settings,id',
+        ]);
+
+        try {
+            [$course, $group, $student] = $this->resolveMembershipInviteContext(
+                $courseId,
+                $groupId,
+                (int) $validated['student_id']
+            );
+
+            $template = EmailTemplate::where('id', $validated['email_template_id'])
+                ->where('is_active', true)
+                ->firstOrFail();
+
+            $email = $inviteService->sendTemplateInvite(
+                $student,
+                $course,
+                $group,
+                $template,
+                $validated['email_setting_id'] ?? null
+            );
+
+            $membershipRequest = GroupMembershipRequest::where('group_id', $group->id)
+                ->where('student_id', $student->id)
+                ->latest('id')
+                ->first();
+
+            $membershipRequest?->markEmailInviteSent();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال دعوة البريد إلى '.$email,
+                'student_id' => $student->id,
+                'invite_sent_at' => optional($membershipRequest?->fresh()->email_invite_sent_at)->format('Y-m-d H:i'),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر إرسال البريد: '.$e->getMessage(),
             ], 500);
         }
     }
