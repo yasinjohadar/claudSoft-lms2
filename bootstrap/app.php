@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add middleware to parse multipart/form-data for PUT/PATCH requests - PREPEND to run first
         $middleware->web(prepend: [
             \App\Http\Middleware\ParseMultipartFormData::class,
+            \App\Http\Middleware\SetApplicationLocale::class,
+        ]);
+
+        $middleware->api(prepend: [
+            \App\Http\Middleware\SetApplicationLocale::class,
         ]);
 
         // Sanctum: السماح بجلسة المتصفح على نفس النطاق (claudsoft.com وغيره)
