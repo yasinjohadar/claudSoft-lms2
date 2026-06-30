@@ -1,0 +1,162 @@
+/* ── Session expired (419) page ── */
+
+.session-expired-page {
+    --auth-primary: #0555a2;
+    --auth-primary-dark: #033d75;
+    --auth-accent: #f59e0b;
+    --auth-muted: #64748b;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    direction: rtl;
+    background:
+        radial-gradient(ellipse 80% 60% at 100% 0%, rgba(5, 85, 162, 0.08), transparent),
+        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(245, 158, 11, 0.06), transparent),
+        #eef2f7;
+}
+
+.session-expired-card {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+    padding: clamp(1.75rem, 4vw, 2.5rem);
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.session-expired-card__logo {
+    width: 64px;
+    height: auto;
+    margin-bottom: 1.25rem;
+}
+
+.session-expired-card__icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(5, 85, 162, 0.1));
+    color: var(--auth-accent);
+}
+
+.session-expired-card__icon svg {
+    width: 36px;
+    height: 36px;
+}
+
+.session-expired-card h1 {
+    font-size: clamp(1.35rem, 3vw, 1.65rem);
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.75rem;
+    line-height: 1.4;
+}
+
+.session-expired-card__lead {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--auth-muted);
+    margin: 0 0 1.5rem;
+}
+
+.session-expired-card__tips {
+    list-style: none;
+    margin: 0 0 1.75rem;
+    padding: 1rem 1.15rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    text-align: right;
+}
+
+.session-expired-card__tips li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #334155;
+    margin-bottom: 0.55rem;
+}
+
+.session-expired-card__tips li:last-child {
+    margin-bottom: 0;
+}
+
+.session-expired-card__tips li::before {
+    content: '•';
+    color: var(--auth-primary);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.session-expired-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.session-expired-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 50px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+}
+
+.session-expired-btn--primary {
+    background: var(--auth-primary);
+    color: #fff;
+}
+
+.session-expired-btn--primary:hover {
+    background: var(--auth-primary-dark);
+    box-shadow: 0 6px 18px rgba(5, 85, 162, 0.28);
+    color: #fff;
+}
+
+.session-expired-btn--ghost {
+    background: transparent;
+    color: var(--auth-primary);
+    border: 1.5px solid #cbd5e1;
+}
+
+.session-expired-btn--ghost:hover {
+    background: #f1f5f9;
+    color: var(--auth-primary-dark);
+}
+
+.session-expired-card__countdown {
+    margin-top: 1.25rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.session-expired-card__countdown strong {
+    color: var(--auth-primary);
+    font-weight: 700;
+}
+
+.session-expired-card__code {
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    letter-spacing: 0.05em;
+}

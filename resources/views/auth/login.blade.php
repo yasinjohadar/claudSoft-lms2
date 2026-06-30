@@ -68,6 +68,12 @@
                     </div>
                 @endif
 
+                @if (request('session_expired'))
+                    <div class="auth-alert auth-alert--warning" role="status">
+                        تم تحديث الصفحة. انتهت جلستك السابقة — يمكنك تسجيل الدخول الآن.
+                    </div>
+                @endif
+
                 @if (session('status'))
                     <div class="auth-alert auth-alert--success" role="status">{{ session('status') }}</div>
                 @endif

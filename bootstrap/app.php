@@ -65,5 +65,19 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\StorageHelperServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                $redirect = \App\Support\SessionExpiredRedirect::resolve($request);
+
+                return response()->json([
+                    'message' => 'انتهت صلاحية الجلسة. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
+                    'code' => 'session_expired',
+                    'redirect' => $redirect['url'],
+                ], 419);
+            }
+
+            return response()->view('errors.419', [
+                'redirect' => \App\Support\SessionExpiredRedirect::resolve($request),
+            ], 419);
+        });
     })->create();

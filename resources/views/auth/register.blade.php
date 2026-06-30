@@ -220,6 +220,12 @@
             <p>أدخل بياناتك لإنشاء حساب جديد</p>
         </div>
 
+        @if (request('session_expired'))
+            <div class="alert" style="background:#fffbeb;border:1px solid #fde68a;color:#b45309;border-radius:12px;padding:0.85rem 1rem;margin-bottom:1rem;font-size:0.9rem;">
+                تم تحديث الصفحة. انتهت جلستك السابقة — يمكنك متابعة التسجيل الآن.
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="alert alert-danger">
                 <strong>خطأ!</strong>
