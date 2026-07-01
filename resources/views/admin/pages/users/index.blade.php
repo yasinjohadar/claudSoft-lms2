@@ -79,7 +79,7 @@
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية المستخدمين</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو البريد أو الهاتف، أو فلتر حسب الحالة أو الدور.</p>
+                    <p class="fs-12 text-muted mb-0">ابحث بالاسم العربي أو الإنجليزي أو البريد أو الهاتف، أو فلتر حسب الحالة أو الدور أو اكتمال البروفايل.</p>
                 </div>
                 <div class="card-body pt-3">
                     <form id="usersFilterForm" action="{{ route('users.index') }}" method="GET" class="group-show-filters mb-0">
@@ -87,7 +87,7 @@
                             <div class="col-xl-4 col-lg-5 col-md-6">
                                 <label class="form-label" for="usersSearchInput">بحث</label>
                                 <input id="usersSearchInput" type="text" name="query" class="form-control"
-                                    placeholder="بحث بالاسم أو الإيميل أو الهاتف..." value="{{ request('query') }}">
+                                    placeholder="الاسم العربي، الإنجليزي، البريد، أو الهاتف..." value="{{ request('query') }}">
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="usersIsActive">الحالة النشطة</label>
@@ -124,6 +124,16 @@
                                     <option value="">الكل</option>
                                     <option value="gold" @selected(request('account_tier') === 'gold')>ذهبي</option>
                                     <option value="silver" @selected(request('account_tier') === 'silver')>فضي</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="usersProfileCompletion">اكتمال البروفايل</label>
+                                <select name="profile_completion" id="usersProfileCompletion" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="complete" @selected(request('profile_completion') === 'complete')>مكتمل (100%)</option>
+                                    <option value="incomplete" @selected(request('profile_completion') === 'incomplete')>غير مكتمل</option>
+                                    <option value="low" @selected(request('profile_completion') === 'low')>أقل من 50%</option>
+                                    <option value="medium" @selected(request('profile_completion') === 'medium')>من 50% إلى 99%</option>
                                 </select>
                             </div>
                             <div class="col-xl-4 col-lg-12">
@@ -358,7 +368,7 @@
             searchInput.addEventListener('input', debouncedSearch);
         }
 
-        form.querySelectorAll('select[name="is_active"], select[name="status"], select[name="role"], select[name="account_tier"]').forEach(function(selectElement) {
+        form.querySelectorAll('select[name="is_active"], select[name="status"], select[name="role"], select[name="account_tier"], select[name="profile_completion"]').forEach(function(selectElement) {
             selectElement.addEventListener('change', triggerSearch);
         });
 

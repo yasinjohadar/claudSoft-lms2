@@ -17,6 +17,7 @@ use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Rules\PhoneMatchesCountryCode;
+use App\Services\Admin\AdminUserListQueryService;
 use App\Services\Storage\StorageHelperService;
 use App\Services\Student\StudentAccountTierService;
 use App\Services\TrainingCampEnrollmentService;
@@ -49,7 +50,7 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, StudentAccountTierService $tierService)
+    public function index(Request $request, StudentAccountTierService $tierService, AdminUserListQueryService $listQuery)
     {
         $roles = Role::all();
 
@@ -62,15 +63,8 @@ class UserController extends Controller
         // بدء استعلام المستخدمين
         $usersQuery = User::query();
 
-        // فلترة حسب البحث (name, email, phone)
-        if ($request->filled('query')) {
-            $search = $request->input('query');
-            $usersQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%$search%")
-                    ->orWhere('email', 'like', "%$search%")
-                    ->orWhere('phone', 'like', "%$search%");
-            });
-        }
+        // بحث بالاسم العربي/الإنجليزي، البريد، والهاتف (مطابقة أرقام دقيقة)
+        $listQuery->applySearch($usersQuery, $request->input('query'));
 
         // فلترة حسب الحالة النشطة
         if ($request->filled('is_active')) {
@@ -85,6 +79,11 @@ class UserController extends Controller
         // فلترة حسب نوع الحساب (فضي / ذهبي — اشتراك معسكر معتمد)
         if (in_array($request->input('account_tier'), ['gold', 'silver'], true)) {
             $tierService->applyUserQueryTierFilter($usersQuery, $request->input('account_tier'));
+        }
+
+        // فلترة حسب اكتمال البروفايل
+        if (in_array($request->input('profile_completion'), ['complete', 'incomplete', 'low', 'medium'], true)) {
+            $listQuery->applyProfileCompletionFilter($usersQuery, $request->input('profile_completion'));
         }
 
         // تنفيذ الاستعلام
