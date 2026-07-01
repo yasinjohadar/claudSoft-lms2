@@ -79,7 +79,7 @@
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية المستخدمين</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو البريد أو الهاتف، أو فلتر حسب الحالة.</p>
+                    <p class="fs-12 text-muted mb-0">ابحث بالاسم أو البريد أو الهاتف، أو فلتر حسب الحالة أو الدور.</p>
                 </div>
                 <div class="card-body pt-3">
                     <form id="usersFilterForm" action="{{ route('users.index') }}" method="GET" class="group-show-filters mb-0">
@@ -105,6 +105,17 @@
                                     <option value="2" {{ request('status') == '2' ? 'selected' : '' }}>معلق</option>
                                     <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>محظور مؤقتاً</option>
                                     <option value="4" {{ request('status') == '4' ? 'selected' : '' }}>محظور نهائياً</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="usersRole">الدور</label>
+                                <select name="role" id="usersRole" class="form-select">
+                                    <option value="">كل الأدوار</option>
+                                    @foreach($roles ?? [] as $role)
+                                        <option value="{{ $role->name }}" @selected(request('role') === $role->name)>
+                                            {{ $role->name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-xl-4 col-lg-12">
@@ -339,7 +350,7 @@
             searchInput.addEventListener('input', debouncedSearch);
         }
 
-        form.querySelectorAll('select[name="is_active"], select[name="status"]').forEach(function(selectElement) {
+        form.querySelectorAll('select[name="is_active"], select[name="status"], select[name="role"]').forEach(function(selectElement) {
             selectElement.addEventListener('change', triggerSearch);
         });
 

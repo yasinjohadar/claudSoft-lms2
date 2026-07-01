@@ -76,6 +76,11 @@ class UserController extends Controller
             $usersQuery->where('is_active', $request->input('is_active'));
         }
 
+        // فلترة حسب الدور (Spatie)
+        if ($request->filled('role')) {
+            $usersQuery->role($request->input('role'));
+        }
+
         // تنفيذ الاستعلام
         $stats = [
             'total' => (clone $usersQuery)->count(),
