@@ -32,6 +32,7 @@
 
     $accountFields = [
         ['icon' => 'fe-activity', 'label' => 'حالة الحساب', 'value' => $user->is_active ? 'نشط' : 'غير نشط', 'empty' => false, 'badge' => $user->is_active ? 'success' : 'danger'],
+        ['icon' => 'fe-award', 'label' => 'نوع الحساب', 'value' => ($accountTierLabel ?? null) ?: (($accountTier ?? 'silver') === 'gold' ? 'ذهبي' : 'فضي'), 'empty' => false, 'tier_badge' => $accountTier ?? 'silver'],
         ['icon' => 'fe-shield', 'label' => 'الدور', 'value' => $user->roles->pluck('name')->join('، ') ?: '—', 'empty' => $user->roles->isEmpty()],
         ['icon' => 'fe-calendar', 'label' => 'تاريخ التسجيل', 'value' => $user->created_at?->format('Y-m-d H:i'), 'empty' => empty($user->created_at)],
         ['icon' => 'fe-log-in', 'label' => 'آخر تسجيل دخول', 'value' => $user->last_login_at ? \Carbon\Carbon::parse($user->last_login_at)->format('Y-m-d H:i') : null, 'empty' => empty($user->last_login_at)],
@@ -110,7 +111,9 @@
                         <div class="min-w-0">
                             <span class="admin-profile-detail-field__label">{{ $field['label'] }}</span>
                             <span class="admin-profile-detail-field__value">
-                                @if(!empty($field['badge']))
+                                @if(!empty($field['tier_badge']))
+                                    @include('admin.pages.users.partials.account-tier-badge', ['tier' => $field['tier_badge']])
+                                @elseif(!empty($field['badge']))
                                     <span class="group-show-chip group-show-chip--sm text-{{ $field['badge'] }}">{{ $field['value'] }}</span>
                                 @else
                                     {{ $field['value'] ?? '—' }}

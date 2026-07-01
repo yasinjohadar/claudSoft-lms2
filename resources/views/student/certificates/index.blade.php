@@ -98,9 +98,7 @@
                                 <i class="fas fa-certificate fs-80 text-muted mb-4"></i>
                                 <h4 class="text-muted">لا توجد شهادات حالياً</h4>
                                 <p class="text-muted">أكمل كورساتك للحصول على شهادات معتمدة</p>
-                                <a href="{{ route('student.courses.index') }}" class="btn btn-primary mt-3">
-                                    <i class="fas fa-book me-2"></i>تصفح الكورسات
-                                </a>
+                                <p class="text-muted mt-3 mb-0">أكمل كورساتك للحصول على شهادات.</p>
                             </div>
                         </div>
                     </div>

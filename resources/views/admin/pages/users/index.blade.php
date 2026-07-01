@@ -118,6 +118,14 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="usersAccountTier">نوع الحساب</label>
+                                <select name="account_tier" id="usersAccountTier" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="gold" @selected(request('account_tier') === 'gold')>ذهبي</option>
+                                    <option value="silver" @selected(request('account_tier') === 'silver')>فضي</option>
+                                </select>
+                            </div>
                             <div class="col-xl-4 col-lg-12">
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <button type="submit" class="btn btn-primary btn-sm">
@@ -143,7 +151,7 @@
                 </div>
                 <div class="card-body pt-3">
                     <div id="usersTableContainer">
-                        @include('admin.pages.users._users_table', ['users' => $users, 'sessions' => $sessions])
+                        @include('admin.pages.users._users_table', ['users' => $users, 'sessions' => $sessions, 'tierByUserId' => $tierByUserId ?? []])
                     </div>
                 </div>
             </div>
@@ -350,7 +358,7 @@
             searchInput.addEventListener('input', debouncedSearch);
         }
 
-        form.querySelectorAll('select[name="is_active"], select[name="status"], select[name="role"]').forEach(function(selectElement) {
+        form.querySelectorAll('select[name="is_active"], select[name="status"], select[name="role"], select[name="account_tier"]').forEach(function(selectElement) {
             selectElement.addEventListener('change', triggerSearch);
         });
 

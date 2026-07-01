@@ -4,6 +4,7 @@
             <tr>
                 <th scope="col" style="width: 48px;">#</th>
                 <th scope="col">المستخدم</th>
+                <th scope="col">نوع الحساب</th>
                 <th scope="col">البريد</th>
                 <th scope="col">الهاتف</th>
                 <th scope="col">آخر دخول</th>
@@ -48,6 +49,11 @@
                                 @endif
                             </div>
                         </div>
+                    </td>
+
+                    <td>
+                        @php $tier = $tierByUserId[$user->id] ?? 'silver'; @endphp
+                        @include('admin.pages.users.partials.account-tier-badge', ['tier' => $tier])
                     </td>
 
                     <td>
@@ -215,7 +221,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9">
+                    <td colspan="10">
                         <div class="group-show-empty py-5">
                             <i class="fe fe-users group-show-empty__icon"></i>
                             <h5 class="group-show-empty__title">لا يوجد مستخدمون</h5>

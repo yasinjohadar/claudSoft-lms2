@@ -340,9 +340,7 @@
                         <i class="fas fa-tasks fs-50 text-muted mb-3 opacity-25"></i>
                         <h5 class="mb-2">لا توجد واجبات متاحة</h5>
                         <p class="text-muted">لم يتم تعيين أي واجبات لك حتى الآن</p>
-                        <a href="{{ route('student.courses.index') }}" class="btn btn-primary">
-                            <i class="fas fa-book me-2"></i>تصفح الكورسات
-                        </a>
+                        <p class="text-muted mb-0">لا توجد واجبات مرتبطة بكورسات مسجّلة.</p>
                     </div>
                 </div>
             @endif

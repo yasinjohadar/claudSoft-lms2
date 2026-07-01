@@ -38,10 +38,7 @@
             <div class="group-show-empty py-5">
                 <i class="fe fe-book-open group-show-empty__icon"></i>
                 <h5 class="group-show-empty__title">لا توجد كورسات قيد التقدم</h5>
-                <p class="group-show-empty__desc mb-3">ابدأ رحلتك التعليمية الآن واستكشف الكورسات المتاحة.</p>
-                <a href="{{ route('student.courses.index') }}" class="btn btn-primary btn-sm">
-                    <i class="fe fe-search me-1"></i>تصفح الكورسات
-                </a>
+                <p class="group-show-empty__desc mb-0">لا توجد كورسات قيد التقدم حالياً.</p>
             </div>
         @endif
     </div>

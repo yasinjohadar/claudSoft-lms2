@@ -9,7 +9,11 @@
 @endphp
 
 <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
-    @include('admin.pages.users.partials.profile-personal-data', ['user' => $user])
+    @include('admin.pages.users.partials.profile-personal-data', [
+        'user' => $user,
+        'accountTier' => $accountTier ?? 'silver',
+        'accountTierLabel' => $accountTierLabel ?? 'فضي',
+    ])
 
     <h5 class="fw-bold mb-3 mt-2">ملخص سريع</h5>
     <p class="text-muted mb-4">

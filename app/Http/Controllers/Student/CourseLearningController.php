@@ -48,14 +48,14 @@ class CourseLearningController extends Controller
 
             if (! $enrollment || ! $enrollment->isActive()) {
                 return redirect()
-                    ->route('student.courses.index')
+                    ->route('student.courses.my-courses')
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
             }
 
             $courseAccess = $accessControl->canAccessCourse($course, $student);
             if (! ($courseAccess['can_access'] ?? false)) {
                 return redirect()
-                    ->route('student.courses.index')
+                    ->route('student.courses.my-courses')
                     ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
             }
 

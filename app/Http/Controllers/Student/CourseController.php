@@ -157,7 +157,7 @@ class CourseController extends Controller
             $courseAccess = $accessControl->canAccessCourse($course, $student);
             if (!$courseAccess['can_access']) {
                 return redirect()
-                    ->route('student.courses.index')
+                    ->route('student.courses.my-courses')
                     ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
             }
 
@@ -203,7 +203,7 @@ class CourseController extends Controller
             return view('student.pages.courses.show', compact('course', 'enrollment', 'stats', 'completedModules'));
         } catch (\Exception $e) {
             return redirect()
-                ->route('student.courses.index')
+                ->route('student.courses.my-courses')
                 ->with('error', 'حدث خطأ أثناء تحميل الكورس: ' . $e->getMessage());
         }
     }
@@ -299,7 +299,7 @@ class CourseController extends Controller
                 : 'تم التسجيل في الكورس بنجاح';
 
             return redirect()
-                ->route('student.courses.index')
+                ->route('student.courses.my-courses')
                 ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();

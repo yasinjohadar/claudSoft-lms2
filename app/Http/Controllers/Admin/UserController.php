@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Rules\PhoneMatchesCountryCode;
 use App\Services\Storage\StorageHelperService;
+use App\Services\Student\StudentAccountTierService;
 use App\Services\TrainingCampEnrollmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request, StudentAccountTierService $tierService)
     {
         $roles = Role::all();
 
@@ -81,6 +82,11 @@ class UserController extends Controller
             $usersQuery->role($request->input('role'));
         }
 
+        // فلترة حسب نوع الحساب (فضي / ذهبي — اشتراك معسكر معتمد)
+        if (in_array($request->input('account_tier'), ['gold', 'silver'], true)) {
+            $tierService->applyUserQueryTierFilter($usersQuery, $request->input('account_tier'));
+        }
+
         // تنفيذ الاستعلام
         $stats = [
             'total' => (clone $usersQuery)->count(),
@@ -90,12 +96,14 @@ class UserController extends Controller
         ];
 
         $users = $usersQuery->paginate(10);
+        $tierByUserId = $tierService->tiersForUsers($users->getCollection());
 
         if ($request->ajax()) {
             return response()->json([
                 'table_html' => view('admin.pages.users._users_table', [
                     'users' => $users,
                     'sessions' => $sessions,
+                    'tierByUserId' => $tierByUserId,
                 ])->render(),
                 'modals_html' => view('admin.pages.users._users_modals', [
                     'users' => $users,
@@ -106,7 +114,7 @@ class UserController extends Controller
         }
 
         return view('admin.pages.users.index', array_merge(
-            compact('users', 'roles', 'sessions', 'stats'),
+            compact('users', 'roles', 'sessions', 'stats', 'tierByUserId'),
             $this->userMessagingFormData()
         ));
     }
@@ -240,9 +248,11 @@ class UserController extends Controller
     /**
      * Display the specified resource (student profile with statistics).
      */
-    public function show(string $id)
+    public function show(string $id, StudentAccountTierService $tierService)
     {
         $user = User::with(['nationality', 'roles'])->findOrFail($id);
+        $accountTier = $tierService->resolve($user);
+        $accountTierLabel = $tierService->label($accountTier);
 
         // Enrollments & course stats
         $enrollments = \App\Models\CourseEnrollment::where('student_id', $id)
@@ -368,6 +378,8 @@ class UserController extends Controller
 
         return view('admin.pages.users.profile', array_merge(compact(
             'user',
+            'accountTier',
+            'accountTierLabel',
             'adminNotes',
             'enrollments',
             'courseStats',

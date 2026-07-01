@@ -4494,6 +4494,30 @@ button.group-show-action {
     padding: 0.3rem 0.6rem;
 }
 
+.group-show-chip--tier-gold {
+    background: rgba(245, 200, 66, 0.14);
+    color: #8a6800;
+    border-color: rgba(212, 160, 23, 0.22);
+}
+
+.group-show-chip--tier-silver {
+    background: rgba(139, 149, 168, 0.12);
+    color: #5a6472;
+    border-color: rgba(139, 149, 168, 0.2);
+}
+
+[data-theme-mode="dark"] .group-show-chip--tier-gold {
+    background: rgba(212, 160, 23, 0.2);
+    color: #fde68a;
+    border-color: rgba(212, 160, 23, 0.35);
+}
+
+[data-theme-mode="dark"] .group-show-chip--tier-silver {
+    background: rgba(107, 114, 128, 0.25);
+    color: #e5e7eb;
+    border-color: rgba(107, 114, 128, 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .group-show-action:hover {
         transform: none;

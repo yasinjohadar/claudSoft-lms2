@@ -70,10 +70,7 @@
                                     <i class="fe fe-book-open"></i>
                                 </div>
                                 <h4 class="mb-2">لا توجد كورسات مسجلة</h4>
-                                <p class="text-muted mb-4">ابدأ رحلتك التعليمية الآن واستكشف الكورسات المتاحة!</p>
-                                <a href="{{ route('student.courses.index') }}" class="btn btn-primary rounded-pill px-4">
-                                    <i class="fe fe-search me-2"></i>تصفح الكورسات المتاحة
-                                </a>
+                                <p class="text-muted mb-0">لا توجد كورسات مسجّلة حالياً. تواصل مع الإدارة للتسجيل في كورسات جديدة.</p>
                             </div>
                         </div>
                     @endforelse

@@ -31,10 +31,10 @@
                 <nav aria-label="breadcrumb" class="d-none d-lg-block">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.courses.index') }}">الكورسات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('student.courses.my-courses') }}">كورساتي</a></li>
                         @if($course->category)
                             <li class="breadcrumb-item">
-                                <a href="{{ route('student.courses.index', ['category_id' => $course->category_id]) }}">
+                                <a href="{{ route('student.courses.my-courses') }}" class="text-muted">
                                     {{ $course->category->name }}
                                 </a>
                             </li>
@@ -44,7 +44,7 @@
                 </nav>
             </div>
             <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
-                <a href="{{ route('student.courses.index') }}" class="btn btn-outline-primary rounded-pill">
+                <a href="{{ route('student.courses.my-courses') }}" class="btn btn-outline-primary rounded-pill">
                     <i class="fe fe-arrow-right me-1"></i>الكورسات
                 </a>
                 @if($enrollment)

@@ -61,6 +61,7 @@
                             @endif
                             <div class="d-flex flex-wrap gap-2 mt-2">
                                 <span class="group-show-chip group-show-chip--sm">{{ $roleLabel }}</span>
+                                @include('admin.pages.users.partials.account-tier-badge', ['tier' => $accountTier ?? 'silver'])
                                 @if($user->is_active)
                                     <span class="group-show-chip group-show-chip--sm text-success"><i class="fe fe-check-circle me-1"></i>نشط</span>
                                 @else

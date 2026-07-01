@@ -29,7 +29,7 @@ class CourseProgressController extends Controller
 
             if (!$enrollment) {
                 return redirect()
-                    ->route('student.courses.index')
+                    ->route('student.courses.my-courses')
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
             }
 

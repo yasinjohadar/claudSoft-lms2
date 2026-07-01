@@ -106,9 +106,10 @@ Route::prefix('student')
 
         // ========== Course Learning Routes ==========
 
-        // Browse Courses (Catalog)
+        // Browse Courses (Catalog) — معطّل مؤقتاً (الصفحة: student.pages.courses.index)
         Route::prefix('courses')->name('student.courses.')->group(function () {
-            Route::get('/', [CourseController::class, 'index'])->name('index'); // Browse all courses
+            // Route::get('/', [CourseController::class, 'index'])->name('index');
+            Route::get('/', fn () => redirect()->route('student.courses.my-courses'))->name('index');
             Route::get('/my-courses', [CourseController::class, 'myCourses'])->name('my-courses'); // My enrolled courses
             Route::get('/{id}/preview', [CourseController::class, 'show'])->name('show'); // Preview course before enrollment
             Route::post('/{id}/enroll', [CourseController::class, 'enroll'])->name('enroll'); // Enroll in course
