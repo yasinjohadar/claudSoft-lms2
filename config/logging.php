@@ -54,7 +54,10 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            'channels' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', env('LOG_STACK', 'daily,audit'))
+            ))),
             'ignore_exceptions' => false,
         ],
 
@@ -133,6 +136,31 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit-failures.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'external' => [
+            'driver' => 'monolog',
+            'level' => env('LOG_EXTERNAL_LEVEL', 'error'),
+            'handler' => env('LOG_EXTERNAL_DRIVER') === 'syslog'
+                ? SyslogUdpHandler::class
+                : StreamHandler::class,
+            'handler_with' => env('LOG_EXTERNAL_DRIVER') === 'syslog'
+                ? [
+                    'host' => env('PAPERTRAIL_URL', '127.0.0.1'),
+                    'port' => env('PAPERTRAIL_PORT', 514),
+                ]
+                : [
+                    'stream' => env('LOG_EXTERNAL_PATH', storage_path('logs/external.log')),
+                ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
     ],

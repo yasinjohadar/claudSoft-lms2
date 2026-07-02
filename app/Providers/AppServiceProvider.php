@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\ContactSetting;
 use App\Models\Payment;
 use App\Observers\PaymentObserver;
+use App\Services\Admin\ActivityLogService;
 use App\Services\Finance\StudentDueInvoicesAlertService;
 use App\Notifications\Channels\WhatsAppChannel;
 use App\Services\WhatsApp\WhatsAppSettingsService;
@@ -40,6 +41,14 @@ class AppServiceProvider extends ServiceProvider
         require_once app_path('Helpers/MixedBidiHelper.php');
 
         Payment::observe(PaymentObserver::class);
+
+        if (class_exists(\Spatie\Activitylog\CauserResolver::class)) {
+            app(\Spatie\Activitylog\CauserResolver::class)->resolveUsing(
+                fn () => ActivityLogService::resolveCauser()
+            );
+        }
+
+        Event::subscribe(\App\Listeners\LogAuthenticationActivity::class);
 
         RateLimiter::for('wapi-send', function (Request $request) {
             $perMinute = (int) config('services.whatsapp.rate_limit_per_minute', 30);

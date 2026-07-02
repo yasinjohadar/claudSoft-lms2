@@ -20,6 +20,7 @@
         "platformcommunity/flysystem-bunnycdn": "^3.3",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/browsershot": "^5.4",
+        "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-permission": "^6.19",
         "yaza/laravel-google-drive-storage": "^4.1"
     },

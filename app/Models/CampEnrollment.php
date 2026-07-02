@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class CampEnrollment extends Model
 {
+    use LogsModelActivity;
+
+    protected string $activityLogName = 'camps';
     /**
      * The table associated with the model.
      */

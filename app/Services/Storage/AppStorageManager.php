@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use App\Models\AppStorageConfig;
 use App\Models\StorageDiskMapping;
+use App\Services\Admin\ActivityLogService;
 use App\Services\Storage\AppStorageFactory;
 use App\Services\Storage\AppStorageAnalyticsService;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -15,20 +16,10 @@ use Illuminate\Support\Facades\Storage;
 class AppStorageManager
 {
     protected AppStorageAnalyticsService $analyticsService;
-    protected $auditLogService = null;
 
     public function __construct(AppStorageAnalyticsService $analyticsService)
     {
         $this->analyticsService = $analyticsService;
-        
-        // محاولة تحميل AuditLogService إذا كان موجوداً
-        if (class_exists(\App\Services\AuditLogService::class)) {
-            try {
-                $this->auditLogService = app(\App\Services\AuditLogService::class);
-            } catch (\Exception $e) {
-                Log::debug('AuditLogService not available: ' . $e->getMessage());
-            }
-        }
     }
 
     /**
@@ -117,23 +108,16 @@ class AppStorageManager
         } catch (\Exception $e) {
             Log::warning("Primary storage failed for disk {$disk}: " . $e->getMessage());
 
-            // تسجيل فشل التخزين الأساسي في سجل التدقيق (إذا كان متاحاً)
-            if ($this->auditLogService) {
-                try {
-                    $this->auditLogService->log(
-                        null,
-                        'storage_primary_failed',
-                        'فشل التخزين الأساسي',
-                        [
-                            'disk' => $disk,
-                            'storage' => $mapping->primaryStorage?->name,
-                            'error' => $e->getMessage(),
-                        ]
-                    );
-                } catch (\Exception $auditException) {
-                    Log::debug('Failed to log to AuditLogService: ' . $auditException->getMessage());
-                }
-            }
+            ActivityLogService::log(
+                logName: 'settings',
+                description: 'فشل التخزين الأساسي',
+                properties: [
+                    'event' => 'storage_primary_failed',
+                    'disk' => $disk,
+                    'storage' => $mapping->primaryStorage?->name,
+                    'error' => $e->getMessage(),
+                ],
+            );
         }
 
         // محاولة Fallback storages
@@ -145,22 +129,15 @@ class AppStorageManager
                     $this->trackStorage($disk, $path, $content, $fileType, 'upload', $fallbackStorage);
                     Log::info("Used fallback storage for disk {$disk}: {$fallbackStorage->name}");
 
-                    // تنبيه في AuditLog عند استخدام تخزين احتياطي (إذا كان متاحاً)
-                    if ($this->auditLogService) {
-                        try {
-                            $this->auditLogService->log(
-                                null,
-                                'storage_failover_used',
-                                'استخدام تخزين احتياطي',
-                                [
-                                    'disk' => $disk,
-                                    'fallback_storage' => $fallbackStorage->name,
-                                ]
-                            );
-                        } catch (\Exception $auditException) {
-                            Log::debug('Failed to log to AuditLogService: ' . $auditException->getMessage());
-                        }
-                    }
+                    ActivityLogService::log(
+                        logName: 'settings',
+                        description: 'استخدام تخزين احتياطي',
+                        properties: [
+                            'event' => 'storage_failover_used',
+                            'disk' => $disk,
+                            'fallback_storage' => $fallbackStorage->name,
+                        ],
+                    );
 
                     return true;
                 }

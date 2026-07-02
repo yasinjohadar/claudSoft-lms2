@@ -31,6 +31,7 @@ class PermissionSeeder extends Seeder
             "dashboard-view",
             "settings-manage",
             "reports-view",
+            "activity-log-view",
         ];
 
         foreach ($permissions as $key => $permission) {

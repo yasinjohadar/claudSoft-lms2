@@ -2,12 +2,14 @@
 
 namespace App\Services\Auth;
 
+use App\Models\EmailSetting;
 use App\Models\User;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use App\Support\UserPhoneCountryValidator;
 use App\Support\WapiPhoneNormalizer;
 use Illuminate\Auth\Passwords\PasswordBroker;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use InvalidArgumentException;
 
@@ -27,7 +29,30 @@ class PasswordResetDeliveryService
 
     public function sendViaEmail(string $email): string
     {
-        return Password::sendResetLink(['email' => $email]);
+        $this->applyActiveMailSettings();
+
+        try {
+            return Password::sendResetLink(['email' => $email]);
+        } catch (\Throwable $e) {
+            Log::error('Password reset email failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * تطبيق إعدادات SMTP النشطة من لوحة التحكم (نفس آلية الموقع والبريد الجماعي).
+     */
+    public function applyActiveMailSettings(): void
+    {
+        $setting = EmailSetting::getActive();
+
+        if ($setting) {
+            $setting->applyToConfig();
+        }
     }
 
     public function sendViaWhatsApp(string $phoneInput): string

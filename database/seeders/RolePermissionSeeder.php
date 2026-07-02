@@ -56,6 +56,7 @@ class RolePermissionSeeder extends Seeder
             // Settings
             'manage settings',
             'view logs',
+            'activity-log-view',
         ];
 
         $createdCount = 0;

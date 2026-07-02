@@ -46,9 +46,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('country-codes', [StudentAuthController::class, 'countryCodes'])->name('country-codes');
+
 // ========== Student API (للتطبيقات مثل Flutter) ==========
 Route::prefix('student')->name('api.student.')->group(function () {
     Route::post('login', [StudentAuthController::class, 'login'])->name('login');
+    Route::get('forgot-password/options', [StudentAuthController::class, 'forgotPasswordOptions'])->name('forgot-password.options');
+    Route::post('forgot-password', [StudentAuthController::class, 'forgotPassword'])->name('forgot-password');
     Route::post('logout', [StudentAuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
     Route::get('me', [StudentAuthController::class, 'me'])->middleware('auth:sanctum')->name('me');
 

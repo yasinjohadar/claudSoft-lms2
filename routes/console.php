@@ -74,3 +74,10 @@ Schedule::command('google-analytics:sync')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('activitylog:clean', [
+    '--days' => (int) config('activitylog.delete_records_older_than_days', 365),
+])
+    ->daily()
+    ->withoutOverlapping()
+    ->runInBackground();

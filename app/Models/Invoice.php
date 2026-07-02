@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
 class Invoice extends Model
 {
-    use SoftDeletes;
+    use LogsModelActivity, SoftDeletes;
+
+    protected string $activityLogName = 'finance';
 
     protected $fillable = [
         'invoice_number',

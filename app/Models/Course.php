@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsModelActivity, SoftDeletes;
+
+    protected string $activityLogName = 'courses';
 
     protected $fillable = [
         'course_category_id',

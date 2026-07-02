@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ImpersonationToken;
+use App\Services\Admin\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -123,6 +124,8 @@ class ImpersonationController extends Controller
         // تسجيل الدخول كالمستخدم المطلوب (الطالب)
         Auth::login($user, false); // false = لا تذكرني
 
+        ActivityLogService::logImpersonationStarted($admin, $user);
+
         // إعادة توليد Session ID للأمان
         Session::regenerate();
 
@@ -158,6 +161,7 @@ class ImpersonationController extends Controller
 
         $impersonateData = Session::get('impersonate');
         $originalUserId = $impersonateData['original_user_id'];
+        $impersonatedUser = Auth::user();
 
         // الحصول على الأدمن الأصلي
         $originalUser = User::findOrFail($originalUserId);
@@ -172,6 +176,11 @@ class ImpersonationController extends Controller
 
         // حذف بيانات Impersonation من Session
         Session::forget('impersonate');
+
+        ActivityLogService::logImpersonationStopped(
+            $originalUser,
+            $impersonatedUser instanceof User ? $impersonatedUser : null
+        );
 
         // تسجيل الدخول كالأدمن الأصلي
         Auth::login($originalUser);

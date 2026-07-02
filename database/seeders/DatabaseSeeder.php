@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         // 2. تشغيل seeder الأدوار والصلاحيات
         $this->command->info('📍 المرحلة 2: إنشاء الأدوار والصلاحيات');
         $this->call(RolePermissionSeeder::class);
+        $this->call(ActivityLogPermissionSeeder::class);
         $this->command->info('');
 
         // 3. تشغيل seeder المستخدمين

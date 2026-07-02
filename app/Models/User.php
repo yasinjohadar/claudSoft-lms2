@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Notifications\ResetPasswordNotification;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -18,6 +19,9 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, CanResetPassword;
     use HasRoles;
+    use LogsModelActivity;
+
+    protected string $activityLogName = 'users';
 
     /**
      * The attributes that are mass assignable.

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class CourseEnrollment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsModelActivity;
+
+    protected string $activityLogName = 'courses';
 
     protected $fillable = [
         'course_id',

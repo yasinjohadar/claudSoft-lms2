@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,7 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class Quiz extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsModelActivity, SoftDeletes;
+
+    protected string $activityLogName = 'courses';
 
     /**
      * The table associated with the model.

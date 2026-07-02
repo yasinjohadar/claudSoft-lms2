@@ -125,6 +125,7 @@ use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\DeviceSecuritySettingsController;
 use App\Http\Controllers\Admin\UserSendEmailController;
 use App\Http\Controllers\Admin\UserSendWhatsAppController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\WapiAutomationRuleController;
@@ -1363,6 +1364,12 @@ Route::prefix('admin')
             Route::get('webhook', [EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
             Route::post('webhook/url', [EvolutionWebhookAdminController::class, 'saveUrl'])->name('webhook.save-url');
             Route::post('webhook/activate', [EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
+        });
+
+        // ========== Activity Log (Audit Trail) ==========
+        Route::prefix('activity-logs')->name('admin.activity-logs.')->group(function () {
+            Route::get('/', [ActivityLogController::class, 'index'])->name('index');
+            Route::get('/{activity}', [ActivityLogController::class, 'show'])->name('show');
         });
 
         // ========== User Sessions Routes ==========

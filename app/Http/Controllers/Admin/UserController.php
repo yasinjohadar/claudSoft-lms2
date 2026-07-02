@@ -17,6 +17,7 @@ use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Rules\PhoneMatchesCountryCode;
+use App\Services\Admin\ActivityLogService;
 use App\Services\Admin\AdminUserListQueryService;
 use App\Services\Storage\StorageHelperService;
 use App\Services\Student\StudentAccountTierService;
@@ -229,6 +230,11 @@ class UserController extends Controller
         // تعيين الأدوار
         if ($request->has('roles')) {
             $user->syncRoles($request->roles);
+            ActivityLogService::logRoleSync(
+                $user,
+                [],
+                $user->roles->pluck('name')->all()
+            );
         }
 
         // Dispatch n8n webhook event
@@ -645,7 +651,13 @@ class UserController extends Controller
 
         // تحديث الأدوار
         if ($request->has('roles')) {
+            $oldRoles = $user->roles->pluck('name')->all();
             $user->syncRoles($request->roles);
+            ActivityLogService::logRoleSync(
+                $user,
+                $oldRoles,
+                $user->fresh()->roles->pluck('name')->all()
+            );
         }
 
         return redirect()->route('users.index')->with('success', 'تم تحديث بيانات المستخدم بنجاح');

@@ -747,6 +747,11 @@
                                         <i class="fas fa-user-shield me-2"></i>الصلاحيات
                                     </a>
                                 </li>
+                                <li class="slide {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.activity-logs.index') }}" class="side-menu__item {{ request()->routeIs('admin.activity-logs.*') ? 'active' : '' }}">
+                                        <i class="fe fe-shield me-2"></i>سجل النشاط
+                                    </a>
+                                </li>
                                 <li class="slide {{ request()->routeIs('payment-methods.*') ? 'active' : '' }}">
                                     <a href="{{ route('payment-methods.index') }}" class="side-menu__item {{ request()->routeIs('payment-methods.*') ? 'active' : '' }}">
                                         <i class="fas fa-credit-card me-2"></i>طرق الدفع

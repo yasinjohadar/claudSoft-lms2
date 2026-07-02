@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BulkImportSession;
+use App\Services\Admin\ActivityLogService;
 use App\Services\BulkImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -272,6 +273,14 @@ class BulkUserImportController extends Controller
 
             // إنهاء العملية
             $session->markAsCompleted();
+
+            ActivityLogService::logBulkImport(
+                auth()->user(),
+                (string) $session->file_name,
+                (int) $session->new_users,
+                (int) $session->updated_users,
+                (int) $session->failed_rows,
+            );
 
             // مسح الـ session
             session()->forget('bulk_import_data');
