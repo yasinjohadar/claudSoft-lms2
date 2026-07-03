@@ -6,7 +6,17 @@
 
 @section('auth-subheading', 'سنرسل رمزاً إلى واتسابك المسجّل في المنصة')
 
+@push('auth-head')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+@endpush
+
 @section('auth-content')
+    @php
+        $defaultCountryCode = old('country_code', config('country_codes.default', '+963'));
+        $flagUrl = config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png');
+    @endphp
+
     <form method="POST" action="{{ route('phone-login.send-otp') }}" novalidate>
         @csrf
 
@@ -16,9 +26,19 @@
                 <span class="auth-input-group__icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 </span>
-                <select name="country_code" id="country_code" class="auth-input auth-select" required>
+                <select name="country_code"
+                        id="country_code"
+                        class="country-code-select"
+                        data-flag-url="{{ $flagUrl }}"
+                        required>
                     @foreach($countryCodes as $code => $label)
-                        <option value="{{ $code }}" @selected(old('country_code', config('country_codes.default', '+966')) === $code)>{{ $label }}</option>
+                        @php
+                            $iso = config('country_codes.iso', [])[$code] ?? '';
+                            $textOnly = config('country_codes.list_text_only', [])[$code] ?? $label;
+                            $separator = config('country_codes.separator', '  ·  ');
+                            $display = $iso !== '' ? $textOnly . $separator . $iso : $textOnly;
+                        @endphp
+                        <option value="{{ $code }}" data-iso="{{ strtolower($iso) }}" @selected($defaultCountryCode === $code)>{{ $display }}</option>
                     @endforeach
                 </select>
             </div>
@@ -65,3 +85,64 @@
     <div class="auth-divider">أو</div>
     <a href="{{ route('login') }}" class="auth-link-btn">الدخول بالبريد وكلمة المرور</a>
 @endsection
+
+@push('auth-scripts')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+    (function () {
+        var countryCodeField = document.getElementById('country_code');
+        var phoneField = document.getElementById('phone');
+        var flagUrlTemplate = countryCodeField
+            ? (countryCodeField.getAttribute('data-flag-url') || 'https://flagcdn.com/w20/{iso}.png')
+            : 'https://flagcdn.com/w20/{iso}.png';
+
+        if (window.jQuery && countryCodeField) {
+            jQuery(countryCodeField).select2({
+                placeholder: 'ابحث عن الدولة أو الرمز…',
+                allowClear: false,
+                dir: 'rtl',
+                width: '100%',
+                theme: 'bootstrap-5',
+                dropdownAutoWidth: false,
+                minimumResultsForSearch: 0,
+                language: {
+                    noResults: function () { return 'لا توجد نتائج'; },
+                    searching: function () { return 'جاري البحث…'; },
+                    inputTooShort: function () { return 'اكتب للبحث'; }
+                },
+                templateResult: function (state) {
+                    if (!state.id) return state.text;
+                    var iso = jQuery(state.element).data('iso') || 'sa';
+                    var url = flagUrlTemplate.replace('{iso}', String(iso).toLowerCase());
+                    var $span = jQuery('<span class="d-flex align-items-center gap-2"></span>');
+                    $span.append(jQuery('<img src="' + url + '" alt="">'));
+                    $span.append(document.createTextNode(state.text));
+                    return $span;
+                },
+                templateSelection: function (state) {
+                    if (!state.id) return state.text;
+                    var iso = jQuery(state.element).data('iso') || 'sa';
+                    var url = flagUrlTemplate.replace('{iso}', String(iso).toLowerCase());
+                    var $span = jQuery('<span class="d-flex align-items-center gap-2" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%"></span>');
+                    $span.append(jQuery('<img src="' + url + '" alt="">'));
+                    $span.append(document.createTextNode(state.text));
+                    return $span;
+                }
+            });
+        }
+
+        if (phoneField) {
+            phoneField.addEventListener('input', function () {
+                phoneField.value = phoneField.value.replace(/\D/g, '');
+                if (phoneField.value.charAt(0) === '0') {
+                    phoneField.value = phoneField.value.replace(/^0+/, '');
+                }
+            });
+            phoneField.addEventListener('blur', function () {
+                phoneField.value = phoneField.value.replace(/^0+/, '');
+            });
+        }
+    })();
+    </script>
+@endpush

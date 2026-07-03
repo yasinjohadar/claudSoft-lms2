@@ -36,6 +36,8 @@ return [
 
     'timeout' => env('WHATSAPP_TIMEOUT', 30),
 
+    'evolution_connect_timeout' => env('EVOLUTION_API_CONNECT_TIMEOUT', 30),
+
     'retry_attempts' => env('WHATSAPP_RETRY_ATTEMPTS', 3),
 ];
 

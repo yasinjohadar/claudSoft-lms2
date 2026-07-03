@@ -87,7 +87,8 @@
                             <div class="col-xl-4 col-lg-5 col-md-6">
                                 <label class="form-label" for="usersSearchInput">بحث</label>
                                 <input id="usersSearchInput" type="text" name="query" class="form-control"
-                                    placeholder="الاسم العربي، الإنجليزي، البريد، أو الهاتف..." value="{{ request('query') }}">
+                                    placeholder="البريد كاملاً، الهاتف بالأرقام، أو الاسم..." value="{{ request('query') }}">
+                                <div class="form-text">البريد: مطابقة دقيقة — الهاتف: بالأرقام — الاسم: عربي أو إنجليزي</div>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="usersIsActive">الحالة النشطة</label>

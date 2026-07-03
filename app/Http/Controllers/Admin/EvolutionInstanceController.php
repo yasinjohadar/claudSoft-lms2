@@ -35,7 +35,28 @@ class EvolutionInstanceController extends Controller
             'error' => null,
             'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
             'defaultInstanceName' => $settings['evolution_instance_name'] ?? '',
+            'connectedCount' => $instances->filter(fn ($i) => $i->isConnected())->count(),
         ]);
+    }
+
+    public function testConnection(Request $request): JsonResponse
+    {
+        $request->validate([
+            'evolution_base_url' => ['nullable', 'string', 'max:500'],
+            'evolution_api_key' => ['nullable', 'string', 'max:500'],
+            'instance_name' => ['required', 'string', 'max:150'],
+        ]);
+
+        $existing = $this->settingsService->getSettings();
+        $config = [
+            'base_url' => $request->input('evolution_base_url') ?: ($existing['evolution_base_url'] ?? ''),
+            'api_key' => $request->input('evolution_api_key') ?: ($existing['evolution_api_key'] ?? ''),
+            'instance_name' => trim((string) $request->input('instance_name')),
+        ];
+
+        $provider = \App\Services\WhatsApp\WhatsAppProviderFactory::create('evolution', $config);
+
+        return response()->json($provider->testConnection());
     }
 
     public function saveConnection(Request $request): RedirectResponse
@@ -78,13 +99,10 @@ class EvolutionInstanceController extends Controller
                 'evolution_base_url' => $validated['evolution_base_url'] ?? null,
                 'evolution_api_key' => $validated['evolution_api_key'] ?? null,
                 'verify' => $request->boolean('verify_connection'),
-                'set_as_default' => $request->boolean('set_as_default'),
+                'set_as_default' => false,
             ]);
 
-            $message = 'تمت إضافة Instance «'.$instance->instance_name.'» يدوياً إلى القائمة.';
-            if ($request->boolean('set_as_default')) {
-                $message .= ' وتم تعيينه كافتراضي.';
-            }
+            $message = 'تمت إضافة Instance «'.$instance->instance_name.'» إلى القائمة. عيّن الافتراضي من الجدول أدناه عند الحاجة.';
 
             return back()->with('success', $message);
         } catch (Throwable $e) {
@@ -105,17 +123,15 @@ class EvolutionInstanceController extends Controller
         }
 
         $added = 0;
-        $first = true;
 
         foreach ($names as $name) {
             try {
                 $this->evolutionService->registerManualInstance([
                     'instance_name' => $name,
                     'verify' => false,
-                    'set_as_default' => $request->boolean('set_as_default_first') && $first,
+                    'set_as_default' => false,
                 ]);
                 $added++;
-                $first = false;
             } catch (Throwable) {
                 continue;
             }

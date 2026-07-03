@@ -1364,6 +1364,7 @@ Route::prefix('admin')
             Route::post('settings/test-connection', [EvolutionSettingsController::class, 'testConnection'])->name('settings.test-connection');
 
             Route::get('instances', [EvolutionInstanceController::class, 'index'])->name('instances.index');
+            Route::post('instances/test-connection', [EvolutionInstanceController::class, 'testConnection'])->name('instances.test-connection');
             Route::post('instances/connection', [EvolutionInstanceController::class, 'saveConnection'])->name('instances.connection');
             Route::post('instances/register-manual', [EvolutionInstanceController::class, 'registerManual'])->name('instances.register-manual');
             Route::post('instances/register-bulk', [EvolutionInstanceController::class, 'registerBulk'])->name('instances.register-bulk');

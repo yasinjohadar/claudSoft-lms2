@@ -223,7 +223,11 @@ class EvolutionApiClient
             );
         }
 
-        $client = Http::timeout(30)
+        $timeout = max(10, (int) config('whatsapp.timeout', 30));
+        $connectTimeout = max(10, (int) config('whatsapp.evolution_connect_timeout', 30));
+
+        $client = Http::timeout($timeout)
+            ->connectTimeout($connectTimeout)
             ->withHeaders([
                 'apikey' => $this->apiKey,
                 'Content-Type' => 'application/json',

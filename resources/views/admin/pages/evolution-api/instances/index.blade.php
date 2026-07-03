@@ -3,8 +3,31 @@
 @php
     $evoPageTitle = 'Evolution Instances';
     $evoTitle = 'مجموعة Instances';
-    $evoSubtitle = 'أضف عدة أرقام يدوياً، اختر الافتراضي، وفعّل التبديل بينهم';
+    $evoSubtitle = 'أضف الأرقام بنفس نمط الإعدادات — اختبر ثم أضف — واختر الافتراضي لاحقاً';
     $evoBreadcrumb = 'Instances';
+    $statCards = [
+        [
+            'variant' => 'green',
+            'icon' => 'ri-stack-line',
+            'label' => 'عدد Instances',
+            'value' => $instances->count(),
+            'sub' => 'في المجموعة',
+        ],
+        [
+            'variant' => ($connectedCount ?? 0) > 0 ? 'green' : 'orange',
+            'icon' => 'ri-link',
+            'label' => 'متصل الآن',
+            'value' => $connectedCount ?? 0,
+            'sub' => 'جلسة open',
+        ],
+        [
+            'variant' => ($defaultInstanceName ?? '') !== '' ? 'cyan' : 'orange',
+            'icon' => 'ri-star-line',
+            'label' => 'الافتراضي',
+            'value' => $defaultInstanceName ?: '—',
+            'sub' => 'يُعيَّن من الجدول',
+        ],
+    ];
 @endphp
 
 @section('evo-content')
@@ -12,153 +35,176 @@
     <div class="alert alert-danger border-0 shadow-sm mb-3">{{ $error }}</div>
 @endif
 
-@if(($rotationPoolCount ?? 0) > 0)
-    <div class="alert alert-info border-0 shadow-sm mb-3">
-        <i class="ri-shuffle-line me-2"></i>
-        <strong>التبديل التلقائي:</strong> {{ $rotationPoolCount }} جلسة نشطة في مجموعة الإرسال.
-    </div>
-@endif
-
-{{-- 1) الاتصال العام --}}
-<div class="card custom-card border-0 shadow-sm mb-4">
-    <div class="card-header border-0 pb-0">
-        <div class="card-title mb-0"><i class="ri-plug-line me-2 text-success"></i>① بيانات الاتصال العامة</div>
-    </div>
-    <div class="card-body">
-        <p class="text-muted small mb-3">
-            نفس بيانات صفحة <a href="{{ route('admin.evolution-api.settings.index') }}">الإعدادات</a>.
-            تُستخدم لكل الـ instances ما لم تُحدّد بيانات خاصة لكل واحد.
-        </p>
-        <form action="{{ route('admin.evolution-api.instances.connection') }}" method="POST" class="row g-3">
-            @csrf
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">رابط Evolution API</label>
-                <input type="url" name="evolution_base_url" class="form-control" required
-                       value="{{ old('evolution_base_url', $settings['evolution_base_url'] ?? '') }}"
-                       placeholder="https://evo.example.com">
+<div class="row g-3 mb-4">
+    @foreach($statCards as $index => $card)
+        <div class="col-xl-4 col-md-6 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+            <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="admin-stats-card__icon-wrap">
+                        <i class="{{ $card['icon'] }} admin-stats-card__icon"></i>
+                    </div>
+                    <div class="admin-stats-card__content flex-fill min-w-0">
+                        <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
+                        <h3 class="admin-stats-card__value mb-1 fs-5 text-truncate">{{ $card['value'] }}</h3>
+                        <p class="admin-stats-card__sub mb-0">{{ $card['sub'] }}</p>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">API Key</label>
-                <input type="password" name="evolution_api_key" class="form-control"
-                       placeholder="@if($hasApiKey) اتركه فارغاً للإبقاء على المفتاح @else الصق المفتاح @endif">
-                @if($hasApiKey)<div class="form-text text-success">المفتاح العام محفوظ</div>@endif
-            </div>
-            <div class="col-12">
-                <button type="submit" class="btn btn-outline-success"><i class="ri-save-line me-1"></i> حفظ الاتصال العام</button>
-            </div>
-        </form>
-    </div>
+        </div>
+    @endforeach
 </div>
 
-{{-- 2) إضافة يدوية --}}
-<div class="card custom-card border-0 shadow-sm mb-4">
-    <div class="card-header border-0 pb-0">
-        <div class="card-title mb-0"><i class="ri-add-circle-line me-2 text-primary"></i>② إضافة Instance يدوياً (نسخ ولصق)</div>
-    </div>
-    <div class="card-body">
-        <div class="row g-4">
-            <div class="col-lg-6">
-                <h6 class="fw-semibold">instance واحد</h6>
-                <p class="text-muted small">انسخ الاسم من Evolution Manager كما هو (مع المسافات).</p>
-                <form action="{{ route('admin.evolution-api.instances.register-manual') }}" method="POST" class="row g-2">
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card custom-card group-show-members-card border-0 shadow-sm">
+            <div class="card-header border-0 pb-0">
+                <div class="card-title mb-0">
+                    <i class="ri-add-circle-line me-2 text-success"></i>إضافة Instance للمجموعة
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small mb-3">
+                    نفس حقول <a href="{{ route('admin.evolution-api.settings.index') }}">صفحة الإعدادات</a>:
+                    الرابط + API + الاسم. اضغط <strong>اختبار</strong> ثم <strong>إضافة للقائمة</strong> — بدون تعيين افتراضي.
+                </p>
+
+                <form action="{{ route('admin.evolution-api.instances.register-manual') }}" method="POST" id="evo-add-instance-form" class="row g-3">
                     @csrf
+
                     <div class="col-12">
-                        <label class="form-label small">اسم Instance <span class="text-danger">*</span></label>
-                        <input type="text" name="instance_name" class="form-control" required maxlength="150"
-                               placeholder="whatsapp ClaudSoft 2" list="evo-names-list">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small">ملاحظة (اختياري)</label>
-                        <input type="text" name="label" class="form-control" maxlength="150" placeholder="رقم المبيعات">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small">Base URL خاص (اختياري)</label>
-                        <input type="url" name="evolution_base_url" class="form-control" placeholder="اتركه فارغاً لاستخدام العام">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small">API Key خاص (اختياري)</label>
-                        <input type="password" name="evolution_api_key" class="form-control" placeholder="اتركه فارغاً لاستخدام العام">
-                    </div>
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="verify_connection" value="1" id="verify_one">
-                            <label class="form-check-label small" for="verify_one">تحقق من الاتصال الآن (إن وُجدت بيانات API)</label>
+                        <label class="form-label fw-semibold">رابط Evolution API</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="ri-global-line"></i></span>
+                            <input type="url" name="evolution_base_url" id="evo_inst_base_url" class="form-control"
+                                   value="{{ old('evolution_base_url', $settings['evolution_base_url'] ?? '') }}"
+                                   placeholder="https://whatsapp.cloudsoft.com">
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="set_as_default" value="1" id="default_one">
-                            <label class="form-check-label small" for="default_one">تعيين كـ Instance افتراضي</label>
-                        </div>
+                        <div class="form-text">اتركه كما في الإعدادات إن كان نفس السيرفر لكل الأرقام.</div>
                     </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">API Key</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="ri-key-line"></i></span>
+                            <input type="password" name="evolution_api_key" id="evo_inst_api_key" class="form-control"
+                                   placeholder="@if($hasApiKey) اتركه فارغاً لاستخدام المفتاح المحفوظ @else الصق المفتاح @endif">
+                        </div>
+                        @if($hasApiKey)
+                            <div class="form-text text-success"><i class="ri-shield-check-line"></i> يمكن ترك الحقل فارغاً لاستخدام المفتاح العام</div>
+                        @endif
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">اسم Instance <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="ri-smartphone-line"></i></span>
+                            <input type="text" name="instance_name" id="evo_inst_name" class="form-control" required maxlength="150"
+                                   value="{{ old('instance_name') }}"
+                                   placeholder="whatsapp ClaudSoft 2" list="evo-names-list">
+                        </div>
+                        <div class="form-text">انسخ الاسم من Evolution Manager <strong>كما هو</strong> (مع المسافات).</div>
+                    </div>
+
                     <div class="col-12">
-                        <button class="btn btn-primary w-100"><i class="ri-add-line me-1"></i> إضافة للقائمة</button>
+                        <label class="form-label fw-semibold">ملاحظة <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input type="text" name="label" class="form-control" maxlength="150"
+                               value="{{ old('label') }}" placeholder="مثال: رقم المبيعات">
+                    </div>
+
+                    <div id="evo-inst-test-result" class="d-none col-12"></div>
+
+                    <div class="col-12 d-flex flex-wrap gap-2 pt-3 border-top">
+                        <button type="button" id="evo-inst-test-btn" class="btn btn-outline-success">
+                            <i class="ri-plug-line me-1"></i> اختبار الاتصال
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="ri-add-line me-1"></i> إضافة للقائمة
+                        </button>
+                        <a href="{{ route('admin.evolution-api.settings.index') }}" class="btn btn-light border">
+                            <i class="ri-settings-3-line me-1"></i> الإعدادات العامة
+                        </a>
                     </div>
                 </form>
+
+                <datalist id="evo-names-list">
+                    @foreach($instances as $inst)
+                        <option value="{{ $inst->instance_name }}"></option>
+                    @endforeach
+                </datalist>
             </div>
-            <div class="col-lg-6">
-                <h6 class="fw-semibold">عدة instances دفعة واحدة</h6>
-                <p class="text-muted small">سطر واحد لكل اسم — يُضافون جميعاً دون حذف الموجود.</p>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card custom-card border-0 shadow-sm mb-3">
+            <div class="card-header bg-transparent">
+                <div class="card-title mb-0"><i class="ri-lightbulb-line me-2 text-warning"></i>كيف تضيف مجموعة أرقام؟</div>
+            </div>
+            <div class="card-body">
+                <ol class="ps-3 mb-0 small text-muted">
+                    <li class="mb-2">أدخل <strong>الرابط + API + اسم</strong> لكل رقم.</li>
+                    <li class="mb-2">اضغط <strong>اختبار الاتصال</strong> للتأكد.</li>
+                    <li class="mb-2">اضغط <strong>إضافة للقائمة</strong> — يظهر في الجدول دون حذف السابق.</li>
+                    <li class="mb-2">كرّر لكل رقم جديد.</li>
+                    <li class="mb-2">من الجدول: <i class="ri-star-line"></i> لتعيين <strong>الافتراضي</strong>.</li>
+                    <li>فعّل <strong>التبديل</strong> للأرقام المستخدمة في الإرسال الجماعي.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card custom-card border-0 shadow-sm">
+            <div class="card-header bg-transparent pb-0">
+                <div class="card-title mb-0 fs-14"><i class="ri-file-list-3-line me-1"></i> إضافة عدة أسماء دفعة واحدة</div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">سطر لكل اسم — يستخدم الرابط والـ API العامين من الإعدادات.</p>
                 <form action="{{ route('admin.evolution-api.instances.register-bulk') }}" method="POST">
                     @csrf
-                    <div class="mb-2">
-                        <textarea name="instance_names" class="form-control font-monospace" rows="7" required
-                                  placeholder="whatsapp ClaudSoft&#10;whatsapp ClaudSoft 2&#10;whatsapp Sales"></textarea>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="set_as_default_first" value="1" id="default_first">
-                        <label class="form-check-label small" for="default_first">تعيين الأول في القائمة كافتراضي</label>
-                    </div>
-                    <button class="btn btn-outline-primary w-100"><i class="ri-file-list-3-line me-1"></i> إضافة الكل</button>
+                    <textarea name="instance_names" class="form-control font-monospace small mb-2" rows="5" required
+                              placeholder="whatsapp ClaudSoft&#10;whatsapp ClaudSoft 2&#10;whatsapp Sales"></textarea>
+                    <button class="btn btn-outline-primary btn-sm w-100"><i class="ri-add-box-line me-1"></i> إضافة الكل للقائمة</button>
                 </form>
             </div>
         </div>
-        <datalist id="evo-names-list">
-            @foreach($instances as $inst)
-                <option value="{{ $inst->instance_name }}"></option>
-            @endforeach
-        </datalist>
     </div>
 </div>
 
-{{-- 3) إنشاء عبر API --}}
-<div class="card custom-card border-0 shadow-sm mb-4">
-    <div class="card-header border-0 pb-0">
-        <div class="card-title mb-0"><i class="ri-qr-code-line me-2 text-success"></i>③ إنشاء جديد على Evolution + QR</div>
-    </div>
-    <div class="card-body">
-        <p class="text-muted small mb-3">يتطلب اتصال API صحيحاً. يُنشئ الجلسة على السيرفر ثم يفتح صفحة QR.</p>
-        <form action="{{ route('admin.evolution-api.instances.store') }}" method="POST" class="row g-2 align-items-end">
-            @csrf
-            <div class="col-md-8">
-                <label class="form-label small">اسم Instance الجديد</label>
-                <input type="text" name="instanceName" class="form-control" required maxlength="150" placeholder="whatsapp ClaudSoft 3">
-            </div>
-            <div class="col-md-4">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="set_as_default" value="1" id="create_default">
-                    <label class="form-check-label small" for="create_default">افتراضي</label>
-                </div>
-                <button class="btn btn-success w-100"><i class="ri-add-line me-1"></i> إنشاء + QR</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-{{-- 4) القائمة --}}
 <div class="card custom-card group-show-members-card border-0 shadow-sm mb-4">
     <div class="card-header border-0 pb-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div class="card-title mb-0"><i class="ri-list-check me-2 text-success"></i>④ قائمة المجموعة ({{ $instances->count() }})</div>
-        <form action="{{ route('admin.evolution-api.instances.sync') }}" method="POST" class="d-inline">
-            @csrf
-            <button class="btn btn-sm btn-outline-success"><i class="ri-refresh-line me-1"></i> مزامنة من API (لا تحذف اليدوي)</button>
-        </form>
+        <div class="card-title mb-0">
+            <i class="ri-list-check me-2 text-success"></i>قائمة المجموعة ({{ $instances->count() }})
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <form action="{{ route('admin.evolution-api.instances.sync') }}" method="POST" class="d-inline">
+                @csrf
+                <button class="btn btn-sm btn-outline-success"><i class="ri-refresh-line me-1"></i> مزامنة الحالة</button>
+            </form>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#evo-create-api-collapse">
+                <i class="ri-qr-code-line me-1"></i> إنشاء جديد + QR
+            </button>
+        </div>
     </div>
     <div class="card-body">
-        @if($defaultInstanceName ?? '')
-            <div class="alert alert-light border small py-2 mb-3">
-                <i class="ri-star-line text-warning me-1"></i>
-                الافتراضي: <strong>{{ $defaultInstanceName }}</strong>
+        @if(($rotationPoolCount ?? 0) > 0)
+            <div class="alert alert-info border-0 py-2 small mb-3">
+                <i class="ri-shuffle-line me-1"></i> التبديل التلقائي: {{ $rotationPoolCount }} جلسة نشطة.
             </div>
         @endif
+
+        <div class="collapse mb-3" id="evo-create-api-collapse">
+            <div class="p-3 border rounded bg-light">
+                <form action="{{ route('admin.evolution-api.instances.store') }}" method="POST" class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-9">
+                        <label class="form-label small mb-1">اسم Instance جديد على Evolution</label>
+                        <input type="text" name="instanceName" class="form-control form-control-sm" required maxlength="150" placeholder="whatsapp ClaudSoft 3">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-success btn-sm w-100"><i class="ri-add-line me-1"></i> إنشاء + QR</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -166,8 +212,8 @@
                     <tr>
                         <th>الاسم</th>
                         <th>ملاحظة</th>
-                        <th>المصدر</th>
-                        <th>الاتصال</th>
+                        <th>API / الرابط</th>
+                        <th>الحالة</th>
                         <th>الرقم</th>
                         <th>التبديل</th>
                         <th class="text-end">إجراءات</th>
@@ -181,16 +227,13 @@
                             @if($instance->is_default)
                                 <span class="badge bg-success ms-1">افتراضي</span>
                             @endif
-                            @if($instance->hasCustomCredentials())
-                                <span class="badge bg-info-transparent text-info ms-1" title="Base URL أو API خاص">API خاص</span>
-                            @endif
                         </td>
                         <td class="text-muted small">{{ $instance->label ?? '—' }}</td>
-                        <td>
-                            @if($instance->is_manual)
-                                <span class="badge bg-primary-transparent text-primary">يدوي</span>
+                        <td class="small">
+                            @if($instance->hasCustomCredentials())
+                                <span class="text-info">خاص</span>
                             @else
-                                <span class="badge bg-secondary-transparent text-secondary">API</span>
+                                <span class="text-muted">عام</span>
                             @endif
                         </td>
                         <td>
@@ -204,11 +247,11 @@
                                 <form action="{{ route('admin.evolution-api.instances.toggle-rotation', $instance->instance_name) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button type="submit" class="btn btn-sm {{ $instance->rotation_enabled ? 'btn-success' : 'btn-outline-secondary' }}">
-                                        <i class="ri-shuffle-line"></i> {{ $instance->rotation_enabled ? 'مفعّل' : 'معطّل' }}
+                                        <i class="ri-shuffle-line"></i>
                                     </button>
                                 </form>
                             @else
-                                <span class="text-muted small">—</span>
+                                <span class="text-muted">—</span>
                             @endif
                         </td>
                         <td class="text-end text-nowrap">
@@ -229,7 +272,7 @@
                     <tr>
                         <td colspan="7" class="text-center text-muted py-5">
                             <i class="ri-inbox-line fs-24 d-block mb-2"></i>
-                            لا توجد instances. أضفها يدوياً في القسم ② أعلاه.
+                            لا توجد instances. استخدم النموذج أعلاه لإضافة الأول.
                         </td>
                     </tr>
                 @endforelse
@@ -238,4 +281,50 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('evo-scripts')
+<script>
+(function () {
+    const btn = document.getElementById('evo-inst-test-btn');
+    const out = document.getElementById('evo-inst-test-result');
+    if (!btn || !out) return;
+
+    btn.addEventListener('click', async function () {
+        const name = document.getElementById('evo_inst_name')?.value?.trim();
+        if (!name) {
+            window.evoShowInlineAlert(out, 'أدخل اسم Instance أولاً.', 'warning');
+            return;
+        }
+
+        btn.disabled = true;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الاختبار...';
+        out.classList.add('d-none');
+
+        try {
+            const res = await fetch(@json(route('admin.evolution-api.instances.test-connection')), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    evolution_base_url: document.getElementById('evo_inst_base_url').value,
+                    evolution_api_key: document.getElementById('evo_inst_api_key').value,
+                    instance_name: name,
+                }),
+            });
+            const data = await res.json();
+            window.evoShowInlineAlert(out, data.message || 'تم', data.success ? 'success' : 'danger');
+        } catch (e) {
+            window.evoShowInlineAlert(out, 'خطأ: ' + e.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    });
+})();
+</script>
 @endsection

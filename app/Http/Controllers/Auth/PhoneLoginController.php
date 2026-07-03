@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\OtpPurpose;
+use App\Exceptions\WhatsAppApiException;
 use App\Http\Controllers\Auth\Concerns\EnforcesDeviceAccess;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -11,10 +12,12 @@ use App\Services\Auth\PasswordResetDeliveryService;
 use App\Services\DeviceAccessService;
 use App\Services\DeviceTrackingService;
 use App\Services\SessionTrackingService;
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PhoneLoginController extends Controller
 {
@@ -65,8 +68,16 @@ class PhoneLoginController extends Controller
 
         try {
             $this->otpService->send($fullPhone, OtpPurpose::Login, $user, $request->ip());
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return back()->withInput()->withErrors(['phone' => $e->getMessage()]);
+        } catch (EvolutionApiException|WhatsAppApiException $e) {
+            $message = match (true) {
+                $e instanceof EvolutionApiException => $e->userMessage(),
+                $e->getPrevious() instanceof EvolutionApiException => $e->getPrevious()->userMessage(),
+                default => 'تعذّر إرسال رمز الواتساب. تحقق من الاتصال بالإنترنت وحاول مرة أخرى.',
+            };
+
+            return back()->withInput()->withErrors(['phone' => $message]);
         }
 
         session([

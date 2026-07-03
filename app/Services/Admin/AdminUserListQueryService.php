@@ -19,33 +19,135 @@ class AdminUserListQueryService
             return;
         }
 
-        $digits = WapiPhoneNormalizer::normalize($search);
-        $likeTerm = '%'.$this->escapeLike($search).'%';
-        $digitLike = $digits !== '' ? '%'.$this->escapeLike($digits).'%' : null;
+        if (ctype_digit($search)) {
+            $this->applyIdOrPhoneSearch($query, $search);
 
-        $query->where(function (Builder $q) use ($search, $likeTerm, $digits, $digitLike) {
-            $q->where('name', 'like', $likeTerm)
-                ->orWhere('name_ar', 'like', $likeTerm)
-                ->orWhere('email', 'like', $likeTerm);
+            return;
+        }
 
-            if ($digitLike !== null) {
-                $q->orWhere(function (Builder $phoneQ) use ($likeTerm, $digitLike, $digits) {
-                    $phoneQ->where('phone', 'like', $likeTerm)
-                        ->orWhere('full_phone', 'like', $likeTerm)
-                        ->orWhereRaw($this->digitsOnlyColumn('phone').' LIKE ?', [$digitLike])
-                        ->orWhereRaw($this->digitsOnlyColumn('full_phone').' LIKE ?', [$digitLike])
-                        ->orWhereRaw($this->digitsOnlyColumn('CONCAT(COALESCE(country_code, ""), COALESCE(phone, ""))').' LIKE ?', [$digitLike]);
+        if ($this->isEmailSearch($search)) {
+            $this->applyEmailSearch($query, $search);
 
-                    if (strlen($digits) >= 4) {
-                        $phoneQ->orWhereRaw($this->digitsOnlyColumn('phone').' LIKE ?', ['%'.substr($digits, -min(9, strlen($digits))).'%'])
-                            ->orWhereRaw($this->digitsOnlyColumn('full_phone').' LIKE ?', ['%'.substr($digits, -min(9, strlen($digits))).'%']);
-                    }
-                });
-            } else {
-                $q->orWhere('phone', 'like', $likeTerm)
-                    ->orWhere('full_phone', 'like', $likeTerm);
+            return;
+        }
+
+        if ($this->isPhoneSearch($search)) {
+            $this->applyPhoneSearch($query, $search);
+
+            return;
+        }
+
+        $this->applyNameSearch($query, $search);
+    }
+
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     */
+    private function applyEmailSearch(Builder $query, string $search): void
+    {
+        $normalized = mb_strtolower($search);
+
+        $query->where(function (Builder $q) use ($normalized, $search) {
+            $q->whereRaw('LOWER(TRIM(email)) = ?', [$normalized]);
+
+            if (! str_contains($search, '@')) {
+                $like = '%'.$this->escapeLike(mb_strtolower($search)).'%';
+                $q->orWhereRaw('LOWER(email) LIKE ?', [$like]);
             }
         });
+    }
+
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     */
+    private function applyPhoneSearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $phoneQ) use ($search) {
+            $this->appendPhoneConditions($phoneQ, $search);
+        });
+    }
+
+    private function appendPhoneConditions(Builder $phoneQ, string $search): void
+    {
+        $digits = WapiPhoneNormalizer::normalize($search);
+        if ($digits === '') {
+            $phoneQ->whereRaw('0 = 1');
+
+            return;
+        }
+
+        $likeTerm = '%'.$this->escapeLike($search).'%';
+        $digitLike = '%'.$this->escapeLike($digits).'%';
+
+        $phoneQ->where('phone', 'like', $likeTerm)
+            ->orWhere('full_phone', 'like', $likeTerm)
+            ->orWhereRaw($this->digitsOnlyColumn('phone').' LIKE ?', [$digitLike])
+            ->orWhereRaw($this->digitsOnlyColumn('full_phone').' LIKE ?', [$digitLike])
+            ->orWhereRaw($this->digitsOnlyColumn('CONCAT(COALESCE(country_code, ""), COALESCE(phone, ""))').' LIKE ?', [$digitLike]);
+
+        if (strlen($digits) >= 4) {
+            $suffix = substr($digits, -min(9, strlen($digits)));
+            $phoneQ->orWhereRaw($this->digitsOnlyColumn('phone').' LIKE ?', ['%'.$suffix.'%'])
+                ->orWhereRaw($this->digitsOnlyColumn('full_phone').' LIKE ?', ['%'.$suffix.'%']);
+        }
+
+        if (strlen($digits) >= 7) {
+            $phoneQ->orWhereRaw($this->digitsOnlyColumn('phone').' = ?', [$digits])
+                ->orWhereRaw($this->digitsOnlyColumn('full_phone').' = ?', [$digits])
+                ->orWhereRaw($this->digitsOnlyColumn('CONCAT(COALESCE(country_code, ""), COALESCE(phone, ""))').' = ?', [$digits]);
+        }
+    }
+
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     */
+    private function applyIdOrPhoneSearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $q) use ($search) {
+            $q->where('id', (int) $search)
+                ->orWhere(function (Builder $phoneQ) use ($search) {
+                    $this->appendPhoneConditions($phoneQ, $search);
+                });
+        });
+    }
+
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     */
+    private function applyNameSearch(Builder $query, string $search): void
+    {
+        $likeTerm = '%'.$this->escapeLike($search).'%';
+
+        $query->where(function (Builder $q) use ($likeTerm) {
+            $q->where('name', 'like', $likeTerm)
+                ->orWhere('name_ar', 'like', $likeTerm);
+        });
+    }
+
+    private function isEmailSearch(string $search): bool
+    {
+        if (str_contains($search, '@')) {
+            return true;
+        }
+
+        return filter_var($search, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    private function isPhoneSearch(string $search): bool
+    {
+        $digits = WapiPhoneNormalizer::normalize($search);
+        if ($digits === '' || strlen($digits) < 4) {
+            return false;
+        }
+
+        if (str_contains($search, '@')) {
+            return false;
+        }
+
+        $withoutSpaces = preg_replace('/\s+/', '', $search) ?? '';
+        $digitRatio = strlen($digits) / max(1, strlen($withoutSpaces));
+
+        return $digitRatio >= 0.5;
     }
 
     /**

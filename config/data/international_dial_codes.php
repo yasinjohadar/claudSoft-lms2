@@ -57,11 +57,17 @@ return array (
   ),
   9 => 
   array (
+    'code' => '+90',
+    'name_ar' => 'تركيا',
+    'iso' => 'TR',
+  ),
+  10 => 
+  array (
     'code' => '+970',
     'name_ar' => 'فلسطين',
     'iso' => 'PS',
   ),
-  10 => 
+  11 => 
   array (
     'code' => '+20',
     'name_ar' => 'مصر',
@@ -141,17 +147,11 @@ return array (
   ),
   23 => 
   array (
-    'code' => '+90',
-    'name_ar' => 'تركيا',
-    'iso' => 'TR',
-  ),
-  24 => 
-  array (
     'code' => '+49',
     'name_ar' => 'ألمانيا',
     'iso' => 'DE',
   ),
-  25 => 
+  24 => 
   array (
     'code' => '+1',
     'name_ar' => 'الولايات المتحدة وكندا ومنطقة NANP',
@@ -254,12 +254,6 @@ return array (
     'iso' => 'EE',
   ),
   42 => 
-  array (
-    'code' => '+972',
-    'name_ar' => 'إسرائيل',
-    'iso' => 'IL',
-  ),
-  43 => 
   array (
     'code' => '+268',
     'name_ar' => 'إسواتيني',

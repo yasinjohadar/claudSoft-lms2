@@ -23,6 +23,11 @@ $listTextOnly = [];
 $iso = [];
 
 foreach ($dialRows as $row) {
+    $isoUpper = strtoupper($row['iso'] ?? '');
+    if ($isoUpper === 'IL') {
+        continue;
+    }
+
     $code = $row['code'];
     $nameAr = $row['name_ar'];
     $isoUpper = strtoupper($row['iso']);

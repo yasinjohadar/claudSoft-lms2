@@ -570,6 +570,126 @@ body {
     padding-right: 0.5rem;
 }
 
+/* country select (Select2) inside auth input group */
+.auth-input-group:has(.country-code-select) {
+    gap: 0;
+}
+
+.auth-input-group:has(.country-code-select) .auth-input-group__icon {
+    border-inline-start: 1px solid var(--auth-border);
+}
+
+.auth-input-group:has(.country-code-select) .select2-container {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+    max-width: 100% !important;
+    display: flex;
+    align-items: stretch;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection {
+    min-height: 48px;
+    height: 100%;
+    border: none !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 0.65rem 0 2rem !important;
+    overflow: hidden;
+    display: flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection--single {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 0.75rem center !important;
+    background-size: 16px 16px !important;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5.select2-container--open .select2-selection--single {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230555a2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E") !important;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection__rendered {
+    display: flex !important;
+    align-items: center !important;
+    align-self: center;
+    line-height: 1 !important;
+    padding: 0 0.5rem !important;
+    margin: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection__rendered > span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.45rem;
+    min-width: 0;
+    line-height: 1 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection__rendered img {
+    width: 20px;
+    height: 14px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: block;
+    margin: 0;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5 .select2-selection__arrow {
+    display: none;
+}
+
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.auth-input-group:has(.country-code-select) .select2-container--bootstrap-5.select2-container--open .select2-selection {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+}
+
+.auth-input-group:has(.country-code-select):focus-within {
+    border-color: var(--auth-primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(5, 85, 162, 0.1);
+}
+
+.auth-field .select2-dropdown {
+    border-radius: 12px;
+    z-index: 1056;
+    overflow: hidden;
+}
+
+.auth-field .select2-search--dropdown .select2-search__field {
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.auth-field .select2-results__option img {
+    width: 20px;
+    height: 14px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
 .auth-btn--whatsapp {
     display: inline-flex;
     align-items: center;
