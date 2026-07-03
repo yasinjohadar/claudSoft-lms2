@@ -57,6 +57,9 @@ class User extends Authenticatable
         'email_preferences',
         'referral_code',
         'referred_by_user_id',
+        'telegram_chat_id',
+        'telegram_username',
+        'telegram_linked_at',
     ];
 
     /**
@@ -78,6 +81,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'telegram_linked_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',

@@ -24,10 +24,28 @@
         </div>
     </div>
     <div class="card-body pt-3">
-        <div class="group-show-empty py-3">
-            <i class="fe fe-check-circle text-success fs-2 mb-2 d-block"></i>
-            <p class="text-muted mb-0 fs-13">لا توجد تنبيهات جديدة</p>
-        </div>
+        @php
+            $hasTelegramAlert = ! ($studentTelegram['linked'] ?? false);
+        @endphp
+        @if($hasTelegramAlert)
+            <div class="alert alert-warning border-0 mb-0 py-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="ri-telegram-line fs-18 mt-1"></i>
+                    <div>
+                        <strong class="d-block fs-13 mb-1">اربط Telegram</strong>
+                        <p class="text-muted fs-12 mb-2">لتصلك إشعارات المنصة ودعوات المجموعات مباشرة.</p>
+                        <a href="{{ route('student.telegram.link') }}" class="btn btn-sm btn-warning rounded-pill">
+                            ربط الآن
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @else
+            <div class="group-show-empty py-3">
+                <i class="fe fe-check-circle text-success fs-2 mb-2 d-block"></i>
+                <p class="text-muted mb-0 fs-13">لا توجد تنبيهات جديدة</p>
+            </div>
+        @endif
     </div>
 </div>
 

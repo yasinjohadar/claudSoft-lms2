@@ -76,6 +76,11 @@ Route::prefix('student')
             Route::delete('/delete-photo', [StudentProfileController::class, 'deletePhoto'])->name('delete-photo');
         });
 
+        Route::prefix('telegram')->name('student.telegram.')->group(function () {
+            Route::get('/link', [\App\Http\Controllers\Student\TelegramLinkController::class, 'show'])->name('link');
+            Route::post('/unlink', [\App\Http\Controllers\Student\TelegramLinkController::class, 'unlink'])->name('unlink');
+        });
+
         Route::prefix('profile-card')->name('student.profile-card.')->group(function () {
             Route::get('/', [ProfileCardController::class, 'edit'])->name('edit');
             Route::put('/', [ProfileCardController::class, 'update'])->name('update');

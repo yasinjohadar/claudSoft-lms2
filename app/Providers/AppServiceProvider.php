@@ -87,6 +87,9 @@ class AppServiceProvider extends ServiceProvider
             $view->with('dueInvoicesAlert', $alert);
         });
 
+        View::composer('student.layouts.master', \App\View\Composers\StudentTelegramComposer::class);
+        View::composer('student.layouts.main-sidebar', \App\View\Composers\StudentTelegramComposer::class);
+
         $metaPixelViews = [
             'frontend2.layouts.master',
             'frontend.group-registration.layout',

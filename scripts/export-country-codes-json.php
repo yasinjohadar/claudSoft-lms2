@@ -3,8 +3,14 @@
 $cfg = require __DIR__.'/../config/country_codes.php';
 $out = [];
 
+$isoList = $cfg['iso'] ?? [];
+
 foreach (($cfg['list_text_only'] ?? $cfg['list'] ?? []) as $code => $label) {
-    $out[] = ['code' => $code, 'label' => $label];
+    $out[] = [
+        'code' => $code,
+        'label' => $label,
+        'iso' => $isoList[$code] ?? '',
+    ];
 }
 
 $payload = [

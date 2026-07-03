@@ -90,18 +90,15 @@ class WhatsAppTemplateTestSendService
 
     private function sendTextSync(string $to, string $text, ?string $evolutionInstanceName): void
     {
-        $settings = $this->settingsService->getSettings();
-        $provider = $settings['whatsapp_provider'] ?? 'meta';
-        $config = $this->settingsService->getProviderConfig();
-
         if ($evolutionInstanceName) {
             $instance = EvolutionInstance::where('instance_name', $evolutionInstanceName)->first();
             if (! $instance) {
                 throw new InvalidArgumentException('Instance Evolution غير موجود.');
             }
-            $config['instance_name'] = $evolutionInstanceName;
         }
 
+        $settings = $this->settingsService->getSettings();
+        $provider = $settings['whatsapp_provider'] ?? 'meta';
         $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
         $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
         $message = WhatsAppMessage::create([
@@ -110,19 +107,17 @@ class WhatsAppTemplateTestSendService
             'type' => WhatsAppMessage::TYPE_TEXT,
             'body' => $text,
             'status' => WhatsAppMessage::STATUS_QUEUED,
-            'payload' => $evolutionInstanceName ? ['evolution_instance_name' => $evolutionInstanceName] : null,
-        ]);
-
-        $providerInstance = WhatsAppProviderFactory::create($provider, $config);
-        $response = $providerInstance->sendText($normalizedRecipient, $text, false);
-
-        $message->update([
-            'meta_message_id' => $response->metaMessageId,
-            'status' => WhatsAppMessage::STATUS_SENT,
-            'payload' => array_merge($message->payload ?? [], [
-                'response' => $response->rawResponse,
+            'payload' => array_filter([
+                'evolution_instance_name' => $evolutionInstanceName,
                 'test_send' => true,
             ]),
+        ]);
+
+        $this->outboundSendService->send($message, [
+            'type' => 'text',
+            'text' => $text,
+            'preview_url' => false,
+            'evolution_instance_name' => $evolutionInstanceName,
         ]);
     }
 
@@ -136,18 +131,15 @@ class WhatsAppTemplateTestSendService
             throw new InvalidArgumentException('هذا القالب لا يحتوي على اسم Meta المعتمد.');
         }
 
-        $settings = $this->settingsService->getSettings();
-        $provider = $settings['whatsapp_provider'] ?? 'meta';
-        $config = $this->settingsService->getProviderConfig();
-
         if ($evolutionInstanceName) {
             $instance = EvolutionInstance::where('instance_name', $evolutionInstanceName)->first();
             if (! $instance) {
                 throw new InvalidArgumentException('Instance Evolution غير موجود.');
             }
-            $config['instance_name'] = $evolutionInstanceName;
         }
 
+        $settings = $this->settingsService->getSettings();
+        $provider = $settings['whatsapp_provider'] ?? 'meta';
         $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $phone);
         $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
         $message = WhatsAppMessage::create([
@@ -156,12 +148,13 @@ class WhatsAppTemplateTestSendService
             'type' => WhatsAppMessage::TYPE_TEMPLATE,
             'body' => $metaName,
             'status' => WhatsAppMessage::STATUS_QUEUED,
-            'payload' => [
+            'payload' => array_filter([
                 'template_name' => $metaName,
                 'language' => $template->language,
                 'components' => [],
                 'test_send' => true,
-            ],
+                'evolution_instance_name' => $evolutionInstanceName,
+            ]),
         ]);
 
         $this->outboundSendService->send($message, [
@@ -169,6 +162,7 @@ class WhatsAppTemplateTestSendService
             'template_name' => $metaName,
             'language' => $template->language,
             'components' => [],
+            'evolution_instance_name' => $evolutionInstanceName,
         ]);
     }
 }

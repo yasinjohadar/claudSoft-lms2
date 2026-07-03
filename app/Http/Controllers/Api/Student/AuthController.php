@@ -109,16 +109,18 @@ class AuthController extends Controller
     }
 
     /**
-     * @return array{default_country_code: string, country_codes: list<array{code: string, label: string}>}
+     * @return array{default_country_code: string, country_codes: list<array{code: string, label: string, iso: string}>}
      */
     private function countryCodesPayload(): array
     {
         $list = config('country_codes.list_text_only', config('country_codes.list', []));
+        $isoList = config('country_codes.iso', []);
         $countryCodes = [];
         foreach ($list as $code => $label) {
             $countryCodes[] = [
                 'code' => $code,
                 'label' => $label,
+                'iso' => $isoList[$code] ?? '',
             ];
         }
 

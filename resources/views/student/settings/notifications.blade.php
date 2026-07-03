@@ -33,6 +33,14 @@
             </div>
         </div>
 
+        @if($studentTelegram ?? null)
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    @include('student.components.telegram-connect-card', ['class' => 'mb-0'])
+                </div>
+            </div>
+        @endif
+
         <div class="row g-3 mb-4 student-notif-settings-stats">
             <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 student-notif-settings-stagger" style="--stagger-delay: 0ms">
                 <div class="card admin-stats-card admin-stats-card--blue">

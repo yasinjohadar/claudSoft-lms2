@@ -16,6 +16,7 @@ class NotificationUserPreference extends Model
         'mail_enabled',
         'whatsapp_enabled',
         'whatsapp_wapi_enabled',
+        'telegram_enabled',
         'meta',
     ];
 
@@ -26,6 +27,7 @@ class NotificationUserPreference extends Model
         'mail_enabled' => 'boolean',
         'whatsapp_enabled' => 'boolean',
         'whatsapp_wapi_enabled' => 'boolean',
+        'telegram_enabled' => 'boolean',
         'meta' => 'array',
     ];
 

@@ -24,6 +24,8 @@ class GroupMembershipRequest extends Model
         'rejected_by',
         'whatsapp_invite_sent_at',
         'whatsapp_invite_sent_by',
+        'telegram_invite_sent_at',
+        'telegram_invite_sent_by',
         'email_invite_sent_at',
         'email_invite_sent_by',
     ];
@@ -34,6 +36,7 @@ class GroupMembershipRequest extends Model
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'whatsapp_invite_sent_at' => 'datetime',
+        'telegram_invite_sent_at' => 'datetime',
         'email_invite_sent_at' => 'datetime',
     ];
 
@@ -104,6 +107,14 @@ class GroupMembershipRequest extends Model
         return $this->update([
             'email_invite_sent_at' => now(),
             'email_invite_sent_by' => $sentBy ?? auth()->id(),
+        ]);
+    }
+
+    public function markTelegramInviteSent(?int $sentBy = null): bool
+    {
+        return $this->update([
+            'telegram_invite_sent_at' => now(),
+            'telegram_invite_sent_by' => $sentBy ?? auth()->id(),
         ]);
     }
 

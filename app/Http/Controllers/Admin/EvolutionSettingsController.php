@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvolutionInstance;
 use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
@@ -43,6 +44,8 @@ class EvolutionSettingsController extends Controller
             'apiInfo' => $apiInfo,
             'connection' => $connection,
             'webhookUrl' => $this->evolutionService->webhookUrl(),
+            'syncedInstances' => EvolutionInstance::orderBy('instance_name')->get(['instance_name', 'phone_number', 'connection_status']),
+            'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
         ]);
     }
 
@@ -51,7 +54,8 @@ class EvolutionSettingsController extends Controller
         $validated = $request->validate([
             'evolution_base_url' => ['required', 'string', 'max:500'],
             'evolution_api_key' => ['nullable', 'string', 'max:500'],
-            'evolution_instance_name' => ['required', 'string', 'max:100'],
+            'evolution_instance_name' => ['required', 'string', 'max:150'],
+            'evolution_rotation_enabled' => ['nullable', 'boolean'],
             'evolution_webhook_secret' => ['nullable', 'string', 'max:500'],
             'whatsapp_provider' => ['nullable', 'string', 'in:meta,custom_api,whatsapp_web,evolution'],
         ]);
@@ -69,6 +73,7 @@ class EvolutionSettingsController extends Controller
             'evolution_base_url' => $validated['evolution_base_url'],
             'evolution_api_key' => $validated['evolution_api_key'],
             'evolution_instance_name' => $validated['evolution_instance_name'],
+            'evolution_rotation_enabled' => $request->boolean('evolution_rotation_enabled') ? '1' : '0',
             'evolution_webhook_secret' => $validated['evolution_webhook_secret'],
             'whatsapp_enabled' => '1',
             'whatsapp_provider' => $request->input('whatsapp_provider', 'evolution'),
@@ -90,7 +95,7 @@ class EvolutionSettingsController extends Controller
         $request->validate([
             'evolution_base_url' => ['nullable', 'string', 'max:500'],
             'evolution_api_key' => ['nullable', 'string', 'max:500'],
-            'evolution_instance_name' => ['nullable', 'string', 'max:100'],
+            'evolution_instance_name' => ['nullable', 'string', 'max:150'],
         ]);
 
         $existing = $this->settingsService->getSettings();

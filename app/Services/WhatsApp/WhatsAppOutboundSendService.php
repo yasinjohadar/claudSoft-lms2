@@ -4,6 +4,7 @@ namespace App\Services\WhatsApp;
 
 use App\Exceptions\WhatsAppApiException;
 use App\Models\WhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionRotatingSendService;
 use App\Support\WhatsAppRecipientNormalizer;
 
 /**
@@ -13,7 +14,8 @@ use App\Support\WhatsAppRecipientNormalizer;
 class WhatsAppOutboundSendService
 {
     public function __construct(
-        private WhatsAppSettingsService $settingsService
+        private WhatsAppSettingsService $settingsService,
+        private EvolutionRotatingSendService $rotatingSendService,
     ) {}
 
     /**
@@ -33,39 +35,76 @@ class WhatsAppOutboundSendService
         $provider = $settings['whatsapp_provider'] ?? 'meta';
         $config = $this->settingsService->getProviderConfig();
         $to = WhatsAppRecipientNormalizer::normalize($provider, $contact->wa_id);
-
-        $providerInstance = WhatsAppProviderFactory::create($provider, $config);
-
         $messageType = $messageData['type'] ?? $message->type;
 
-        if ($messageType === 'template') {
-            $response = $providerInstance->sendTemplate(
-                $to,
-                $messageData['template_name'] ?? $message->body,
-                $messageData['language'] ?? 'ar',
-                $messageData['components'] ?? []
+        $forcedInstance = $messageData['evolution_instance_name']
+            ?? ($message->payload['evolution_instance_name'] ?? null);
+        $applyDelay = $messageData['apply_send_delay'] ?? true;
+
+        if ($provider === 'evolution') {
+            $sendResult = $this->rotatingSendService->sendWithRotation(
+                function (string $instanceName) use ($config, $to, $messageType, $messageData, $message) {
+                    $instanceConfig = array_merge($config, ['instance_name' => $instanceName]);
+                    $providerInstance = WhatsAppProviderFactory::create('evolution', $instanceConfig);
+
+                    return $this->dispatchToProvider($providerInstance, $messageType, $to, $messageData, $message);
+                },
+                $forcedInstance ? (string) $forcedInstance : null,
+                (bool) $applyDelay,
             );
-        } elseif ($messageType === 'document') {
-            $response = $providerInstance->sendDocument(
-                $to,
-                $messageData['document_url'] ?? '',
-                $messageData['filename'] ?? 'document.pdf',
-                $messageData['caption'] ?? null
-            );
+
+            $response = $sendResult['result'];
+            $usedInstance = $sendResult['instance_name'];
         } else {
-            $response = $providerInstance->sendText(
-                $to,
-                $messageData['text'] ?? $message->body ?? '',
-                $messageData['preview_url'] ?? false
-            );
+            $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+            $response = $this->dispatchToProvider($providerInstance, $messageType, $to, $messageData, $message);
+            $usedInstance = null;
+        }
+
+        $payload = array_merge($message->payload ?? [], [
+            'response' => $response->rawResponse,
+        ]);
+
+        if ($usedInstance !== null) {
+            $payload['evolution_instance_name'] = $usedInstance;
         }
 
         $message->update([
             'meta_message_id' => $response->metaMessageId,
             'status' => WhatsAppMessage::STATUS_SENT,
-            'payload' => array_merge($message->payload ?? [], [
-                'response' => $response->rawResponse,
-            ]),
+            'payload' => $payload,
         ]);
+    }
+
+    private function dispatchToProvider(
+        WhatsAppProviderService $providerInstance,
+        string $messageType,
+        string $to,
+        array $messageData,
+        WhatsAppMessage $message
+    ) {
+        if ($messageType === 'template') {
+            return $providerInstance->sendTemplate(
+                $to,
+                $messageData['template_name'] ?? $message->body,
+                $messageData['language'] ?? 'ar',
+                $messageData['components'] ?? []
+            );
+        }
+
+        if ($messageType === 'document') {
+            return $providerInstance->sendDocument(
+                $to,
+                $messageData['document_url'] ?? '',
+                $messageData['filename'] ?? 'document.pdf',
+                $messageData['caption'] ?? null
+            );
+        }
+
+        return $providerInstance->sendText(
+            $to,
+            $messageData['text'] ?? $message->body ?? '',
+            $messageData['preview_url'] ?? false
+        );
     }
 }

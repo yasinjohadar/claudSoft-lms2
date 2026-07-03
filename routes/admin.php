@@ -134,6 +134,10 @@ use App\Http\Controllers\Admin\WebhookManagementController;
 use App\Http\Controllers\Admin\WebhookTokenController;
 use App\Http\Controllers\Admin\WhatsAppMessageController;
 use App\Http\Controllers\Admin\WhatsAppMessageTemplateController;
+use App\Http\Controllers\Admin\TelegramGroupController;
+use App\Http\Controllers\Admin\TelegramMessageController;
+use App\Http\Controllers\Admin\TelegramMessageTemplateController;
+use App\Http\Controllers\Admin\TelegramSettingsController;
 use App\Http\Controllers\Admin\WhatsAppSettingsController;
 use App\Http\Controllers\Admin\WhatsAppWebController;
 use App\Http\Controllers\Admin\WhatsAppWebSettingsController;
@@ -368,6 +372,8 @@ Route::prefix('admin')
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-all', [CourseGroupController::class, 'approveAllPendingRequests'])->name('courses.groups.membership-requests.approve-all');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-whatsapp-invite', [CourseGroupController::class, 'previewMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.preview-whatsapp-invite');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-whatsapp-invite', [CourseGroupController::class, 'sendMembershipWhatsAppInvite'])->name('courses.groups.membership-requests.send-whatsapp-invite');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-telegram-invite', [CourseGroupController::class, 'previewMembershipTelegramInvite'])->name('courses.groups.membership-requests.preview-telegram-invite');
+        Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-telegram-invite', [CourseGroupController::class, 'sendMembershipTelegramInvite'])->name('courses.groups.membership-requests.send-telegram-invite');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/preview-email-invite', [CourseGroupController::class, 'previewMembershipEmailInvite'])->name('courses.groups.membership-requests.preview-email-invite');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/send-email-invite', [CourseGroupController::class, 'sendMembershipEmailInvite'])->name('courses.groups.membership-requests.send-email-invite');
 
@@ -1241,6 +1247,8 @@ Route::prefix('admin')
             Route::get('/', [WhatsAppSettingsController::class, 'index'])->name('index');
             Route::post('/', [WhatsAppSettingsController::class, 'update'])->name('update');
             Route::post('/test-connection', [WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::post('/auto-reply/preview', [WhatsAppSettingsController::class, 'autoReplyPreview'])->name('auto-reply.preview');
+            Route::post('/auto-reply/test-send', [WhatsAppSettingsController::class, 'autoReplyTestSend'])->name('auto-reply.test-send');
             Route::get('/queue-worker/status', [WhatsAppSettingsController::class, 'queueWorkerStatus'])->name('queue-worker.status');
             Route::post('/queue-worker/start', [WhatsAppSettingsController::class, 'queueWorkerStart'])->name('queue-worker.start');
             Route::post('/queue-worker/stop', [WhatsAppSettingsController::class, 'queueWorkerStop'])->name('queue-worker.stop');
@@ -1319,6 +1327,35 @@ Route::prefix('admin')
             Route::post('/test-connection', [WhatsAppWebSettingsController::class, 'testConnection'])->name('test-connection');
         });
 
+        // Telegram
+        Route::prefix('telegram')->name('admin.telegram.')->group(function () {
+            Route::get('/', fn () => redirect()->route('admin.telegram.settings.index'))->name('home');
+            Route::get('settings', [TelegramSettingsController::class, 'index'])->name('settings.index');
+            Route::post('settings', [TelegramSettingsController::class, 'update'])->name('settings.update');
+            Route::post('settings/test-connection', [TelegramSettingsController::class, 'testConnection'])->name('settings.test-connection');
+            Route::post('settings/test-bridge', [TelegramSettingsController::class, 'testBridge'])->name('settings.test-bridge');
+            Route::post('settings/activate-webhook', [TelegramSettingsController::class, 'activateWebhook'])->name('settings.activate-webhook');
+
+            Route::get('send', [TelegramMessageController::class, 'sendForm'])->name('send');
+            Route::post('send', [TelegramMessageController::class, 'send'])->name('send.store');
+            Route::get('broadcast', [TelegramMessageController::class, 'broadcastForm'])->name('broadcast');
+            Route::post('broadcast', [TelegramMessageController::class, 'broadcast'])->name('broadcast.store');
+            Route::get('broadcast/students-count', [TelegramMessageController::class, 'studentsCount'])->name('broadcast.students-count');
+            Route::get('broadcasts', [TelegramMessageController::class, 'broadcastsIndex'])->name('broadcasts.index');
+            Route::get('broadcasts/{broadcast}', [TelegramMessageController::class, 'showBroadcast'])->name('broadcasts.show');
+
+            Route::resource('templates', TelegramMessageTemplateController::class)->except(['show'])->parameters(['templates' => 'telegram_template']);
+
+            Route::get('groups/link', [TelegramGroupController::class, 'linkForm'])->name('groups.link');
+            Route::post('groups/link', [TelegramGroupController::class, 'linkStore'])->name('groups.link.store');
+            Route::post('groups/prepare-link', [TelegramGroupController::class, 'prepareLink'])->name('groups.prepare-link');
+            Route::post('groups/auto-create', [TelegramGroupController::class, 'autoCreate'])->name('groups.auto-create');
+            Route::get('groups/post', [TelegramGroupController::class, 'postForm'])->name('groups.post');
+            Route::post('groups/post', [TelegramGroupController::class, 'post'])->name('groups.post.store');
+            Route::get('groups/compare', [TelegramGroupController::class, 'compareForm'])->name('groups.compare');
+            Route::post('groups/compare', [TelegramGroupController::class, 'compareRun'])->name('groups.compare.run');
+        });
+
         // Evolution API
         Route::prefix('evolution-api')->name('admin.evolution-api.')->group(function () {
             Route::get('/', fn () => redirect()->route('admin.evolution-api.settings.index'))->name('home');
@@ -1328,11 +1365,14 @@ Route::prefix('admin')
 
             Route::get('instances', [EvolutionInstanceController::class, 'index'])->name('instances.index');
             Route::post('instances', [EvolutionInstanceController::class, 'store'])->name('instances.store');
+            Route::post('instances/link', [EvolutionInstanceController::class, 'link'])->name('instances.link');
             Route::post('instances/sync', [EvolutionInstanceController::class, 'sync'])->name('instances.sync');
             Route::get('instances/{instanceName}/connect', [EvolutionInstanceController::class, 'connect'])->name('instances.connect');
             Route::get('instances/{instanceName}/qr', [EvolutionInstanceController::class, 'fetchQr'])->name('instances.qr');
             Route::get('instances/{instanceName}/status', [EvolutionInstanceController::class, 'status'])->name('instances.status');
             Route::post('instances/{instanceName}/restart', [EvolutionInstanceController::class, 'restart'])->name('instances.restart');
+            Route::post('instances/{instanceName}/toggle-rotation', [EvolutionInstanceController::class, 'toggleRotation'])->name('instances.toggle-rotation');
+            Route::post('instances/{instanceName}/set-default', [EvolutionInstanceController::class, 'setDefault'])->name('instances.set-default');
             Route::post('instances/{instanceName}/logout', [EvolutionInstanceController::class, 'logout'])->name('instances.logout');
             Route::delete('instances/{instanceName}', [EvolutionInstanceController::class, 'destroy'])->name('instances.destroy');
 

@@ -8,7 +8,7 @@
     <div class="card-body">
         <div class="alert alert-warning mb-3">
             <i class="ri-alert-line me-2"></i>
-            <strong>مهم:</strong> الفواصل الزمنية تساعد في تجنب الحظر من WhatsApp. تُطبَّق على الإرسال الجماعي ومقارنة المجموعات وجميع الرسائل المجدولة عبر الطابور.
+            <strong>مهم:</strong> الفواصل الزمنية تساعد في تجنب الحظر من WhatsApp. تُطبَّق على الإرسال الجماعي، دعوات الانضمام، رسائل Evolution المباشرة، ومقارنة المجموعات.
         </div>
 
         <div class="row">

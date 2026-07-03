@@ -16,6 +16,8 @@ class EvolutionInstance extends Model
         'profile_pic_url',
         'qr_code',
         'is_default',
+        'rotation_enabled',
+        'last_used_at',
         'metadata',
         'connected_at',
         'disconnected_at',
@@ -23,14 +25,31 @@ class EvolutionInstance extends Model
 
     protected $casts = [
         'is_default' => 'boolean',
+        'rotation_enabled' => 'boolean',
         'metadata' => 'array',
         'connected_at' => 'datetime',
         'disconnected_at' => 'datetime',
+        'last_used_at' => 'datetime',
     ];
 
     public function isConnected(): bool
     {
         return $this->connection_status === 'open';
+    }
+
+    public function scopeConnected($query)
+    {
+        return $query->where('connection_status', 'open');
+    }
+
+    public function scopeRotationEligible($query)
+    {
+        return $query->connected()->where('rotation_enabled', true);
+    }
+
+    public static function rotationPoolCount(): int
+    {
+        return static::rotationEligible()->count();
     }
 
     public static function syncFromApiArray(array $instance, bool $markDefault = false): self

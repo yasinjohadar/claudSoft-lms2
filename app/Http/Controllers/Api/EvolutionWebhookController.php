@@ -34,6 +34,11 @@ class EvolutionWebhookController extends Controller
             $payload = $request->json()->all();
             $instanceName = $instance ?: (string) ($payload['instance'] ?? '');
 
+            // Instance from the webhook URL is authoritative (Evolution body may omit or differ).
+            if ($instanceName !== '') {
+                $payload['instance'] = $instanceName;
+            }
+
             if ($this->evolutionParser->isConnectionUpdate($payload) && $instanceName !== '') {
                 $this->updateInstanceConnection($instanceName, $payload);
             }
@@ -50,7 +55,7 @@ class EvolutionWebhookController extends Controller
                 ['payload' => $payload]
             );
 
-            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent);
+            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent)->onQueue('whatsapp');
 
             Log::channel('whatsapp')->info('Evolution webhook queued', [
                 'event_id' => $eventId,

@@ -11,6 +11,7 @@ use App\Models\NotificationUserPreference;
 use App\Models\User;
 use App\Notifications\HubDatabaseNotification;
 use App\Services\Flaxxa\WapiAutomationService;
+use App\Services\Telegram\TelegramNotificationService;
 use Illuminate\Support\Facades\Log;
 
 class NotificationHubService
@@ -116,6 +117,22 @@ class NotificationHubService
             ]);
         }
 
+        if (in_array('telegram', $resolvedChannels, true)) {
+            $title = $databasePayload['title'] ?? 'إشعار';
+            $body = $databasePayload['body'] ?? '';
+            $sent = app(TelegramNotificationService::class)->sendToUserIfEnabled($user, $title, $body);
+
+            NotificationDeliveryLog::create([
+                'user_id' => $user->id,
+                'database_notification_id' => $notificationId,
+                'event_key' => $eventKey,
+                'channel' => 'telegram',
+                'status' => $sent ? 'sent' : 'failed',
+                'payload' => $databasePayload,
+                'sent_at' => $sent ? now() : null,
+            ]);
+        }
+
         return [
             'notification_id' => $notificationId,
             'channels' => $resolvedChannels,
@@ -143,6 +160,9 @@ class NotificationHubService
         $defaultChannels = ['database', 'realtime', 'fcm'];
         if ($this->settings->channelEnabled('whatsapp_wapi')) {
             $defaultChannels[] = 'whatsapp_wapi';
+        }
+        if ($this->settings->channelEnabled('telegram')) {
+            $defaultChannels[] = 'telegram';
         }
         $channels = $requestedChannels ?: $defaultChannels;
 

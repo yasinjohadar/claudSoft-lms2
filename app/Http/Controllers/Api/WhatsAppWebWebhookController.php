@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\WhatsAppMessageReceived;
 use App\Http\Controllers\Controller;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppMessage;
+use App\Services\WhatsApp\AutoReply\WhatsAppAutoReplyService;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppWebWebhookController extends Controller
 {
     public function __construct(
-        private WhatsAppSettingsService $settingsService
+        private WhatsAppSettingsService $settingsService,
+        private WhatsAppAutoReplyService $autoReplyService,
     ) {}
 
     /**
@@ -115,8 +116,14 @@ class WhatsAppWebWebhookController extends Controller
                 'payload' => $payload,
             ]);
 
-            // إطلاق الحدث (يستمع إليه AutoReplyWhatsAppListener)
-            event(new WhatsAppMessageReceived($message));
+            try {
+                $this->autoReplyService->scheduleForReply($message);
+            } catch (\Throwable $e) {
+                Log::channel('whatsapp')->error('AutoReply: schedule failed after WhatsApp Web inbound', [
+                    'message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             Log::channel('whatsapp')->info('WhatsApp Web: inbound message processed', [
                 'message_id' => $message->id,

@@ -190,9 +190,23 @@
 
                         <!-- Start::slide - إعدادات الإشعارات -->
                         <li class="slide">
-                            <a href="{{ route('student.settings.notifications') }}" class="side-menu__item">
+                            <a href="{{ route('student.settings.notifications') }}" class="side-menu__item {{ request()->routeIs('student.settings.notifications') ? 'active' : '' }}">
                                 <i class="fe fe-bell side-menu__icon"></i>
                                 <span class="side-menu__label">إعدادات الإشعارات</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide - ربط Telegram -->
+                        <li class="slide">
+                            <a href="{{ route('student.telegram.link') }}" class="side-menu__item {{ request()->routeIs('student.telegram.*') ? 'active' : '' }}">
+                                <i class="fe fe-send side-menu__icon"></i>
+                                <span class="side-menu__label">ربط Telegram</span>
+                                @if($studentTelegram['linked'] ?? false)
+                                    <span class="badge bg-success-transparent ms-auto">مرتبط</span>
+                                @elseif($studentTelegram['enabled'] ?? false)
+                                    <span class="badge bg-warning-transparent ms-auto">!</span>
+                                @endif
                             </a>
                         </li>
                         <!-- End::slide -->

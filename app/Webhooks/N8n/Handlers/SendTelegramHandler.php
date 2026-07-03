@@ -9,8 +9,19 @@ class SendTelegramHandler extends BaseHandler
         try {
             $this->validate($payload, ['chat_id', 'message']);
 
-            // This is a placeholder - actual Telegram integration would be done through n8n
-            // We just log that we received the request
+            // This delegates to Telegram service when configured; otherwise logs for n8n fallback
+            if (app(\App\Services\Telegram\TelegramSettingsService::class)->isConfigured()) {
+                app(\App\Services\Telegram\SendTelegramMessage::class)->sendText(
+                    (string) $payload['chat_id'],
+                    (string) $payload['message'],
+                    applyDelay: false
+                );
+
+                return $this->success('Telegram message sent.', [
+                    'chat_id' => $payload['chat_id'],
+                ]);
+            }
+
             $this->logSuccess('Telegram message request received', [
                 'chat_id' => $payload['chat_id'],
             ]);

@@ -13,7 +13,8 @@ class PhoneOtpWhatsAppSender
     public function __construct(
         private PhoneOtpSettingsService $settingsService,
         private WapiOutboundDispatcher $dispatcher,
-        private WhatsAppService $whatsAppService
+        private WhatsAppService $whatsAppService,
+        private PhoneOtpEvolutionSender $evolutionSender,
     ) {}
 
     public function isAvailable(): bool
@@ -22,43 +23,18 @@ class PhoneOtpWhatsAppSender
             return false;
         }
 
-        try {
-            $this->whatsAppService->assertConfigured();
-            $template = $this->resolveTemplate();
-
-            return $template !== null && $this->validateTemplateForOtp($template) === [];
-        } catch (\Throwable) {
-            return false;
-        }
+        return $this->isChannelAvailable($this->deliveryChannel());
     }
 
     public function send(string $phone, string $code): void
     {
-        $settings = $this->settingsService->getSettings();
-        $template = $this->resolveTemplate();
+        if ($this->deliveryChannel() === 'evolution') {
+            $this->evolutionSender->send($phone, $code);
 
-        if ($template === null) {
-            throw new InvalidArgumentException('لم يُعرّف قالب Flaxxa لرسائل OTP. اختر قالباً من إعدادات OTP.');
+            return;
         }
 
-        $issues = $this->validateTemplateForOtp($template);
-        if ($issues !== []) {
-            throw new InvalidArgumentException(implode(' ', $issues));
-        }
-
-        $language = $this->resolveTemplateLanguage($template, $settings);
-        [$headerVars, $bodyVars] = $this->buildOtpVariables($template, $code);
-        $components = WapiTemplatePayloadBuilder::cloudApiComponentsFromVariables($headerVars, $bodyVars);
-
-        $this->dispatcher->queueTemplate(
-            phone: $phone,
-            templateName: $template->name,
-            language: $language,
-            components: $components,
-            attachmentStoragePath: null,
-            wapiTemplateId: $template->id,
-            variablesLog: ['otp_code' => '***', 'purpose' => 'phone_otp'],
-        );
+        $this->sendViaFlaxxa($phone, $code);
     }
 
     /**
@@ -67,6 +43,7 @@ class PhoneOtpWhatsAppSender
     public function buildHealthReport(): array
     {
         $settings = $this->settingsService->getSettings();
+        $channel = $this->deliveryChannel();
         $template = $this->resolveTemplate();
         $tokenConfigured = false;
 
@@ -78,24 +55,28 @@ class PhoneOtpWhatsAppSender
         }
 
         $structure = is_array($template?->structure) ? $template->structure : [];
-        $templateIssues = $template ? $this->validateTemplateForOtp($template) : ['لم يُختر قالب OTP.'];
+        $templateIssues = $channel === 'flaxxa'
+            ? ($template ? $this->validateTemplateForOtp($template) : ['لم يُختر قالب OTP.'])
+            : $this->evolutionSender->availabilityIssues();
+
+        $channelReady = $channel === 'evolution'
+            ? $this->evolutionSender->isAvailable()
+            : $tokenConfigured && $template !== null && $templateIssues === [];
 
         return [
+            'delivery_channel' => $channel,
             'token_configured' => $tokenConfigured,
             'otp_enabled' => (bool) ($settings['enabled'] ?? false),
-            'template_selected' => $template !== null,
-            'template_name' => $template?->name,
-            'template_language' => $template?->language,
-            'template_status' => $structure['status'] ?? null,
-            'header_placeholders' => (int) ($structure['header_placeholders'] ?? 0),
-            'body_placeholders' => (int) ($structure['body_placeholders'] ?? 0),
-            'has_media_header' => (bool) ($structure['has_media_header'] ?? false),
+            'template_selected' => $channel === 'flaxxa' ? $template !== null : true,
+            'template_name' => $channel === 'flaxxa' ? $template?->name : 'Evolution (نص)',
+            'template_language' => $channel === 'flaxxa' ? $template?->language : null,
+            'template_status' => $channel === 'flaxxa' ? ($structure['status'] ?? null) : null,
+            'header_placeholders' => $channel === 'flaxxa' ? (int) ($structure['header_placeholders'] ?? 0) : 0,
+            'body_placeholders' => $channel === 'flaxxa' ? (int) ($structure['body_placeholders'] ?? 0) : 0,
+            'has_media_header' => $channel === 'flaxxa' ? (bool) ($structure['has_media_header'] ?? false) : false,
             'template_issues' => $templateIssues,
-            'queue_async' => config('queue.default') !== 'sync',
-            'ready' => $tokenConfigured
-                && ($settings['enabled'] ?? false)
-                && $template !== null
-                && $templateIssues === [],
+            'queue_async' => $channel === 'flaxxa' && config('queue.default') !== 'sync',
+            'ready' => ($settings['enabled'] ?? false) && $channelReady,
         ];
     }
 
@@ -124,6 +105,62 @@ class PhoneOtpWhatsAppSender
         }
 
         return $issues;
+    }
+
+    private function deliveryChannel(): string
+    {
+        $settings = $this->settingsService->getSettings();
+        $channel = strtolower(trim((string) ($settings['delivery_channel'] ?? 'flaxxa')));
+
+        return in_array($channel, ['flaxxa', 'evolution'], true) ? $channel : 'flaxxa';
+    }
+
+    private function isChannelAvailable(string $channel): bool
+    {
+        try {
+            return $channel === 'evolution'
+                ? $this->evolutionSender->isAvailable()
+                : $this->isFlaxxaAvailable();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function isFlaxxaAvailable(): bool
+    {
+        $this->whatsAppService->assertConfigured();
+        $template = $this->resolveTemplate();
+
+        return $template !== null && $this->validateTemplateForOtp($template) === [];
+    }
+
+    private function sendViaFlaxxa(string $phone, string $code): void
+    {
+        $settings = $this->settingsService->getSettings();
+        $template = $this->resolveTemplate();
+
+        if ($template === null) {
+            throw new InvalidArgumentException('لم يُعرّف قالب Flaxxa لرسائل OTP. اختر قالباً من إعدادات OTP.');
+        }
+
+        $issues = $this->validateTemplateForOtp($template);
+        if ($issues !== []) {
+            throw new InvalidArgumentException(implode(' ', $issues));
+        }
+
+        $language = $this->resolveTemplateLanguage($template, $settings);
+        [$headerVars, $bodyVars] = $this->buildOtpVariables($template, $code);
+        $components = WapiTemplatePayloadBuilder::cloudApiComponentsFromVariables($headerVars, $bodyVars);
+
+        $this->dispatcher->queueTemplate(
+            phone: $phone,
+            templateName: $template->name,
+            language: $language,
+            components: $components,
+            attachmentStoragePath: null,
+            wapiTemplateId: $template->id,
+            variablesLog: ['otp_code' => '***', 'purpose' => 'phone_otp'],
+        );
     }
 
     /**

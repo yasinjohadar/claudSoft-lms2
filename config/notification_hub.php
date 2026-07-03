@@ -9,6 +9,8 @@ return [
         'whatsapp' => env('NOTIFY_CHANNEL_WHATSAPP', true),
         /** إرسال قوالب Flaxxa WAPI تلقائياً حسب قواعد wapi_automation_rules */
         'whatsapp_wapi' => env('NOTIFY_CHANNEL_WHATSAPP_WAPI', true),
+        /** إرسال إشعارات Telegram Bot للمستخدمين المربوطين */
+        'telegram' => env('NOTIFY_CHANNEL_TELEGRAM', true),
     ],
 
     'fcm' => [

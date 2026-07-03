@@ -301,7 +301,7 @@
                         </div>
                     </div>
                 </div>
-
+                @include('student.components.telegram-connect-card', ['compact' => true, 'class' => 'mt-4'])
                 <div class="card custom-card student-quizzes-panel student-profile-edit-tips mt-4">
                     <div class="card-body">
                         <div class="d-flex align-items-center gap-2 mb-3">

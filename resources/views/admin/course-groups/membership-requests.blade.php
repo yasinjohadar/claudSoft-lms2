@@ -306,6 +306,13 @@
         'defaultWhatsappTemplateId' => $defaultWhatsappTemplateId ?? null,
     ])
 
+    @include('admin.course-groups.partials.membership-tg-invite-modal', [
+        'course' => $course,
+        'group' => $group,
+        'telegramTemplates' => $telegramTemplates ?? collect(),
+        'defaultTelegramTemplateId' => $defaultTelegramTemplateId ?? null,
+    ])
+
     @include('admin.course-groups.partials.membership-email-invite-modal', [
         'course' => $course,
         'group' => $group,
@@ -320,6 +327,7 @@
 
 @section('script')
 @include('admin.course-groups.partials.membership-wa-invite-scripts')
+@include('admin.course-groups.partials.membership-tg-invite-scripts')
 @include('admin.course-groups.partials.membership-email-invite-scripts')
 @include('admin.course-groups.partials.membership-request-detail-scripts')
 @include('admin.course-groups.partials.membership-requests-columns-scripts')

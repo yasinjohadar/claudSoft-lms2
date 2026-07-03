@@ -42,6 +42,24 @@ test('resolves remoteJidAlt when remoteJid is lid', function () {
     expect($parsed['messages'][0]->from)->toBe('966501234567@s.whatsapp.net');
 });
 
+test('falls back to lid jid when no phone jid available', function () {
+    $parser = new EvolutionWebhookParser;
+    $parsed = $parser->parse([
+        'event' => 'messages.upsert',
+        'data' => [
+            'key' => [
+                'remoteJid' => 'abc123@lid',
+                'fromMe' => false,
+                'id' => 'MSG789',
+            ],
+            'message' => ['conversation' => 'hello lid'],
+        ],
+    ]);
+
+    expect($parsed['messages'])->toHaveCount(1);
+    expect($parsed['messages'][0]->from)->toBe('abc123@lid');
+});
+
 test('skips group and outbound messages', function () {
     $parser = new EvolutionWebhookParser;
     $group = $parser->parse([

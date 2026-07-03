@@ -159,6 +159,14 @@
                                         <i class="ri-send-plane-line me-1"></i>{{ $request->whatsapp_invite_sent_at ? 'إعادة الدعوة' : 'دعوة' }}
                                     </button>
                                 @endif
+                                @if($request->student?->telegram_chat_id)
+                                    <button type="button"
+                                            class="btn btn-sm btn-{{ $request->telegram_invite_sent_at ? 'outline-info' : 'info' }} js-membership-tg-invite mt-1"
+                                            data-student-id="{{ $request->student_id }}"
+                                            data-student-name="{{ $request->student->name }}">
+                                        <i class="ri-telegram-line me-1"></i>TG
+                                    </button>
+                                @endif
                             @else
                                 <span class="badge bg-secondary-transparent text-secondary">لا رقم</span>
                             @endif

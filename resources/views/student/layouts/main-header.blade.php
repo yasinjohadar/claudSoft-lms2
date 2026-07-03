@@ -525,6 +525,12 @@
                                 </a>
                             </li>
                             <li>
+                                <a class="dropdown-item d-flex border-block-end" href="{{ route('student.telegram.link') }}">
+                                    <i class="fe fe-send fs-18 me-2 op-7"></i>
+                                    {{ ($studentTelegram['linked'] ?? false) ? 'Telegram — مرتبط' : 'ربط Telegram' }}
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item d-flex" href="{{ route('logout') }}"
                                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     <i class="bx bx-log-out fs-18 me-2 op-7"></i>تسجيل الخروج

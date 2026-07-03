@@ -3,22 +3,29 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvolutionInstance;
 use App\Models\WhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
+use App\Services\WhatsApp\Evolution\EvolutionRotatingSendService;
 use App\Services\WhatsApp\Evolution\EvolutionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 class EvolutionSendController extends Controller
 {
     public function __construct(
-        private EvolutionService $evolutionService
+        private EvolutionService $evolutionService,
+        private EvolutionRotatingSendService $rotatingSendService,
     ) {}
 
     public function textForm(): View
     {
         return view('admin.pages.evolution-api.send.text', [
             'instanceName' => $this->evolutionService->activeInstanceName(),
+            'rotationActive' => $this->rotatingSendService->isRotationActive(),
+            'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
         ]);
     }
 
@@ -29,16 +36,28 @@ class EvolutionSendController extends Controller
             'text' => ['required', 'string', 'max:5000'],
         ]);
 
-        $provider = $this->evolutionService->provider();
-        $provider->sendText($validated['to'], $validated['text']);
+        try {
+            $result = $this->rotatingSendService->sendWithRotation(
+                fn (string $instanceName) => $this->evolutionService
+                    ->providerForInstance($instanceName)
+                    ->sendText($validated['to'], $validated['text'])
+            );
 
-        return back()->with('success', 'تم إرسال الرسالة النصية بنجاح إلى ' . $validated['to'] . '.');
+            return back()->with(
+                'success',
+                'تم إرسال الرسالة إلى '.$validated['to'].' عبر «'.$result['instance_name'].'».'
+            );
+        } catch (Throwable $e) {
+            return back()->with('error', EvolutionApiException::resolveUserMessage($e));
+        }
     }
 
     public function mediaForm(): View
     {
         return view('admin.pages.evolution-api.send.media', [
             'instanceName' => $this->evolutionService->activeInstanceName(),
+            'rotationActive' => $this->rotatingSendService->isRotationActive(),
+            'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
         ]);
     }
 
@@ -52,16 +71,28 @@ class EvolutionSendController extends Controller
             'fileName' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $provider = $this->evolutionService->provider();
-        $provider->sendMediaMessage([
+        $payload = [
             'number' => $validated['to'],
             'mediatype' => $validated['mediatype'],
             'media' => $validated['media'],
             'caption' => $validated['caption'] ?? null,
             'fileName' => $validated['fileName'] ?? null,
-        ]);
+        ];
 
-        return back()->with('success', 'تم إرسال الوسائط (' . $validated['mediatype'] . ') بنجاح.');
+        try {
+            $result = $this->rotatingSendService->sendWithRotation(
+                fn (string $instanceName) => $this->evolutionService
+                    ->providerForInstance($instanceName)
+                    ->sendMediaMessage($payload)
+            );
+
+            return back()->with(
+                'success',
+                'تم إرسال الوسائط ('.$validated['mediatype'].') عبر «'.$result['instance_name'].'».'
+            );
+        } catch (Throwable $e) {
+            return back()->with('error', EvolutionApiException::resolveUserMessage($e));
+        }
     }
 
     public function advancedForm(string $type): View
@@ -72,6 +103,8 @@ class EvolutionSendController extends Controller
         return view('admin.pages.evolution-api.send.advanced', [
             'type' => $type,
             'instanceName' => $this->evolutionService->activeInstanceName(),
+            'rotationActive' => $this->rotatingSendService->isRotationActive(),
+            'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
         ]);
     }
 
@@ -88,21 +121,31 @@ class EvolutionSendController extends Controller
         }
 
         $payload['number'] = $validated['to'];
-        $instance = $this->evolutionService->activeInstanceName();
         $client = $this->evolutionService->client();
 
-        match ($type) {
-            'buttons' => $client->sendButtons($instance, $payload),
-            'list' => $client->sendList($instance, $payload),
-            'poll' => $client->sendPoll($instance, $payload),
-            'location' => $client->sendLocation($instance, $payload),
-            'contact' => $client->sendContact($instance, $payload),
-            'sticker' => $client->sendSticker($instance, $payload),
-            'status' => $client->sendStatus($instance, $payload),
-            default => abort(404),
-        };
+        try {
+            $result = $this->rotatingSendService->sendWithRotation(
+                function (string $instanceName) use ($client, $type, $payload) {
+                    return match ($type) {
+                        'buttons' => $client->sendButtons($instanceName, $payload),
+                        'list' => $client->sendList($instanceName, $payload),
+                        'poll' => $client->sendPoll($instanceName, $payload),
+                        'location' => $client->sendLocation($instanceName, $payload),
+                        'contact' => $client->sendContact($instanceName, $payload),
+                        'sticker' => $client->sendSticker($instanceName, $payload),
+                        'status' => $client->sendStatus($instanceName, $payload),
+                        default => abort(404),
+                    };
+                }
+            );
 
-        return back()->with('success', 'تم إرسال رسالة ' . $type . ' بنجاح.');
+            return back()->with(
+                'success',
+                'تم إرسال رسالة '.$type.' عبر «'.$result['instance_name'].'».'
+            );
+        } catch (Throwable $e) {
+            return back()->with('error', EvolutionApiException::resolveUserMessage($e));
+        }
     }
 
     public function messagesIndex(): View

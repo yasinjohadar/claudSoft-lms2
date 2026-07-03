@@ -96,11 +96,55 @@
                             <label class="form-label fw-semibold">Instance الافتراضي <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="ri-smartphone-line"></i></span>
-                                <input type="text" name="evolution_instance_name" id="evolution_instance_name"
+                                <input type="text"
+                                       name="evolution_instance_name"
+                                       id="evolution_instance_name"
+                                       list="evo-instance-suggestions"
                                        class="form-control @error('evolution_instance_name') is-invalid @enderror"
-                                       value="{{ old('evolution_instance_name', $settings['evolution_instance_name'] ?? '') }}" required>
+                                       value="{{ old('evolution_instance_name', $settings['evolution_instance_name'] ?? '') }}"
+                                       required
+                                       placeholder="مثال: whatsapp ClaudSoft">
                             </div>
+                            <datalist id="evo-instance-suggestions">
+                                @foreach($syncedInstances ?? [] as $inst)
+                                    <option value="{{ $inst->instance_name }}">{{ $inst->instance_name }}@if($inst->phone_number) — {{ $inst->phone_number }}@endif ({{ $inst->connection_status }})</option>
+                                @endforeach
+                            </datalist>
                             @error('evolution_instance_name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            <div class="form-text">
+                                أدخل الاسم <strong>كما يظهر في Evolution Manager</strong> (يدوياً أو اختر من الاقتراحات بعد المزامنة).
+                                يُستخدم كاحتياطي عند تعطيل التبديل.
+                            </div>
+                            @if(($syncedInstances ?? collect())->isNotEmpty())
+                                <div class="mt-2">
+                                    <select id="evo-instance-picker" class="form-select form-select-sm">
+                                        <option value="">— اختر من المزامنة لتعبئة الاسم —</option>
+                                        @foreach($syncedInstances as $inst)
+                                            <option value="{{ $inst->instance_name }}">
+                                                {{ $inst->instance_name }}
+                                                @if($inst->phone_number) ({{ $inst->phone_number }}) @endif
+                                                — {{ $inst->connection_status }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="evolution_rotation_enabled" value="1" id="evolution_rotation_enabled"
+                                       @checked(old('evolution_rotation_enabled', $settings['evolution_rotation_enabled'] ?? true))>
+                                <label class="form-check-label fw-semibold" for="evolution_rotation_enabled">
+                                    تفعيل التبديل التلقائي بين الأرقام (round-robin)
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                عند التفعيل، يُستخدم رقم مختلف مع كل رسالة من بين
+                                <strong>{{ $rotationPoolCount ?? 0 }}</strong> جلسة متصلة ومفعّلة في
+                                <a href="{{ route('admin.evolution-api.instances.index') }}">قائمة Instances</a>.
+                                لا يوجد حد أقصى لعدد الأرقام.
+                            </div>
                         </div>
 
                         <div class="col-12">
@@ -134,7 +178,8 @@
             </div>
             <div class="card-body">
                 <ol class="ps-3 mb-0 small text-muted">
-                    <li class="mb-2">احفظ رابط السيرفر والمفتاح واسم Instance.</li>
+                    <li class="mb-2">أدخل <strong>اسم Instance يدوياً</strong> كما في Evolution Manager (مثل <code>whatsapp ClaudSoft</code>) أو اختره من القائمة بعد المزامنة.</li>
+                    <li class="mb-2">احفظ رابط السيرفر والمفتاح واسم Instance الافتراضي.</li>
                     <li class="mb-2">اضغط <strong>اختبار الاتصال</strong> للتأكد.</li>
                     <li class="mb-2">فعّل <a href="{{ route('admin.evolution-api.webhook.index') }}">Webhook</a> لاستقبال الرسائل.</li>
                     <li>جرّب الإرسال من تبويب <a href="{{ route('admin.evolution-api.send.text') }}">إرسال</a>.</li>
@@ -160,8 +205,7 @@
 (function () {
     const btn = document.getElementById('evo-test-btn');
     const out = document.getElementById('evo-test-result');
-    if (!btn) return;
-
+    if (btn) {
     btn.addEventListener('click', async function () {
         btn.disabled = true;
         const orig = btn.innerHTML;
@@ -191,6 +235,17 @@
             btn.innerHTML = orig;
         }
     });
+    }
+
+    const picker = document.getElementById('evo-instance-picker');
+    const nameInput = document.getElementById('evolution_instance_name');
+    if (picker && nameInput) {
+        picker.addEventListener('change', function () {
+            if (picker.value) {
+                nameInput.value = picker.value;
+            }
+        });
+    }
 })();
 </script>
 @endsection

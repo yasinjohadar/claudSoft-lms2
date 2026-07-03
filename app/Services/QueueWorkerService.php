@@ -117,7 +117,7 @@ class QueueWorkerService
         $artisan = base_path('artisan');
         $php = PHP_BINARY;
         $cmd = sprintf(
-            'nohup %s %s queue:work >> %s 2>&1 & echo $!',
+            'nohup %s %s queue:work --queue=whatsapp,default >> %s 2>&1 & echo $!',
             escapeshellarg($php),
             escapeshellarg($artisan),
             escapeshellarg($logFile)
@@ -143,7 +143,7 @@ class QueueWorkerService
     {
         $php = PHP_BINARY;
         $artisan = base_path('artisan');
-        $cmd = sprintf('start /B "" %s %s queue:work', escapeshellarg($php), escapeshellarg($artisan));
+        $cmd = sprintf('start /B "" %s %s queue:work --queue=whatsapp,default', escapeshellarg($php), escapeshellarg($artisan));
         pclose(popen($cmd, 'r'));
 
         usleep(500000);

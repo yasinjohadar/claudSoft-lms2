@@ -51,25 +51,43 @@ class SendWhatsAppMessage
      * Send text message synchronously (runs in the same request, no queue).
      * Use for welcome messages so they are sent immediately without needing queue:work.
      */
-    public function sendTextSync(string $to, string $text, bool $previewUrl = false): WhatsAppMessage
-    {
+    public function sendTextSync(
+        string $to,
+        string $text,
+        bool $previewUrl = false,
+        bool $applySendDelay = true,
+        ?string $evolutionInstanceName = null,
+    ): WhatsAppMessage {
         $provider = $this->settingsService->getSettings()['whatsapp_provider'] ?? 'meta';
         $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
         $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
+
+        $payload = [];
+        if ($evolutionInstanceName !== null && $evolutionInstanceName !== '') {
+            $payload['evolution_instance_name'] = $evolutionInstanceName;
+        }
+
         $message = WhatsAppMessage::create([
             'direction' => WhatsAppMessage::DIRECTION_OUTBOUND,
             'contact_id' => $contact->id,
             'type' => WhatsAppMessage::TYPE_TEXT,
             'body' => $text,
             'status' => WhatsAppMessage::STATUS_QUEUED,
+            'payload' => $payload ?: null,
         ]);
 
-        // Direct send: do not queue SendWhatsAppMessageJob (avoids duplicate queue logs / retries vs report).
-        app(WhatsAppOutboundSendService::class)->send($message, [
+        $messageData = [
             'type' => 'text',
             'text' => $text,
             'preview_url' => $previewUrl,
-        ]);
+            'apply_send_delay' => $applySendDelay,
+        ];
+
+        if ($evolutionInstanceName !== null && $evolutionInstanceName !== '') {
+            $messageData['evolution_instance_name'] = $evolutionInstanceName;
+        }
+
+        app(WhatsAppOutboundSendService::class)->send($message, $messageData);
 
         return $message->fresh();
     }

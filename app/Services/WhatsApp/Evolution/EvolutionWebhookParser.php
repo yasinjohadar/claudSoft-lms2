@@ -192,6 +192,10 @@ class EvolutionWebhookParser
                     continue;
                 }
             }
+
+            if (str_ends_with($candidate, '@lid') && preg_match('/^[\w.\-]+@lid$/', $candidate) === 1) {
+                return $candidate;
+            }
         }
 
         return '';

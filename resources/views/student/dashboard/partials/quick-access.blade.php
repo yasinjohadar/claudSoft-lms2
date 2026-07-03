@@ -1,5 +1,17 @@
 @php
-    $quickLinks = [
+    $quickLinks = [];
+
+    if (! ($studentTelegram['linked'] ?? false)) {
+        $quickLinks[] = [
+            'route' => 'student.telegram.link',
+            'icon' => 'fe-send',
+            'color' => 'info',
+            'title' => 'ربط Telegram',
+            'subtitle' => 'استلم الإشعارات على تيليجرام',
+        ];
+    }
+
+    $quickLinks = array_merge($quickLinks, [
         ['route' => 'student.courses.my-courses', 'icon' => 'fe-book', 'color' => 'primary', 'title' => 'كورساتي', 'subtitle' => 'الكورسات المسجّلة'],
         ['route' => 'student.question-module.stats.index', 'icon' => 'fe-help-circle', 'color' => 'info', 'title' => 'إحصائيات الاختبارات', 'subtitle' => 'الأداء والمحاولات'],
         ['route' => 'student.training-camps.index', 'icon' => 'fe-flag', 'color' => 'success', 'title' => 'المعسكرات التدريبية', 'subtitle' => 'التسجيل والمتابعة'],
@@ -11,7 +23,7 @@
         ['route' => 'gamification.dashboard', 'icon' => 'fe-zap', 'color' => 'orange', 'title' => 'لوحة التلعيب', 'subtitle' => 'النقاط والتحديات'],
         ['route' => 'student.external-resources.index', 'icon' => 'fe-link', 'color' => 'info', 'title' => 'الموارد الخارجية', 'subtitle' => 'روابط ومراجع'],
         ['route' => 'student.gifts.index', 'icon' => 'ri-gift-line', 'icon_set' => 'ri', 'color' => 'warning', 'title' => 'هدايا الأكاديمية', 'subtitle' => 'هدايا وموارد من الأكاديمية'],
-    ];
+    ]);
 @endphp
 
 <div class="card custom-card admin-shortcuts-panel dashboard-fade-in mt-2">

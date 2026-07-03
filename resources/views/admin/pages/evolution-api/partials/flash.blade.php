@@ -18,11 +18,16 @@
         <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 evo-flash-alert" role="alert">
             <div class="d-flex align-items-start gap-2">
                 <span class="avatar avatar-sm bg-danger-transparent rounded-circle flex-shrink-0">
-                    <i class="ri-error-warning-line fs-18 text-danger"></i>
+                    <i class="ri-wifi-off-line fs-18 text-danger"></i>
                 </span>
                 <div class="flex-grow-1">
                     <strong class="d-block mb-1">حدث خطأ</strong>
                     <span>{{ session('error') }}</span>
+                    <span class="text-muted small d-block mt-2">
+                        راجع
+                        <a href="{{ route('admin.evolution-api.settings.index') }}" class="alert-link">إعدادات الاتصال</a>
+                        ثم حاول مرة أخرى.
+                    </span>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>

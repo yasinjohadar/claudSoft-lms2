@@ -25,7 +25,9 @@ use App\Models\EmailTemplate;
 use App\Models\Nationality;
 use App\Support\MembershipRequestFilters;
 use App\Support\MembershipRequestFormColumns;
-use App\Support\WhatsAppSendErrorMessage;
+use App\Models\TelegramMessageTemplate;
+use App\Services\Telegram\MembershipTelegramInviteService;
+use App\Services\Telegram\TelegramApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1510,6 +1512,9 @@ class CourseGroupController extends Controller
                 ->get(['id', 'name']);
             $defaultWhatsappTemplateId = $registrationSettings?->whatsapp_template_id;
 
+            $telegramTemplates = TelegramMessageTemplate::active()->orderBy('name')->get(['id', 'name']);
+            $defaultTelegramTemplateId = $registrationSettings?->telegram_template_id;
+
             $emailTemplates = EmailTemplate::active()->orderBy('name_ar')->orderBy('name')->get(['id', 'name', 'name_ar', 'subject']);
             $emailSettings = EmailSetting::orderByDesc('is_active')->orderBy('id')->get();
             $defaultEmailSetting = EmailSetting::getActive();
@@ -1580,6 +1585,8 @@ class CourseGroupController extends Controller
                 'waContext',
                 'whatsappTemplates',
                 'defaultWhatsappTemplateId',
+                'telegramTemplates',
+                'defaultTelegramTemplateId',
                 'emailTemplates',
                 'emailSettings',
                 'defaultEmailSetting',
@@ -1730,6 +1737,88 @@ class CourseGroupController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'تعذر إرسال الرسالة: '.WhatsAppSendErrorMessage::fromThrowable($e),
+            ], 500);
+        }
+    }
+
+    public function previewMembershipTelegramInvite(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipTelegramInviteService $inviteService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'telegram_template_id' => 'required|exists:telegram_message_templates,id',
+        ]);
+
+        try {
+            [$course, $group, $student] = $this->resolveMembershipInviteContext(
+                $courseId,
+                $groupId,
+                (int) $validated['student_id']
+            );
+
+            $template = TelegramMessageTemplate::active()
+                ->where('id', $validated['telegram_template_id'])
+                ->firstOrFail();
+
+            $body = $inviteService->renderTemplate($template, $student, $course, $group);
+
+            return response()->json(['success' => true, 'body' => $body]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر تحميل المعاينة: '.TelegramApiException::resolveUserMessage($e),
+            ], 500);
+        }
+    }
+
+    public function sendMembershipTelegramInvite(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipTelegramInviteService $inviteService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'telegram_template_id' => 'required|exists:telegram_message_templates,id',
+        ]);
+
+        try {
+            [$course, $group, $student] = $this->resolveMembershipInviteContext(
+                $courseId,
+                $groupId,
+                (int) $validated['student_id']
+            );
+
+            $template = TelegramMessageTemplate::active()
+                ->where('id', $validated['telegram_template_id'])
+                ->firstOrFail();
+
+            $chatId = $inviteService->sendTemplateInvite($student, $course, $group, $template);
+
+            $membershipRequest = GroupMembershipRequest::where('group_id', $group->id)
+                ->where('student_id', $student->id)
+                ->latest('id')
+                ->first();
+
+            $membershipRequest?->markTelegramInviteSent();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال دعوة Telegram إلى '.$chatId,
+                'student_id' => $student->id,
+                'invite_sent_at' => optional($membershipRequest?->fresh()->telegram_invite_sent_at)->format('Y-m-d H:i'),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر إرسال الرسالة: '.TelegramApiException::resolveUserMessage($e),
             ], 500);
         }
     }

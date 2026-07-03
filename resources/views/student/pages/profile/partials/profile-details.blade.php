@@ -99,6 +99,29 @@
                     </div>
                 </div>
             </div>
+            @if($studentTelegram ?? null)
+            <div class="col-md-6">
+                <div class="student-profile-field {{ !($studentTelegram['linked'] ?? false) ? 'is-empty' : '' }}">
+                    <span class="student-profile-field__icon">
+                        <i class="ri-telegram-line"></i>
+                    </span>
+                    <div>
+                        <span class="student-profile-field__label">Telegram</span>
+                        <span class="student-profile-field__value">
+                            @if($studentTelegram['linked'] ?? false)
+                                @if($student->telegram_username)
+                                    {{ '@'.$student->telegram_username }}
+                                @else
+                                    <span class="badge bg-success-transparent">مرتبط</span>
+                                @endif
+                            @else
+                                <a href="{{ route('student.telegram.link') }}" class="fs-13">ربط الحساب</a>
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>

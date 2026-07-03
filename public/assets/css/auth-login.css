@@ -558,3 +558,90 @@ body {
         box-shadow: none;
     }
 }
+
+/* ── OTP pages ── */
+.auth-select {
+    appearance: none;
+    cursor: pointer;
+    padding-left: 0.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.65rem center;
+    padding-right: 0.5rem;
+}
+
+.auth-btn--whatsapp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    background: #15803d;
+}
+
+.auth-btn--whatsapp:hover {
+    background: #166534;
+    box-shadow: 0 6px 18px rgba(21, 128, 61, 0.28);
+}
+
+.auth-btn--outline {
+    background: #fff;
+    color: var(--auth-primary);
+    border: 1.5px solid var(--auth-primary);
+    margin-top: 0.75rem;
+}
+
+.auth-btn--outline:hover {
+    background: rgba(5, 85, 162, 0.04);
+    box-shadow: none;
+}
+
+.auth-btn--outline:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.auth-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.65rem 1rem;
+    border-radius: 12px;
+    border: 1.5px solid var(--auth-border);
+    background: #fff;
+    color: var(--auth-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.auth-link-btn:hover {
+    background: var(--auth-input-bg);
+    border-color: var(--auth-primary);
+    color: var(--auth-primary-dark);
+}
+
+.auth-input-group--otp {
+    justify-content: center;
+}
+
+.auth-input--otp {
+    text-align: center;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    padding: 0.85rem 1rem;
+}
+
+.auth-resend-form {
+    margin-top: 1rem;
+}
+
+.auth-resend-hint {
+    margin: 0.65rem 0 0;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--auth-muted);
+}

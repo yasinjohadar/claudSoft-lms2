@@ -63,3 +63,5 @@
         </a>
     </div>
 </div>
+
+@include('student.components.telegram-connect-card', ['class' => 'mt-4'])

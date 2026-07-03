@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvolutionInstance;
 use App\Services\Ai\AIModelService;
 use App\Services\QueueWorkerService;
+use App\Services\WhatsApp\AutoReply\WhatsAppAutoReplyAiGenerator;
+use App\Services\WhatsApp\AutoReply\WhatsAppAutoReplyHumanizer;
+use App\Services\WhatsApp\AutoReply\WhatsAppAutoReplyService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Http\Request;
@@ -15,7 +19,10 @@ class WhatsAppSettingsController extends Controller
     public function __construct(
         private WhatsAppSettingsService $settingsService,
         private AIModelService $aiModelService,
-        private QueueWorkerService $queueWorkerService
+        private QueueWorkerService $queueWorkerService,
+        private WhatsAppAutoReplyAiGenerator $autoReplyAiGenerator,
+        private WhatsAppAutoReplyHumanizer $autoReplyHumanizer,
+        private WhatsAppAutoReplyService $autoReplyService,
     ) {}
 
     /**
@@ -27,8 +34,9 @@ class WhatsAppSettingsController extends Controller
         $settings = $this->settingsService->getSettings();
         $aiModels = $this->aiModelService->getAvailableModels('chat');
         $queueWorkerStatus = $this->queueWorkerService->status();
+        $evolutionInstances = EvolutionInstance::connected()->orderBy('instance_name')->get(['instance_name', 'phone_number', 'profile_name']);
 
-        return view('admin.pages.whatsapp-settings.index', compact('settings', 'aiModels', 'queueWorkerStatus'));
+        return view('admin.pages.whatsapp-settings.index', compact('settings', 'aiModels', 'queueWorkerStatus', 'evolutionInstances'));
     }
 
     /**
@@ -64,7 +72,17 @@ class WhatsAppSettingsController extends Controller
             'auto_reply_message' => 'nullable|string|max:500',
             'auto_reply_use_ai' => 'nullable',
             'auto_reply_ai_model_id' => 'nullable|integer|exists:ai_models,id',
-            'auto_reply_ai_system_prompt' => 'nullable|string|max:2000',
+            'auto_reply_ai_system_prompt' => 'nullable|string|max:4000',
+            'auto_reply_evolution_instance' => 'nullable|string|max:150',
+            'auto_reply_faq_context' => 'nullable|string|max:8000',
+            'auto_reply_initial_delay_min' => 'nullable|integer|min:0|max:30',
+            'auto_reply_initial_delay_max' => 'nullable|integer|min:0|max:60',
+            'auto_reply_typing_duration' => 'nullable|integer|min:1|max:15',
+            'auto_reply_max_chunks' => 'nullable|integer|min:1|max:5',
+            'auto_reply_chunk_max_chars' => 'nullable|integer|min:100|max:1000',
+            'auto_reply_contact_cooldown' => 'nullable|integer|min:10|max:600',
+            'auto_reply_debounce_seconds' => 'nullable|integer|min:1|max:60',
+            'auto_reply_test_phone' => 'nullable|string|max:30',
             'timeout' => 'nullable|integer|min:1|max:300',
             'custom_api_url' => 'required_if:whatsapp_provider,custom_api|nullable|string|url|max:500',
             'custom_api_key' => 'nullable|string|max:500',
@@ -109,6 +127,14 @@ class WhatsAppSettingsController extends Controller
                 $validated['auto_reply_ai_model_id'] = '';
             }
             $validated['auto_reply_ai_system_prompt'] = $validated['auto_reply_ai_system_prompt'] ?? '';
+            $validated['auto_reply_faq_context'] = $validated['auto_reply_faq_context'] ?? '';
+            $validated['auto_reply_evolution_instance'] = $validated['auto_reply_evolution_instance'] ?? '';
+            $validated['auto_reply_test_phone'] = $validated['auto_reply_test_phone'] ?? '';
+
+            if (isset($validated['auto_reply_initial_delay_max'], $validated['auto_reply_initial_delay_min'])
+                && (int) $validated['auto_reply_initial_delay_max'] < (int) $validated['auto_reply_initial_delay_min']) {
+                $validated['auto_reply_initial_delay_max'] = $validated['auto_reply_initial_delay_min'];
+            }
 
             // If access_token, app_secret, custom_api_key, or whatsapp_web_api_token is empty, keep existing values
             if (empty($validated['access_token'])) {
@@ -145,6 +171,66 @@ class WhatsAppSettingsController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء حفظ الإعدادات: '.$e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Preview AI auto-reply without sending WhatsApp message.
+     */
+    public function autoReplyPreview(Request $request)
+    {
+        $validated = $request->validate([
+            'question' => 'required|string|max:2000',
+        ]);
+
+        $settings = $this->settingsService->getAutoReplySettings();
+        $result = $this->autoReplyAiGenerator->preview(
+            $settings,
+            $validated['question'],
+            $this->autoReplyHumanizer,
+        );
+
+        return response()->json([
+            'success' => true,
+            'reply' => $result['reply'],
+            'chunks' => $result['chunks'],
+        ]);
+    }
+
+    /**
+     * Send full auto-reply pipeline to a test phone number.
+     */
+    public function autoReplyTestSend(Request $request)
+    {
+        $validated = $request->validate([
+            'question' => 'required|string|max:2000',
+            'test_phone' => 'nullable|string|max:30',
+        ]);
+
+        $settings = $this->settingsService->getAutoReplySettings();
+        $phone = trim($validated['test_phone'] ?? $settings['auto_reply_test_phone'] ?? '');
+
+        if ($phone === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'أدخل رقم اختبار في الحقل أو احفظه في الإعدادات.',
+            ], 422);
+        }
+
+        try {
+            $this->autoReplyService->testSend($settings, $phone, $validated['question']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال الرد التجريبي بنجاح.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Auto-reply test send failed: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 

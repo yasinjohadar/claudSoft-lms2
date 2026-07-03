@@ -5,5 +5,5 @@ REM   scripts\queue-work.bat
 REM أو انقر مزدوجاً بعد التأكد أن المسار الحالي هو جذر المشروع
 
 cd /d "%~dp0\.."
-php artisan queue:work
+php artisan queue:work --queue=whatsapp,default
 pause

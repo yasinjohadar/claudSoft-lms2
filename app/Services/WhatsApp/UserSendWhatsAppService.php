@@ -2,7 +2,6 @@
 
 namespace App\Services\WhatsApp;
 
-use App\Models\EvolutionInstance;
 use App\Models\User;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppMessage;
@@ -16,7 +15,8 @@ class UserSendWhatsAppService
     public function __construct(
         private BulkEmailVariableBuilder $variableBuilder,
         private WhatsAppSettingsService $settingsService,
-        private SendWhatsAppMessage $sendWhatsAppMessage
+        private SendWhatsAppMessage $sendWhatsAppMessage,
+        private WhatsAppOutboundSendService $outboundSendService,
     ) {}
 
     public function renderTemplateForUser(WhatsAppMessageTemplate $template, User $user): string
@@ -72,16 +72,8 @@ class UserSendWhatsAppService
 
     private function sendTextSyncWithInstance(string $to, string $text, string $instanceName): void
     {
-        $instance = EvolutionInstance::where('instance_name', $instanceName)->first();
-        if (! $instance) {
-            throw new InvalidArgumentException('Instance Evolution غير موجود.');
-        }
-
         $settings = $this->settingsService->getSettings();
         $provider = $settings['whatsapp_provider'] ?? 'meta';
-        $config = $this->settingsService->getProviderConfig();
-        $config['instance_name'] = $instanceName;
-
         $normalizedRecipient = WhatsAppRecipientNormalizer::normalize($provider, $to);
         $contact = WhatsAppContact::findOrCreateByWaId($normalizedRecipient);
         $message = WhatsAppMessage::create([
@@ -90,18 +82,14 @@ class UserSendWhatsAppService
             'type' => WhatsAppMessage::TYPE_TEXT,
             'body' => $text,
             'status' => WhatsAppMessage::STATUS_QUEUED,
+            'payload' => ['evolution_instance_name' => $instanceName],
         ]);
 
-        $providerInstance = WhatsAppProviderFactory::create($provider, $config);
-        $response = $providerInstance->sendText($normalizedRecipient, $text, false);
-
-        $message->update([
-            'meta_message_id' => $response->metaMessageId,
-            'status' => WhatsAppMessage::STATUS_SENT,
-            'payload' => array_merge($message->payload ?? [], [
-                'response' => $response->rawResponse,
-                'evolution_instance_name' => $instanceName,
-            ]),
+        $this->outboundSendService->send($message, [
+            'type' => 'text',
+            'text' => $text,
+            'preview_url' => false,
+            'evolution_instance_name' => $instanceName,
         ]);
     }
 }

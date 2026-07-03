@@ -26,6 +26,10 @@ class GroupRegistrationSetting extends Model
         'wapi_body_variables',
         'whatsapp_template',
         'whatsapp_group_link',
+        'telegram_group_link',
+        'telegram_chat_id',
+        'telegram_template_id',
+        'send_welcome_telegram',
         'require_email_verification',
         'extra',
     ];
@@ -36,6 +40,7 @@ class GroupRegistrationSetting extends Model
         'auto_approve_membership' => 'boolean',
         'send_welcome_email' => 'boolean',
         'send_welcome_whatsapp' => 'boolean',
+        'send_welcome_telegram' => 'boolean',
         'require_email_verification' => 'boolean',
         'wapi_body_variables' => 'array',
         'extra' => 'array',
@@ -56,6 +61,11 @@ class GroupRegistrationSetting extends Model
     public function whatsappTemplate(): BelongsTo
     {
         return $this->belongsTo(WhatsAppMessageTemplate::class, 'whatsapp_template_id');
+    }
+
+    public function telegramTemplate(): BelongsTo
+    {
+        return $this->belongsTo(TelegramMessageTemplate::class, 'telegram_template_id');
     }
 
     public function wapiTemplate(): BelongsTo

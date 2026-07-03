@@ -246,4 +246,8 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
                 ->where('instance', '[a-zA-Z0-9_-]+')
                 ->name('handle');
         });
+
+    Route::post('/telegram', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle'])
+        ->middleware(['throttle:120,1'])
+        ->name('telegram.handle');
 });

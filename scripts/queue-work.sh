@@ -5,4 +5,4 @@
 # أو: bash scripts/queue-work.sh
 
 cd "$(dirname "$0")/.." || exit 1
-php artisan queue:work
+php artisan queue:work --queue=whatsapp,default

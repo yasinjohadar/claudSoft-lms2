@@ -34,10 +34,17 @@ class EvolutionService
     {
         $settings = $override ?? $this->getSettings();
 
+        return $this->providerForInstance($settings['evolution_instance_name'] ?? '', $settings);
+    }
+
+    public function providerForInstance(string $instanceName, ?array $settings = null): EvolutionApiProvider
+    {
+        $settings = $settings ?? $this->getSettings();
+
         return WhatsAppProviderFactory::create('evolution', [
             'base_url' => $settings['evolution_base_url'] ?? '',
             'api_key' => $settings['evolution_api_key'] ?? '',
-            'instance_name' => $settings['evolution_instance_name'] ?? '',
+            'instance_name' => $instanceName,
         ]);
     }
 
@@ -63,18 +70,30 @@ class EvolutionService
         }
 
         $synced = [];
+        $remoteNames = [];
+
         foreach ($list as $instance) {
             if (! is_array($instance) || empty($instance['name'])) {
                 continue;
             }
+
+            $name = (string) $instance['name'];
+            $remoteNames[] = $name;
+
             try {
                 $synced[] = EvolutionInstance::syncFromApiArray(
                     $instance,
-                    $markConfiguredAsDefault && $instance['name'] === $configuredName
+                    $markConfiguredAsDefault && $name === $configuredName
                 );
             } catch (\Throwable) {
                 // Table may not exist until migration runs
             }
+        }
+
+        if ($remoteNames !== []) {
+            EvolutionInstance::whereNotIn('instance_name', $remoteNames)->delete();
+        } elseif ($list === []) {
+            EvolutionInstance::query()->delete();
         }
 
         return $synced;

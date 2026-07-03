@@ -38,6 +38,10 @@ class WhatsAppRecipientNormalizer
             return $recipient;
         }
 
+        if (str_ends_with($recipient, '@lid') && preg_match('/^[\w.\-]+@lid$/', $recipient) === 1) {
+            return $recipient;
+        }
+
         $digits = preg_replace('/\D+/', '', $recipient) ?? '';
         if ($digits === '' || strlen($digits) < 8 || strlen($digits) > 15) {
             throw new InvalidArgumentException('صيغة المستلم غير صالحة. أدخل رقمًا دوليًا صحيحًا أو JID صحيحًا.');
@@ -91,7 +95,7 @@ class WhatsAppRecipientNormalizer
         }
 
         if (str_ends_with($recipient, '@lid')) {
-            return false;
+            return preg_match('/^[\w.\-]+@lid$/', $recipient) === 1;
         }
 
         $digits = preg_replace('/\D+/', '', $recipient) ?? '';

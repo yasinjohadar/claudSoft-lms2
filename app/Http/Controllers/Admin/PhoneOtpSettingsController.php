@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvolutionInstance;
 use App\Models\WapiTemplate;
 use App\Services\Auth\PhoneOtpService;
 use App\Services\Auth\PhoneOtpSettingsService;
@@ -27,13 +28,20 @@ class PhoneOtpSettingsController extends Controller
         $wapiTemplates = WapiTemplate::query()->orderBy('name')->get(['id', 'name', 'language', 'structure']);
         $health = $this->sender->buildHealthReport();
 
-        return view('admin.pages.settings.phone-otp.edit', compact('settings', 'wapiTemplates', 'health'));
+        return view('admin.pages.settings.phone-otp.edit', [
+            'settings' => $settings,
+            'wapiTemplates' => $wapiTemplates,
+            'health' => $health,
+            'evolutionPoolCount' => EvolutionInstance::rotationPoolCount(),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'enabled' => 'nullable|boolean',
+            'delivery_channel' => 'nullable|string|in:flaxxa,evolution',
+            'evolution_message_template' => 'nullable|string|max:1000',
             'wapi_template_id' => 'nullable|exists:wapi_templates,id',
             'template_language' => 'nullable|string|max:16',
             'ttl_seconds' => 'nullable|integer|min:60|max:3600',
@@ -63,6 +71,8 @@ class PhoneOtpSettingsController extends Controller
 
         $this->settingsService->updateSettings([
             'enabled' => $request->boolean('enabled'),
+            'delivery_channel' => $validated['delivery_channel'] ?? 'flaxxa',
+            'evolution_message_template' => $validated['evolution_message_template'] ?? 'رمز التحقق الخاص بك هو: {code}',
             'wapi_template_id' => $templateId ?? '',
             'template_language' => $validated['template_language'] ?? 'ar',
             'ttl_seconds' => $validated['ttl_seconds'] ?? 300,
@@ -102,7 +112,13 @@ class PhoneOtpSettingsController extends Controller
         }
 
         if (! $this->sender->isAvailable()) {
-            return back()->withErrors(['test_phone' => 'Flaxxa OTP غير مُعدّ (توكن + قالب).']);
+            $channel = $this->settingsService->getSettings()['delivery_channel'] ?? 'flaxxa';
+
+            return back()->withErrors([
+                'test_phone' => $channel === 'evolution'
+                    ? 'OTP عبر Evolution غير مُعدّ (قالب + instances متصلة).'
+                    : 'Flaxxa OTP غير مُعدّ (توكن + قالب).',
+            ]);
         }
 
         try {
@@ -115,7 +131,7 @@ class PhoneOtpSettingsController extends Controller
             return back()->withErrors(['test_phone' => $e->getMessage()]);
         }
 
-        return back()->with('success', 'تمت جدولة رسالة اختبار OTP (تحقق من سجل Flaxxa).');
+        return back()->with('success', 'تم إرسال رسالة اختبار OTP.');
     }
 
     public function restoreDefaults(): RedirectResponse

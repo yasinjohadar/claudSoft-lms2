@@ -38,6 +38,16 @@ class WhatsAppSettingsService
             'auto_reply_use_ai' => filter_var($settings['auto_reply_use_ai'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'auto_reply_ai_model_id' => $settings['auto_reply_ai_model_id'] ?? null,
             'auto_reply_ai_system_prompt' => $settings['auto_reply_ai_system_prompt'] ?? '',
+            'auto_reply_evolution_instance' => $settings['auto_reply_evolution_instance'] ?? '',
+            'auto_reply_faq_context' => $settings['auto_reply_faq_context'] ?? '',
+            'auto_reply_initial_delay_min' => (int) ($settings['auto_reply_initial_delay_min'] ?? 2),
+            'auto_reply_initial_delay_max' => (int) ($settings['auto_reply_initial_delay_max'] ?? 5),
+            'auto_reply_typing_duration' => (int) ($settings['auto_reply_typing_duration'] ?? 3),
+            'auto_reply_max_chunks' => (int) ($settings['auto_reply_max_chunks'] ?? 3),
+            'auto_reply_chunk_max_chars' => (int) ($settings['auto_reply_chunk_max_chars'] ?? 350),
+            'auto_reply_contact_cooldown' => (int) ($settings['auto_reply_contact_cooldown'] ?? 45),
+            'auto_reply_debounce_seconds' => (int) ($settings['auto_reply_debounce_seconds'] ?? 8),
+            'auto_reply_test_phone' => $settings['auto_reply_test_phone'] ?? '',
             'timeout' => $settings['timeout'] ?? 30,
             // Custom API settings
             'custom_api_url' => $settings['custom_api_url'] ?? '',
@@ -65,6 +75,7 @@ class WhatsAppSettingsService
             'evolution_base_url' => $this->normalizeServiceUrl($settings['evolution_base_url'] ?? ''),
             'evolution_api_key' => $this->decryptIfEncrypted($settings['evolution_api_key'] ?? ''),
             'evolution_instance_name' => $settings['evolution_instance_name'] ?? '',
+            'evolution_rotation_enabled' => filter_var($settings['evolution_rotation_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
             'evolution_webhook_secret' => $this->decryptIfEncrypted($settings['evolution_webhook_secret'] ?? ''),
             'evolution_webhook_base_url' => rtrim(trim($settings['evolution_webhook_base_url'] ?? ''), '/'),
         ];
@@ -143,6 +154,16 @@ class WhatsAppSettingsService
             'auto_reply_use_ai' => false,
             'auto_reply_ai_model_id' => '',
             'auto_reply_ai_system_prompt' => '',
+            'auto_reply_evolution_instance' => '',
+            'auto_reply_faq_context' => '',
+            'auto_reply_initial_delay_min' => '2',
+            'auto_reply_initial_delay_max' => '5',
+            'auto_reply_typing_duration' => '3',
+            'auto_reply_max_chunks' => '3',
+            'auto_reply_chunk_max_chars' => '350',
+            'auto_reply_contact_cooldown' => '45',
+            'auto_reply_debounce_seconds' => '8',
+            'auto_reply_test_phone' => '',
             'timeout' => 30,
             'custom_api_url' => '',
             'custom_api_key' => '',
@@ -166,6 +187,7 @@ class WhatsAppSettingsService
             'evolution_base_url' => '',
             'evolution_api_key' => '',
             'evolution_instance_name' => '',
+            'evolution_rotation_enabled' => 'true',
             'evolution_webhook_secret' => '',
             'evolution_webhook_base_url' => '',
         ];
@@ -217,6 +239,34 @@ class WhatsAppSettingsService
             'phone_number_id' => $settings['phone_number_id'],
             'access_token' => $settings['access_token'],
             'timeout' => $settings['timeout'] ?? 30,
+        ];
+    }
+
+    /**
+     * Auto-reply specific settings (Evolution support instance + humanization).
+     */
+    public function getAutoReplySettings(): array
+    {
+        $settings = $this->getSettings();
+
+        return [
+            'auto_reply' => $settings['auto_reply'],
+            'auto_reply_use_ai' => $settings['auto_reply_use_ai'],
+            'auto_reply_message' => $settings['auto_reply_message'],
+            'auto_reply_ai_model_id' => $settings['auto_reply_ai_model_id'],
+            'auto_reply_ai_system_prompt' => $settings['auto_reply_ai_system_prompt'],
+            'auto_reply_evolution_instance' => $settings['auto_reply_evolution_instance'],
+            'auto_reply_faq_context' => $settings['auto_reply_faq_context'],
+            'auto_reply_initial_delay_min' => $settings['auto_reply_initial_delay_min'],
+            'auto_reply_initial_delay_max' => $settings['auto_reply_initial_delay_max'],
+            'auto_reply_typing_duration' => $settings['auto_reply_typing_duration'],
+            'auto_reply_max_chunks' => $settings['auto_reply_max_chunks'],
+            'auto_reply_chunk_max_chars' => $settings['auto_reply_chunk_max_chars'],
+            'auto_reply_contact_cooldown' => $settings['auto_reply_contact_cooldown'],
+            'auto_reply_debounce_seconds' => $settings['auto_reply_debounce_seconds'],
+            'auto_reply_test_phone' => $settings['auto_reply_test_phone'],
+            'whatsapp_provider' => $settings['whatsapp_provider'],
+            'whatsapp_enabled' => $settings['whatsapp_enabled'],
         ];
     }
 

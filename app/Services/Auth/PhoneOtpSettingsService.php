@@ -50,6 +50,10 @@ class PhoneOtpSettingsService
         $merged['rate_limit_max_per_phone'] = (int) ($merged['rate_limit_max_per_phone'] ?? config('phone_otp.rate_limit.max_per_phone', 3));
         $merged['rate_limit_window_minutes'] = (int) ($merged['rate_limit_window_minutes'] ?? config('phone_otp.rate_limit.window_minutes', 15));
 
+        $channel = strtolower(trim((string) ($merged['delivery_channel'] ?? 'flaxxa')));
+        $merged['delivery_channel'] = in_array($channel, ['flaxxa', 'evolution'], true) ? $channel : 'flaxxa';
+        $merged['evolution_message_template'] = (string) ($merged['evolution_message_template'] ?? 'رمز التحقق الخاص بك هو: {code}');
+
         return $merged;
     }
 
@@ -153,6 +157,16 @@ class PhoneOtpSettingsService
                 'value' => '1',
                 'type' => 'boolean',
                 'description' => 'تغيير رقم الهاتف عبر OTP',
+            ],
+            'delivery_channel' => [
+                'value' => 'flaxxa',
+                'type' => 'string',
+                'description' => 'قناة إرسال OTP: flaxxa أو evolution',
+            ],
+            'evolution_message_template' => [
+                'value' => 'رمز التحقق الخاص بك هو: {code}',
+                'type' => 'string',
+                'description' => 'قالب رسالة OTP عند استخدام Evolution',
             ],
         ];
     }
