@@ -398,10 +398,7 @@ class CourseController extends Controller
             }
 
             if ($nextModule) {
-                return redirect()->route('student.learning.module', [
-                    'course' => $course->id,
-                    'module' => $nextModule->id
-                ]);
+                return redirect()->route('student.learn.module', $nextModule->id);
             }
 
             // All modules completed
