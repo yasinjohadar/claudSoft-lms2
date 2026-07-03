@@ -82,3 +82,10 @@ test('instances match ignores case and spaces', function () {
     expect($svc->instancesMatch('WhatsApp ClaudSoft', 'whatsapp claudsoft'))->toBeTrue();
     expect($svc->instancesMatch('yurtuyrt', 'whatsapp ClaudSoft'))->toBeFalse();
 });
+
+test('evolution service parses bulk instance names', function () {
+    $svc = app(App\Services\WhatsApp\Evolution\EvolutionService::class);
+    $names = $svc->parseInstanceNamesList("whatsapp A\nwhatsapp B\n\nwhatsapp C  ");
+
+    expect($names)->toBe(['whatsapp A', 'whatsapp B', 'whatsapp C']);
+});

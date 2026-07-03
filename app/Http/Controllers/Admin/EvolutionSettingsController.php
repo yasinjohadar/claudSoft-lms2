@@ -79,15 +79,21 @@ class EvolutionSettingsController extends Controller
             'whatsapp_provider' => $request->input('whatsapp_provider', 'evolution'),
         ]);
 
+        $this->evolutionService->registerManualInstance([
+            'instance_name' => $validated['evolution_instance_name'],
+            'verify' => false,
+            'set_as_default' => true,
+        ]);
+
         try {
-            $this->evolutionService->syncInstances(true);
+            $this->evolutionService->syncInstances(false);
         } catch (\Throwable) {
             // non-blocking after save
         }
 
         return redirect()
             ->route('admin.evolution-api.settings.index')
-            ->with('success', 'تم حفظ إعدادات Evolution API وتفعيلها كمزود WhatsApp الافتراضي للمنصة.');
+            ->with('success', 'تم حفظ إعدادات Evolution API. لم يُحذف أي Instance يدوي من القائمة.');
     }
 
     public function testConnection(Request $request): JsonResponse

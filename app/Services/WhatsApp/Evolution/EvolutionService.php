@@ -30,6 +30,105 @@ class EvolutionService
         ]);
     }
 
+    public function clientFor(?EvolutionInstance $instance = null, ?string $instanceName = null): EvolutionApiClient
+    {
+        if ($instanceName !== null && $instance === null) {
+            $instance = EvolutionInstance::where('instance_name', $instanceName)->first();
+        }
+
+        if ($instance instanceof EvolutionInstance && $instance->hasCustomCredentials()) {
+            return EvolutionApiClient::fromConfig($instance->resolveApiConfig());
+        }
+
+        return $this->client();
+    }
+
+    public function refreshInstanceFromApi(EvolutionInstance $instance): EvolutionInstance
+    {
+        $client = $this->clientFor($instance);
+        $state = $client->getConnectionState($instance->instance_name);
+        $connection = strtolower((string) ($state['instance']['state'] ?? $state['state'] ?? 'close'));
+
+        $instance->update([
+            'connection_status' => $connection,
+            'connected_at' => $connection === 'open' ? now() : $instance->connected_at,
+            'disconnected_at' => $connection === 'open' ? null : now(),
+        ]);
+
+        return $instance->fresh();
+    }
+
+    /**
+     * @return string[]
+     */
+    public function parseInstanceNamesList(string $raw): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $raw) ?: [];
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($line) => trim($line),
+            $lines
+        ))));
+    }
+
+    public function registerManualInstance(array $data): EvolutionInstance
+    {
+        $name = trim((string) ($data['instance_name'] ?? ''));
+        if ($name === '') {
+            throw new \InvalidArgumentException('اسم Instance مطلوب.');
+        }
+
+        $instance = EvolutionInstance::firstOrNew(['instance_name' => $name]);
+        $instance->fill([
+            'label' => trim((string) ($data['label'] ?? '')) ?: null,
+            'is_manual' => true,
+            'connection_status' => $instance->connection_status ?: 'pending',
+        ]);
+
+        $baseUrl = trim((string) ($data['evolution_base_url'] ?? ''));
+        if ($baseUrl !== '') {
+            $instance->evolution_base_url = rtrim($baseUrl, '/');
+        }
+
+        $apiKey = trim((string) ($data['evolution_api_key'] ?? ''));
+        if ($apiKey !== '') {
+            $instance->evolution_api_key = $apiKey;
+        }
+
+        $instance->save();
+
+        if (! empty($data['verify']) && ($instance->hasCustomCredentials() || $this->hasGlobalCredentials())) {
+            try {
+                $this->refreshInstanceFromApi($instance);
+            } catch (\Throwable) {
+                // keep manual row even if verify fails
+            }
+        }
+
+        if (! empty($data['set_as_default'])) {
+            $this->assignDefaultInstance($instance->instance_name);
+        }
+
+        return $instance->fresh();
+    }
+
+    public function assignDefaultInstance(string $instanceName): void
+    {
+        $this->settingsService->updateSettings([
+            'evolution_instance_name' => $instanceName,
+        ]);
+
+        EvolutionInstance::query()->update(['is_default' => false]);
+        EvolutionInstance::where('instance_name', $instanceName)->update(['is_default' => true]);
+    }
+
+    public function hasGlobalCredentials(): bool
+    {
+        $settings = $this->getSettings();
+
+        return ($settings['evolution_base_url'] ?? '') !== '' && ($settings['evolution_api_key'] ?? '') !== '';
+    }
+
     public function provider(?array $override = null): EvolutionApiProvider
     {
         $settings = $override ?? $this->getSettings();
@@ -91,9 +190,10 @@ class EvolutionService
         }
 
         if ($remoteNames !== []) {
-            EvolutionInstance::whereNotIn('instance_name', $remoteNames)->delete();
-        } elseif ($list === []) {
-            EvolutionInstance::query()->delete();
+            EvolutionInstance::query()
+                ->where('is_manual', false)
+                ->whereNotIn('instance_name', $remoteNames)
+                ->delete();
         }
 
         return $synced;

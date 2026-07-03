@@ -22,23 +22,106 @@ class EvolutionInstanceController extends Controller
 
     public function index(): View
     {
-        $instances = [];
-        $error = null;
-
-        try {
-            $this->evolutionService->syncInstances(true);
-            $instances = EvolutionInstance::orderByDesc('is_default')->orderBy('instance_name')->get();
-        } catch (Throwable $e) {
-            $error = EvolutionApiException::resolveUserMessage($e);
-            $instances = EvolutionInstance::orderByDesc('is_default')->get();
-        }
+        $settings = $this->settingsService->getSettings();
+        $instances = EvolutionInstance::orderByDesc('is_default')
+            ->orderByDesc('is_manual')
+            ->orderBy('instance_name')
+            ->get();
 
         return view('admin.pages.evolution-api.instances.index', [
             'instances' => $instances,
-            'error' => $error,
+            'settings' => $settings,
+            'hasApiKey' => ($settings['evolution_api_key'] ?? '') !== '',
+            'error' => null,
             'rotationPoolCount' => EvolutionInstance::rotationPoolCount(),
-            'defaultInstanceName' => $this->settingsService->getSettings()['evolution_instance_name'] ?? '',
+            'defaultInstanceName' => $settings['evolution_instance_name'] ?? '',
         ]);
+    }
+
+    public function saveConnection(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'evolution_base_url' => ['required', 'string', 'max:500'],
+            'evolution_api_key' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $existing = $this->settingsService->getSettings();
+        if (empty($validated['evolution_api_key'])) {
+            $validated['evolution_api_key'] = $existing['evolution_api_key'] ?? '';
+        }
+
+        $this->settingsService->updateSettings([
+            'evolution_base_url' => rtrim(trim($validated['evolution_base_url']), '/'),
+            'evolution_api_key' => $validated['evolution_api_key'],
+            'whatsapp_enabled' => '1',
+            'whatsapp_provider' => 'evolution',
+        ]);
+
+        return back()->with('success', 'تم حفظ بيانات الاتصال العامة (Base URL + API Key). لم يُحذف أي Instance.');
+    }
+
+    public function registerManual(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'instance_name' => ['required', 'string', 'max:150'],
+            'label' => ['nullable', 'string', 'max:150'],
+            'evolution_base_url' => ['nullable', 'string', 'max:500'],
+            'evolution_api_key' => ['nullable', 'string', 'max:500'],
+            'verify_connection' => ['nullable', 'boolean'],
+            'set_as_default' => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            $instance = $this->evolutionService->registerManualInstance([
+                'instance_name' => $validated['instance_name'],
+                'label' => $validated['label'] ?? null,
+                'evolution_base_url' => $validated['evolution_base_url'] ?? null,
+                'evolution_api_key' => $validated['evolution_api_key'] ?? null,
+                'verify' => $request->boolean('verify_connection'),
+                'set_as_default' => $request->boolean('set_as_default'),
+            ]);
+
+            $message = 'تمت إضافة Instance «'.$instance->instance_name.'» يدوياً إلى القائمة.';
+            if ($request->boolean('set_as_default')) {
+                $message .= ' وتم تعيينه كافتراضي.';
+            }
+
+            return back()->with('success', $message);
+        } catch (Throwable $e) {
+            return back()->with('error', EvolutionApiException::resolveUserMessage($e));
+        }
+    }
+
+    public function registerBulk(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'instance_names' => ['required', 'string', 'max:5000'],
+            'set_as_default_first' => ['nullable', 'boolean'],
+        ]);
+
+        $names = $this->evolutionService->parseInstanceNamesList($validated['instance_names']);
+        if ($names === []) {
+            return back()->with('error', 'أدخل اسم instance واحداً على الأقل (سطر لكل اسم).');
+        }
+
+        $added = 0;
+        $first = true;
+
+        foreach ($names as $name) {
+            try {
+                $this->evolutionService->registerManualInstance([
+                    'instance_name' => $name,
+                    'verify' => false,
+                    'set_as_default' => $request->boolean('set_as_default_first') && $first,
+                ]);
+                $added++;
+                $first = false;
+            } catch (Throwable) {
+                continue;
+            }
+        }
+
+        return back()->with('success', 'تمت إضافة '.$added.' instance يدوياً. يمكنك تحديث حالتها لاحقاً أو مسح QR لكل واحد.');
     }
 
     public function connect(string $instanceName): View
@@ -52,7 +135,7 @@ class EvolutionInstanceController extends Controller
     public function fetchQr(string $instanceName): JsonResponse
     {
         try {
-            $response = $this->evolutionService->client()->connectInstance($instanceName);
+            $response = $this->evolutionService->clientFor(null, $instanceName)->connectInstance($instanceName);
             $qr = $response['base64'] ?? $response['qrcode']['base64'] ?? $response['code'] ?? null;
 
             if ($qr) {
@@ -78,17 +161,16 @@ class EvolutionInstanceController extends Controller
     public function status(string $instanceName): JsonResponse
     {
         try {
-            $state = $this->evolutionService->client()->getConnectionState($instanceName);
-            $connection = strtolower((string) ($state['instance']['state'] ?? $state['state'] ?? 'close'));
+            $instance = EvolutionInstance::where('instance_name', $instanceName)->firstOrFail();
+            $this->evolutionService->refreshInstanceFromApi($instance);
+            $this->evolutionService->syncInstances(false);
 
-            EvolutionInstance::where('instance_name', $instanceName)->update([
-                'connection_status' => $connection,
-                'connected_at' => $connection === 'open' ? now() : null,
+            $fresh = $instance->fresh();
+
+            return response()->json([
+                'success' => true,
+                'state' => $fresh->connection_status,
             ]);
-
-            $this->evolutionService->syncInstances();
-
-            return response()->json(['success' => true, 'state' => $connection, 'raw' => $state]);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -107,15 +189,17 @@ class EvolutionInstanceController extends Controller
         $instanceName = trim($validated['instanceName']);
 
         try {
-            $this->evolutionService->client()->createInstance([
+            $this->evolutionService->clientFor(null, $instanceName)->createInstance([
                 'instanceName' => $instanceName,
                 'integration' => 'WHATSAPP-BAILEYS',
                 'qrcode' => true,
             ]);
 
-            if ($request->boolean('set_as_default')) {
-                $this->assignAsDefaultInstance($instanceName);
-            }
+            $this->evolutionService->registerManualInstance([
+                'instance_name' => $instanceName,
+                'verify' => false,
+                'set_as_default' => $request->boolean('set_as_default'),
+            ]);
 
             $this->evolutionService->syncInstances($request->boolean('set_as_default'));
 
@@ -134,35 +218,12 @@ class EvolutionInstanceController extends Controller
 
     public function link(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'instanceName' => ['required', 'string', 'max:150'],
-            'set_as_default' => ['nullable', 'boolean'],
+        $request->merge([
+            'instance_name' => trim((string) $request->input('instanceName', $request->input('instance_name', ''))),
+            'verify_connection' => true,
         ]);
 
-        $instanceName = trim($validated['instanceName']);
-
-        try {
-            $this->evolutionService->client()->getConnectionState($instanceName);
-
-            if ($request->boolean('set_as_default')) {
-                $this->assignAsDefaultInstance($instanceName);
-            }
-
-            $this->evolutionService->syncInstances($request->boolean('set_as_default'));
-
-            if (! EvolutionInstance::where('instance_name', $instanceName)->exists()) {
-                return back()->with('error', 'لم يُعثر على Instance «'.$instanceName.'» بعد المزامنة. تأكد من الاسم كما في Evolution Manager.');
-            }
-
-            $message = 'تم ربط Instance «'.$instanceName.'» بنجاح.';
-            if ($request->boolean('set_as_default')) {
-                $message .= ' وتم تعيينه كافتراضي — يمكنك حفظ الإعدادات من صفحة الإعدادات.';
-            }
-
-            return back()->with('success', $message);
-        } catch (Throwable $e) {
-            return $this->evolutionErrorRedirect($e);
-        }
+        return $this->registerManual($request);
     }
 
     public function setDefault(string $instanceName): RedirectResponse
@@ -170,8 +231,7 @@ class EvolutionInstanceController extends Controller
         $instance = EvolutionInstance::where('instance_name', $instanceName)->firstOrFail();
 
         try {
-            $this->assignAsDefaultInstance($instance->instance_name);
-            $this->evolutionService->syncInstances(true);
+            $this->evolutionService->assignDefaultInstance($instance->instance_name);
 
             return back()->with('success', 'تم تعيين «'.$instance->instance_name.'» كـ Instance افتراضي.');
         } catch (Throwable $e) {
@@ -182,7 +242,7 @@ class EvolutionInstanceController extends Controller
     public function restart(string $instanceName): RedirectResponse
     {
         try {
-            $this->evolutionService->client()->restartInstance($instanceName);
+            $this->evolutionService->clientFor(null, $instanceName)->restartInstance($instanceName);
 
             return back()->with('success', 'تم إعادة تشغيل Instance.');
         } catch (Throwable $e) {
@@ -193,8 +253,8 @@ class EvolutionInstanceController extends Controller
     public function logout(string $instanceName): RedirectResponse
     {
         try {
-            $this->evolutionService->client()->logoutInstance($instanceName);
-            $this->evolutionService->syncInstances();
+            $this->evolutionService->clientFor(null, $instanceName)->logoutInstance($instanceName);
+            $this->evolutionService->syncInstances(false);
 
             return back()->with('success', 'تم تسجيل الخروج من Instance.');
         } catch (Throwable $e) {
@@ -208,14 +268,16 @@ class EvolutionInstanceController extends Controller
         $remoteDeleted = false;
         $remoteAlreadyGone = false;
 
-        try {
-            $this->evolutionService->client()->deleteInstance($instanceName);
-            $remoteDeleted = true;
-        } catch (Throwable $e) {
-            if (EvolutionApiException::isNotFound($e)) {
-                $remoteAlreadyGone = true;
-            } else {
-                return $this->evolutionErrorRedirect($e);
+        if (! $instance?->is_manual) {
+            try {
+                $this->evolutionService->clientFor($instance, $instanceName)->deleteInstance($instanceName);
+                $remoteDeleted = true;
+            } catch (Throwable $e) {
+                if (EvolutionApiException::isNotFound($e)) {
+                    $remoteAlreadyGone = true;
+                } elseif ($instance) {
+                    return $this->evolutionErrorRedirect($e);
+                }
             }
         }
 
@@ -225,12 +287,13 @@ class EvolutionInstanceController extends Controller
         EvolutionInstance::where('instance_name', $instanceName)->delete();
 
         if ($wasDefault || $settingsName === $instanceName) {
-            $replacement = EvolutionInstance::orderByDesc('connection_status')
+            $replacement = EvolutionInstance::orderByDesc('is_default')
+                ->orderByDesc('connection_status')
                 ->orderBy('instance_name')
                 ->first();
 
             if ($replacement) {
-                $this->assignAsDefaultInstance($replacement->instance_name);
+                $this->evolutionService->assignDefaultInstance($replacement->instance_name);
             } elseif ($settingsName === $instanceName) {
                 $this->settingsService->updateSettings(['evolution_instance_name' => '']);
             }
@@ -248,9 +311,9 @@ class EvolutionInstanceController extends Controller
     public function sync(): RedirectResponse
     {
         try {
-            $synced = $this->evolutionService->syncInstances(true);
+            $synced = $this->evolutionService->syncInstances(false);
 
-            return back()->with('success', 'تمت مزامنة ' . count($synced) . ' Instance من Evolution API.');
+            return back()->with('success', 'تمت مزامنة '.count($synced).' Instance من Evolution API. السجلات اليدوية لم تُحذف.');
         } catch (Throwable $e) {
             return $this->evolutionErrorRedirect($e);
         }
@@ -264,16 +327,6 @@ class EvolutionInstanceController extends Controller
         $status = $instance->rotation_enabled ? 'مفعّل' : 'معطّل';
 
         return back()->with('success', 'تم '.$status.' مشاركة «'.$instance->instance_name.'» في التبديل التلقائي.');
-    }
-
-    private function assignAsDefaultInstance(string $instanceName): void
-    {
-        $this->settingsService->updateSettings([
-            'evolution_instance_name' => $instanceName,
-        ]);
-
-        EvolutionInstance::query()->update(['is_default' => false]);
-        EvolutionInstance::where('instance_name', $instanceName)->update(['is_default' => true]);
     }
 
     private function evolutionErrorRedirect(Throwable $e): RedirectResponse
