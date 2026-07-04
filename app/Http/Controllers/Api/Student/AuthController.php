@@ -2,13 +2,21 @@
 
 namespace App\Http\Controllers\Api\Student;
 
+use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\Auth\PasswordResetDeliveryService;
+use App\Services\Auth\PhoneOtpService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -95,15 +103,23 @@ class AuthController extends Controller
     /**
      * خيارات استعادة كلمة المرور (قنوات متاحة ورموز الدول).
      */
-    public function forgotPasswordOptions(PasswordResetDeliveryService $resetDelivery): JsonResponse
-    {
+    public function forgotPasswordOptions(
+        PasswordResetDeliveryService $resetDelivery,
+        PhoneOtpService $otpService
+    ): JsonResponse {
         $whatsappAvailable = $resetDelivery->isWhatsAppAvailable();
+        $whatsappOtpAvailable = $otpService->isAvailableFor(OtpPurpose::ResetPassword);
+
+        $defaultChannel = $whatsappAvailable
+            ? 'whatsapp'
+            : ($whatsappOtpAvailable ? 'whatsapp_otp' : 'email');
 
         return response()->json([
             'success' => true,
             'data' => array_merge($this->countryCodesPayload(), [
                 'whatsapp_available' => $whatsappAvailable,
-                'default_channel' => 'whatsapp',
+                'whatsapp_otp_available' => $whatsappOtpAvailable,
+                'default_channel' => $defaultChannel,
             ]),
         ]);
     }
@@ -133,21 +149,25 @@ class AuthController extends Controller
     /**
      * طلب رابط استعادة كلمة المرور عبر البريد أو الواتساب (Evolution / WhatsApp Web).
      */
-    public function forgotPassword(Request $request, PasswordResetDeliveryService $resetDelivery): JsonResponse
-    {
+    public function forgotPassword(
+        Request $request,
+        PasswordResetDeliveryService $resetDelivery,
+        PhoneOtpService $otpService
+    ): JsonResponse {
         $channel = (string) ($request->input('channel') ?: 'email');
         $countryCodes = array_keys(config('country_codes.list', []));
+        $phoneChannels = ['whatsapp', 'whatsapp_otp'];
 
         $request->validate([
-            'channel' => ['nullable', Rule::in(['email', 'whatsapp'])],
+            'channel' => ['nullable', Rule::in(['email', 'whatsapp', 'whatsapp_otp'])],
             'email' => [Rule::requiredIf($channel === 'email'), 'nullable', 'email'],
             'country_code' => [
-                Rule::requiredIf($channel === 'whatsapp'),
+                Rule::requiredIf(in_array($channel, $phoneChannels, true)),
                 'nullable',
                 Rule::in($countryCodes),
             ],
             'phone' => [
-                Rule::requiredIf($channel === 'whatsapp'),
+                Rule::requiredIf(in_array($channel, $phoneChannels, true)),
                 'nullable',
                 'string',
                 'regex:/^[0-9]{6,14}$/',
@@ -164,6 +184,16 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'phone' => ['إرسال رابط الاستعادة عبر الواتساب غير متاح حالياً.'],
             ]);
+        }
+
+        if ($channel === 'whatsapp_otp' && ! $otpService->isAvailableFor(OtpPurpose::ResetPassword)) {
+            throw ValidationException::withMessages([
+                'phone' => ['استعادة كلمة المرور عبر رمز OTP غير متاحة حالياً.'],
+            ]);
+        }
+
+        if ($channel === 'whatsapp_otp') {
+            return $this->sendForgotPasswordOtp($request, $resetDelivery, $otpService);
         }
 
         try {
@@ -231,11 +261,173 @@ class AuthController extends Controller
     }
 
     /**
+     * التحقق من رمز OTP لاستعادة كلمة المرور (بعد POST forgot-password بقناة whatsapp_otp).
+     */
+    public function verifyForgotPasswordOtp(Request $request, PhoneOtpService $otpService): JsonResponse
+    {
+        $request->validate([
+            'phone' => ['required', 'string'],
+            'code' => ['required', 'string', 'min:4', 'max:8'],
+        ], [
+            'phone.required' => 'رقم الجوال مطلوب.',
+            'code.required' => 'رمز التحقق مطلوب.',
+        ]);
+
+        try {
+            $phone = $otpService->normalizePhone((string) $request->input('phone'));
+            $otpService->verify($phone, OtpPurpose::ResetPassword, (string) $request->input('code'));
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'code' => [$e->getMessage()],
+            ]);
+        }
+
+        $userId = Cache::get($this->passwordResetOtpCacheKey($phone));
+        if (! $userId) {
+            throw ValidationException::withMessages([
+                'code' => ['انتهت الجلسة. أعد طلب الرمز.'],
+            ]);
+        }
+
+        $user = User::query()->find($userId);
+        if (! $user) {
+            Cache::forget($this->passwordResetOtpCacheKey($phone));
+
+            throw ValidationException::withMessages([
+                'code' => ['تعذّر إكمال العملية.'],
+            ]);
+        }
+
+        $token = Password::broker()->createToken($user);
+        Cache::forget($this->passwordResetOtpCacheKey($phone));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التحقق بنجاح. يمكنك الآن تعيين كلمة مرور جديدة.',
+            'data' => [
+                'token' => $token,
+                'email' => $user->getEmailForPasswordReset(),
+            ],
+        ]);
+    }
+
+    /**
+     * إعادة تعيين كلمة المرور بعد التحقق من OTP أو الرابط.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => ['required'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'token.required' => 'رمز إعادة التعيين مطلوب.',
+            'email.required' => 'البريد الإلكتروني مطلوب.',
+            'password.required' => 'كلمة المرور الجديدة مطلوبة.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user) use ($request) {
+                $user->forceFill([
+                    'password' => Hash::make($request->password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        $messages = [
+            Password::PASSWORD_RESET => 'تم إعادة تعيين كلمة المرور بنجاح.',
+            Password::INVALID_USER => 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
+            Password::INVALID_TOKEN => 'رمز إعادة تعيين كلمة المرور غير صحيح أو منتهي الصلاحية.',
+            Password::RESET_THROTTLED => 'يرجى الانتظار قبل إعادة المحاولة.',
+        ];
+
+        $message = $messages[$status] ?? trans($status, [], 'ar');
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [$message],
+        ]);
+    }
+
+    private function sendForgotPasswordOtp(
+        Request $request,
+        PasswordResetDeliveryService $resetDelivery,
+        PhoneOtpService $otpService
+    ): JsonResponse {
+        $fullPhone = $otpService->formatPhoneDisplay(
+            (string) $request->input('country_code'),
+            (string) $request->input('phone')
+        );
+
+        $user = $resetDelivery->findUserByPhone($fullPhone);
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'phone' => ['لا يوجد حساب مرتبط بهذا الرقم.'],
+            ]);
+        }
+
+        try {
+            $result = $otpService->send(
+                $fullPhone,
+                OtpPurpose::ResetPassword,
+                $user,
+                $request->ip()
+            );
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'phone' => [$e->getMessage()],
+            ]);
+        }
+
+        $normalizedPhone = $otpService->normalizePhone($fullPhone);
+        $ttlMinutes = max(1, (int) config('phone_otp.recent_verification_minutes', 15));
+
+        Cache::put(
+            $this->passwordResetOtpCacheKey($normalizedPhone),
+            $user->id,
+            now()->addMinutes($ttlMinutes)
+        );
+
+        $contact = $resetDelivery->formatPhoneForDisplay(
+            (string) $request->input('country_code'),
+            (string) $request->input('phone')
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق إلى واتساب.',
+            'data' => [
+                'channel' => 'whatsapp_otp',
+                'contact' => $contact,
+                'phone' => $normalizedPhone,
+                'cooldown_seconds' => $result['cooldown_seconds'],
+                'expires_at' => $result['expires_at'],
+            ],
+        ]);
+    }
+
+    private function passwordResetOtpCacheKey(string $normalizedPhone): string
+    {
+        return 'api_password_reset_otp_user:'.$normalizedPhone;
+    }
+
+    /**
      * المستخدم الحالي (للتحقق من التوكن).
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user()->loadMissing('nationality');
 
         return response()->json([
             'success' => true,
@@ -245,6 +437,21 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'name_ar' => $user->name_ar ?? $user->name,
                     'email' => $user->email,
+                    'phone' => $user->phone,
+                    'country_code' => $user->country_code,
+                    'student_id' => $user->student_id,
+                    'national_id' => $user->national_id,
+                    'nationality_id' => $user->nationality_id,
+                    'nationality_name' => $user->nationality?->name,
+                    'date_of_birth' => $user->date_of_birth
+                        ? \Carbon\Carbon::parse($user->date_of_birth)->format('Y-m-d')
+                        : null,
+                    'gender' => $user->gender,
+                    'address' => $user->address,
+                    'is_profile_public' => (bool) $user->is_profile_public,
+                    'last_login_at' => $user->last_login_at
+                        ? \Carbon\Carbon::parse($user->last_login_at)->toIso8601String()
+                        : null,
                     'avatar' => $user->avatar ? url($user->avatar) : null,
                 ],
             ],

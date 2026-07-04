@@ -53,8 +53,17 @@ Route::prefix('student')->name('api.student.')->group(function () {
     Route::post('login', [StudentAuthController::class, 'login'])->name('login');
     Route::get('forgot-password/options', [StudentAuthController::class, 'forgotPasswordOptions'])->name('forgot-password.options');
     Route::post('forgot-password', [StudentAuthController::class, 'forgotPassword'])->name('forgot-password');
+    Route::post('forgot-password/otp/verify', [StudentAuthController::class, 'verifyForgotPasswordOtp'])->name('forgot-password.otp.verify');
+    Route::post('reset-password', [StudentAuthController::class, 'resetPassword'])->name('reset-password');
     Route::post('logout', [StudentAuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
     Route::get('me', [StudentAuthController::class, 'me'])->middleware('auth:sanctum')->name('me');
+
+    // الملف الشخصي — متاح دائماً للطالب (بدون قيد إكمال الملف) مثل الويب
+    Route::middleware(['auth:sanctum', 'role:student'])->group(function () {
+        Route::get('profile', [StudentProfileController::class, 'show'])->name('profile.show');
+        Route::put('profile', [StudentProfileController::class, 'update'])->name('profile.update');
+        Route::get('nationalities', [StudentProfileController::class, 'nationalities'])->name('nationalities');
+    });
 
     // كتالوج عام: بدون توكن أو مع Bearer اختياري لعرض حالة التسجيل للطالب فقط
     Route::middleware(['optional.sanctum'])->group(function () {
@@ -119,10 +128,6 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('reminders', [StudentStudentNotesApiController::class, 'reminders'])->name('reminders.index');
         Route::get('calendar/events', [StudentStudentNotesApiController::class, 'calendarEvents'])->name('calendar.events');
         Route::get('student-works', [StudentStudentNotesApiController::class, 'works'])->name('student-works.index');
-
-        Route::get('profile', [StudentProfileController::class, 'show'])->name('profile.show');
-        Route::put('profile', [StudentProfileController::class, 'update'])->name('profile.update');
-        Route::get('nationalities', [StudentProfileController::class, 'nationalities'])->name('nationalities');
 
         Route::get('courses', [StudentCourseController::class, 'index'])->name('courses.index');
         Route::get('courses/progress-overview', [StudentCourseProgressApiController::class, 'progressOverview'])->name('courses.progress-overview');

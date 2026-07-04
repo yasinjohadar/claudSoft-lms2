@@ -28,13 +28,19 @@ class ProfileController extends Controller
      */
     public function show(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $user->loadMissing(['stats', 'nationality']);
+        try {
+            $user = $request->user();
+            $user->loadMissing(['stats', 'nationality']);
 
-        $stats = $user->stats;
-        if (!$stats) {
-            $stats = $user->stats()->create(['user_id' => $user->id]);
-        }
+            $stats = null;
+            try {
+                $stats = $user->stats;
+                if (! $stats) {
+                    $stats = $user->stats()->create(['user_id' => $user->id]);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
 
         // اسم المستوى من جدول المستويات (إن وُجد)
         $levelName = null;
@@ -46,51 +52,69 @@ class ProfileController extends Controller
         }
 
         // الشارات المكتسبة مع تاريخ المنح
-        $earnedBadges = $user->userBadges()
-            ->with('badge')
-            ->latest('awarded_at')
-            ->get()
-            ->map(function ($ub) {
-                return [
-                    'id' => $ub->badge_id,
-                    'name' => $ub->badge?->name,
-                    'slug' => $ub->badge?->slug,
-                    'description' => $ub->badge?->description,
-                    'icon' => $ub->badge?->icon,
-                    'rarity' => $ub->badge?->rarity,
-                    'points_value' => $ub->badge?->points_value,
-                    'awarded_at' => $this->formatDateTime($ub->awarded_at),
-                ];
-            });
+        try {
+            $earnedBadges = $user->userBadges()
+                ->with('badge')
+                ->latest('awarded_at')
+                ->get()
+                ->map(function ($ub) {
+                    return [
+                        'id' => $ub->badge_id,
+                        'name' => $ub->badge?->name,
+                        'slug' => $ub->badge?->slug,
+                        'description' => $ub->badge?->description,
+                        'icon' => $ub->badge?->icon,
+                        'rarity' => $ub->badge?->rarity,
+                        'points_value' => $ub->badge?->points_value,
+                        'awarded_at' => $this->formatDateTime($ub->awarded_at),
+                    ];
+                });
+        } catch (\Throwable $e) {
+            report($e);
+            $earnedBadges = collect();
+        }
 
         // الإنجازات: مكتملة + قيد التقدم
-        $userAchievements = $user->userAchievements()
-            ->with('achievement')
-            ->orderByDesc('completed_at')
-            ->get();
+        try {
+            $userAchievements = $user->userAchievements()
+                ->with('achievement')
+                ->orderByDesc('completed_at')
+                ->get();
 
-        $achievementsCompleted = $userAchievements
-            ->where('status', 'completed')
-            ->map(fn ($ua) => $this->formatAchievement($ua))
-            ->values();
-        $achievementsInProgress = $userAchievements
-            ->where('status', '!=', 'completed')
-            ->map(fn ($ua) => $this->formatAchievement($ua))
-            ->values();
+            $achievementsCompleted = $userAchievements
+                ->where('status', 'completed')
+                ->map(fn ($ua) => $this->formatAchievement($ua))
+                ->values();
+            $achievementsInProgress = $userAchievements
+                ->where('status', '!=', 'completed')
+                ->map(fn ($ua) => $this->formatAchievement($ua))
+                ->values();
+        } catch (\Throwable $e) {
+            report($e);
+            $achievementsCompleted = collect();
+            $achievementsInProgress = collect();
+        }
 
         // ملخص التسجيلات في الكورسات (قد يكون null إذا لا توجد تسجيلات)
-        $enrollmentsSummary = CourseEnrollment::query()
-            ->where('student_id', $user->id)
-            ->selectRaw('
-                COUNT(*) as total,
-                SUM(CASE WHEN enrollment_status = ? THEN 1 ELSE 0 END) as active,
-                SUM(CASE WHEN completion_percentage >= 100 THEN 1 ELSE 0 END) as completed
-            ', ['active'])
-            ->first();
+        $enrollmentsTotal = 0;
+        $enrollmentsActive = 0;
+        $enrollmentsCompleted = 0;
+        try {
+            $enrollmentsSummary = CourseEnrollment::query()
+                ->where('student_id', $user->id)
+                ->selectRaw('
+                    COUNT(*) as total,
+                    SUM(CASE WHEN enrollment_status = ? THEN 1 ELSE 0 END) as active,
+                    SUM(CASE WHEN completion_percentage >= 100 THEN 1 ELSE 0 END) as completed
+                ', ['active'])
+                ->first();
 
-        $enrollmentsTotal = (int) (optional($enrollmentsSummary)->total ?? 0);
-        $enrollmentsActive = (int) (optional($enrollmentsSummary)->active ?? 0);
-        $enrollmentsCompleted = (int) (optional($enrollmentsSummary)->completed ?? 0);
+            $enrollmentsTotal = (int) (optional($enrollmentsSummary)->total ?? 0);
+            $enrollmentsActive = (int) (optional($enrollmentsSummary)->active ?? 0);
+            $enrollmentsCompleted = (int) (optional($enrollmentsSummary)->completed ?? 0);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $profile = [
             'user' => [
@@ -113,29 +137,29 @@ class ProfileController extends Controller
                 'last_login_at' => $this->formatDateTime($user->last_login_at),
             ],
             'stats' => [
-                'total_points' => (int) ($stats->total_points ?? 0),
-                'available_points' => (int) ($stats->available_points ?? 0),
-                'total_xp' => (int) ($stats->total_xp ?? 0),
-                'current_level' => (int) ($stats->current_level ?? 1),
+                'total_points' => (int) ($stats?->total_points ?? 0),
+                'available_points' => (int) ($stats?->available_points ?? 0),
+                'total_xp' => (int) ($stats?->total_xp ?? 0),
+                'current_level' => (int) ($stats?->current_level ?? 1),
                 'level_name' => $levelName,
-                'xp_to_next_level' => (int) ($stats->xp_to_next_level ?? 0),
-                'level_progress' => (float) ($stats->level_progress ?? 0),
-                'total_badges' => (int) ($stats->total_badges ?? 0),
-                'total_achievements' => (int) ($stats->total_achievements ?? 0),
-                'current_streak' => (int) ($stats->current_streak ?? 0),
-                'longest_streak' => (int) ($stats->longest_streak ?? 0),
-                'courses_completed' => (int) ($stats->courses_completed ?? 0),
-                'courses_enrolled' => (int) ($stats->courses_enrolled ?? 0),
-                'lessons_completed' => (int) ($stats->lessons_completed ?? 0),
-                'quizzes_completed' => (int) ($stats->quizzes_completed ?? 0),
-                'perfect_scores' => (int) ($stats->perfect_scores ?? 0),
-                'assignments_submitted' => (int) ($stats->assignments_submitted ?? 0),
-                'average_quiz_score' => (float) ($stats->average_quiz_score ?? 0),
-                'average_assignment_score' => (float) ($stats->average_assignment_score ?? 0),
-                'global_rank' => $stats->global_rank ? (int) $stats->global_rank : null,
-                'division' => $stats->division ?? null,
-                'total_study_time' => (int) ($stats->total_study_time ?? 0),
-                'last_activity_at' => $this->formatDateTime($stats->last_activity_at),
+                'xp_to_next_level' => (int) ($stats?->xp_to_next_level ?? 0),
+                'level_progress' => (float) ($stats?->level_progress ?? 0),
+                'total_badges' => (int) ($stats?->total_badges ?? 0),
+                'total_achievements' => (int) ($stats?->total_achievements ?? 0),
+                'current_streak' => (int) ($stats?->current_streak ?? 0),
+                'longest_streak' => (int) ($stats?->longest_streak ?? 0),
+                'courses_completed' => (int) ($stats?->courses_completed ?? 0),
+                'courses_enrolled' => (int) ($stats?->courses_enrolled ?? 0),
+                'lessons_completed' => (int) ($stats?->lessons_completed ?? 0),
+                'quizzes_completed' => (int) ($stats?->quizzes_completed ?? 0),
+                'perfect_scores' => (int) ($stats?->perfect_scores ?? 0),
+                'assignments_submitted' => (int) ($stats?->assignments_submitted ?? 0),
+                'average_quiz_score' => (float) ($stats?->average_quiz_score ?? 0),
+                'average_assignment_score' => (float) ($stats?->average_assignment_score ?? 0),
+                'global_rank' => $stats?->global_rank ? (int) $stats->global_rank : null,
+                'division' => $stats?->division ?? null,
+                'total_study_time' => (int) ($stats?->total_study_time ?? 0),
+                'last_activity_at' => $this->formatDateTime($stats?->last_activity_at),
             ],
             'enrollments_summary' => [
                 'total' => $enrollmentsTotal,
@@ -151,6 +175,14 @@ class ProfileController extends Controller
             'success' => true,
             'data' => $profile,
         ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذّر تحميل الملف الشخصي.',
+            ], 500);
+        }
     }
 
     /**
