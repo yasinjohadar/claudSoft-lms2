@@ -52,6 +52,29 @@
 
 <script>
     (function () {
+        function applyStudentPortalRtl() {
+            var html = document.documentElement;
+            var rtlStylesheet = document.getElementById('style-rtl');
+            var style = document.getElementById('style');
+
+            if (rtlStylesheet && style) {
+                style.setAttribute('href', rtlStylesheet.getAttribute('href'));
+            }
+
+            html.setAttribute('dir', 'rtl');
+            localStorage.setItem('valexrtl', 'true');
+            localStorage.removeItem('valexltr');
+
+            var rtlInput = document.getElementById('switcher-rtl');
+            var ltrInput = document.getElementById('switcher-ltr');
+            if (rtlInput) {
+                rtlInput.checked = true;
+            }
+            if (ltrInput) {
+                ltrInput.checked = false;
+            }
+        }
+
         function isMiniLayout() {
             var closed = document.getElementById('switcher-closed-menu');
             if (closed && closed.checked) {
@@ -62,6 +85,12 @@
 
         function syncSidebarLayoutToggles() {
             var mini = isMiniLayout();
+            document.querySelectorAll('.js-sidebar-layout-toggle').forEach(function (root) {
+                var track = root.querySelector('.student-sidebar-layout-toggle__track');
+                if (track) {
+                    track.setAttribute('data-active', mini ? 'mini' : 'full');
+                }
+            });
             document.querySelectorAll('.js-sidebar-layout-toggle [data-layout]').forEach(function (btn) {
                 var active = (btn.getAttribute('data-layout') === 'mini') === mini;
                 btn.classList.toggle('is-active', active);
@@ -95,6 +124,18 @@
 
         syncSidebarLayoutToggles();
         window.addEventListener('load', syncSidebarLayoutToggles);
+
+        var resetAll = document.getElementById('reset-all');
+        if (resetAll) {
+            resetAll.addEventListener('click', function () {
+                applyStudentPortalRtl();
+                syncSidebarLayoutToggles();
+            });
+        }
+
+        if (!localStorage.getItem('valexrtl') && !localStorage.getItem('valexltr')) {
+            applyStudentPortalRtl();
+        }
     })();
 </script>
 

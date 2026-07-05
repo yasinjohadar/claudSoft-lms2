@@ -24,8 +24,14 @@
                     <!-- Start::header-element -->
                     <div class="header-element">
                         <!-- Start::header-link -->
-                        <a aria-label="Hide Sidebar" class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
-                            <i class="header-icon fe fe-align-left"></i>
+                        <a aria-label="إظهار/إخفاء القائمة الجانبية"
+                           class="sidemenu-toggle header-link student-header-sidebar-toggle"
+                           data-bs-toggle="sidebar"
+                           href="javascript:void(0);">
+                            <span class="student-header-sidebar-toggle__icon" aria-hidden="true">
+                                <i class="ri-layout-right-2-line student-header-sidebar-toggle__when-closed"></i>
+                                <i class="ri-layout-left-2-line student-header-sidebar-toggle__when-open"></i>
+                            </span>
                         </a>
                         <div class="main-header-center d-none d-lg-block">
                             <input class="form-control" placeholder="إكتب للبحث..." type="search"> <button class="btn"><i class="fa fa-search d-none d-md-block"></i></button>
