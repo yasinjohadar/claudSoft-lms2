@@ -116,6 +116,7 @@ class EvolutionInstance extends Model
     {
         $name = (string) ($instance['name'] ?? '');
         $status = strtolower((string) ($instance['connectionStatus'] ?? 'close'));
+        $existing = static::where('instance_name', $name)->first();
 
         $model = static::updateOrCreate(
             ['instance_name' => $name],
@@ -126,7 +127,7 @@ class EvolutionInstance extends Model
                 'profile_name' => $instance['profileName'] ?? null,
                 'phone_number' => $instance['number'] ?? null,
                 'profile_pic_url' => $instance['profilePicUrl'] ?? null,
-                'is_manual' => false,
+                'is_manual' => $existing?->is_manual ?? false,
                 'metadata' => [
                     'integration' => $instance['integration'] ?? null,
                     'counts' => $instance['_count'] ?? null,

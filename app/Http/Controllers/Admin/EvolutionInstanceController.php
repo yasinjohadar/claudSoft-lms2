@@ -327,9 +327,21 @@ class EvolutionInstanceController extends Controller
     public function sync(): RedirectResponse
     {
         try {
-            $synced = $this->evolutionService->syncInstances(false);
+            $refreshed = $this->evolutionService->syncAllRegisteredInstances();
+            $discovered = $this->evolutionService->syncInstances(false);
+            $poolCount = EvolutionInstance::rotationPoolCount();
 
-            return back()->with('success', 'تمت مزامنة '.count($synced).' Instance من Evolution API. السجلات اليدوية لم تُحذف.');
+            $message = 'تمت مزامنة '.count($refreshed).' instance مسجّل';
+            if (count($discovered) > 0) {
+                $message .= ' واكتشاف '.count($discovered).' من Evolution API';
+            }
+            $message .= '. جلسات التبديل النشطة: '.$poolCount.'.';
+
+            if ($poolCount < 2) {
+                $message .= ' لإتاحة التبديل بين رقمين، اربط instance إضافياً عبر QR حتى تصبح حالته open.';
+            }
+
+            return back()->with($poolCount >= 2 ? 'success' : 'warning', $message);
         } catch (Throwable $e) {
             return $this->evolutionErrorRedirect($e);
         }

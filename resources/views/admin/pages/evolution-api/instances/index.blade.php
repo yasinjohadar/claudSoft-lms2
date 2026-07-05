@@ -190,6 +190,20 @@
                 <i class="ri-shuffle-line me-1"></i> التبديل التلقائي: {{ $rotationPoolCount }} جلسة نشطة.
             </div>
         @endif
+        @if(($connectedCount ?? 0) > ($rotationPoolCount ?? 0))
+            <div class="alert alert-warning border-0 py-2 small mb-3">
+                <i class="ri-alert-line me-1"></i>
+                يوجد {{ $connectedCount - $rotationPoolCount }} جلسة متصلة (open) لكن التبديل غير مفعّل لها — اضغط زر
+                <i class="ri-shuffle-line"></i> في الجدول أو أعد الربط عبر QR.
+            </div>
+        @endif
+        @if($instances->contains(fn ($i) => ! $i->isConnected()))
+            <div class="alert alert-warning border-0 py-2 small mb-3">
+                <i class="ri-qr-code-line me-1"></i>
+                بعض الـ instances غير متصلة (close). اضغط أيقونة QR لإعادة الربط — لن يدخل الرقم في التبديل حتى تصبح الحالة
+                <strong>open</strong>.
+            </div>
+        @endif
 
         <div class="collapse mb-3" id="evo-create-api-collapse">
             <div class="p-3 border rounded bg-light">

@@ -65,9 +65,90 @@ class EvolutionService
             $updates['rotation_enabled'] = true;
         }
 
+        $updates = array_merge($updates, $this->fetchInstanceProfileFromApi($client, $instance->instance_name));
+
         $instance->update($updates);
 
         return $instance->fresh();
+    }
+
+    /**
+     * Refresh every instance registered in the platform (uses per-instance API credentials).
+     *
+     * @return EvolutionInstance[]
+     */
+    public function syncAllRegisteredInstances(): array
+    {
+        $synced = [];
+
+        EvolutionInstance::query()
+            ->orderBy('id')
+            ->limit(100)
+            ->get()
+            ->each(function (EvolutionInstance $instance) use (&$synced) {
+                try {
+                    $synced[] = $this->refreshInstanceFromApi($instance);
+                } catch (\Throwable) {
+                    // keep last known row when this instance's API is unreachable
+                }
+            });
+
+        return $synced;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchInstanceProfileFromApi(EvolutionApiClient $client, string $instanceName): array
+    {
+        $updates = [];
+
+        try {
+            $response = $client->fetchInstances($instanceName);
+            $list = is_array($response) && isset($response[0]) ? $response : ($response['value'] ?? $response);
+            if (! is_array($list)) {
+                return $updates;
+            }
+
+            $row = null;
+            foreach ($list as $item) {
+                if (is_array($item) && (string) ($item['name'] ?? '') === $instanceName) {
+                    $row = $item;
+                    break;
+                }
+            }
+
+            $row ??= is_array($list[0] ?? null) ? $list[0] : null;
+            if (! is_array($row)) {
+                return $updates;
+            }
+
+            if (! empty($row['id'])) {
+                $updates['evolution_uuid'] = $row['id'];
+            }
+            if (! empty($row['ownerJid'])) {
+                $updates['owner_jid'] = $row['ownerJid'];
+            }
+            if (! empty($row['profileName'])) {
+                $updates['profile_name'] = $row['profileName'];
+            }
+            if (! empty($row['number'])) {
+                $updates['phone_number'] = $row['number'];
+            } elseif (! empty($updates['owner_jid'])) {
+                $updates['phone_number'] = $this->phoneDigitsFromJid((string) $updates['owner_jid']);
+            }
+        } catch (\Throwable) {
+            // connection state refresh is enough when profile fetch fails
+        }
+
+        return $updates;
+    }
+
+    private function phoneDigitsFromJid(string $jid): ?string
+    {
+        $digits = preg_replace('/\D+/', '', strtok($jid, '@') ?: $jid);
+
+        return $digits !== '' ? $digits : null;
     }
 
     /**
@@ -75,22 +156,7 @@ class EvolutionService
      */
     public function refreshRotationCandidates(): int
     {
-        $refreshed = 0;
-
-        EvolutionInstance::query()
-            ->orderBy('id')
-            ->limit(100)
-            ->get()
-            ->each(function (EvolutionInstance $instance) use (&$refreshed) {
-                try {
-                    $this->refreshInstanceFromApi($instance);
-                    $refreshed++;
-                } catch (\Throwable) {
-                    // keep stored status when API is unreachable
-                }
-            });
-
-        return $refreshed;
+        return count($this->syncAllRegisteredInstances());
     }
 
     /**
