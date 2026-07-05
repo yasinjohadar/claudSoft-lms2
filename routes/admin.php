@@ -254,6 +254,10 @@ Route::prefix('admin')
         Route::get('courses/{course}/restrictions/bulk-state', [AccessRestrictionController::class, 'getCourseRestrictionBulkState'])->name('courses.restrictions.bulk-state');
         Route::post('courses/{course}/modules/restrictions/sync-bulk', [AccessRestrictionController::class, 'syncBulkModuleRestrictions'])->name('courses.modules.restrictions.sync-bulk');
         Route::get('courses/{course}/modules/{module}/completions', [ModuleCompletionReportController::class, 'index'])->name('courses.modules.completions');
+        Route::post('courses/{course}/modules/{module}/completions/preview-whatsapp', [ModuleCompletionReportController::class, 'previewWhatsApp'])->name('courses.modules.completions.preview-whatsapp');
+        Route::post('courses/{course}/modules/{module}/completions/send-whatsapp', [ModuleCompletionReportController::class, 'sendWhatsApp'])->name('courses.modules.completions.send-whatsapp');
+        Route::post('courses/{course}/modules/{module}/completions/preview-email', [ModuleCompletionReportController::class, 'previewEmail'])->name('courses.modules.completions.preview-email');
+        Route::post('courses/{course}/modules/{module}/completions/send-email', [ModuleCompletionReportController::class, 'sendEmail'])->name('courses.modules.completions.send-email');
         Route::get('courses/{course}/completion-summary', [CourseModuleCompletionSummaryController::class, 'index'])->name('courses.completion-summary');
 
         Route::get('courses/{course}/documentation-links/search', [CourseDocumentationLinkController::class, 'searchPages'])->name('courses.documentation-links.search');

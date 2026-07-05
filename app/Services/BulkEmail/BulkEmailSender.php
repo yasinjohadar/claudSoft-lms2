@@ -97,6 +97,12 @@ class BulkEmailSender
         $this->deliverMail($user, $rendered['subject'], $rendered['body']);
     }
 
+    public function sendRenderedToUser(User $user, string $subject, string $body, ?int $emailSettingId = null): void
+    {
+        $this->applyEmailSetting($emailSettingId);
+        $this->deliverMail($user, $subject, $body);
+    }
+
     private function deliverMail(User $user, string $subject, string $body): void
     {
         $toEmail = trim((string) ($user->email ?? ''));
