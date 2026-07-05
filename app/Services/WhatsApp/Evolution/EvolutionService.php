@@ -53,29 +53,33 @@ class EvolutionService
         $client = $this->clientFor($instance);
         $state = $client->getConnectionState($instance->instance_name);
         $connection = strtolower((string) ($state['instance']['state'] ?? $state['state'] ?? 'close'));
+        $wasOpen = $instance->connection_status === 'open';
 
-        $instance->update([
+        $updates = [
             'connection_status' => $connection,
             'connected_at' => $connection === 'open' ? now() : $instance->connected_at,
             'disconnected_at' => $connection === 'open' ? null : now(),
-        ]);
+        ];
+
+        if ($connection === 'open' && ! $wasOpen) {
+            $updates['rotation_enabled'] = true;
+        }
+
+        $instance->update($updates);
 
         return $instance->fresh();
     }
 
     /**
-     * Refresh connection status for manual or non-open instances before rotation.
+     * Refresh connection status for instances before rotation.
      */
     public function refreshRotationCandidates(): int
     {
         $refreshed = 0;
 
         EvolutionInstance::query()
-            ->where(function ($query) {
-                $query->where('is_manual', true)
-                    ->orWhere('connection_status', '!=', 'open');
-            })
             ->orderBy('id')
+            ->limit(100)
             ->get()
             ->each(function (EvolutionInstance $instance) use (&$refreshed) {
                 try {
@@ -110,10 +114,12 @@ class EvolutionService
         }
 
         $instance = EvolutionInstance::firstOrNew(['instance_name' => $name]);
+        $isNew = ! $instance->exists;
         $instance->fill([
             'label' => trim((string) ($data['label'] ?? '')) ?: null,
             'is_manual' => true,
             'connection_status' => $instance->connection_status ?: 'pending',
+            'rotation_enabled' => $isNew ? true : $instance->rotation_enabled,
         ]);
 
         $baseUrl = trim((string) ($data['evolution_base_url'] ?? ''));

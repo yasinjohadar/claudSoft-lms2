@@ -80,6 +80,14 @@ class EvolutionRotatingSendService
 
         $this->evolutionService->refreshRotationCandidates();
         $pool = $this->rotator->orderedPoolForFailover(true);
+
+        if ($pool->isEmpty()) {
+            throw new EvolutionApiException(
+                'لا توجد أرقام متصلة ومفعّلة للتبديل. اربط رقماً إضافياً (open) وفعّل التبديل من صفحة Evolution Instances.',
+                'Rotation pool is empty.',
+            );
+        }
+
         $lastException = null;
 
         foreach ($pool as $instance) {
@@ -109,24 +117,6 @@ class EvolutionRotatingSendService
             }
         }
 
-        $fallback = $this->fallbackInstanceName();
-        if ($fallback !== '' && ! $pool->contains('instance_name', $fallback)) {
-            try {
-                if ($applyDelay) {
-                    $this->waitBeforeSend($fallback);
-                }
-
-                $result = $sendFn($fallback);
-
-                return [
-                    'result' => $result,
-                    'instance_name' => $fallback,
-                ];
-            } catch (Throwable $e) {
-                $lastException = $e;
-            }
-        }
-
         if ($lastException instanceof EvolutionApiException) {
             throw $lastException;
         }
@@ -140,8 +130,8 @@ class EvolutionRotatingSendService
         }
 
         throw new EvolutionApiException(
-            'لا توجد أرقام WhatsApp متصلة ومفعّلة للإرسال. اربط instance واحداً على الأقل.',
-            'No eligible Evolution instances for rotation.',
+            'فشل الإرسال عبر جميع أرقام التبديل المتاحة ('.$pool->count().'). راجع حالة الاتصال في Evolution Instances.',
+            'All rotation-eligible Evolution instances failed.',
         );
     }
 

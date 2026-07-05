@@ -8,10 +8,6 @@ use Illuminate\Support\Facades\Cache;
 
 class EvolutionInstanceRotator
 {
-    private const CACHE_INDEX_KEY = 'evolution_rotation_index';
-
-    private const LOCK_KEY = 'evolution_rotation_lock';
-
     private const REFRESH_CACHE_KEY = 'evolution_rotation_pool_refreshed_at';
 
     public function __construct(
@@ -20,9 +16,7 @@ class EvolutionInstanceRotator
 
     public function pool(bool $forceRefresh = false): Collection
     {
-        $this->refreshPoolStatusesIfDue($forceRefresh);
-
-        return EvolutionInstance::rotationEligible()->orderBy('id')->get();
+        return $this->rotationOrderedPool($forceRefresh);
     }
 
     public function poolCount(bool $forceRefresh = false): int
@@ -41,37 +35,32 @@ class EvolutionInstanceRotator
             );
         }
 
-        $index = $this->reserveNextIndex();
-        $position = $index % $pool->count();
-
-        return $pool->values()->get($position);
+        return $pool->first();
     }
 
     /**
-     * Pool ordered for failover, starting from the next round-robin pick.
+     * Pool ordered for failover: least-recently-used first, then next candidates.
      */
     public function orderedPoolForFailover(bool $forceRefresh = false): Collection
     {
-        $pool = $this->pool($forceRefresh);
-
-        if ($pool->isEmpty()) {
-            return collect();
-        }
-
-        $pool = $pool->values();
-        $startIndex = $this->reserveNextIndex() % $pool->count();
-        $ordered = collect();
-
-        for ($i = 0; $i < $pool->count(); $i++) {
-            $ordered->push($pool->get(($startIndex + $i) % $pool->count()));
-        }
-
-        return $ordered;
+        return $this->rotationOrderedPool($forceRefresh);
     }
 
     public function markUsed(EvolutionInstance $instance): void
     {
         $instance->update(['last_used_at' => now()]);
+    }
+
+    private function rotationOrderedPool(bool $forceRefresh): Collection
+    {
+        $this->refreshPoolStatusesIfDue($forceRefresh);
+
+        return EvolutionInstance::rotationEligible()
+            ->orderByRaw('last_used_at IS NULL DESC')
+            ->orderBy('last_used_at')
+            ->orderBy('id')
+            ->get()
+            ->values();
     }
 
     private function refreshPoolStatusesIfDue(bool $forceRefresh): void
@@ -82,15 +71,5 @@ class EvolutionInstanceRotator
 
         $this->evolutionService->refreshRotationCandidates();
         Cache::put(self::REFRESH_CACHE_KEY, true, now()->addSeconds(60));
-    }
-
-    private function reserveNextIndex(): int
-    {
-        return (int) Cache::lock(self::LOCK_KEY, 5)->block(3, function () {
-            $current = (int) Cache::get(self::CACHE_INDEX_KEY, 0);
-            Cache::put(self::CACHE_INDEX_KEY, $current + 1, now()->addYear());
-
-            return $current;
-        });
     }
 }

@@ -40,7 +40,9 @@ class EvolutionInstanceRotatorTest extends TestCase
         $rotator = app(EvolutionInstanceRotator::class);
 
         $first = $rotator->nextInstance()->instance_name;
+        $rotator->markUsed(EvolutionInstance::where('instance_name', $first)->firstOrFail());
         $second = $rotator->nextInstance()->instance_name;
+        $rotator->markUsed(EvolutionInstance::where('instance_name', $second)->firstOrFail());
         $third = $rotator->nextInstance()->instance_name;
 
         $this->assertContains($first, ['inst-a', 'inst-b']);
@@ -92,5 +94,31 @@ class EvolutionInstanceRotatorTest extends TestCase
 
         $this->assertSame(1, $rotator->poolCount(true));
         $this->assertSame('manual-inst', $rotator->nextInstance(true)->instance_name);
+    }
+
+    public function test_least_recently_used_prefers_unused_instance(): void
+    {
+        Cache::flush();
+
+        $instanceA = EvolutionInstance::create([
+            'instance_name' => 'inst-a',
+            'connection_status' => 'open',
+            'rotation_enabled' => true,
+            'last_used_at' => now()->subMinute(),
+        ]);
+        EvolutionInstance::create([
+            'instance_name' => 'inst-b',
+            'connection_status' => 'open',
+            'rotation_enabled' => true,
+            'last_used_at' => null,
+        ]);
+
+        $rotator = app(EvolutionInstanceRotator::class);
+
+        $this->assertSame('inst-b', $rotator->nextInstance()->instance_name);
+
+        $rotator->markUsed($instanceA->fresh());
+
+        $this->assertSame('inst-b', $rotator->nextInstance()->instance_name);
     }
 }

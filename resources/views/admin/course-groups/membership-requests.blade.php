@@ -97,11 +97,15 @@
                     @endif
                 </div>
                 <div class="card-body pt-3">
-                    @if(($waContext['evolution_rotation_enabled'] ?? false) && ($waContext['rotation_pool_count'] ?? 0) < 2)
-                        <div class="alert alert-warning py-2 mb-3">
+                    @if(($waContext['evolution_rotation_enabled'] ?? false))
+                        <div class="alert alert-{{ ($waContext['rotation_pool_count'] ?? 0) >= 2 ? 'info' : 'warning' }} py-2 mb-3">
                             <i class="ri-shuffle-line me-1"></i>
-                            التبديل غير فعّال — يوجد {{ $waContext['rotation_pool_count'] ?? 0 }} جلسة فقط في مجموعة التبديل.
-                            <a href="{{ route('admin.evolution-api.instances.index') }}">اربط الرقم الثاني وفعّل التبديل</a>.
+                            @if(($waContext['rotation_pool_count'] ?? 0) >= 2)
+                                التبديل نشط بين <strong>{{ $waContext['rotation_pool_count'] }}</strong> جلسة واتساب.
+                            @else
+                                التبديل غير فعّال — يوجد {{ $waContext['rotation_pool_count'] ?? 0 }} جلسة فقط في مجموعة التبديل.
+                                <a href="{{ route('admin.evolution-api.instances.index') }}">اربط الرقم الثاني وفعّل التبديل</a>.
+                            @endif
                         </div>
                     @endif
                     @if(!empty($waContext['whatsapp_groups_error']))

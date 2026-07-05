@@ -1809,6 +1809,7 @@ class CourseGroupController extends Controller
                 'message' => 'تم إرسال رسالة الدعوة إلى '.$sendResult['phone'],
                 'student_id' => $student->id,
                 'instance_name' => $sendResult['instance_name'] ?? null,
+                'rotation_pool_count' => app(EvolutionInstanceRotator::class)->poolCount(),
                 'invite_sent_at' => optional($membershipRequest?->fresh()->whatsapp_invite_sent_at)->format('Y-m-d H:i'),
             ]);
         } catch (InvalidArgumentException $e) {
