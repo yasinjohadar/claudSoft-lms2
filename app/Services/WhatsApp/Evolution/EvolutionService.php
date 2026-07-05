@@ -64,6 +64,32 @@ class EvolutionService
     }
 
     /**
+     * Refresh connection status for manual or non-open instances before rotation.
+     */
+    public function refreshRotationCandidates(): int
+    {
+        $refreshed = 0;
+
+        EvolutionInstance::query()
+            ->where(function ($query) {
+                $query->where('is_manual', true)
+                    ->orWhere('connection_status', '!=', 'open');
+            })
+            ->orderBy('id')
+            ->get()
+            ->each(function (EvolutionInstance $instance) use (&$refreshed) {
+                try {
+                    $this->refreshInstanceFromApi($instance);
+                    $refreshed++;
+                } catch (\Throwable) {
+                    // keep stored status when API is unreachable
+                }
+            });
+
+        return $refreshed;
+    }
+
+    /**
      * @return string[]
      */
     public function parseInstanceNamesList(string $raw): array

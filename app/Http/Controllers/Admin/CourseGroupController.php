@@ -19,6 +19,9 @@ use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
+use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
+use App\Services\WhatsApp\Evolution\EvolutionRotatingSendService;
+use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Services\BulkEmail\MembershipEmailInviteService;
 use App\Services\WhatsApp\MembershipWhatsAppInviteService;
 use App\Models\EmailSetting;
@@ -1447,6 +1450,7 @@ class CourseGroupController extends Controller
                     'rejected_at',
                     'whatsapp_invite_sent_at',
                     'whatsapp_invite_sent_by',
+                    'whatsapp_invite_instance_name',
                     'email_invite_sent_at',
                     'email_invite_sent_by',
                 ])
@@ -1673,7 +1677,9 @@ class CourseGroupController extends Controller
     private function resolveMembershipWhatsAppContext(CourseGroup $group, ?string $whatsappJid): array
     {
         $compareService = app(EvolutionGroupCompareService::class);
-        $evolutionService = app(\App\Services\WhatsApp\Evolution\EvolutionService::class);
+        $evolutionService = app(EvolutionService::class);
+        $rotatingSendService = app(EvolutionRotatingSendService::class);
+        $rotator = app(EvolutionInstanceRotator::class);
         $activeInstanceName = $evolutionService->activeInstanceName();
 
         $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
@@ -1683,6 +1689,8 @@ class CourseGroupController extends Controller
             'whatsapp_groups' => [],
             'whatsapp_groups_error' => null,
             'evolution_instance_name' => $activeInstanceName,
+            'evolution_rotation_enabled' => $rotatingSendService->isRotationActive(),
+            'rotation_pool_count' => $rotator->poolCount(),
             'selected_jid' => trim((string) ($whatsappJid ?? '')),
             'wa_group_info' => null,
             'wa_load_error' => null,
@@ -1784,19 +1792,23 @@ class CourseGroupController extends Controller
                 ->where('id', $validated['whatsapp_template_id'])
                 ->firstOrFail();
 
-            $phone = $inviteService->sendTemplateInvite($student, $course, $group, $template);
+            $sendResult = $inviteService->sendTemplateInvite($student, $course, $group, $template);
 
             $membershipRequest = GroupMembershipRequest::where('group_id', $group->id)
                 ->where('student_id', $student->id)
                 ->latest('id')
                 ->first();
 
-            $membershipRequest?->markWhatsAppInviteSent();
+            $membershipRequest?->markWhatsAppInviteSent(
+                null,
+                $sendResult['instance_name'] ?? null
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إرسال رسالة الدعوة إلى '.$phone,
+                'message' => 'تم إرسال رسالة الدعوة إلى '.$sendResult['phone'],
                 'student_id' => $student->id,
+                'instance_name' => $sendResult['instance_name'] ?? null,
                 'invite_sent_at' => optional($membershipRequest?->fresh()->whatsapp_invite_sent_at)->format('Y-m-d H:i'),
             ]);
         } catch (InvalidArgumentException $e) {

@@ -24,6 +24,7 @@ class GroupMembershipRequest extends Model
         'rejected_by',
         'whatsapp_invite_sent_at',
         'whatsapp_invite_sent_by',
+        'whatsapp_invite_instance_name',
         'telegram_invite_sent_at',
         'telegram_invite_sent_by',
         'email_invite_sent_at',
@@ -94,12 +95,18 @@ class GroupMembershipRequest extends Model
         return $this->email_invite_sent_at !== null;
     }
 
-    public function markWhatsAppInviteSent(?int $sentBy = null): bool
+    public function markWhatsAppInviteSent(?int $sentBy = null, ?string $instanceName = null): bool
     {
-        return $this->update([
+        $data = [
             'whatsapp_invite_sent_at' => now(),
             'whatsapp_invite_sent_by' => $sentBy ?? auth()->id(),
-        ]);
+        ];
+
+        if ($instanceName !== null && $instanceName !== '') {
+            $data['whatsapp_invite_instance_name'] = $instanceName;
+        }
+
+        return $this->update($data);
     }
 
     public function markEmailInviteSent(?int $sentBy = null): bool

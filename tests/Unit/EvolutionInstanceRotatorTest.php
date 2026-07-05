@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\EvolutionInstance;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
+use App\Services\WhatsApp\Evolution\EvolutionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -65,5 +66,31 @@ class EvolutionInstanceRotatorTest extends TestCase
 
         $this->assertSame(1, $rotator->poolCount());
         $this->assertSame('inst-b', $rotator->nextInstance()->instance_name);
+    }
+
+    public function test_pool_refresh_promotes_manual_instance_when_api_reports_open(): void
+    {
+        Cache::flush();
+
+        EvolutionInstance::create([
+            'instance_name' => 'manual-inst',
+            'connection_status' => 'pending',
+            'is_manual' => true,
+            'rotation_enabled' => true,
+        ]);
+
+        $evolutionMock = $this->mock(EvolutionService::class);
+        $evolutionMock->shouldReceive('refreshRotationCandidates')
+            ->andReturnUsing(function () {
+                EvolutionInstance::where('instance_name', 'manual-inst')
+                    ->update(['connection_status' => 'open']);
+
+                return 1;
+            });
+
+        $rotator = app(EvolutionInstanceRotator::class);
+
+        $this->assertSame(1, $rotator->poolCount(true));
+        $this->assertSame('manual-inst', $rotator->nextInstance(true)->instance_name);
     }
 }

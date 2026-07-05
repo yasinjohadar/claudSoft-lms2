@@ -46,12 +46,15 @@ class MembershipWhatsAppInviteService
         return $template->render($this->variablesForInvite($student, $course, $group, $settings));
     }
 
+    /**
+     * @return array{phone: string, instance_name: string|null}
+     */
     public function sendTemplateInvite(
         User $student,
         Course $course,
         CourseGroup $group,
         WhatsAppMessageTemplate $template
-    ): string {
+    ): array {
         $settings = GroupRegistrationSetting::where('group_id', $group->id)->first();
         $body = $this->renderTemplate($template, $student, $course, $group, $settings);
         $this->assertGroupLinkResolved($body, $settings);
@@ -62,9 +65,13 @@ class MembershipWhatsAppInviteService
         }
 
         $phone = '+'.$digits;
-        $this->sendWhatsAppMessage->sendTextSync($phone, $body);
+        $message = $this->sendWhatsAppMessage->sendTextSync($phone, $body);
+        $instanceName = $message->payload['evolution_instance_name'] ?? null;
 
-        return $phone;
+        return [
+            'phone' => $phone,
+            'instance_name' => is_string($instanceName) && $instanceName !== '' ? $instanceName : null,
+        ];
     }
 
     private function assertGroupLinkResolved(string $body, ?GroupRegistrationSetting $settings): void

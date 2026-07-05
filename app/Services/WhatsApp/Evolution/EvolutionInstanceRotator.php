@@ -12,19 +12,27 @@ class EvolutionInstanceRotator
 
     private const LOCK_KEY = 'evolution_rotation_lock';
 
-    public function pool(): Collection
+    private const REFRESH_CACHE_KEY = 'evolution_rotation_pool_refreshed_at';
+
+    public function __construct(
+        private EvolutionService $evolutionService,
+    ) {}
+
+    public function pool(bool $forceRefresh = false): Collection
     {
+        $this->refreshPoolStatusesIfDue($forceRefresh);
+
         return EvolutionInstance::rotationEligible()->orderBy('id')->get();
     }
 
-    public function poolCount(): int
+    public function poolCount(bool $forceRefresh = false): int
     {
-        return $this->pool()->count();
+        return $this->pool($forceRefresh)->count();
     }
 
-    public function nextInstance(): EvolutionInstance
+    public function nextInstance(bool $forceRefresh = false): EvolutionInstance
     {
-        $pool = $this->pool();
+        $pool = $this->pool($forceRefresh);
 
         if ($pool->isEmpty()) {
             throw new EvolutionApiException(
@@ -42,9 +50,9 @@ class EvolutionInstanceRotator
     /**
      * Pool ordered for failover, starting from the next round-robin pick.
      */
-    public function orderedPoolForFailover(): Collection
+    public function orderedPoolForFailover(bool $forceRefresh = false): Collection
     {
-        $pool = $this->pool();
+        $pool = $this->pool($forceRefresh);
 
         if ($pool->isEmpty()) {
             return collect();
@@ -64,6 +72,16 @@ class EvolutionInstanceRotator
     public function markUsed(EvolutionInstance $instance): void
     {
         $instance->update(['last_used_at' => now()]);
+    }
+
+    private function refreshPoolStatusesIfDue(bool $forceRefresh): void
+    {
+        if (! $forceRefresh && Cache::get(self::REFRESH_CACHE_KEY)) {
+            return;
+        }
+
+        $this->evolutionService->refreshRotationCandidates();
+        Cache::put(self::REFRESH_CACHE_KEY, true, now()->addSeconds(60));
     }
 
     private function reserveNextIndex(): int

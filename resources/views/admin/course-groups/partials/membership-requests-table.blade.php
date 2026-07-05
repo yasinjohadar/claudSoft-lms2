@@ -145,6 +145,9 @@
                                         <i class="ri-mail-send-line me-1"></i>دُعي — لم ينضم بعد
                                     </span>
                                     <small class="text-muted d-block mb-1">آخر دعوة: {{ $request->whatsapp_invite_sent_at->format('Y-m-d H:i') }}</small>
+                                    @if(!empty($request->whatsapp_invite_instance_name))
+                                        <small class="text-muted d-block mb-1">أُرسلت من: {{ $request->whatsapp_invite_instance_name }}</small>
+                                    @endif
                                 @else
                                     <span class="badge bg-danger-transparent text-danger d-block mb-1">
                                         <i class="ri-close-line me-1"></i>غير منضم

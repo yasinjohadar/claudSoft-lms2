@@ -11,9 +11,14 @@ use Throwable;
 
 class EvolutionRotatingSendService
 {
+    private const GLOBAL_SEND_CACHE_KEY = 'evolution_global_last_send';
+
+    private const GLOBAL_SEND_LOCK_KEY = 'evolution_global_send_delay_lock';
+
     public function __construct(
         private WhatsAppSettingsService $settingsService,
         private EvolutionInstanceRotator $rotator,
+        private EvolutionService $evolutionService,
     ) {}
 
     public function isRotationActive(): bool
@@ -35,6 +40,10 @@ class EvolutionRotatingSendService
      */
     public function sendWithRotation(callable $sendFn, ?string $forcedInstanceName = null, bool $applyDelay = true): array
     {
+        if ($applyDelay) {
+            $this->waitBeforeNextGlobalSend();
+        }
+
         if ($forcedInstanceName !== null && $forcedInstanceName !== '') {
             if ($applyDelay) {
                 $this->waitBeforeSend($forcedInstanceName);
@@ -69,7 +78,8 @@ class EvolutionRotatingSendService
             ];
         }
 
-        $pool = $this->rotator->orderedPoolForFailover();
+        $this->evolutionService->refreshRotationCandidates();
+        $pool = $this->rotator->orderedPoolForFailover(true);
         $lastException = null;
 
         foreach ($pool as $instance) {
@@ -145,6 +155,29 @@ class EvolutionRotatingSendService
         }
 
         return EvolutionInstance::defaultInstance()?->instance_name ?? '';
+    }
+
+    /**
+     * Enforce minimum gap between any Evolution send (all instances).
+     */
+    public function waitBeforeNextGlobalSend(): void
+    {
+        $delaySeconds = $this->settingsService->calculateDelay();
+        if ($delaySeconds <= 0) {
+            return;
+        }
+
+        Cache::lock(self::GLOBAL_SEND_LOCK_KEY, 30)->block(15, function () use ($delaySeconds): void {
+            $lastSentAt = Cache::get(self::GLOBAL_SEND_CACHE_KEY);
+            if (is_numeric($lastSentAt)) {
+                $waitSeconds = $delaySeconds - (microtime(true) - (float) $lastSentAt);
+                if ($waitSeconds > 0) {
+                    usleep((int) round($waitSeconds * 1_000_000));
+                }
+            }
+
+            Cache::put(self::GLOBAL_SEND_CACHE_KEY, microtime(true), now()->addHours(2));
+        });
     }
 
     /**
