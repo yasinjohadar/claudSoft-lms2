@@ -5,6 +5,7 @@ namespace App\Services\WhatsApp;
 use App\Exceptions\WhatsAppApiException;
 use App\Models\WhatsAppMessage;
 use App\Services\WhatsApp\Evolution\EvolutionRotatingSendService;
+use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Support\WhatsAppRecipientNormalizer;
 
 /**
@@ -16,6 +17,7 @@ class WhatsAppOutboundSendService
     public function __construct(
         private WhatsAppSettingsService $settingsService,
         private EvolutionRotatingSendService $rotatingSendService,
+        private EvolutionService $evolutionService,
     ) {}
 
     /**
@@ -43,8 +45,8 @@ class WhatsAppOutboundSendService
 
         if ($provider === 'evolution') {
             $sendResult = $this->rotatingSendService->sendWithRotation(
-                function (string $instanceName) use ($config, $to, $messageType, $messageData, $message) {
-                    $instanceConfig = array_merge($config, ['instance_name' => $instanceName]);
+                function (string $instanceName) use ($to, $messageType, $messageData, $message) {
+                    $instanceConfig = $this->evolutionService->providerConfigForInstance($instanceName);
                     $providerInstance = WhatsAppProviderFactory::create('evolution', $instanceConfig);
 
                     return $this->dispatchToProvider($providerInstance, $messageType, $to, $messageData, $message);

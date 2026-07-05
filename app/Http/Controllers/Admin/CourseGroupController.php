@@ -26,6 +26,7 @@ use App\Models\EmailTemplate;
 use App\Models\Nationality;
 use App\Support\MembershipRequestFilters;
 use App\Support\MembershipRequestFormColumns;
+use App\Support\WhatsAppSendErrorMessage;
 use App\Models\TelegramMessageTemplate;
 use App\Services\Telegram\MembershipTelegramInviteService;
 use App\Services\Telegram\TelegramApiException;

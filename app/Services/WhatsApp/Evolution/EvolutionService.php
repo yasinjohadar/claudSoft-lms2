@@ -143,13 +143,29 @@ class EvolutionService
 
     public function providerForInstance(string $instanceName, ?array $settings = null): EvolutionApiProvider
     {
-        $settings = $settings ?? $this->getSettings();
+        return WhatsAppProviderFactory::create('evolution', $this->providerConfigForInstance($instanceName, $settings));
+    }
 
-        return WhatsAppProviderFactory::create('evolution', [
+    /**
+     * @return array{base_url: string, api_key: string, instance_name: string}
+     */
+    public function providerConfigForInstance(string $instanceName, ?array $settings = null): array
+    {
+        $settings = $settings ?? $this->getSettings();
+        $config = [
             'base_url' => $settings['evolution_base_url'] ?? '',
             'api_key' => $settings['evolution_api_key'] ?? '',
             'instance_name' => $instanceName,
-        ]);
+        ];
+
+        $instance = EvolutionInstance::where('instance_name', $instanceName)->first();
+        if ($instance instanceof EvolutionInstance && $instance->hasCustomCredentials()) {
+            $resolved = $instance->resolveApiConfig();
+            $config['base_url'] = $resolved['base_url'];
+            $config['api_key'] = $resolved['api_key'];
+        }
+
+        return $config;
     }
 
     public function activeInstanceName(): string

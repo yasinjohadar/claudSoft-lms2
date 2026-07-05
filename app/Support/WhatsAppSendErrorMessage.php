@@ -2,10 +2,16 @@
 
 namespace App\Support;
 
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
+
 class WhatsAppSendErrorMessage
 {
     public static function fromThrowable(\Throwable $e): string
     {
+        if ($e instanceof EvolutionApiException) {
+            return $e->userMessage();
+        }
+
         $message = $e->getMessage();
 
         if (str_contains($message, 'cURL error 28') || str_contains($message, 'Resolving timed out')) {
