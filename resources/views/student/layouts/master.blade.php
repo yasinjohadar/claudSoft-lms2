@@ -198,10 +198,12 @@
 
         @include('student.layouts.main-sidebar')
 
-        {{-- Flash Messages --}}
-        <div class="container-fluid mt-3">
-            @include('student.components.alerts')
-        </div>
+        {{-- Flash Messages (dashboard renders its own alerts inside content) --}}
+        @if(! request()->routeIs('student.dashboard'))
+            <div class="container-fluid mt-3">
+                @include('student.components.alerts')
+            </div>
+        @endif
 
         @if(!empty($dueInvoicesAlert))
             @include('student.components.due-invoices-banner', ['alert' => $dueInvoicesAlert])

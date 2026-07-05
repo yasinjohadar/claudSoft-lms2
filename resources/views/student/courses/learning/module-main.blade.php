@@ -1,5 +1,5 @@
 @php
-    $learnCompletedModulesJson = json_encode(array_values($completedModules ?? []));
+    $learnCompletedModules = array_values($completedModules ?? []);
 @endphp
 <turbo-frame id="student-learn-main" data-turbo-action="advance" target="_top"
     data-current-module-id="{{ (int) $module->id }}"
@@ -9,7 +9,7 @@
     data-has-description="{{ ($module->description ?? '') !== '' ? '1' : '0' }}"
     data-is-completed="{{ $isCompleted ? '1' : '0' }}"
     data-module-type="{{ e($module->module_type) }}"
-    data-completed-modules="{{ e($learnCompletedModulesJson) }}">
+    data-completed-modules='@json($learnCompletedModules)'>
 
     @include('student.components.alerts')
 

@@ -1,7 +1,7 @@
 @extends('student.layouts.master')
 
 @section('page-title')
-    لوحة التلعيب
+    عالم الإنجاز
 @stop
 
 @section('content')
@@ -12,11 +12,11 @@
 
         <div class="d-md-flex d-block align-items-center justify-content-between my-4">
             <div class="min-w-0">
-                <h4 class="student-my-courses-welcome__title mb-1">لوحة التلعيب</h4>
+                <h4 class="student-my-courses-welcome__title mb-1">عالم الإنجاز</h4>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
-                        <li class="breadcrumb-item active">التلعيب</li>
+                        <li class="breadcrumb-item active">عالم الإنجاز</li>
                     </ol>
                 </nav>
                 <p class="text-muted fs-13 mb-0 mt-2">تابع نقاطك ومستواك وتحدياتك وترتيبك</p>

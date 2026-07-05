@@ -29,7 +29,7 @@
                         <i class="ri ri-user-star-line me-1"></i>ترتيبي
                     </a>
                     <a href="{{ route('gamification.dashboard') }}" class="btn btn-light btn-sm">
-                        <i class="ri ri-arrow-right-line me-1"></i>التلعيب
+                        <i class="ri ri-arrow-right-line me-1"></i>عالم الإنجاز
                     </a>
                 </div>
             </div>

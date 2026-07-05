@@ -17,7 +17,7 @@
             </span>
             <div>
                 <h5 class="card-title mb-1">روابط سريعة</h5>
-                <p class="text-muted fs-12 mb-0">انتقل بسرعة لأقسام التلعيب</p>
+                <p class="text-muted fs-12 mb-0">انتقل بسرعة لأقسام عالم الإنجاز</p>
             </div>
         </div>
     </div>

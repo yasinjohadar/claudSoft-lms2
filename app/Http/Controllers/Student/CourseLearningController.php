@@ -94,11 +94,10 @@ class CourseLearningController extends Controller
             }
 
             // Get completion data for all modules
-            $completedModules = ModuleCompletion::where('student_id', $student->id)
-                ->whereIn('module_id', $course->modules()->pluck('course_modules.id'))
-                ->where('completion_status', 'completed')
-                ->pluck('module_id')
-                ->toArray();
+            $completedModules = $this->completedModuleIdsForStudent(
+                $student->id,
+                (int) $courseId
+            );
 
             $courseReferenceDocs = $this->referenceDocumentationForCourse($course->id);
 
@@ -176,11 +175,11 @@ class CourseLearningController extends Controller
         $isCompleted = $completion && $completion->completion_status === 'completed';
 
         $completedModules = $enrollment
-            ? ModuleCompletion::where('student_id', $student->id)
-                ->where('completion_status', 'completed')
-                ->whereHas('module', fn ($q) => $q->where('course_id', $module->course_id))
-                ->pluck('module_id')
-                ->toArray()
+            ? $this->completedModuleIdsForStudent(
+                $student->id,
+                (int) $module->course_id,
+                (int) $module->id
+            )
             : [];
 
         $courseReferenceDocs = $this->referenceDocumentationForCourse($module->course_id);
@@ -272,11 +271,11 @@ class CourseLearningController extends Controller
         });
 
         $completedModules = $enrollment
-            ? ModuleCompletion::where('student_id', $student->id)
-                ->where('completion_status', 'completed')
-                ->whereHas('module', fn ($q) => $q->where('course_id', $module->course_id))
-                ->pluck('module_id')
-                ->toArray()
+            ? $this->completedModuleIdsForStudent(
+                $student->id,
+                (int) $module->course_id,
+                (int) $module->id
+            )
             : [];
 
         $courseReferenceDocs = $this->referenceDocumentationForCourse($module->course_id);
@@ -674,6 +673,44 @@ class CourseLearningController extends Controller
             default:
                 return null;
         }
+    }
+
+    /**
+     * Completed module IDs for a course (sidebar + turbo-frame state).
+     */
+    protected function completedModuleIdsForStudent(int $studentId, int $courseId, ?int $ensureModuleId = null): array
+    {
+        $moduleIds = CourseModule::query()
+            ->where('course_id', $courseId)
+            ->pluck('id');
+
+        if ($moduleIds->isEmpty()) {
+            return [];
+        }
+
+        $completedIds = ModuleCompletion::query()
+            ->where('student_id', $studentId)
+            ->where('completion_status', 'completed')
+            ->whereIn('module_id', $moduleIds)
+            ->pluck('module_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ensureModuleId !== null && ! in_array($ensureModuleId, $completedIds, true)) {
+            $isCompleted = ModuleCompletion::query()
+                ->where('student_id', $studentId)
+                ->where('module_id', $ensureModuleId)
+                ->where('completion_status', 'completed')
+                ->exists();
+
+            if ($isCompleted) {
+                $completedIds[] = $ensureModuleId;
+            }
+        }
+
+        return $completedIds;
     }
 
     /**

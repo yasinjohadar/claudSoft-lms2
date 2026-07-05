@@ -1,7 +1,8 @@
 <!-- Scroll To Top -->
-<div class="scrollToTop">
-    <span class="arrow"><i class="las la-angle-double-up"></i></span>
-</div>
+<button type="button" class="scrollToTop student-scroll-to-top" aria-label="العودة للأعلى">
+    <span class="student-scroll-to-top__ring" aria-hidden="true"></span>
+    <span class="student-scroll-to-top__icon" aria-hidden="true"><i class="ri-arrow-up-line"></i></span>
+</button>
 <div id="responsive-overlay"></div>
 {{-- لا يمنع النقر عندما تكون الطبقة غير مفعّلة (كانت تُغطي المحتوى أحياناً مع visibility:hidden --}}
 <style>
@@ -49,8 +50,69 @@
 <!-- Custom-Switcher JS -->
 <script src="{{ asset('assets/js/custom-switcher.min.js') }}"></script>
 
+<script>
+    (function () {
+        function isMiniLayout() {
+            var closed = document.getElementById('switcher-closed-menu');
+            if (closed && closed.checked) {
+                return true;
+            }
+            return localStorage.getItem('valexverticalstyles') === 'closed';
+        }
+
+        function syncSidebarLayoutToggles() {
+            var mini = isMiniLayout();
+            document.querySelectorAll('.js-sidebar-layout-toggle [data-layout]').forEach(function (btn) {
+                var active = (btn.getAttribute('data-layout') === 'mini') === mini;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+        }
+
+        function applySidebarLayout(mode) {
+            var id = mode === 'mini' ? 'switcher-closed-menu' : 'switcher-default-menu';
+            var input = document.getElementById(id);
+            if (input) {
+                input.click();
+            }
+            syncSidebarLayoutToggles();
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-sidebar-layout-toggle [data-layout]');
+            if (!btn) {
+                return;
+            }
+            applySidebarLayout(btn.getAttribute('data-layout'));
+        });
+
+        ['switcher-default-menu', 'switcher-closed-menu'].forEach(function (id) {
+            var input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('change', syncSidebarLayoutToggles);
+            }
+        });
+
+        syncSidebarLayoutToggles();
+        window.addEventListener('load', syncSidebarLayoutToggles);
+    })();
+</script>
+
 <!-- Custom JS -->
 <script src="{{ asset('assets/js/custom.js') }}"></script>
+
+<script>
+    (function () {
+        var scrollBtn = document.querySelector('.student-portal .student-scroll-to-top');
+        if (!scrollBtn) {
+            return;
+        }
+
+        scrollBtn.addEventListener('click', function () {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    })();
+</script>
 
 <!-- Show page after all resources load (required for dashboard-fade-in animations) -->
 <script>

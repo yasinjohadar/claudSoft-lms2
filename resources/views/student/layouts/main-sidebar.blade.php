@@ -273,7 +273,7 @@
                                 <li class="slide {{ request()->routeIs('gamification.dashboard', 'gamification.profile', 'gamification.statistics') ? 'active' : '' }}">
                                     <a href="{{ route('gamification.dashboard') }}" class="side-menu__item {{ request()->routeIs('gamification.dashboard', 'gamification.profile', 'gamification.statistics') ? 'active' : '' }}">
                                         <i class="fe fe-grid student-submenu__icon"></i>
-                                        <span>لوحة التلعيب</span>
+                                        <span>عالم الإنجاز</span>
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('gamification.badges.*') ? 'active' : '' }}">

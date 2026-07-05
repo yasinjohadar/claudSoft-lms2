@@ -16,14 +16,14 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">عالم الإنجاز</a></li>
                         <li class="breadcrumb-item active">شاراتي</li>
                     </ol>
                 </nav>
             </div>
             <div class="mt-3 mt-md-0">
                 <a href="{{ route('gamification.dashboard') }}" class="btn btn-outline-primary rounded-pill">
-                    <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
+                    <i class="fe fe-bar-chart-2 me-1"></i>عالم الإنجاز
                 </a>
             </div>
         </div>

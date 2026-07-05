@@ -1,461 +1,167 @@
-    <!-- Start Switcher -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="switcher-canvas" aria-labelledby="offcanvasRightLabel">
-        <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title text-default" id="offcanvasRightLabel">إعدادات العرض</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+<!-- Start Switcher -->
+<div class="offcanvas offcanvas-end student-theme-switcher" tabindex="-1" id="switcher-canvas" aria-labelledby="offcanvasRightLabel">
+    <div class="offcanvas-header student-theme-switcher__header border-0">
+        <div>
+            <h5 class="offcanvas-title mb-1" id="offcanvasRightLabel">إعدادات العرض</h5>
+            <p class="student-theme-switcher__subtitle mb-0">خصّص مظهر لوحتك بسرعة</p>
         </div>
-        <div class="offcanvas-body">
-            <nav class="border-bottom border-block-end-dashed">
-                <div class="nav nav-tabs nav-justified" id="switcher-main-tab" role="tablist">
-                    <button class="nav-link active" id="switcher-home-tab" data-bs-toggle="tab" data-bs-target="#switcher-home"
-                        type="button" role="tab" aria-controls="switcher-home" aria-selected="true">Theme Styles</button>
-                    <button class="nav-link" id="switcher-profile-tab" data-bs-toggle="tab" data-bs-target="#switcher-profile"
-                        type="button" role="tab" aria-controls="switcher-profile" aria-selected="false">Theme Colors</button>
-                </div>
-            </nav>
-            <div class="tab-content" id="nav-tabContent">
-                <div class="tab-pane fade show active border-0" id="switcher-home" role="tabpanel" aria-labelledby="switcher-home-tab"
-                    tabindex="0">
-                    <div class="">
-                        <p class="switcher-style-head">Theme Color Mode:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-light-theme">
-                                        Light
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="theme-style" id="switcher-light-theme"
-                                        checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-dark-theme">
-                                        Dark
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="theme-style" id="switcher-dark-theme">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Directions:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-ltr">
-                                        LTR
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="direction" id="switcher-ltr" checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-rtl">
-                                        RTL
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="direction" id="switcher-rtl">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Navigation Styles:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-vertical">
-                                        Vertical
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-style" id="switcher-vertical"
-                                        checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-horizontal">
-                                        Horizontal
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-style"
-                                        id="switcher-horizontal">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="navigation-menu-styles">
-                        <p class="switcher-style-head">Vertical & Horizontal Menu Styles:</p>
-                        <div class="row switcher-style gx-0 pb-2 gy-2">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-menu-click">
-                                        Menu Click
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-menu-styles"
-                                        id="switcher-menu-click">
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-menu-hover">
-                                        Menu Hover
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-menu-styles"
-                                        id="switcher-menu-hover">
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-icon-click">
-                                        Icon Click
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-menu-styles"
-                                        id="switcher-icon-click">
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-icon-hover">
-                                        Icon Hover
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="navigation-menu-styles"
-                                        id="switcher-icon-hover">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="sidemenu-layout-styles">
-                        <p class="switcher-style-head">Sidemenu Layout Styles:</p>
-                        <div class="row switcher-style gx-0 pb-2 gy-2">
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-default-menu">
-                                        Default Menu
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-default-menu" checked>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-closed-menu">
-                                        Closed Menu
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-closed-menu">
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-icontext-menu">
-                                        Icon Text
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-icontext-menu">
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-icon-overlay">
-                                        Icon Overlay
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-icon-overlay">
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-detached">
-                                        Detached
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-detached">
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-double-menu">
-                                        Double Menu
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="sidemenu-layout-styles"
-                                        id="switcher-double-menu">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Page Styles:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-regular">
-                                        Regular
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="page-styles" id="switcher-regular"
-                                        checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-classic">
-                                        Classic
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="page-styles" id="switcher-classic">
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-modern">
-                                        Modern
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="page-styles" id="switcher-modern">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Layout Width Styles:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-full-width">
-                                        Full Width
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="layout-width" id="switcher-full-width"
-                                        checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-boxed">
-                                        Boxed
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="layout-width" id="switcher-boxed">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Menu Positions:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-menu-fixed">
-                                        Fixed
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="menu-positions" id="switcher-menu-fixed"
-                                        checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-menu-scroll">
-                                        Scrollable
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="menu-positions" id="switcher-menu-scroll">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Header Positions:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-header-fixed">
-                                        Fixed
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="header-positions"
-                                        id="switcher-header-fixed" checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-header-scroll">
-                                        Scrollable
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="header-positions"
-                                        id="switcher-header-scroll">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="">
-                        <p class="switcher-style-head">Loader:</p>
-                        <div class="row switcher-style gx-0">
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-loader-enable">
-                                        Enable
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="page-loader"
-                                        id="switcher-loader-enable" checked>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="form-check switch-select">
-                                    <label class="form-check-label" for="switcher-loader-disable">
-                                        Disable
-                                    </label>
-                                    <input class="form-check-input" type="radio" name="page-loader"
-                                        id="switcher-loader-disable" checked>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tab-pane fade border-0" id="switcher-profile" role="tabpanel" aria-labelledby="switcher-profile-tab" tabindex="0">
-                    <div>
-                        <div class="theme-colors">
-                            <p class="switcher-style-head">Menu Colors:</p>
-                            <div class="d-flex switcher-style pb-2">
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-white" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Light Menu" type="radio" name="menu-colors"
-                                        id="switcher-menu-light" checked>
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-dark" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Dark Menu" type="radio" name="menu-colors"
-                                        id="switcher-menu-dark">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Color Menu" type="radio" name="menu-colors"
-                                        id="switcher-menu-primary">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-gradient" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Gradient Menu" type="radio" name="menu-colors"
-                                        id="switcher-menu-gradient">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-transparent"
-                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Transparent Menu"
-                                        type="radio" name="menu-colors" id="switcher-menu-transparent">
-                                </div>
-                            </div>
-                            <div class="px-4 pb-3 text-muted fs-11">Note:If you want to change color Menu dynamically change from below Theme Primary color picker</div>
-                        </div>
-                        <div class="theme-colors">
-                            <p class="switcher-style-head">Header Colors:</p>
-                            <div class="d-flex switcher-style pb-2">
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-white" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Light Header" type="radio" name="header-colors"
-                                        id="switcher-header-light" checked>
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-dark" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Dark Header" type="radio" name="header-colors"
-                                        id="switcher-header-dark">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Color Header" type="radio" name="header-colors"
-                                        id="switcher-header-primary">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-gradient" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Gradient Header" type="radio" name="header-colors"
-                                        id="switcher-header-gradient">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-transparent" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" title="Transparent Header" type="radio" name="header-colors"
-                                        id="switcher-header-transparent">
-                                </div>
-                            </div>
-                            <div class="px-4 pb-3 text-muted fs-11">Note:If you want to change color Header dynamically change from below Theme Primary color picker</div>
-                        </div>
-                        <div class="theme-colors">
-                            <p class="switcher-style-head">Theme Primary:</p>
-                            <div class="d-flex flex-wrap align-items-center switcher-style">
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary-1" type="radio"
-                                        name="theme-primary" id="switcher-primary">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary-2" type="radio"
-                                        name="theme-primary" id="switcher-primary1">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary-3" type="radio" name="theme-primary"
-                                        id="switcher-primary2">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary-4" type="radio" name="theme-primary"
-                                        id="switcher-primary3">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-primary-5" type="radio" name="theme-primary"
-                                        id="switcher-primary4">
-                                </div>
-                                <div class="form-check switch-select ps-0 mt-1 color-primary-light">
-                                    <div class="theme-container-primary"></div>
-                                    <div class="pickr-container-primary"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="theme-colors">
-                            <p class="switcher-style-head">Theme Background:</p>
-                            <div class="d-flex flex-wrap align-items-center switcher-style">
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-bg-1" type="radio"
-                                        name="theme-background" id="switcher-background">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-bg-2" type="radio"
-                                        name="theme-background" id="switcher-background1">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-bg-3" type="radio" name="theme-background"
-                                        id="switcher-background2">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-bg-4" type="radio"
-                                        name="theme-background" id="switcher-background3">
-                                </div>
-                                <div class="form-check switch-select me-3">
-                                    <input class="form-check-input color-input color-bg-5" type="radio"
-                                        name="theme-background" id="switcher-background4">
-                                </div>
-                                <div class="form-check switch-select ps-0 mt-1 tooltip-static-demo color-bg-transparent">
-                                    <div class="theme-container-background"></div>
-                                    <div class="pickr-container-background"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="menu-image mb-3">
-                            <p class="switcher-style-head">Menu With Background Image:</p>
-                            <div class="d-flex flex-wrap align-items-center switcher-style">
-                                <div class="form-check switch-select m-2">
-                                    <input class="form-check-input bgimage-input bg-img1" type="radio"
-                                        name="theme-background" id="switcher-bg-img">
-                                </div>
-                                <div class="form-check switch-select m-2">
-                                    <input class="form-check-input bgimage-input bg-img2" type="radio"
-                                        name="theme-background" id="switcher-bg-img1">
-                                </div>
-                                <div class="form-check switch-select m-2">
-                                    <input class="form-check-input bgimage-input bg-img3" type="radio" name="theme-background"
-                                        id="switcher-bg-img2">
-                                </div>
-                                <div class="form-check switch-select m-2">
-                                    <input class="form-check-input bgimage-input bg-img4" type="radio"
-                                        name="theme-background" id="switcher-bg-img3">
-                                </div>
-                                <div class="form-check switch-select m-2">
-                                    <input class="form-check-input bgimage-input bg-img5" type="radio"
-                                        name="theme-background" id="switcher-bg-img4">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="d-flex justify-content-between canvas-footer gap-1">
-                    <a href="javascript:void(0);" id="reset-all" class="btn btn-danger flex-fill">إعادة ضبط</a>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+    </div>
+
+    <div class="offcanvas-body student-theme-switcher__body">
+        {{-- وضع العرض --}}
+        <section class="student-theme-switcher__section">
+            <h6 class="student-theme-switcher__label">
+                <i class="fe fe-sun"></i>
+                وضع العرض
+            </h6>
+            <div class="student-theme-switcher__grid student-theme-switcher__grid--2">
+                <label class="student-theme-option">
+                    <input class="visually-hidden" type="radio" name="theme-style" id="switcher-light-theme" checked>
+                    <span class="student-theme-option__icon"><i class="fe fe-sun"></i></span>
+                    <span class="student-theme-option__text">فاتح</span>
+                </label>
+                <label class="student-theme-option">
+                    <input class="visually-hidden" type="radio" name="theme-style" id="switcher-dark-theme">
+                    <span class="student-theme-option__icon"><i class="fe fe-moon"></i></span>
+                    <span class="student-theme-option__text">داكن</span>
+                </label>
+            </div>
+        </section>
+
+        {{-- اللون الرئيسي --}}
+        <section class="student-theme-switcher__section">
+            <h6 class="student-theme-switcher__label">
+                <i class="fe fe-droplet"></i>
+                اللون الرئيسي
+            </h6>
+            <div class="student-theme-switcher__swatches">
+                <label class="student-theme-swatch" title="أزرق">
+                    <input class="form-check-input color-input color-primary-1" type="radio" name="theme-primary" id="switcher-primary">
+                </label>
+                <label class="student-theme-swatch" title="تركواز">
+                    <input class="form-check-input color-input color-primary-2" type="radio" name="theme-primary" id="switcher-primary1">
+                </label>
+                <label class="student-theme-swatch" title="بنفسجي">
+                    <input class="form-check-input color-input color-primary-3" type="radio" name="theme-primary" id="switcher-primary2">
+                </label>
+                <label class="student-theme-swatch" title="أخضر">
+                    <input class="form-check-input color-input color-primary-4" type="radio" name="theme-primary" id="switcher-primary3">
+                </label>
+                <label class="student-theme-swatch" title="أحمر">
+                    <input class="form-check-input color-input color-primary-5" type="radio" name="theme-primary" id="switcher-primary4">
+                </label>
+                <div class="student-theme-swatch student-theme-swatch--picker">
+                    <div class="theme-container-primary"></div>
+                    <div class="pickr-container-primary"></div>
                 </div>
             </div>
+        </section>
+
+        {{-- شكل القائمة --}}
+        <section class="student-theme-switcher__section">
+            <h6 class="student-theme-switcher__label">
+                <i class="fe fe-sidebar"></i>
+                شكل القائمة
+            </h6>
+            <div class="student-theme-switcher__grid student-theme-switcher__grid--2">
+                <label class="student-theme-option">
+                    <input class="visually-hidden" type="radio" name="sidemenu-layout-styles" id="switcher-default-menu" checked>
+                    <span class="student-theme-option__icon"><i class="fe fe-menu"></i></span>
+                    <span class="student-theme-option__text">كاملة</span>
+                </label>
+                <label class="student-theme-option">
+                    <input class="visually-hidden" type="radio" name="sidemenu-layout-styles" id="switcher-closed-menu">
+                    <span class="student-theme-option__icon"><i class="fe fe-disc"></i></span>
+                    <span class="student-theme-option__text">مصغّرة</span>
+                </label>
+            </div>
+        </section>
+
+        {{-- لون القائمة --}}
+        <section class="student-theme-switcher__section">
+            <h6 class="student-theme-switcher__label">
+                <i class="fe fe-layout"></i>
+                لون القائمة
+            </h6>
+            <div class="student-theme-switcher__grid student-theme-switcher__grid--2">
+                <label class="student-theme-option student-theme-option--compact">
+                    <input class="visually-hidden" type="radio" name="menu-colors" id="switcher-menu-light" checked>
+                    <span class="student-theme-option__icon"><i class="fe fe-sun"></i></span>
+                    <span class="student-theme-option__text">فاتحة</span>
+                </label>
+                <label class="student-theme-option student-theme-option--compact">
+                    <input class="visually-hidden" type="radio" name="menu-colors" id="switcher-menu-dark">
+                    <span class="student-theme-option__icon"><i class="fe fe-moon"></i></span>
+                    <span class="student-theme-option__text">داكنة</span>
+                </label>
+            </div>
+        </section>
+
+        {{-- خيارات مخفية (مطلوبة لسكربت الثيم) --}}
+        <div class="visually-hidden" aria-hidden="true">
+            <input type="radio" name="direction" id="switcher-ltr">
+            <input type="radio" name="direction" id="switcher-rtl" checked>
+
+            <input type="radio" name="navigation-style" id="switcher-vertical" checked>
+            <input type="radio" name="navigation-style" id="switcher-horizontal">
+
+            <input type="radio" name="navigation-menu-styles" id="switcher-menu-click" checked>
+            <input type="radio" name="navigation-menu-styles" id="switcher-menu-hover">
+            <input type="radio" name="navigation-menu-styles" id="switcher-icon-click">
+            <input type="radio" name="navigation-menu-styles" id="switcher-icon-hover">
+
+            <input type="radio" name="sidemenu-layout-styles" id="switcher-icontext-menu">
+            <input type="radio" name="sidemenu-layout-styles" id="switcher-icon-overlay">
+            <input type="radio" name="sidemenu-layout-styles" id="switcher-detached">
+            <input type="radio" name="sidemenu-layout-styles" id="switcher-double-menu">
+
+            <input type="radio" name="page-styles" id="switcher-regular" checked>
+            <input type="radio" name="page-styles" id="switcher-classic">
+            <input type="radio" name="page-styles" id="switcher-modern">
+
+            <input type="radio" name="layout-width" id="switcher-full-width" checked>
+            <input type="radio" name="layout-width" id="switcher-boxed">
+
+            <input type="radio" name="menu-positions" id="switcher-menu-fixed" checked>
+            <input type="radio" name="menu-positions" id="switcher-menu-scroll">
+
+            <input type="radio" name="header-positions" id="switcher-header-fixed" checked>
+            <input type="radio" name="header-positions" id="switcher-header-scroll">
+
+            <input type="radio" name="page-loader" id="switcher-loader-enable">
+            <input type="radio" name="page-loader" id="switcher-loader-disable" checked>
+
+            <input type="radio" name="menu-colors" id="switcher-menu-primary">
+            <input type="radio" name="menu-colors" id="switcher-menu-gradient">
+            <input type="radio" name="menu-colors" id="switcher-menu-transparent">
+
+            <input type="radio" name="header-colors" id="switcher-header-light" checked>
+            <input type="radio" name="header-colors" id="switcher-header-dark">
+            <input type="radio" name="header-colors" id="switcher-header-primary">
+            <input type="radio" name="header-colors" id="switcher-header-gradient">
+            <input type="radio" name="header-colors" id="switcher-header-transparent">
+
+            <input type="radio" name="theme-background" id="switcher-background">
+            <input type="radio" name="theme-background" id="switcher-background1">
+            <input type="radio" name="theme-background" id="switcher-background2">
+            <input type="radio" name="theme-background" id="switcher-background3">
+            <input type="radio" name="theme-background" id="switcher-background4">
+            <input type="radio" name="theme-background" id="switcher-bg-img">
+            <input type="radio" name="theme-background" id="switcher-bg-img1">
+            <input type="radio" name="theme-background" id="switcher-bg-img2">
+            <input type="radio" name="theme-background" id="switcher-bg-img3">
+            <input type="radio" name="theme-background" id="switcher-bg-img4">
+
+            <div class="theme-container-background"></div>
+            <div class="pickr-container-background"></div>
         </div>
     </div>
-    <!-- End Switcher -->
+
+    <div class="student-theme-switcher__footer">
+        <a href="javascript:void(0);" id="reset-all" class="btn btn-outline-danger w-100 rounded-pill">
+            <i class="fe fe-rotate-ccw me-2"></i>إعادة الضبط الافتراضي
+        </a>
+    </div>
+</div>
+<!-- End Switcher -->

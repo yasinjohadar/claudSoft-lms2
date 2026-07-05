@@ -116,57 +116,10 @@
 
                 <!-- Resource (external link / embedded) -->
                 @if($module->module_type == 'resource' && $module->modulable)
-                    @php
-                        /** @var \App\Models\Resource $resource */
-                        $resource = $module->modulable;
-                        $resourceUrl = $resource->resource_url ?? null;
-                    @endphp
-
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-link me-2"></i>{{ $resource->title ?? $module->title }}
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            @if(!empty($resource->description))
-                                <p class="text-muted mb-3">{{ $resource->description }}</p>
-                            @endif
-
-                            @if($resource->isEmbedded() && $resourceUrl)
-                                <!-- Embedded link inside page (for ANY link, not just videos) -->
-                                <div class="video-container" style="position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
-                                    <iframe
-                                        src="{{ htmlspecialchars($resourceUrl, ENT_QUOTES, 'UTF-8') }}"
-                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
-                                        frameborder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen
-                                        loading="lazy">
-                                    </iframe>
-                                </div>
-                            @elseif($resourceUrl)
-                                <!-- Open external link in new tab -->
-                                <a href="{{ $resourceUrl }}" target="_blank" rel="noopener"
-                                   class="btn btn-primary">
-                                    <i class="fas fa-external-link-alt me-2"></i>
-                                    فتح الرابط
-                                </a>
-                            @elseif($resource->file_path)
-                                <!-- Fallback: downloadable file resource -->
-                                <a href="{{ route('student.resources.download', $resource->id) }}"
-                                   class="btn btn-primary" data-turbo="false">
-                                    <i class="fas fa-download me-2"></i>
-                                    تحميل الملف
-                                </a>
-                            @else
-                                <div class="alert alert-warning mb-0">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    لا توجد بيانات صالحة لهذا المورد حالياً.
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+                    @include('student.courses.learning.partials.resource-link-panel', [
+                        'resource' => $module->modulable,
+                        'module' => $module,
+                    ])
                 @endif
 
                 <!-- Lesson -->

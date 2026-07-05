@@ -13,12 +13,12 @@
         <div class="student-achievements-hero mb-4">
             <div class="row align-items-center g-4">
                 <div class="col-lg-7">
-                    <span class="student-achievements-hero__eyebrow"><i class="fe fe-award me-1"></i>التلعيب</span>
+                    <span class="student-achievements-hero__eyebrow"><i class="fe fe-award me-1"></i>عالم الإنجاز</span>
                     <h4 class="student-my-courses-welcome__title mb-2">إنجازاتي</h4>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">التلعيب</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('gamification.dashboard') }}">عالم الإنجاز</a></li>
                             <li class="breadcrumb-item active">إنجازاتي</li>
                         </ol>
                     </nav>
@@ -34,7 +34,7 @@
                         </div>
                         <div class="student-achievements-hero__actions">
                             <a href="{{ route('gamification.dashboard') }}" class="btn btn-light btn-sm rounded-pill">
-                                <i class="fe fe-bar-chart-2 me-1"></i>لوحة التلعيب
+                                <i class="fe fe-bar-chart-2 me-1"></i>عالم الإنجاز
                             </a>
                         </div>
                     </div>

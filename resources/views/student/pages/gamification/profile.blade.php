@@ -1,14 +1,14 @@
 @extends('student.layouts.master')
 
 @section('page-title')
-    ملفي الشخصي - التلعيب
+    ملفي الشخصي - عالم الإنجاز
 @stop
 
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <h4 class="mb-0">ملفي الشخصي - التلعيب</h4>
+                <h4 class="mb-0">ملفي الشخصي - عالم الإنجاز</h4>
                 <a href="{{ route('gamification.dashboard') }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-arrow-right me-1"></i>العودة
                 </a>

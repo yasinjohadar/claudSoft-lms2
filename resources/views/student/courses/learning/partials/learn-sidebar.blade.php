@@ -34,9 +34,12 @@
 
         @if($module->module_type != 'question_module' && $module->module_type != 'quiz')
             <div class="student-learn-sidebar-curriculum">
-                <h6 class="student-learn-sidebar-curriculum__title">
-                    <i class="fe fe-list me-2 text-primary"></i>محتوى الكورس
-                </h6>
+                <div class="student-learn-sidebar-curriculum__head">
+                    <h6 class="student-learn-sidebar-curriculum__title mb-0">
+                        <i class="fe fe-list me-2 text-primary"></i>محتوى الكورس
+                    </h6>
+                    @include('student.components.sidebar-layout-toggle', ['showLabel' => 'القائمة'])
+                </div>
                 <div class="student-learn-sidebar-curriculum__scroll">
                     <div class="accordion student-learn-sidebar-accordion" id="studentLearnSidebarAccordion">
                         @foreach($module->course->sections as $section)
@@ -53,7 +56,11 @@
                                             aria-expanded="{{ $hasCurrentModule ? 'true' : 'false' }}"
                                             aria-controls="sidebar-section-collapse-{{ $section->id }}">
                                         <span class="student-learn-sidebar-section-title">
-                                            <i class="fe fe-folder me-2 text-primary"></i>{{ $section->title }}
+                                            <span class="student-learn-sidebar-section-icon" aria-hidden="true">
+                                                <i class="ri-folder-3-fill student-learn-sidebar-section-icon__closed"></i>
+                                                <i class="ri-folder-open-fill student-learn-sidebar-section-icon__open"></i>
+                                            </span>
+                                            <span class="student-learn-sidebar-section-title__text">{{ $section->title }}</span>
                                         </span>
                                         <span class="badge bg-primary-transparent text-primary student-learn-sidebar-section-count">
                                             {{ $sectionModuleCount }} {{ $sectionModuleCount === 1 ? 'درس' : 'دروس' }}
@@ -69,7 +76,7 @@
                                             @php
                                                 $modMeta = $moduleTypeMeta[$mod->module_type] ?? ['icon' => 'fe-file', 'label' => 'محتوى', 'color' => 'secondary'];
                                                 $isCurrent = $mod->id == $module->id;
-                                                $isModCompleted = in_array($mod->id, $completedModules);
+                                                $isModCompleted = in_array((int) $mod->id, array_map('intval', $completedModules ?? []), true);
                                             @endphp
                                             <div class="student-learn-sidebar-item"
                                                  data-sidebar-row-module-id="{{ $mod->id }}">

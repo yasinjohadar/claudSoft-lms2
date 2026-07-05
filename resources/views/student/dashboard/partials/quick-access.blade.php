@@ -20,7 +20,7 @@
         ['route' => 'gamification.badges.index', 'icon' => 'fe-award', 'color' => 'warning', 'title' => 'شاراتي', 'subtitle' => 'الإنجازات المكتسبة'],
         ['route' => 'gamification.leaderboards.index', 'icon' => 'fe-bar-chart-2', 'color' => 'primary', 'title' => 'لوحة المتصدرين', 'subtitle' => 'ترتيب الطلاب'],
         ['route' => 'student.progress.overview', 'icon' => 'fe-trending-up', 'color' => 'secondary', 'title' => 'تقدمي في الكورسات', 'subtitle' => 'نسب الإنجاز'],
-        ['route' => 'gamification.dashboard', 'icon' => 'fe-zap', 'color' => 'orange', 'title' => 'لوحة التلعيب', 'subtitle' => 'النقاط والتحديات'],
+        ['route' => 'gamification.dashboard', 'icon' => 'fe-zap', 'color' => 'orange', 'title' => 'عالم الإنجاز', 'subtitle' => 'النقاط والتحديات'],
         ['route' => 'student.external-resources.index', 'icon' => 'fe-link', 'color' => 'info', 'title' => 'الموارد الخارجية', 'subtitle' => 'روابط ومراجع'],
         ['route' => 'student.gifts.index', 'icon' => 'ri-gift-line', 'icon_set' => 'ri', 'color' => 'warning', 'title' => 'هدايا الأكاديمية', 'subtitle' => 'هدايا وموارد من الأكاديمية'],
     ]);

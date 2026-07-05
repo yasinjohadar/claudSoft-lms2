@@ -13,9 +13,12 @@
         <h6 class="group-show-members-card__title mb-0">
             <i class="fe fe-list me-2 text-primary"></i>محتوى الكورس
         </h6>
-        <span class="group-show-members-card__count">
-            {{ $stats['total_sections'] ?? 0 }} قسم • {{ $stats['total_modules'] ?? 0 }} درس
-        </span>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            @include('student.components.sidebar-layout-toggle', ['showLabel' => 'القائمة'])
+            <span class="group-show-members-card__count">
+                {{ $stats['total_sections'] ?? 0 }} قسم • {{ $stats['total_modules'] ?? 0 }} درس
+            </span>
+        </div>
     </div>
     <div class="card-body pt-3 px-0 pb-0">
         @if($course->sections->count() > 0)
@@ -28,10 +31,14 @@
                                     data-bs-target="#collapse-{{ $section->id }}"
                                     aria-expanded="false"
                                     aria-controls="collapse-{{ $section->id }}">
-                                <span class="student-course-section-title">
-                                    <i class="fe fe-folder me-2 text-primary"></i>{{ $section->title }}
+                                <span class="student-learn-sidebar-section-title student-course-section-title">
+                                    <span class="student-learn-sidebar-section-icon" aria-hidden="true">
+                                        <i class="ri-folder-3-fill student-learn-sidebar-section-icon__closed"></i>
+                                        <i class="ri-folder-open-fill student-learn-sidebar-section-icon__open"></i>
+                                    </span>
+                                    <span class="student-learn-sidebar-section-title__text">{{ $section->title }}</span>
                                 </span>
-                                <span class="badge bg-primary-transparent text-primary student-course-section-count">
+                                <span class="badge bg-primary-transparent text-primary student-learn-sidebar-section-count student-course-section-count">
                                     {{ $section->modules->count() }} {{ $section->modules->count() == 1 ? 'درس' : 'دروس' }}
                                 </span>
                             </button>

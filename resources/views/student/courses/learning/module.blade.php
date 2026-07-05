@@ -77,18 +77,30 @@
 
         function parseCompletedModuleIds() {
             var f = getLearnFrame();
-            if (!f || !f.dataset.completedModules) {
+            if (!f) {
                 return [];
             }
-            try {
-                var raw = JSON.parse(f.dataset.completedModules);
-                if (!Array.isArray(raw)) {
-                    return [];
+
+            var completedIds = [];
+            if (f.dataset.completedModules) {
+                try {
+                    var raw = JSON.parse(f.dataset.completedModules);
+                    if (Array.isArray(raw)) {
+                        completedIds = raw.map(function (x) { return parseInt(x, 10); }).filter(function (n) { return !isNaN(n); });
+                    }
+                } catch (e) {
+                    completedIds = [];
                 }
-                return raw.map(function (x) { return parseInt(x, 10); }).filter(function (n) { return !isNaN(n); });
-            } catch (e) {
-                return [];
             }
+
+            if (f.dataset.isCompleted === '1') {
+                var currentId = getCurrentModuleId();
+                if (currentId && completedIds.indexOf(currentId) === -1) {
+                    completedIds.push(currentId);
+                }
+            }
+
+            return completedIds;
         }
 
         var TYPE_LABELS = {

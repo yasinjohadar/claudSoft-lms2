@@ -57,7 +57,7 @@
             </span>
             <div>
                 <h4 class="card-title mb-1">آخر الشارات</h4>
-                <p class="fs-12 text-muted mb-0">إنجازاتك الأخيرة في التلعيب.</p>
+                <p class="fs-12 text-muted mb-0">إنجازاتك الأخيرة في عالم الإنجاز.</p>
             </div>
         </div>
     </div>
