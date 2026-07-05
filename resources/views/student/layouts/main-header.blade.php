@@ -6,20 +6,9 @@
 
                 <!-- Start::header-content-left -->
                 <div class="header-content-left">
-
-                    <!-- Start::header-element -->
-                    <div class="header-element">
-                        <div class="horizontal-logo">
-                            <a href="index.html" class="header-logo">
-                          <img src="{{ asset('assets/images/brand-logos/desktop-logo.png') }}" alt="logo" class="desktop-logo">
-                            <img src="{{ asset('assets/images/brand-logos/toggle-logo.png') }}" alt="logo" class="toggle-logo">
-                            <img src="{{ asset('assets/images/brand-logos/desktop-white.png') }}" alt="logo" class="desktop-white">
-                            <img src="{{ asset('assets/images/brand-logos/toggle-white.png') }}" alt="logo" class="toggle-white">
-
-                            </a>
-                        </div>
-                    </div>
-                    <!-- End::header-element -->
+                    @php
+                        $studentHeaderLogoUrl = asset('frontend2/assets/images/logo.png');
+                    @endphp
 
                     <!-- Start::header-element -->
                     <div class="header-element">
@@ -39,6 +28,26 @@
                         <!-- End::header-link -->
                     </div>
                     <!-- End::header-element -->
+
+                    <!-- Start::header-element — شعار الجوال -->
+                    <div class="header-element d-lg-none student-mobile-header-logo-wrap">
+                        <a href="{{ route('student.dashboard') }}" class="student-mobile-header-logo" aria-label="لوحة التحكم">
+                            <img src="{{ $studentHeaderLogoUrl }}" alt="أكاديمية كلاودسوفت">
+                        </a>
+                    </div>
+                    <!-- End::header-element -->
+
+                    <!-- شعار سطح المكتب (مخفي في الجوال) -->
+                    <div class="header-element d-none d-lg-block">
+                        <div class="horizontal-logo">
+                            <a href="{{ route('student.dashboard') }}" class="header-logo">
+                                <img src="{{ asset('assets/images/brand-logos/desktop-logo.png') }}" alt="logo" class="desktop-logo">
+                                <img src="{{ asset('assets/images/brand-logos/toggle-logo.png') }}" alt="logo" class="toggle-logo">
+                                <img src="{{ asset('assets/images/brand-logos/desktop-white.png') }}" alt="logo" class="desktop-white">
+                                <img src="{{ asset('assets/images/brand-logos/toggle-white.png') }}" alt="logo" class="toggle-white">
+                            </a>
+                        </div>
+                    </div>
 
                 </div>
                 <!-- End::header-content-left -->
