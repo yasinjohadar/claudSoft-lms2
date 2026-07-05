@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\WhatsAppMessageTemplate;
 use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
 use App\Services\BulkEmail\MembershipEmailInviteService;
 use App\Services\WhatsApp\MembershipWhatsAppInviteService;
@@ -1671,6 +1672,8 @@ class CourseGroupController extends Controller
     private function resolveMembershipWhatsAppContext(CourseGroup $group, ?string $whatsappJid): array
     {
         $compareService = app(EvolutionGroupCompareService::class);
+        $evolutionService = app(\App\Services\WhatsApp\Evolution\EvolutionService::class);
+        $activeInstanceName = $evolutionService->activeInstanceName();
 
         $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
         $defaultInviteMessage = "مرحباً {student_name} 👋\n\nيرجى الانضمام لمجموعة الواتساب الخاصة بـ {group_name} عبر الرابط:\n{group_link}";
@@ -1678,6 +1681,7 @@ class CourseGroupController extends Controller
         $context = [
             'whatsapp_groups' => [],
             'whatsapp_groups_error' => null,
+            'evolution_instance_name' => $activeInstanceName,
             'selected_jid' => trim((string) ($whatsappJid ?? '')),
             'wa_group_info' => null,
             'wa_load_error' => null,
@@ -1696,7 +1700,7 @@ class CourseGroupController extends Controller
         try {
             $context['whatsapp_groups'] = $compareService->listWhatsAppGroups(false);
         } catch (\Throwable $e) {
-            $context['whatsapp_groups_error'] = $e->getMessage();
+            $context['whatsapp_groups_error'] = EvolutionApiException::resolveUserMessage($e);
         }
 
         if ($context['selected_jid'] === '') {
@@ -1708,7 +1712,7 @@ class CourseGroupController extends Controller
             $context['wa_group_info'] = $wa['group_info'];
             $context['phone_index'] = $wa['phone_index'];
         } catch (\Throwable $e) {
-            $context['wa_load_error'] = $e->getMessage();
+            $context['wa_load_error'] = EvolutionApiException::resolveUserMessage($e);
         }
 
         return $context;

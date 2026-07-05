@@ -88,6 +88,13 @@
                         <i class="ri-whatsapp-line me-2 text-success"></i>مجموعة واتساب للمقارنة
                     </h4>
                     <p class="fs-12 text-muted mb-0">اختر مجموعة واتساب لمقارنة <strong>طلبات الانضمام</strong> بأعضائها. رقم «X عضو» في القائمة = إجمالي المجموعة في واتساب، وليس عدد طلابنا المنضمين.</p>
+                    @if(!empty($waContext['evolution_instance_name']))
+                        <p class="fs-12 text-muted mb-0 mt-1">
+                            Instance المستخدم:
+                            <strong>{{ $waContext['evolution_instance_name'] }}</strong>
+                            — <a href="{{ route('admin.evolution-api.instances.index') }}">تغيير الافتراضي</a>
+                        </p>
+                    @endif
                 </div>
                 <div class="card-body pt-3">
                     @if(!empty($waContext['whatsapp_groups_error']))

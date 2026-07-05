@@ -23,7 +23,11 @@ class EvolutionGroupCompareService
     public function listWhatsAppGroups(bool $withParticipants = false): array
     {
         $instance = $this->evolutionService->activeInstanceName();
-        $response = $this->evolutionService->client()->fetchAllGroups($instance, $withParticipants);
+        if ($instance === '') {
+            return [];
+        }
+
+        $response = $this->evolutionService->clientFor(null, $instance)->fetchAllGroups($instance, $withParticipants);
 
         return is_array($response) ? $response : [];
     }
@@ -34,8 +38,13 @@ class EvolutionGroupCompareService
     public function loadWhatsAppGroup(string $groupJid): array
     {
         $instance = $this->evolutionService->activeInstanceName();
-        $group = $this->evolutionService->client()->findGroupByJid($instance, $groupJid);
-        $membersRaw = $this->evolutionService->client()->findGroupMembers($instance, $groupJid);
+        if ($instance === '') {
+            throw new \RuntimeException('لم يُحدَّد Instance افتراضي لـ Evolution API. عيّن الانستانس من صفحة Evolution API.');
+        }
+
+        $client = $this->evolutionService->clientFor(null, $instance);
+        $group = $client->findGroupByJid($instance, $groupJid);
+        $membersRaw = $client->findGroupMembers($instance, $groupJid);
         $members = EvolutionGroupMemberParser::parse($membersRaw);
         $groupInfo = EvolutionGroupMemberParser::summarizeGroup($group, $groupJid);
 

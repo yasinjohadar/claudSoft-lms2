@@ -43,6 +43,11 @@ class EvolutionService
         return $this->client();
     }
 
+    public function clientForActiveInstance(): EvolutionApiClient
+    {
+        return $this->clientFor(null, $this->activeInstanceName());
+    }
+
     public function refreshInstanceFromApi(EvolutionInstance $instance): EvolutionInstance
     {
         $client = $this->clientFor($instance);

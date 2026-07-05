@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Support\EvolutionGroupMemberParser;
 use Illuminate\Http\RedirectResponse;
@@ -23,13 +24,13 @@ class EvolutionGroupsController extends Controller
         $instance = $this->evolutionService->activeInstanceName();
 
         try {
-            $response = $this->evolutionService->client()->fetchAllGroups(
+            $response = $this->evolutionService->clientFor(null, $instance)->fetchAllGroups(
                 $instance,
                 $request->boolean('with_participants')
             );
             $groups = is_array($response) ? $response : [];
         } catch (\Throwable $e) {
-            $error = $e->getMessage();
+            $error = EvolutionApiException::resolveUserMessage($e);
             $errorHint = str_contains(strtolower($error), 'bad request')
                 ? 'تأكد أن Instance متصل (open) وأن الإعدادات محفوظة بشكل صحيح.'
                 : 'تحقق من اتصال Evolution API أو أعد تحميل الصفحة.';
@@ -87,10 +88,11 @@ class EvolutionGroupsController extends Controller
         $error = null;
 
         try {
-            $group = $this->evolutionService->client()->findGroupByJid($instance, $groupJid);
-            $membersRaw = $this->evolutionService->client()->findGroupMembers($instance, $groupJid);
+            $client = $this->evolutionService->clientFor(null, $instance);
+            $group = $client->findGroupByJid($instance, $groupJid);
+            $membersRaw = $client->findGroupMembers($instance, $groupJid);
         } catch (\Throwable $e) {
-            $error = $e->getMessage();
+            $error = EvolutionApiException::resolveUserMessage($e);
             $group = [];
             $membersRaw = [];
         }

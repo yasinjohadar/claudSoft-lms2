@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WhatsAppBroadcast;
 use App\Models\WhatsAppBroadcastRecipient;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use App\Services\WhatsApp\Evolution\EvolutionGroupCompareService;
 use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
@@ -43,7 +44,7 @@ class EvolutionGroupCompareController extends Controller
         try {
             $whatsappGroups = $this->compareService->listWhatsAppGroups(false);
         } catch (\Throwable $e) {
-            $waError = $e->getMessage();
+            $waError = EvolutionApiException::resolveUserMessage($e);
         }
 
         $filters = $this->filtersFromRequest($request);
@@ -67,7 +68,7 @@ class EvolutionGroupCompareController extends Controller
                 $result = $this->compareService->compare($students, $wa['phone_index'], $wa['members']);
                 $labels = $this->compareService->resolveLabels($filters['course_id'], $filters['platform_group_id']);
             } catch (\Throwable $e) {
-                $compareError = $e->getMessage();
+                $compareError = EvolutionApiException::resolveUserMessage($e);
             }
         }
 
