@@ -360,6 +360,8 @@ Route::prefix('admin')
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');
         Route::post('groups/{groupId}/toggle-visibility', [CourseGroupController::class, 'toggleVisibility'])->name('groups.toggle-visibility');
         Route::post('groups/{groupId}/toggle-active', [CourseGroupController::class, 'toggleActive'])->name('groups.toggle-active');
+        Route::post('groups/{groupId}/relink-members', [CourseGroupController::class, 'relinkMembers'])->name('groups.relink-members');
+        Route::post('courses/{course}/groups/{group}/relink-members', [CourseGroupController::class, 'relinkMembers'])->name('courses.groups.relink-members');
 
         // Group Membership Requests routes
         Route::get('courses/{courseId}/groups/{groupId}/membership-requests', [CourseGroupController::class, 'membershipRequests'])->name('courses.groups.membership-requests');

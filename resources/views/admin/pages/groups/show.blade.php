@@ -90,6 +90,18 @@
                                 <a href="{{ route('groups.bulk-enroll-page', $group->id) }}" class="btn btn-outline-primary btn-sm">
                                     <i class="fe fe-filter me-1"></i>إضافة متقدمة
                                 </a>
+                                @php
+                                    $relinkMembersRoute = $course
+                                        ? route('courses.groups.relink-members', [$course->id, $group->id])
+                                        : route('groups.relink-members', $group->id);
+                                @endphp
+                                <form action="{{ $relinkMembersRoute }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('سيتم إعادة تسجيل جميع أعضاء المجموعة في كورساتها المرئية دون إزالتهم من المجموعة. هل تريد المتابعة؟');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="تصحيح ظهور الكورسات للأعضاء الحاليين">
+                                        <i class="fe fe-refresh-cw me-1"></i>إعادة ربط الكورسات
+                                    </button>
+                                </form>
                             </div>
                         </div>
 

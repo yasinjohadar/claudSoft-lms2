@@ -31,6 +31,7 @@ use App\Services\Telegram\TelegramApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
@@ -639,6 +640,71 @@ class CourseGroupController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ أثناء إضافة العضو: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Re-enroll all group members in the group's visible courses (fix missing enrollments).
+     */
+    public function relinkMembers(Request $request)
+    {
+        $groupId = $request->route('group') ?? $request->route('groupId');
+
+        if (! $groupId) {
+            return redirect()
+                ->back()
+                ->with('error', 'معرف المجموعة غير صالح');
+        }
+
+        try {
+            $group = CourseGroup::withCount('members')->findOrFail($groupId);
+
+            if ($group->members_count === 0) {
+                return redirect()
+                    ->back()
+                    ->with('warning', 'لا يوجد أعضاء في هذه المجموعة لإعادة الربط.');
+            }
+
+            $visibleCoursesCount = $group->courses()->wherePivot('is_visible', true)->count();
+
+            if ($visibleCoursesCount === 0) {
+                return redirect()
+                    ->back()
+                    ->with('warning', 'لا توجد كورسات مرئية مرتبطة بهذه المجموعة.');
+            }
+
+            DB::beginTransaction();
+
+            $result = $group->relinkAllMembersToCourses(auth()->id());
+
+            DB::commit();
+
+            $message = sprintf(
+                'تم إعادة ربط %d عضوًا بـ %d كورس. تسجيلات جديدة: %d، محدّثة: %d.',
+                $result['members_processed'],
+                $result['courses_count'],
+                $result['enrolled'],
+                $result['updated']
+            );
+
+            if ($result['skipped'] > 0) {
+                $message .= sprintf(' (تم تخطي %d عضو بدون حساب طالب)', $result['skipped']);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Course group relink members failed', [
+                'group_id' => $groupId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'فشل إعادة الربط: '.$e->getMessage());
         }
     }
 

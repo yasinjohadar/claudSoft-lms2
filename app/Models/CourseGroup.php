@@ -629,4 +629,36 @@ class CourseGroup extends Model
             'removed_courses' => count($removedCourseIds)
         ];
     }
+
+    /**
+     * Re-enroll all current members in every visible course linked to this group.
+     * Fixes missing or stale course_enrollments without removing group membership.
+     */
+    public function relinkAllMembersToCourses(?int $enrolledBy = null): array
+    {
+        $members = $this->members()->with('student')->get();
+        $enrolledCount = 0;
+        $updatedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($members as $member) {
+            if (! $member->student) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            $result = $this->enrollStudentInGroupCourses($member->student, $enrolledBy);
+            $enrolledCount += $result['enrolled'];
+            $updatedCount += $result['updated'];
+        }
+
+        return [
+            'members_processed' => $members->count(),
+            'enrolled' => $enrolledCount,
+            'updated' => $updatedCount,
+            'skipped' => $skippedCount,
+            'courses_count' => $this->courses()->wherePivot('is_visible', true)->count(),
+        ];
+    }
 }
