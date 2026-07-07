@@ -148,7 +148,7 @@
                                                     <i class="fas fa-eye me-1"></i>مراجعة
                                                 </a>
                                             @else
-                                                <a href="{{ route('student.quizzes.take', $attempt->id) }}" class="btn btn-sm btn-warning">
+                                                <a href="{{ route('student.quizzes.take', $attempt->id) }}" class="btn btn-sm btn-warning" data-turbo="false">
                                                     <i class="fas fa-play me-1"></i>متابعة
                                                 </a>
                                             @endif

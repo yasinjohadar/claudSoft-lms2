@@ -122,7 +122,7 @@
                                                 </td>
                                                 <td class="text-end">
                                                     @if($attempt->status == 'in_progress')
-                                                        <a href="{{ route('student.quizzes.take', $attempt->id) }}" class="btn btn-sm btn-primary rounded-pill">متابعة</a>
+                                                        <a href="{{ route('student.quizzes.take', $attempt->id) }}" class="btn btn-sm btn-primary rounded-pill" data-turbo="false">متابعة</a>
                                                     @else
                                                         <a href="{{ route('student.quizzes.review.show', $attempt->id) }}" class="btn btn-sm btn-outline-primary rounded-pill">مراجعة</a>
                                                     @endif

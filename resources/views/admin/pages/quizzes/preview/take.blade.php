@@ -5,6 +5,7 @@
 @section('page-title', 'تجربة الاختبار - ' . $attempt->quiz->title)
 
 @push('head-scripts')
+<meta name="turbo-visit-control" content="reload">
 <script>
 var attemptId = {{ $attempt->id }};
 var totalQuestions = {{ $questions->count() }};
@@ -827,6 +828,7 @@ if (document.readyState === 'loading') {
 } else {
     bootQuizTimer();
 }
+document.addEventListener('turbo:load', bootQuizTimer);
 
 $(document).ready(function() {
     var domQuestionCount = document.querySelectorAll('.question-container').length;

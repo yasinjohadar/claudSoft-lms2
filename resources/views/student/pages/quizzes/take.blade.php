@@ -5,6 +5,7 @@
 @section('page-title', 'حل الاختبار - ' . $attempt->quiz->title)
 
 @push('head-scripts')
+<meta name="turbo-visit-control" content="reload">
 <script>
 // Global variables - initialize early with Blade values
 var attemptId = {{ $attempt->id }};
@@ -827,6 +828,7 @@ if (document.readyState === 'loading') {
 } else {
     bootQuizTimer();
 }
+document.addEventListener('turbo:load', bootQuizTimer);
 
 // Initialize on page load
 $(document).ready(function() {
