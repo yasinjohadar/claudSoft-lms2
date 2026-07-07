@@ -17,6 +17,7 @@ use App\Models\Resource;
 use App\Models\SectionCompletion;
 use App\Services\AccessControlService;
 use App\Services\Gamification\GamificationService;
+use App\Services\Quiz\QuizAttemptLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -299,6 +300,11 @@ class CourseLearningController extends Controller
 
         if ($module->module_type === 'quiz' && $module->modulable) {
             $module->modulable->load(['quizQuestions.question.questionType', 'quizQuestions.question.options']);
+
+            if (auth()->check()) {
+                app(QuizAttemptLifecycleService::class)
+                    ->reconcileForStudent($module->modulable, (int) auth()->id());
+            }
         }
 
         if ($module->module_type === 'programming_challenge' && $module->modulable) {

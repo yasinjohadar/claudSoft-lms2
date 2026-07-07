@@ -267,6 +267,35 @@ class Quiz extends Model
     }
 
     /**
+     * Attempt statuses that consume the student's allowed attempt limit.
+     */
+    public const FINISHED_ATTEMPT_STATUSES = ['submitted', 'graded', 'reviewing'];
+
+    /**
+     * Get count of finished (submitted) attempts for a student.
+     */
+    public function getFinishedAttemptsCount(int $studentId): int
+    {
+        return $this->attempts()
+            ->realAttempts()
+            ->where('student_id', $studentId)
+            ->whereIn('status', self::FINISHED_ATTEMPT_STATUSES)
+            ->count();
+    }
+
+    /**
+     * Check if the student has an in-progress attempt.
+     */
+    public function hasInProgressAttempt(int $studentId): bool
+    {
+        return $this->attempts()
+            ->realAttempts()
+            ->where('student_id', $studentId)
+            ->where('status', 'in_progress')
+            ->exists();
+    }
+
+    /**
      * Get remaining attempts for a student.
      */
     public function getRemainingAttempts(int $studentId): ?int
@@ -275,21 +304,21 @@ class Quiz extends Model
             return null; // Unlimited
         }
 
-        $usedAttempts = $this->attempts()
-            ->realAttempts()
-            ->where('student_id', $studentId)
-            ->where('status', '!=', 'abandoned')
-            ->count();
+        $usedAttempts = $this->getFinishedAttemptsCount($studentId);
 
         return max(0, $this->attempts_allowed - $usedAttempts);
     }
 
     /**
-     * Check if student can attempt the quiz.
+     * Check if student can start a new quiz attempt.
      */
     public function canAttempt(int $studentId): bool
     {
-        if (!$this->isAvailable()) {
+        if (! $this->isAvailable()) {
+            return false;
+        }
+
+        if ($this->hasInProgressAttempt($studentId)) {
             return false;
         }
 

@@ -83,7 +83,7 @@
                     </a>
                     <p class="quiz-intro__cta-hint text-warning">
                         <i class="fe fe-alert-triangle me-1"></i>
-                        لديك محاولة غير مكتملة — أكملها أو سلّمها
+                        لديك محاولة جارية — أكملها لاستهلاك المحاولة
                     </p>
                 @elseif(!empty($canAttempt))
                     @if(!empty($startFormAction))

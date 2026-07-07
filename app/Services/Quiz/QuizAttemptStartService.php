@@ -50,6 +50,10 @@ class QuizAttemptStartService
             shuffle($questionIds);
         }
 
+        if (count($questionIds) === 0) {
+            throw new InvalidArgumentException('لا يمكن بدء الاختبار لعدم وجود أسئلة');
+        }
+
         return [
             'question_ids' => $questionIds,
             'max_score' => (float) $quiz->max_score,

@@ -519,12 +519,13 @@
                     @php
                         $quiz = $module->modulable;
                         $studentId = auth()->id();
-                        $studentAttempts = $quiz->attempts()->where('student_id', $studentId)->orderBy('attempt_number', 'desc')->get();
-                        $completedAttempts = $studentAttempts->where('status', 'completed')->count();
+                        $studentAttempts = $quiz->attempts()->realAttempts()->where('student_id', $studentId)->orderBy('attempt_number', 'desc')->get();
+                        $finishedAttempts = $studentAttempts->whereIn('status', \App\Models\Quiz::FINISHED_ATTEMPT_STATUSES);
+                        $completedAttempts = $finishedAttempts->count();
                         $inProgressAttempt = $studentAttempts->where('status', 'in_progress')->first();
                         $canAttempt = $quiz->canAttempt($studentId);
                         $remainingAttempts = $quiz->getRemainingAttempts($studentId);
-                        $lastAttempt = $studentAttempts->where('status', 'completed')->first();
+                        $lastAttempt = $finishedAttempts->first();
                     @endphp
 
                     @php
@@ -559,7 +560,7 @@
                         'attemptsAllowed' => $quiz->attempts_allowed,
                         'lastScore' => $lastAttempt ? number_format($lastAttempt->percentage_score ?? 0, 1) . '%' : null,
                         'lastPassed' => $lastAttempt ? ($lastAttempt->percentage_score ?? 0) >= ($quiz->passing_grade ?? 50) : false,
-                        'reviewUrl' => ($lastAttempt && $lastAttempt->status === 'completed') ? route('student.quizzes.review.show', $lastAttempt->id) : null,
+                        'reviewUrl' => $lastAttempt ? route('student.quizzes.review.show', $lastAttempt->id) : null,
                         'inProgressAttempt' => $inProgressAttempt,
                         'continueUrl' => $inProgressAttempt ? route('student.quizzes.take', $inProgressAttempt->id) : null,
                         'canAttempt' => $canAttempt,

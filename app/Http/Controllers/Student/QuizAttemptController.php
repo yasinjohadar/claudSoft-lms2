@@ -9,6 +9,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Models\QuizSettings;
 use App\Models\QuizAnalytics;
+use App\Services\Quiz\QuizAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class QuizAttemptController extends Controller
 {
     public function __construct(
         protected QuizAttemptStartService $attemptStartService,
+        protected QuizAttemptLifecycleService $attemptLifecycle,
     ) {}
     /**
      * Display available quizzes for student.
@@ -112,6 +114,8 @@ class QuizAttemptController extends Controller
                 ->withErrors(['error' => 'ليس لديك صلاحية للوصول إلى هذا الاختبار']);
         }
 
+        $this->attemptLifecycle->reconcileForStudent($quiz, $studentId);
+
         // Get student's previous attempts
         $attempts = $quiz->attempts()
             ->where('student_id', $studentId)
@@ -156,13 +160,11 @@ class QuizAttemptController extends Controller
             }
         }
 
-        // Check if can attempt
-        if (!$quiz->canAttempt($studentId)) {
-            return back()->withErrors(['error' => 'لا يمكنك بدء محاولة جديدة للاختبار']);
-        }
+        $this->attemptLifecycle->reconcileForStudent($quiz, $studentId);
 
-        // Check for existing in-progress attempt
+        // Resume existing in-progress attempt before checking attempt limits
         $existingAttempt = $quiz->attempts()
+            ->realAttempts()
             ->where('student_id', $studentId)
             ->where('status', 'in_progress')
             ->first();
@@ -172,48 +174,81 @@ class QuizAttemptController extends Controller
                 ->with('info', 'لديك محاولة قيد التقدم، يمكنك متابعتها');
         }
 
-        DB::beginTransaction();
+        // Check if can attempt
+        if (!$quiz->canAttempt($studentId)) {
+            return back()->withErrors(['error' => 'لا يمكنك بدء محاولة جديدة للاختبار']);
+        }
+
         try {
-            // Calculate attempt number
-            $attemptNumber = $quiz->attempts()
-                ->where('student_id', $studentId)
-                ->count() + 1;
+            $result = DB::transaction(function () use ($quiz, $studentId, $request) {
+                QuizAttempt::query()
+                    ->where('quiz_id', $quiz->id)
+                    ->where('student_id', $studentId)
+                    ->lockForUpdate()
+                    ->get();
 
-            $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
-            $questionIds = $startData['question_ids'];
+                $inProgress = $quiz->attempts()
+                    ->realAttempts()
+                    ->where('student_id', $studentId)
+                    ->where('status', 'in_progress')
+                    ->first();
 
-            $attempt = QuizAttempt::create([
-                'quiz_id' => $quiz->id,
-                'student_id' => $studentId,
-                'attempt_number' => $attemptNumber,
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'max_score' => $startData['max_score'],
-                'questions_order' => $questionIds,
-                'selection_meta' => $startData['selection_meta'],
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'is_completed' => false,
-            ]);
+                if ($inProgress) {
+                    return [
+                        'attempt' => $inProgress,
+                        'resumed' => true,
+                        'pool_recycled' => false,
+                    ];
+                }
 
-            $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $questionIds);
+                $attemptNumber = $quiz->attempts()
+                    ->where('student_id', $studentId)
+                    ->count() + 1;
 
-            DB::commit();
+                $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
+                $questionIds = $startData['question_ids'];
+
+                $attempt = QuizAttempt::create([
+                    'quiz_id' => $quiz->id,
+                    'student_id' => $studentId,
+                    'attempt_number' => $attemptNumber,
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'max_score' => $startData['max_score'],
+                    'questions_order' => $questionIds,
+                    'selection_meta' => $startData['selection_meta'],
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'is_completed' => false,
+                ]);
+
+                $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $questionIds);
+
+                return [
+                    'attempt' => $attempt,
+                    'resumed' => false,
+                    'pool_recycled' => (bool) ($startData['selection_meta']['recycled'] ?? false),
+                ];
+            });
+
+            $attempt = $result['attempt'];
+
+            if ($result['resumed']) {
+                return redirect()->route('student.quizzes.take', $attempt->id)
+                    ->with('info', 'لديك محاولة قيد التقدم، يمكنك متابعتها');
+            }
 
             $redirect = redirect()->route('student.quizzes.take', $attempt->id)
                 ->with('success', 'تم بدء الاختبار بنجاح');
 
-            if (! empty($startData['selection_meta']['recycled'])) {
+            if ($result['pool_recycled']) {
                 $redirect->with('pool_recycled', true);
             }
 
             return $redirect;
         } catch (\InvalidArgumentException $e) {
-            DB::rollBack();
-
             return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->withErrors(['error' => 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage()]);
         }
     }

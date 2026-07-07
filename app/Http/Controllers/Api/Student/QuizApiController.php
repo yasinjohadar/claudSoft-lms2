@@ -9,6 +9,7 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizResponse;
 use App\Services\Api\StudentQuizApiService;
+use App\Services\Quiz\QuizAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class QuizApiController extends Controller
     public function __construct(
         protected StudentQuizApiService $quizApi,
         protected QuizAttemptStartService $attemptStartService,
+        protected QuizAttemptLifecycleService $attemptLifecycle,
     ) {}
 
     public function preview(Request $request, int $id): JsonResponse
@@ -48,7 +50,10 @@ class QuizApiController extends Controller
         ]);
 
         $studentId = (int) $user->id;
+        $this->attemptLifecycle->reconcileForStudent($quiz, $studentId);
+
         $currentAttempt = $quiz->attempts()
+            ->realAttempts()
             ->where('student_id', $studentId)
             ->where('status', 'in_progress')
             ->first();
@@ -101,11 +106,10 @@ class QuizApiController extends Controller
             }
         }
 
-        if (! $quiz->canAttempt($studentId)) {
-            return response()->json(['success' => false, 'message' => 'لا يمكنك بدء محاولة جديدة.'], 403);
-        }
+        $this->attemptLifecycle->reconcileForStudent($quiz, $studentId);
 
         $existing = $quiz->attempts()
+            ->realAttempts()
             ->where('student_id', $studentId)
             ->where('status', 'in_progress')
             ->first();
@@ -121,31 +125,73 @@ class QuizApiController extends Controller
             ]);
         }
 
-        DB::beginTransaction();
+        if (! $quiz->canAttempt($studentId)) {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك بدء محاولة جديدة.'], 403);
+        }
+
         try {
-            $attemptNumber = $quiz->attempts()
-                ->where('student_id', $studentId)
-                ->count() + 1;
+            $result = DB::transaction(function () use ($quiz, $studentId, $request) {
+                QuizAttempt::query()
+                    ->where('quiz_id', $quiz->id)
+                    ->where('student_id', $studentId)
+                    ->lockForUpdate()
+                    ->get();
 
-            $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
+                $inProgress = $quiz->attempts()
+                    ->realAttempts()
+                    ->where('student_id', $studentId)
+                    ->where('status', 'in_progress')
+                    ->first();
 
-            $attempt = QuizAttempt::create([
-                'quiz_id' => $quiz->id,
-                'student_id' => $studentId,
-                'attempt_number' => $attemptNumber,
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'max_score' => $startData['max_score'],
-                'questions_order' => $startData['question_ids'],
-                'selection_meta' => $startData['selection_meta'],
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'is_completed' => false,
-            ]);
+                if ($inProgress) {
+                    return [
+                        'attempt' => $inProgress,
+                        'resumed' => true,
+                        'pool_recycled' => false,
+                    ];
+                }
 
-            $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $startData['question_ids']);
+                $attemptNumber = $quiz->attempts()
+                    ->where('student_id', $studentId)
+                    ->count() + 1;
 
-            DB::commit();
+                $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
+
+                $attempt = QuizAttempt::create([
+                    'quiz_id' => $quiz->id,
+                    'student_id' => $studentId,
+                    'attempt_number' => $attemptNumber,
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'max_score' => $startData['max_score'],
+                    'questions_order' => $startData['question_ids'],
+                    'selection_meta' => $startData['selection_meta'],
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'is_completed' => false,
+                ]);
+
+                $this->attemptStartService->createResponsesForAttempt($attempt, $quiz, $startData['question_ids']);
+
+                return [
+                    'attempt' => $attempt,
+                    'resumed' => false,
+                    'pool_recycled' => (bool) ($startData['selection_meta']['recycled'] ?? false),
+                ];
+            });
+
+            $attempt = $result['attempt'];
+
+            if ($result['resumed']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'attempt_id' => (int) $attempt->id,
+                        'attempt_number' => (int) $attempt->attempt_number,
+                        'resumed' => true,
+                    ],
+                ]);
+            }
 
             QuizStarted::dispatch($user, $quiz, (int) $attempt->id, (int) $attempt->attempt_number);
 
@@ -154,19 +200,15 @@ class QuizApiController extends Controller
                 'data' => [
                     'attempt_id' => (int) $attempt->id,
                     'attempt_number' => (int) $attempt->attempt_number,
-                    'questions_count' => count($startData['question_ids']),
-                    'max_score' => (float) $startData['max_score'],
-                    'pool_recycled' => (bool) ($startData['selection_meta']['recycled'] ?? false),
+                    'questions_count' => count($attempt->questions_order ?? []),
+                    'max_score' => (float) $attempt->max_score,
+                    'pool_recycled' => $result['pool_recycled'],
                     'resumed' => false,
                 ],
             ], 201);
         } catch (\InvalidArgumentException $e) {
-            DB::rollBack();
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'تعذر بدء المحاولة.',
