@@ -12,6 +12,7 @@ use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\User;
 use App\Services\Api\StudentModuleProgressApiService;
+use App\Services\Quiz\QuizAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class StudentQuizApiService
 {
     public function __construct(
         protected QuizAttemptStartService $attemptStartService,
+        protected QuizAttemptLifecycleService $attemptLifecycle,
     ) {}
 
     public function userCanAccessQuiz(User $user, Quiz $quiz): bool
@@ -337,13 +339,9 @@ class StudentQuizApiService
             return false;
         }
 
-        $quiz = $attempt->quiz;
-        if (! $quiz || ! $quiz->time_limit || ! $attempt->started_at) {
-            return false;
-        }
+        $resolution = $this->attemptLifecycle->resolveExpiredAttempt($attempt);
 
-        $elapsedMinutes = $attempt->started_at->diffInMinutes(now());
-        if ($elapsedMinutes <= $quiz->time_limit) {
+        if ($resolution === null || $resolution === 'abandoned') {
             return false;
         }
 

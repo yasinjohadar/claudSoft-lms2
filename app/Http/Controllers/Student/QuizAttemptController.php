@@ -128,6 +128,7 @@ class QuizAttemptController extends Controller
 
         // Get current in-progress attempt if exists
         $currentAttempt = $quiz->attempts()
+            ->realAttempts()
             ->where('student_id', $studentId)
             ->where('status', 'in_progress')
             ->first();
@@ -279,16 +280,18 @@ class QuizAttemptController extends Controller
         }
 
         // Check time limit
-        if ($attempt->quiz->time_limit) {
-            $elapsedMinutes = $attempt->started_at->diffInMinutes(now());
+        $expiredResolution = $this->attemptLifecycle->resolveExpiredAttempt($attempt);
 
-            if ($elapsedMinutes > $attempt->quiz->time_limit) {
-                // Auto-submit if time expired
-                $this->autoSubmit($attempt);
+        if ($expiredResolution === 'abandoned') {
+            return redirect()->route('student.quizzes.show', $attempt->quiz_id)
+                ->with('info', 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.');
+        }
 
-                return redirect()->route('student.quizzes.review.show', $attemptId)
-                    ->with('warning', 'انتهى وقت الاختبار وتم تسليمه تلقائياً');
-            }
+        if ($expiredResolution === 'auto_submit') {
+            $this->autoSubmit($attempt);
+
+            return redirect()->route('student.quizzes.review.show', $attemptId)
+                ->with('warning', 'انتهى وقت الاختبار وتم تسليمه تلقائياً');
         }
 
         // Get questions in the order specified for this attempt

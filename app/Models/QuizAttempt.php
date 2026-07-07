@@ -289,6 +289,40 @@ class QuizAttempt extends Model
     }
 
     /**
+     * Whether the attempt time limit has elapsed.
+     */
+    public function isTimeExpired(): bool
+    {
+        $this->loadMissing('quiz');
+
+        if (! $this->quiz?->time_limit || ! $this->started_at) {
+            return false;
+        }
+
+        $limitSeconds = (int) $this->quiz->time_limit * 60;
+
+        return $this->started_at->diffInSeconds(now()) >= $limitSeconds;
+    }
+
+    /**
+     * Whether the student saved at least one answer in this attempt.
+     */
+    public function hasAnsweredResponses(): bool
+    {
+        if (! $this->relationLoaded('responses')) {
+            $this->load('responses');
+        }
+
+        foreach ($this->responses as $response) {
+            if ($this->responseHasAnswer($response)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Calculate time spent in seconds.
      */
     public function calculateTimeSpent(): int

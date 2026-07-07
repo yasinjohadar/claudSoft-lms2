@@ -43,19 +43,81 @@ class QuizAttemptLifecycleService
     }
 
     /**
+     * Abandon expired in-progress attempts that have no saved answers.
+     *
+     * @return int Number of attempts abandoned
+     */
+    public function reconcileExpiredInProgressAttempts(?int $quizId = null, ?int $studentId = null): int
+    {
+        $query = QuizAttempt::query()
+            ->realAttempts()
+            ->with(['quiz', 'responses'])
+            ->where('status', 'in_progress');
+
+        if ($quizId !== null) {
+            $query->where('quiz_id', $quizId);
+        }
+
+        if ($studentId !== null) {
+            $query->where('student_id', $studentId);
+        }
+
+        $abandoned = 0;
+
+        $query->get()->each(function (QuizAttempt $attempt) use (&$abandoned) {
+            if (! $attempt->isTimeExpired()) {
+                return;
+            }
+
+            if ($attempt->hasAnsweredResponses()) {
+                return;
+            }
+
+            $attempt->update(['status' => 'abandoned']);
+            $abandoned++;
+        });
+
+        return $abandoned;
+    }
+
+    /**
      * Reconcile stale attempts for a quiz/student before showing intro or starting.
      */
     public function reconcileForStudent(Quiz $quiz, int $studentId): int
     {
-        return $this->reconcileEmptyInProgressAttempts($quiz->id, $studentId);
+        return $this->reconcileEmptyInProgressAttempts($quiz->id, $studentId)
+            + $this->reconcileExpiredInProgressAttempts($quiz->id, $studentId);
     }
 
     /**
-     * Reconcile all empty in-progress attempts platform-wide.
+     * Reconcile all stale in-progress attempts platform-wide.
      */
     public function reconcileAll(): int
     {
-        return $this->reconcileEmptyInProgressAttempts();
+        return $this->reconcileEmptyInProgressAttempts()
+            + $this->reconcileExpiredInProgressAttempts();
+    }
+
+    /**
+     * Resolve an expired in-progress attempt.
+     *
+     * @return null|'abandoned'|'auto_submit'
+     */
+    public function resolveExpiredAttempt(QuizAttempt $attempt): ?string
+    {
+        if ($attempt->status !== 'in_progress' || ! $attempt->isTimeExpired()) {
+            return null;
+        }
+
+        $attempt->loadMissing(['responses', 'quiz']);
+
+        if (! $attempt->hasAnsweredResponses()) {
+            $attempt->update(['status' => 'abandoned']);
+
+            return 'abandoned';
+        }
+
+        return 'auto_submit';
     }
 
     /**

@@ -225,8 +225,18 @@ class QuizApiController extends Controller
             return response()->json(['success' => false, 'message' => 'غير مصرح.'], 403);
         }
 
-        if ($this->quizApi->autoSubmitIfTimeExpired($attempt)) {
-            $attempt->refresh();
+        $this->quizApi->autoSubmitIfTimeExpired($attempt);
+        $attempt->refresh();
+
+        if ($attempt->status === 'abandoned') {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.',
+                'data' => [
+                    'abandoned' => true,
+                    'quiz_id' => (int) $attempt->quiz_id,
+                ],
+            ], 410);
         }
 
         if ($attempt->status !== 'in_progress') {
