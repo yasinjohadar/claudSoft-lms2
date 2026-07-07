@@ -196,12 +196,17 @@
 }
 
 .quiz-take-page .question-container {
+    display: none;
     border: 1px solid var(--qt-border);
     border-radius: var(--qt-radius);
     box-shadow: var(--qt-shadow);
     overflow: hidden;
     background: var(--qt-surface);
     transition: box-shadow 0.25s ease;
+}
+
+.quiz-take-page .question-container.is-active {
+    display: block;
 }
 
 .quiz-take-page .question-container:focus-within {

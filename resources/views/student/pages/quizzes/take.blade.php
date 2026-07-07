@@ -15,58 +15,14 @@ var remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
 var timerInterval = null;
 var isSubmitting = false;
 
-// Ensure remainingTimeSeconds is an integer
+window.totalQuestions = totalQuestions;
+window.currentQuestionIndex = currentQuestionIndex;
+
 if (remainingTimeSeconds !== null) {
     remainingTimeSeconds = Math.floor(remainingTimeSeconds);
 }
 
-// Navigation functions - defined globally for onclick handlers
-function goToQuestion(index) {
-    console.log('goToQuestion called with index:', index);
-    if (typeof totalQuestions === 'undefined' || index < 0 || index >= totalQuestions) {
-        console.error('Invalid question index or totalQuestions not set:', index, totalQuestions);
-        return;
-    }
-    
-    // Use vanilla JS since jQuery may not be loaded yet
-    document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
-    const target = document.querySelector(`.question-container[data-question-index="${index}"]`);
-    if (target) target.style.display = 'block';
-    
-    currentQuestionIndex = index;
-    
-    // Update navigation buttons using vanilla JS (jQuery may not be loaded yet)
-    document.querySelectorAll('.question-nav-btn').forEach(function(btn) {
-        btn.classList.remove('answered', 'active');
-        const btnIndex = parseInt(btn.getAttribute('data-question-index'));
-        if (btnIndex === index) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Also call updateQuestionNavigation if jQuery is available
-    if (typeof $ !== 'undefined' && typeof updateQuestionNavigation === 'function') {
-        updateQuestionNavigation();
-    }
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function nextQuestion() {
-    console.log('nextQuestion called, current:', currentQuestionIndex, 'total:', totalQuestions);
-    if (currentQuestionIndex < totalQuestions - 1) {
-        goToQuestion(currentQuestionIndex + 1);
-    }
-}
-
-function previousQuestion() {
-    console.log('previousQuestion called, current:', currentQuestionIndex);
-    if (currentQuestionIndex > 0) {
-        goToQuestion(currentQuestionIndex - 1);
-    }
-}
-
-// showSubmitConfirmation and startTimer() are defined in the page scripts block (after jQuery/Bootstrap load)
+// goToQuestion, nextQuestion, previousQuestion defined in @push('scripts') after jQuery loads
 </script>
 @endpush
 
@@ -94,7 +50,7 @@ function previousQuestion() {
             @include('shared.quizzes.take-mobile-chrome', ['questions' => $questions])
 
             <div class="row quiz-take-layout">
-                <div class="col-lg-3 mb-4 quiz-take-sidebar-col" id="quiz-take-sidebar-col">
+                <div class="col-12 col-lg-3 mb-4 quiz-take-sidebar-col" id="quiz-take-sidebar-col">
                     <aside class="card quiz-take-sidebar sticky-top">
                         <div class="card-header text-white">
                             <h5 class="mb-0">
@@ -142,15 +98,22 @@ function previousQuestion() {
                     </aside>
                 </div>
 
-        <div class="col-lg-9 quiz-take-main">
+        <div class="col-12 col-lg-9 quiz-take-main">
             <form id="quiz-form">
                         @csrf
+                @if($questions->isEmpty())
+                    <div class="alert alert-danger mb-0" id="quiz-no-questions-fallback" role="alert">
+                        <i class="fe fe-alert-triangle me-2"></i>
+                        تعذر تحميل أسئلة الاختبار. يرجى
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="window.location.reload()">إعادة تحميل الصفحة</button>
+                        أو التواصل مع الدعم الفني.
+                    </div>
+                @endif
                 @foreach($questions as $question)
                 @php $index = $loop->index; @endphp
-                <div class="question-container card mb-4"
+                <div class="question-container card mb-4{{ $index === 0 ? ' is-active' : '' }}"
                      data-question-index="{{ $index }}"
-                     data-question-id="{{ $question->id }}"
-                     style="display: {{ $index === 0 ? 'block' : 'none' }}">
+                     data-question-id="{{ $question->id }}">
                     <div class="card-header quiz-take-q-header">
                         <div class="quiz-take-q-badges">
                             <span class="badge bg-primary">السؤال {{ $index + 1 }}</span>
@@ -237,49 +200,14 @@ function previousQuestion() {
                                 }
                             @endphp
 
-                            {{-- Debug: Question Type Info --}}
-                            <script>
-                            console.log('DEBUG: Question type info BEFORE switch', {
-                                question_id: {{ $question->id }},
-                                question_index: {{ $index }},
-                                type_id: {{ $question->question_type_id }},
-                                type_name: '{{ $question->questionType->name }}',
-                                type_display: '{{ $question->questionType->display_name }}'
-                            });
-                            </script>
-
                             @switch($question->questionType->name)
                                 @case('multiple_choice_single')
-                                    {{-- #region agent log --}}
-                                    <script>
-                                    console.log('DEBUG: Checking options for multiple_choice_single', {
-                                        question_id: {{ $question->id }},
-                                        question_type: '{{ $question->questionType->name ?? "unknown" }}',
-                                        has_options: {{ $question->options ? 'true' : 'false' }},
-                                        options_count: {{ $question->options ? $question->options->count() : 0 }},
-                                        options_type: '{{ get_class($question->options ?? new stdClass()) }}',
-                                        hypothesisId: 'B'
-                                    });
-                                    </script>
-                                    {{-- #endregion --}}
                                     @php
                                         $optionsCollection = $question->options ?? collect();
                                         $optionsCount = $optionsCollection->count();
                                     @endphp
                                     @if($optionsCount > 0)
                                         @foreach($question->options as $option)
-                                            {{-- #region agent log --}}
-                                            <script>
-                                            console.log('DEBUG: Rendering option (single)', {
-                                                question_id: {{ $question->id }},
-                                                option_id: {{ $option->id }},
-                                                option_text: '{{ addslashes($option->option_text ?? '') }}',
-                                                option_text_length: {{ strlen($option->option_text ?? '') }},
-                                                option_text_empty: {{ empty($option->option_text) ? 'true' : 'false' }},
-                                                hypothesisId: 'B'
-                                            });
-                                            </script>
-                                            {{-- #endregion --}}
                                             <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
                                                 <input class="form-check-input flex-shrink-0 answer-input"
                                                        type="radio"
@@ -298,16 +226,6 @@ function previousQuestion() {
                                             </label>
                                         @endforeach
                                     @else
-                                        {{-- #region agent log --}}
-                                        <script>
-                                        console.log('DEBUG: Options condition failed (single), showing warning', {
-                                            question_id: {{ $question->id }},
-                                            has_options: {{ $question->options ? 'true' : 'false' }},
-                                            options_count: {{ $optionsCount }},
-                                            hypothesisId: 'B'
-                                        });
-                                        </script>
-                                        {{-- #endregion --}}
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
                                             لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
@@ -316,36 +234,12 @@ function previousQuestion() {
                                     @break
 
                                 @case('multiple_choice_multiple')
-                                    {{-- #region agent log --}}
-                                    <script>
-                                    console.log('DEBUG: Checking options for multiple_choice_multiple', {
-                                        question_id: {{ $question->id }},
-                                        question_type: '{{ $question->questionType->name ?? "unknown" }}',
-                                        has_options: {{ $question->options ? 'true' : 'false' }},
-                                        options_count: {{ $question->options ? $question->options->count() : 0 }},
-                                        options_type: '{{ get_class($question->options ?? new stdClass()) }}',
-                                        hypothesisId: 'B'
-                                    });
-                                    </script>
-                                    {{-- #endregion --}}
                                     @php
                                         $optionsCollection = $question->options ?? collect();
                                         $optionsCount = $optionsCollection->count();
                                     @endphp
                                     @if($optionsCount > 0)
                                         @foreach($question->options as $option)
-                                            {{-- #region agent log --}}
-                                            <script>
-                                            console.log('DEBUG: Rendering option', {
-                                                question_id: {{ $question->id }},
-                                                option_id: {{ $option->id }},
-                                                option_text: '{{ addslashes($option->option_text ?? '') }}',
-                                                option_text_length: {{ strlen($option->option_text ?? '') }},
-                                                option_text_empty: {{ empty($option->option_text) ? 'true' : 'false' }},
-                                                hypothesisId: 'B'
-                                            });
-                                            </script>
-                                            {{-- #endregion --}}
                                             <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
                                                 <input class="form-check-input flex-shrink-0 answer-input"
                                                        type="checkbox"
@@ -364,16 +258,6 @@ function previousQuestion() {
                                             </label>
                                         @endforeach
                                     @else
-                                        {{-- #region agent log --}}
-                                        <script>
-                                        console.log('DEBUG: Options condition failed, showing warning', {
-                                            question_id: {{ $question->id }},
-                                            has_options: {{ $question->options ? 'true' : 'false' }},
-                                            options_count: {{ $optionsCount }},
-                                            hypothesisId: 'B'
-                                        });
-                                        </script>
-                                        {{-- #endregion --}}
                                         <div class="alert alert-warning">
                                             <i class="fas fa-exclamation-triangle me-2"></i>
                                             لا توجد خيارات متاحة لهذا السؤال. يرجى التواصل مع المدير.
@@ -382,14 +266,6 @@ function previousQuestion() {
                                     @break
 
                                 @case('true_false')
-                                    {{-- Debug: true_false rendering --}}
-                                    <script>
-                                    console.log('DEBUG: Rendering true_false options', {
-                                        question_id: {{ $question->id }},
-                                        question_type_name: '{{ $question->questionType->name }}',
-                                        savedAnswer: '{{ $savedAnswer ?? "null" }}'
-                                    });
-                                    </script>
                                     <label class="form-check d-flex align-items-start gap-2 w-100 mb-3 p-3 border rounded hover-shadow quiz-option-hit">
                                         <input class="form-check-input flex-shrink-0 answer-input"
                                                type="radio"
@@ -728,14 +604,6 @@ function previousQuestion() {
 
                             {{-- Fallback for unknown question types --}}
                             @if(!in_array($question->questionType->name, ['multiple_choice_single', 'multiple_choice_multiple', 'true_false', 'short_answer', 'essay', 'fill_blanks', 'matching', 'drag_drop', 'ordering', 'numerical', 'calculated']))
-                                {{-- Debug: Unknown question type --}}
-                                <script>
-                                console.log('DEBUG: Unknown question type - fallback check', {
-                                    question_id: {{ $question->id }},
-                                    type_name: '{{ $question->questionType->name }}',
-                                    type_id: {{ $question->question_type_id }}
-                                });
-                                </script>
                                 <div class="alert alert-danger">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
                                     نوع السؤال غير معروف: <strong>{{ $question->questionType->name }}</strong>
@@ -783,41 +651,49 @@ function previousQuestion() {
 
 @push('scripts')
 <script>
-// Initialize global variables with actual values
 attemptId = {{ $attempt->id }};
 totalQuestions = {{ $questions->count() }};
 currentQuestionIndex = 0;
 answeredQuestions = new Set();
 remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
 
-// Debug logging
-console.log('=== Quiz Page Initialization ===');
-console.log('Attempt ID:', attemptId);
-console.log('Total Questions:', totalQuestions);
-console.log('Remaining Time (seconds):', remainingTimeSeconds);
+window.totalQuestions = totalQuestions;
+window.currentQuestionIndex = currentQuestionIndex;
 
-// Ensure remainingTimeSeconds is an integer
 if (remainingTimeSeconds !== null) {
     remainingTimeSeconds = Math.floor(remainingTimeSeconds);
-    console.log('Remaining Time (formatted):', remainingTimeSeconds, 'seconds');
-} else {
-    console.warn('Remaining time is null - timer will not start');
 }
 
-// Override head-scripts navigation: jQuery hide/show matches the rest of the page and avoids display quirks.
 function goToQuestion(index) {
     index = parseInt(index, 10);
     if (isNaN(index) || typeof totalQuestions === 'undefined' || index < 0 || index >= totalQuestions) {
         return;
     }
-    $('.question-container').hide();
-    $('.question-container[data-question-index="' + index + '"]').show();
+
+    var target = document.querySelector('.question-container[data-question-index="' + index + '"]');
+    if (!target) {
+        return;
+    }
+
+    document.querySelectorAll('.question-container').forEach(function (el) {
+        el.classList.remove('is-active');
+    });
+    target.classList.add('is-active');
+
     currentQuestionIndex = index;
+    window.currentQuestionIndex = index;
+
     if (typeof updateQuestionNavigation === 'function') {
         updateQuestionNavigation();
     }
+    if (window.QuizTakeUI && typeof window.QuizTakeUI.syncMobileNav === 'function') {
+        window.QuizTakeUI.syncMobileNav();
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+window.goToQuestion = goToQuestion;
 
 function nextQuestion() {
     if (currentQuestionIndex < totalQuestions - 1) {
@@ -825,58 +701,79 @@ function nextQuestion() {
     }
 }
 
+window.nextQuestion = nextQuestion;
+
 function previousQuestion() {
     if (currentQuestionIndex > 0) {
         goToQuestion(currentQuestionIndex - 1);
     }
 }
 
+window.previousQuestion = previousQuestion;
+
+function ensureActiveQuestionVisible() {
+    var active = document.querySelector('.question-container.is-active');
+    if (active) {
+        return true;
+    }
+
+    var first = document.querySelector('.question-container[data-question-index="0"]')
+        || document.querySelector('.question-container');
+
+    if (first) {
+        goToQuestion(parseInt(first.getAttribute('data-question-index'), 10) || 0);
+        return !!document.querySelector('.question-container.is-active');
+    }
+
+    return false;
+}
+
+function showQuizLoadError() {
+    var main = document.querySelector('.quiz-take-main');
+    if (!main || document.getElementById('quiz-no-questions-fallback')) {
+        return;
+    }
+
+    main.insertAdjacentHTML('afterbegin',
+        '<div class="alert alert-danger mb-3" id="quiz-load-error-fallback" role="alert">' +
+        '<i class="fe fe-alert-triangle me-2"></i>تعذر عرض السؤال. ' +
+        '<button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="window.location.reload()">إعادة تحميل الصفحة</button>' +
+        '</div>'
+    );
+}
+
 // Initialize on page load
 $(document).ready(function() {
-    console.log('=== Document Ready ===');
-    console.log('jQuery version:', $.fn.jquery);
-    var domQuestionCount = $('.question-container').length;
+    var domQuestionCount = document.querySelectorAll('.question-container').length;
     if (domQuestionCount > 0) {
         totalQuestions = domQuestionCount;
+        window.totalQuestions = totalQuestions;
     }
-    console.log('totalQuestions:', totalQuestions);
-    console.log('remainingTimeSeconds:', remainingTimeSeconds);
-    console.log('currentQuestionIndex:', currentQuestionIndex);
-    
+
     try {
-        // Check if questions exist
-        if ($('.question-container').length === 0) {
-            console.error('No question containers found!');
+        if (domQuestionCount === 0) {
             return;
         }
-        
-        console.log('Question containers found:', $('.question-container').length);
-        
-        // Check if timer container exists
-        if ($('#timer-container').length > 0) {
-            console.log('Timer container found');
-        } else {
-            console.warn('Timer container not found in DOM');
+
+        if (!ensureActiveQuestionVisible()) {
+            showQuizLoadError();
+            return;
         }
-        
-        console.log('Calling initializeAnswers...');
+
+        goToQuestion(currentQuestionIndex);
+
         initializeAnswers();
-        console.log('Calling updateProgress...');
         updateProgress();
-        console.log('Calling updateQuestionNavigation...');
         updateQuestionNavigation();
-        
+
         if (remainingTimeSeconds !== null && remainingTimeSeconds > 0 && !timerInterval) {
-            console.log('Starting timer with', remainingTimeSeconds, 'seconds');
             startTimer();
-        } else {
-            console.warn('Timer not started - remainingTimeSeconds is', remainingTimeSeconds);
         }
-        
-        console.log('=== Initialization Complete ===');
     } catch (error) {
         console.error('Error initializing quiz:', error);
-        console.error('Error stack:', error.stack);
+        if (!ensureActiveQuestionVisible()) {
+            showQuizLoadError();
+        }
     }
 
         // Auto-save answers
@@ -1781,9 +1678,6 @@ $(document).ready(function() {
 
     window.showSubmitConfirmation = showSubmitConfirmation;
     window.submitQuiz = submitQuiz;
-    window.goToQuestion = goToQuestion;
-    window.nextQuestion = nextQuestion;
-    window.previousQuestion = previousQuestion;
     
     // Prevent accidental page close - only when quiz is in progress
     function preventUnload(e) {
