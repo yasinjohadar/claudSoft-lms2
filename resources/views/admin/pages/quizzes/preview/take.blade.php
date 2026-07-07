@@ -66,48 +66,7 @@ function previousQuestion() {
     }
 }
 
-// showSubmitConfirmation is defined in the page scripts block (after jQuery/Bootstrap load)
-
-// Start timer when DOM is ready - using vanilla JS
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOMContentLoaded (head-scripts) ===');
-    console.log('remainingTimeSeconds:', remainingTimeSeconds);
-    
-    if (remainingTimeSeconds !== null && remainingTimeSeconds > 0 && !timerInterval) {
-        console.log('Starting timer from head-scripts...');
-        
-        // Simple timer using vanilla JS
-        function updateTimerDisplaySimple() {
-            var minutes = Math.floor(remainingTimeSeconds / 60);
-            var seconds = Math.floor(remainingTimeSeconds % 60);
-            var timerMinutesEl = document.getElementById('timer-minutes');
-            var timerSecondsEl = document.getElementById('timer-seconds');
-            
-            if (timerMinutesEl && timerSecondsEl) {
-                timerMinutesEl.textContent = String(minutes).padStart(2, '0');
-                timerSecondsEl.textContent = String(seconds).padStart(2, '0');
-            }
-        }
-        
-        updateTimerDisplaySimple();
-        
-        timerInterval = setInterval(function() {
-            remainingTimeSeconds--;
-            updateTimerDisplaySimple();
-            
-            if (remainingTimeSeconds <= 0) {
-                clearInterval(timerInterval);
-                console.log('Time is up!');
-                // Submit quiz automatically (assigned on window in page scripts)
-                if (typeof window.submitQuiz === 'function') {
-                    window.submitQuiz(true);
-                }
-            }
-        }, 1000);
-        
-        console.log('Timer started successfully from head-scripts');
-    }
-});
+// showSubmitConfirmation and startTimer() are defined in the page scripts block (after jQuery/Bootstrap load)
 </script>
 @endpush
 
@@ -910,7 +869,7 @@ $(document).ready(function() {
         console.log('Calling updateQuestionNavigation...');
         updateQuestionNavigation();
         
-        if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
+        if (remainingTimeSeconds !== null && remainingTimeSeconds > 0 && !timerInterval) {
             console.log('Starting timer with', remainingTimeSeconds, 'seconds');
             startTimer();
         } else {
@@ -1364,6 +1323,11 @@ $(document).ready(function() {
     function startTimer() {
         console.log('startTimer() called');
         console.log('remainingTimeSeconds:', remainingTimeSeconds);
+
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
         
         if (remainingTimeSeconds === null || remainingTimeSeconds === undefined || remainingTimeSeconds <= 0) {
             console.error('Cannot start timer - remainingTimeSeconds is invalid:', remainingTimeSeconds);
