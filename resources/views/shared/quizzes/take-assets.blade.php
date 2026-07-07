@@ -3,5 +3,6 @@
 @endpush
 
 @push('scripts')
+    <script src="{{ asset('assets/js/quiz-take-timer.js') }}?v={{ @filemtime(public_path('assets/js/quiz-take-timer.js')) ?: '1' }}"></script>
     <script src="{{ asset('assets/js/quiz-take-ui.js') }}?v={{ @filemtime(public_path('assets/js/quiz-take-ui.js')) ?: '1' }}" defer></script>
 @endpush

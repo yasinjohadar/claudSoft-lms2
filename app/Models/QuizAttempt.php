@@ -273,6 +273,22 @@ class QuizAttempt extends Model
     }
 
     /**
+     * Unix timestamp (ms) when the quiz attempt time limit ends, or null if unlimited.
+     */
+    public function getQuizEndsAtMs(): ?int
+    {
+        $this->loadMissing('quiz');
+
+        if (! $this->quiz?->time_limit || ! $this->started_at) {
+            return null;
+        }
+
+        return $this->started_at->copy()
+            ->addMinutes((int) $this->quiz->time_limit)
+            ->getTimestamp() * 1000;
+    }
+
+    /**
      * Calculate time spent in seconds.
      */
     public function calculateTimeSpent(): int

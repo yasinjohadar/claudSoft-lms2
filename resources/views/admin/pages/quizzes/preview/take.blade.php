@@ -25,6 +25,9 @@ if (remainingTimeSeconds !== null) {
 @endpush
 
 @section('content')
+    @php
+        $quizEndsAtMs = $attempt->getQuizEndsAtMs();
+    @endphp
     <div class="main-content app-content quiz-take-page">
         <div class="container-fluid">
 
@@ -61,12 +64,21 @@ if (remainingTimeSeconds !== null) {
                         </div>
                         <div class="card-body">
                     @if($remainingTime !== null && $remainingTime > 0)
-                    <div class="quiz-take-timer" id="timer-container">
+                    <div class="quiz-take-timer" id="timer-container"@if($quizEndsAtMs) data-ends-at="{{ $quizEndsAtMs }}"@endif>
                         <div class="quiz-take-timer__label"><i class="fe fe-clock me-1"></i>الوقت المتبقي</div>
                         <div class="quiz-take-timer__value" id="timer">
                             <span id="timer-minutes">{{ str_pad(floor($remainingTime / 60), 2, '0', STR_PAD_LEFT) }}</span>:<span id="timer-seconds">{{ str_pad($remainingTime % 60, 2, '0', STR_PAD_LEFT) }}</span>
                         </div>
                     </div>
+                    @if($quizEndsAtMs)
+                    <script>
+                    document.addEventListener('quiz-take-timer:ready', function () {
+                        if (window.QuizTakeTimer) {
+                            window.QuizTakeTimer.start();
+                        }
+                    }, { once: true });
+                    </script>
+                    @endif
             @elseif($attempt->quiz->time_limit === null)
                     <div class="quiz-take-timer mb-3">
                         <div class="quiz-take-timer__label"><i class="fe fe-infinity me-1"></i>بدون حد زمني</div>
@@ -743,24 +755,6 @@ function showQuizLoadError() {
     );
 }
 
-function updateTimerDisplay() {
-    remainingTimeSeconds = Math.floor(remainingTimeSeconds);
-    var minutes = Math.floor(remainingTimeSeconds / 60);
-    var seconds = Math.floor(remainingTimeSeconds % 60);
-    var minutesStr = String(minutes).padStart(2, '0');
-    var secondsStr = String(seconds).padStart(2, '0');
-
-    var minEl = document.getElementById('timer-minutes');
-    var secEl = document.getElementById('timer-seconds');
-    if (minEl) minEl.textContent = minutesStr;
-    if (secEl) secEl.textContent = secondsStr;
-
-    var mobileTimer = document.getElementById('quiz-take-mobile-timer');
-    if (mobileTimer) {
-        mobileTimer.textContent = minutesStr + ':' + secondsStr;
-    }
-}
-
 function timeUp() {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -780,55 +774,7 @@ function timeUp() {
     }
 }
 
-function startTimer() {
-    if (timerInterval) {
-        return;
-    }
-
-    if (remainingTimeSeconds === null || remainingTimeSeconds === undefined || remainingTimeSeconds <= 0) {
-        return;
-    }
-
-    if (!document.getElementById('timer-minutes') || !document.getElementById('timer-seconds')) {
-        return;
-    }
-
-    updateTimerDisplay();
-
-    timerInterval = setInterval(function () {
-        remainingTimeSeconds--;
-        updateTimerDisplay();
-
-        if (remainingTimeSeconds === 300) {
-            var timerContainer = document.getElementById('timer-container');
-            if (timerContainer) {
-                timerContainer.classList.add('time-warning');
-            }
-            if (typeof showToast === 'function') {
-                showToast('تحذير: تبقى 5 دقائق فقط!', 'warning');
-            }
-        }
-
-        if (remainingTimeSeconds <= 0) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            timeUp();
-        }
-    }, 1000);
-}
-
-function bootQuizTimer() {
-    if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
-        startTimer();
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootQuizTimer);
-} else {
-    bootQuizTimer();
-}
-document.addEventListener('turbo:load', bootQuizTimer);
+window.timeUp = timeUp;
 
 $(document).ready(function() {
     var domQuestionCount = document.querySelectorAll('.question-container').length;
@@ -858,7 +804,9 @@ $(document).ready(function() {
             showQuizLoadError();
         }
     } finally {
-        bootQuizTimer();
+        if (window.QuizTakeTimer) {
+            window.QuizTakeTimer.start();
+        }
     }
 
         // Auto-save answers
@@ -1523,7 +1471,9 @@ $(document).ready(function() {
 
         window.removeEventListener('beforeunload', preventUnload);
 
-        if (timerInterval) {
+        if (window.QuizTakeTimer) {
+            window.QuizTakeTimer.stop();
+        } else if (timerInterval) {
             clearInterval(timerInterval);
         }
 
