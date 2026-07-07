@@ -742,6 +742,92 @@ function showQuizLoadError() {
     );
 }
 
+function updateTimerDisplay() {
+    remainingTimeSeconds = Math.floor(remainingTimeSeconds);
+    var minutes = Math.floor(remainingTimeSeconds / 60);
+    var seconds = Math.floor(remainingTimeSeconds % 60);
+    var minutesStr = String(minutes).padStart(2, '0');
+    var secondsStr = String(seconds).padStart(2, '0');
+
+    var minEl = document.getElementById('timer-minutes');
+    var secEl = document.getElementById('timer-seconds');
+    if (minEl) minEl.textContent = minutesStr;
+    if (secEl) secEl.textContent = secondsStr;
+
+    var mobileTimer = document.getElementById('quiz-take-mobile-timer');
+    if (mobileTimer) {
+        mobileTimer.textContent = minutesStr + ':' + secondsStr;
+    }
+}
+
+function timeUp() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'انتهى الوقت!',
+            text: 'تم انتهاء الوقت المحدد للاختبار وسيتم إرسال إجاباتك تلقائياً',
+            icon: 'warning',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            timer: 3000
+        }).then(function () {
+            if (typeof window.submitQuiz === 'function') {
+                window.submitQuiz(true);
+            }
+        });
+    } else if (typeof window.submitQuiz === 'function') {
+        window.submitQuiz(true);
+    }
+}
+
+function startTimer() {
+    if (timerInterval) {
+        return;
+    }
+
+    if (remainingTimeSeconds === null || remainingTimeSeconds === undefined || remainingTimeSeconds <= 0) {
+        return;
+    }
+
+    if (!document.getElementById('timer-minutes') || !document.getElementById('timer-seconds')) {
+        return;
+    }
+
+    updateTimerDisplay();
+
+    timerInterval = setInterval(function () {
+        remainingTimeSeconds--;
+        updateTimerDisplay();
+
+        if (remainingTimeSeconds === 300) {
+            var timerContainer = document.getElementById('timer-container');
+            if (timerContainer) {
+                timerContainer.classList.add('time-warning');
+            }
+            if (typeof showToast === 'function') {
+                showToast('تحذير: تبقى 5 دقائق فقط!', 'warning');
+            }
+        }
+
+        if (remainingTimeSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timeUp();
+        }
+    }, 1000);
+}
+
+function bootQuizTimer() {
+    if (remainingTimeSeconds !== null && remainingTimeSeconds > 0) {
+        startTimer();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootQuizTimer);
+} else {
+    bootQuizTimer();
+}
+
 $(document).ready(function() {
     var domQuestionCount = document.querySelectorAll('.question-container').length;
     if (domQuestionCount > 0) {
@@ -764,15 +850,13 @@ $(document).ready(function() {
         initializeAnswers();
         updateProgress();
         updateQuestionNavigation();
-
-        if (remainingTimeSeconds !== null && remainingTimeSeconds > 0 && !timerInterval) {
-            startTimer();
-        }
     } catch (error) {
         console.error('Error initializing quiz:', error);
         if (!ensureActiveQuestionVisible()) {
             showQuizLoadError();
         }
+    } finally {
+        bootQuizTimer();
     }
 
         // Auto-save answers
@@ -1210,94 +1294,6 @@ $(document).ready(function() {
 
         console.log('Total answered questions:', answeredQuestions.size);
         console.log('Answered question IDs:', Array.from(answeredQuestions));
-    }
-
-    // Timer functionality
-    function startTimer() {
-        console.log('startTimer() called');
-        console.log('remainingTimeSeconds:', remainingTimeSeconds);
-
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        
-        if (remainingTimeSeconds === null || remainingTimeSeconds === undefined || remainingTimeSeconds <= 0) {
-            console.error('Cannot start timer - remainingTimeSeconds is invalid:', remainingTimeSeconds);
-            return;
-        }
-        
-        // Check if timer elements exist
-        const timerContainer = $('#timer-container');
-        const timerMinutes = $('#timer-minutes');
-        const timerSeconds = $('#timer-seconds');
-        
-        if (timerContainer.length === 0) {
-            console.error('Timer container not found in DOM');
-            return;
-        }
-        
-        if (timerMinutes.length === 0 || timerSeconds.length === 0) {
-            console.error('Timer display elements not found in DOM');
-            console.log('timerMinutes found:', timerMinutes.length);
-            console.log('timerSeconds found:', timerSeconds.length);
-            return;
-        }
-
-        console.log('Initializing timer display...');
-        updateTimerDisplay();
-
-        console.log('Starting timer interval...');
-        timerInterval = setInterval(function() {
-            remainingTimeSeconds--;
-            updateTimerDisplay();
-
-            // Warning at 5 minutes
-            if (remainingTimeSeconds === 300) {
-                $('#timer-container').addClass('time-warning');
-                showToast('تحذير: تبقى 5 دقائق فقط!', 'warning');
-            }
-
-            // Time up
-            if (remainingTimeSeconds <= 0) {
-                console.log('Time is up!');
-                clearInterval(timerInterval);
-                timeUp();
-            }
-        }, 1000);
-        
-        console.log('Timer started successfully');
-    }
-
-    function updateTimerDisplay() {
-        // Ensure remainingTimeSeconds is an integer
-        remainingTimeSeconds = Math.floor(remainingTimeSeconds);
-        const minutes = Math.floor(remainingTimeSeconds / 60);
-        const seconds = Math.floor(remainingTimeSeconds % 60);
-        
-        const minutesStr = String(minutes).padStart(2, '0');
-        const secondsStr = String(seconds).padStart(2, '0');
-        
-        $('#timer-minutes').text(minutesStr);
-        $('#timer-seconds').text(secondsStr);
-        
-        // Debug log every 10 seconds
-        if (remainingTimeSeconds % 10 === 0) {
-            console.log('Timer update:', minutesStr + ':' + secondsStr, '(' + remainingTimeSeconds + ' seconds remaining)');
-        }
-    }
-
-    function timeUp() {
-        Swal.fire({
-            title: 'انتهى الوقت!',
-            text: 'تم انتهاء الوقت المحدد للاختبار وسيتم إرسال إجاباتك تلقائياً',
-            icon: 'warning',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            timer: 3000
-        }).then(() => {
-            submitQuiz(true);
-        });
     }
 
     // Save answer via AJAX
