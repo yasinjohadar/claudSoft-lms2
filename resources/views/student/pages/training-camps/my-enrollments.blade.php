@@ -20,11 +20,6 @@
                     </ol>
                 </nav>
             </div>
-            <div class="mt-3 mt-md-0">
-                <a href="{{ route('student.training-camps.index') }}" class="btn btn-outline-primary rounded-pill">
-                    <i class="fe fe-search me-1"></i>تصفح المعسكرات
-                </a>
-            </div>
         </div>
 
         @include('student.pages.training-camps.partials.enrollments-stats', ['stats' => $stats])
