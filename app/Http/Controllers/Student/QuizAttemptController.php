@@ -320,150 +320,21 @@ class QuizAttemptController extends Controller
         }
 
         // Get questions in the order specified for this attempt
-        if (empty($attempt->questions_order)) {
-            // Fallback: get questions directly from quiz
-            \Log::warning('Quiz attempt has empty questions_order', [
+        $questions = $this->attemptStartService->resolveQuestionsForAttempt($attempt);
+
+        if ($questions->isEmpty()) {
+            \Log::warning('Quiz attempt has no resolvable questions', [
                 'attempt_id' => $attempt->id,
-                'quiz_id' => $attempt->quiz_id
+                'quiz_id' => $attempt->quiz_id,
+                'questions_order' => $attempt->questions_order,
             ]);
-            
-            $questions = $attempt->quiz->quizQuestions()
-                ->with('question.questionType', 'question.options')
-                ->get()
-                ->map(function($quizQuestion) use ($attempt) {
-                    if (!$quizQuestion->question) {
-                        return null;
-                    }
-                    
-                    $question = $quizQuestion->question;
-                    
-                    // #region agent log
-                    \Log::info('DEBUG: Before loading options (fallback)', [
-                        'question_id' => $question->id,
-                        'question_type' => $question->questionType->name ?? 'unknown',
-                        'options_relation_loaded' => $question->relationLoaded('options'),
-                        'options_count_before' => $question->options ? $question->options->count() : 0,
-                        'hypothesisId' => 'A'
-                    ]);
-                    // #endregion
-                    
-                // تأكد من تحميل options بشكل صريح مع الترتيب
-                if (!$question->relationLoaded('options')) {
-                    $question->load(['options' => function($query) {
-                        $query->orderBy('option_order', 'asc');
-                    }]);
-                } else {
-                    // إذا كانت محملة، تأكد من الترتيب
-                    $question->setRelation('options', $question->options->sortBy('option_order')->values());
-                }
-                
-                // #region agent log
-                \Log::info('DEBUG: After loading options (fallback)', [
-                    'question_id' => $question->id,
-                    'options_relation_loaded' => $question->relationLoaded('options'),
-                    'options_count_after' => $question->options ? $question->options->count() : 0,
-                    'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
-                    'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
-                    'hypothesisId' => 'A'
-                ]);
-                // #endregion
-                    
-                    $question->setRelation('pivot', (object)[
-                        'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
-                    ]);
-                    return $question;
-                })->filter();
-        } else {
-            $questions = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
-                $quizQuestion = $attempt->quiz->quizQuestions()
-                    ->where('question_id', $questionId)
-                    ->with('question.questionType', 'question.options')
-                    ->first();
 
-                if (!$quizQuestion) {
-                    $question = QuestionBank::with(['questionType', 'options' => fn ($q) => $q->orderBy('option_order', 'asc')])
-                        ->find($questionId);
+            if (! $attempt->hasAnsweredResponses()) {
+                $attempt->abandon();
 
-                    if (! $question) {
-                        \Log::warning('Quiz question not found in questions_order', [
-                            'attempt_id' => $attempt->id,
-                            'question_id' => $questionId,
-                        ]);
-
-                        return null;
-                    }
-
-                    $question->setRelation('pivot', (object) [
-                        'question_grade' => $this->attemptStartService->gradeForQuestion($attempt->quiz, (int) $questionId),
-                    ]);
-
-                    return $question;
-                }
-
-                $response = $attempt->responses()
-                    ->where('question_id', $questionId)
-                    ->first();
-
-                // Get the question with pivot data
-                $question = $quizQuestion->question;
-
-                // إذا كان السؤال نفسه محذوفاً من بنك الأسئلة
-                if (!$question) {
-                    \Log::warning('QuizAttempt: question is null for quizQuestion in questions_order', [
-                        'attempt_id' => $attempt->id,
-                        'quiz_id' => $attempt->quiz_id,
-                        'question_id_from_order' => $questionId,
-                        'quiz_question_id' => $quizQuestion->id ?? null,
-                    ]);
-                    return null;
-                }
-                
-                // #region agent log
-                \Log::info('DEBUG: Before loading options', [
-                    'question_id' => $question->id,
-                    'question_type' => $question->questionType->name ?? 'unknown',
-                    'options_relation_loaded' => $question->relationLoaded('options'),
-                    'options_count_before' => $question->options ? $question->options->count() : 0,
-                    'hypothesisId' => 'A'
-                ]);
-                // #endregion
-                
-                // تأكد من تحميل options بشكل صريح مع الترتيب
-                if (!$question->relationLoaded('options')) {
-                    $question->load(['options' => function($query) {
-                        $query->orderBy('option_order', 'asc');
-                    }]);
-                } else {
-                    // إذا كانت محملة، تأكد من الترتيب
-                    $question->setRelation('options', $question->options->sortBy('option_order')->values());
-                }
-                
-                // #region agent log
-                \Log::info('DEBUG: After loading options', [
-                    'question_id' => $question->id,
-                    'options_relation_loaded' => $question->relationLoaded('options'),
-                    'options_count_after' => $question->options ? $question->options->count() : 0,
-                    'options_ids' => $question->options ? $question->options->pluck('id')->toArray() : [],
-                    'options_texts' => $question->options ? $question->options->pluck('option_text')->take(3)->toArray() : [],
-                    'hypothesisId' => 'A'
-                ]);
-                // #endregion
-                
-                // Logging للتشخيص
-                \Log::debug('Question options loaded', [
-                    'question_id' => $question->id,
-                    'question_type' => $question->questionType->name ?? 'unknown',
-                    'options_count' => $question->options->count(),
-                    'options_ids' => $question->options->pluck('id')->toArray(),
-                ]);
-                
-                // Add pivot data for grade
-                $question->setRelation('pivot', (object)[
-                    'question_grade' => $quizQuestion->question_grade ?? $question->default_grade ?? 1.0
-                ]);
-
-                return $question;
-            })->filter();
+                return redirect()->route('student.quizzes.show', $attempt->quiz_id)
+                    ->with('error', 'تعذر تحميل أسئلة هذا الاختبار. تم إلغاء المحاولة — يمكنك البدء من جديد.');
+            }
         }
 
         // Calculate remaining time
@@ -557,7 +428,7 @@ class QuizAttemptController extends Controller
                 ->firstOrFail();
 
             // Get question type to determine how to save
-            $question = $response->question ?? \App\Models\QuestionBank::with('questionType')->find($validated['question_id']);
+            $question = $response->question ?? QuestionBank::withTrashed()->with('questionType')->find($validated['question_id']);
             $questionType = $question->questionType->name ?? '';
 
             // If answer parameter is provided, use it (new format like QuestionModule)
@@ -707,7 +578,7 @@ class QuizAttemptController extends Controller
                         $response = $attempt->responses()->where('question_id', $questionId)->first();
                         if ($response) {
                             // Get question type
-                            $question = $response->question ?? \App\Models\QuestionBank::with('questionType')->find($questionId);
+                            $question = $response->question ?? QuestionBank::withTrashed()->with('questionType')->find($questionId);
                             $questionType = $question->questionType->name ?? '';
                             
                             // Save based on question type (same logic as saveAnswer)

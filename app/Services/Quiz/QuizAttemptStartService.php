@@ -5,7 +5,9 @@ namespace App\Services\Quiz;
 use App\Models\QuestionBank;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 class QuizAttemptStartService
@@ -81,7 +83,7 @@ class QuizAttemptStartService
                 $maxScore = $quizQuestion->getGrade();
                 $questionTypeId = $quizQuestion->question->question_type_id;
             } else {
-                $question = QuestionBank::with('questionType')->find($questionId);
+                $question = QuestionBank::withTrashed()->with('questionType')->find($questionId);
                 if (! $question || ! $question->question_type_id) {
                     continue;
                 }
@@ -118,8 +120,76 @@ class QuizAttemptStartService
             }
         }
 
-        $question = QuestionBank::find($questionId);
+        $question = QuestionBank::withTrashed()->find($questionId);
 
         return (float) ($question->default_grade ?? 1.0);
+    }
+
+    /**
+     * @return Collection<int, QuestionBank>
+     */
+    public function resolveQuestionsForAttempt(QuizAttempt $attempt): Collection
+    {
+        $attempt->loadMissing(['quiz.quizQuestions']);
+
+        $questionRelations = [
+            'question' => fn ($query) => $query->withTrashed()->with([
+                'questionType',
+                'options' => fn ($optionsQuery) => $optionsQuery->orderBy('option_order', 'asc'),
+            ]),
+        ];
+
+        if (empty($attempt->questions_order)) {
+            return $attempt->quiz->quizQuestions()
+                ->with($questionRelations)
+                ->orderBy('question_order')
+                ->get()
+                ->map(function (QuizQuestion $quizQuestion) {
+                    $question = $quizQuestion->question;
+                    if (! $question) {
+                        return null;
+                    }
+
+                    $question->setRelation('pivot', (object) [
+                        'question_grade' => $quizQuestion->getGrade(),
+                    ]);
+
+                    return $question;
+                })
+                ->filter()
+                ->values();
+        }
+
+        return collect($attempt->questions_order)->map(function ($questionId) use ($attempt, $questionRelations) {
+            $questionId = (int) $questionId;
+
+            $quizQuestion = $attempt->quiz->quizQuestions()
+                ->where('question_id', $questionId)
+                ->with($questionRelations)
+                ->first();
+
+            if ($quizQuestion && $quizQuestion->question) {
+                $question = $quizQuestion->question;
+                $question->setRelation('pivot', (object) [
+                    'question_grade' => $quizQuestion->getGrade(),
+                ]);
+
+                return $question;
+            }
+
+            $question = QuestionBank::withTrashed()
+                ->with(['questionType', 'options' => fn ($q) => $q->orderBy('option_order', 'asc')])
+                ->find($questionId);
+
+            if (! $question) {
+                return null;
+            }
+
+            $question->setRelation('pivot', (object) [
+                'question_grade' => $this->gradeForQuestion($attempt->quiz, $questionId),
+            ]);
+
+            return $question;
+        })->filter()->values();
     }
 }

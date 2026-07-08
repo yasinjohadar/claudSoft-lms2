@@ -51,55 +51,7 @@ class StudentQuizApiService
      */
     public function orderedQuestionsForAttempt(QuizAttempt $attempt): Collection
     {
-        $attempt->loadMissing(['quiz.quizQuestions']);
-
-        if (empty($attempt->questions_order)) {
-            return $attempt->quiz->quizQuestions()
-                ->with(['question.questionType', 'question.options' => fn ($q) => $q->orderBy('option_order')])
-                ->get()
-                ->map(function (QuizQuestion $qq) {
-                    $q = $qq->question;
-                    if (! $q) {
-                        return null;
-                    }
-                    $q->setRelation('pivot', (object) [
-                        'question_grade' => $qq->getGrade(),
-                    ]);
-
-                    return $q;
-                })
-                ->filter();
-        }
-
-        return collect($attempt->questions_order)->map(function ($questionId) use ($attempt) {
-            $questionId = (int) $questionId;
-            $quizQuestion = $attempt->quiz->quizQuestions()
-                ->where('question_id', $questionId)
-                ->with(['question.questionType', 'question.options' => fn ($q) => $q->orderBy('option_order')])
-                ->first();
-
-            if ($quizQuestion && $quizQuestion->question) {
-                $question = $quizQuestion->question;
-                $question->setRelation('pivot', (object) [
-                    'question_grade' => $quizQuestion->getGrade(),
-                ]);
-
-                return $question;
-            }
-
-            $question = QuestionBank::with(['questionType', 'options' => fn ($q) => $q->orderBy('option_order')])
-                ->find($questionId);
-
-            if (! $question) {
-                return null;
-            }
-
-            $question->setRelation('pivot', (object) [
-                'question_grade' => $this->attemptStartService->gradeForQuestion($attempt->quiz, $questionId),
-            ]);
-
-            return $question;
-        })->filter();
+        return $this->attemptStartService->resolveQuestionsForAttempt($attempt);
     }
 
     /**
@@ -134,7 +86,7 @@ class StudentQuizApiService
 
     public function applyAnswerPayloadToResponse(QuizResponse $response, mixed $answer): void
     {
-        $question = $response->question ?? QuestionBank::with('questionType')->find($response->question_id);
+        $question = $response->question ?? QuestionBank::withTrashed()->with('questionType')->find($response->question_id);
         if (! $question) {
             return;
         }

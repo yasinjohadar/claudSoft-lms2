@@ -36,7 +36,7 @@ test('resolveExpiredAttempt abandons expired attempt without answers', function 
     $attempt->shouldReceive('hasAnsweredResponses')->andReturn(false);
     $attempt->shouldReceive('abandon')->once();
 
-    $service = new QuizAttemptLifecycleService();
+    $service = app(QuizAttemptLifecycleService::class);
 
     expect($service->resolveExpiredAttempt($attempt))->toBe('abandoned');
 });
@@ -50,7 +50,7 @@ test('resolveExpiredAttempt requests auto submit only when all questions answere
     $attempt->shouldReceive('isFullyAnswered')->andReturn(true);
     $attempt->shouldReceive('update')->never();
 
-    $service = new QuizAttemptLifecycleService();
+    $service = app(QuizAttemptLifecycleService::class);
 
     expect($service->resolveExpiredAttempt($attempt))->toBe('auto_submit');
 });
@@ -65,7 +65,7 @@ test('resolveExpiredAttempt does not auto submit when answers are incomplete', f
     $attempt->shouldReceive('abandon')->never();
     $attempt->shouldReceive('update')->never();
 
-    $service = new QuizAttemptLifecycleService();
+    $service = app(QuizAttemptLifecycleService::class);
 
     expect($service->resolveExpiredAttempt($attempt))->toBeNull();
 });
@@ -75,7 +75,7 @@ test('resolveExpiredAttempt returns null for active attempt', function () {
     $attempt->status = 'in_progress';
     $attempt->shouldReceive('isTimeExpired')->andReturn(false);
 
-    $service = new QuizAttemptLifecycleService();
+    $service = app(QuizAttemptLifecycleService::class);
 
     expect($service->resolveExpiredAttempt($attempt))->toBeNull();
 });

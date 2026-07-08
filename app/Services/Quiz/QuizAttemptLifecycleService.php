@@ -4,10 +4,15 @@ namespace App\Services\Quiz;
 
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Support\Collection;
 
 class QuizAttemptLifecycleService
 {
+    public function __construct(
+        protected QuizAttemptStartService $attemptStartService,
+    ) {}
+
     /**
      * Abandon in-progress attempts that have no questions (invalid / stale).
      *
@@ -31,12 +36,24 @@ class QuizAttemptLifecycleService
 
         $query->get()->each(function (QuizAttempt $attempt) use (&$abandoned) {
             $order = $attempt->questions_order;
-            if ($order !== null && $order !== [] && count((array) $order) > 0) {
+            $hasOrder = $order !== null && $order !== [] && count((array) $order) > 0;
+
+            if (! $hasOrder) {
+                $attempt->abandon();
+                $abandoned++;
+
                 return;
             }
 
-            $attempt->abandon();
-            $abandoned++;
+            $attempt->loadMissing(['quiz', 'responses']);
+
+            if (
+                $this->attemptStartService->resolveQuestionsForAttempt($attempt)->isEmpty()
+                && ! $attempt->hasAnsweredResponses()
+            ) {
+                $attempt->abandon();
+                $abandoned++;
+            }
         });
 
         return $abandoned;
