@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Mockery;
 use Spatie\Permission\Models\Role;
+use Tests\Support\PasswordCredentialTestDoubles;
 use Tests\TestCase;
 
 class StudentForgotPasswordApiTest extends TestCase
@@ -39,14 +40,27 @@ class StudentForgotPasswordApiTest extends TestCase
             'key' => 'whatsapp_provider',
             'value' => 'evolution',
         ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_base_url',
+            'value' => 'https://evolution.test.example',
+        ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_api_key',
+            'value' => 'test-api-key',
+        ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_instance_name',
+            'value' => 'main',
+        ]);
     }
 
     private function mockWhatsAppSender(): void
     {
-        $mock = Mockery::mock(SendWhatsAppMessage::class);
-        $mock->shouldReceive('sendTextSync')
-            ->andReturn(new \App\Models\WhatsAppMessage());
-        $this->app->instance(SendWhatsAppMessage::class, $mock);
+        PasswordCredentialTestDoubles::mockNumberResolverPassThrough();
+        PasswordCredentialTestDoubles::mockAcceptedWhatsAppSender();
     }
 
     public function test_forgot_password_requires_valid_email(): void
@@ -119,6 +133,7 @@ class StudentForgotPasswordApiTest extends TestCase
     {
         Mail::fake();
         $this->enableWhatsAppEvolution();
+        PasswordCredentialTestDoubles::mockNumberResolverPassThrough();
 
         $student = $this->studentUser([
             'country_code' => '+963',
@@ -126,15 +141,9 @@ class StudentForgotPasswordApiTest extends TestCase
             'full_phone' => '+963991234567',
         ]);
 
-        $mock = Mockery::mock(SendWhatsAppMessage::class);
-        $mock->shouldReceive('sendTextSync')
-            ->once()
-            ->withArgs(function (string $to, string $text) {
-                return $to === '+963991234567' && str_contains($text, 'student@');
-            })
-            ->andReturn(new \App\Models\WhatsAppMessage());
-
-        $this->app->instance(SendWhatsAppMessage::class, $mock);
+        PasswordCredentialTestDoubles::mockAcceptedWhatsAppSender(function (string $to, string $text) {
+            return $to === '+963991234567' && str_contains($text, 'student@');
+        });
 
         $response = $this->postJson('/api/student/forgot-password', [
             'channel' => 'whatsapp',

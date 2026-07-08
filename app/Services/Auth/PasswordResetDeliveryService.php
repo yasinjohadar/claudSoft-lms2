@@ -38,7 +38,7 @@ class PasswordResetDeliveryService
             ];
         }
 
-        return $this->assignPasswordAndDeliver($user);
+        return $this->assignPasswordAndDeliver($user, requireEmail: true);
     }
 
     /**
@@ -105,14 +105,18 @@ class PasswordResetDeliveryService
             }
         }
 
-        return $this->assignPasswordAndDeliver($user, $displayRecipient);
+        return $this->assignPasswordAndDeliver($user, $displayRecipient, requireWhatsApp: true);
     }
 
     /**
-     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}}
+     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string, email_error: ?string, whatsapp_error: ?string}}
      */
-    private function assignPasswordAndDeliver(User $user, ?string $whatsappRecipientOverride = null): array
-    {
+    private function assignPasswordAndDeliver(
+        User $user,
+        ?string $whatsappRecipientOverride = null,
+        bool $requireWhatsApp = false,
+        bool $requireEmail = false,
+    ): array {
         /** @var PasswordBroker $broker */
         $broker = Password::broker();
 
@@ -129,13 +133,22 @@ class PasswordResetDeliveryService
             $user,
             $plainPassword,
             PasswordCredentialDeliveryService::CONTEXT_FORGOT_AUTO,
-            $whatsappRecipientOverride
+            $whatsappRecipientOverride,
+            requireWhatsApp: $requireWhatsApp,
+            requireEmail: $requireEmail,
         );
 
         if (! $delivery['email_sent'] && ! $delivery['whatsapp_sent']) {
-            throw new InvalidArgumentException('تعذّر إرسال بيانات الدخول عبر البريد والواتساب. تحقق من إعدادات الإرسال أو تواصل مع الدعم.');
+            $detail = $delivery['whatsapp_error'] ?: $delivery['email_error'] ?: '';
+            $message = 'تعذّر إرسال بيانات الدخول عبر البريد والواتساب. تحقق من إعدادات الإرسال أو تواصل مع الدعم.';
+            if ($detail !== '') {
+                $message .= ' ('.$detail.')';
+            }
+
+            throw new InvalidArgumentException($message);
         }
 
+        // Only mutate password after at least one channel (or the required channel) succeeded.
         $user->forceFill([
             'password' => Hash::make($plainPassword),
         ])->save();
@@ -219,7 +232,13 @@ class PasswordResetDeliveryService
         }
 
         if ($emailSent) {
-            return 'تم إرسال بيانات الدخول إلى بريدك الإلكتروني. تعذّر الإرسال عبر الواتساب — تحقق من رقم الواتساب المسجّل في حسابك.';
+            $extra = '';
+            $waError = trim((string) ($delivery['whatsapp_error'] ?? ''));
+            if ($waError !== '') {
+                $extra = ' السبب: '.$waError;
+            }
+
+            return 'تم إرسال بيانات الدخول إلى بريدك الإلكتروني. تعذّر الإرسال عبر الواتساب.'.$extra;
         }
 
         if ($whatsappSent) {
@@ -228,14 +247,20 @@ class PasswordResetDeliveryService
                 $message .= ' إلى '.$whatsappRecipient;
             }
 
-            return $message.'. تعذّر الإرسال عبر البريد الإلكتروني.';
+            $emailError = trim((string) ($delivery['email_error'] ?? ''));
+            $message .= '. تعذّر الإرسال عبر البريد الإلكتروني.';
+            if ($emailError !== '') {
+                $message .= ' السبب: '.$emailError;
+            }
+
+            return $message;
         }
 
         return 'تعذّر إرسال بيانات الدخول.';
     }
 
     /**
-     * @return array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}
+     * @return array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string, email_error: ?string, whatsapp_error: ?string}
      */
     private function emptyDelivery(): array
     {
@@ -243,6 +268,8 @@ class PasswordResetDeliveryService
             'email_sent' => false,
             'whatsapp_sent' => false,
             'whatsapp_recipient' => null,
+            'email_error' => null,
+            'whatsapp_error' => null,
         ];
     }
 }

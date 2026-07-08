@@ -7,6 +7,7 @@ use App\Services\Auth\PasswordResetMessageRenderer;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Tests\Support\PasswordCredentialTestDoubles;
 
 test('reset password link screen can be rendered', function () {
     $response = $this->get('/forgot-password');
@@ -16,15 +17,7 @@ test('reset password link screen can be rendered', function () {
 
 test('forgot password sends credential email and whatsapp', function () {
     Mail::fake();
-
-    $mock = Mockery::mock(SendWhatsAppMessage::class);
-    $mock->shouldReceive('sendTextSync')
-        ->once()
-        ->withArgs(function (string $to, string $text) use ($user) {
-            return $to === '+963991234567' && str_contains($text, $user->email);
-        })
-        ->andReturn(new \App\Models\WhatsAppMessage());
-    app()->instance(SendWhatsAppMessage::class, $mock);
+    PasswordCredentialTestDoubles::mockNumberResolverPassThrough();
 
     $user = User::factory()->create([
         'country_code' => '+963',
@@ -32,6 +25,10 @@ test('forgot password sends credential email and whatsapp', function () {
         'full_phone' => '+963991234567',
     ]);
     $oldHash = $user->password;
+
+    PasswordCredentialTestDoubles::mockAcceptedWhatsAppSender(function (string $to, string $text) use ($user) {
+        return $to === '+963991234567' && str_contains($text, $user->email);
+    });
 
     $response = $this->post('/forgot-password', [
         'channel' => 'email',
@@ -59,12 +56,8 @@ test('reset password screen can be rendered', function () {
 
 test('password can be reset with valid token and credentials are sent', function () {
     Mail::fake();
-
-    $mock = Mockery::mock(SendWhatsAppMessage::class);
-    $mock->shouldReceive('sendTextSync')
-        ->once()
-        ->andReturn(new \App\Models\WhatsAppMessage());
-    app()->instance(SendWhatsAppMessage::class, $mock);
+    PasswordCredentialTestDoubles::mockNumberResolverPassThrough();
+    PasswordCredentialTestDoubles::mockAcceptedWhatsAppSender();
 
     $user = User::factory()->create();
     $token = Password::broker()->createToken($user);

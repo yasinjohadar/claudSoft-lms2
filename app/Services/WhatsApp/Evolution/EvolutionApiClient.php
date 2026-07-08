@@ -209,6 +209,27 @@ class EvolutionApiClient
         return $this->request('POST', $this->instancePath('/chat/findContacts', $instanceName));
     }
 
+    /**
+     * Check whether numbers are registered on WhatsApp.
+     *
+     * @param  list<string>  $numbers  Digits with country code (no +)
+     * @return list<array{exists?: bool, jid?: string, number?: string}>
+     */
+    public function whatsappNumbers(string $instanceName, array $numbers): array
+    {
+        $response = $this->request('POST', $this->instancePath('/chat/whatsappNumbers', $instanceName), [
+            'numbers' => array_values($numbers),
+        ]);
+
+        if (array_is_list($response)) {
+            return $response;
+        }
+
+        $nested = $response['data'] ?? $response['numbers'] ?? null;
+
+        return is_array($nested) ? array_values($nested) : [];
+    }
+
     protected function instancePath(string $prefix, string $instanceName): string
     {
         return rtrim($prefix, '/').'/'.rawurlencode($instanceName);

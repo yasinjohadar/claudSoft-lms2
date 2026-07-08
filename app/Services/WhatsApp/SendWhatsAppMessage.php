@@ -87,7 +87,18 @@ class SendWhatsAppMessage
             $messageData['evolution_instance_name'] = $evolutionInstanceName;
         }
 
-        app(WhatsAppOutboundSendService::class)->send($message, $messageData);
+        try {
+            app(WhatsAppOutboundSendService::class)->send($message, $messageData);
+        } catch (\Throwable $e) {
+            $message->update([
+                'status' => WhatsAppMessage::STATUS_FAILED,
+                'error' => [
+                    'message' => $e->getMessage(),
+                ],
+            ]);
+
+            throw $e;
+        }
 
         return $message->fresh();
     }

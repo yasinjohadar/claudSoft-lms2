@@ -146,12 +146,20 @@ class EvolutionApiProvider implements WhatsAppProviderService
             data_get($response, 'key.id')
             ?? data_get($response, 'messageId')
             ?? data_get($response, 'id')
-            ?? uniqid('evo_')
+            ?? ''
         );
+
+        if ($messageId === '') {
+            throw new WhatsAppApiException(
+                'Evolution API: لم يُرجع معرف رسالة بعد الإرسال.',
+                0
+            );
+        }
 
         Log::channel('whatsapp')->info('Evolution message sent', [
             'instance' => $this->instanceName,
             'message_id' => $messageId,
+            'status' => data_get($response, 'status') ?? data_get($response, 'message.status'),
         ]);
 
         return new SendMessageResponseDTO(

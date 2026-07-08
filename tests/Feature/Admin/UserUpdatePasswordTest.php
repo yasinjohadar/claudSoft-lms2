@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Mockery;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\PasswordCredentialTestDoubles;
 use Tests\TestCase;
 
 class UserUpdatePasswordTest extends TestCase
@@ -54,18 +55,29 @@ class UserUpdatePasswordTest extends TestCase
             'key' => 'whatsapp_provider',
             'value' => 'evolution',
         ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_base_url',
+            'value' => 'https://evolution.test.example',
+        ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_api_key',
+            'value' => 'test-api-key',
+        ]);
+        SystemSetting::create([
+            'group' => 'whatsapp',
+            'key' => 'evolution_instance_name',
+            'value' => 'main',
+        ]);
     }
 
     public function test_admin_password_update_sends_credentials_when_enabled(): void
     {
         Mail::fake();
         $this->enableWhatsAppEvolution();
-
-        $mock = Mockery::mock(SendWhatsAppMessage::class);
-        $mock->shouldReceive('sendTextSync')
-            ->once()
-            ->andReturn(new \App\Models\WhatsAppMessage());
-        $this->app->instance(SendWhatsAppMessage::class, $mock);
+        PasswordCredentialTestDoubles::mockNumberResolverPassThrough();
+        PasswordCredentialTestDoubles::mockAcceptedWhatsAppSender();
 
         $admin = $this->adminUser();
         $student = $this->studentUser();
