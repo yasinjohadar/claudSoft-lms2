@@ -25,10 +25,9 @@
 
         <div class="card custom-card border-0 shadow-sm mb-4">
             <div class="card-header bg-transparent">
-                <h4 class="card-title mb-1">تخصيص رسالة استعادة كلمة المرور</h4>
+                <h4 class="card-title mb-1">تخصيص رسالة بيانات الدخول</h4>
                 <p class="text-muted fs-12 mb-0">
-                    عدّل نصوص البريد والواتساب مع التنسيق والإيموجي. مدة صلاحية الرابط من الإعدادات: <strong>{{ $expireMinutes }}</strong> دقيقة
-                    (من <code>config/auth.php</code>).
+                    عدّل نصوص البريد والواتساب المرسلة عند إعادة تعيين كلمة المرور. تُرسل الرسائل على القناتين معاً وتتضمن بيانات الدخول الكاملة لكل طالب.
                 </p>
             </div>
             <div class="card-body">
@@ -38,8 +37,24 @@
                         <code class="me-1">{ {{ $placeholder }} }</code>
                     @endforeach
                     <div class="small text-muted mt-2">
-                        استخدم <code>{expire_at}</code> لعرض وقت انتهاء الرابط (مثل 2026-06-21 18:30) — يُفضّل وضعه في نهاية الرسالة.
+                        ضع كل بيانات الدخول داخل القالب أدناه — لن يُلحق أي نص تلقائياً بالرسالة.
+                        استخدم <code>{password}</code> و<code>{login_url}</code> و<code>{admin_instructions}</code> حسب تنسيقك.
+                        <code>{reset_url}</code> و<code>{reset_link}</code> يعادلان <code>{login_url}</code> للتوافق مع قوالب قديمة فقط.
                     </div>
+                </div>
+
+                @if($usesLegacyLinkTemplate)
+                    <div class="alert alert-warning border-warning mb-4">
+                        <strong>قالب قديم (رابط مؤقت):</strong>
+                        يبدو أن نص الواتساب ما زال مبنياً على رابط إعادة التعيين وصلاحية زمنية.
+                        النظام يُعيّن كلمة المرور فوراً ولا يوجد رابط ينتهي — حدّث القالب ليشمل
+                        <code>{password}</code> و<code>{login_url}</code> أو اضغط «استعادة الافتراضي».
+                    </div>
+                @endif
+
+                <div class="alert alert-info border-info mb-4">
+                    <strong>مثال جاهز لنص الواتساب:</strong>
+                    <pre class="mb-0 mt-2 small" dir="rtl" style="white-space: pre-wrap;">{{ \App\Services\Auth\PasswordResetMessageRenderer::defaultWhatsAppBody() }}</pre>
                 </div>
 
                 <form method="POST" action="{{ route('admin.settings.password-reset-message.update') }}" id="passwordResetMessageForm">
@@ -47,6 +62,14 @@
                     @method('PUT')
 
                     <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label" for="admin_instructions">إرشادات الإدارة</label>
+                            <textarea name="admin_instructions" id="admin_instructions" class="form-control" rows="4">{{ old('admin_instructions', $settings['admin_instructions'] ?? '') }}</textarea>
+                            <small class="text-muted">يُعرض في الرسالة عبر المتغير <code>{admin_instructions}</code> — مثل: تغيير كلمة المرور بعد أول دخول.</small>
+                            @error('admin_instructions')<div class="text-danger small">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-12"><hr></div>
                         <div class="col-12">
                             <h5 class="fw-semibold mb-3"><i class="ri-whatsapp-line text-success me-1"></i> رسالة الواتساب</h5>
                         </div>

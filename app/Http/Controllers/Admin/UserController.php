@@ -685,6 +685,7 @@ class UserController extends Controller
                 'confirmed',
                 Password::min(12)->mixedCase()->numbers()->symbols(),
             ],
+            'send_credentials' => ['sometimes', 'boolean'],
         ], [
             'password.required' => 'كلمة المرور مطلوبة',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
@@ -693,6 +694,14 @@ class UserController extends Controller
         $user->update([
             'password' => $validated['password'],
         ]);
+
+        if ($request->boolean('send_credentials')) {
+            app(\App\Services\Auth\PasswordCredentialDeliveryService::class)->deliver(
+                $user,
+                $validated['password'],
+                \App\Services\Auth\PasswordCredentialDeliveryService::CONTEXT_ADMIN_RESET
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json([

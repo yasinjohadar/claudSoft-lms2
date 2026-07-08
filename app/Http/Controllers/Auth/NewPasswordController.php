@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\PasswordCredentialDeliveryService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,8 @@ class NewPasswordController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $plainPassword = (string) $request->password;
+
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
@@ -50,6 +53,17 @@ class NewPasswordController extends Controller
                 event(new PasswordReset($user));
             }
         );
+
+        if ($status === Password::PASSWORD_RESET) {
+            $user = User::query()->where('email', $request->email)->first();
+            if ($user) {
+                app(PasswordCredentialDeliveryService::class)->deliver(
+                    $user,
+                    $plainPassword,
+                    PasswordCredentialDeliveryService::CONTEXT_FORGOT_MANUAL
+                );
+            }
+        }
 
         // Translate status messages to Arabic
         // The status is already a translation key (e.g., 'passwords.reset', 'passwords.user')

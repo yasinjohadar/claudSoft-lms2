@@ -28,7 +28,7 @@
                 <div>
                     <h2 class="auth-brand__name">استعادة كلمة المرور</h2>
                     <p class="auth-brand__tagline auth-page--forgot__tagline">
-                        اختر الطريقة المناسبة — واتساب أو بريد إلكتروني — وسنرسل لك رابطاً آمناً لإعادة التعيين.
+                        اختر الطريقة المناسبة — واتساب أو بريد إلكتروني — وسنرسل لك بيانات الدخول الجديدة عبر الواتساب والبريد.
                     </p>
                 </div>
             </div>
@@ -65,9 +65,9 @@
                     <div class="auth-alert auth-alert--success" role="status">
                         <strong>{{ session('status') }}</strong>
                         @if(session('reset_channel') === 'whatsapp')
-                            <p class="mb-0 mt-1">تحقق من واتساب الرقم <strong>{{ session('reset_contact') }}</strong>.</p>
+                            <p class="mb-0 mt-1">تحقق من واتساب الرقم <strong>{{ session('reset_contact') }}</strong>@if(!data_get(session('reset_delivery'), 'whatsapp_sent')) <span class="text-warning">(تعذّر إرسال الواتساب — راجع البريد)</span>@endif وبريدك الإلكتروني.</p>
                         @else
-                            <p class="mb-0 mt-1">تحقق من بريد <strong>{{ session('reset_contact', old('email')) }}</strong> (ومجلد الرسائل المزعجة).</p>
+                            <p class="mb-0 mt-1">تحقق من بريد <strong>{{ session('reset_contact', old('email')) }}</strong>@if(data_get(session('reset_delivery'), 'whatsapp_recipient')) وواتساب <strong>{{ data_get(session('reset_delivery'), 'whatsapp_recipient') }}</strong>@endif (ومجلد الرسائل المزعجة).</p>
                         @endif
                     </div>
                 @endif
@@ -108,11 +108,11 @@
 
                     <div class="auth-steps" id="auth-steps-box" aria-live="polite">
                         @if($defaultChannel === 'email')
-                            <strong>عبر البريد:</strong> 1. افتح بريدك · 2. اضغط الرابط · 3. أدخل كلمة مرور جديدة
+                            <strong>عبر البريد:</strong> 1. أدخل بريدك · 2. استلم بيانات الدخول · 3. سجّل الدخول
                         @elseif($defaultChannel === 'whatsapp_otp')
                             <strong>عبر OTP واتساب:</strong> 1. أدخل رقمك · 2. استلم الرمز · 3. أدخل كلمة مرور جديدة
                         @else
-                            <strong>عبر الواتساب:</strong> 1. افتح محادثة الواتساب · 2. اضغط الرابط · 3. أدخل كلمة مرور جديدة
+                            <strong>عبر الواتساب:</strong> 1. أدخل رقمك · 2. استلم بيانات الدخول · 3. سجّل الدخول
                         @endif
                     </div>
 
@@ -150,7 +150,7 @@
                     </div>
 
                     <button type="submit" class="auth-btn" id="submit-btn">
-                        إرسال رابط إعادة التعيين
+                        إرسال بيانات الدخول
                     </button>
                 </form>
 
@@ -176,8 +176,8 @@
         var submitBtn = document.getElementById('submit-btn');
 
         var stepsCopy = {
-            email: '<strong>عبر البريد:</strong> 1. افتح بريدك · 2. اضغط الرابط · 3. أدخل كلمة مرور جديدة',
-            whatsapp: '<strong>عبر الواتساب:</strong> 1. افتح محادثة الواتساب · 2. اضغط الرابط · 3. أدخل كلمة مرور جديدة',
+            email: '<strong>عبر البريد:</strong> 1. أدخل بريدك · 2. استلم بيانات الدخول · 3. سجّل الدخول',
+            whatsapp: '<strong>عبر الواتساب:</strong> 1. أدخل رقمك · 2. استلم بيانات الدخول · 3. سجّل الدخول',
             whatsapp_otp: '<strong>عبر OTP واتساب:</strong> 1. أدخل رقمك · 2. استلم الرمز · 3. أدخل كلمة مرور جديدة'
         };
 
@@ -241,7 +241,7 @@
             if (countryCodeField) countryCodeField.required = channel === 'whatsapp' || channel === 'whatsapp_otp';
             submitBtn.textContent = channel === 'whatsapp_otp'
                 ? 'إرسال رمز OTP'
-                : (channel === 'whatsapp' ? 'إرسال الرابط عبر الواتساب' : 'إرسال الرابط عبر البريد');
+                : 'إرسال بيانات الدخول';
             submitBtn.classList.toggle('auth-btn--wa', channel === 'whatsapp' || channel === 'whatsapp_otp');
         }
 

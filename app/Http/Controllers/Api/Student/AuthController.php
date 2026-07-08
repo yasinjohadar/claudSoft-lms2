@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Student;
 use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\PasswordCredentialDeliveryService;
 use App\Services\Auth\PasswordResetDeliveryService;
 use App\Services\Auth\PhoneOtpService;
 use Illuminate\Auth\Events\PasswordReset;
@@ -198,12 +199,12 @@ class AuthController extends Controller
 
         try {
             if ($channel === 'whatsapp') {
-                $status = $resetDelivery->sendViaWhatsAppParts(
+                $result = $resetDelivery->sendViaWhatsAppParts(
                     (string) $request->input('country_code'),
                     (string) $request->input('phone')
                 );
             } else {
-                $status = $resetDelivery->sendViaEmail((string) $request->input('email'));
+                $result = $resetDelivery->sendViaEmail((string) $request->input('email'));
             }
         } catch (\InvalidArgumentException $e) {
             $field = $channel === 'whatsapp' ? 'phone' : 'email';
@@ -218,15 +219,16 @@ class AuthController extends Controller
 
             throw ValidationException::withMessages([
                 $field => [$channel === 'whatsapp'
-                    ? 'تعذّر إرسال رابط الاستعادة عبر الواتساب. حاول لاحقاً أو استخدم البريد الإلكتروني.'
-                    : 'تعذّر إرسال رابط الاستعادة عبر البريد. تحقق من إعدادات SMTP في لوحة التحكم أو حاول لاحقاً.'],
+                    ? 'تعذّر إرسال بيانات الدخول عبر الواتساب. حاول لاحقاً أو استخدم البريد الإلكتروني.'
+                    : 'تعذّر إرسال بيانات الدخول عبر البريد. تحقق من إعدادات SMTP في لوحة التحكم أو حاول لاحقاً.'],
             ]);
         }
 
+        $status = $result['status'];
+        $delivery = $result['delivery'];
+
         $messages = [
-            Password::RESET_LINK_SENT => $channel === 'whatsapp'
-                ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى واتسابك.'
-                : 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
+            Password::RESET_LINK_SENT => PasswordResetDeliveryService::buildSuccessMessage($delivery),
             Password::INVALID_USER => $channel === 'whatsapp'
                 ? 'لا يمكننا العثور على حساب مرتبط بهذا الرقم.'
                 : 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
@@ -237,10 +239,11 @@ class AuthController extends Controller
 
         if ($status === Password::RESET_LINK_SENT) {
             $contact = $channel === 'whatsapp'
-                ? $resetDelivery->formatPhoneForDisplay(
-                    (string) $request->input('country_code'),
-                    (string) $request->input('phone')
-                )
+                ? ($delivery['whatsapp_recipient']
+                    ?? $resetDelivery->formatPhoneForDisplay(
+                        (string) $request->input('country_code'),
+                        (string) $request->input('phone')
+                    ))
                 : (string) $request->input('email');
 
             return response()->json([
@@ -249,6 +252,8 @@ class AuthController extends Controller
                 'data' => [
                     'channel' => $channel,
                     'contact' => $contact,
+                    'email_sent' => (bool) ($delivery['email_sent'] ?? false),
+                    'whatsapp_sent' => (bool) ($delivery['whatsapp_sent'] ?? false),
                 ],
             ]);
         }
@@ -327,6 +332,8 @@ class AuthController extends Controller
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
+        $plainPassword = (string) $request->password;
+
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
@@ -349,6 +356,15 @@ class AuthController extends Controller
         $message = $messages[$status] ?? trans($status, [], 'ar');
 
         if ($status === Password::PASSWORD_RESET) {
+            $user = User::query()->where('email', $request->email)->first();
+            if ($user) {
+                app(PasswordCredentialDeliveryService::class)->deliver(
+                    $user,
+                    $plainPassword,
+                    PasswordCredentialDeliveryService::CONTEXT_FORGOT_MANUAL
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => $message,

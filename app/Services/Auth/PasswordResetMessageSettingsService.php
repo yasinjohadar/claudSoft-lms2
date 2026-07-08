@@ -94,14 +94,19 @@ class PasswordResetMessageSettingsService
                 'description' => 'نص واتساب مخصص عند عدم اختيار قالب',
             ],
             'email_subject' => [
-                'value' => 'إعادة تعيين كلمة المرور - أكاديمية كلاودسوفت',
+                'value' => 'بيانات الدخول - أكاديمية كلاودسوفت',
                 'type' => 'string',
-                'description' => 'موضوع بريد استعادة كلمة المرور',
+                'description' => 'موضوع بريد بيانات الدخول',
             ],
             'email_body' => [
                 'value' => PasswordResetMessageRenderer::defaultEmailBody(),
                 'type' => 'string',
                 'description' => 'محتوى HTML لبريد استعادة كلمة المرور',
+            ],
+            'admin_instructions' => [
+                'value' => 'يُنصح بتغيير كلمة المرور بعد أول تسجيل دخول. لا تشارك بيانات الدخول مع أي شخص آخر.',
+                'type' => 'string',
+                'description' => 'إرشادات الإدارة المضمّنة في رسالة بيانات الدخول',
             ],
         ];
     }
@@ -115,5 +120,32 @@ class PasswordResetMessageSettingsService
         }
         $payload['whatsapp_template_id'] = '';
         $this->updateSettings($payload);
+    }
+
+    public function usesLegacyLinkTemplate(?string $body = null): bool
+    {
+        $body = $body ?? (string) ($this->getSettings()['whatsapp_body'] ?? '');
+        $normalized = mb_strtolower(strip_tags($body));
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        $legacyMarkers = [
+            '{expire_at}',
+            '{expire_minutes}',
+            'صلاحية الرابط',
+            'إعادة تعيين كلمة المرور',
+            'طلبت إعادة تعيين',
+        ];
+
+        foreach ($legacyMarkers as $marker) {
+            if (str_contains($normalized, mb_strtolower($marker))) {
+                return true;
+            }
+        }
+
+        return str_contains($normalized, '{reset_url}')
+            && ! str_contains($normalized, '{password}');
     }
 }

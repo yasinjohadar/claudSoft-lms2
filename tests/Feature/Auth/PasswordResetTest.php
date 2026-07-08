@@ -1,8 +1,12 @@
 <?php
 
+use App\Mail\PasswordCredentialsMail;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Support\Facades\Notification;
+use App\Services\Auth\PasswordCredentialDeliveryService;
+use App\Services\Auth\PasswordResetMessageRenderer;
+use App\Services\WhatsApp\SendWhatsAppMessage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 
 test('reset password link screen can be rendered', function () {
     $response = $this->get('/forgot-password');
@@ -10,51 +14,99 @@ test('reset password link screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
-test('reset password link can be requested', function () {
-    Notification::fake();
+test('forgot password sends credential email and whatsapp', function () {
+    Mail::fake();
 
-    $user = User::factory()->create();
+    $mock = Mockery::mock(SendWhatsAppMessage::class);
+    $mock->shouldReceive('sendTextSync')
+        ->once()
+        ->withArgs(function (string $to, string $text) use ($user) {
+            return $to === '+963991234567' && str_contains($text, $user->email);
+        })
+        ->andReturn(new \App\Models\WhatsAppMessage());
+    app()->instance(SendWhatsAppMessage::class, $mock);
 
-    $this->post('/forgot-password', ['email' => $user->email]);
+    $user = User::factory()->create([
+        'country_code' => '+963',
+        'phone' => '991234567',
+        'full_phone' => '+963991234567',
+    ]);
+    $oldHash = $user->password;
 
-    Notification::assertSentTo($user, ResetPassword::class);
+    $response = $this->post('/forgot-password', [
+        'channel' => 'email',
+        'email' => $user->email,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    Mail::assertSent(PasswordCredentialsMail::class, function (PasswordCredentialsMail $mail) use ($user) {
+        return $mail->hasTo($user->email);
+    });
+
+    $user->refresh();
+    expect($user->password)->not->toBe($oldHash);
 });
 
 test('reset password screen can be rendered', function () {
-    Notification::fake();
+    $user = User::factory()->create();
+    $token = Password::broker()->createToken($user);
+
+    $response = $this->get('/reset-password/'.$token.'?email='.urlencode($user->email));
+
+    $response->assertStatus(200);
+});
+
+test('password can be reset with valid token and credentials are sent', function () {
+    Mail::fake();
+
+    $mock = Mockery::mock(SendWhatsAppMessage::class);
+    $mock->shouldReceive('sendTextSync')
+        ->once()
+        ->andReturn(new \App\Models\WhatsAppMessage());
+    app()->instance(SendWhatsAppMessage::class, $mock);
 
     $user = User::factory()->create();
+    $token = Password::broker()->createToken($user);
 
-    $this->post('/forgot-password', ['email' => $user->email]);
+    $response = $this->post('/reset-password', [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'NewPassword123!',
+        'password_confirmation' => 'NewPassword123!',
+    ]);
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-        $response = $this->get('/reset-password/'.$notification->token);
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('login'));
 
-        $response->assertStatus(200);
-
-        return true;
+    Mail::assertSent(PasswordCredentialsMail::class, function (PasswordCredentialsMail $mail) use ($user) {
+        return $mail->hasTo($user->email);
     });
 });
 
-test('password can be reset with valid token', function () {
-    Notification::fake();
+test('credential renderer replaces placeholders without expiry values', function () {
+    $user = new User([
+        'name' => 'Yasin',
+        'name_ar' => 'ياسين محمد جوخدار',
+        'email' => 'student@example.com',
+    ]);
 
-    $user = User::factory()->create();
+    $renderer = app(PasswordResetMessageRenderer::class);
+    $message = $renderer->renderCredentialWhatsApp($user, 'SecretPass123!');
 
-    $this->post('/forgot-password', ['email' => $user->email]);
+    expect($message)
+        ->toContain('ياسين محمد جوخدار')
+        ->toContain('SecretPass123!')
+        ->toContain('student@example.com')
+        ->not->toContain('{password}')
+        ->not->toContain('صلاحية الرابط')
+        ->not->toContain('---');
+});
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-        $response = $this->post('/reset-password', [
-            'token' => $notification->token,
-            'email' => $user->email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
+test('credential delivery service generates secure password', function () {
+    $service = app(PasswordCredentialDeliveryService::class);
+    $password = $service->generateSecurePassword();
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('login'));
-
-        return true;
-    });
+    expect(strlen($password))->toBeGreaterThanOrEqual(16);
 });

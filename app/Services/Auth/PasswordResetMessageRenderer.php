@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Models\User;
 use App\Models\WhatsAppMessageTemplate;
+use App\Services\WhatsApp\WhatsAppSettingsService;
 use Carbon\Carbon;
 
 class PasswordResetMessageRenderer
@@ -15,15 +16,60 @@ class PasswordResetMessageRenderer
     /**
      * @return array<string, string>
      */
+    public function credentialVariables(User $user, #[\SensitiveParameter] string $plainPassword): array
+    {
+        $settings = $this->settingsService->getSettings();
+        $nameAr = trim((string) ($user->name_ar ?? ''));
+        if ($nameAr === '') {
+            $nameAr = trim((string) ($user->name ?? '')) ?: 'عزيزي المستخدم';
+        }
+        $nameEn = trim((string) ($user->name ?? '')) ?: $nameAr;
+        $appName = (string) (config('app.name') ?: 'أكاديمية كلاودسوفت');
+        $loginUrl = $this->resolveLoginUrl();
+
+        return [
+            'student_name_ar' => $nameAr,
+            'student_name_en' => $nameEn,
+            'student_name' => $nameAr,
+            'user_name' => $nameAr,
+            'email' => (string) ($user->email ?? ''),
+            'password' => $plainPassword,
+            'new_password' => $plainPassword,
+            'login_url' => $loginUrl,
+            'admin_instructions' => trim((string) ($settings['admin_instructions'] ?? '')),
+            'app_name' => $appName,
+        ];
+    }
+
+    /**
+     * متغيرات رسائل بيانات الدخول (بدون صلاحية رابط — كلمة المرور تُعيَّن فوراً).
+     *
+     * @return array<string, string>
+     */
+    public function credentialMessageVariables(User $user, #[\SensitiveParameter] string $plainPassword): array
+    {
+        $loginUrl = $this->resolveLoginUrl();
+
+        return array_merge($this->credentialVariables($user, $plainPassword), [
+            'reset_url' => $loginUrl,
+            'reset_link' => $loginUrl,
+            'expire_minutes' => '',
+            'expire_at' => '',
+            'expire_at_date' => '',
+            'expire_at_time' => '',
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public function variables(User $user, string $resetUrl, int $expireMinutes): array
     {
         $expiresAt = Carbon::now()->addMinutes($expireMinutes);
         $userName = $user->name_ar ?? $user->name ?? 'عزيزي المستخدم';
         $appName = (string) (config('app.name') ?: 'أكاديمية كلاودسوفت');
 
-        return [
-            'user_name' => $userName,
-            'student_name' => $userName,
+        return array_merge($this->credentialVariables($user, ''), [
             'reset_url' => $resetUrl,
             'reset_link' => $resetUrl,
             'expire_minutes' => (string) $expireMinutes,
@@ -32,7 +78,36 @@ class PasswordResetMessageRenderer
             'expire_at_time' => $expiresAt->format('H:i'),
             'app_name' => $appName,
             'email' => (string) ($user->email ?? ''),
-        ];
+            'user_name' => $userName,
+            'student_name' => $userName,
+            'password' => '',
+            'new_password' => '',
+        ]);
+    }
+
+    public function renderCredentialWhatsApp(User $user, #[\SensitiveParameter] string $plainPassword): string
+    {
+        $settings = $this->settingsService->getSettings();
+        $variables = $this->credentialMessageVariables($user, $plainPassword);
+
+        if (! empty($settings['whatsapp_template_id'])) {
+            $template = WhatsAppMessageTemplate::active()
+                ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+                ->find($settings['whatsapp_template_id']);
+
+            if ($template) {
+                return $template->render($variables);
+            }
+        }
+
+        $body = trim((string) ($settings['whatsapp_body'] ?? ''));
+        if ($body === '') {
+            $body = self::defaultWhatsAppBody();
+        } else {
+            $body = WhatsAppMessageTemplate::normalizeBodyForSending($body);
+        }
+
+        return $this->renderTemplate($body, $variables, forWhatsApp: true);
     }
 
     public function renderWhatsApp(User $user, string $resetUrl, int $expireMinutes): string
@@ -63,7 +138,20 @@ class PasswordResetMessageRenderer
         $settings = $this->settingsService->getSettings();
         $subject = trim((string) ($settings['email_subject'] ?? ''));
 
-        return $subject !== '' ? $subject : 'إعادة تعيين كلمة المرور - أكاديمية كلاودسوفت';
+        return $subject !== '' ? $subject : 'بيانات الدخول - أكاديمية كلاودسوفت';
+    }
+
+    public function renderCredentialEmailBodyHtml(User $user, #[\SensitiveParameter] string $plainPassword): string
+    {
+        $settings = $this->settingsService->getSettings();
+        $variables = $this->credentialMessageVariables($user, $plainPassword);
+
+        $body = trim((string) ($settings['email_body'] ?? ''));
+        if ($body === '') {
+            $body = self::defaultEmailBody();
+        }
+
+        return $this->renderTemplate($body, $variables, forWhatsApp: false);
     }
 
     public function renderEmailBodyHtml(User $user, string $resetUrl, int $expireMinutes): string
@@ -86,11 +174,13 @@ class PasswordResetMessageRenderer
     {
         $output = $template;
         foreach ($variables as $key => $value) {
-            $output = str_replace(
-                ['{{'.$key.'}}', '{'.$key.'}'],
-                $value,
-                $output
-            );
+            $patterns = [
+                '{{'.$key.'}}',
+                '{'.$key.'}',
+                '{{ '.$key.' }}',
+                '{ '.$key.' }',
+            ];
+            $output = str_replace($patterns, $value, $output);
         }
 
         if ($forWhatsApp) {
@@ -100,45 +190,64 @@ class PasswordResetMessageRenderer
         return $output;
     }
 
+    private function resolveLoginUrl(): string
+    {
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if ($this->isLocalAppUrl($appUrl)) {
+            $waSettings = app(WhatsAppSettingsService::class)->getSettings();
+            $publicBase = rtrim((string) ($waSettings['evolution_webhook_base_url'] ?? ''), '/');
+
+            if ($publicBase !== '' && ! $this->isLocalAppUrl($publicBase)) {
+                return $publicBase.route('login', [], false);
+            }
+        }
+
+        return url(route('login'));
+    }
+
+    private function isLocalAppUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+    }
+
     public static function defaultWhatsAppBody(): string
     {
         return <<<'TEXT'
-مرحباً {user_name} 👋
+مرحباً {student_name_ar} 👋
 
-طلبت إعادة تعيين كلمة المرور في {app_name}.
-اضغط الرابط التالي:
-{reset_url}
+تم تعيين كلمة مرور جديدة لحسابك في {app_name}.
 
-⏱ ينتهي صلاحية الرابط في: {expire_at} (بعد {expire_minutes} دقيقة)
+👤 الاسم (عربي): {student_name_ar}
+👤 الاسم (إنجليزي): {student_name_en}
+📧 البريد: {email}
+🔑 كلمة المرور: {password}
+🔗 رابط الدخول: {login_url}
 
-إذا لم تطلب ذلك تجاهل هذه الرسالة 🙏
+{admin_instructions}
 TEXT;
     }
 
     public static function defaultEmailBody(): string
     {
         return <<<'HTML'
-<p class="greeting" style="font-size:20px;font-weight:700;color:#0555a2;margin-bottom:20px;">مرحباً {user_name}! 👋</p>
-<p style="margin-bottom:15px;font-size:16px;color:#555555;">لقد تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في {app_name}.</p>
+<p class="greeting" style="font-size:20px;font-weight:700;color:#0555a2;margin-bottom:20px;">مرحباً {student_name_ar}! 👋</p>
+<p style="margin-bottom:15px;font-size:16px;color:#555555;">تم تعيين كلمة مرور جديدة لحسابك في {app_name}. فيما يلي بيانات الدخول:</p>
+<div style="background-color:#f8f9fa;border-right:4px solid #0555a2;padding:20px;margin:20px 0;border-radius:5px;">
+    <p style="margin-bottom:10px;font-size:16px;color:#333333;"><strong>الاسم (عربي):</strong> {student_name_ar}</p>
+    <p style="margin-bottom:10px;font-size:16px;color:#333333;"><strong>الاسم (إنجليزي):</strong> {student_name_en}</p>
+    <p style="margin-bottom:10px;font-size:16px;color:#333333;"><strong>البريد الإلكتروني:</strong> {email}</p>
+    <p style="margin-bottom:10px;font-size:16px;color:#333333;"><strong>كلمة المرور:</strong> {password}</p>
+</div>
 <p style="text-align:center;margin:30px 0;">
-    <a href="{reset_url}" style="display:inline-block;padding:15px 40px;background-color:#0555a2;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;">إعادة تعيين كلمة المرور</a>
+    <a href="{login_url}" style="display:inline-block;padding:15px 40px;background-color:#0555a2;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;">تسجيل الدخول</a>
 </p>
-<p style="margin-bottom:15px;font-size:16px;color:#555555;">يرجى الضغط على الزر أعلاه لإعادة تعيين كلمة المرور الخاصة بك.</p>
-<div style="background-color:#fff3cd;border-right:4px solid #ffc107;padding:15px;margin:20px 0;border-radius:5px;color:#856404;">
-    <strong>⚠️ مهم:</strong>
-    <span>ينتهي صلاحية هذا الرابط في <strong>{expire_at}</strong> (بعد {expire_minutes} دقيقة).</span>
-</div>
 <div style="background-color:#e7f3ff;border-right:4px solid #0555a2;padding:15px;margin:20px 0;border-radius:5px;color:#004085;">
-    <strong>🔒 ملاحظة أمان:</strong>
-    <ul style="margin-right:20px;margin-top:10px;margin-bottom:0;">
-        <li>إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بأمان.</li>
-        <li>لا تشارك هذا الرابط مع أي شخص آخر.</li>
-    </ul>
+    <strong>📋 إرشادات:</strong>
+    <p style="margin-top:10px;margin-bottom:0;">{admin_instructions}</p>
 </div>
-<p style="font-size:12px;color:#666666;direction:ltr;text-align:left;word-break:break-all;background:#f8f9fa;padding:15px;border-radius:5px;">
-    <strong style="color:#333;">إذا لم يعمل الزر، انسخ الرابط:</strong><br>
-    <a href="{reset_url}" style="color:#0555a2;">{reset_url}</a>
-</p>
 HTML;
     }
 }

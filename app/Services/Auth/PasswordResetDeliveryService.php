@@ -4,68 +4,51 @@ namespace App\Services\Auth;
 
 use App\Models\EmailSetting;
 use App\Models\User;
-use App\Services\WhatsApp\SendWhatsAppMessage;
-use App\Services\WhatsApp\WhatsAppSettingsService;
 use App\Support\UserPhoneCountryValidator;
 use App\Support\WapiPhoneNormalizer;
 use Illuminate\Auth\Passwords\PasswordBroker;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use InvalidArgumentException;
 
 class PasswordResetDeliveryService
 {
     public function __construct(
-        private WhatsAppSettingsService $whatsappSettings
+        private PasswordCredentialDeliveryService $credentialDelivery,
     ) {}
 
     public function isWhatsAppAvailable(): bool
     {
-        $settings = $this->whatsappSettings->getSettings();
-
-        return ($settings['whatsapp_enabled'] ?? false)
-            && in_array($settings['whatsapp_provider'] ?? '', ['evolution', 'whatsapp_web', 'custom_api'], true);
+        return $this->credentialDelivery->isWhatsAppAvailable();
     }
 
-    public function sendViaEmail(string $email): string
+    /**
+     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}}
+     */
+    public function sendViaEmail(string $email): array
     {
         $this->applyActiveMailSettings();
 
-        try {
-            return Password::sendResetLink(['email' => $email]);
-        } catch (\Throwable $e) {
-            Log::error('Password reset email failed', [
-                'email' => $email,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
+        $user = User::query()->where('email', $email)->first();
+        if (! $user) {
+            return [
+                'status' => Password::INVALID_USER,
+                'delivery' => $this->emptyDelivery(),
+            ];
         }
+
+        return $this->assignPasswordAndDeliver($user);
     }
 
     /**
-     * تطبيق إعدادات SMTP النشطة من لوحة التحكم (نفس آلية الموقع والبريد الجماعي).
+     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}}
      */
-    public function applyActiveMailSettings(): void
+    public function sendViaWhatsAppParts(string $countryCode, string $localPhone): array
     {
-        $setting = EmailSetting::getActive();
-
-        if ($setting) {
-            $setting->applyToConfig();
-        }
-    }
-
-    public function sendViaWhatsApp(string $phoneInput): string
-    {
-        return $this->sendViaWhatsAppDigits(WapiPhoneNormalizer::normalize($phoneInput));
-    }
-
-    /**
-     * Send reset link via WhatsApp using country code + local phone parts.
-     */
-    public function sendViaWhatsAppParts(string $countryCode, string $localPhone): string
-    {
-        return $this->sendViaWhatsAppDigits(self::buildFullPhoneDigits($countryCode, $localPhone));
+        return $this->sendViaWhatsAppDigits(
+            self::buildFullPhoneDigits($countryCode, $localPhone),
+            self::formatPhoneForDisplay($countryCode, $localPhone)
+        );
     }
 
     public static function buildFullPhoneDigits(string $countryCode, string $localPhone): string
@@ -88,7 +71,17 @@ class PasswordResetDeliveryService
         return '+'.$digits;
     }
 
-    private function sendViaWhatsAppDigits(string $digits): string
+    public function sendViaWhatsApp(string $phoneInput): array
+    {
+        $digits = WapiPhoneNormalizer::normalize($phoneInput);
+
+        return $this->sendViaWhatsAppDigits($digits, '+'.$digits);
+    }
+
+    /**
+     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}}
+     */
+    private function sendViaWhatsAppDigits(string $digits, string $displayRecipient): array
     {
         if ($digits === '' || ! WapiPhoneNormalizer::isValidE164Digits($digits)) {
             throw new InvalidArgumentException('رقم الجوال غير صالح.');
@@ -100,33 +93,57 @@ class PasswordResetDeliveryService
 
         $user = $this->findUserByPhone($digits);
         if (! $user) {
-            return Password::INVALID_USER;
+            return [
+                'status' => Password::INVALID_USER,
+                'delivery' => $this->emptyDelivery(),
+            ];
         }
 
         if (! UserPhoneCountryValidator::isConsistent($user)) {
             throw new InvalidArgumentException('رقم هاتف الحساب غير مكتمل أو غير صالح. تواصل مع الدعم.');
         }
 
-        $recipient = $this->resolveWhatsAppRecipient($user);
-        if ($recipient === null) {
-            throw new InvalidArgumentException('لا يوجد رقم واتساب مسجّل لهذا الحساب.');
-        }
+        return $this->assignPasswordAndDeliver($user, $displayRecipient);
+    }
 
+    /**
+     * @return array{status: string, delivery: array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}}
+     */
+    private function assignPasswordAndDeliver(User $user, ?string $whatsappRecipientOverride = null): array
+    {
         /** @var PasswordBroker $broker */
         $broker = Password::broker();
 
         if ($broker->getRepository()->recentlyCreatedToken($user)) {
-            return Password::RESET_THROTTLED;
+            return [
+                'status' => Password::RESET_THROTTLED,
+                'delivery' => $this->emptyDelivery(),
+            ];
         }
 
-        $token = $broker->createToken($user);
-        $url = $this->buildResetUrl($user, $token);
-        $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
-        $message = app(PasswordResetMessageRenderer::class)->renderWhatsApp($user, $url, $expireMinutes);
+        $plainPassword = $this->credentialDelivery->generateSecurePassword();
 
-        app(SendWhatsAppMessage::class)->sendTextSync($recipient, $message);
+        $delivery = $this->credentialDelivery->deliver(
+            $user,
+            $plainPassword,
+            PasswordCredentialDeliveryService::CONTEXT_FORGOT_AUTO,
+            $whatsappRecipientOverride
+        );
 
-        return Password::RESET_LINK_SENT;
+        if (! $delivery['email_sent'] && ! $delivery['whatsapp_sent']) {
+            throw new InvalidArgumentException('تعذّر إرسال بيانات الدخول عبر البريد والواتساب. تحقق من إعدادات الإرسال أو تواصل مع الدعم.');
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($plainPassword),
+        ])->save();
+
+        $broker->createToken($user);
+
+        return [
+            'status' => Password::RESET_LINK_SENT,
+            'delivery' => $delivery,
+        ];
     }
 
     public function findUserByPhone(string $phoneInput): ?User
@@ -145,7 +162,9 @@ class PasswordResetDeliveryService
             })
             ->get();
 
+        $requiresExactMatch = strlen($digits) >= 10;
         $matches = [];
+
         foreach ($users as $user) {
             $userDigits = WapiPhoneNormalizer::normalize(
                 $user->full_phone
@@ -161,7 +180,9 @@ class PasswordResetDeliveryService
                 return $user;
             }
 
-            if (strlen($digits) >= 9 && strlen($userDigits) >= 9
+            if (! $requiresExactMatch
+                && strlen($digits) >= 9
+                && strlen($userDigits) >= 9
                 && substr($userDigits, -9) === substr($digits, -9)) {
                 $matches[] = $user;
             }
@@ -178,7 +199,16 @@ class PasswordResetDeliveryService
         ], false));
     }
 
-    private function resolveWhatsAppRecipient(User $user): ?string
+    public function applyActiveMailSettings(): void
+    {
+        $setting = EmailSetting::getActive();
+
+        if ($setting) {
+            $setting->applyToConfig();
+        }
+    }
+
+    public function resolveWhatsAppRecipient(User $user): ?string
     {
         $phone = $user->full_phone
             ?? trim(($user->country_code ?? '').($user->phone ?? ''))
@@ -194,5 +224,48 @@ class PasswordResetDeliveryService
         }
 
         return $phone;
+    }
+
+    public static function buildSuccessMessage(array $delivery): string
+    {
+        $emailSent = (bool) ($delivery['email_sent'] ?? false);
+        $whatsappSent = (bool) ($delivery['whatsapp_sent'] ?? false);
+        $whatsappRecipient = (string) ($delivery['whatsapp_recipient'] ?? '');
+
+        if ($emailSent && $whatsappSent) {
+            $message = 'تم إرسال بيانات الدخول الجديدة إلى بريدك الإلكتروني وواتسابك';
+            if ($whatsappRecipient !== '') {
+                $message .= ' ('.$whatsappRecipient.')';
+            }
+
+            return $message.'.';
+        }
+
+        if ($emailSent) {
+            return 'تم إرسال بيانات الدخول إلى بريدك الإلكتروني. تعذّر الإرسال عبر الواتساب — تحقق من رقم الواتساب المسجّل في حسابك.';
+        }
+
+        if ($whatsappSent) {
+            $message = 'تم إرسال بيانات الدخول عبر الواتساب';
+            if ($whatsappRecipient !== '') {
+                $message .= ' إلى '.$whatsappRecipient;
+            }
+
+            return $message.'. تعذّر الإرسال عبر البريد الإلكتروني.';
+        }
+
+        return 'تعذّر إرسال بيانات الدخول.';
+    }
+
+    /**
+     * @return array{email_sent: bool, whatsapp_sent: bool, whatsapp_recipient: ?string}
+     */
+    private function emptyDelivery(): array
+    {
+        return [
+            'email_sent' => false,
+            'whatsapp_sent' => false,
+            'whatsapp_recipient' => null,
+        ];
     }
 }

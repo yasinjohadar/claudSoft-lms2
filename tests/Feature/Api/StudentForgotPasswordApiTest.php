@@ -2,13 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\Mail\PasswordCredentialsMail;
 use App\Models\EmailSetting;
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Notifications\ResetPasswordNotification;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Mockery;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -40,6 +41,14 @@ class StudentForgotPasswordApiTest extends TestCase
         ]);
     }
 
+    private function mockWhatsAppSender(): void
+    {
+        $mock = Mockery::mock(SendWhatsAppMessage::class);
+        $mock->shouldReceive('sendTextSync')
+            ->andReturn(new \App\Models\WhatsAppMessage());
+        $this->app->instance(SendWhatsAppMessage::class, $mock);
+    }
+
     public function test_forgot_password_requires_valid_email(): void
     {
         $this->postJson('/api/student/forgot-password', [])
@@ -62,9 +71,10 @@ class StudentForgotPasswordApiTest extends TestCase
         $this->assertNotEmpty($response->json('data.country_codes'));
     }
 
-    public function test_forgot_password_sends_reset_notification_using_active_smtp_settings(): void
+    public function test_forgot_password_sends_credentials_using_active_smtp_settings(): void
     {
-        Notification::fake();
+        Mail::fake();
+        $this->mockWhatsAppSender();
 
         EmailSetting::query()->create([
             'mail_mailer' => 'smtp',
@@ -80,6 +90,7 @@ class StudentForgotPasswordApiTest extends TestCase
         ]);
 
         $student = $this->studentUser();
+        $oldHash = $student->password;
 
         $response = $this->postJson('/api/student/forgot-password', [
             'channel' => 'email',
@@ -91,17 +102,22 @@ class StudentForgotPasswordApiTest extends TestCase
             ->assertJson([
                 'success' => true,
             ])
-            ->assertJsonPath('message', 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.')
             ->assertJsonPath('data.channel', 'email');
 
-        Notification::assertSentTo($student, ResetPasswordNotification::class);
+        Mail::assertSent(PasswordCredentialsMail::class, function (PasswordCredentialsMail $mail) use ($student) {
+            return $mail->hasTo($student->email);
+        });
+
+        $student->refresh();
+        $this->assertNotSame($oldHash, $student->password);
 
         $this->assertSame('smtp.test.example', config('mail.mailers.smtp.host'));
         $this->assertSame('noreply@test.example', config('mail.from.address'));
     }
 
-    public function test_forgot_password_sends_whatsapp_reset_link_via_evolution_provider(): void
+    public function test_forgot_password_sends_whatsapp_credentials_via_evolution_provider(): void
     {
+        Mail::fake();
         $this->enableWhatsAppEvolution();
 
         $student = $this->studentUser([
@@ -114,7 +130,7 @@ class StudentForgotPasswordApiTest extends TestCase
         $mock->shouldReceive('sendTextSync')
             ->once()
             ->withArgs(function (string $to, string $text) {
-                return $to === '+963991234567' && str_contains($text, 'http');
+                return $to === '+963991234567' && str_contains($text, 'student@');
             })
             ->andReturn(new \App\Models\WhatsAppMessage());
 
@@ -131,11 +147,35 @@ class StudentForgotPasswordApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.channel', 'whatsapp')
             ->assertJsonPath('data.contact', '+963991234567');
+
+        Mail::assertSent(PasswordCredentialsMail::class);
+    }
+
+    public function test_reset_password_sends_credentials_after_manual_reset(): void
+    {
+        Mail::fake();
+        $this->mockWhatsAppSender();
+
+        $student = $this->studentUser();
+        $token = Password::broker()->createToken($student);
+
+        $response = $this->postJson('/api/student/reset-password', [
+            'token' => $token,
+            'email' => $student->email,
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        Mail::assertSent(PasswordCredentialsMail::class);
     }
 
     public function test_forgot_password_returns_error_for_unknown_email(): void
     {
-        Notification::fake();
+        Mail::fake();
 
         $this->postJson('/api/student/forgot-password', [
             'channel' => 'email',
@@ -144,6 +184,6 @@ class StudentForgotPasswordApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['email']);
 
-        Notification::assertNothingSent();
+        Mail::assertNothingSent();
     }
 }

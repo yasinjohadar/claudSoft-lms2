@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WhatsAppMessageTemplate;
-use App\Services\Auth\PasswordResetMessageRenderer;
 use App\Services\Auth\PasswordResetMessageSettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,8 +12,7 @@ use Illuminate\View\View;
 class PasswordResetMessageSettingsController extends Controller
 {
     public function __construct(
-        private PasswordResetMessageSettingsService $settingsService,
-        private PasswordResetMessageRenderer $renderer
+        private PasswordResetMessageSettingsService $settingsService
     ) {
         $this->middleware('auth');
         $this->middleware('role:admin');
@@ -27,18 +25,29 @@ class PasswordResetMessageSettingsController extends Controller
             ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
             ->orderBy('name')
             ->get(['id', 'name']);
-        $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
-        $placeholders = array_keys($this->renderer->variables(
-            new \App\Models\User(['name' => 'أحمد', 'email' => 'user@example.com']),
-            'https://example.com/reset',
-            $expireMinutes
-        ));
+        $placeholders = [
+            'student_name_ar',
+            'student_name_en',
+            'student_name',
+            'user_name',
+            'email',
+            'password',
+            'new_password',
+            'login_url',
+            'admin_instructions',
+            'app_name',
+            'reset_url',
+            'reset_link',
+        ];
+
+        $whatsappBody = trim((string) ($settings['whatsapp_body'] ?? ''));
+        $usesLegacyLinkTemplate = $this->settingsService->usesLegacyLinkTemplate($whatsappBody);
 
         return view('admin.pages.settings.password-reset-message.edit', compact(
             'settings',
             'whatsappTemplates',
-            'expireMinutes',
-            'placeholders'
+            'placeholders',
+            'usesLegacyLinkTemplate'
         ));
     }
 
@@ -49,6 +58,7 @@ class PasswordResetMessageSettingsController extends Controller
             'whatsapp_body' => 'nullable|string|max:10000',
             'email_subject' => 'required|string|max:255',
             'email_body' => 'nullable|string|max:50000',
+            'admin_instructions' => 'nullable|string|max:10000',
         ]);
 
         $this->settingsService->updateSettings([
@@ -56,6 +66,7 @@ class PasswordResetMessageSettingsController extends Controller
             'whatsapp_body' => $validated['whatsapp_body'] ?? '',
             'email_subject' => $validated['email_subject'],
             'email_body' => $validated['email_body'] ?? '',
+            'admin_instructions' => $validated['admin_instructions'] ?? '',
         ]);
 
         return redirect()

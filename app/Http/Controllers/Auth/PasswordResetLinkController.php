@@ -79,12 +79,12 @@ class PasswordResetLinkController extends Controller
 
         try {
             if ($channel === 'whatsapp') {
-                $status = $this->resetDelivery->sendViaWhatsAppParts(
+                $result = $this->resetDelivery->sendViaWhatsAppParts(
                     (string) $request->input('country_code'),
                     (string) $request->input('phone')
                 );
             } else {
-                $status = $this->resetDelivery->sendViaEmail((string) $request->input('email'));
+                $result = $this->resetDelivery->sendViaEmail((string) $request->input('email'));
             }
         } catch (\InvalidArgumentException $e) {
             $field = $channel === 'whatsapp' ? 'phone' : 'email';
@@ -94,14 +94,15 @@ class PasswordResetLinkController extends Controller
             $field = $channel === 'whatsapp' ? 'phone' : 'email';
 
             return back()->withInput()->withErrors([
-                $field => 'تعذّر إرسال رابط الاستعادة. حاول لاحقاً أو استخدم البريد الإلكتروني.',
+                $field => 'تعذّر إرسال بيانات الدخول. حاول لاحقاً أو استخدم البريد الإلكتروني.',
             ]);
         }
 
+        $status = $result['status'];
+        $delivery = $result['delivery'];
+
         $messages = [
-            Password::RESET_LINK_SENT => $channel === 'whatsapp'
-                ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى واتسابك.'
-                : 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
+            Password::RESET_LINK_SENT => PasswordResetDeliveryService::buildSuccessMessage($delivery),
             Password::INVALID_USER => $channel === 'whatsapp'
                 ? 'لا يمكننا العثور على حساب مرتبط بهذا الرقم.'
                 : 'لا يمكننا العثور على مستخدم بهذا البريد الإلكتروني.',
@@ -112,16 +113,18 @@ class PasswordResetLinkController extends Controller
 
         if ($status === Password::RESET_LINK_SENT) {
             $contact = $channel === 'whatsapp'
-                ? $this->resetDelivery->formatPhoneForDisplay(
-                    (string) $request->input('country_code'),
-                    (string) $request->input('phone')
-                )
+                ? ($delivery['whatsapp_recipient']
+                    ?? $this->resetDelivery->formatPhoneForDisplay(
+                        (string) $request->input('country_code'),
+                        (string) $request->input('phone')
+                    ))
                 : $request->input('email');
 
             return back()
                 ->with('status', $message)
                 ->with('reset_channel', $channel)
-                ->with('reset_contact', $contact);
+                ->with('reset_contact', $contact)
+                ->with('reset_delivery', $delivery);
         }
 
         $field = $channel === 'whatsapp' ? 'phone' : 'email';

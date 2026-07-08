@@ -512,6 +512,10 @@
         }
         updatePasswordStrengthBadge('');
         clearChangePasswordErrors();
+        const sendCredentialsCheckbox = document.getElementById('sendCredentialsCheckbox');
+        if (sendCredentialsCheckbox) {
+            sendCredentialsCheckbox.checked = true;
+        }
     }
 
     function openChangePasswordModal(btn) {
@@ -632,6 +636,8 @@
 
             const formData = new FormData(form);
             formData.append('_method', 'PUT');
+            const sendCredentialsCheckbox = document.getElementById('sendCredentialsCheckbox');
+            formData.set('send_credentials', sendCredentialsCheckbox && sendCredentialsCheckbox.checked ? '1' : '0');
             if (csrfToken) {
                 formData.append('_token', csrfToken.getAttribute('content'));
             }

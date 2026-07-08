@@ -46,7 +46,7 @@
     <div class="col-12">
         <label class="form-label">المتغيرات المتاحة (للمرجع)</label>
         <p class="text-muted small mb-0">
-            <code>student_name</code>, <code>student_email</code>, <code>course_name</code>, <code>group_name</code>
+            <code>student_name</code>, <code>student_name_ar</code>, <code>student_name_en</code>, <code>student_email</code>, <code>email</code>, <code>password</code>, <code>new_password</code>, <code>login_url</code>, <code>admin_instructions</code>, <code>course_name</code>, <code>group_name</code>
         </p>
     </div>
     <div class="col-12">

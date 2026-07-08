@@ -86,6 +86,16 @@
                         <div class="invalid-feedback d-block" id="changePasswordConfirmInputError"></div>
                     </div>
 
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="send_credentials" id="sendCredentialsCheckbox" value="1" checked>
+                            <label class="form-check-label" for="sendCredentialsCheckbox">
+                                إرسال بيانات الدخول للطالب عبر البريد والواتساب
+                            </label>
+                        </div>
+                        <small class="text-muted">يتضمن الاسم والبريد وكلمة المرور الجديدة وفق القوالب المخصصة.</small>
+                    </div>
+
                     <div class="d-flex justify-content-center gap-3 mt-4">
                         <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
                             <i class="fas fa-times me-2"></i>إغلاق
