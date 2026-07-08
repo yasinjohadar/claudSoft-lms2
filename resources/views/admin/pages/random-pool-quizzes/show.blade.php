@@ -484,6 +484,8 @@
                         </div>
                     </div>
 
+                    @include('admin.pages.quizzes._attempt-management')
+
                     <div class="card custom-card group-show-members-card dashboard-fade-in quizzes-page-animate">
                         <div class="card-header border-0 pb-0">
                             <h4 class="card-title mb-1 d-flex align-items-center gap-2">

@@ -211,4 +211,72 @@ class QuizAttemptLifecycleService
             ->where('status', 'in_progress')
             ->get();
     }
+
+    /**
+     * Reconcile stale/empty attempts for a quiz (safe cleanup).
+     *
+     * @return array{empty_in_progress: int, expired_in_progress: int, stale_in_progress: int, empty_finished: int, total: int}
+     */
+    public function reconcileProblematicAttemptsForQuiz(int $quizId, int $staleHours = 24): array
+    {
+        $emptyInProgress = $this->reconcileEmptyInProgressAttempts($quizId);
+        $expiredInProgress = $this->reconcileExpiredInProgressAttempts($quizId);
+        $staleInProgress = $this->reconcileStaleInProgressAttempts($staleHours, $quizId);
+        $emptyFinished = $this->reclassifyEmptyFinishedAttempts($quizId);
+
+        return [
+            'empty_in_progress' => $emptyInProgress,
+            'expired_in_progress' => $expiredInProgress,
+            'stale_in_progress' => $staleInProgress,
+            'empty_finished' => $emptyFinished,
+            'total' => $emptyInProgress + $expiredInProgress + $staleInProgress + $emptyFinished,
+        ];
+    }
+
+    /**
+     * Soft-delete all real student attempts for a quiz so everyone can start fresh.
+     *
+     * @return int Number of attempts removed
+     */
+    public function resetAllAttemptsForQuiz(int $quizId): int
+    {
+        $deleted = 0;
+
+        QuizAttempt::query()
+            ->realAttempts()
+            ->where('quiz_id', $quizId)
+            ->orderBy('id')
+            ->chunkById(100, function ($attempts) use (&$deleted) {
+                foreach ($attempts as $attempt) {
+                    $attempt->delete();
+                    $deleted++;
+                }
+            });
+
+        return $deleted;
+    }
+
+    /**
+     * Abandon all in-progress attempts for a quiz (keeps completed attempts).
+     *
+     * @return int Number of attempts abandoned
+     */
+    public function abandonAllInProgressAttemptsForQuiz(int $quizId): int
+    {
+        $abandoned = 0;
+
+        QuizAttempt::query()
+            ->realAttempts()
+            ->where('quiz_id', $quizId)
+            ->where('status', 'in_progress')
+            ->orderBy('id')
+            ->chunkById(100, function ($attempts) use (&$abandoned) {
+                foreach ($attempts as $attempt) {
+                    $attempt->abandon();
+                    $abandoned++;
+                }
+            });
+
+        return $abandoned;
+    }
 }

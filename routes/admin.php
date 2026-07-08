@@ -424,6 +424,9 @@ Route::prefix('admin')
         Route::post('quizzes/{id}/toggle-publish', [QuizController::class, 'togglePublish'])->name('quizzes.toggle-publish');
         Route::get('quizzes/course/{courseId}/lessons', [QuizController::class, 'getLessons'])->name('quizzes.get-lessons');
         Route::post('quizzes/{id}/recalculate-score', [QuizController::class, 'recalculateScore'])->name('quizzes.recalculate-score');
+        Route::post('quizzes/{id}/reconcile-attempts', [QuizController::class, 'reconcileAttempts'])->name('quizzes.reconcile-attempts');
+        Route::post('quizzes/{id}/abandon-in-progress-attempts', [QuizController::class, 'abandonInProgressAttempts'])->name('quizzes.abandon-in-progress-attempts');
+        Route::post('quizzes/{id}/reset-all-attempts', [QuizController::class, 'resetAllAttempts'])->name('quizzes.reset-all-attempts');
 
         // Quiz Questions Management
         Route::get('quizzes/{id}/manage-questions', [QuizController::class, 'manageQuestions'])->name('quizzes.manage-questions');

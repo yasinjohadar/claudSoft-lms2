@@ -15,12 +15,17 @@ use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\QuizSettings;
 use App\Services\Quiz\QuizRandomSelectionService;
+use App\Services\Quiz\QuizAttemptLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class QuizController extends Controller
 {
+    public function __construct(
+        protected QuizAttemptLifecycleService $attemptLifecycle
+    ) {}
+
     /**
      * Display a listing of quizzes.
      */
@@ -486,6 +491,72 @@ class QuizController extends Controller
             return back()->with('success', "تم إعادة حساب الدرجة القصوى: {$maxScore}");
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'حدث خطأ أثناء إعادة حساب الدرجة']);
+        }
+    }
+
+    /**
+     * Reconcile stale/empty attempts for a quiz (safe cleanup).
+     */
+    public function reconcileAttempts($id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        try {
+            $result = $this->attemptLifecycle->reconcileProblematicAttemptsForQuiz($quiz->id);
+
+            if ($result['total'] === 0) {
+                return back()->with('success', 'لا توجد محاولات عالقة أو فارغة تحتاج تنظيفاً.');
+            }
+
+            return back()->with(
+                'success',
+                "تم تنظيف {$result['total']} محاولة (عالقة: {$result['empty_in_progress']}, منتهية الوقت: {$result['expired_in_progress']}, قديمة: {$result['stale_in_progress']}, فارغة مكتملة: {$result['empty_finished']})."
+            );
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'حدث خطأ أثناء تنظيف المحاولات: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Abandon all in-progress attempts for a quiz.
+     */
+    public function abandonInProgressAttempts($id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        try {
+            $count = $this->attemptLifecycle->abandonAllInProgressAttemptsForQuiz($quiz->id);
+
+            if ($count === 0) {
+                return back()->with('success', 'لا توجد محاولات قيد التقدم لإلغائها.');
+            }
+
+            return back()->with('success', "تم إلغاء {$count} محاولة قيد التقدم. المحاولات المكتملة لم تتأثر.");
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'حدث خطأ أثناء إلغاء المحاولات: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Reset all student attempts for a quiz (fresh start for everyone).
+     */
+    public function resetAllAttempts($id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        try {
+            $count = $this->attemptLifecycle->resetAllAttemptsForQuiz($quiz->id);
+
+            if ($count === 0) {
+                return back()->with('success', 'لا توجد محاولات لإعادة تعيينها.');
+            }
+
+            return back()->with(
+                'success',
+                "تم إعادة تعيين {$count} محاولة. يمكن لجميع الطلاب البدء من جديد وفق حد المحاولات المسموح."
+            );
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'حدث خطأ أثناء إعادة تعيين المحاولات: ' . $e->getMessage()]);
         }
     }
 
