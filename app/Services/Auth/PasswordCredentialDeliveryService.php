@@ -7,6 +7,7 @@ use App\Models\EmailSetting;
 use App\Models\EvolutionInstance;
 use App\Models\User;
 use App\Models\WhatsAppMessage;
+use App\Support\InternationalPhoneDigits;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppSettingsService;
@@ -172,19 +173,8 @@ class PasswordCredentialDeliveryService
 
     private function resolveWhatsAppRecipient(User $user): ?string
     {
-        $phone = $user->full_phone
-            ?? trim(($user->country_code ?? '').($user->phone ?? ''))
-            ?: $user->phone;
+        $digits = InternationalPhoneDigits::forUser($user);
 
-        $phone = preg_replace('/\s+/', '', (string) $phone);
-        if ($phone === '') {
-            return null;
-        }
-
-        if (! str_starts_with($phone, '+')) {
-            $phone = '+'.ltrim($phone, '0');
-        }
-
-        return $phone;
+        return $digits !== null ? InternationalPhoneDigits::toDisplay($digits) : null;
     }
 }

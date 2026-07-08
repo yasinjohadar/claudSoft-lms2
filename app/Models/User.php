@@ -470,9 +470,15 @@ class User extends Authenticatable
         parent::boot();
 
         static::saving(function ($user) {
-            // تحديث full_phone تلقائياً عند حفظ country_code أو phone
             if ($user->country_code && $user->phone) {
-                $user->full_phone = $user->country_code . $user->phone;
+                $canonical = \App\Support\InternationalPhoneDigits::fromCountryAndLocal(
+                    (string) $user->country_code,
+                    (string) $user->phone
+                );
+
+                $user->full_phone = $canonical !== null
+                    ? \App\Support\InternationalPhoneDigits::toDisplay($canonical)
+                    : $user->country_code.$user->phone;
             }
         });
     }

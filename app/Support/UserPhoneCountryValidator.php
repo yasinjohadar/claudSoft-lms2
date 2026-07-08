@@ -104,15 +104,10 @@ final class UserPhoneCountryValidator
             if (self::validatePair($countryCode, $phone) !== null) {
                 return false;
             }
-            if ($fullPhone !== '') {
-                $expected = self::expectedE164Digits($countryCode, $phone);
-                $actual = preg_replace('/\D+/', '', $fullPhone) ?? '';
-                if ($expected !== null && $expected !== '' && $actual !== $expected) {
-                    return false;
-                }
-            }
 
-            return true;
+            $canonical = \App\Support\InternationalPhoneDigits::forUser($user);
+
+            return $canonical !== null;
         }
 
         // Legacy: full_phone only (no split fields)

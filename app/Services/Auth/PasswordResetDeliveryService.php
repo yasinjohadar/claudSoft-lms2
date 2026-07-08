@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Models\EmailSetting;
 use App\Models\User;
+use App\Support\InternationalPhoneDigits;
 use App\Support\UserPhoneCountryValidator;
 use App\Support\WapiPhoneNormalizer;
 use Illuminate\Auth\Passwords\PasswordBroker;
@@ -53,15 +54,13 @@ class PasswordResetDeliveryService
 
     public static function buildFullPhoneDigits(string $countryCode, string $localPhone): string
     {
-        $codeDigits = preg_replace('/\D+/', '', $countryCode) ?? '';
-        $localDigits = preg_replace('/\D+/', '', $localPhone) ?? '';
-        $localDigits = ltrim($localDigits, '0');
+        $digits = InternationalPhoneDigits::fromCountryAndLocal($countryCode, $localPhone);
 
-        if ($codeDigits === '' || $localDigits === '') {
+        if ($digits === null) {
             throw new InvalidArgumentException('رمز الدولة ورقم الجوال مطلوبان.');
         }
 
-        return $codeDigits.$localDigits;
+        return $digits;
     }
 
     public function formatPhoneForDisplay(string $countryCode, string $localPhone): string
@@ -100,7 +99,10 @@ class PasswordResetDeliveryService
         }
 
         if (! UserPhoneCountryValidator::isConsistent($user)) {
-            throw new InvalidArgumentException('رقم هاتف الحساب غير مكتمل أو غير صالح. تواصل مع الدعم.');
+            $canonical = InternationalPhoneDigits::forUser($user);
+            if ($canonical === null) {
+                throw new InvalidArgumentException('رقم هاتف الحساب غير مكتمل أو غير صالح. تواصل مع الدعم.');
+            }
         }
 
         return $this->assignPasswordAndDeliver($user, $displayRecipient);
@@ -148,8 +150,8 @@ class PasswordResetDeliveryService
 
     public function findUserByPhone(string $phoneInput): ?User
     {
-        $digits = WapiPhoneNormalizer::normalize($phoneInput);
-        if ($digits === '') {
+        $digits = InternationalPhoneDigits::fromInput($phoneInput);
+        if ($digits === null) {
             return null;
         }
 
@@ -162,33 +164,19 @@ class PasswordResetDeliveryService
             })
             ->get();
 
-        $requiresExactMatch = strlen($digits) >= 10;
-        $matches = [];
-
         foreach ($users as $user) {
-            $userDigits = WapiPhoneNormalizer::normalize(
-                $user->full_phone
-                ?? trim(($user->country_code ?? '').($user->phone ?? ''))
-                ?: ($user->phone ?? '')
-            );
+            $userDigits = InternationalPhoneDigits::forUser($user);
 
-            if ($userDigits === '' || strlen($userDigits) < 8) {
+            if ($userDigits === null || strlen($userDigits) < 8) {
                 continue;
             }
 
             if ($userDigits === $digits) {
                 return $user;
             }
-
-            if (! $requiresExactMatch
-                && strlen($digits) >= 9
-                && strlen($userDigits) >= 9
-                && substr($userDigits, -9) === substr($digits, -9)) {
-                $matches[] = $user;
-            }
         }
 
-        return count($matches) === 1 ? $matches[0] : null;
+        return null;
     }
 
     public function buildResetUrl(User $user, string $token): string
@@ -210,20 +198,9 @@ class PasswordResetDeliveryService
 
     public function resolveWhatsAppRecipient(User $user): ?string
     {
-        $phone = $user->full_phone
-            ?? trim(($user->country_code ?? '').($user->phone ?? ''))
-            ?: $user->phone;
+        $digits = InternationalPhoneDigits::forUser($user);
 
-        $phone = preg_replace('/\s+/', '', (string) $phone);
-        if ($phone === '') {
-            return null;
-        }
-
-        if (! str_starts_with($phone, '+')) {
-            $phone = '+'.ltrim($phone, '0');
-        }
-
-        return $phone;
+        return $digits !== null ? InternationalPhoneDigits::toDisplay($digits) : null;
     }
 
     public static function buildSuccessMessage(array $delivery): string
