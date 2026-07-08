@@ -283,7 +283,7 @@ class QuizAttempt extends Model
             'passed' => null,
             'percentage_score' => null,
             'total_score' => null,
-            'grade_status' => null,
+            'grade_status' => 'not_graded',
             'is_completed' => false,
             'completed_at' => null,
         ]);
