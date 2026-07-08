@@ -157,7 +157,11 @@ class QuizAttemptLifecycleService
             return 'abandoned';
         }
 
-        return 'auto_submit';
+        if ($attempt->isFullyAnswered()) {
+            return 'auto_submit';
+        }
+
+        return null;
     }
 
     /**

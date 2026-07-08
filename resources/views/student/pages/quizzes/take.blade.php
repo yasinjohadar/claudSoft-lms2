@@ -756,20 +756,27 @@ function showQuizLoadError() {
 }
 
 function timeUp() {
+    const answeredCount = typeof answeredQuestions !== 'undefined' ? answeredQuestions.size : 0;
+    const total = typeof totalQuestions !== 'undefined' ? totalQuestions : 0;
+    const incomplete = total > 0 && answeredCount < total;
+
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             title: 'انتهى الوقت!',
-            text: 'تم انتهاء الوقت المحدد للاختبار وسيتم إرسال إجاباتك تلقائياً',
-            icon: 'warning',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            timer: 3000
+            text: incomplete
+                ? 'انتهى الوقت المحدد. يجب الإجابة على جميع الأسئلة قبل التسليم — أكمل الإجابات ثم أرسل الاختبار يدوياً.'
+                : 'تم انتهاء الوقت المحدد للاختبار وسيتم إرسال إجاباتك تلقائياً',
+            icon: incomplete ? 'warning' : 'warning',
+            showConfirmButton: !incomplete,
+            confirmButtonText: 'موافق',
+            allowOutsideClick: incomplete,
+            timer: incomplete ? undefined : 3000
         }).then(function () {
-            if (typeof window.submitQuiz === 'function') {
+            if (!incomplete && typeof window.submitQuiz === 'function') {
                 window.submitQuiz(true);
             }
         });
-    } else if (typeof window.submitQuiz === 'function') {
+    } else if (!incomplete && typeof window.submitQuiz === 'function') {
         window.submitQuiz(true);
     }
 }
@@ -993,8 +1000,8 @@ $(document).ready(function() {
             }
         });
 
-        // Update answered questions set - mark as answered if at least one blank is filled
-        if (hasAnyAnswer && Object.keys(answer).length > 0) {
+        // Update answered questions set - all blanks must be filled
+        if (allAnswered && Object.keys(answer).length > 0) {
             answeredQuestions.add(questionId);
         } else {
             answeredQuestions.delete(questionId);
@@ -1015,9 +1022,12 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     console.log('Fill blank answer saved:', response);
-                    // Update answered status based on response
-                    if (response.success && hasAnyAnswer) {
+                    if (response.success && allAnswered && Object.keys(answer).length > 0) {
                         answeredQuestions.add(questionId);
+                        updateProgress();
+                        updateQuestionNavigation();
+                    } else if (!allAnswered) {
+                        answeredQuestions.delete(questionId);
                         updateProgress();
                         updateQuestionNavigation();
                     }
@@ -1319,17 +1329,17 @@ $(document).ready(function() {
         const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
         if (fillBlankInputs.length > 0) {
             answer = {};
-            let hasAnyAnswer = false;
+            let allBlanksAnswered = true;
             fillBlankInputs.each(function() {
                 const blankIndex = $(this).data('blank-index');
                 const value = $(this).val().trim();
                 if (value) {
                     answer[blankIndex] = value;
-                    hasAnyAnswer = true;
+                } else {
+                    allBlanksAnswered = false;
                 }
             });
-            // Mark as valid if at least one blank is filled
-            hasValidAnswer = hasAnyAnswer && Object.keys(answer).length > 0;
+            hasValidAnswer = allBlanksAnswered && Object.keys(answer).length > 0;
             console.log('Fill blank answer:', answer, '- valid:', hasValidAnswer);
         }
 
@@ -1435,15 +1445,8 @@ $(document).ready(function() {
 
     function showSubmitConfirmation() {
         const answeredCount = answeredQuestions.size;
-        const unansweredCount = totalQuestions - answeredCount;
-
-        $('#submit-answered-count').text(answeredCount);
-        $('#submit-unanswered-count').text(unansweredCount);
-
-        const unansweredBox = document.getElementById('submit-unanswered-stat-box');
-        if (unansweredBox) {
-            unansweredBox.classList.toggle('quiz-submit-stat--danger', unansweredCount > 0);
-            unansweredBox.classList.toggle('quiz-submit-stat--muted', unansweredCount === 0);
+        if (typeof window.applyQuizSubmitModalState === 'function') {
+            window.applyQuizSubmitModalState(answeredCount, totalQuestions);
         }
 
         const el = document.getElementById('submitModal');
@@ -1455,6 +1458,29 @@ $(document).ready(function() {
 
     // Submit quiz
     function submitQuiz(autoSubmit = false) {
+        const answeredCount = answeredQuestions.size;
+        const canSubmit = totalQuestions > 0 && answeredCount >= totalQuestions;
+
+        if (!canSubmit) {
+            if (typeof window.applyQuizSubmitModalState === 'function') {
+                window.applyQuizSubmitModalState(answeredCount, totalQuestions);
+            }
+
+            const modalEl = document.getElementById('submitModal');
+            if (!autoSubmit && modalEl) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            } else if (autoSubmit && typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'تعذر التسليم',
+                    text: 'يجب الإجابة على جميع الأسئلة قبل تسليم الاختبار.',
+                    icon: 'warning',
+                    confirmButtonText: 'متابعة الحل'
+                });
+            }
+
+            return;
+        }
+
         isSubmitting = true;
 
         const confirmBtn = document.getElementById('confirm-submit-quiz');

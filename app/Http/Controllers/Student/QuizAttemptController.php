@@ -787,6 +787,14 @@ class QuizAttemptController extends Controller
                     ->with('info', 'لم تُحفظ أي إجابات، لذلك لم تُحسب هذه المحاولة ضمن محاولاتك.');
             }
 
+            if (! $attempt->isFullyAnswered()) {
+                DB::rollBack();
+
+                return back()->withErrors([
+                    'error' => 'يجب الإجابة على جميع الأسئلة قبل تسليم الاختبار.',
+                ]);
+            }
+
             // Calculate time spent
             $timeSpent = $attempt->calculateTimeSpent();
 
@@ -1015,6 +1023,12 @@ class QuizAttemptController extends Controller
             if (! $attempt->hasAnsweredResponses()) {
                 $attempt->abandon();
                 DB::commit();
+
+                return;
+            }
+
+            if (! $attempt->isFullyAnswered()) {
+                DB::rollBack();
 
                 return;
             }

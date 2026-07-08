@@ -41,17 +41,33 @@ test('resolveExpiredAttempt abandons expired attempt without answers', function 
     expect($service->resolveExpiredAttempt($attempt))->toBe('abandoned');
 });
 
-test('resolveExpiredAttempt requests auto submit when expired with answers', function () {
+test('resolveExpiredAttempt requests auto submit only when all questions answered', function () {
     $attempt = Mockery::mock(QuizAttempt::class)->makePartial();
     $attempt->status = 'in_progress';
     $attempt->shouldReceive('isTimeExpired')->andReturn(true);
     $attempt->shouldReceive('loadMissing')->with(['responses', 'quiz'])->andReturnSelf();
     $attempt->shouldReceive('hasAnsweredResponses')->andReturn(true);
+    $attempt->shouldReceive('isFullyAnswered')->andReturn(true);
     $attempt->shouldReceive('update')->never();
 
     $service = new QuizAttemptLifecycleService();
 
     expect($service->resolveExpiredAttempt($attempt))->toBe('auto_submit');
+});
+
+test('resolveExpiredAttempt does not auto submit when answers are incomplete', function () {
+    $attempt = Mockery::mock(QuizAttempt::class)->makePartial();
+    $attempt->status = 'in_progress';
+    $attempt->shouldReceive('isTimeExpired')->andReturn(true);
+    $attempt->shouldReceive('loadMissing')->with(['responses', 'quiz'])->andReturnSelf();
+    $attempt->shouldReceive('hasAnsweredResponses')->andReturn(true);
+    $attempt->shouldReceive('isFullyAnswered')->andReturn(false);
+    $attempt->shouldReceive('abandon')->never();
+    $attempt->shouldReceive('update')->never();
+
+    $service = new QuizAttemptLifecycleService();
+
+    expect($service->resolveExpiredAttempt($attempt))->toBeNull();
 });
 
 test('resolveExpiredAttempt returns null for active attempt', function () {

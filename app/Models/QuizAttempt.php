@@ -435,7 +435,77 @@ class QuizAttempt extends Model
      */
     public function isFullyAnswered(): bool
     {
-        return $this->getCompletionPercentage() >= 100;
+        $questionIds = $this->getOrderedQuestionIds();
+
+        if ($questionIds === []) {
+            return false;
+        }
+
+        $this->loadMissing(['responses.question.questionType', 'responses.question.options']);
+
+        $responsesByQuestion = $this->responses->keyBy(fn ($response) => (int) $response->question_id);
+
+        foreach ($questionIds as $questionId) {
+            $response = $responsesByQuestion->get((int) $questionId);
+
+            if (! $response || ! $this->responseHasAnswer($response)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function getOrderedQuestionIds(): array
+    {
+        $questionIds = $this->questions_order ?? [];
+
+        if ($questionIds !== []) {
+            return array_values(array_map('intval', $questionIds));
+        }
+
+        $this->loadMissing('quiz');
+
+        if (! $this->quiz) {
+            return [];
+        }
+
+        return $this->quiz->quizQuestions()
+            ->whereNotNull('question_id')
+            ->orderBy('question_order')
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Count questions with a saved answer in this attempt.
+     */
+    public function countAnsweredQuestions(): int
+    {
+        $questionIds = $this->getOrderedQuestionIds();
+
+        if ($questionIds === []) {
+            return 0;
+        }
+
+        $this->loadMissing('responses');
+
+        $responsesByQuestion = $this->responses->keyBy(fn ($response) => (int) $response->question_id);
+        $answered = 0;
+
+        foreach ($questionIds as $questionId) {
+            $response = $responsesByQuestion->get((int) $questionId);
+
+            if ($response && $this->responseHasAnswer($response)) {
+                $answered++;
+            }
+        }
+
+        return $answered;
     }
 
     /**
