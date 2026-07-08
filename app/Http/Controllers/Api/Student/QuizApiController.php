@@ -131,7 +131,7 @@ class QuizApiController extends Controller
 
         try {
             $result = DB::transaction(function () use ($quiz, $studentId, $request) {
-                QuizAttempt::query()
+                QuizAttempt::withTrashed()
                     ->where('quiz_id', $quiz->id)
                     ->where('student_id', $studentId)
                     ->lockForUpdate()
@@ -151,9 +151,7 @@ class QuizApiController extends Controller
                     ];
                 }
 
-                $attemptNumber = $quiz->attempts()
-                    ->where('student_id', $studentId)
-                    ->count() + 1;
+                $attemptNumber = $quiz->getNextAttemptNumber($studentId);
 
                 $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
 

@@ -430,6 +430,24 @@ class Quiz extends Model
         return $this->time_limit ? $this->time_limit * 60 : null;
     }
 
+    /**
+     * Next attempt_number for a student, including soft-deleted rows (unique key still applies).
+     */
+    public function getNextAttemptNumber(int $studentId, bool $previewOnly = false): int
+    {
+        $query = QuizAttempt::withTrashed()
+            ->where('quiz_id', $this->id)
+            ->where('student_id', $studentId);
+
+        if ($previewOnly) {
+            $query->preview();
+        } else {
+            $query->realAttempts();
+        }
+
+        return ((int) $query->max('attempt_number')) + 1;
+    }
+
     public function adminShowRoute(): string
     {
         return $this->isRandomPool()

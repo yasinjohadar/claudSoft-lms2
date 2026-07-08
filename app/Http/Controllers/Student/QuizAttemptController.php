@@ -182,7 +182,7 @@ class QuizAttemptController extends Controller
 
         try {
             $result = DB::transaction(function () use ($quiz, $studentId, $request) {
-                QuizAttempt::query()
+                QuizAttempt::withTrashed()
                     ->where('quiz_id', $quiz->id)
                     ->where('student_id', $studentId)
                     ->lockForUpdate()
@@ -202,9 +202,7 @@ class QuizAttemptController extends Controller
                     ];
                 }
 
-                $attemptNumber = $quiz->attempts()
-                    ->where('student_id', $studentId)
-                    ->count() + 1;
+                $attemptNumber = $quiz->getNextAttemptNumber($studentId);
 
                 $startData = $this->attemptStartService->prepareStart($quiz, $studentId);
                 $questionIds = $startData['question_ids'];
@@ -250,7 +248,13 @@ class QuizAttemptController extends Controller
         } catch (\InvalidArgumentException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage()]);
+            \Log::error('Quiz start failed', [
+                'quiz_id' => $quiz->id ?? null,
+                'student_id' => $studentId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['error' => 'حدث خطأ أثناء بدء الاختبار. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.']);
         }
     }
 

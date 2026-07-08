@@ -38,10 +38,7 @@ class QuizPreviewFlowService
         DB::beginTransaction();
 
         try {
-            $attemptNumber = $quiz->attempts()
-                ->preview()
-                ->where('student_id', $admin->id)
-                ->count() + 1;
+            $attemptNumber = $quiz->getNextAttemptNumber($admin->id, previewOnly: true);
 
             $startData = $this->attemptStartService->prepareStart($quiz, $admin->id, isPreview: true);
 
