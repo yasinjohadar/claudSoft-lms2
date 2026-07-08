@@ -4,7 +4,10 @@ namespace App\Services\Auth;
 
 use App\Mail\PasswordCredentialsMail;
 use App\Models\EmailSetting;
+use App\Models\EvolutionInstance;
 use App\Models\User;
+use App\Models\WhatsAppMessage;
+use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +26,7 @@ class PasswordCredentialDeliveryService
         private PasswordResetMessageRenderer $renderer,
         private WhatsAppSettingsService $whatsappSettings,
         private SendWhatsAppMessage $whatsAppSender,
+        private EvolutionInstanceRotator $evolutionRotator,
     ) {}
 
     public function generateSecurePassword(): string
@@ -47,10 +51,11 @@ class PasswordCredentialDeliveryService
             $this->sendEmail($user, $plainPassword);
             $emailSent = true;
         } catch (\Throwable $e) {
-            Log::warning('Password credential email failed', [
+            Log::error('Password credential email failed', [
                 'user_id' => $user->id,
                 'context' => $context,
                 'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
         }
 
@@ -59,31 +64,25 @@ class PasswordCredentialDeliveryService
             $whatsappRecipient = $recipient;
             if ($recipient !== null && $this->isWhatsAppAvailable()) {
                 $message = $this->renderer->renderCredentialWhatsApp($user, $plainPassword);
-                $waSettings = $this->whatsappSettings->getSettings();
-                $instance = trim((string) (
-                    $waSettings['auto_reply_evolution_instance']
-                    ?? $waSettings['evolution_instance_name']
-                    ?? ''
-                ));
 
                 $sentMessage = $this->whatsAppSender->sendTextSync(
                     $recipient,
                     $message,
                     previewUrl: false,
                     applySendDelay: false,
-                    evolutionInstanceName: $instance !== '' ? $instance : null,
                 );
-                if ($sentMessage->status === \App\Models\WhatsAppMessage::STATUS_FAILED) {
+                if ($sentMessage->status === WhatsAppMessage::STATUS_FAILED) {
                     throw new \RuntimeException('فشل إرسال رسالة الواتساب.');
                 }
                 $whatsappSent = true;
             }
         } catch (\Throwable $e) {
-            Log::warning('Password credential WhatsApp failed', [
+            Log::error('Password credential WhatsApp failed', [
                 'user_id' => $user->id,
                 'context' => $context,
                 'recipient' => $whatsappRecipient,
                 'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
         }
 
@@ -126,8 +125,49 @@ class PasswordCredentialDeliveryService
     {
         $settings = $this->whatsappSettings->getSettings();
 
-        return ($settings['whatsapp_enabled'] ?? false)
-            && in_array($settings['whatsapp_provider'] ?? '', ['evolution', 'whatsapp_web', 'custom_api'], true);
+        if (! ($settings['whatsapp_enabled'] ?? false)) {
+            return false;
+        }
+
+        $provider = $settings['whatsapp_provider'] ?? '';
+
+        if (! in_array($provider, ['evolution', 'whatsapp_web', 'custom_api'], true)) {
+            return false;
+        }
+
+        if ($provider === 'evolution') {
+            return $this->isEvolutionReady($settings);
+        }
+
+        if ($provider === 'whatsapp_web') {
+            return trim((string) ($settings['whatsapp_web_service_url'] ?? '')) !== '';
+        }
+
+        return trim((string) ($settings['custom_api_url'] ?? '')) !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function isEvolutionReady(array $settings): bool
+    {
+        $baseUrl = trim((string) ($settings['evolution_base_url'] ?? ''));
+        $apiKey = trim((string) ($settings['evolution_api_key'] ?? ''));
+
+        if ($baseUrl === '' || $apiKey === '') {
+            return false;
+        }
+
+        if ($this->evolutionRotator->poolCount() > 0) {
+            return true;
+        }
+
+        $configuredInstance = trim((string) ($settings['evolution_instance_name'] ?? ''));
+        if ($configuredInstance !== '') {
+            return true;
+        }
+
+        return EvolutionInstance::defaultInstance() !== null;
     }
 
     private function resolveWhatsAppRecipient(User $user): ?string

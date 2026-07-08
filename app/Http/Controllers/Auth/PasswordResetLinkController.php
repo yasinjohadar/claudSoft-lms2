@@ -8,6 +8,7 @@ use App\Services\Auth\PhoneOtpService;
 use App\Enums\OtpPurpose;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -91,6 +92,12 @@ class PasswordResetLinkController extends Controller
 
             return back()->withInput()->withErrors([$field => $e->getMessage()]);
         } catch (\Throwable $e) {
+            Log::error('Password reset delivery failed', [
+                'channel' => $channel,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
             $field = $channel === 'whatsapp' ? 'phone' : 'email';
 
             return back()->withInput()->withErrors([
