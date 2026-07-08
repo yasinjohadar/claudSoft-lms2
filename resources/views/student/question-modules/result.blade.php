@@ -635,11 +635,13 @@
                 <i class="fas fa-chart-bar me-2"></i>عرض الإحصائيات التفصيلية
             </a>
 
-            @if($attempt->attempt_number < $attempt->questionModule->attempts_allowed)
-            <a href="{{ route('student.question-module.start', $attempt->questionModule->id) }}"
-               class="btn btn-success btn-lg">
-                <i class="fas fa-redo me-2"></i>محاولة جديدة
-            </a>
+            @if($attempt->questionModule->getFinishedAttemptsCount(auth()->id()) < $attempt->questionModule->attempts_allowed)
+            <form action="{{ route('student.question-module.start', $attempt->questionModule->id) }}" method="POST" class="d-inline" data-turbo="false">
+                @csrf
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-redo me-2"></i>محاولة جديدة
+                </button>
+            </form>
             @endif
         </div>
     </div>

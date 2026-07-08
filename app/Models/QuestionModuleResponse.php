@@ -37,7 +37,7 @@ class QuestionModuleResponse extends Model
      */
     public function question()
     {
-        return $this->belongsTo(QuestionBank::class, 'question_id');
+        return $this->belongsTo(QuestionBank::class, 'question_id')->withTrashed();
     }
 
     /**

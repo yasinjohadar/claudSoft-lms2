@@ -97,12 +97,12 @@ class QuizReviewController extends Controller
         }
 
         // Organize responses by question order
-        $orderedResponses = collect($attempt->questions_order)->map(function($questionId) use ($attempt) {
+        $orderedResponses = collect($attempt->questions_order)->map(function ($questionId) use ($attempt) {
             return $attempt->responses()
                 ->where('question_id', $questionId)
-                ->with('question.options')
+                ->with(['question.questionType', 'question.options'])
                 ->first();
-        })->filter();
+        })->filter(fn ($response) => $response && $response->question);
 
         // Calculate statistics
         $stats = [

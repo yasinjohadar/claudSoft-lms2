@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\ProgrammingLanguage;
+use App\Services\QuestionBank\Export\QuestionBankExcelExportService;
 use App\Services\QuestionBank\TypeImport\ImportDefaultsResolver;
 use App\Services\QuestionBankExcelImportService;
 use Illuminate\Http\Request;
@@ -796,36 +797,19 @@ class QuestionBankController extends Controller
      */
     private function exportQuestions(array $questionIds)
     {
-        $questions = QuestionBank::with(['questionType', 'options', 'course'])
+        $questions = QuestionBank::with(['questionType', 'options', 'course', 'programmingLanguages'])
             ->whereIn('id', $questionIds)
+            ->orderBy('id')
             ->get();
 
-        $exportData = $questions->map(function ($question) {
-            return [
-                'question_text' => $question->question_text,
-                'question_type' => $question->questionType->name,
-                'course' => $question->course->title,
-                'difficulty' => $question->difficulty,
-                'points' => $question->points,
-                'explanation' => $question->explanation,
-                'tags' => $question->tags,
-                'metadata' => $question->metadata,
-                'options' => $question->options->map(function ($option) {
-                    return [
-                        'option_text' => $option->option_text,
-                        'is_correct' => $option->is_correct,
-                        'option_order' => $option->option_order,
-                        'feedback' => $option->feedback,
-                    ];
-                }),
-            ];
-        });
+        if ($questions->isEmpty()) {
+            return back()->withErrors(['error' => 'لا توجد أسئلة للتصدير']);
+        }
 
-        $filename = 'questions_export_' . date('Y-m-d_H-i-s') . '.json';
+        $tempFile = app(QuestionBankExcelExportService::class)->exportMultiType($questions);
+        $filename = 'questions_export_'.date('Y-m-d_H-i-s').'.xlsx';
 
-        return response()->json($exportData)
-            ->header('Content-Type', 'application/json')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
     }
 
     /**

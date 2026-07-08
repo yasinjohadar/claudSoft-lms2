@@ -240,11 +240,13 @@
                 <div class="card-body text-center py-4">
                     <i class="fas fa-rocket fs-1 mb-3"></i>
                     <h4 class="mb-3">جاهز لمحاولة جديدة؟</h4>
-                    <p class="mb-3">لديك {{ $questionModule->attempts_allowed - $attempts->count() }} محاولة متبقية</p>
-                    <a href="{{ route('student.question-module.start', $questionModule->id) }}"
-                       class="btn btn-light btn-lg">
-                        <i class="fas fa-play me-2"></i>بدء محاولة جديدة
-                    </a>
+                    <p class="mb-3">لديك {{ $questionModule->getRemainingAttempts(auth()->id()) }} محاولة متبقية</p>
+                    <form action="{{ route('student.question-module.start', $questionModule->id) }}" method="POST" class="d-inline" data-turbo="false">
+                        @csrf
+                        <button type="submit" class="btn btn-light btn-lg">
+                            <i class="fas fa-play me-2"></i>بدء محاولة جديدة
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

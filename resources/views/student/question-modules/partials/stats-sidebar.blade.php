@@ -82,18 +82,20 @@
         <div class="card-body pt-3 px-0 pb-0">
             <div class="list-group list-group-flush">
                 @foreach($availableModules->take(5) as $module)
-                    <a href="{{ route('student.question-module.start', $module->id) }}"
-                       class="list-group-item list-group-item-action border-0 px-4 py-3">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <div class="min-w-0">
-                                <div class="fw-semibold fs-13 text-truncate">{{ Str::limit($module->title, 36) }}</div>
-                                <small class="text-muted">
-                                    <i class="fe fe-help-circle me-1"></i>{{ $module->questions->count() }} سؤال
-                                </small>
+                    <form action="{{ route('student.question-module.start', $module->id) }}" method="POST" class="m-0" data-turbo="false">
+                        @csrf
+                        <button type="submit" class="list-group-item list-group-item-action border-0 px-4 py-3 w-100 text-start">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <div class="min-w-0">
+                                    <div class="fw-semibold fs-13 text-truncate">{{ Str::limit($module->title, 36) }}</div>
+                                    <small class="text-muted">
+                                        <i class="fe fe-help-circle me-1"></i>{{ $module->questions->count() }} سؤال
+                                    </small>
+                                </div>
+                                <i class="fe fe-arrow-left text-primary flex-shrink-0"></i>
                             </div>
-                            <i class="fe fe-arrow-left text-primary flex-shrink-0"></i>
-                        </div>
-                    </a>
+                        </button>
+                    </form>
                 @endforeach
             </div>
         </div>

@@ -185,7 +185,7 @@ Route::prefix('student')
 
         // Question Module Attempts
         Route::prefix('question-modules')->name('student.question-module.')->group(function () {
-            Route::get('/{questionModule}/start', [QuestionModuleAttemptController::class, 'start'])->name('start'); // Start new attempt
+            Route::post('/{questionModule}/start', [QuestionModuleAttemptController::class, 'start'])->name('start'); // Start new attempt
             Route::get('/attempts/{attempt}/take', [QuestionModuleAttemptController::class, 'take'])->name('take'); // Take test interface
             Route::post('/attempts/{attempt}/save-answer', [QuestionModuleAttemptController::class, 'saveAnswer'])->name('save-answer'); // Save answer (AJAX)
             Route::post('/attempts/{attempt}/submit', [QuestionModuleAttemptController::class, 'submit'])->name('submit'); // Submit test

@@ -60,12 +60,13 @@
                 <div class="card-body pt-3 quiz-review-questions-section">
                     @include('shared.quizzes.review-filter-toolbar', ['stats' => $stats])
                     @foreach($orderedResponses as $index => $response)
-                        @if($response)
+                        @if($response && $response->question)
                             @php
                                 $question = $response->question;
                                 $questionNumber = $index + 1;
                                 $reviewStatus = $response->is_correct === true ? 'correct' : ($response->is_correct === false ? 'wrong' : 'pending');
-                                $showCorrectColumn = $attempt->quiz->show_correct_answers && !in_array($question->questionType->name, ['essay']);
+                                $questionTypeName = $question->questionType->name ?? 'unknown';
+                                $showCorrectColumn = $attempt->quiz->show_correct_answers && !in_array($questionTypeName, ['essay']);
                             @endphp
 
                             <div class="card custom-card question-review-card student-quiz-review-question quiz-review-card quiz-review-card--{{ $reviewStatus }} mb-3" data-review-status="{{ $reviewStatus }}" id="review-question-{{ $questionNumber }}">
@@ -74,7 +75,7 @@
                                 <div class="student-quiz-review-question__header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
                                         <span class="badge bg-primary-transparent">سؤال {{ $questionNumber }}</span>
-                                        <span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span>
+                                        <span class="badge bg-info-transparent">{{ $question->questionType->display_name ?? 'سؤال' }}</span>
                                     </div>
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
                                         <span class="quiz-review-status quiz-review-status--{{ $reviewStatus }}">

@@ -34,7 +34,7 @@ test('resolveExpiredAttempt abandons expired attempt without answers', function 
     $attempt->shouldReceive('isTimeExpired')->andReturn(true);
     $attempt->shouldReceive('loadMissing')->with(['responses', 'quiz'])->andReturnSelf();
     $attempt->shouldReceive('hasAnsweredResponses')->andReturn(false);
-    $attempt->shouldReceive('update')->once()->with(['status' => 'abandoned']);
+    $attempt->shouldReceive('abandon')->once();
 
     $service = new QuizAttemptLifecycleService();
 

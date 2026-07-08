@@ -65,7 +65,7 @@ class CourseModule extends Model
      */
     public function modulable()
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
 
     public function documentationLinks()

@@ -273,6 +273,25 @@ class QuizAttemptController extends Controller
             abort(403, 'غير مصرح لك بالوصول إلى هذه المحاولة');
         }
 
+        if (! $attempt->quiz) {
+            if ($attempt->status === 'in_progress') {
+                $attempt->abandon();
+            }
+
+            $moduleId = \App\Models\CourseModule::query()
+                ->where('modulable_type', \App\Models\Quiz::class)
+                ->where('modulable_id', $attempt->quiz_id)
+                ->value('id');
+
+            if ($moduleId) {
+                return redirect()->route('student.learn.module', $moduleId)
+                    ->with('error', 'هذا الاختبار لم يعد متاحاً. تم إلغاء المحاولة الحالية.');
+            }
+
+            return redirect()->route('student.dashboard')
+                ->with('error', 'هذا الاختبار لم يعد متاحاً.');
+        }
+
         // Check if attempt is still in progress
         if ($attempt->status !== 'in_progress') {
             return redirect()->route('student.quizzes.review.show', $attemptId)
@@ -289,6 +308,12 @@ class QuizAttemptController extends Controller
 
         if ($expiredResolution === 'auto_submit') {
             $this->autoSubmit($attempt);
+            $attempt->refresh();
+
+            if ($attempt->status === 'abandoned') {
+                return redirect()->route('student.quizzes.show', $attempt->quiz_id)
+                    ->with('info', 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.');
+            }
 
             return redirect()->route('student.quizzes.review.show', $attemptId)
                 ->with('warning', 'انتهى وقت الاختبار وتم تسليمه تلقائياً');
@@ -744,6 +769,24 @@ class QuizAttemptController extends Controller
                 $attempt->load(['responses.question.questionType', 'responses.question.options']);
             }
 
+            if (! $attempt->hasAnsweredResponses()) {
+                $attempt->abandon();
+                DB::commit();
+
+                $moduleId = $request->input('module_id') ?? \App\Models\CourseModule::query()
+                    ->where('modulable_type', \App\Models\Quiz::class)
+                    ->where('modulable_id', $attempt->quiz_id)
+                    ->value('id');
+
+                if ($moduleId) {
+                    return redirect()->route('student.learn.module', $moduleId)
+                        ->with('info', 'لم تُحفظ أي إجابات، لذلك لم تُحسب هذه المحاولة ضمن محاولاتك.');
+                }
+
+                return redirect()->route('student.quizzes.show', $attempt->quiz_id)
+                    ->with('info', 'لم تُحفظ أي إجابات، لذلك لم تُحسب هذه المحاولة ضمن محاولاتك.');
+            }
+
             // Calculate time spent
             $timeSpent = $attempt->calculateTimeSpent();
 
@@ -967,6 +1010,15 @@ class QuizAttemptController extends Controller
     {
         DB::beginTransaction();
         try {
+            $attempt->load(['responses.question.questionType', 'responses.question.options']);
+
+            if (! $attempt->hasAnsweredResponses()) {
+                $attempt->abandon();
+                DB::commit();
+
+                return;
+            }
+
             $timeSpent = $attempt->calculateTimeSpent();
 
             $attempt->submit();

@@ -97,6 +97,7 @@ use App\Http\Controllers\Admin\ProjectChallengeController;
 use App\Http\Controllers\Admin\ProjectGradingController;
 use App\Http\Controllers\Admin\ProjectTeamController;
 use App\Http\Controllers\Admin\QuestionBankController;
+use App\Http\Controllers\Admin\QuestionBankExportController;
 use App\Http\Controllers\Admin\QuestionBankAiGenerationController;
 use App\Http\Controllers\Admin\QuestionBankTypeImportController;
 use App\Http\Controllers\Admin\QuestionModuleController;
@@ -490,6 +491,9 @@ Route::prefix('admin')
         Route::post('question-bank/import/preview', [QuestionBankController::class, 'previewImport'])->name('question-bank.import.preview');
         Route::post('question-bank/import/process', [QuestionBankController::class, 'processImport'])->name('question-bank.import.process');
         Route::get('question-bank/export/template', [QuestionBankController::class, 'downloadTemplate'])->name('question-bank.export.template');
+        Route::get('question-bank/export/excel', [QuestionBankExportController::class, 'exportExcel'])->name('question-bank.export.excel');
+        Route::get('question-bank/export/type/{format}', [QuestionBankExportController::class, 'selectType'])->name('question-bank.export.type.select');
+        Route::get('question-bank/export/type/{format}/{type}', [QuestionBankExportController::class, 'exportByType'])->name('question-bank.export.type.download');
 
         // Type-specific Import (Excel + JSON)
         Route::prefix('question-bank/import/type')->name('question-bank.import.type.')->group(function () {

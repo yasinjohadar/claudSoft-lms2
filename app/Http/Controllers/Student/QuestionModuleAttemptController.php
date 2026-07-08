@@ -7,12 +7,17 @@ use App\Models\QuestionModule;
 use App\Models\QuestionModuleAttempt;
 use App\Models\QuestionModuleResponse;
 use App\Models\CourseEnrollment;
+use App\Services\QuestionModule\QuestionModuleAttemptLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class QuestionModuleAttemptController extends Controller
 {
+    public function __construct(
+        protected QuestionModuleAttemptLifecycleService $attemptLifecycle,
+    ) {}
+
     /**
      * Start a new attempt for a question module.
      */
@@ -162,6 +167,8 @@ class QuestionModuleAttemptController extends Controller
                 'questions_count' => $questionModule->questions->count(),
             ]);
 
+            $this->attemptLifecycle->reconcileForStudent($questionModule, (int) $student->id);
+
             // Get course module for redirect on error
             $courseModule = $questionModule->courseModules()->first();
             
@@ -207,9 +214,9 @@ class QuestionModuleAttemptController extends Controller
                 ]);
             }
 
-            // Check if student can attempt
-            if (!$questionModule->canStudentAttempt($student->id)) {
-                $attemptsCount = $questionModule->studentAttempts($student->id)->where('status', 'completed')->count();
+            // Check if student can attempt (finished attempts only; in-progress resumes separately)
+            if ($questionModule->getFinishedAttemptsCount($student->id) >= $questionModule->attempts_allowed) {
+                $attemptsCount = $questionModule->getFinishedAttemptsCount($student->id);
                 Log::warning('Student cannot attempt - max attempts reached', [
                     'question_module_id' => $questionModule->id,
                     'student_id' => $student->id,
@@ -258,56 +265,84 @@ class QuestionModuleAttemptController extends Controller
             ]);
 
             // Create new attempt
-            DB::beginTransaction();
             try {
-                $attemptNumber = $questionModule->studentAttempts($student->id)->count() + 1;
+                $result = DB::transaction(function () use ($questionModule, $student, $questions) {
+                    QuestionModuleAttempt::query()
+                        ->where('question_module_id', $questionModule->id)
+                        ->where('student_id', $student->id)
+                        ->lockForUpdate()
+                        ->get();
 
-                // Prepare questions order
-                $questionIds = $questions->pluck('id')->toArray();
+                    $inProgress = $questionModule->studentAttempts($student->id)
+                        ->where('status', 'in_progress')
+                        ->first();
 
-                // Shuffle if required
-                if ($questionModule->shuffle_questions) {
-                    shuffle($questionIds);
-                }
-
-                $attempt = QuestionModuleAttempt::create([
-                    'question_module_id' => $questionModule->id,
-                    'student_id' => $student->id,
-                    'attempt_number' => $attemptNumber,
-                    'status' => 'in_progress',
-                    'started_at' => now(),
-                    'question_order' => $questionIds,
-                ]);
-
-                // Create response records for all questions
-                foreach ($questionIds as $questionId) {
-                    $question = $questions->find($questionId);
-                    if (!$question) {
-                        throw new \Exception("السؤال رقم {$questionId} غير موجود");
+                    if ($inProgress) {
+                        return ['attempt' => $inProgress, 'resumed' => true];
                     }
-                    
-                    $grade = $question->pivot->question_grade ?? 1.0;
-                    
-                    QuestionModuleResponse::create([
-                        'attempt_id' => $attempt->id,
-                        'question_id' => $questionId,
-                        'max_score' => $grade,
-                    ]);
-                }
 
-                DB::commit();
+                    if ($questionModule->getFinishedAttemptsCount($student->id) >= $questionModule->attempts_allowed) {
+                        throw new \RuntimeException('max_attempts');
+                    }
+
+                    $attemptNumber = $questionModule->studentAttempts($student->id)->count() + 1;
+
+                    $questionIds = $questions->pluck('id')->toArray();
+
+                    if ($questionModule->shuffle_questions) {
+                        shuffle($questionIds);
+                    }
+
+                    $attempt = QuestionModuleAttempt::create([
+                        'question_module_id' => $questionModule->id,
+                        'student_id' => $student->id,
+                        'attempt_number' => $attemptNumber,
+                        'status' => 'in_progress',
+                        'started_at' => now(),
+                        'question_order' => $questionIds,
+                    ]);
+
+                    foreach ($questionIds as $questionId) {
+                        $question = $questions->find($questionId);
+                        if (! $question) {
+                            throw new \Exception("السؤال رقم {$questionId} غير موجود");
+                        }
+
+                        $grade = $question->pivot->question_grade ?? 1.0;
+
+                        QuestionModuleResponse::create([
+                            'attempt_id' => $attempt->id,
+                            'question_id' => $questionId,
+                            'max_score' => $grade,
+                        ]);
+                    }
+
+                    return ['attempt' => $attempt, 'resumed' => false];
+                });
+
+                $attempt = $result['attempt'];
+
+                if ($result['resumed']) {
+                    return redirect()->route('student.question-module.take', $attempt->id)
+                        ->with('info', 'لديك محاولة قيد التقدم، يمكنك متابعتها');
+                }
 
                 Log::info('Attempt created successfully', [
                     'attempt_id' => $attempt->id,
                     'question_module_id' => $questionModuleId,
                     'student_id' => $student->id,
-                    'attempt_number' => $attemptNumber,
-                    'questions_count' => count($questionIds),
+                    'attempt_number' => $attempt->attempt_number,
+                    'questions_count' => count($attempt->question_order ?? []),
                 ]);
 
                 return redirect()->route('student.question-module.take', $attempt->id);
+            } catch (\RuntimeException $e) {
+                if ($e->getMessage() === 'max_attempts') {
+                    return $redirectToModule('لقد استنفدت جميع المحاولات المسموحة');
+                }
+
+                throw $e;
             } catch (\Exception $e) {
-                DB::rollBack();
                 Log::error('Error creating question module attempt (inner catch)', [
                     'question_module_id' => $questionModuleId,
                     'student_id' => $student->id,
@@ -470,11 +505,25 @@ class QuestionModuleAttemptController extends Controller
             }
 
             // Check if time is up
-            if ($attempt->isTimeUp()) {
-                Log::info('Time is up, auto-submitting attempt', [
-                    'attempt_id' => $attempt->id,
-                ]);
+            $expiredResolution = $this->attemptLifecycle->resolveExpiredAttempt($attempt);
+
+            if ($expiredResolution === 'abandoned') {
+                $fallbackModuleId = session()->get('fallback_module_id');
+                $courseModule = $attempt->questionModule->courseModules()->first();
+                $moduleId = $fallbackModuleId ?? $courseModule?->id;
+
+                if ($moduleId) {
+                    return redirect()->route('student.learn.module', $moduleId)
+                        ->with('info', 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.');
+                }
+
+                return redirect()->route('student.dashboard')
+                    ->with('info', 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.');
+            }
+
+            if ($expiredResolution === 'auto_submit') {
                 $this->submitAttempt($attempt, true);
+
                 return redirect()->route('student.question-module.result', $attempt->id)
                     ->with('warning', 'انتهى الوقت المحدد للاختبار وتم إرسال إجاباتك تلقائياً');
             }
@@ -605,8 +654,20 @@ class QuestionModuleAttemptController extends Controller
             }
 
             // Check if time is up
-            if ($attempt->isTimeUp()) {
+            $expiredResolution = $this->attemptLifecycle->resolveExpiredAttempt($attempt);
+
+            if ($expiredResolution === 'abandoned') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'انتهت صلاحية المحاولة دون إجابات',
+                    'time_up' => true,
+                    'abandoned' => true,
+                ], 400);
+            }
+
+            if ($expiredResolution === 'auto_submit') {
                 $this->submitAttempt($attempt, true);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'انتهى الوقت المحدد',
@@ -823,7 +884,21 @@ class QuestionModuleAttemptController extends Controller
                 $attempt->load('responses');
             }
             
-            $this->submitAttempt($attempt, false);
+            $submitResult = $this->submitAttempt($attempt, false);
+
+            if ($submitResult === 'abandoned') {
+                $courseModule = $attempt->questionModule->courseModules()->first();
+                $fallbackModuleId = session()->get('fallback_module_id');
+                $moduleId = $fallbackModuleId ?? $courseModule?->id;
+
+                if ($moduleId) {
+                    return redirect()->route('student.learn.module', $moduleId)
+                        ->with('info', 'لم تُحفظ أي إجابات، لذلك لم تُحسب هذه المحاولة ضمن محاولاتك.');
+                }
+
+                return redirect()->route('student.dashboard')
+                    ->with('info', 'لم تُحفظ أي إجابات، لذلك لم تُحسب هذه المحاولة ضمن محاولاتك.');
+            }
 
             Log::info('Attempt submitted successfully', [
                 'attempt_id' => $attempt->id,
@@ -921,8 +996,10 @@ class QuestionModuleAttemptController extends Controller
 
     /**
      * Helper: Submit attempt and grade responses.
+     *
+     * @return 'abandoned'|'completed'
      */
-    private function submitAttempt(QuestionModuleAttempt $attempt, bool $isTimeUp)
+    private function submitAttempt(QuestionModuleAttempt $attempt, bool $isTimeUp): string
     {
         DB::beginTransaction();
         try {
@@ -931,6 +1008,13 @@ class QuestionModuleAttemptController extends Controller
 
             // Reload responses with question and questionType to ensure we have the latest data
             $attempt->load(['responses.question.questionType', 'responses.question.options']);
+
+            if (! $attempt->hasAnsweredResponses()) {
+                $attempt->abandon();
+                DB::commit();
+
+                return 'abandoned';
+            }
             
             // Log all responses before grading
             Log::info('=== STARTING AUTO-GRADING ===', [
@@ -1062,6 +1146,8 @@ class QuestionModuleAttemptController extends Controller
             ]);
 
             DB::commit();
+
+            return 'completed';
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in submitAttempt', [

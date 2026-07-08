@@ -1,26 +1,25 @@
 <?php
 
-namespace App\Services\Quiz;
+namespace App\Services\QuestionModule;
 
-use App\Models\Quiz;
-use App\Models\QuizAttempt;
+use App\Models\QuestionModule;
+use App\Models\QuestionModuleAttempt;
 use Illuminate\Support\Collection;
 
-class QuizAttemptLifecycleService
+class QuestionModuleAttemptLifecycleService
 {
     /**
      * Abandon in-progress attempts that have no questions (invalid / stale).
      *
      * @return int Number of attempts abandoned
      */
-    public function reconcileEmptyInProgressAttempts(?int $quizId = null, ?int $studentId = null): int
+    public function reconcileEmptyInProgressAttempts(?int $questionModuleId = null, ?int $studentId = null): int
     {
-        $query = QuizAttempt::query()
-            ->realAttempts()
+        $query = QuestionModuleAttempt::query()
             ->where('status', 'in_progress');
 
-        if ($quizId !== null) {
-            $query->where('quiz_id', $quizId);
+        if ($questionModuleId !== null) {
+            $query->where('question_module_id', $questionModuleId);
         }
 
         if ($studentId !== null) {
@@ -29,8 +28,8 @@ class QuizAttemptLifecycleService
 
         $abandoned = 0;
 
-        $query->get()->each(function (QuizAttempt $attempt) use (&$abandoned) {
-            $order = $attempt->questions_order;
+        $query->get()->each(function (QuestionModuleAttempt $attempt) use (&$abandoned) {
+            $order = $attempt->question_order;
             if ($order !== null && $order !== [] && count((array) $order) > 0) {
                 return;
             }
@@ -47,15 +46,14 @@ class QuizAttemptLifecycleService
      *
      * @return int Number of attempts abandoned
      */
-    public function reconcileExpiredInProgressAttempts(?int $quizId = null, ?int $studentId = null): int
+    public function reconcileExpiredInProgressAttempts(?int $questionModuleId = null, ?int $studentId = null): int
     {
-        $query = QuizAttempt::query()
-            ->realAttempts()
-            ->with(['quiz', 'responses'])
+        $query = QuestionModuleAttempt::query()
+            ->with(['questionModule', 'responses'])
             ->where('status', 'in_progress');
 
-        if ($quizId !== null) {
-            $query->where('quiz_id', $quizId);
+        if ($questionModuleId !== null) {
+            $query->where('question_module_id', $questionModuleId);
         }
 
         if ($studentId !== null) {
@@ -64,7 +62,7 @@ class QuizAttemptLifecycleService
 
         $abandoned = 0;
 
-        $query->get()->each(function (QuizAttempt $attempt) use (&$abandoned) {
+        $query->get()->each(function (QuestionModuleAttempt $attempt) use (&$abandoned) {
             if (! $attempt->isTimeExpired()) {
                 return;
             }
@@ -87,17 +85,16 @@ class QuizAttemptLifecycleService
      */
     public function reconcileStaleInProgressAttempts(
         int $staleHours = 24,
-        ?int $quizId = null,
+        ?int $questionModuleId = null,
         ?int $studentId = null
     ): int {
-        $query = QuizAttempt::query()
-            ->realAttempts()
+        $query = QuestionModuleAttempt::query()
             ->with('responses')
             ->where('status', 'in_progress')
             ->where('started_at', '<=', now()->subHours($staleHours));
 
-        if ($quizId !== null) {
-            $query->where('quiz_id', $quizId);
+        if ($questionModuleId !== null) {
+            $query->where('question_module_id', $questionModuleId);
         }
 
         if ($studentId !== null) {
@@ -106,7 +103,7 @@ class QuizAttemptLifecycleService
 
         $abandoned = 0;
 
-        $query->get()->each(function (QuizAttempt $attempt) use (&$abandoned) {
+        $query->get()->each(function (QuestionModuleAttempt $attempt) use (&$abandoned) {
             if ($attempt->hasAnsweredResponses()) {
                 return;
             }
@@ -119,13 +116,13 @@ class QuizAttemptLifecycleService
     }
 
     /**
-     * Reconcile stale attempts for a quiz/student before showing intro or starting.
+     * Reconcile stale attempts for a question module/student before showing intro or starting.
      */
-    public function reconcileForStudent(Quiz $quiz, int $studentId): int
+    public function reconcileForStudent(QuestionModule $questionModule, int $studentId): int
     {
-        return $this->reconcileEmptyInProgressAttempts($quiz->id, $studentId)
-            + $this->reconcileExpiredInProgressAttempts($quiz->id, $studentId)
-            + $this->reconcileStaleInProgressAttempts(24, $quiz->id, $studentId);
+        return $this->reconcileEmptyInProgressAttempts($questionModule->id, $studentId)
+            + $this->reconcileExpiredInProgressAttempts($questionModule->id, $studentId)
+            + $this->reconcileStaleInProgressAttempts(24, $questionModule->id, $studentId);
     }
 
     /**
@@ -143,13 +140,13 @@ class QuizAttemptLifecycleService
      *
      * @return null|'abandoned'|'auto_submit'
      */
-    public function resolveExpiredAttempt(QuizAttempt $attempt): ?string
+    public function resolveExpiredAttempt(QuestionModuleAttempt $attempt): ?string
     {
         if ($attempt->status !== 'in_progress' || ! $attempt->isTimeExpired()) {
             return null;
         }
 
-        $attempt->loadMissing(['responses', 'quiz']);
+        $attempt->loadMissing(['responses', 'questionModule']);
 
         if (! $attempt->hasAnsweredResponses()) {
             $attempt->abandon();
@@ -161,22 +158,32 @@ class QuizAttemptLifecycleService
     }
 
     /**
-     * Reclassify finished attempts that have zero answers as abandoned (data repair).
+     * @return Collection<int, QuestionModuleAttempt>
+     */
+    public function getInProgressAttempts(QuestionModule $questionModule, int $studentId): Collection
+    {
+        return $questionModule->attempts()
+            ->where('student_id', $studentId)
+            ->where('status', 'in_progress')
+            ->get();
+    }
+
+    /**
+     * Reclassify completed attempts that have zero answers as abandoned (data repair).
      *
      * @return int Number of attempts reclassified
      */
-    public function reclassifyEmptyFinishedAttempts(
-        ?int $quizId = null,
+    public function reclassifyEmptyCompletedAttempts(
+        ?int $questionModuleId = null,
         ?int $studentId = null,
         bool $dryRun = false
     ): int {
-        $query = QuizAttempt::query()
-            ->realAttempts()
+        $query = QuestionModuleAttempt::query()
             ->with('responses')
-            ->whereIn('status', Quiz::FINISHED_ATTEMPT_STATUSES);
+            ->where('status', 'completed');
 
-        if ($quizId !== null) {
-            $query->where('quiz_id', $quizId);
+        if ($questionModuleId !== null) {
+            $query->where('question_module_id', $questionModuleId);
         }
 
         if ($studentId !== null) {
@@ -185,7 +192,7 @@ class QuizAttemptLifecycleService
 
         $reclassified = 0;
 
-        $query->get()->each(function (QuizAttempt $attempt) use (&$reclassified, $dryRun) {
+        $query->get()->each(function (QuestionModuleAttempt $attempt) use (&$reclassified, $dryRun) {
             if ($attempt->hasAnsweredResponses()) {
                 return;
             }
@@ -198,17 +205,5 @@ class QuizAttemptLifecycleService
         });
 
         return $reclassified;
-    }
-
-    /**
-     * @return Collection<int, QuizAttempt>
-     */
-    public function getInProgressAttempt(Quiz $quiz, int $studentId): Collection
-    {
-        return $quiz->attempts()
-            ->realAttempts()
-            ->where('student_id', $studentId)
-            ->where('status', 'in_progress')
-            ->get();
     }
 }

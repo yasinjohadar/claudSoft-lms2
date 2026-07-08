@@ -123,6 +123,18 @@
                                 <span class="group-show-action__icon"><i class="fe fe-code"></i></span>
                                 <span class="group-show-action__text">استيراد من JSON</span>
                             </a>
+                            <a href="{{ route('question-bank.export.excel', request()->only(['search', 'course_id', 'question_type_id', 'difficulty', 'language_id'])) }}" class="group-show-action group-show-action--success">
+                                <span class="group-show-action__icon"><i class="fe fe-download"></i></span>
+                                <span class="group-show-action__text">تصدير Excel</span>
+                            </a>
+                            <a href="{{ route('question-bank.export.type.select', array_merge(['format' => 'excel'], request()->only(['search', 'course_id', 'question_type_id', 'difficulty', 'language_id']))) }}" class="group-show-action group-show-action--warning">
+                                <span class="group-show-action__icon"><i class="fe fe-grid"></i></span>
+                                <span class="group-show-action__text">تصدير Excel حسب النوع</span>
+                            </a>
+                            <a href="{{ route('question-bank.export.type.select', array_merge(['format' => 'json'], request()->only(['search', 'course_id', 'question_type_id', 'difficulty', 'language_id']))) }}" class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-share"></i></span>
+                                <span class="group-show-action__text">تصدير JSON</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -229,6 +241,9 @@
                             @endforeach
                         </select>
                         <span class="text-muted small">سجل</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="export-selected-questions-btn" disabled>
+                            <i class="fe fe-download me-1"></i>تصدير المحدد (<span id="export-selected-questions-count">0</span>)
+                        </button>
                         <button type="button" class="btn btn-danger-light btn-sm" id="delete-selected-questions-btn" disabled>
                             <i class="fe fe-trash-2 me-1"></i>حذف المحدد (<span id="selected-questions-count">0</span>)
                         </button>
@@ -575,9 +590,13 @@
             if (selectedQuestions.length > 0) {
                 $('#delete-selected-questions-btn').prop('disabled', false);
                 $('#selected-questions-count').text(selectedQuestions.length);
+                $('#export-selected-questions-btn').prop('disabled', false);
+                $('#export-selected-questions-count').text(selectedQuestions.length);
             } else {
                 $('#delete-selected-questions-btn').prop('disabled', true);
                 $('#selected-questions-count').text('0');
+                $('#export-selected-questions-btn').prop('disabled', true);
+                $('#export-selected-questions-count').text('0');
             }
         }
 
@@ -616,6 +635,23 @@
                 const checked = $('#questionBankTableContainer .question-row-checkbox:checked').length;
                 $('#select-all-questions-table').prop('checked', total === checked && total > 0);
                 toggleBulkDeleteButton();
+            });
+
+            $('#export-selected-questions-btn').on('click', function() {
+                const selectedQuestions = $('#questionBankTableContainer .question-row-checkbox:checked').map(function() {
+                    return parseInt($(this).val());
+                }).get();
+
+                if (selectedQuestions.length === 0) {
+                    return;
+                }
+
+                const params = new URLSearchParams();
+                selectedQuestions.forEach(function(id) {
+                    params.append('question_ids[]', id);
+                });
+
+                window.location.href = '{{ route('question-bank.export.excel') }}?' + params.toString();
             });
 
             $(tableContainer).on('click', '.remove-question', function(e) {

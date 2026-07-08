@@ -296,6 +296,11 @@ class CourseLearningController extends Controller
     {
         if ($module->module_type === 'question_module' && $module->modulable) {
             $module->modulable->load(['questions.questionType']);
+
+            if (auth()->check()) {
+                app(\App\Services\QuestionModule\QuestionModuleAttemptLifecycleService::class)
+                    ->reconcileForStudent($module->modulable, (int) auth()->id());
+            }
         }
 
         if ($module->module_type === 'quiz' && $module->modulable) {

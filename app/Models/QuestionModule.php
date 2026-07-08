@@ -112,8 +112,35 @@ class QuestionModule extends Model
      */
     public function canStudentAttempt($studentId): bool
     {
-        $attemptsCount = $this->studentAttempts($studentId)->where('status', 'completed')->count();
-        return $attemptsCount < $this->attempts_allowed;
+        if ($this->hasInProgressAttempt($studentId)) {
+            return false;
+        }
+
+        return $this->getFinishedAttemptsCount($studentId) < $this->attempts_allowed;
+    }
+
+    /**
+     * Count of completed attempts that consume the attempt limit.
+     */
+    public function getFinishedAttemptsCount($studentId): int
+    {
+        return $this->studentAttempts($studentId)->where('status', 'completed')->count();
+    }
+
+    /**
+     * Check if the student has an in-progress attempt.
+     */
+    public function hasInProgressAttempt($studentId): bool
+    {
+        return $this->studentAttempts($studentId)->where('status', 'in_progress')->exists();
+    }
+
+    /**
+     * Get remaining attempts for a student.
+     */
+    public function getRemainingAttempts($studentId): int
+    {
+        return max(0, $this->attempts_allowed - $this->getFinishedAttemptsCount($studentId));
     }
 
     // Scopes

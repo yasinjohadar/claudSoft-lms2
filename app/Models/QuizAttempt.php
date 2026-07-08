@@ -76,7 +76,7 @@ class QuizAttempt extends Model
      */
     public function quiz()
     {
-        return $this->belongsTo(Quiz::class, 'quiz_id');
+        return $this->belongsTo(Quiz::class, 'quiz_id')->withTrashed();
     }
 
     /**
@@ -269,6 +269,23 @@ class QuizAttempt extends Model
             'submitted_at' => now(),
             'is_completed' => true,
             'completed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Abandon the attempt without counting it as a finished graded attempt.
+     */
+    public function abandon(): void
+    {
+        $this->update([
+            'status' => 'abandoned',
+            'submitted_at' => now(),
+            'passed' => null,
+            'percentage_score' => null,
+            'total_score' => null,
+            'grade_status' => null,
+            'is_completed' => false,
+            'completed_at' => null,
         ]);
     }
 
@@ -496,6 +513,12 @@ class QuizAttempt extends Model
      */
     public function grade(): void
     {
+        if (! $this->hasAnsweredResponses()) {
+            $this->abandon();
+
+            return;
+        }
+
         // Calculate total score from all responses
         $totalScore = $this->calculateTotalScore();
         $percentageScore = $this->max_score > 0 ? ($totalScore / $this->max_score) * 100 : 0;

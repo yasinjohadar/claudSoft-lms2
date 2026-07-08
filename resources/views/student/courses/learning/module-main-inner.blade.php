@@ -428,8 +428,8 @@
                         $studentAttempts = $questionModule->studentAttempts(auth()->id());
                         $completedAttempts = $studentAttempts->where('status', 'completed')->count();
                         $inProgressAttempt = $studentAttempts->where('status', 'in_progress')->first();
-                        $canAttempt = $questionModule->canStudentAttempt(auth()->id());
-                        $lastAttempt = $studentAttempts->first();
+                        $canAttempt = $questionModule->canStudentAttempt(auth()->id()) || $inProgressAttempt;
+                        $lastAttempt = $studentAttempts->where('status', 'completed')->first();
                     @endphp
 
                     @php
@@ -453,14 +453,15 @@
                         'showHistory' => true,
                         'completedAttempts' => $completedAttempts,
                         'attemptsAllowed' => $questionModule->attempts_allowed,
-                        'lastScore' => ($lastAttempt && $lastAttempt->status === 'completed') ? number_format($lastAttempt->percentage, 1) . '%' : null,
+                        'lastScore' => $lastAttempt ? number_format($lastAttempt->percentage, 1) . '%' : null,
                         'lastPassed' => $lastAttempt ? $lastAttempt->is_passed : false,
                         'reviewUrl' => ($lastAttempt && $lastAttempt->status === 'completed') ? route('student.question-module.result', $lastAttempt->id) : null,
                         'inProgressAttempt' => $inProgressAttempt,
                         'continueUrl' => $inProgressAttempt ? route('student.question-module.take', $inProgressAttempt->id) : null,
                         'canAttempt' => $canAttempt,
-                        'startUrl' => route('student.question-module.start', $questionModule->id) . '?module_id=' . $module->id,
-                        'remainingAttempts' => $questionModule->attempts_allowed - $completedAttempts,
+                        'startFormAction' => route('student.question-module.start', $questionModule->id),
+                        'startFormHidden' => ['module_id' => $module->id],
+                        'remainingAttempts' => $questionModule->getRemainingAttempts(auth()->id()),
                         'blockedLabel' => 'استنفدت جميع المحاولات',
                         'blockedHint' => 'لقد استخدمت جميع المحاولات المسموحة (' . $questionModule->attempts_allowed . ')',
                         'tips' => [
@@ -559,7 +560,7 @@
                         'completedAttempts' => $completedAttempts,
                         'attemptsAllowed' => $quiz->attempts_allowed,
                         'lastScore' => $lastAttempt ? number_format($lastAttempt->percentage_score ?? 0, 1) . '%' : null,
-                        'lastPassed' => $lastAttempt ? ($lastAttempt->percentage_score ?? 0) >= ($quiz->passing_grade ?? 50) : false,
+                        'lastPassed' => $lastAttempt ? (bool) $lastAttempt->passed : false,
                         'reviewUrl' => $lastAttempt ? route('student.quizzes.review.show', $lastAttempt->id) : null,
                         'inProgressAttempt' => $inProgressAttempt,
                         'continueUrl' => $inProgressAttempt ? route('student.quizzes.take', $inProgressAttempt->id) : null,

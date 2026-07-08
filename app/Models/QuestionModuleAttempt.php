@@ -34,7 +34,7 @@ class QuestionModuleAttempt extends Model
      */
     public function questionModule()
     {
-        return $this->belongsTo(QuestionModule::class);
+        return $this->belongsTo(QuestionModule::class)->withTrashed();
     }
 
     /**
@@ -78,6 +78,66 @@ class QuestionModuleAttempt extends Model
             'status' => 'completed',
             'completed_at' => now(),
         ]);
+    }
+
+    /**
+     * Abandon the attempt without counting it toward the attempt limit.
+     */
+    public function abandon(): void
+    {
+        $this->update([
+            'status' => 'abandoned',
+            'completed_at' => null,
+            'is_passed' => false,
+            'total_score' => null,
+            'percentage' => null,
+        ]);
+    }
+
+    /**
+     * Whether the attempt time limit has elapsed.
+     */
+    public function isTimeExpired(): bool
+    {
+        return $this->isTimeUp();
+    }
+
+    /**
+     * Whether the student saved at least one answer in this attempt.
+     */
+    public function hasAnsweredResponses(): bool
+    {
+        if (! $this->relationLoaded('responses')) {
+            $this->load('responses');
+        }
+
+        foreach ($this->responses as $response) {
+            if ($this->responseHasAnswer($response)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  mixed  $answer
+     */
+    private function responseHasAnswer($response): bool
+    {
+        $studentAnswer = $response->student_answer;
+
+        if ($studentAnswer === null) {
+            return false;
+        }
+
+        if (is_array($studentAnswer)) {
+            return ! empty(array_filter($studentAnswer, fn ($value) => $value !== null && $value !== '' && $value !== []));
+        }
+
+        $text = trim((string) $studentAnswer);
+
+        return $text !== '' && $text !== 'null' && $text !== '[]';
     }
 
     /**
