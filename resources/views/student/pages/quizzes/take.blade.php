@@ -515,6 +515,10 @@ if (remainingTimeSeconds !== null) {
                                             اسحب العناصر لترتيبها بالشكل الصحيح
                             </div>
                                         <div class="ordering-list" id="ordering-list-{{ $question->id }}">
+                                            <div class="ordering-drop-hint" hidden role="status" aria-live="polite">
+                                                <i class="fas fa-hand-pointer me-2"></i>
+                                                يمكنك الإفلات الآن — أسقط العنصر عند الشريط الأخضر
+                                            </div>
                                             @php
                                                 // If saved order exists, use it; otherwise shuffle for display
                                                 if (!empty($savedOrder)) {
@@ -540,6 +544,10 @@ if (remainingTimeSeconds !== null) {
                                                 </div>
                                 @endforeach
                             </div>
+                                        <div class="ordering-drop-success" hidden role="status" aria-live="polite">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            تم تحديث الترتيب بنجاح
+                                        </div>
                                         <input type="hidden"
                                                name="question_{{ $question->id }}"
                                                id="ordering-input-{{ $question->id }}"
@@ -1061,60 +1069,106 @@ $(document).ready(function() {
 
     // Ordering functionality
     function initOrdering() {
+        if (window.__quizOrderingBound) {
+            return;
+        }
+        window.__quizOrderingBound = true;
+
         let draggedItem = null;
 
-        // Drag start
+        function clearOrderingDragState() {
+            $('.ordering-item').removeClass('dragging drag-over');
+            $('.ordering-container').removeClass('is-drag-active');
+            $('.ordering-drop-hint').prop('hidden', true);
+            draggedItem = null;
+        }
+
+        function activateOrderingDragUi($container) {
+            if ($container.hasClass('is-drag-active')) {
+                return;
+            }
+
+            $container.addClass('is-drag-active');
+            $container.find('.ordering-drop-hint').prop('hidden', false);
+        }
+
+        function showOrderingDropSuccess($item) {
+            const $container = $item.closest('.ordering-container');
+            const $success = $container.find('.ordering-drop-success');
+
+            $item.addClass('ordering-item--placed');
+            $item.find('.ordering-number').addClass('ordering-number--placed');
+            $success.prop('hidden', false);
+
+            window.setTimeout(function () {
+                $item.removeClass('ordering-item--placed');
+                $item.find('.ordering-number').removeClass('ordering-number--placed');
+                $success.prop('hidden', true);
+            }, 1800);
+        }
+
+        function finishOrderingDrop($item) {
+            const questionId = $item.data('question-id');
+            const $list = $item.closest('.ordering-list');
+
+            updateOrderingNumbers($list);
+            saveOrderingAnswer(questionId);
+            showOrderingDropSuccess($item);
+            clearOrderingDragState();
+        }
+
         $(document).on('dragstart', '.ordering-item', function(e) {
             draggedItem = this;
             $(this).addClass('dragging');
             e.originalEvent.dataTransfer.effectAllowed = 'move';
+            e.originalEvent.dataTransfer.setData('text/plain', String($(this).data('item-id') || 'ordering'));
         });
 
-        // Drag end
         $(document).on('dragend', '.ordering-item', function() {
-            $(this).removeClass('dragging');
-            $('.ordering-item').removeClass('drag-over');
-            draggedItem = null;
+            clearOrderingDragState();
         });
 
-        // Drag over
         $(document).on('dragover', '.ordering-item', function(e) {
             e.preventDefault();
-            if (this !== draggedItem) {
-                $(this).addClass('drag-over');
+
+            if (!draggedItem || this === draggedItem) {
+                return;
             }
+
+            e.originalEvent.dataTransfer.dropEffect = 'move';
+            activateOrderingDragUi($(this).closest('.ordering-container'));
+            $('.ordering-item').not(this).removeClass('drag-over');
+            $(this).addClass('drag-over');
         });
 
-        // Drag leave
-        $(document).on('dragleave', '.ordering-item', function() {
+        $(document).on('dragleave', '.ordering-item', function(e) {
+            const related = e.originalEvent.relatedTarget;
+            if (related && this.contains(related)) {
+                return;
+            }
+
             $(this).removeClass('drag-over');
         });
 
-        // Drop
         $(document).on('drop', '.ordering-item', function(e) {
             e.preventDefault();
-            $(this).removeClass('drag-over');
+            e.stopPropagation();
 
-            if (draggedItem && this !== draggedItem) {
-                const list = $(this).parent();
-                const questionId = $(draggedItem).data('question-id');
-
-                // Insert before or after based on position
-                const draggedIndex = $(draggedItem).index();
-                const targetIndex = $(this).index();
-
-                if (draggedIndex < targetIndex) {
-                    $(draggedItem).insertAfter(this);
-                } else {
-                    $(draggedItem).insertBefore(this);
-                }
-
-                // Update numbers
-                updateOrderingNumbers(list);
-
-                // Save answer
-                saveOrderingAnswer(questionId);
+            if (!draggedItem || this === draggedItem) {
+                return;
             }
+
+            const $target = $(this);
+            const rect = this.getBoundingClientRect();
+            const insertBefore = e.originalEvent.clientY < rect.top + (rect.height / 2);
+
+            if (insertBefore) {
+                $(draggedItem).insertBefore($target);
+            } else {
+                $(draggedItem).insertAfter($target);
+            }
+
+            finishOrderingDrop($(draggedItem));
         });
     }
 
