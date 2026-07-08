@@ -80,6 +80,37 @@ test('resolveExpiredAttempt returns null for active attempt', function () {
     expect($service->resolveExpiredAttempt($attempt))->toBeNull();
 });
 
+test('prepareResumableAttempt abandons expired empty attempt before resume', function () {
+    $quiz = Mockery::mock(Quiz::class)->makePartial();
+    $quiz->id = 10;
+
+    $expiredAttempt = Mockery::mock(QuizAttempt::class)->makePartial();
+    $expiredAttempt->status = 'in_progress';
+    $expiredAttempt->shouldReceive('isTimeExpired')->andReturn(true);
+    $expiredAttempt->shouldReceive('loadMissing')->with(['responses', 'quiz'])->andReturnSelf();
+    $expiredAttempt->shouldReceive('hasAnsweredResponses')->andReturn(false);
+    $expiredAttempt->shouldReceive('abandon')->once();
+
+    $attemptsRelation = Mockery::mock();
+    $attemptsRelation->shouldReceive('realAttempts')->andReturnSelf();
+    $attemptsRelation->shouldReceive('where')->with('student_id', 5)->andReturnSelf();
+    $attemptsRelation->shouldReceive('where')->with('status', 'in_progress')->andReturnSelf();
+    $attemptsRelation->shouldReceive('first')->andReturn($expiredAttempt);
+
+    $quiz->shouldReceive('attempts')->andReturn($attemptsRelation);
+
+    $service = Mockery::mock(
+        QuizAttemptLifecycleService::class,
+        [app(\App\Services\Quiz\QuizAttemptStartService::class)]
+    )->makePartial();
+    $service->shouldReceive('reconcileForStudent')->with($quiz, 5)->andReturn(0);
+
+    $result = $service->prepareResumableAttempt($quiz, 5);
+
+    expect($result['resolution'])->toBe('abandoned')
+        ->and($result['attempt'])->toBeNull();
+});
+
 afterEach(function () {
     Mockery::close();
 });

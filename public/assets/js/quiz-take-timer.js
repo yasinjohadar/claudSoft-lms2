@@ -1,38 +1,87 @@
 /**
- * Quiz take countdown — wall-clock based, independent of jQuery / quiz init.
+ * Quiz take countdown — server-authoritative remaining seconds.
+ * Uses performance.now() + initial remaining from the server so client clock skew
+ * cannot immediately trigger "time up".
  */
 (function () {
     'use strict';
 
     var intervalId = null;
     var warnedFiveMinutes = false;
+    var anchorRemainingSeconds = null;
+    var anchorPerfMs = null;
 
     function pad2(n) {
         return String(n).padStart(2, '0');
     }
 
-    function getEndsAtMs() {
-        var container = document.getElementById('timer-container');
+    function getContainer() {
+        return document.getElementById('timer-container');
+    }
+
+    function readIntAttr(name) {
+        var container = getContainer();
         if (!container) {
             return null;
         }
 
-        var raw = container.getAttribute('data-ends-at');
-        if (!raw) {
+        var raw = container.getAttribute(name);
+        if (raw === null || raw === '') {
             return null;
         }
 
-        var endsAt = parseInt(raw, 10);
-        return isNaN(endsAt) || endsAt <= 0 ? null : endsAt;
+        var value = parseInt(raw, 10);
+        return isNaN(value) ? null : value;
+    }
+
+    function getInitialRemainingSeconds() {
+        var remaining = readIntAttr('data-remaining-seconds');
+        if (remaining !== null && remaining >= 0) {
+            return remaining;
+        }
+
+        var endsAt = readIntAttr('data-ends-at');
+        var serverNow = readIntAttr('data-server-now-ms');
+        if (endsAt !== null && serverNow !== null) {
+            return Math.max(0, Math.floor((endsAt - serverNow) / 1000));
+        }
+
+        if (endsAt !== null) {
+            return Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+        }
+
+        return null;
+    }
+
+    function ensureAnchor() {
+        if (anchorRemainingSeconds !== null && anchorPerfMs !== null) {
+            return true;
+        }
+
+        var initial = getInitialRemainingSeconds();
+        if (initial === null) {
+            return false;
+        }
+
+        anchorRemainingSeconds = initial;
+        anchorPerfMs = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now()
+            : Date.now();
+
+        return true;
     }
 
     function getRemainingSeconds() {
-        var endsAt = getEndsAtMs();
-        if (!endsAt) {
+        if (!ensureAnchor()) {
             return 0;
         }
 
-        return Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+        var nowPerf = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now()
+            : Date.now();
+        var elapsed = Math.floor((nowPerf - anchorPerfMs) / 1000);
+
+        return Math.max(0, anchorRemainingSeconds - elapsed);
     }
 
     function updateDisplay(seconds) {
@@ -89,7 +138,7 @@
 
         if (remaining === 300 && !warnedFiveMinutes) {
             warnedFiveMinutes = true;
-            var timerContainer = document.getElementById('timer-container');
+            var timerContainer = getContainer();
             if (timerContainer) {
                 timerContainer.classList.add('time-warning');
             }
@@ -104,11 +153,15 @@
     }
 
     function startTimer() {
-        if (!getEndsAtMs()) {
+        if (!getContainer()) {
             return;
         }
 
         if (!document.getElementById('timer-minutes') || !document.getElementById('timer-seconds')) {
+            return;
+        }
+
+        if (!ensureAnchor()) {
             return;
         }
 
@@ -119,10 +172,17 @@
         window.timerInterval = intervalId;
     }
 
+    function resetAnchorFromDom() {
+        anchorRemainingSeconds = null;
+        anchorPerfMs = null;
+        ensureAnchor();
+    }
+
     function boot() {
-        if (!document.getElementById('timer-container')) {
+        if (!getContainer()) {
             return;
         }
+        resetAnchorFromDom();
         startTimer();
     }
 
@@ -131,6 +191,7 @@
         stop: stopTimer,
         refresh: tick,
         getRemainingSeconds: getRemainingSeconds,
+        resetAnchor: resetAnchorFromDom,
     };
 
     if (document.readyState === 'loading') {

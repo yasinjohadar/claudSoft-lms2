@@ -267,12 +267,7 @@ class QuizApiController extends Controller
         $questions = $this->quizApi->orderedQuestionsForAttempt($attempt);
         $serialized = $questions->map(fn ($q) => $this->quizApi->serializeQuestionForClient($q))->values()->all();
 
-        $remainingSeconds = null;
-        if ($attempt->quiz->time_limit && $attempt->started_at) {
-            $elapsed = $attempt->started_at->diffInSeconds(now());
-            $total = $attempt->quiz->time_limit * 60;
-            $remainingSeconds = max(0, $total - $elapsed);
-        }
+        $remainingSeconds = $attempt->getRemainingSeconds();
 
         return response()->json([
             'success' => true,
@@ -281,6 +276,7 @@ class QuizApiController extends Controller
                 'quiz_id' => (int) $attempt->quiz_id,
                 'status' => $attempt->status,
                 'remaining_seconds' => $remainingSeconds,
+                'server_now_ms' => (int) (now()->getTimestamp() * 1000),
                 'questions' => $serialized,
             ],
         ]);

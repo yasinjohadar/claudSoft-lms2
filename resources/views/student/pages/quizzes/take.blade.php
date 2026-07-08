@@ -51,6 +51,16 @@ if (remainingTimeSeconds !== null) {
                 </div>
             @endif
 
+            @if(! empty($isExpiredPartialResume))
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                    <i class="fe fe-clock fs-18 mt-1"></i>
+                    <div>
+                        <strong>انتهى الوقت المحدد لهذه المحاولة.</strong>
+                        أكمل الإجابات المتبقية ثم أرسل الاختبار يدوياً — هذه متابعة لمحاولة سابقة وليست بداية جديدة.
+                    </div>
+                </div>
+            @endif
+
             @include('shared.quizzes.take-mobile-chrome', ['questions' => $questions])
 
             <div class="row quiz-take-layout">
@@ -64,13 +74,15 @@ if (remainingTimeSeconds !== null) {
                         </div>
                         <div class="card-body">
                     @if($remainingTime !== null && $remainingTime > 0)
-                    <div class="quiz-take-timer" id="timer-container"@if($quizEndsAtMs) data-ends-at="{{ $quizEndsAtMs }}"@endif>
+                    <div class="quiz-take-timer" id="timer-container"
+                         data-remaining-seconds="{{ (int) $remainingTime }}"
+                         data-server-now-ms="{{ $serverNowMs ?? (int) (now()->getTimestamp() * 1000) }}"
+                         @if($quizEndsAtMs) data-ends-at="{{ $quizEndsAtMs }}" @endif>
                         <div class="quiz-take-timer__label"><i class="fe fe-clock me-1"></i>الوقت المتبقي</div>
                         <div class="quiz-take-timer__value" id="timer">
                             <span id="timer-minutes">{{ str_pad(floor($remainingTime / 60), 2, '0', STR_PAD_LEFT) }}</span>:<span id="timer-seconds">{{ str_pad($remainingTime % 60, 2, '0', STR_PAD_LEFT) }}</span>
                         </div>
                     </div>
-                    @if($quizEndsAtMs)
                     <script>
                     document.addEventListener('quiz-take-timer:ready', function () {
                         if (window.QuizTakeTimer) {
@@ -78,7 +90,6 @@ if (remainingTimeSeconds !== null) {
                         }
                     }, { once: true });
                     </script>
-                    @endif
             @elseif($attempt->quiz->time_limit === null)
                     <div class="quiz-take-timer mb-3">
                         <div class="quiz-take-timer__label"><i class="fe fe-infinity me-1"></i>بدون حد زمني</div>

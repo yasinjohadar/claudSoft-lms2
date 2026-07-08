@@ -182,6 +182,50 @@ class QuizAttemptLifecycleService
     }
 
     /**
+     * Ensure a resumable in-progress attempt is still valid; abandon expired empty ones.
+     *
+     * @return array{attempt: ?QuizAttempt, resolution: null|'abandoned'|'auto_submit'|'active'}
+     */
+    public function prepareResumableAttempt(Quiz $quiz, int $studentId): array
+    {
+        $this->reconcileForStudent($quiz, $studentId);
+
+        $attempt = $quiz->attempts()
+            ->realAttempts()
+            ->where('student_id', $studentId)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (! $attempt) {
+            return [
+                'attempt' => null,
+                'resolution' => null,
+            ];
+        }
+
+        $resolution = $this->resolveExpiredAttempt($attempt);
+
+        if ($resolution === 'abandoned') {
+            return [
+                'attempt' => null,
+                'resolution' => 'abandoned',
+            ];
+        }
+
+        if ($resolution === 'auto_submit') {
+            return [
+                'attempt' => $attempt->fresh(),
+                'resolution' => 'auto_submit',
+            ];
+        }
+
+        return [
+            'attempt' => $attempt->fresh() ?? $attempt,
+            'resolution' => 'active',
+        ];
+    }
+
+    /**
      * Reclassify finished attempts that have zero answers as abandoned (data repair).
      *
      * @return int Number of attempts reclassified

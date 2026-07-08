@@ -161,17 +161,20 @@ class QuizAttemptController extends Controller
             }
         }
 
-        $this->attemptLifecycle->reconcileForStudent($quiz, $studentId);
+        $resumeState = $this->attemptLifecycle->prepareResumableAttempt($quiz, $studentId);
 
-        // Resume existing in-progress attempt before checking attempt limits
-        $existingAttempt = $quiz->attempts()
-            ->realAttempts()
-            ->where('student_id', $studentId)
-            ->where('status', 'in_progress')
-            ->first();
+        if ($resumeState['resolution'] === 'auto_submit' && $resumeState['attempt']) {
+            $this->autoSubmit($resumeState['attempt']);
+            $resumeState['attempt']->refresh();
 
-        if ($existingAttempt) {
-            return redirect()->route('student.quizzes.take', $existingAttempt->id)
+            if ($resumeState['attempt']->status === 'abandoned') {
+                // Empty/expired attempt repaired as abandoned — fall through to a fresh start.
+            } else {
+                return redirect()->route('student.quizzes.review.show', $resumeState['attempt']->id)
+                    ->with('warning', 'انتهى وقت المحاولة السابقة وتم تسليمها تلقائياً');
+            }
+        } elseif ($resumeState['resolution'] === 'active' && $resumeState['attempt']) {
+            return redirect()->route('student.quizzes.take', $resumeState['attempt']->id)
                 ->with('info', 'لديك محاولة قيد التقدم، يمكنك متابعتها');
         }
 
@@ -195,11 +198,25 @@ class QuizAttemptController extends Controller
                     ->first();
 
                 if ($inProgress) {
-                    return [
-                        'attempt' => $inProgress,
-                        'resumed' => true,
-                        'pool_recycled' => false,
-                    ];
+                    $lockedResolution = $this->attemptLifecycle->resolveExpiredAttempt($inProgress);
+
+                    if ($lockedResolution === 'auto_submit') {
+                        return [
+                            'attempt' => $inProgress,
+                            'resumed' => false,
+                            'auto_submit' => true,
+                            'pool_recycled' => false,
+                        ];
+                    }
+
+                    if ($lockedResolution !== 'abandoned') {
+                        return [
+                            'attempt' => $inProgress,
+                            'resumed' => true,
+                            'auto_submit' => false,
+                            'pool_recycled' => false,
+                        ];
+                    }
                 }
 
                 $attemptNumber = $quiz->getNextAttemptNumber($studentId);
@@ -226,13 +243,27 @@ class QuizAttemptController extends Controller
                 return [
                     'attempt' => $attempt,
                     'resumed' => false,
+                    'auto_submit' => false,
                     'pool_recycled' => (bool) ($startData['selection_meta']['recycled'] ?? false),
                 ];
             });
 
             $attempt = $result['attempt'];
 
-            if ($result['resumed']) {
+            if (! empty($result['auto_submit'])) {
+                $this->autoSubmit($attempt);
+                $attempt->refresh();
+
+                if ($attempt->status === 'abandoned') {
+                    return redirect()->route('student.quizzes.show', $quiz->id)
+                        ->with('info', 'انتهت صلاحية المحاولة السابقة دون إجابات. يمكنك بدء محاولة جديدة.');
+                }
+
+                return redirect()->route('student.quizzes.review.show', $attempt->id)
+                    ->with('warning', 'انتهى وقت المحاولة السابقة وتم تسليمها تلقائياً');
+            }
+
+            if (! empty($result['resumed'])) {
                 return redirect()->route('student.quizzes.take', $attempt->id)
                     ->with('info', 'لديك محاولة قيد التقدم، يمكنك متابعتها');
             }
@@ -240,7 +271,7 @@ class QuizAttemptController extends Controller
             $redirect = redirect()->route('student.quizzes.take', $attempt->id)
                 ->with('success', 'تم بدء الاختبار بنجاح');
 
-            if ($result['pool_recycled']) {
+            if (! empty($result['pool_recycled'])) {
                 $redirect->with('pool_recycled', true);
             }
 
@@ -341,54 +372,21 @@ class QuizAttemptController extends Controller
             }
         }
 
-        // Calculate remaining time
-        $remainingTime = null;
-        if ($attempt->quiz->time_limit && $attempt->started_at) {
-            $elapsedSeconds = $attempt->started_at->diffInSeconds(now());
-            $totalSeconds = $attempt->quiz->time_limit * 60;
-            $remainingTime = max(0, $totalSeconds - $elapsedSeconds);
-            
-            // Log for debugging
-            \Log::info('Quiz Timer Calculation', [
-                'attempt_id' => $attempt->id,
-                'quiz_id' => $attempt->quiz_id,
-                'time_limit' => $attempt->quiz->time_limit,
-                'started_at' => $attempt->started_at->toDateTimeString(),
-                'now' => now()->toDateTimeString(),
-                'elapsed_seconds' => $elapsedSeconds,
-                'total_seconds' => $totalSeconds,
-                'remaining_seconds' => $remainingTime
-            ]);
-        } else {
-            \Log::warning('Quiz timer not calculated', [
-                'attempt_id' => $attempt->id,
-                'has_time_limit' => !empty($attempt->quiz->time_limit),
-                'has_started_at' => !empty($attempt->started_at)
-            ]);
-        }
+        // Calculate remaining time (server-authoritative)
+        $remainingTime = $attempt->getRemainingSeconds();
+        $serverNowMs = (int) (now()->getTimestamp() * 1000);
+        $isExpiredPartialResume = $remainingTime === 0
+            && $attempt->quiz->time_limit
+            && $attempt->hasAnsweredResponses()
+            && ! $attempt->isFullyAnswered();
 
-        // Debug: Log questions and options
-        \Log::info('Quiz Questions Loaded', [
-            'attempt_id' => $attempt->id,
-            'questions_count' => $questions->count(),
-            'questions_details' => $questions->map(function($q) {
-                return [
-                    'id' => $q->id,
-                    'text' => substr($q->question_text ?? '', 0, 50),
-                    'type' => $q->questionType->name ?? 'unknown',
-                    'options_loaded' => $q->relationLoaded('options'),
-                    'options_count' => $q->options->count(),
-                    'options_sample' => $q->options->take(2)->map(function($o) {
-                        return [
-                            'id' => $o->id,
-                            'text' => substr($o->option_text ?? '', 0, 30),
-                        ];
-                    })->toArray(),
-                ];
-            })->toArray(),
-        ]);
-
-        return view('student.pages.quizzes.take', compact('attempt', 'questions', 'remainingTime'));
+        return view('student.pages.quizzes.take', compact(
+            'attempt',
+            'questions',
+            'remainingTime',
+            'serverNowMs',
+            'isExpiredPartialResume'
+        ));
     }
 
     /**

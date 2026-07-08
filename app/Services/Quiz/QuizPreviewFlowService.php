@@ -80,22 +80,16 @@ class QuizPreviewFlowService
             'responses',
         ]);
 
-        if ($attempt->quiz->time_limit && $attempt->started_at) {
-            $elapsedSeconds = $attempt->started_at->diffInSeconds(now());
-            $totalSeconds = $attempt->quiz->time_limit * 60;
-            $remainingTime = max(0, $totalSeconds - $elapsedSeconds);
+        $remainingTime = $attempt->getRemainingSeconds();
 
-            if ($remainingTime <= 0) {
-                $this->submitPreviewAttempt($attempt, []);
+        if ($remainingTime !== null && $remainingTime <= 0) {
+            $this->submitPreviewAttempt($attempt, []);
 
-                return [
-                    'questions' => collect(),
-                    'remainingTime' => 0,
-                    'timedOut' => true,
-                ];
-            }
-        } else {
-            $remainingTime = null;
+            return [
+                'questions' => collect(),
+                'remainingTime' => 0,
+                'timedOut' => true,
+            ];
         }
 
         $questions = $this->quizApiService->orderedQuestionsForAttempt($attempt);

@@ -82,6 +82,7 @@ class QuizPreviewController extends Controller
             'attempt' => $attempt,
             'questions' => $takeData['questions'],
             'remainingTime' => $takeData['remainingTime'],
+            'serverNowMs' => (int) (now()->getTimestamp() * 1000),
             'quiz' => $attempt->quiz,
         ]);
     }

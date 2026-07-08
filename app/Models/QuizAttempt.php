@@ -306,19 +306,31 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Whether the attempt time limit has elapsed.
+     * Remaining seconds for a timed attempt (null when unlimited).
      */
-    public function isTimeExpired(): bool
+    public function getRemainingSeconds(?\Carbon\CarbonInterface $now = null): ?int
     {
         $this->loadMissing('quiz');
 
         if (! $this->quiz?->time_limit || ! $this->started_at) {
-            return false;
+            return null;
         }
 
+        $now = $now ?? now();
         $limitSeconds = (int) $this->quiz->time_limit * 60;
+        $elapsedSeconds = max(0, $now->getTimestamp() - $this->started_at->getTimestamp());
 
-        return $this->started_at->diffInSeconds(now()) >= $limitSeconds;
+        return max(0, $limitSeconds - $elapsedSeconds);
+    }
+
+    /**
+     * Whether the attempt time limit has elapsed.
+     */
+    public function isTimeExpired(): bool
+    {
+        $remaining = $this->getRemainingSeconds();
+
+        return $remaining !== null && $remaining <= 0;
     }
 
     /**
