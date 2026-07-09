@@ -5709,7 +5709,16 @@ button.admin-course-content-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
+    width: 2.125rem;
+    height: 2.125rem;
+    padding: 0;
+    gap: 0;
+    flex-shrink: 0;
+}
+
+.admin-course-section-toolbar__actions .btn i {
+    font-size: 0.95rem;
+    line-height: 1;
 }
 
 .admin-course-modules-list {
@@ -5846,14 +5855,17 @@ button.admin-course-content-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
+    width: 2.125rem;
+    height: 2.125rem;
+    padding: 0;
+    gap: 0;
+    flex-shrink: 0;
     white-space: nowrap;
-    padding-inline: 0.75rem;
 }
 
-.admin-course-module-card__action-text {
-    font-size: 0.75rem;
-    font-weight: 600;
+.admin-course-module-card__actions .btn i {
+    font-size: 0.95rem;
+    line-height: 1;
 }
 
 .admin-course-module-card__questions {
@@ -5897,16 +5909,6 @@ button.admin-course-content-chip {
 .admin-course-section-item.sortable-chosen,
 .admin-course-module-card.sortable-chosen {
     box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.12);
-}
-
-@media (max-width: 1200px) {
-    .admin-course-module-card__action-text {
-        display: none;
-    }
-
-    .admin-course-module-card__actions .btn {
-        padding-inline: 0.55rem;
-    }
 }
 
 /* ── Admin module show page ── */

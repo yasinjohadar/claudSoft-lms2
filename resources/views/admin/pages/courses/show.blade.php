@@ -686,24 +686,26 @@
                                         </div>
                                         <div class="admin-course-section-toolbar__actions">
                                             <button type="button" class="btn btn-sm btn-warning-light rounded-pill manage-restrictions-btn"
-                                                    data-type="section" data-id="{{ $section->id }}" data-title="{{ $section->title }}">
-                                                <i class="fe fe-lock"></i><span>قيود</span>
+                                                    data-type="section" data-id="{{ $section->id }}" data-title="{{ $section->title }}"
+                                                    title="قيود المجموعات">
+                                                <i class="fe fe-lock"></i>
                                             </button>
-                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-success-light rounded-pill" onclick="event.stopPropagation();">
-                                                <i class="fe fe-help-circle"></i><span>أسئلة</span>
+                                            <a href="{{ route('sections.questions.manage', $section->id) }}" class="btn btn-sm btn-success-light rounded-pill" onclick="event.stopPropagation();" title="أسئلة القسم">
+                                                <i class="fe fe-help-circle"></i>
                                             </a>
-                                            <a href="{{ route('courses.sections.edit', [$course->id, $section->id]) }}" class="btn btn-sm btn-primary-light rounded-pill">
-                                                <i class="fe fe-edit-2"></i><span>تحرير</span>
+                                            <a href="{{ route('courses.sections.edit', [$course->id, $section->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير القسم">
+                                                <i class="fe fe-edit-2"></i>
                                             </a>
                                             <button type="button" class="btn btn-sm btn-secondary-light rounded-pill section-visibility-btn"
                                                     id="section-visibility-btn-{{ $section->id }}"
-                                                    onclick="toggleVisibility('section', {{ $section->id }})">
+                                                    onclick="toggleVisibility('section', {{ $section->id }})"
+                                                    title="{{ $section->is_visible ? 'إخفاء' : 'إظهار' }}">
                                                 <i class="fe fe-eye{{ $section->is_visible ? '-off' : '' }}"></i>
-                                                <span>{{ $section->is_visible ? 'إخفاء' : 'إظهار' }}</span>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-danger-light rounded-pill"
-                                                    data-bs-toggle="modal" data-bs-target="#deleteSectionModal{{ $section->id }}">
-                                                <i class="fe fe-trash-2"></i><span>حذف</span>
+                                                    data-bs-toggle="modal" data-bs-target="#deleteSectionModal{{ $section->id }}"
+                                                    title="حذف القسم">
+                                                <i class="fe fe-trash-2"></i>
                                             </button>
                                         </div>
                                         <form id="delete-section-{{ $section->id }}"
@@ -1045,9 +1047,11 @@
                     const button = document.getElementById(`section-visibility-btn-${id}`);
                     if (button) {
                         if (data.is_visible) {
-                            button.innerHTML = '<i class="fe fe-eye-off"></i><span>إخفاء</span>';
+                            button.innerHTML = '<i class="fe fe-eye-off"></i>';
+                            button.title = 'إخفاء';
                         } else {
-                            button.innerHTML = '<i class="fe fe-eye"></i><span>إظهار</span>';
+                            button.innerHTML = '<i class="fe fe-eye"></i>';
+                            button.title = 'إظهار';
                         }
                     }
                 } else if (type === 'module') {
@@ -1055,9 +1059,11 @@
                     const button = document.getElementById(`module-visibility-btn-${id}`);
                     if (button) {
                         if (data.is_visible) {
-                            button.innerHTML = '<i class="fe fe-eye-off"></i><span class="admin-course-module-card__action-text">إخفاء</span>';
+                            button.innerHTML = '<i class="fe fe-eye-off"></i>';
+                            button.title = 'إخفاء';
                         } else {
-                            button.innerHTML = '<i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">إظهار</span>';
+                            button.innerHTML = '<i class="fe fe-eye"></i>';
+                            button.title = 'إظهار';
                         }
                     }
                     const badge = document.getElementById(`module-visibility-badge-${id}`);

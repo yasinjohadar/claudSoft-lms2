@@ -133,86 +133,75 @@
                     data-id="{{ $module->id }}"
                     data-title="{{ $module->title }}"
                     title="قيود المجموعات">
-                <i class="fe fe-lock"></i><span class="admin-course-module-card__action-text">قيود</span>
+                <i class="fe fe-lock"></i>
             </button>
 
             <a href="{{ route('courses.modules.completions', ['course' => $course->id, 'module' => $module->id]) }}"
                class="btn btn-sm btn-success-light rounded-pill"
                title="تقدم الطلاب">
-                <i class="fe fe-user-check"></i><span class="admin-course-module-card__action-text">التقدم</span>
+                <i class="fe fe-user-check"></i>
             </a>
 
             @if($module->module_type == 'assignment' && $module->modulable_id)
                 <a href="{{ route('assignments.show', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @elseif($module->module_type == 'quiz' && $module->modulable_id)
                 <a href="{{ route('quizzes.show', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @elseif($module->module_type == 'question_module' && $module->modulable_id)
                 <a href="{{ route('question-modules.show', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @elseif($module->module_type == 'programming_challenge' && $module->modulable_id)
                 <a href="{{ route('programming-challenges.edit', $module->modulable_id) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @elseif($module->module_type == 'documentation' && $module->modulable)
                 <a href="{{ $module->modulable->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-sm btn-info-light rounded-pill" title="عرض التوثيق">
-                    <i class="fe fe-external-link"></i><span class="admin-course-module-card__action-text">عرض</span>
+                    <i class="fe fe-external-link"></i>
                 </a>
             @elseif($module->module_type == 'simulator' && $module->modulable)
                 <a href="{{ route('admin.lesson-simulators.preview', $module->modulable_id) }}" target="_blank" class="btn btn-sm btn-info-light rounded-pill" title="معاينة المحاكاة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @else
                 <a href="{{ route('sections.modules.show', [$section->id, $module->id]) }}" class="btn btn-sm btn-info-light rounded-pill" title="معاينة">
-                    <i class="fe fe-eye"></i><span class="admin-course-module-card__action-text">معاينة</span>
-                </a>
+                    <i class="fe fe-eye"></i>                </a>
             @endif
 
             @if($module->module_type == 'assignment' && $module->modulable_id)
                 <a href="{{ route('assignments.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
-                </a>
+                    <i class="fe fe-edit-2"></i>                </a>
             @elseif($module->module_type == 'quiz' && $module->modulable_id)
                 <a href="{{ route('quizzes.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
-                </a>
+                    <i class="fe fe-edit-2"></i>                </a>
             @elseif($module->module_type == 'question_module' && $module->modulable_id)
                 <a href="{{ route('question-modules.manage-questions', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
-                </a>
+                    <i class="fe fe-edit-2"></i>                </a>
             @elseif($module->module_type == 'programming_challenge' && $module->modulable_id)
                 <a href="{{ route('programming-challenges.manage-languages', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
-                </a>
+                    <i class="fe fe-edit-2"></i>                </a>
             @elseif($module->module_type == 'documentation' && $module->modulable)
                 <a href="{{ route('admin.docs.pages.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير التوثيق">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">التوثيق</span>
+                    <i class="fe fe-edit-2"></i>
                 </a>
                 <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير الوحدة">
-                    <i class="fe fe-layers"></i><span class="admin-course-module-card__action-text">الوحدة</span>
+                    <i class="fe fe-layers"></i>
                 </a>
             @elseif($module->module_type == 'simulator' && $module->modulable)
                 <a href="{{ route('admin.lesson-simulators.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير المحاكاة">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">المحاكاة</span>
+                    <i class="fe fe-edit-2"></i>
                 </a>
                 <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير الوحدة">
-                    <i class="fe fe-layers"></i><span class="admin-course-module-card__action-text">الوحدة</span>
+                    <i class="fe fe-layers"></i>
                 </a>
             @elseif($module->module_type == 'video' && $module->modulable_id)
                 <a href="{{ route('videos.edit', $module->modulable_id) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تعديل الفيديو">
-                    <i class="fe fe-video"></i><span class="admin-course-module-card__action-text">الفيديو</span>
+                    <i class="fe fe-video"></i>
                 </a>
                 <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير الوحدة">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">الوحدة</span>
+                    <i class="fe fe-edit-2"></i>
                 </a>
             @else
                 <a href="{{ route('sections.modules.edit', [$section->id, $module->id]) }}" class="btn btn-sm btn-primary-light rounded-pill" title="تحرير">
-                    <i class="fe fe-edit-2"></i><span class="admin-course-module-card__action-text">تحرير</span>
-                </a>
+                    <i class="fe fe-edit-2"></i>                </a>
             @endif
 
             <button type="button"
@@ -221,7 +210,6 @@
                     onclick="toggleVisibility('module', {{ $module->id }})"
                     title="{{ $module->is_visible ? 'إخفاء' : 'إظهار' }}">
                 <i class="fe fe-eye{{ $module->is_visible ? '-off' : '' }}"></i>
-                <span class="admin-course-module-card__action-text">{{ $module->is_visible ? 'إخفاء' : 'إظهار' }}</span>
             </button>
 
             <button type="button"
@@ -231,7 +219,7 @@
                     data-module-id="{{ $module->id }}"
                     data-module-title="{{ $module->title }}"
                     title="حذف">
-                <i class="fe fe-trash-2"></i><span class="admin-course-module-card__action-text">حذف</span>
+                <i class="fe fe-trash-2"></i>
             </button>
         </div>
     </div>
