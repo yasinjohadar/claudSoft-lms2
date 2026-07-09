@@ -277,36 +277,71 @@
 <script>
 let optionCount = {{ $question->options->count() }};
 
+function questionTypeNeedsOptions(typeName, displayText) {
+    if (typeName === 'fill_blanks') {
+        return true;
+    }
+
+    const needsOptions = ['اختيار من متعدد', 'صح / خطأ', 'صح وخطأ', 'مطابقة', 'ترتيب', 'ملء الفراغات'];
+    return needsOptions.some(type => displayText.includes(type));
+}
+
+function isFillBlanksType(typeName, displayText) {
+    return typeName === 'fill_blanks' || displayText.includes('ملء الفراغات');
+}
+
+function applyFillBlanksOptionsUi(isFillBlanks) {
+    const $section = $('#options-section');
+    const $title = $section.find('.card-title');
+    const $addBtn = $('#add-option-btn');
+
+    if (isFillBlanks) {
+        $title.html('<span class="assignments-section-icon"><i class="fe fe-check-circle"></i></span> الإجابات الصحيحة');
+        $addBtn.html('<i class="fe fe-plus me-1"></i>إضافة إجابة بديلة');
+        $section.find('.option-item').each(function() {
+            const $item = $(this);
+            $item.find('label:contains("نص الخيار")').text('الإجابة الصحيحة');
+            $item.find('.form-check').hide();
+            if ($item.find('input[type="hidden"][name$="[is_correct]"]').length === 0) {
+                const checkbox = $item.find('input[type="checkbox"][name$="[is_correct]"]');
+                if (checkbox.length) {
+                    $('<input>', {
+                        type: 'hidden',
+                        name: checkbox.attr('name'),
+                        value: '1'
+                    }).insertAfter(checkbox);
+                }
+            }
+        });
+    } else {
+        $title.html('<span class="assignments-section-icon"><i class="fe fe-list"></i></span> خيارات الإجابة');
+        $addBtn.html('<i class="fe fe-plus me-1"></i>إضافة خيار');
+        $section.find('input[type="hidden"][name$="[is_correct]"]').remove();
+        $section.find('.form-check').show();
+    }
+}
+
 $(document).ready(function() {
     // Check if options section should be shown on load
     const selectedOption = $('#question_type_id option:selected');
     const selectedType = selectedOption.text();
     const selectedTypeName = selectedOption.data('type-name') || '';
-    const needsOptions = ['اختيار من متعدد', 'صح / خطأ', 'صح وخطأ', 'مطابقة', 'ترتيب'];
-    let showOptions = false;
-
-    needsOptions.forEach(type => {
-        if (selectedType.includes(type)) {
-            showOptions = true;
-        }
-    });
+    const showOptions = questionTypeNeedsOptions(selectedTypeName, selectedType);
+    const fillBlanks = isFillBlanksType(selectedTypeName, selectedType);
 
     if (!showOptions) {
         $('#options-section').hide();
     } else {
+        if (fillBlanks) {
+            applyFillBlanksOptionsUi(true);
+        }
         // إذا كان السؤال من نوع true_false وليس لديه خيارات، أضف خيارين تلقائياً
         const isTrueFalse = selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ');
         const hasNoOptions = $('#options-container .option-item').length === 0;
-        
-        console.log('DEBUG: Checking true_false options', {
-            selectedType: selectedType,
-            selectedTypeName: selectedTypeName,
-            isTrueFalse: isTrueFalse,
-            hasNoOptions: hasNoOptions,
-            optionsCount: $('#options-container .option-item').length
-        });
-        
-        if (isTrueFalse && hasNoOptions) {
+
+        if (fillBlanks && hasNoOptions) {
+            addOption();
+        } else if (isTrueFalse && hasNoOptions) {
             // إضافة خيار "صح"
             optionCount++;
             const trueOptionHtml = `
@@ -400,19 +435,16 @@ $(document).ready(function() {
         const selectedOption = $(this).find('option:selected');
         const selectedType = selectedOption.text();
         const selectedTypeName = selectedOption.data('type-name') || '';
-        const needsOptions = ['اختيار من متعدد', 'صح / خطأ', 'صح وخطأ', 'مطابقة', 'ترتيب'];
-
-        let showOptions = false;
-        needsOptions.forEach(type => {
-            if (selectedType.includes(type)) {
-                showOptions = true;
-            }
-        });
+        const showOptions = questionTypeNeedsOptions(selectedTypeName, selectedType);
+        const fillBlanks = isFillBlanksType(selectedTypeName, selectedType);
 
         if (showOptions) {
             $('#options-section').show();
+            applyFillBlanksOptionsUi(fillBlanks);
             if ($('#options-container .option-item').length === 0) {
-                if (selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ')) {
+                if (fillBlanks) {
+                    addOption();
+                } else if (selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ')) {
                     // إضافة خيارين تلقائياً لـ true_false
                     optionCount++;
                     const trueOptionHtml = `
@@ -523,13 +555,30 @@ $(document).ready(function() {
 
 function addOption() {
     optionCount++;
+    const selectedOption = $('#question_type_id option:selected');
+    const fillBlanks = isFillBlanksType(
+        selectedOption.data('type-name') || '',
+        selectedOption.text()
+    );
+    const labelText = fillBlanks ? 'الإجابة الصحيحة' : `نص الخيار ${optionCount}`;
+    const placeholder = fillBlanks ? 'الإجابة الصحيحة للفراغ...' : 'أدخل نص الخيار...';
+    const correctField = fillBlanks
+        ? `<input type="hidden" name="options[${optionCount}][is_correct]" value="1">`
+        : `<div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox"
+                       name="options[${optionCount}][is_correct]"
+                       id="correct_${optionCount}" value="1">
+                <label class="form-check-label" for="correct_${optionCount}">
+                    <i class="fe fe-check me-1"></i>إجابة صحيحة
+                </label>
+           </div>`;
     const optionHtml = `
         <div class="option-item qb-option-item mb-3 p-3 border rounded">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">نص الخيار ${optionCount}</label>
+                    <label class="form-label">${labelText}</label>
                     <input type="text" name="options[${optionCount}][option_text]"
-                           class="form-control" placeholder="أدخل نص الخيار..." required>
+                           class="form-control" placeholder="${placeholder}" required>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">الترتيب</label>
@@ -547,14 +596,7 @@ function addOption() {
                            class="form-control" placeholder="ملاحظات عند اختيار هذا الخيار...">
                 </div>
                 <div class="col-md-3">
-                    <div class="form-check mt-4">
-                        <input class="form-check-input" type="checkbox"
-                               name="options[${optionCount}][is_correct]"
-                               id="correct_${optionCount}" value="1">
-                        <label class="form-check-label" for="correct_${optionCount}">
-                            <i class="fe fe-check me-1"></i>إجابة صحيحة
-                        </label>
-                    </div>
+                    ${correctField}
                     <button type="button" class="btn btn-sm btn-danger remove-option-btn mt-2">
                         <i class="fas fa-trash"></i>
                     </button>
