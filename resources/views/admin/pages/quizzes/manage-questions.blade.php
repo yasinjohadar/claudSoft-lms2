@@ -138,7 +138,12 @@
                                                     <td>
                                                         <input type="checkbox" class="question-row-checkbox" value="{{ $question->id }}">
                                                     </td>
-                                                    <td><i class="fe fe-menu handle" style="cursor: move;"></i></td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="question-order-number fw-semibold text-muted">{{ $loop->iteration }}</span>
+                                                            <i class="fe fe-menu handle" style="cursor: move;" title="سحب لإعادة الترتيب"></i>
+                                                        </div>
+                                                    </td>
                                                     <td>
                                                         <div class="d-flex align-items-start">
                                                             <div>
@@ -302,6 +307,12 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 $(document).ready(function() {
+    function updateQuestionOrderNumbers() {
+        $('#questions-sortable tr').each(function(index) {
+            $(this).find('.question-order-number').text(index + 1);
+        });
+    }
+
     // Cleanup modals on hide
     $('#deleteQuestionModal').on('hidden.bs.modal', function() {
         // Remove backdrop if it exists
@@ -345,6 +356,7 @@ $(document).ready(function() {
                     },
                     success: function(response) {
                         if (response.success) {
+                            updateQuestionOrderNumbers();
                             toastr.success(response.message || 'تم إعادة ترتيب الأسئلة بنجاح');
                         }
                     },
@@ -444,7 +456,8 @@ $(document).ready(function() {
                     // Remove row with animation
                     row.fadeOut(300, function() {
                         $(this).remove();
-                        
+                        updateQuestionOrderNumbers();
+
                         // Update questions count
                         const remainingCount = $('#questions-sortable tr').length;
                         $('#questions-count').text(remainingCount);
@@ -590,6 +603,7 @@ $(document).ready(function() {
                                 
                                 // Update count when all rows are removed
                                 if (removedCount === selectedQuestions.length) {
+                                    updateQuestionOrderNumbers();
                                     const remainingCount = $('#questions-sortable tr').length;
                                     $('#questions-count').text(remainingCount);
                                     
