@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\Course;
 use App\Models\CourseGroup;
 use App\Models\CourseModule;
+use App\Models\ModuleCompletion;
 use App\Models\StudentWeeklyReport;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -419,23 +420,29 @@ class StudentWeeklyReportService
     }
 
     /**
-     * @return Collection<int, array{id: int, title: string, module_type: string, type_label: string}>
+     * @return Collection<int, array{id: int, title: string, module_type: string, type_label: string, is_completed: bool}>
      */
     public function resolveSelectableModulesForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
     {
-        return $this->getFilteredSelectableModules($studentId, $report, $courseId)
-            ->map(fn (CourseModule $module) => $this->formatSelectableModule($module))
+        $modules = $this->getFilteredSelectableModules($studentId, $report, $courseId);
+        $completedModuleIds = $this->resolveCompletedModuleIds($studentId, $modules);
+
+        return $modules
+            ->map(fn (CourseModule $module) => $this->formatSelectableModule($module, $completedModuleIds))
             ->values();
     }
 
     /**
-     * @return Collection<int, array{section_id: int, section_title: string, section_sort_order: int, modules: array<int, array{id: int, title: string, module_type: string, type_label: string}>}>
+     * @return Collection<int, array{section_id: int, section_title: string, section_sort_order: int, modules: array<int, array{id: int, title: string, module_type: string, type_label: string, is_completed: bool}>}>
      */
     public function resolveSelectableModuleGroupsForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
     {
-        return $this->getFilteredSelectableModules($studentId, $report, $courseId)
+        $modules = $this->getFilteredSelectableModules($studentId, $report, $courseId);
+        $completedModuleIds = $this->resolveCompletedModuleIds($studentId, $modules);
+
+        return $modules
             ->groupBy('section_id')
-            ->map(function (Collection $sectionModules) {
+            ->map(function (Collection $sectionModules) use ($completedModuleIds) {
                 $section = $sectionModules->first()?->section;
                 $sectionTitle = $section?->title ?? 'بدون قسم';
 
@@ -446,7 +453,7 @@ class StudentWeeklyReportService
                     'modules' => $sectionModules
                         ->sortBy('sort_order')
                         ->values()
-                        ->map(fn (CourseModule $module) => $this->formatSelectableModule($module))
+                        ->map(fn (CourseModule $module) => $this->formatSelectableModule($module, $completedModuleIds))
                         ->all(),
                 ];
             })
@@ -478,6 +485,63 @@ class StudentWeeklyReportService
                     'module_ids' => $items->pluck('module_id')->filter()->values()->all(),
                 ];
             })
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, array{section_id: int, section_title: string, section_sort_order: int, items: array<int, array{id: int, module_id: int, title: string, type_label: string, is_completed: bool}>}>
+     */
+    public function groupSelectedLessonsBySectionForDisplay(StudentWeeklyReport $report): Collection
+    {
+        $report->loadMissing([
+            'selectedLessons.module.section',
+            'selectedLessons.lesson',
+            'selectedLessons.course',
+        ]);
+
+        if ($report->selectedLessons->isEmpty()) {
+            return collect();
+        }
+
+        $moduleIds = $report->selectedLessons
+            ->pluck('module_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        $completedModuleIds = $moduleIds->isEmpty()
+            ? []
+            : $this->resolveCompletedModuleIds((int) $report->student_id, CourseModule::query()->whereIn('id', $moduleIds)->get());
+
+        return $report->selectedLessons
+            ->groupBy(fn ($item) => (int) ($item->module?->section_id ?? 0))
+            ->map(function (Collection $items, $sectionId) use ($completedModuleIds) {
+                $section = $items->first()?->module?->section;
+                $sectionTitle = $section?->title ?? 'بدون قسم';
+
+                return [
+                    'section_id' => (int) $sectionId,
+                    'section_title' => $sectionTitle,
+                    'section_sort_order' => (int) ($section?->sort_order ?? $section?->order_index ?? 0),
+                    'items' => $items
+                        ->sortBy(fn ($item) => $item->module?->sort_order ?? 0)
+                        ->values()
+                        ->map(function ($item) use ($completedModuleIds) {
+                            $moduleId = (int) ($item->module_id ?? 0);
+                            $moduleType = $item->module?->module_type;
+
+                            return [
+                                'id' => (int) $item->id,
+                                'module_id' => $moduleId,
+                                'title' => $item->module?->title ?? $item->lesson?->title ?? '-',
+                                'type_label' => $this->moduleTypeLabel($moduleType),
+                                'is_completed' => in_array($moduleId, $completedModuleIds, true),
+                            ];
+                        })
+                        ->all(),
+                ];
+            })
+            ->sortBy('section_sort_order')
             ->values();
     }
 
@@ -685,16 +749,36 @@ class StudentWeeklyReportService
     }
 
     /**
-     * @return array{id: int, title: string, module_type: string, type_label: string}
+     * @param  array<int, int>  $completedModuleIds
+     * @return array{id: int, title: string, module_type: string, type_label: string, is_completed: bool}
      */
-    private function formatSelectableModule(CourseModule $module): array
+    private function formatSelectableModule(CourseModule $module, array $completedModuleIds): array
     {
         return [
             'id' => (int) $module->id,
             'title' => $module->title,
             'module_type' => $module->module_type,
             'type_label' => $this->moduleTypeLabel($module->module_type),
+            'is_completed' => in_array((int) $module->id, $completedModuleIds, true),
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function resolveCompletedModuleIds(int $studentId, Collection $modules): array
+    {
+        if ($modules->isEmpty()) {
+            return [];
+        }
+
+        return ModuleCompletion::query()
+            ->where('student_id', $studentId)
+            ->whereIn('module_id', $modules->pluck('id'))
+            ->where('completion_status', 'completed')
+            ->pluck('module_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     private function moduleTypeLabel(?string $moduleType): string

@@ -1086,6 +1086,15 @@ test('it groups selectable modules by course section', function () {
         'updated_at' => now(),
     ]);
 
+    DB::table('module_completions')->insert([
+        'student_id' => $student->id,
+        'module_id' => $lessonId,
+        'completion_status' => 'completed',
+        'completed_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     $quizId = DB::table('course_modules')->insertGetId([
         'course_id' => $courseId,
         'section_id' => $sectionOneId,
@@ -1122,8 +1131,115 @@ test('it groups selectable modules by course section', function () {
     expect($groups)->toHaveCount(2);
     expect($groups->first()['section_title'])->toBe('Images -8');
     expect(collect($groups->first()['modules'])->pluck('id')->all())->toBe([$lessonId, $quizId]);
+    expect(collect($groups->first()['modules'])->firstWhere('id', $lessonId)['is_completed'])->toBeTrue();
+    expect(collect($groups->first()['modules'])->firstWhere('id', $quizId)['is_completed'])->toBeFalse();
     expect($groups->last()['section_title'])->toBe('List -9');
     expect($groups->last()['modules'][0]['type_label'])->toBe('توثيق');
     expect($groups->last()['modules'][0]['id'])->toBe($docId);
+});
+
+test('it groups selected lessons by section for display with completion status', function () {
+    $student = User::factory()->create();
+
+    $courseCategoryId = DB::table('course_categories')->insertGetId([
+        'name' => 'Display Group Category',
+        'slug' => 'display-group-category',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $courseId = DB::table('courses')->insertGetId([
+        'course_category_id' => $courseCategoryId,
+        'title' => 'Display Group Course',
+        'slug' => 'display-group-course',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionOneId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'Section Alpha',
+        'is_visible' => true,
+        'sort_order' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionTwoId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'Section Beta',
+        'is_visible' => true,
+        'sort_order' => 2,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $completedModuleId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionOneId,
+        'module_type' => 'lesson',
+        'title' => 'Completed lesson',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $openModuleId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionTwoId,
+        'module_type' => 'quiz',
+        'title' => 'Open quiz',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('module_completions')->insert([
+        'student_id' => $student->id,
+        'module_id' => $completedModuleId,
+        'completion_status' => 'completed',
+        'completed_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $report = StudentWeeklyReport::create([
+        'student_id' => $student->id,
+        'target_course_id' => $courseId,
+        'report_title' => 'Display grouped lessons',
+        'status' => StudentWeeklyReport::STATUS_SUBMITTED,
+        'submitted_at' => now(),
+    ]);
+
+    DB::table('student_weekly_report_lessons')->insert([
+        [
+            'student_weekly_report_id' => $report->id,
+            'course_id' => $courseId,
+            'module_id' => $completedModuleId,
+            'lesson_id' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+        [
+            'student_weekly_report_id' => $report->id,
+            'course_id' => $courseId,
+            'module_id' => $openModuleId,
+            'lesson_id' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    $service = app(StudentWeeklyReportService::class);
+    $groups = $service->groupSelectedLessonsBySectionForDisplay($report->fresh());
+
+    expect($groups)->toHaveCount(2);
+    expect($groups->first()['section_title'])->toBe('Section Alpha');
+    expect($groups->first()['items'][0]['is_completed'])->toBeTrue();
+    expect($groups->last()['section_title'])->toBe('Section Beta');
+    expect($groups->last()['items'][0]['is_completed'])->toBeFalse();
+    expect($groups->last()['items'][0]['type_label'])->toBe('اختبار');
 });
 

@@ -426,11 +426,16 @@ class StudentWeeklyReportController extends Controller
             'targetGroup',
             'createdByAdmin:id,name,name_ar',
             'selectedLessons.lesson',
-            'selectedLessons.module',
+            'selectedLessons.module.section',
             'selectedLessons.course',
         ]);
 
-        return view('admin.weekly-reports.show', ['report' => $weeklyReport]);
+        $selectedLessonGroups = $this->reportService->groupSelectedLessonsBySectionForDisplay($weeklyReport);
+
+        return view('admin.weekly-reports.show', [
+            'report' => $weeklyReport,
+            'selectedLessonGroups' => $selectedLessonGroups,
+        ]);
     }
 
 

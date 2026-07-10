@@ -121,30 +121,15 @@
                                         </div>
                                         <div class="col-md-7">
                                             <label class="form-label fs-12">الدروس</label>
-                                            <select class="form-select module-multi-select" multiple data-selected-modules='@json($row['module_ids'] ?? [])'>
-                                            </select>
+                                            <div class="weekly-report-module-select-wrap">
+                                                <select class="form-select module-multi-select weekly-report-module-select" multiple data-selected-modules='@json($row['module_ids'] ?? [])'>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 @endforeach
                             @else
-                                @if($report->selectedLessons->isNotEmpty())
-                                    <ul class="list-group list-group-flush border rounded">
-                                        @foreach($report->selectedLessons as $item)
-                                            <li class="list-group-item d-flex align-items-center gap-2">
-                                                <span class="avatar avatar-sm bg-primary-transparent">
-                                                    <i class="ri-book-open-line text-primary"></i>
-                                                </span>
-                                                <span>
-                                                    {{ $item->course->title ?? '-' }}
-                                                    <span class="text-muted">—</span>
-                                                    {{ $item->module->title ?? $item->lesson->title ?? '-' }}
-                                                </span>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                @else
-                                    <div class="alert alert-light mb-0">لا توجد دروس محددة.</div>
-                                @endif
+                                @include('admin.weekly-reports.partials.selected-lessons-grouped', ['selectedLessonGroups' => $selectedLessonGroups ?? collect()])
                             @endif
                         </div>
                         @if($canEdit && !$fixedCourse && $courses->count() > 1)
@@ -179,6 +164,41 @@
     @include('student.weekly-reports.partials.tinymce-editor')
 @endif
 @if($canEdit)
+<style>
+    .weekly-report-module-select-wrap .choices__list--dropdown .choices__heading.weekly-report-section-heading {
+        color: #0b5ed7;
+        background: rgba(13, 110, 253, 0.1);
+        border-radius: 0.35rem;
+        font-weight: 700;
+        font-size: 0.82rem;
+        margin: 0.35rem 0.4rem 0.2rem;
+        padding: 0.45rem 0.65rem;
+    }
+
+    .weekly-report-module-select-wrap .choices__list--dropdown .choices__item--choice {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .weekly-report-module-select-wrap .choices__list--dropdown .choices__item--choice.weekly-report-module-choice--completed {
+        background: rgba(25, 135, 84, 0.08);
+    }
+
+    .weekly-report-module-select-wrap .weekly-report-module-completed {
+        color: #198754;
+        font-weight: 700;
+        font-size: 0.78rem;
+        margin-inline-start: auto;
+        white-space: nowrap;
+    }
+
+    .weekly-report-module-select-wrap .choices__list--multiple .choices__item.weekly-report-selected-item--completed {
+        background: rgba(25, 135, 84, 0.14);
+        border-color: rgba(25, 135, 84, 0.35);
+        color: #146c43;
+    }
+</style>
 <script>
 (() => {
     const reportId = @json($report->id);
@@ -235,9 +255,58 @@
         }
     }
 
+    function buildCompletedMap(moduleGroups) {
+        const completedMap = new Map();
+        moduleGroups.forEach((group) => {
+            (group.modules || []).forEach((module) => {
+                if (module.is_completed) {
+                    completedMap.set(String(module.id), true);
+                }
+            });
+        });
+        return completedMap;
+    }
+
+    function decorateWeeklyReportChoices(selectEl, completedMap) {
+        const wrap = selectEl.closest('.weekly-report-module-select-wrap');
+        const choicesRoot = wrap?.querySelector('.choices');
+        if (!choicesRoot || !completedMap) {
+            return;
+        }
+
+        choicesRoot.querySelectorAll('.choices__heading').forEach((heading) => {
+            heading.classList.add('weekly-report-section-heading');
+        });
+
+        choicesRoot.querySelectorAll('.choices__list--dropdown .choices__item--choice').forEach((item) => {
+            const value = String(item.dataset.value || '');
+            const isCompleted = completedMap.has(value);
+            item.classList.toggle('weekly-report-module-choice--completed', isCompleted);
+
+            let badge = item.querySelector('.weekly-report-module-completed');
+            if (isCompleted) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'weekly-report-module-completed';
+                    badge.textContent = 'مكتمل';
+                    item.appendChild(badge);
+                }
+            } else if (badge) {
+                badge.remove();
+            }
+        });
+
+        choicesRoot.querySelectorAll('.choices__list--multiple .choices__item').forEach((item) => {
+            const value = String(item.dataset.value || '');
+            item.classList.toggle('weekly-report-selected-item--completed', completedMap.has(value));
+        });
+    }
+
     function initModuleChoices(selectEl, moduleGroups, selectedIds) {
         destroyChoices(selectEl);
         selectEl.innerHTML = '';
+
+        const completedMap = buildCompletedMap(moduleGroups);
 
         moduleGroups.forEach((group) => {
             const optgroup = document.createElement('optgroup');
@@ -248,6 +317,9 @@
                 opt.value = module.id;
                 const typePrefix = module.type_label ? `${module.type_label}: ` : '';
                 opt.textContent = `${typePrefix}${module.title}`;
+                if (module.is_completed) {
+                    opt.dataset.completed = '1';
+                }
                 if (selectedIds.map(String).includes(String(module.id))) {
                     opt.selected = true;
                 }
@@ -278,6 +350,12 @@
             shouldSort: false,
         });
         rowChoices.set(selectEl, instance);
+
+        const refreshDecoration = () => decorateWeeklyReportChoices(selectEl, completedMap);
+        refreshDecoration();
+        selectEl.addEventListener('showDropdown', refreshDecoration);
+        selectEl.addEventListener('addItem', refreshDecoration);
+        selectEl.addEventListener('removeItem', refreshDecoration);
     }
 
     function getRowCourseId(row) {
@@ -394,7 +472,9 @@
                 </div>
                 <div class="col-md-7">
                     <label class="form-label fs-12">الدروس</label>
-                    <select class="form-select module-multi-select" multiple data-selected-modules="[]"></select>
+                    <div class="weekly-report-module-select-wrap">
+                        <select class="form-select module-multi-select weekly-report-module-select" multiple data-selected-modules="[]"></select>
+                    </div>
                 </div>
             `;
             container.appendChild(row);

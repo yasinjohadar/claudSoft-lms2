@@ -97,24 +97,7 @@
 
                         <div>
                             <h6 class="text-muted fs-12 text-uppercase mb-2">الدروس المختارة</h6>
-                            @if($report->selectedLessons->isNotEmpty())
-                                <ul class="list-group list-group-flush border rounded">
-                                    @foreach($report->selectedLessons as $item)
-                                        <li class="list-group-item d-flex align-items-center gap-2">
-                                            <span class="avatar avatar-sm bg-primary-transparent flex-shrink-0">
-                                                <i class="fe fe-book-open text-primary"></i>
-                                            </span>
-                                            <span>
-                                                {{ $item->course->title ?? '-' }}
-                                                <span class="text-muted">—</span>
-                                                {{ $item->module->title ?? $item->lesson->title ?? '-' }}
-                                            </span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <div class="alert alert-light border mb-0">لا توجد دروس محددة.</div>
-                            @endif
+                            @include('admin.weekly-reports.partials.selected-lessons-grouped', ['selectedLessonGroups' => $selectedLessonGroups ?? collect()])
                         </div>
                     </div>
                 </div>
