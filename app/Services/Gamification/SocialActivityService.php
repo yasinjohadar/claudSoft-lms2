@@ -4,14 +4,21 @@ namespace App\Services\Gamification;
 
 use App\Models\User;
 use App\Models\SocialActivity;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SocialActivityService
 {
     public function __construct(
         protected GamificationService $gamificationService
     ) {}
+
+    protected function socialActivitiesAvailable(): bool
+    {
+        return Schema::hasTable('social_activities');
+    }
 
     /**
      * إنشاء نشاط اجتماعي
@@ -24,6 +31,10 @@ class SocialActivityService
         ?int $relatedId = null,
         ?array $metadata = null
     ): ?SocialActivity {
+        if (!$this->socialActivitiesAvailable()) {
+            return null;
+        }
+
         try {
             $activity = SocialActivity::create([
                 'user_id' => $user->id,
@@ -33,7 +44,6 @@ class SocialActivityService
                 'related_id' => $relatedId,
                 'metadata' => $metadata,
                 'is_public' => true,
-                'created_at' => now(),
             ]);
 
             Log::info('Social activity created', [
@@ -195,6 +205,10 @@ class SocialActivityService
      */
     public function getFriendsActivities(User $user, int $limit = 20)
     {
+        if (!$this->socialActivitiesAvailable()) {
+            return new Collection();
+        }
+
         $friendshipService = app(FriendshipService::class);
         $friendIds = $friendshipService->getFriends($user)->pluck('id');
 
@@ -217,6 +231,10 @@ class SocialActivityService
      */
     public function getUserActivities(User $targetUser, ?User $viewer = null, int $limit = 20)
     {
+        if (!$this->socialActivitiesAvailable()) {
+            return new Collection();
+        }
+
         $query = SocialActivity::where('user_id', $targetUser->id);
 
         // إذا كان المشاهد ليس صديق، عرض الأنشطة العامة فقط
@@ -336,6 +354,16 @@ class SocialActivityService
      */
     public function getUserSocialStats(User $user): array
     {
+        if (!$this->socialActivitiesAvailable()) {
+            return [
+                'total_activities' => 0,
+                'total_likes_received' => 0,
+                'total_comments_received' => 0,
+                'activities_by_type' => collect(),
+                'most_liked_activity' => null,
+            ];
+        }
+
         $totalActivities = SocialActivity::where('user_id', $user->id)->count();
 
         $totalLikes = SocialActivity::where('user_id', $user->id)->sum('likes_count');
