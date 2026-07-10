@@ -6,7 +6,6 @@ use App\Events\AssignmentSubmitted;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
-use App\Models\CourseEnrollment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,12 +15,9 @@ class AssignmentApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         $studentId = $request->user()->id;
-        $enrolledCourseIds = CourseEnrollment::where('student_id', $studentId)
-            ->where('enrollment_status', 'active')
-            ->pluck('course_id');
 
-        $assignments = Assignment::with(['course', 'lesson'])
-            ->whereIn('course_id', $enrolledCourseIds)
+        $assignments = Assignment::with(['course', 'lesson', 'targetGroup'])
+            ->visibleToStudent($studentId)
             ->where('is_published', true)
             ->orderBy('due_date')
             ->get();
@@ -55,9 +51,13 @@ class AssignmentApiController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $assignment = Assignment::with(['course', 'lesson'])
+        $assignment = Assignment::with(['course', 'lesson', 'targetGroup'])
             ->where('is_published', true)
             ->findOrFail($id);
+
+        if (! $assignment->isVisibleToStudent((int) $request->user()->id)) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
 
         $submissions = AssignmentSubmission::where('assignment_id', $id)
             ->where('student_id', $request->user()->id)
@@ -80,6 +80,11 @@ class AssignmentApiController extends Controller
     public function submit(Request $request, int $id): JsonResponse
     {
         $assignment = Assignment::findOrFail($id);
+
+        if (! $assignment->isVisibleToStudent((int) $request->user()->id)) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
+
         $latest = AssignmentSubmission::where('assignment_id', $id)
             ->where('student_id', $request->user()->id)
             ->orderByDesc('attempt_number')
@@ -127,6 +132,11 @@ class AssignmentApiController extends Controller
     public function saveDraft(Request $request, int $id): JsonResponse
     {
         $assignment = Assignment::findOrFail($id);
+
+        if (! $assignment->isVisibleToStudent((int) $request->user()->id)) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
+
         $draft = AssignmentSubmission::where('assignment_id', $id)
             ->where('student_id', $request->user()->id)
             ->where('status', 'draft')

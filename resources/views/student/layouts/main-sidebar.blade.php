@@ -70,6 +70,15 @@
                         </li>
                         <!-- End::slide -->
 
+                        <!-- Start::slide - واجباتي -->
+                        <li class="slide {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
+                            <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
+                                <i class="fe fe-check-square side-menu__icon"></i>
+                                <span class="side-menu__label">واجباتي</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - تقدمي -->
                         <li class="slide">
                             <a href="{{ route('student.progress.overview') }}" class="side-menu__item">

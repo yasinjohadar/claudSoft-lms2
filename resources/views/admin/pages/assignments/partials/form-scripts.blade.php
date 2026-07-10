@@ -28,11 +28,50 @@
 
     const courseSelect = document.getElementById('course_id');
     const lessonSelect = document.getElementById('lesson_id');
+    const groupSelect = document.getElementById('target_group_id');
     const currentLessonId = @json($currentLessonId ?? null);
+    const currentGroupId = @json($currentGroupId ?? null);
+
+    function loadGroups(courseId, selectedGroupId) {
+        if (!groupSelect) {
+            return;
+        }
+
+        if (!courseId) {
+            groupSelect.innerHTML = '<option value="">كل طلاب الكورس</option>';
+            return;
+        }
+
+        const groupsUrl = '{{ route("assignments.get-groups", ["courseId" => ":courseId"]) }}'.replace(':courseId', courseId);
+        groupSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+
+        fetch(groupsUrl, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (response) {
+                return response.ok ? response.json() : Promise.reject();
+            })
+            .then(function (groups) {
+                groupSelect.innerHTML = '<option value="">كل طلاب الكورس</option>';
+                (groups || []).forEach(function (group) {
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = group.name;
+                    if (selectedGroupId && String(group.id) === String(selectedGroupId)) {
+                        option.selected = true;
+                    }
+                    groupSelect.appendChild(option);
+                });
+            })
+            .catch(function () {
+                groupSelect.innerHTML = '<option value="">كل طلاب الكورس</option>';
+            });
+    }
 
     if (courseSelect && lessonSelect) {
         courseSelect.addEventListener('change', function () {
             const courseId = this.value;
+            loadGroups(courseId, null);
             lessonSelect.innerHTML = '<option value="">جاري التحميل...</option>';
             if (!courseId) {
                 lessonSelect.innerHTML = '<option value="">اختر الدرس</option>';
@@ -58,6 +97,17 @@
             .catch(function () {
                 lessonSelect.innerHTML = '<option value="">خطأ في تحميل الدروس</option>';
             });
+        });
+
+        if (courseSelect.value) {
+            loadGroups(courseSelect.value, currentGroupId);
+        }
+    } else if (courseSelect && groupSelect) {
+        if (courseSelect.value) {
+            loadGroups(courseSelect.value, currentGroupId);
+        }
+        courseSelect.addEventListener('change', function () {
+            loadGroups(this.value, null);
         });
     }
 

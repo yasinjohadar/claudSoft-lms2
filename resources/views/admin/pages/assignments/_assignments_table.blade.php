@@ -5,6 +5,7 @@
                 <th style="width: 48px;">#</th>
                 <th>عنوان الواجب</th>
                 <th>الكورس</th>
+                <th>المستهدفون</th>
                 <th>الدرس</th>
                 <th>الدرجة القصوى</th>
                 <th>موعد التسليم</th>
@@ -35,6 +36,13 @@
                             <span class="assignments-course-chip" title="{{ $assignment->course->title }}">{{ $assignment->course->title }}</span>
                         @else
                             <span class="text-muted">—</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($assignment->targetGroup)
+                            <span class="badge bg-info-transparent text-info">{{ $assignment->targetGroup->name }}</span>
+                        @else
+                            <span class="text-muted">كل الطلاب</span>
                         @endif
                     </td>
                     <td>

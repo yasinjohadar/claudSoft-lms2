@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsModelActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class Assignment extends Model
 {
@@ -19,6 +22,7 @@ class Assignment extends Model
         'description',
         'instructions',
         'course_id',
+        'target_group_id',
         'lesson_id',
         'max_grade',
         'submission_type',
@@ -45,6 +49,7 @@ class Assignment extends Model
     protected $casts = [
         'attachments' => 'array',
         'extra_attempts_granted' => 'array',
+        'target_group_id' => 'integer',
         'available_from' => 'datetime',
         'due_date' => 'datetime',
         'late_submission_until' => 'datetime',
@@ -55,12 +60,74 @@ class Assignment extends Model
         'resubmit_after_grading_only' => 'boolean',
     ];
 
-    /**
-     * Get the course that owns the assignment.
-     */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function targetGroup(): BelongsTo
+    {
+        return $this->belongsTo(CourseGroup::class, 'target_group_id');
+    }
+
+    public function isRestrictedToGroup(): bool
+    {
+        return $this->target_group_id !== null;
+    }
+
+    public function isVisibleToStudent(int $studentId): bool
+    {
+        $isEnrolled = CourseEnrollment::query()
+            ->where('student_id', $studentId)
+            ->where('course_id', $this->course_id)
+            ->where('enrollment_status', 'active')
+            ->exists();
+
+        if (! $isEnrolled) {
+            return false;
+        }
+
+        if (! $this->target_group_id) {
+            return true;
+        }
+
+        return DB::table('course_group_members')
+            ->where('group_id', $this->target_group_id)
+            ->where('student_id', $studentId)
+            ->exists();
+    }
+
+    public function scopeVisibleToStudent(Builder $query, int $studentId): Builder
+    {
+        $enrolledCourseIds = CourseEnrollment::query()
+            ->where('student_id', $studentId)
+            ->where('enrollment_status', 'active')
+            ->pluck('course_id');
+
+        return $query
+            ->whereIn('course_id', $enrolledCourseIds)
+            ->where(function (Builder $visibilityQuery) use ($studentId) {
+                $visibilityQuery->whereNull('target_group_id')
+                    ->orWhereIn('target_group_id', function ($subQuery) use ($studentId) {
+                        $subQuery->select('group_id')
+                            ->from('course_group_members')
+                            ->where('student_id', $studentId);
+                    });
+            });
+    }
+
+    public function resolveNotificationStudentIds(): Collection
+    {
+        if ($this->target_group_id) {
+            return DB::table('course_group_members')
+                ->where('group_id', $this->target_group_id)
+                ->pluck('student_id');
+        }
+
+        return CourseEnrollment::query()
+            ->where('course_id', $this->course_id)
+            ->where('enrollment_status', 'active')
+            ->pluck('student_id');
     }
 
     /**

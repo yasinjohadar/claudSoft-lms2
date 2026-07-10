@@ -8,6 +8,7 @@ use App\Events\N8nWebhookEvent;
 use App\Events\StudentActivityTracked;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\Assignment;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -70,7 +71,11 @@ class CourseLearningController extends Controller
                 $accessibleModules = $section->modules->filter(function ($module) use ($accessControl, $student) {
                     $moduleAccess = $accessControl->canAccessModule($module, $student);
 
-                    return (bool) ($moduleAccess['can_access'] ?? false);
+                    if (! (bool) ($moduleAccess['can_access'] ?? false)) {
+                        return false;
+                    }
+
+                    return $this->isAssignmentModuleVisibleToStudent($module, (int) $student->id);
                 })->values();
 
                 $section->setRelation('modules', $accessibleModules);
@@ -162,6 +167,10 @@ class CourseLearningController extends Controller
             return response('', 403);
         }
 
+        if (! $this->isAssignmentModuleVisibleToStudent($module, (int) $student->id)) {
+            return response('', 403);
+        }
+
         $this->loadModuleModulableRelations($module);
 
         $enrollment = CourseEnrollment::where('course_id', $module->course_id)
@@ -237,6 +246,12 @@ class CourseLearningController extends Controller
                 ->with('error', $moduleAccess['reason'] ?? 'هذا الدرس غير متاح حالياً');
         }
 
+        if (! $this->isAssignmentModuleVisibleToStudent($module, (int) $student->id)) {
+            return redirect()
+                ->route('student.courses.learn', $module->course_id)
+                ->with('error', 'هذا الواجب مخصص لمجموعة أخرى ولا يظهر لحسابك.');
+        }
+
         $this->loadModuleModulableRelations($module);
 
         $module->course->sections = $module->course->sections->filter(function ($section) use ($accessControl, $student) {
@@ -245,7 +260,11 @@ class CourseLearningController extends Controller
 
         $module->course->sections->each(function ($section) use ($accessControl, $student) {
             $section->modules = $section->modules->filter(function ($mod) use ($accessControl, $student) {
-                return $accessControl->canAccessModule($mod, $student)['can_access'];
+                if (! $accessControl->canAccessModule($mod, $student)['can_access']) {
+                    return false;
+                }
+
+                return $this->isAssignmentModuleVisibleToStudent($mod, (int) $student->id);
             })->values();
         });
 
@@ -778,5 +797,14 @@ class CourseLearningController extends Controller
         }
 
         return 0;
+    }
+
+    protected function isAssignmentModuleVisibleToStudent(CourseModule $module, int $studentId): bool
+    {
+        if ($module->module_type !== 'assignment' || ! $module->modulable instanceof Assignment) {
+            return true;
+        }
+
+        return $module->modulable->isVisibleToStudent($studentId);
     }
 }

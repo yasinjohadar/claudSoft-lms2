@@ -18,14 +18,8 @@ class AssignmentSubmissionController extends Controller
     {
         $studentId = auth()->id();
 
-        // Get all enrolled courses for the student
-        $enrolledCourseIds = \App\Models\CourseEnrollment::where('student_id', $studentId)
-            ->where('enrollment_status', 'active')
-            ->pluck('course_id');
-
-        // Get all published assignments from enrolled courses
-        $assignments = Assignment::with(['course', 'lesson'])
-            ->whereIn('course_id', $enrolledCourseIds)
+        $assignments = Assignment::with(['course', 'lesson', 'targetGroup'])
+            ->visibleToStudent($studentId)
             ->where('is_published', true)
             ->orderBy('due_date', 'asc')
             ->get();
@@ -139,9 +133,13 @@ class AssignmentSubmissionController extends Controller
      */
     public function show($id)
     {
-        $assignment = Assignment::with(['course', 'lesson'])
+        $assignment = Assignment::with(['course', 'lesson', 'targetGroup'])
             ->where('is_published', true)
             ->findOrFail($id);
+
+        if (! $assignment->isVisibleToStudent((int) auth()->id())) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
 
         // Get student's submissions for this assignment
         $submissions = AssignmentSubmission::where('assignment_id', $id)
@@ -170,6 +168,10 @@ class AssignmentSubmissionController extends Controller
     public function submit(Request $request, $id)
     {
         $assignment = Assignment::findOrFail($id);
+
+        if (! $assignment->isVisibleToStudent((int) auth()->id())) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
 
         // Get latest submission
         $latestSubmission = AssignmentSubmission::where('assignment_id', $id)
@@ -246,6 +248,10 @@ class AssignmentSubmissionController extends Controller
     {
         $assignment = Assignment::findOrFail($id);
 
+        if (! $assignment->isVisibleToStudent((int) auth()->id())) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
+
         // Get or create draft submission
         $draft = AssignmentSubmission::where('assignment_id', $id)
             ->where('student_id', auth()->id())
@@ -292,9 +298,14 @@ class AssignmentSubmissionController extends Controller
      */
     public function deleteFile(Request $request, $submissionId)
     {
-        $submission = AssignmentSubmission::where('id', $submissionId)
+        $submission = AssignmentSubmission::with('assignment')
+            ->where('id', $submissionId)
             ->where('student_id', auth()->id())
             ->firstOrFail();
+
+        if (! $submission->assignment || ! $submission->assignment->isVisibleToStudent((int) auth()->id())) {
+            abort(403, 'هذا الواجب غير متاح لمجموعتك.');
+        }
 
         $fileIndex = $request->input('index');
 

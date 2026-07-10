@@ -1,6 +1,7 @@
 @php
     $quickLinks = [
         ['route' => 'student.courses.my-courses', 'icon' => 'fe-book', 'color' => 'primary', 'title' => 'كورساتي', 'subtitle' => 'الكورسات المسجّلة'],
+        ['route' => 'student.assignments.index', 'icon' => 'fe-check-square', 'color' => 'warning', 'title' => 'واجباتي', 'subtitle' => 'التسليم والمتابعة'],
         ['route' => 'student.question-module.stats.index', 'icon' => 'fe-help-circle', 'color' => 'info', 'title' => 'إحصائيات الاختبارات', 'subtitle' => 'الأداء والمحاولات'],
         ['route' => 'student.training-camps.index', 'icon' => 'fe-flag', 'color' => 'success', 'title' => 'المعسكرات التدريبية', 'subtitle' => 'التسجيل والمتابعة'],
         ['route' => 'student.groups.index', 'icon' => 'fe-users', 'color' => 'info', 'title' => 'المجموعات', 'subtitle' => 'مجموعاتي الدراسية'],

@@ -414,6 +414,7 @@ Route::prefix('admin')
         Route::resource('assignments', AssignmentController::class);
         Route::post('assignments/{id}/toggle-publish', [AssignmentController::class, 'togglePublish'])->name('assignments.toggle-publish');
         Route::get('assignments/course/{courseId}/lessons', [AssignmentController::class, 'getLessons'])->name('assignments.get-lessons');
+        Route::get('assignments/course/{courseId}/groups', [AssignmentController::class, 'getCourseGroups'])->name('assignments.get-groups');
         Route::post('assignments/{id}/delete-attachment', [AssignmentController::class, 'deleteAttachment'])->name('assignments.delete-attachment');
         Route::post('submissions/{submissionId}/grade', [AssignmentController::class, 'gradeSubmission'])->name('submissions.grade');
         Route::post('submissions/{submissionId}/grant-resubmission', [AssignmentController::class, 'grantResubmission'])->name('submissions.grant-resubmission');

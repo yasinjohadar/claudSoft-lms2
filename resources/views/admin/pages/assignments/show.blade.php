@@ -79,6 +79,16 @@
                                     </div>
                                 </div>
                                 <div class="assignments-info-item">
+                                    <div class="assignments-info-item__label">المجموعة المستهدفة</div>
+                                    <div class="assignments-info-item__value">
+                                        @if($assignment->targetGroup)
+                                            <span class="badge bg-info-transparent text-info">{{ $assignment->targetGroup->name }}</span>
+                                        @else
+                                            <span class="text-muted">كل طلاب الكورس</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="assignments-info-item">
                                     <div class="assignments-info-item__label">الدرس</div>
                                     <div class="assignments-info-item__value">
                                         @if($assignment->lesson)

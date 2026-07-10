@@ -14,6 +14,7 @@ use App\Models\Lesson;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class AssignmentController extends Controller
 {
@@ -22,7 +23,7 @@ class AssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Assignment::with(['course', 'lesson', 'creator'])
+        $query = Assignment::with(['course', 'lesson', 'targetGroup', 'creator'])
             ->withCount('submissions')
             ->orderBy('created_at', 'desc');
 
@@ -112,6 +113,7 @@ class AssignmentController extends Controller
 
             $validated = $request->validate([
                 'course_id' => 'required|exists:courses,id',
+                'target_group_id' => 'nullable|integer|exists:course_groups,id',
                 'lesson_id' => 'nullable|exists:lessons,id',
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
@@ -142,6 +144,9 @@ class AssignmentController extends Controller
                 'due_date.after_or_equal' => 'موعد التسليم يجب أن يكون بعد أو يساوي تاريخ البدء',
                 'late_submission_until.after_or_equal' => 'آخر موعد للتسليم المتأخر يجب أن يكون بعد أو يساوي موعد التسليم',
             ]);
+
+            $validated['target_group_id'] = $this->normalizeTargetGroupId($request);
+            $this->assertTargetGroupLinkedToCourse($validated['target_group_id'], (int) $validated['course_id']);
 
         // Handle file uploads
         $attachments = [];
@@ -194,10 +199,7 @@ class AssignmentController extends Controller
                 DB::commit();
 
                 if ($assignment->is_published && $assignment->is_visible) {
-                    $studentIds = \App\Models\CourseEnrollment::query()
-                        ->where('course_id', $assignment->course_id)
-                        ->where('enrollment_status', 'active')
-                        ->pluck('student_id');
+                    $studentIds = $assignment->resolveNotificationStudentIds();
                     AssignmentAvailable::dispatch($assignment, $studentIds);
                 }
 
@@ -241,6 +243,7 @@ class AssignmentController extends Controller
         $assignment = Assignment::with([
             'course',
             'lesson',
+            'targetGroup',
             'creator',
             'submissions.student',
             'submissions.grader'
@@ -307,6 +310,7 @@ class AssignmentController extends Controller
         try {
             $validated = $request->validate([
                 'course_id' => 'required|exists:courses,id',
+                'target_group_id' => 'nullable|integer|exists:course_groups,id',
                 'lesson_id' => 'nullable|exists:lessons,id',
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
@@ -324,6 +328,9 @@ class AssignmentController extends Controller
                 'sort_order' => 'nullable|integer|min:0',
                 'attachments.*' => 'nullable|file|max:10240',
             ]);
+
+            $validated['target_group_id'] = $this->normalizeTargetGroupId($request);
+            $this->assertTargetGroupLinkedToCourse($validated['target_group_id'], (int) $validated['course_id']);
 
             // Handle new file uploads
             $attachments = $assignment->attachments ?? [];
@@ -350,10 +357,7 @@ class AssignmentController extends Controller
             $assignment->update($validated);
 
             if ($assignment->is_published && $assignment->is_visible) {
-                $studentIds = \App\Models\CourseEnrollment::query()
-                    ->where('course_id', $assignment->course_id)
-                    ->where('enrollment_status', 'active')
-                    ->pluck('student_id');
+                $studentIds = $assignment->resolveNotificationStudentIds();
                 AssignmentAvailable::dispatch($assignment, $studentIds);
             }
 
@@ -519,5 +523,43 @@ class AssignmentController extends Controller
         $assignment->grantExtraAttempt($submission->student_id, 1);
 
         return back()->with('success', 'تم منح الطالب محاولة إضافية بنجاح');
+    }
+
+    public function getCourseGroups(int $courseId)
+    {
+        $course = Course::query()->findOrFail($courseId);
+
+        $groups = $course->groups()
+            ->orderBy('course_groups.name')
+            ->get(['course_groups.id', 'course_groups.name']);
+
+        return response()->json($groups);
+    }
+
+    private function normalizeTargetGroupId(Request $request): ?int
+    {
+        if (! $request->filled('target_group_id')) {
+            return null;
+        }
+
+        return (int) $request->input('target_group_id');
+    }
+
+    private function assertTargetGroupLinkedToCourse(?int $groupId, int $courseId): void
+    {
+        if ($groupId === null || $groupId <= 0) {
+            return;
+        }
+
+        $isLinked = DB::table('course_group_courses')
+            ->where('course_id', $courseId)
+            ->where('group_id', $groupId)
+            ->exists();
+
+        if (! $isLinked) {
+            throw ValidationException::withMessages([
+                'target_group_id' => 'المجموعة المحددة غير مرتبطة بهذا الكورس.',
+            ]);
+        }
     }
 }

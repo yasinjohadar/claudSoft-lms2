@@ -91,12 +91,22 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <!-- إرسال القيمة حتى لو disabled -->
                                 @if($selectedSection)
                                     <input type="hidden" name="course_id" value="{{ $selectedCourse->id }}">
                                 @endif
                                 @error('course_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label" for="target_group_id">المجموعة المستهدفة</label>
+                                <select name="target_group_id" id="target_group_id" class="form-select @error('target_group_id') is-invalid @enderror">
+                                    <option value="">كل طلاب الكورس</option>
+                                </select>
+                                <small class="text-muted">حدّد مجموعة لإظهار الواجب لأعضائها فقط</small>
+                                @error('target_group_id')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
 
@@ -391,5 +401,8 @@
 @stop
 
 @section('script')
-    @include('admin.pages.assignments.partials.form-scripts', ['currentLessonId' => null])
+    @include('admin.pages.assignments.partials.form-scripts', [
+        'currentLessonId' => null,
+        'currentGroupId' => old('target_group_id'),
+    ])
 @stop

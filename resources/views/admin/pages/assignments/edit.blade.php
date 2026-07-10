@@ -97,6 +97,17 @@
                                 @enderror
                             </div>
 
+                            <div class="col-md-3">
+                                <label class="form-label" for="target_group_id">المجموعة المستهدفة</label>
+                                <select name="target_group_id" id="target_group_id" class="form-select @error('target_group_id') is-invalid @enderror">
+                                    <option value="">كل طلاب الكورس</option>
+                                </select>
+                                <small class="text-muted">حدّد مجموعة لإظهار الواجب لأعضائها فقط</small>
+                                @error('target_group_id')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div class="col-12">
                                 <label class="form-label">الوصف</label>
                                 <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror"
@@ -413,5 +424,8 @@
 @stop
 
 @section('script')
-    @include('admin.pages.assignments.partials.form-scripts', ['currentLessonId' => $assignment->lesson_id])
+    @include('admin.pages.assignments.partials.form-scripts', [
+        'currentLessonId' => $assignment->lesson_id,
+        'currentGroupId' => old('target_group_id', $assignment->target_group_id),
+    ])
 @stop
