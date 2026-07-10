@@ -81,13 +81,13 @@ class StudentWeeklyReportController extends Controller
             403
         );
 
-        $modules = $this->reportService->resolveSelectableModulesForStudentReport(
+        $groups = $this->reportService->resolveSelectableModuleGroupsForStudentReport(
             (int) auth()->id(),
             $report,
             (int) $course->id
         );
 
-        return response()->json($modules);
+        return response()->json(['groups' => $groups]);
     }
 
     private function validatedPayload(Request $request, StudentWeeklyReport $report): array

@@ -419,53 +419,39 @@ class StudentWeeklyReportService
     }
 
     /**
-     * @return Collection<int, array{id: int, title: string, module_type: string}>
+     * @return Collection<int, array{id: int, title: string, module_type: string, type_label: string}>
      */
     public function resolveSelectableModulesForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
     {
-        if (!$this->isCourseAllowedForStudentReport($studentId, $report, $courseId)) {
-            return collect();
-        }
+        return $this->getFilteredSelectableModules($studentId, $report, $courseId)
+            ->map(fn (CourseModule $module) => $this->formatSelectableModule($module))
+            ->values();
+    }
 
-        $groupId = $this->resolveGroupIdForStudentReport($studentId, $report, $courseId);
-        if (!$groupId) {
-            return collect();
-        }
+    /**
+     * @return Collection<int, array{section_id: int, section_title: string, section_sort_order: int, modules: array<int, array{id: int, title: string, module_type: string, type_label: string}>}>
+     */
+    public function resolveSelectableModuleGroupsForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
+    {
+        return $this->getFilteredSelectableModules($studentId, $report, $courseId)
+            ->groupBy('section_id')
+            ->map(function (Collection $sectionModules) {
+                $section = $sectionModules->first()?->section;
+                $sectionTitle = $section?->title ?? 'بدون قسم';
 
-        $modules = CourseModule::query()
-            ->with([
-                'section.accessRestrictions',
-                'accessRestrictions',
-            ])
-            ->where('course_id', $courseId)
-            ->where('is_visible', true)
-            ->whereNull('deleted_at')
-            ->whereHas('section', function ($query) {
-                $query->where('is_visible', true)->whereNull('deleted_at');
+                return [
+                    'section_id' => (int) ($section?->id ?? 0),
+                    'section_title' => $sectionTitle,
+                    'section_sort_order' => (int) ($section?->sort_order ?? $section?->order_index ?? 0),
+                    'modules' => $sectionModules
+                        ->sortBy('sort_order')
+                        ->values()
+                        ->map(fn (CourseModule $module) => $this->formatSelectableModule($module))
+                        ->all(),
+                ];
             })
-            ->orderBy('sort_order')
-            ->orderBy('title')
-            ->get();
-
-        return $modules
-            ->filter(function (CourseModule $module) use ($groupId) {
-                $section = $module->section;
-                if (!$section || !$section->is_visible) {
-                    return false;
-                }
-
-                if (!$this->isContentVisibleForGroup($section->accessRestrictions, $groupId)) {
-                    return false;
-                }
-
-                return $this->isContentVisibleForGroup($module->accessRestrictions, $groupId);
-            })
-            ->values()
-            ->map(fn (CourseModule $module) => [
-                'id' => (int) $module->id,
-                'title' => $module->title,
-                'module_type' => $module->module_type,
-            ]);
+            ->sortBy('section_sort_order')
+            ->values();
     }
 
     public function isModuleAllowedForStudentReport(
@@ -654,6 +640,76 @@ class StudentWeeklyReportService
                 'report' => $message,
             ]);
         }
+    }
+
+    private function getFilteredSelectableModules(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
+    {
+        if (!$this->isCourseAllowedForStudentReport($studentId, $report, $courseId)) {
+            return collect();
+        }
+
+        $groupId = $this->resolveGroupIdForStudentReport($studentId, $report, $courseId);
+        if (!$groupId) {
+            return collect();
+        }
+
+        $modules = CourseModule::query()
+            ->with([
+                'section.accessRestrictions',
+                'accessRestrictions',
+            ])
+            ->where('course_id', $courseId)
+            ->where('is_visible', true)
+            ->whereNull('deleted_at')
+            ->whereHas('section', function ($query) {
+                $query->where('is_visible', true)->whereNull('deleted_at');
+            })
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get();
+
+        return $modules
+            ->filter(function (CourseModule $module) use ($groupId) {
+                $section = $module->section;
+                if (!$section || !$section->is_visible) {
+                    return false;
+                }
+
+                if (!$this->isContentVisibleForGroup($section->accessRestrictions, $groupId)) {
+                    return false;
+                }
+
+                return $this->isContentVisibleForGroup($module->accessRestrictions, $groupId);
+            })
+            ->values();
+    }
+
+    /**
+     * @return array{id: int, title: string, module_type: string, type_label: string}
+     */
+    private function formatSelectableModule(CourseModule $module): array
+    {
+        return [
+            'id' => (int) $module->id,
+            'title' => $module->title,
+            'module_type' => $module->module_type,
+            'type_label' => $this->moduleTypeLabel($module->module_type),
+        ];
+    }
+
+    private function moduleTypeLabel(?string $moduleType): string
+    {
+        return match ($moduleType) {
+            'video' => 'فيديو',
+            'lesson' => 'درس',
+            'assignment' => 'واجب',
+            'quiz' => 'اختبار',
+            'question_module' => 'اختبار',
+            'resource' => 'مورد',
+            'documentation' => 'توثيق',
+            'simulator' => 'محاكاة',
+            default => 'محتوى',
+        };
     }
 
     private function isContentVisibleForGroup(?Collection $restrictions, int $groupId): bool

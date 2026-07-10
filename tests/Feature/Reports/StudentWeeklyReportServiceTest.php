@@ -1017,3 +1017,113 @@ test('it resolves selectable modules only for the report group visibility rules'
     expect($service->isModuleAllowedForStudentReport($student->id, $report, $courseId, $restrictedModuleId))->toBeFalse();
 });
 
+test('it groups selectable modules by course section', function () {
+    $student = User::factory()->create();
+
+    $courseCategoryId = DB::table('course_categories')->insertGetId([
+        'name' => 'Grouped Modules Category',
+        'slug' => 'grouped-modules-category',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $courseId = DB::table('courses')->insertGetId([
+        'course_category_id' => $courseCategoryId,
+        'title' => 'Grouped Modules Course',
+        'slug' => 'grouped-modules-course',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $groupId = DB::table('course_groups')->insertGetId([
+        'name' => 'Grouped Modules Group',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_courses')->insert([
+        'course_id' => $courseId,
+        'group_id' => $groupId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_members')->insert([
+        'group_id' => $groupId,
+        'student_id' => $student->id,
+        'role' => 'member',
+        'joined_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionOneId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'Images -8',
+        'is_visible' => true,
+        'sort_order' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionTwoId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'List -9',
+        'is_visible' => true,
+        'sort_order' => 2,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $lessonId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionOneId,
+        'module_type' => 'lesson',
+        'title' => 'Lesson in section one',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $quizId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionOneId,
+        'module_type' => 'quiz',
+        'title' => 'Quiz in section one',
+        'sort_order' => 2,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $docId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionTwoId,
+        'module_type' => 'documentation',
+        'title' => 'Doc in section two',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $report = StudentWeeklyReport::create([
+        'student_id' => $student->id,
+        'target_course_id' => $courseId,
+        'target_group_id' => $groupId,
+        'report_title' => 'Grouped modules report',
+        'status' => StudentWeeklyReport::STATUS_DRAFT,
+    ]);
+
+    $service = app(StudentWeeklyReportService::class);
+    $groups = $service->resolveSelectableModuleGroupsForStudentReport($student->id, $report, $courseId);
+
+    expect($groups)->toHaveCount(2);
+    expect($groups->first()['section_title'])->toBe('Images -8');
+    expect(collect($groups->first()['modules'])->pluck('id')->all())->toBe([$lessonId, $quizId]);
+    expect($groups->last()['section_title'])->toBe('List -9');
+    expect($groups->last()['modules'][0]['type_label'])->toBe('توثيق');
+    expect($groups->last()['modules'][0]['id'])->toBe($docId);
+});
+

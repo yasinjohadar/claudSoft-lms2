@@ -235,18 +235,33 @@
         }
     }
 
-    function initModuleChoices(selectEl, modules, selectedIds) {
+    function initModuleChoices(selectEl, moduleGroups, selectedIds) {
         destroyChoices(selectEl);
         selectEl.innerHTML = '';
-        modules.forEach((module) => {
-            const opt = document.createElement('option');
-            opt.value = module.id;
-            opt.textContent = module.title;
-            if (selectedIds.map(String).includes(String(module.id))) {
-                opt.selected = true;
+
+        moduleGroups.forEach((group) => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = group.section_title || 'بدون قسم';
+
+            (group.modules || []).forEach((module) => {
+                const opt = document.createElement('option');
+                opt.value = module.id;
+                const typePrefix = module.type_label ? `${module.type_label}: ` : '';
+                opt.textContent = `${typePrefix}${module.title}`;
+                if (selectedIds.map(String).includes(String(module.id))) {
+                    opt.selected = true;
+                }
+                optgroup.appendChild(opt);
+            });
+
+            if (optgroup.children.length > 0) {
+                selectEl.appendChild(optgroup);
             }
-            selectEl.appendChild(opt);
         });
+
+        if (selectEl.options.length === 0) {
+            return;
+        }
 
         if (typeof Choices === 'undefined') {
             return;
@@ -289,12 +304,22 @@
         }
 
         try {
-            const modules = await fetchModules(courseId);
-            if (!Array.isArray(modules) || modules.length === 0) {
+            const payload = await fetchModules(courseId);
+            const moduleGroups = Array.isArray(payload?.groups)
+                ? payload.groups
+                : (Array.isArray(payload) ? [{ section_title: 'الدروس', modules: payload }] : []);
+
+            const totalModules = moduleGroups.reduce(
+                (count, group) => count + (group.modules?.length || 0),
+                0
+            );
+
+            if (totalModules === 0) {
                 moduleSelect.innerHTML = '<option value="" disabled>لا توجد دروس متاحة</option>';
                 return;
             }
-            initModuleChoices(moduleSelect, modules, selectedFromData);
+
+            initModuleChoices(moduleSelect, moduleGroups, selectedFromData);
             moduleSelect.dataset.selectedModules = '[]';
         } catch (e) {
             moduleSelect.innerHTML = '<option value="" disabled>تعذر تحميل الدروس</option>';
