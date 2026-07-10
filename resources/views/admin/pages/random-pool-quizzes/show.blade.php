@@ -253,7 +253,7 @@
                         <div class="card-body pt-3 p-0">
                             @if($quiz->quizQuestions->count() > 0)
                                 <div class="table-responsive px-3 pb-3">
-                                    <table class="table table-hover text-nowrap dashboard-table mb-0">
+                                    <table class="table table-hover dashboard-table mb-0 quizzes-questions-table">
                                         <thead>
                                             <tr>
                                                 <th width="5%">#</th>
@@ -270,13 +270,14 @@
                                                 <tr>
                                                     <td>{{ $loop->iteration }}</td>
                                                     <td>
-                                                        <div class="text-truncate" style="max-width: 360px;">
-                                                            @if($question)
-                                                                {{ $question->question_text }}
-                                                            @else
-                                                                <span class="text-danger">هذا السؤال محذوف من بنك الأسئلة</span>
-                                                            @endif
-                                                        </div>
+                                                        @if($question)
+                                                            @include('admin.pages.question-bank.partials.question-text-list', [
+                                                                'text' => $question->question_text,
+                                                                'maxWidth' => '520px',
+                                                            ])
+                                                        @else
+                                                            <span class="text-danger">هذا السؤال محذوف من بنك الأسئلة</span>
+                                                        @endif
                                                     </td>
                                                     <td>
                                                         @if($question && $question->questionType)

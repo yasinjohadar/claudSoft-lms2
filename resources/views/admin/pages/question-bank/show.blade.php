@@ -41,7 +41,9 @@
                     <div class="row align-items-start g-3">
                         <div class="col-lg-8">
                             <span class="group-show-hero__eyebrow"><i class="fe fe-help-circle me-1"></i>تفاصيل السؤال</span>
-                            <h2 class="group-show-hero__title mb-2">{{ Str::limit(strip_tags($question->question_text), 90) }}</h2>
+                            <div class="qb-show-hero-question-text mb-2">
+                                {!! mixed_bidi_html($question->question_text) !!}
+                            </div>
                             <p class="group-show-hero__desc mb-0">
                                 @if($question->questionType)
                                     {{ $question->questionType->display_name }}
@@ -93,6 +95,27 @@
                                 <div class="qb-show-question-text mb-3">
                                     {!! mixed_bidi_html($question->question_text) !!}
                                 </div>
+
+                                @if($question->questionType?->name === 'fill_blanks')
+                                    @php
+                                        $fillBlanksPreview = $question->getFillBlanksPreviewData();
+                                        $hasFilledPreview = collect($fillBlanksPreview['answers'] ?? [])
+                                            ->contains(fn ($answer) => trim((string) $answer) !== '');
+                                    @endphp
+                                    @if($hasFilledPreview)
+                                        <div class="mb-3">
+                                            <p class="mb-2 fw-semibold">السؤال بعد ملء الفراغات</p>
+                                            <div class="qb-show-question-text qb-show-question-text--filled mb-0">
+                                                @foreach($fillBlanksPreview['parts'] as $index => $part)
+                                                    <span>{!! mixed_bidi_html($part) !!}</span>
+                                                    @if($index < count($fillBlanksPreview['parts']) - 1)
+                                                        <span class="qb-fill-blank-answer">{!! mixed_bidi_html($fillBlanksPreview['answers'][$index] ?? '') !!}</span>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                @endif
 
                                 @if($lessonShow)
                                     <div class="qb-show-meta-list__item mb-3 pb-3 border-bottom">

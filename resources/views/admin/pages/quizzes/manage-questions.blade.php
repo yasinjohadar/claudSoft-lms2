@@ -145,13 +145,11 @@
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <div class="d-flex align-items-start">
-                                                            <div>
-                                                                <a href="{{ route('question-bank.show', $question->id) }}" target="_blank" class="fw-semibold">
-                                                                    {!! Str::limit(strip_tags($question->question_text), 100) !!}
-                                                                </a>
-                                                            </div>
-                                                        </div>
+                                                        @include('admin.pages.question-bank.partials.question-text-list', [
+                                                            'text' => $question->question_text,
+                                                            'link' => route('question-bank.show', $question->id),
+                                                            'maxWidth' => '520px',
+                                                        ])
                                                     </td>
                                                     <td>
                                                         <span class="badge bg-primary-transparent">

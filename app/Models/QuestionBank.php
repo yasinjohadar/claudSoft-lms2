@@ -289,6 +289,64 @@ class QuestionBank extends Model
     }
 
     /**
+     * بيانات معاينة سؤال ملء الفراغات مع الإجابات الصحيحة داخل النص.
+     *
+     * @return array{parts: array<int, string>, answers: array<int, string>}
+     */
+    public function getFillBlanksPreviewData(): array
+    {
+        $normalizedText = preg_replace('/_{3,}/', '[[blank]]', (string) $this->question_text)
+            ?? (string) $this->question_text;
+        $parts = preg_split('/\[\[blank\]\]/', $normalizedText) ?: [];
+        $blankCount = max(count($parts) - 1, 0);
+
+        if ($blankCount < 1) {
+            return ['parts' => $parts, 'answers' => []];
+        }
+
+        return [
+            'parts' => $parts,
+            'answers' => $this->resolveFillBlanksPreviewAnswers($blankCount),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveFillBlanksPreviewAnswers(int $blankCount): array
+    {
+        $answers = [];
+
+        $correctOptions = $this->relationLoaded('options')
+            ? $this->options->where('is_correct', true)->sortBy(['option_order', 'id'])->values()
+            : $this->options()->where('is_correct', true)->orderBy('option_order')->orderBy('id')->get();
+
+        $byOrder = $correctOptions->groupBy(fn ($option) => (int) $option->option_order);
+
+        for ($i = 0; $i < $blankCount; $i++) {
+            $alts = $byOrder->get($i + 1, collect());
+            if ($alts->isEmpty() && $blankCount === 1 && $i === 0) {
+                $alts = $correctOptions;
+            }
+
+            if ($alts->isNotEmpty()) {
+                $answers[$i] = (string) $alts->first()->option_text;
+
+                continue;
+            }
+
+            $metaAnswers = $this->metadata['correct_answers'] ?? [];
+            if (is_array($metaAnswers) && array_key_exists($i, $metaAnswers)) {
+                $answers[$i] = (string) $metaAnswers[$i];
+            } else {
+                $answers[$i] = '';
+            }
+        }
+
+        return $answers;
+    }
+
+    /**
      * ملء الفراغات من بنك الأسئلة: الخيارات الصحيحة في question_options (is_correct + option_order).
      *
      * @return array{blank_count: int, correct_count: int, all_filled: bool}

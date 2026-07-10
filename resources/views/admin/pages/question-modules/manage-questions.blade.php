@@ -80,7 +80,11 @@
                                                         <div class="d-flex align-items-start">
                                                             <div>
                                                                 <a href="{{ route('question-bank.show', $question->id) }}" target="_blank" class="fw-semibold">
-                                                                    {!! Str::limit(strip_tags($question->question_text), 100) !!}
+                                                                    @include('admin.pages.question-bank.partials.question-text-list', [
+                                                                    'text' => $question->question_text,
+                                                                    'clamp' => true,
+                                                                    'maxWidth' => '420px',
+                                                                ])
                                                                 </a>
                                                             </div>
                                                         </div>
@@ -150,7 +154,13 @@
                             <tbody>
                                 @forelse($availableQuestions as $question)
                                     <tr>
-                                        <td>{!! Str::limit(strip_tags($question->question_text), 80) !!}</td>
+                                        <td>
+                                            @include('admin.pages.question-bank.partials.question-text-list', [
+                                                'text' => $question->question_text,
+                                                'clamp' => true,
+                                                'maxWidth' => '360px',
+                                            ])
+                                        </td>
                                         <td><span class="badge bg-info-transparent">{{ $question->questionType->display_name }}</span></td>
                                         <td>{{ $question->default_grade }}</td>
                                         <td>

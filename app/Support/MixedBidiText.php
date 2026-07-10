@@ -61,17 +61,125 @@ final class MixedBidiText
             return htmlspecialchars($segment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         }
 
-        $out = '';
-        foreach ($segments as $part) {
+        $tagIndices = [];
+        foreach ($segments as $index => $part) {
             if (preg_match(self::TAG_PATTERN, $part) === 1) {
-                $escaped = htmlspecialchars($part, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                $out .= self::wrapTagChip($escaped);
-            } else {
-                $out .= htmlspecialchars($part, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $tagIndices[] = $index;
             }
         }
 
+        $tagCount = count($tagIndices);
+        if ($tagCount === 0) {
+            return htmlspecialchars($segment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        }
+
+        $wrapWholeAsLtr = preg_match(self::TAG_PATTERN, $segments[0] ?? '') === 1;
+
+        $renderPart = function (string $part, bool $insideSnippet) {
+            if (preg_match(self::TAG_PATTERN, $part) === 1) {
+                return self::wrapTagChip(htmlspecialchars($part, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            }
+
+            $escaped = htmlspecialchars($part, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            if (! $insideSnippet && self::containsArabic($part)) {
+                return self::wrapRtlRun($escaped);
+            }
+
+            return $escaped;
+        };
+
+        if ($wrapWholeAsLtr) {
+            $out = '';
+            foreach ($segments as $part) {
+                $out .= $renderPart($part, true);
+            }
+
+            return self::wrapLtrLine($out);
+        }
+
+        $out = '';
+        $index = 0;
+        $segmentCount = count($segments);
+
+        while ($index < $segmentCount) {
+            $part = $segments[$index];
+
+            if (preg_match(self::TAG_PATTERN, $part) !== 1) {
+                $out .= $renderPart($part, false);
+                $index++;
+
+                continue;
+            }
+
+            $snippetEnd = self::findLtrSnippetEnd($segments, $index, false);
+            $codeBuffer = '';
+
+            for ($cursor = $index; $cursor <= $snippetEnd; $cursor++) {
+                $codeBuffer .= $renderPart($segments[$cursor], true);
+            }
+
+            if ($snippetEnd > $index) {
+                $out .= self::wrapLtrLine($codeBuffer);
+            } else {
+                $out .= $codeBuffer;
+            }
+
+            $index = $snippetEnd + 1;
+        }
+
         return $out;
+    }
+
+    /**
+     * يحدد نهاية مقطع LTR المتصل (مثل <h3> HTML </h3>) دون ابتلاع تاغات منفصلة داخل جملة عربية.
+     */
+    private static function findLtrSnippetEnd(array $segments, int $startIdx, bool $allowArabicInside): int
+    {
+        if (! preg_match(self::TAG_PATTERN, $segments[$startIdx] ?? '')) {
+            return $startIdx;
+        }
+
+        $endIdx = $startIdx;
+
+        for ($cursor = $startIdx + 1; $cursor < count($segments); $cursor++) {
+            $part = $segments[$cursor];
+
+            if (preg_match(self::TAG_PATTERN, $part) === 1) {
+                $endIdx = $cursor;
+                if (str_starts_with(ltrim($part), '</')) {
+                    return $endIdx;
+                }
+
+                continue;
+            }
+
+            if (self::containsArabic($part) && ! $allowArabicInside) {
+                return $startIdx;
+            }
+
+            $endIdx = $cursor;
+        }
+
+        return $endIdx;
+    }
+
+    private static function containsArabic(string $text): bool
+    {
+        return preg_match('/\p{Arabic}/u', $text) === 1;
+    }
+
+    private static function wrapRtlRun(string $escapedContent): string
+    {
+        return '<span class="mixed-bidi-rtl-run" dir="rtl" style="unicode-bidi:isolate;">'
+            .$escapedContent
+            .'</span>';
+    }
+
+    private static function wrapLtrLine(string $content): string
+    {
+        return '<span class="mixed-bidi-ltr-line" dir="ltr" style="unicode-bidi:isolate;">'
+            .$content
+            .'</span>';
     }
 
     private static function processBacktickInner(string $inner): string

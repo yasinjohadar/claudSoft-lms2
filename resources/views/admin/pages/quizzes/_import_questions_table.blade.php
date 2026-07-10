@@ -29,9 +29,11 @@
                     </td>
                     <td>{{ $loop->iteration + ($availableQuestions->currentPage() - 1) * $availableQuestions->perPage() }}</td>
                     <td>
-                        <div class="text-truncate fw-semibold" style="max-width: 320px;" title="{{ strip_tags($question->question_text) }}">
-                            {{ Str::limit(strip_tags($question->question_text), 90) }}
-                        </div>
+                        @include('admin.pages.question-bank.partials.question-text-list', [
+                            'text' => $question->question_text,
+                            'clamp' => true,
+                            'maxWidth' => '320px',
+                        ])
                         <small class="text-muted">
                             <i class="fe fe-user me-1"></i>{{ $question->creator->name ?? 'غير محدد' }}
                         </small>

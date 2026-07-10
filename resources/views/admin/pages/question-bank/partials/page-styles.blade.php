@@ -96,6 +96,31 @@
         line-height: 1.6;
     }
 
+    .qb-show-question-text--filled {
+        background: rgba(25, 135, 84, 0.06);
+        border-color: rgba(25, 135, 84, 0.22);
+    }
+
+    .qb-fill-blank-answer {
+        display: inline;
+        padding: 0.15rem 0.55rem;
+        margin-inline: 0.15rem;
+        border-radius: 8px;
+        background: rgba(25, 135, 84, 0.14);
+        color: #157347;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    .qb-show-hero-question-text {
+        font-size: 0.94rem;
+        font-weight: 600;
+        color: var(--default-text-color);
+        line-height: 1.65;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
     .qb-show-option {
         padding: 0.85rem 1rem;
         border-radius: 12px;

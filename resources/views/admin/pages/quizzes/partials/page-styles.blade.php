@@ -53,4 +53,9 @@
         color: rgb(var(--primary-rgb));
         font-size: 0.9rem;
     }
+
+    .quizzes-questions-table td {
+        white-space: normal;
+        vertical-align: middle;
+    }
 </style>

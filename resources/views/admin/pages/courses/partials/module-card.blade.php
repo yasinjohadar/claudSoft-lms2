@@ -234,7 +234,13 @@
                     <div class="admin-course-module-card__question-item">
                         <div class="min-w-0 flex-fill">
                             <span class="group-show-chip group-show-chip--sm me-1">{{ $index + 1 }}</span>
-                            <span>{!! Str::limit(strip_tags($question->question_text), 80) !!}</span>
+                            <span>
+                                @include('admin.pages.question-bank.partials.question-text-list', [
+                                    'text' => $question->question_text,
+                                    'clamp' => true,
+                                    'maxWidth' => '100%',
+                                ])
+                            </span>
                         </div>
                         <div class="d-flex gap-1 flex-shrink-0">
                             <span class="group-show-chip group-show-chip--sm text-info">{{ $question->questionType->display_name }}</span>

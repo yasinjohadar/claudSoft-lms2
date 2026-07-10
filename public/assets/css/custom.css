@@ -114,8 +114,40 @@ a {
     background-color: var(--bs-dark-bg-subtle, #2b3035);
 }
 
+.mixed-bidi-ltr-line {
+    display: inline-block;
+    max-width: 100%;
+    text-align: left;
+    vertical-align: baseline;
+}
+
+.mixed-bidi-rtl-run {
+    vertical-align: baseline;
+}
+
 .question-text {
     line-height: 1.65;
+}
+
+.qb-question-preview--list {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.55;
+    color: var(--default-text-color);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.qb-question-preview--list.qb-question-preview--clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+a.qb-question-preview--list:hover {
+    color: rgb(var(--primary-rgb));
 }
 
 /* ØªÙ‚Ø±ÙŠØ± Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±: ÙƒÙ„ Ø³Ø¤Ø§Ù„ ÙÙŠ Ø¨Ø·Ø§Ù‚Ø© Ù…Ù†ÙØµÙ„Ø© */
