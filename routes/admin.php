@@ -648,6 +648,7 @@ Route::prefix('admin')
             // Points Management
             Route::prefix('points')->name('points.')->group(function () {
                 Route::get('/', [AdminPointsController::class, 'index'])->name('index');
+                Route::get('/course-groups', [AdminPointsController::class, 'courseGroups'])->name('course-groups');
                 Route::get('/create', [AdminPointsController::class, 'create'])->name('create');
                 Route::get('/search-students', [AdminPointsController::class, 'searchStudents'])->name('search-students');
                 Route::post('/preview-recipients', [AdminPointsController::class, 'previewRecipients'])->name('preview-recipients');

@@ -59,22 +59,41 @@
                 </div>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4" id="points-stats-container">
                 @include('admin.pages.gamification.points.partials.stats', ['stats' => $stats ?? []])
             </div>
 
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية السجل</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالطالب، أو فلتر حسب المصدر ونوع العملية والتاريخ.</p>
+                    <p class="fs-12 text-muted mb-0">ابحث بالطالب، أو فلتر حسب الكورس والمجموعة والمصدر ونوع العملية والتاريخ.</p>
                 </div>
                 <div class="card-body pt-3">
-                    <form action="{{ route('admin.gamification.points.index') }}" method="GET" class="group-show-filters mb-0">
+                    <form id="pointsFiltersForm" action="{{ route('admin.gamification.points.index') }}" method="GET" class="group-show-filters mb-0">
                         <div class="row g-3 align-items-end">
                             <div class="col-xl-3 col-lg-4 col-md-6">
                                 <label class="form-label" for="pointsSearchInput">بحث بالطالب</label>
                                 <input id="pointsSearchInput" type="text" name="q" class="form-control"
                                     placeholder="الاسم أو البريد..." value="{{ request('q') }}">
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="pointsCourse">الكورس</label>
+                                <select name="course_id" id="pointsCourse" class="form-select">
+                                    <option value="">كل الكورسات</option>
+                                    @foreach ($courses ?? [] as $course)
+                                        <option value="{{ $course->id }}" {{ (int) request('course_id') === (int) $course->id ? 'selected' : '' }}>
+                                            {{ $course->title }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-3 col-md-6">
+                                <label class="form-label" for="pointsGroup">المجموعة</label>
+                                <select name="group_id" id="pointsGroup" class="form-select">
+                                    @include('admin.pages.gamification.points.partials.group-options', [
+                                        'allGroups' => $allGroups ?? collect(),
+                                    ])
+                                </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="pointsSource">المصدر</label>
@@ -107,12 +126,12 @@
                             </div>
                             <div class="col-xl-12">
                                 <div class="d-flex flex-wrap gap-2">
-                                    <button type="submit" class="btn btn-primary btn-sm">
+                                    <button type="submit" class="btn btn-primary btn-sm" id="pointsFilterSubmit">
                                         <i class="fe fe-search me-1"></i>بحث
                                     </button>
-                                    <a href="{{ route('admin.gamification.points.index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="pointsFilterReset">
                                         <i class="fe fe-rotate-cw me-1"></i>مسح
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -124,7 +143,7 @@
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
                     <h6 class="group-show-members-card__title mb-0">
                         المعاملات
-                        <span class="group-show-members-card__count">{{ $transactions->total() }}</span>
+                        <span class="group-show-members-card__count" id="points-transactions-count">{{ $transactions->total() }}</span>
                     </h6>
                 </div>
                 <div class="card-body pt-3">
@@ -142,133 +161,27 @@
                                     <th class="text-center">عمليات</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @forelse ($transactions as $transaction)
-                                    @php
-                                        $sourceLabel = app(\App\Services\Gamification\PointEarningCatalog::class)->getSourceLabel($transaction->source);
-                                    @endphp
-                                    <tr>
-                                        <td>{{ $transactions->firstItem() + $loop->index }}</td>
-                                        <td>
-                                            @if ($transaction->user)
-                                                <div class="fw-semibold">{{ $transaction->user->name }}</div>
-                                                <small class="text-muted">{{ $transaction->user->email }}</small>
-                                            @else
-                                                <span class="text-muted">غير معروف</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if ($transaction->points > 0)
-                                                <span class="badge bg-success-transparent text-success">+{{ number_format($transaction->points) }}</span>
-                                            @else
-                                                <span class="badge bg-danger-transparent text-danger">{{ number_format($transaction->points) }}</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @switch($transaction->type)
-                                                @case('earn')
-                                                    <span class="badge bg-success">مكتسب</span>
-                                                    @break
-                                                @case('spend')
-                                                    <span class="badge bg-warning">مصروف</span>
-                                                    @break
-                                                @case('bonus')
-                                                    <span class="badge bg-info">مكافأة</span>
-                                                    @break
-                                                @case('penalty')
-                                                    <span class="badge bg-danger">خصم</span>
-                                                    @break
-                                                @case('refund')
-                                                    <span class="badge bg-primary">استرداد</span>
-                                                    @break
-                                                @case('adjustment')
-                                                    <span class="badge bg-secondary">تعديل</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge bg-light text-dark">{{ $transaction->type }}</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-primary-transparent text-primary">{{ $sourceLabel }}</span>
-                                            <div class="fs-11 text-muted mt-1">{{ $transaction->source }}</div>
-                                        </td>
-                                        <td>
-                                            <span title="{{ $transaction->description }}">
-                                                {{ Str::limit($transaction->description ?: '—', 40) }}
-                                            </span>
-                                            @if ($transaction->admin)
-                                                <div class="fs-11 text-muted mt-1">بواسطة: {{ $transaction->admin->name }}</div>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div>{{ $transaction->created_at->format('Y-m-d') }}</div>
-                                            <small class="text-muted">{{ $transaction->created_at->format('H:i') }}</small>
-                                        </td>
-                                        <td class="text-center">
-                                            @if ($transaction->user)
-                                                <a href="{{ route('admin.gamification.points.user-transactions', $transaction->user) }}"
-                                                    class="btn btn-sm btn-icon btn-outline-primary" title="سجل الطالب">
-                                                    <i class="fe fe-user"></i>
-                                                </a>
-                                            @endif
-                                            <button type="button" class="btn btn-sm btn-icon btn-outline-danger"
-                                                data-bs-toggle="modal" data-bs-target="#deleteTransaction{{ $transaction->id }}"
-                                                title="إلغاء المعاملة">
-                                                <i class="fe fe-trash-2"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted py-5">
-                                            <i class="fe fe-inbox fs-24 d-block mb-2"></i>
-                                            لا توجد معاملات مطابقة للبحث
-                                        </td>
-                                    </tr>
-                                @endforelse
+                            <tbody id="points-transactions-table-body">
+                                @include('admin.pages.gamification.points.partials.transactions-table', ['transactions' => $transactions])
                             </tbody>
                         </table>
                     </div>
 
-                    @if ($transactions->hasPages())
-                        <div class="mt-4 d-flex justify-content-center">
+                    <div class="mt-4 d-flex justify-content-center" id="points-transactions-pagination">
+                        @if ($transactions->hasPages())
                             {{ $transactions->links() }}
-                        </div>
-                    @endif
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    @foreach ($transactions as $transaction)
-        @php
-            $modalSourceLabel = app(\App\Services\Gamification\PointEarningCatalog::class)->getSourceLabel($transaction->source);
-        @endphp
-        <div class="modal fade" id="deleteTransaction{{ $transaction->id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">إلغاء المعاملة</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="mb-2">هل تريد عكس هذه المعاملة؟</p>
-                        <ul class="mb-0 text-muted fs-13">
-                            <li>الطالب: {{ $transaction->user->name ?? '—' }}</li>
-                            <li>النقاط: {{ $transaction->points > 0 ? '+' : '' }}{{ $transaction->points }}</li>
-                            <li>المصدر: {{ $modalSourceLabel }}</li>
-                        </ul>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <form action="{{ route('admin.gamification.points.destroy', $transaction) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger">تأكيد الإلغاء</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endforeach
+    <div id="points-transactions-modals">
+        @include('admin.pages.gamification.points.partials.transactions-modals', ['transactions' => $transactions])
+    </div>
+@stop
+
+@section('scripts')
+    @include('admin.pages.gamification.points.partials.filter-scripts')
 @stop
