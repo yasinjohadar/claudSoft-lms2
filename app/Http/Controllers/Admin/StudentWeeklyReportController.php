@@ -432,9 +432,15 @@ class StudentWeeklyReportController extends Controller
 
         $selectedLessonGroups = $this->reportService->groupSelectedLessonsBySectionForDisplay($weeklyReport);
 
+        $courseProgress = $this->reportService->calculateVisibleCourseProgressForStudentReport(
+            (int) $weeklyReport->student_id,
+            $weeklyReport
+        );
+
         return view('admin.weekly-reports.show', [
             'report' => $weeklyReport,
             'selectedLessonGroups' => $selectedLessonGroups,
+            'courseProgress' => $courseProgress,
         ]);
     }
 

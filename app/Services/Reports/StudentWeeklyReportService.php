@@ -461,6 +461,34 @@ class StudentWeeklyReportService
             ->values();
     }
 
+    /**
+     * @return array{total_modules: int, completed_modules: int, percentage: int, course_titles: array<int, string>}
+     */
+    public function calculateVisibleCourseProgressForStudentReport(int $studentId, StudentWeeklyReport $report): array
+    {
+        $courses = $this->resolveCoursesForStudentReport($studentId, $report);
+        $totalModules = 0;
+        $completedModules = 0;
+
+        foreach ($courses as $course) {
+            $modules = $this->getFilteredSelectableModules($studentId, $report, (int) $course->id);
+            $completedIds = $this->resolveCompletedModuleIds($studentId, $modules);
+            $totalModules += $modules->count();
+            $completedModules += count($completedIds);
+        }
+
+        $percentage = $totalModules > 0
+            ? (int) round(($completedModules / $totalModules) * 100)
+            : 0;
+
+        return [
+            'total_modules' => $totalModules,
+            'completed_modules' => $completedModules,
+            'percentage' => min(100, max(0, $percentage)),
+            'course_titles' => $courses->pluck('title', 'id')->all(),
+        ];
+    }
+
     public function isModuleAllowedForStudentReport(
         int $studentId,
         StudentWeeklyReport $report,

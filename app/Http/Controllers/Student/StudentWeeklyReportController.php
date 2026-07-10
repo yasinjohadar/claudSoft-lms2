@@ -44,10 +44,11 @@ class StudentWeeklyReportController extends Controller
         $courses = $this->reportService->resolveCoursesForStudentReport((int) auth()->id(), $report);
         $groupedSelections = $this->reportService->groupSelectedLessonsByCourse($report);
         $selectedLessonGroups = $this->reportService->groupSelectedLessonsBySectionForDisplay($report);
+        $courseProgress = $this->reportService->calculateVisibleCourseProgressForStudentReport((int) auth()->id(), $report);
         $canEdit = $report->isEditableByStudent();
         $wasSubmitted = $report->wasSubmittedByStudent();
 
-        return view('student.weekly-reports.show', compact('report', 'courses', 'groupedSelections', 'selectedLessonGroups', 'canEdit', 'wasSubmitted'));
+        return view('student.weekly-reports.show', compact('report', 'courses', 'groupedSelections', 'selectedLessonGroups', 'courseProgress', 'canEdit', 'wasSubmitted'));
     }
 
     public function save(Request $request, StudentWeeklyReport $report)

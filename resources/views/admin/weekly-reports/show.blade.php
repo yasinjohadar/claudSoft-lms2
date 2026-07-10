@@ -69,6 +69,8 @@
 
         @include('admin.weekly-reports.partials.report-meta-cards', ['report' => $report])
 
+        @include('admin.weekly-reports.partials.course-progress', ['courseProgress' => $courseProgress ?? []])
+
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="card custom-card group-show-members-card dashboard-fade-in h-100">

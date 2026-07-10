@@ -51,6 +51,8 @@
             @include('student.weekly-reports.partials.admin-feedback-card')
         @endif
 
+        @include('admin.weekly-reports.partials.course-progress', ['courseProgress' => $courseProgress ?? []])
+
         <div class="card custom-card">
             <div class="card-body">
                 <form id="weekly-report-form" method="POST" action="{{ route('student.weekly-reports.save', $report) }}">

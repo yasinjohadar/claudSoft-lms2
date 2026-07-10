@@ -1243,3 +1243,125 @@ test('it groups selected lessons by section for display with completion status',
     expect($groups->last()['items'][0]['type_label'])->toBe('اختبار');
 });
 
+test('it calculates visible course progress for student report', function () {
+    $student = User::factory()->create();
+
+    $courseCategoryId = DB::table('course_categories')->insertGetId([
+        'name' => 'Progress Category',
+        'slug' => 'progress-category',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $courseId = DB::table('courses')->insertGetId([
+        'course_category_id' => $courseCategoryId,
+        'title' => 'Progress Course',
+        'slug' => 'progress-course',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $groupId = DB::table('course_groups')->insertGetId([
+        'name' => 'Progress Group',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_courses')->insert([
+        'course_id' => $courseId,
+        'group_id' => $groupId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_members')->insert([
+        'group_id' => $groupId,
+        'student_id' => $student->id,
+        'role' => 'member',
+        'joined_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'Progress Section',
+        'is_visible' => true,
+        'sort_order' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $moduleOneId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionId,
+        'module_type' => 'lesson',
+        'title' => 'Module one',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $moduleTwoId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionId,
+        'module_type' => 'lesson',
+        'title' => 'Module two',
+        'sort_order' => 2,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $hiddenModuleId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionId,
+        'module_type' => 'lesson',
+        'title' => 'Hidden for other group',
+        'sort_order' => 3,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $otherGroupId = DB::table('course_groups')->insertGetId([
+        'name' => 'Other Group',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('module_access_restrictions')->insert([
+        'module_id' => $hiddenModuleId,
+        'restriction_type' => 'group',
+        'restriction_id' => $otherGroupId,
+        'access_type' => 'allow',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('module_completions')->insert([
+        'student_id' => $student->id,
+        'module_id' => $moduleOneId,
+        'completion_status' => 'completed',
+        'completed_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $report = StudentWeeklyReport::create([
+        'student_id' => $student->id,
+        'target_course_id' => $courseId,
+        'target_group_id' => $groupId,
+        'report_title' => 'Progress report',
+        'status' => StudentWeeklyReport::STATUS_DRAFT,
+    ]);
+
+    $service = app(StudentWeeklyReportService::class);
+    $progress = $service->calculateVisibleCourseProgressForStudentReport($student->id, $report);
+
+    expect($progress['total_modules'])->toBe(2);
+    expect($progress['completed_modules'])->toBe(1);
+    expect($progress['percentage'])->toBe(50);
+});
+
