@@ -7,8 +7,8 @@ use App\Models\CourseGroup;
 use App\Models\CourseModule;
 use App\Models\StudentWeeklyReport;
 use App\Models\User;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -391,6 +391,97 @@ class StudentWeeklyReportService
             ->contains($courseId);
     }
 
+    public function resolveGroupIdForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): ?int
+    {
+        if ($courseId <= 0) {
+            return null;
+        }
+
+        if (!empty($report->target_group_id)) {
+            $groupId = (int) $report->target_group_id;
+
+            $isMember = DB::table('course_group_members')
+                ->where('group_id', $groupId)
+                ->where('student_id', $studentId)
+                ->exists();
+
+            return $isMember ? $groupId : null;
+        }
+
+        $groupId = DB::table('course_group_members')
+            ->join('course_group_courses', 'course_group_members.group_id', '=', 'course_group_courses.group_id')
+            ->where('course_group_members.student_id', $studentId)
+            ->where('course_group_courses.course_id', $courseId)
+            ->orderBy('course_group_members.id')
+            ->value('course_group_members.group_id');
+
+        return $groupId ? (int) $groupId : null;
+    }
+
+    /**
+     * @return Collection<int, array{id: int, title: string, module_type: string}>
+     */
+    public function resolveSelectableModulesForStudentReport(int $studentId, StudentWeeklyReport $report, int $courseId): Collection
+    {
+        if (!$this->isCourseAllowedForStudentReport($studentId, $report, $courseId)) {
+            return collect();
+        }
+
+        $groupId = $this->resolveGroupIdForStudentReport($studentId, $report, $courseId);
+        if (!$groupId) {
+            return collect();
+        }
+
+        $modules = CourseModule::query()
+            ->with([
+                'section.accessRestrictions',
+                'accessRestrictions',
+            ])
+            ->where('course_id', $courseId)
+            ->where('is_visible', true)
+            ->whereNull('deleted_at')
+            ->whereHas('section', function ($query) {
+                $query->where('is_visible', true)->whereNull('deleted_at');
+            })
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get();
+
+        return $modules
+            ->filter(function (CourseModule $module) use ($groupId) {
+                $section = $module->section;
+                if (!$section || !$section->is_visible) {
+                    return false;
+                }
+
+                if (!$this->isContentVisibleForGroup($section->accessRestrictions, $groupId)) {
+                    return false;
+                }
+
+                return $this->isContentVisibleForGroup($module->accessRestrictions, $groupId);
+            })
+            ->values()
+            ->map(fn (CourseModule $module) => [
+                'id' => (int) $module->id,
+                'title' => $module->title,
+                'module_type' => $module->module_type,
+            ]);
+    }
+
+    public function isModuleAllowedForStudentReport(
+        int $studentId,
+        StudentWeeklyReport $report,
+        int $courseId,
+        int $moduleId
+    ): bool {
+        if ($moduleId <= 0) {
+            return false;
+        }
+
+        return $this->resolveSelectableModulesForStudentReport($studentId, $report, $courseId)
+            ->contains(fn (array $module) => (int) $module['id'] === $moduleId);
+    }
+
     public function groupSelectedLessonsByCourse(StudentWeeklyReport $report): Collection
     {
         return $report->selectedLessons
@@ -485,7 +576,7 @@ class StudentWeeklyReportService
                     $courseId = (int) ($entry['course_id'] ?? 0);
                     $moduleId = (int) ($entry['module_id'] ?? 0);
 
-                    if (!$this->isModuleAllowedForStudent($report, $courseId, $moduleId)) {
+                    if (!$this->isModuleAllowedForStudentReport((int) $report->student_id, $report, $courseId, $moduleId)) {
                         throw ValidationException::withMessages([
                             'lessons' => 'تم اختيار درس غير متاح لهذا الطالب.',
                         ]);
@@ -565,21 +656,40 @@ class StudentWeeklyReportService
         }
     }
 
-    private function isModuleAllowedForStudent(StudentWeeklyReport $report, int $courseId, int $moduleId): bool
+    private function isContentVisibleForGroup(?Collection $restrictions, int $groupId): bool
     {
-        if ($courseId <= 0 || $moduleId <= 0) {
+        $restrictions = $restrictions ?? collect();
+
+        if ($restrictions->isEmpty()) {
+            return true;
+        }
+
+        foreach ($restrictions as $restriction) {
+            if ($restriction->restriction_type !== 'group') {
+                continue;
+            }
+
+            $matches = (int) $restriction->restriction_id === $groupId;
+
+            if ($restriction->access_type === 'deny' && $matches) {
+                return false;
+            }
+
+            if ($restriction->access_type === 'allow' && $matches) {
+                return true;
+            }
+        }
+
+        $hasGroupAllowRestrictions = $restrictions
+            ->where('access_type', 'allow')
+            ->where('restriction_type', 'group')
+            ->isNotEmpty();
+
+        if ($hasGroupAllowRestrictions) {
             return false;
         }
 
-        if (!$this->isCourseAllowedForStudentReport((int) $report->student_id, $report, $courseId)) {
-            return false;
-        }
-
-        return CourseModule::query()
-            ->where('id', $moduleId)
-            ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
-            ->exists();
+        return true;
     }
 
     private function resolveLessonIdForModule(int $moduleId): ?int

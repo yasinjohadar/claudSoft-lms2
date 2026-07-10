@@ -7,7 +7,6 @@ use App\Models\Course;
 use App\Models\StudentWeeklyReport;
 use App\Services\Reports\StudentWeeklyReportService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class StudentWeeklyReportController extends Controller
 {
@@ -82,13 +81,11 @@ class StudentWeeklyReportController extends Controller
             403
         );
 
-        $modules = DB::table('course_modules')
-            ->where('course_modules.course_id', $course->id)
-            ->whereNull('course_modules.deleted_at')
-            ->select('course_modules.id', 'course_modules.title', 'course_modules.module_type')
-            ->orderBy('course_modules.sort_order')
-            ->orderBy('course_modules.title')
-            ->get();
+        $modules = $this->reportService->resolveSelectableModulesForStudentReport(
+            (int) auth()->id(),
+            $report,
+            (int) $course->id
+        );
 
         return response()->json($modules);
     }
@@ -117,6 +114,10 @@ class StudentWeeklyReportController extends Controller
 
             if ($moduleId <= 0) {
                 continue;
+            }
+
+            if (!$this->reportService->isModuleAllowedForStudentReport((int) auth()->id(), $report, $courseId, $moduleId)) {
+                abort(403);
             }
         }
 

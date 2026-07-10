@@ -85,25 +85,39 @@
                     <div class="mb-3">
                         <label class="form-label">الدروس التي تمت دراستها</label>
                         @if($canEdit)
-                            <p class="text-muted fs-12 mb-2">اختر الكورس ثم حدّد عدة دروس معاً من نفس الكورس.</p>
+                            @php
+                                $fixedCourse = !empty($report->target_course_id) && $courses->count() === 1
+                                    ? $courses->first()
+                                    : null;
+                            @endphp
+                            @if($fixedCourse)
+                                <p class="text-muted fs-12 mb-2">حدّد الدروس التي درستها ضمن الكورس المحدد لهذا التقرير.</p>
+                            @else
+                                <p class="text-muted fs-12 mb-2">اختر الكورس ثم حدّد عدة دروس معاً من نفس الكورس.</p>
+                            @endif
                         @endif
                         <div id="lesson-selections">
                             @if($canEdit)
                                 @php
                                     $rows = $groupedSelections->isNotEmpty()
                                         ? $groupedSelections
-                                        : collect([['course_id' => $courses->count() === 1 ? ($courses->first()?->id) : null, 'module_ids' => []]]);
+                                        : collect([['course_id' => $fixedCourse?->id ?? ($courses->count() === 1 ? ($courses->first()?->id) : null), 'module_ids' => []]]);
                                 @endphp
                                 @foreach($rows as $rowIndex => $row)
                                     <div class="row g-2 mb-3 lesson-row" data-row-index="{{ $rowIndex }}">
                                         <div class="col-md-5">
                                             <label class="form-label fs-12">الكورس</label>
-                                            <select class="form-select course-select">
-                                                <option value="">اختر الكورس</option>
-                                                @foreach($courses as $course)
-                                                    <option value="{{ $course->id }}" @selected((int) ($row['course_id'] ?? 0) === (int) $course->id)>{{ $course->title }}</option>
-                                                @endforeach
-                                            </select>
+                                            @if($fixedCourse)
+                                                <input type="hidden" class="course-id-fixed" value="{{ $fixedCourse->id }}">
+                                                <div class="form-control bg-light text-body">{{ $fixedCourse->title }}</div>
+                                            @else
+                                                <select class="form-select course-select">
+                                                    <option value="">اختر الكورس</option>
+                                                    @foreach($courses as $course)
+                                                        <option value="{{ $course->id }}" @selected((int) ($row['course_id'] ?? 0) === (int) $course->id)>{{ $course->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @endif
                                         </div>
                                         <div class="col-md-7">
                                             <label class="form-label fs-12">الدروس</label>
@@ -133,7 +147,7 @@
                                 @endif
                             @endif
                         </div>
-                        @if($canEdit && $courses->count() > 1)
+                        @if($canEdit && !$fixedCourse && $courses->count() > 1)
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="add-course-row">
                                 <i class="ri-add-line me-1"></i>إضافة كورس آخر
                             </button>
@@ -168,6 +182,7 @@
 <script>
 (() => {
     const reportId = @json($report->id);
+    const fixedCourseId = @json($fixedCourse->id ?? null);
     const coursesOptionsHtml = @json($courses->map(fn ($c) => ['id' => $c->id, 'title' => $c->title])->values());
     const lessonsUrlTemplate = @json(route('student.weekly-reports.lessons', ['course' => '__COURSE_ID__'])) + '?report_id=' + reportId;
 
@@ -250,10 +265,18 @@
         rowChoices.set(selectEl, instance);
     }
 
+    function getRowCourseId(row) {
+        const fixedInput = row.querySelector('.course-id-fixed');
+        if (fixedInput) {
+            return fixedInput.value;
+        }
+
+        return row.querySelector('.course-select')?.value || '';
+    }
+
     async function loadModulesForRow(row, preserveSelected) {
-        const courseSelect = row.querySelector('.course-select');
         const moduleSelect = row.querySelector('.module-multi-select');
-        const courseId = courseSelect.value;
+        const courseId = getRowCourseId(row);
         const selectedFromData = preserveSelected
             ? JSON.parse(moduleSelect.dataset.selectedModules || '[]')
             : [];
@@ -280,6 +303,10 @@
 
     function bindCourseSelect(row) {
         const courseSelect = row.querySelector('.course-select');
+        if (!courseSelect) {
+            return;
+        }
+
         courseSelect.addEventListener('change', () => loadModulesForRow(row, false));
     }
 
@@ -288,7 +315,7 @@
         let index = 0;
 
         container.querySelectorAll('.lesson-row').forEach((row) => {
-            const courseId = row.querySelector('.course-select')?.value;
+            const courseId = getRowCourseId(row);
             const moduleSelect = row.querySelector('.module-multi-select');
             if (!courseId || !moduleSelect) {
                 return;

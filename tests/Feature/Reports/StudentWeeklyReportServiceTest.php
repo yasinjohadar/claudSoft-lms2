@@ -915,3 +915,105 @@ test('it stores admin feedback and marks report as reviewed', function () {
     expect($updated->reviewed_at)->not->toBeNull();
 });
 
+test('it resolves selectable modules only for the report group visibility rules', function () {
+    $student = User::factory()->create();
+
+    $courseCategoryId = DB::table('course_categories')->insertGetId([
+        'name' => 'Selectable Modules Category',
+        'slug' => 'selectable-modules-category',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $courseId = DB::table('courses')->insertGetId([
+        'course_category_id' => $courseCategoryId,
+        'title' => 'Selectable Modules Course',
+        'slug' => 'selectable-modules-course',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $groupId = DB::table('course_groups')->insertGetId([
+        'name' => 'Selectable Modules Group',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_courses')->insert([
+        'course_id' => $courseId,
+        'group_id' => $groupId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('course_group_members')->insert([
+        'group_id' => $groupId,
+        'student_id' => $student->id,
+        'role' => 'member',
+        'joined_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $sectionId = DB::table('course_sections')->insertGetId([
+        'course_id' => $courseId,
+        'title' => 'Section A',
+        'is_visible' => true,
+        'sort_order' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $allowedModuleId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionId,
+        'module_type' => 'lesson',
+        'title' => 'Allowed Lesson',
+        'sort_order' => 1,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $restrictedModuleId = DB::table('course_modules')->insertGetId([
+        'course_id' => $courseId,
+        'section_id' => $sectionId,
+        'module_type' => 'lesson',
+        'title' => 'Restricted Lesson',
+        'sort_order' => 2,
+        'is_visible' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $otherGroupId = DB::table('course_groups')->insertGetId([
+        'name' => 'Other Group',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('module_access_restrictions')->insert([
+        'module_id' => $restrictedModuleId,
+        'restriction_type' => 'group',
+        'restriction_id' => $otherGroupId,
+        'access_type' => 'allow',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $report = StudentWeeklyReport::create([
+        'student_id' => $student->id,
+        'target_course_id' => $courseId,
+        'target_group_id' => $groupId,
+        'report_title' => 'Group filtered report',
+        'status' => StudentWeeklyReport::STATUS_DRAFT,
+    ]);
+
+    $service = app(StudentWeeklyReportService::class);
+    $modules = $service->resolveSelectableModulesForStudentReport($student->id, $report, $courseId);
+
+    expect($modules->pluck('id')->all())->toBe([$allowedModuleId]);
+    expect($service->isModuleAllowedForStudentReport($student->id, $report, $courseId, $allowedModuleId))->toBeTrue();
+    expect($service->isModuleAllowedForStudentReport($student->id, $report, $courseId, $restrictedModuleId))->toBeFalse();
+});
+
