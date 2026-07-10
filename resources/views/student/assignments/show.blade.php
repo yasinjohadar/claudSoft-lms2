@@ -60,103 +60,171 @@
     use Illuminate\Support\Facades\Storage;
 @endphp
 
-@section('content')
-    <div class="main-content app-content">
-        <div class="container-fluid">
+@php
+    $submissionStatus = 'not_submitted';
+    $statusLabel = 'لم يُسلّم بعد';
+    $statusClass = 'warning';
+    $statusIcon = 'fe-alert-circle';
 
-            <!-- Alerts -->
+    if ($latestSubmission) {
+        if ($latestSubmission->status === 'graded') {
+            $submissionStatus = 'graded';
+            $statusLabel = 'تم التقييم';
+            $statusClass = 'success';
+            $statusIcon = 'fe-check-circle';
+        } elseif ($latestSubmission->status === 'submitted') {
+            $submissionStatus = 'submitted';
+            $statusLabel = 'بانتظار التقييم';
+            $statusClass = 'info';
+            $statusIcon = 'fe-clock';
+        } elseif ($latestSubmission->status === 'draft') {
+            $submissionStatus = 'draft';
+            $statusLabel = 'مسودة';
+            $statusClass = 'secondary';
+            $statusIcon = 'fe-edit-3';
+        }
+    } elseif ($assignment->isPastDue() && !$assignment->canSubmitLate()) {
+        $submissionStatus = 'overdue';
+        $statusLabel = 'انتهى الموعد';
+        $statusClass = 'danger';
+        $statusIcon = 'fe-x-circle';
+    }
+@endphp
+
+@section('content')
+    <div class="main-content app-content student-assignment-show-page">
+        <div class="container-fluid pb-3">
+
             @include('student.components.alerts')
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ $assignment->title }}</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
+            <div class="my-4 page-header-breadcrumb dashboard-fade-in">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">لوحة التحكم</a></li>
+                        @if($assignment->course)
+                            <li class="breadcrumb-item"><a href="{{ route('student.courses.show', $assignment->course_id) }}">{{ $assignment->course->title }}</a></li>
+                        @else
+                            <li class="breadcrumb-item"><a href="{{ route('student.assignments.index') }}">واجباتي</a></li>
+                        @endif
+                        <li class="breadcrumb-item active">الواجب</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="group-show-hero dashboard-fade-in mb-4">
+                <div class="row align-items-start g-3">
+                    <div class="col-lg-8">
+                        <span class="group-show-hero__eyebrow">
+                            <i class="fe fe-clipboard me-1"></i>
+                            تفاصيل الواجب
+                        </span>
+                        <h2 class="group-show-hero__title mb-2">{{ $assignment->title }}</h2>
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge bg-{{ $statusClass }}-transparent text-{{ $statusClass }}">
+                                <i class="fe {{ $statusIcon }} me-1"></i>{{ $statusLabel }}
+                            </span>
+                            <span class="badge bg-success-transparent text-success">
+                                <i class="fe fe-award me-1"></i>{{ $assignment->max_grade }} درجة
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
                             @if($assignment->course)
-                                <li class="breadcrumb-item"><a href="{{ route('student.courses.show', $assignment->course_id) }}">{{ $assignment->course->title }}</a></li>
-                            @else
-                                <li class="breadcrumb-item"><a href="{{ route('student.assignments.index') }}">غير مرتبط بكورس</a></li>
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-book me-1"></i>{{ $assignment->course->title }}
+                                </span>
                             @endif
-                            <li class="breadcrumb-item active">الواجب</li>
-                        </ol>
-                    </nav>
+                            @if($assignment->lesson)
+                                <span class="group-show-chip group-show-chip--sm">
+                                    <i class="fe fe-book-open me-1"></i>{{ $assignment->lesson->title }}
+                                </span>
+                            @endif
+                            @if($assignment->due_date)
+                                <span class="group-show-chip group-show-chip--sm {{ $assignment->isPastDue() ? 'text-danger' : '' }}">
+                                    <i class="fe fe-calendar me-1"></i>{{ $assignment->due_date->format('Y-m-d H:i') }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="group-show-actions group-show-actions--single">
+                            <a href="{{ route('student.assignments.index') }}"
+                               class="group-show-action group-show-action--info">
+                                <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                                <span class="group-show-action__text">رجوع للواجبات</span>
+                            </a>
+                            @if($canSubmit || $canResubmit)
+                                <a href="#submission-form"
+                                   class="group-show-action group-show-action--primary">
+                                    <span class="group-show-action__icon"><i class="fe fe-upload"></i></span>
+                                    <span class="group-show-action__text">{{ $latestSubmission ? 'إعادة التسليم' : 'تسليم الواجب' }}</span>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="row">
-                <!-- Assignment Details & Submission Form -->
-                <div class="col-lg-8">
-                    <!-- Assignment Info -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-info-circle me-2"></i>تفاصيل الواجب
+            <div class="row g-4">
+                <div class="col-xl-8">
+                    <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4">
+                        <div class="card-header border-0 pb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="avatar avatar-sm bg-primary-transparent">
+                                    <i class="fe fe-file-text text-primary"></i>
+                                </span>
+                                <div>
+                                    <h6 class="card-title mb-1">وصف الواجب</h6>
+                                    <p class="fs-12 text-muted mb-0">اقرأ المتطلبات والتعليمات بعناية قبل التسليم</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body pt-3">
                             @if($assignment->description)
-                                <div class="mb-3 assignment-content">
-                                    <div class="text-muted">{!! $assignment->description !!}</div>
+                                <div class="mb-4 assignment-content weekly-report-html-content">
+                                    {!! $assignment->description !!}
                                 </div>
                             @endif
 
                             @if($assignment->instructions)
-                                <div class="alert alert-info assignment-content">
-                                    <h6 class="mb-2"><i class="fas fa-clipboard-list me-2"></i>التعليمات:</h6>
+                                <div class="p-3 rounded border border-info border-opacity-25 bg-info-transparent assignment-content">
+                                    <h6 class="mb-2 d-flex align-items-center gap-2">
+                                        <i class="fe fe-list text-info"></i>التعليمات
+                                    </h6>
                                     {!! $assignment->instructions !!}
                                 </div>
                             @endif
 
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>الدرجة القصوى:</strong></p>
-                                    <span class="badge bg-success fs-14">{{ $assignment->max_grade }}</span>
-                                </div>
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>نوع التسليم:</strong></p>
-                                    <span class="badge bg-secondary-transparent">
-                                        @if($assignment->submission_type === 'link')
-                                            روابط فقط
-                                        @elseif($assignment->submission_type === 'file')
-                                            ملفات فقط
-                                        @else
-                                            روابط وملفات
-                                        @endif
-                                    </span>
-                                </div>
-                                <div class="col-md-4">
-                                    <p class="mb-2"><strong>الدرس:</strong></p>
-                                    @if($assignment->lesson)
-                                        <span class="badge bg-info-transparent">{{ $assignment->lesson->title }}</span>
-                                    @else
-                                        <span class="text-muted">غير محدد</span>
-                                    @endif
-                                </div>
-                            </div>
+                            @if(!$assignment->description && !$assignment->instructions)
+                                <p class="text-muted mb-0">لا يوجد وصف أو تعليمات إضافية لهذا الواجب.</p>
+                            @endif
                         </div>
                     </div>
 
                     <!-- Attachments -->
                     @if($assignment->attachments && is_array($assignment->attachments) && count($assignment->attachments) > 0)
-                        <div class="card custom-card mb-4">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <i class="fas fa-paperclip me-2"></i>المرفقات
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4">
+                            <div class="card-header border-0 pb-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar avatar-sm bg-cyan-transparent">
+                                        <i class="fe fe-paperclip text-info"></i>
+                                    </span>
+                                    <h6 class="card-title mb-0">المرفقات</h6>
                                 </div>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body pt-3">
                                 <div class="row g-3">
                                     @foreach($assignment->attachments as $attachment)
                                         <div class="col-md-6">
-                                            <div class="border rounded p-3">
-                                                <i class="fas fa-file-{{ $attachment['type'] ?? 'alt' }} me-2"></i>
-                                                {{ $attachment['name'] }}
-                                                <br>
-                                                <small class="text-muted">{{ number_format($attachment['size'] / 1024, 2) }} KB</small>
-                                                <a href="{{ Storage::url($attachment['path']) }}" target="_blank" class="btn btn-sm btn-primary float-end">
-                                                    <i class="fas fa-download"></i>
+                                            <div class="d-flex align-items-center gap-3 p-3 rounded border bg-light">
+                                                <span class="avatar avatar-md bg-primary-transparent flex-shrink-0">
+                                                    <i class="fe fe-file text-primary"></i>
+                                                </span>
+                                                <div class="flex-fill min-w-0">
+                                                    <span class="fw-semibold d-block text-truncate">{{ $attachment['name'] }}</span>
+                                                    <small class="text-muted">{{ number_format($attachment['size'] / 1024, 2) }} KB</small>
+                                                </div>
+                                                <a href="{{ Storage::url($attachment['path']) }}" target="_blank" class="btn btn-sm btn-primary rounded-pill">
+                                                    <i class="fe fe-download"></i>
                                                 </a>
                                             </div>
                                         </div>
@@ -168,29 +236,33 @@
 
                     <!-- Current Grade -->
                     @if($latestSubmission && $latestSubmission->grade !== null)
-                        <div class="card custom-card mb-4">
-                            <div class="card-header bg-success text-white">
-                                <div class="card-title text-white">
-                                    <i class="fas fa-star me-2"></i>التقييم
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4 border border-success border-opacity-25">
+                            <div class="card-header border-0 pb-0 bg-success-transparent">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar avatar-sm bg-success-transparent">
+                                        <i class="fe fe-award text-success"></i>
+                                    </span>
+                                    <h6 class="card-title mb-0 text-success">التقييم</h6>
                                 </div>
                             </div>
-                            <div class="card-body">
-                                <div class="text-center mb-3">
-                                    <h2 class="text-success">{{ $latestSubmission->getFinalGrade() }} / {{ $assignment->max_grade }}</h2>
+                            <div class="card-body pt-3">
+                                <div class="text-center mb-3 py-3">
+                                    <h2 class="text-success mb-1">{{ $latestSubmission->getFinalGrade() }} <small class="fs-16 text-muted">/ {{ $assignment->max_grade }}</small></h2>
                                     <p class="text-muted mb-0">
                                         النسبة المئوية: {{ number_format($latestSubmission->getGradePercentage(), 2) }}%
                                     </p>
                                     @if($latestSubmission->is_late && $assignment->late_penalty_percentage > 0)
-                                        <small class="text-danger">
-                                            (تم خصم {{ $assignment->late_penalty_percentage }}% بسبب التأخير)
+                                        <small class="text-danger d-block mt-2">
+                                            <i class="fe fe-minus-circle me-1"></i>تم خصم {{ $assignment->late_penalty_percentage }}% بسبب التأخير
                                         </small>
                                     @endif
                                 </div>
 
                                 @if($latestSubmission->feedback)
-                                    <hr>
-                                    <div class="alert alert-light">
-                                        <h6 class="mb-2"><i class="fas fa-comment me-2"></i>ملاحظات المدرس:</h6>
+                                    <div class="p-3 rounded border bg-light">
+                                        <h6 class="mb-2 d-flex align-items-center gap-2">
+                                            <i class="fe fe-message-circle text-primary"></i>ملاحظات المدرس
+                                        </h6>
                                         <p class="mb-0">{{ $latestSubmission->feedback }}</p>
                                     </div>
                                 @endif
@@ -205,23 +277,31 @@
 
                     <!-- Submission Form -->
                     @if($canSubmit || $canResubmit)
-                        <div class="card custom-card mb-4">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <i class="fas fa-upload me-2"></i>{{ $latestSubmission ? 'إعادة التسليم' : 'تسليم الواجب' }}
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4" id="submission-form">
+                            <div class="card-header border-0 pb-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar avatar-sm bg-warning-transparent">
+                                        <i class="fe fe-upload text-warning"></i>
+                                    </span>
+                                    <div>
+                                        <h6 class="card-title mb-1">{{ $latestSubmission ? 'إعادة التسليم' : 'تسليم الواجب' }}</h6>
+                                        <p class="fs-12 text-muted mb-0">أرفق روابطك أو ملفاتك ثم اضغط تسليم</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body pt-3">
                                 @if($canResubmit)
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        يمكنك إعادة تسليم الواجب.
-                                        @php
-                                            $remaining = $assignment->getRemainingResubmissions(auth()->id());
-                                        @endphp
-                                        @if($remaining !== null)
-                                            المحاولات المتبقية: {{ $remaining }}
-                                        @endif
+                                    <div class="alert alert-info border-0 d-flex align-items-center gap-2">
+                                        <i class="fe fe-info fs-18"></i>
+                                        <span>
+                                            يمكنك إعادة تسليم الواجب.
+                                            @php
+                                                $remaining = $assignment->getRemainingResubmissions(auth()->id());
+                                            @endphp
+                                            @if($remaining !== null)
+                                                المحاولات المتبقية: <strong>{{ $remaining }}</strong>
+                                            @endif
+                                        </span>
                                     </div>
                                 @endif
 
@@ -247,7 +327,7 @@
                                                     <input type="url" name="links[]" class="form-control @error('links.*') is-invalid @enderror"
                                                            placeholder="https://example.com" value="{{ old('links.0') }}">
                                                     <button type="button" class="btn btn-outline-success" onclick="addLinkField()">
-                                                        <i class="fas fa-plus"></i>
+                                                        <i class="fe fe-plus"></i>
                                                     </button>
                                                 </div>
                                             </div>
@@ -271,52 +351,58 @@
                                         </div>
                                     @endif
 
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-paper-plane me-2"></i>تسليم الواجب
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                            <i class="fe fe-send me-2"></i>تسليم الواجب
                                         </button>
-                                        <button type="button" class="btn btn-secondary" onclick="saveDraft()">
-                                            <i class="fas fa-save me-2"></i>حفظ كمسودة
+                                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="saveDraft()">
+                                            <i class="fe fe-save me-2"></i>حفظ كمسودة
                                         </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     @elseif($assignment->isPastDue() && !$assignment->canSubmitLate())
-                        <div class="card custom-card mb-4">
-                            <div class="card-body">
-                                <div class="alert alert-danger text-center">
-                                    <i class="fas fa-times-circle fs-48 mb-3"></i>
-                                    <h5>انتهى موعد التسليم</h5>
-                                    <p class="mb-0">لم يعد بإمكانك تسليم هذا الواجب</p>
-                                </div>
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4">
+                            <div class="card-body text-center py-5">
+                                <span class="avatar avatar-lg bg-danger-transparent mb-3">
+                                    <i class="fe fe-x-circle fs-24 text-danger"></i>
+                                </span>
+                                <h5 class="mb-2">انتهى موعد التسليم</h5>
+                                <p class="text-muted mb-0">لم يعد بإمكانك تسليم هذا الواجب</p>
                             </div>
                         </div>
                     @elseif(!$assignment->isAvailable())
-                        <div class="card custom-card mb-4">
-                            <div class="card-body">
-                                <div class="alert alert-warning text-center">
-                                    <i class="fas fa-clock fs-48 mb-3"></i>
-                                    <h5>الواجب غير متاح حالياً</h5>
-                                    @if($assignment->available_from)
-                                        <p class="mb-0">سيكون متاحاً من: {{ $assignment->available_from->format('Y-m-d H:i') }}</p>
-                                    @endif
-                                </div>
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in mb-4">
+                            <div class="card-body text-center py-5">
+                                <span class="avatar avatar-lg bg-warning-transparent mb-3">
+                                    <i class="fe fe-clock fs-24 text-warning"></i>
+                                </span>
+                                <h5 class="mb-2">الواجب غير متاح حالياً</h5>
+                                @if($assignment->available_from)
+                                    <p class="text-muted mb-0">سيكون متاحاً من: {{ $assignment->available_from->format('Y-m-d H:i') }}</p>
+                                @endif
                             </div>
                         </div>
                     @endif
 
                     <!-- Previous Submissions -->
                     @if($submissions->count() > 0)
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <i class="fas fa-history me-2"></i>محاولاتك السابقة ({{ $submissions->count() }})
+                        <div class="card custom-card student-quizzes-panel dashboard-fade-in">
+                            <div class="card-header border-0 pb-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar avatar-sm bg-secondary-transparent">
+                                        <i class="fe fe-rotate-ccw text-secondary"></i>
+                                    </span>
+                                    <div>
+                                        <h6 class="card-title mb-1">محاولاتك السابقة</h6>
+                                        <p class="fs-12 text-muted mb-0">{{ $submissions->count() }} محاولة</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="card-body p-0">
+                            <div class="card-body pt-3 p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover text-nowrap">
+                                    <table class="table table-hover align-middle mb-0 group-show-table">
                                         <thead>
                                             <tr>
                                                 <th>المحاولة</th>
@@ -361,10 +447,10 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        <button type="button" class="btn btn-sm btn-info"
+                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#viewSubmissionModal{{ $submission->id }}">
-                                                            <i class="fas fa-eye"></i>
+                                                            <i class="fe fe-eye me-1"></i>عرض
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -476,94 +562,8 @@
                     @endif
                 </div>
 
-                <!-- Sidebar -->
-                <div class="col-lg-4">
-                    <!-- Deadlines -->
-                    <div class="card custom-card mb-4">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-clock me-2"></i>المواعيد النهائية
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            @if($assignment->available_from)
-                                <div class="mb-3">
-                                    <p class="mb-1"><strong>متاح من:</strong></p>
-                                    <p class="text-muted mb-0">{{ $assignment->available_from->format('Y-m-d H:i') }}</p>
-                                </div>
-                            @endif
-
-                            @if($assignment->due_date)
-                                <div class="mb-3">
-                                    <p class="mb-1"><strong>موعد التسليم:</strong></p>
-                                    <p class="mb-0 {{ $assignment->isPastDue() ? 'text-danger' : 'text-success' }}">
-                                        {{ $assignment->due_date->format('Y-m-d H:i') }}
-                                        @if($assignment->isPastDue())
-                                            <span class="badge bg-danger ms-2">منتهي</span>
-                                        @else
-                                            <span class="badge bg-success ms-2">نشط</span>
-                                        @endif
-                                    </p>
-                                </div>
-                            @endif
-
-                            @if($assignment->allow_late_submission && $assignment->late_submission_until)
-                                <div class="mb-3">
-                                    <p class="mb-1"><strong>التسليم المتأخر حتى:</strong></p>
-                                    <p class="text-muted mb-0">{{ $assignment->late_submission_until->format('Y-m-d H:i') }}</p>
-                                    @if($assignment->late_penalty_percentage > 0)
-                                        <small class="text-danger">خصم {{ $assignment->late_penalty_percentage }}%</small>
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Your Status -->
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <i class="fas fa-user me-2"></i>حالتك
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <p class="mb-1"><strong>عدد المحاولات:</strong></p>
-                                <p class="text-muted mb-0">{{ $submissions->count() }}</p>
-                            </div>
-
-                            @if($latestSubmission)
-                                <div class="mb-3">
-                                    <p class="mb-1"><strong>آخر تسليم:</strong></p>
-                                    <p class="text-muted mb-0">
-                                        {{ $latestSubmission->submitted_at ? $latestSubmission->submitted_at->format('Y-m-d H:i') : '-' }}
-                                    </p>
-                                </div>
-
-                                <div class="mb-3">
-                                    <p class="mb-1"><strong>حالة آخر تسليم:</strong></p>
-                                    @if($latestSubmission->status === 'graded')
-                                        <span class="badge bg-success">تم التقييم</span>
-                                    @elseif($latestSubmission->status === 'submitted')
-                                        <span class="badge bg-warning">قيد الانتظار</span>
-                                    @elseif($latestSubmission->status === 'draft')
-                                        <span class="badge bg-secondary">مسودة</span>
-                                    @endif
-                                </div>
-
-                                @if($latestSubmission->grade !== null)
-                                    <div>
-                                        <p class="mb-1"><strong>درجتك:</strong></p>
-                                        <h4 class="text-success">{{ $latestSubmission->getFinalGrade() }} / {{ $assignment->max_grade }}</h4>
-                                    </div>
-                                @endif
-                            @else
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-info-circle me-2"></i>لم تقم بتسليم الواجب بعد
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+                <div class="col-xl-4">
+                    @include('student.assignments.partials.show-sidebar', compact('assignment', 'submissions', 'latestSubmission'))
                 </div>
             </div>
 
@@ -589,7 +589,7 @@
         newField.innerHTML = `
             <input type="url" name="links[]" class="form-control" placeholder="https://example.com">
             <button type="button" class="btn btn-outline-danger" onclick="removeLinkField(this)">
-                <i class="fas fa-minus"></i>
+                <i class="fe fe-minus"></i>
             </button>
         `;
         container.appendChild(newField);
