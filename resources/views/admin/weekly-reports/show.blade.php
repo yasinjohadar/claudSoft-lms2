@@ -69,6 +69,8 @@
 
         @include('admin.weekly-reports.partials.report-meta-cards', ['report' => $report])
 
+        @include('admin.weekly-reports.partials.report-instructions-card', ['report' => $report])
+
         @include('admin.weekly-reports.partials.course-progress', ['courseProgress' => $courseProgress ?? []])
 
         <div class="row g-4">

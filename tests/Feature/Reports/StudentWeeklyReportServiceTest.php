@@ -1365,3 +1365,50 @@ test('it calculates visible course progress for student report', function () {
     expect($progress['percentage'])->toBe(50);
 });
 
+test('it stores report description on manual report creation', function () {
+    $student = User::factory()->create();
+    $admin = User::factory()->create();
+
+    $service = app(StudentWeeklyReportService::class);
+    $report = $service->createManualReport(
+        $student,
+        $admin->id,
+        'Weekly tasks',
+        null,
+        null,
+        null,
+        '<ul><li>Complete lesson 1</li><li>Write summary</li></ul>'
+    );
+
+    expect($report->report_description)->toContain('<li>Complete lesson 1</li>');
+});
+
+test('it updates and deletes admin created report batches', function () {
+    $studentA = User::factory()->create();
+    $studentB = User::factory()->create();
+    $admin = User::factory()->create();
+
+    $service = app(StudentWeeklyReportService::class);
+
+    $reportA = $service->createManualReport($studentA, $admin->id, 'Batch title', now()->addDay(), null, null, 'Task one');
+    $service->createManualReport($studentB, $admin->id, 'Batch title', $reportA->due_at, null, null, 'Task one');
+
+    $batchKey = $service->getAdminCreatedReportBatches(null, null, 10)->first()['key'] ?? null;
+    expect($batchKey)->not->toBeNull();
+
+    $newKey = $service->updateAdminCreatedBatch($batchKey, [
+        'report_title' => 'Updated title',
+        'report_description' => "New task\nSecond task",
+        'due_at' => $reportA->due_at?->format('Y-m-d H:i:s'),
+    ]);
+
+    expect($reportA->fresh()->report_title)->toBe('Updated title');
+    expect(StudentWeeklyReport::find($reportA->id)?->report_description)->toContain('New task');
+    expect($newKey)->not->toBe($batchKey);
+
+    $deleted = $service->deleteAdminCreatedBatch($newKey);
+
+    expect($deleted)->toBe(2);
+    expect(StudentWeeklyReport::query()->where('created_by_admin_id', $admin->id)->count())->toBe(0);
+});
+

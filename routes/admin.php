@@ -1545,6 +1545,9 @@ Route::prefix('admin')
             Route::get('/groups-overview', [AdminStudentWeeklyReportController::class, 'groupsOverview'])->name('groups-overview');
             Route::get('/pending', [AdminStudentWeeklyReportController::class, 'pendingReports'])->name('pending');
             Route::get('/all', [AdminStudentWeeklyReportController::class, 'allReports'])->name('all');
+            Route::get('/created/batch/edit', [AdminStudentWeeklyReportController::class, 'editCreatedBatch'])->name('created.batch.edit');
+            Route::put('/created/batch', [AdminStudentWeeklyReportController::class, 'updateCreatedBatch'])->name('created.batch.update');
+            Route::delete('/created/batch', [AdminStudentWeeklyReportController::class, 'destroyCreatedBatch'])->name('created.batch.destroy');
             Route::get('/created/batch', [AdminStudentWeeklyReportController::class, 'showCreatedBatch'])->name('created.batch');
             Route::get('/created', [AdminStudentWeeklyReportController::class, 'createdReports'])->name('created');
 

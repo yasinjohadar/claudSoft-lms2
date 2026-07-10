@@ -11,7 +11,7 @@
             <th>الموعد النهائي</th>
             <th>الطلاب</th>
             <th>مسلّم</th>
-            <th></th>
+            <th style="min-width: 140px;">العمليات</th>
         </tr>
         </thead>
         <tbody>
@@ -23,6 +23,11 @@
                        class="fw-semibold text-primary text-decoration-none">
                         {{ $batch['report_title'] }}
                     </a>
+                    @if(filled($batch['report_description'] ?? null))
+                        <div class="text-muted fs-11 mt-1 text-truncate" style="max-width: 220px;">
+                            {{ Str::limit(strip_tags($batch['report_description']), 60) }}
+                        </div>
+                    @endif
                 </td>
                 <td>{{ $batch['target_course']?->title ?? '—' }}</td>
                 <td>{{ $batch['target_group']?->name ?? '—' }}</td>
@@ -39,9 +44,27 @@
                     @endif
                 </td>
                 <td>
-                    <a class="btn btn-sm btn-primary-light" href="{{ route('admin.weekly-reports.created.batch', ['batch' => $batch['key']]) }}">
-                        <i class="fe fe-users me-1"></i>عرض الطلاب
-                    </a>
+                    <div class="d-flex flex-wrap gap-1 justify-content-center">
+                        <a class="btn btn-sm btn-icon btn-outline-primary"
+                           href="{{ route('admin.weekly-reports.created.batch', ['batch' => $batch['key']]) }}"
+                           title="عرض الطلاب">
+                            <i class="fe fe-users"></i>
+                        </a>
+                        <a class="btn btn-sm btn-icon btn-outline-info"
+                           href="{{ route('admin.weekly-reports.created.batch.edit', ['batch' => $batch['key']]) }}"
+                           title="تعديل التقرير">
+                            <i class="fe fe-edit-2"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-sm btn-icon btn-outline-danger weekly-batch-delete-btn"
+                                title="حذف الدفعة"
+                                data-batch-key="{{ $batch['key'] }}"
+                                data-batch-title="{{ $batch['report_title'] }}"
+                                data-students-count="{{ $batch['students_count'] }}"
+                                data-submitted-count="{{ $batch['submitted_count'] }}">
+                            <i class="fe fe-trash-2"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         @empty

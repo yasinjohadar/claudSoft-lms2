@@ -51,6 +51,8 @@
             @include('student.weekly-reports.partials.admin-feedback-card')
         @endif
 
+        @include('admin.weekly-reports.partials.report-instructions-card', ['report' => $report])
+
         @include('admin.weekly-reports.partials.course-progress', ['courseProgress' => $courseProgress ?? []])
 
         <div class="card custom-card">

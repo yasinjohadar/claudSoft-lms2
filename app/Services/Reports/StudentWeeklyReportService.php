@@ -622,7 +622,8 @@ class StudentWeeklyReportService
         string $title,
         ?\DateTimeInterface $dueAt,
         ?int $targetCourseId = null,
-        ?int $targetGroupId = null
+        ?int $targetGroupId = null,
+        ?string $description = null
     ): StudentWeeklyReport
     {
         return StudentWeeklyReport::create([
@@ -631,9 +632,62 @@ class StudentWeeklyReportService
             'target_course_id' => $targetCourseId,
             'target_group_id' => $targetGroupId,
             'report_title' => $title,
+            'report_description' => $description,
             'due_at' => $dueAt,
             'status' => StudentWeeklyReport::STATUS_DRAFT,
         ]);
+    }
+
+    public function getAdminCreatedBatchReports(string $batchKey): Collection
+    {
+        return $this->getAdminCreatedReportsQuery()
+            ->get()
+            ->filter(fn (StudentWeeklyReport $report) => $this->adminCreatedBatchKey($report) === $batchKey)
+            ->values();
+    }
+
+    public function updateAdminCreatedBatch(string $batchKey, array $data): string
+    {
+        $reports = $this->getAdminCreatedBatchReports($batchKey);
+
+        if ($reports->isEmpty()) {
+            abort(404);
+        }
+
+        $dueAt = array_key_exists('due_at', $data) && $data['due_at'] !== null && $data['due_at'] !== ''
+            ? new \DateTimeImmutable($data['due_at'])
+            : null;
+
+        $updatePayload = [
+            'report_title' => $data['report_title'],
+            'report_description' => $data['report_description'] ?? null,
+            'due_at' => $dueAt,
+        ];
+
+        foreach ($reports as $report) {
+            $report->update($updatePayload);
+        }
+
+        return $this->adminCreatedBatchKey($reports->first()->fresh());
+    }
+
+    public function deleteAdminCreatedBatch(string $batchKey): int
+    {
+        $reports = $this->getAdminCreatedBatchReports($batchKey);
+
+        if ($reports->isEmpty()) {
+            abort(404);
+        }
+
+        $deleted = 0;
+
+        foreach ($reports as $report) {
+            $report->selectedLessons()->delete();
+            $report->delete();
+            $deleted++;
+        }
+
+        return $deleted;
     }
 
     public function saveStudentReport(StudentWeeklyReport $report, array $payload): StudentWeeklyReport
@@ -912,6 +966,7 @@ class StudentWeeklyReportService
         return [
             'key' => $this->adminCreatedBatchKey($first),
             'report_title' => $first->report_title,
+            'report_description' => $first->report_description,
             'target_course' => $first->targetCourse,
             'target_group' => $first->targetGroup,
             'created_by_admin' => $first->createdByAdmin,

@@ -22,6 +22,7 @@ class StudentWeeklyReport extends Model
         'target_course_id',
         'target_group_id',
         'report_title',
+        'report_description',
         'student_details',
         'student_notes',
         'admin_feedback',
@@ -106,6 +107,22 @@ class StudentWeeklyReport extends Model
     public function scopeAdminCreated($query)
     {
         return $query->whereNotNull('created_by_admin_id');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function descriptionLines(): array
+    {
+        if (! is_string($this->report_description) || trim($this->report_description) === '') {
+            return [];
+        }
+
+        return collect(preg_split('/\R+/', $this->report_description))
+            ->map(fn (string $line) => trim(preg_replace('/^[\-\*\d\.\)]+\s*/u', '', trim($line))))
+            ->filter()
+            ->values()
+            ->all();
     }
 }
 

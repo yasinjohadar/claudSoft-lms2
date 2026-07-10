@@ -145,15 +145,11 @@ class StudentWeeklyReportController extends Controller
     {
 
         $validated = $request->validate([
-
             'course_id' => ['required', 'integer', 'exists:courses,id'],
-
             'group_id' => ['required', 'integer', 'exists:course_groups,id'],
-
             'report_title' => ['required', 'string', 'max:255'],
-
+            'report_description' => ['nullable', 'string', 'max:50000'],
             'due_at' => ['nullable', 'date'],
-
         ]);
 
 
@@ -183,19 +179,13 @@ class StudentWeeklyReportController extends Controller
         foreach ($students as $student) {
 
             $this->reportService->createManualReport(
-
                 $student,
-
                 (int) auth()->id(),
-
                 $validated['report_title'],
-
                 isset($validated['due_at']) ? new \DateTimeImmutable($validated['due_at']) : null,
-
                 (int) $validated['course_id'],
-
-                (int) $validated['group_id']
-
+                (int) $validated['group_id'],
+                isset($validated['report_description']) ? trim($validated['report_description']) : null
             );
 
         }
@@ -416,6 +406,71 @@ class StudentWeeklyReportController extends Controller
                 'status' => $status ?? '',
             ],
         ]);
+    }
+
+    public function editCreatedBatch(Request $request)
+    {
+        $batchKey = $request->query('batch');
+
+        if (! is_string($batchKey) || $batchKey === '') {
+            abort(404);
+        }
+
+        $batch = $this->reportService->getAdminCreatedBatchByKey($batchKey);
+
+        if ($batch === null) {
+            abort(404);
+        }
+
+        return view('admin.weekly-reports.edit-batch', [
+            'batch' => $batch,
+            'batchKey' => $batchKey,
+        ]);
+    }
+
+    public function updateCreatedBatch(Request $request)
+    {
+        $batchKey = $request->input('batch');
+
+        if (! is_string($batchKey) || $batchKey === '') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'batch' => ['required', 'string'],
+            'report_title' => ['required', 'string', 'max:255'],
+            'report_description' => ['nullable', 'string', 'max:50000'],
+            'due_at' => ['nullable', 'date'],
+        ]);
+
+        $newBatchKey = $this->reportService->updateAdminCreatedBatch($batchKey, [
+            'report_title' => $validated['report_title'],
+            'report_description' => isset($validated['report_description'])
+                ? trim($validated['report_description'])
+                : null,
+            'due_at' => $validated['due_at'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('admin.weekly-reports.created.batch', ['batch' => $newBatchKey])
+            ->with('success', 'تم تحديث بيانات التقرير لجميع الطلاب في الدفعة.');
+    }
+
+    public function destroyCreatedBatch(Request $request)
+    {
+        $batchKey = $request->input('batch');
+
+        if (! is_string($batchKey) || $batchKey === '') {
+            abort(404);
+        }
+
+        $deleted = $this->reportService->deleteAdminCreatedBatch($batchKey);
+
+        return redirect()
+            ->route('admin.weekly-reports.created')
+            ->with('success', $deleted === 1
+                ? 'تم حذف تقرير واحد بنجاح.'
+                : "تم حذف {$deleted} تقارير من الدفعة بنجاح.");
     }
 
     public function show(StudentWeeklyReport $weeklyReport)

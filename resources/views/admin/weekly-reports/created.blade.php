@@ -100,6 +100,8 @@
         </div>
     </div>
 </div>
+
+@include('admin.weekly-reports.partials.delete-batch-modal')
 @endsection
 
 @include('admin.weekly-reports.partials.countup-script')

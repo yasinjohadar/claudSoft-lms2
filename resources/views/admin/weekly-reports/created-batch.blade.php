@@ -40,7 +40,21 @@
                     </div>
                 </div>
                 <div class="col-lg-4">
-                    <div class="group-show-actions group-show-actions--single">
+                    <div class="group-show-actions">
+                        <a href="{{ route('admin.weekly-reports.created.batch.edit', ['batch' => $batchKey]) }}"
+                           class="group-show-action group-show-action--warning">
+                            <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
+                            <span class="group-show-action__text">تعديل التقرير</span>
+                        </a>
+                        <button type="button"
+                                class="group-show-action group-show-action--danger border-0 weekly-batch-delete-btn"
+                                data-batch-key="{{ $batchKey }}"
+                                data-batch-title="{{ $batch['report_title'] }}"
+                                data-students-count="{{ $batch['students_count'] }}"
+                                data-submitted-count="{{ $batch['submitted_count'] }}">
+                            <span class="group-show-action__icon"><i class="fe fe-trash-2"></i></span>
+                            <span class="group-show-action__text">حذف الدفعة</span>
+                        </button>
                         <a href="{{ route('admin.weekly-reports.created') }}"
                            class="group-show-action group-show-action--info">
                             <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
@@ -77,6 +91,24 @@
                 </div>
             </div>
         </div>
+
+        @if(filled($batch['report_description'] ?? null))
+            <div class="card custom-card border-primary-transparent dashboard-fade-in mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="avatar avatar-md bg-primary-transparent text-primary rounded-circle flex-shrink-0">
+                            <i class="fe fe-clipboard fs-18"></i>
+                        </div>
+                        <div class="flex-fill">
+                            <h6 class="fw-semibold mb-3">المطلوب من الطلاب</h6>
+                            <div class="p-3 rounded border bg-light weekly-report-html-content">
+                                {!! $batch['report_description'] !!}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="card custom-card group-show-members-card dashboard-fade-in">
             <div class="card-header border-0 pb-0">
@@ -138,6 +170,8 @@
         </div>
     </div>
 </div>
+
+@include('admin.weekly-reports.partials.delete-batch-modal')
 @endsection
 
 @push('scripts')

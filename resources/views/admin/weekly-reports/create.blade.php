@@ -2,6 +2,14 @@
 
 @section('page-title', 'إنشاء تقرير أسبوعي')
 
+@section('css')
+<style>
+    .weekly-report-editor-wrap .tox-tinymce {
+        border-radius: 0.375rem;
+    }
+</style>
+@stop
+
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
@@ -41,7 +49,7 @@
         <div class="card custom-card group-show-members-card dashboard-fade-in">
             <div class="card-header border-0 pb-0">
                 <h4 class="card-title mb-1">بيانات التقرير</h4>
-                <p class="fs-12 text-muted mb-0">حدّد الكورس والمجموعة وعنوان التقرير والموعد النهائي.</p>
+                <p class="fs-12 text-muted mb-0">حدّد الكورس والمجموعة وعنوان التقرير والوصف والموعد النهائي.</p>
             </div>
             <div class="card-body pt-3">
                 <form method="POST" action="{{ route('admin.weekly-reports.store') }}" id="weekly-report-create-form" class="group-show-filters mb-0" novalidate>
@@ -113,6 +121,22 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="report_description">وصف التقرير / المطلوب من الطالب</label>
+                            <div class="weekly-report-editor-wrap">
+                                <textarea
+                                    class="form-control @error('report_description') is-invalid @enderror"
+                                    name="report_description"
+                                    id="report_description"
+                                    rows="8"
+                                >{{ old('report_description') }}</textarea>
+                            </div>
+                            <div class="form-text">يظهر للطالب عند فتح التقرير. يمكنك استخدام القوائم والتنسيق مثل صفحة إنشاء التدوينة.</div>
+                            @error('report_description')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="d-flex flex-wrap gap-2 mt-4 pt-2 border-top">
@@ -129,6 +153,10 @@
 @endsection
 
 @push('scripts')
+@include('admin.blog.partials.tinymce-config', [
+    'editors' => [['selector' => '#report_description', 'height' => 420]],
+    'formSelector' => '#weekly-report-create-form',
+])
 <script>
     (function () {
         const form = document.getElementById('weekly-report-create-form');
