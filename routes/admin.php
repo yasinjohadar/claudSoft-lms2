@@ -61,6 +61,7 @@ use App\Http\Controllers\Admin\FrontendReviewController;
 use App\Http\Controllers\Admin\Gamification\AchievementController as AdminAchievementController;
 use App\Http\Controllers\Admin\Gamification\AnalyticsController as AdminAnalyticsController;
 use App\Http\Controllers\Admin\Gamification\BadgeController as AdminBadgeController;
+use App\Http\Controllers\Admin\Gamification\BadgeReportController as AdminBadgeReportController;
 use App\Http\Controllers\Admin\Gamification\ChallengeController as AdminChallengeController;
 use App\Http\Controllers\Admin\Gamification\CompetitionController as AdminCompetitionController;
 use App\Http\Controllers\Admin\Gamification\DashboardController as GamificationDashboardController;
@@ -681,7 +682,13 @@ Route::prefix('admin')
                 Route::get('/award-manual/students', [AdminBadgeController::class, 'searchStudents'])->name('award.students');
                 Route::post('/award-manual', [AdminBadgeController::class, 'awardManual'])->name('award.store');
                 Route::post('/award', [AdminBadgeController::class, 'awardToUser'])->name('award');
-                Route::get('/statistics/overview', [AdminBadgeController::class, 'statistics'])->name('statistics');
+                Route::get('/course-groups', [AdminBadgeReportController::class, 'courseGroups'])->name('course-groups');
+                Route::prefix('reports')->name('reports.')->group(function () {
+                    Route::get('/distribution', [AdminBadgeReportController::class, 'distribution'])->name('distribution');
+                    Route::get('/students', [AdminBadgeReportController::class, 'students'])->name('students');
+                    Route::get('/students/{user}', [AdminBadgeReportController::class, 'studentDetail'])->name('students.detail');
+                });
+                Route::get('/statistics/overview', [AdminBadgeReportController::class, 'statistics'])->name('statistics');
                 Route::get('/{badge}/award', [AdminBadgeController::class, 'awardFormForBadge'])->name('award.badge');
                 Route::get('/{badge}', [AdminBadgeController::class, 'show'])->name('show');
                 Route::get('/{badge}/edit', [AdminBadgeController::class, 'edit'])->name('edit');

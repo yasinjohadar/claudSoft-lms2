@@ -9,13 +9,13 @@ use App\Models\PointsTransaction;
 use App\Models\User;
 use App\Services\Gamification\BadgeManualAwardService;
 use App\Services\Gamification\GamificationService;
+use App\Services\Gamification\GamificationStudentScopeService;
 use App\Services\Gamification\PointEarningCatalog;
 use App\Services\Gamification\PointsBulkGrantService;
 use App\Services\Gamification\PointsService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -27,7 +27,8 @@ class PointsController extends Controller
         protected GamificationService $gamificationService,
         protected PointsBulkGrantService $bulkGrantService,
         protected BadgeManualAwardService $targetService,
-        protected PointEarningCatalog $earningCatalog
+        protected PointEarningCatalog $earningCatalog,
+        protected GamificationStudentScopeService $studentScopeService
     ) {}
 
     public function index(Request $request)
@@ -42,7 +43,7 @@ class PointsController extends Controller
         $stats = $this->buildStatsFromQuery($statsQuery);
         $sourceOptions = $this->earningCatalog->getDistinctSourcesForFilter();
         $courses = Course::query()->orderBy('title')->get(['id', 'title']);
-        $allGroups = $this->resolveGroupOptions((int) $request->input('course_id', 0));
+        $allGroups = $this->studentScopeService->resolveGroupOptions((int) $request->input('course_id', 0));
 
         if ($request->ajax()) {
             return response()->json([
@@ -116,56 +117,14 @@ class PointsController extends Controller
             $query->whereDate('created_at', '<=', $request->to_date);
         }
 
-        $this->applyCourseAndGroupFilters($query, $request);
+        $this->studentScopeService->applyUserIdScope(
+            $query,
+            'user_id',
+            (int) $request->input('course_id', 0),
+            (int) $request->input('group_id', 0)
+        );
 
         return $query;
-    }
-
-    protected function applyCourseAndGroupFilters(Builder $query, Request $request): void
-    {
-        $courseId = (int) $request->input('course_id', 0);
-        $groupId = (int) $request->input('group_id', 0);
-
-        if ($courseId <= 0 && $groupId <= 0) {
-            return;
-        }
-
-        if ($courseId > 0 && $groupId > 0) {
-            $isLinked = DB::table('course_group_courses')
-                ->where('course_id', $courseId)
-                ->where('group_id', $groupId)
-                ->exists();
-
-            if (! $isLinked) {
-                $query->whereRaw('1 = 0');
-
-                return;
-            }
-
-            $query->whereIn('user_id', function ($subQuery) use ($groupId) {
-                $subQuery->select('student_id')
-                    ->from('course_group_members')
-                    ->where('group_id', $groupId);
-            });
-
-            return;
-        }
-
-        if ($courseId > 0) {
-            $query->whereIn('user_id', function ($subQuery) use ($courseId) {
-                $subQuery->select('student_id')
-                    ->from('course_enrollments')
-                    ->where('course_id', $courseId);
-            });
-
-            return;
-        }
-
-        $query->whereIn('user_id', function ($subQuery) use ($groupId) {
-            $subQuery->select('student_id')
-                ->from('course_group_members')
-                ->where('group_id', $groupId);
-        });
     }
 
     protected function buildStatsFromQuery(Builder $query): array
@@ -178,19 +137,6 @@ class PointsController extends Controller
             'total_points_spent' => (int) abs((clone $statsQuery)->where('points', '<', 0)->sum('points')),
             'today_transactions' => (clone $statsQuery)->whereDate('created_at', today())->count(),
         ];
-    }
-
-    protected function resolveGroupOptions(int $courseId)
-    {
-        if ($courseId > 0) {
-            $course = Course::query()->find($courseId);
-
-            return $course
-                ? $course->groups()->orderBy('course_groups.name')->get()
-                : collect();
-        }
-
-        return CourseGroup::query()->orderBy('name')->get(['id', 'name']);
     }
 
     public function userTransactions(User $user)

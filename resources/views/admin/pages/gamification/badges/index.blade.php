@@ -50,6 +50,12 @@
                         <div class="card-header d-flex justify-content-between align-items-center bg-light">
                             <h5 class="mb-0 fw-bold">جدول الشارات</h5>
                             <div class="d-flex gap-2">
+                                <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.gamification.badges.reports.distribution') }}">
+                                    <i class="fas fa-chart-bar me-1"></i> تقرير التوزيع
+                                </a>
+                                <a class="btn btn-sm btn-outline-info" href="{{ route('admin.gamification.badges.reports.students') }}">
+                                    <i class="fas fa-users me-1"></i> شارات الطلاب
+                                </a>
                                 <a class="btn btn-sm btn-success" href="{{ route('admin.gamification.badges.award.form') }}">
                                     <i class="fas fa-award me-1"></i> منح يدوي
                                 </a>
