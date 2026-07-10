@@ -5,12 +5,20 @@ namespace App\Services\Gamification;
 use App\Models\User;
 use App\Models\Competition;
 use App\Models\CompetitionParticipant;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class CompetitionService
 {
+    protected function competitionsAvailable(): bool
+    {
+        return Schema::hasTable('competitions')
+            && Schema::hasTable('competition_participants');
+    }
+
     /**
      * إنشاء منافسة بين أصدقاء
      */
@@ -249,6 +257,10 @@ class CompetitionService
      */
     public function checkExpiredCompetitions(): int
     {
+        if (!$this->competitionsAvailable()) {
+            return 0;
+        }
+
         $expired = Competition::where('status', 'active')
             ->where('ends_at', '<', now())
             ->get();
@@ -265,6 +277,10 @@ class CompetitionService
      */
     public function getUserActiveCompetitions(User $user)
     {
+        if (!$this->competitionsAvailable()) {
+            return new Collection();
+        }
+
         return Competition::where('status', 'active')
             ->where('ends_at', '>', now())
             ->whereHas('participants', function($q) use ($user) {
@@ -280,6 +296,10 @@ class CompetitionService
      */
     public function getUserCompletedCompetitions(User $user)
     {
+        if (!$this->competitionsAvailable()) {
+            return new Collection();
+        }
+
         return Competition::where('status', 'completed')
             ->whereHas('participants', function($q) use ($user) {
                 $q->where('user_id', $user->id);
