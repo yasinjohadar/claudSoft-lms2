@@ -33,11 +33,20 @@ class StudentWeeklyReport extends Model
     ];
 
     protected $casts = [
+        'student_id' => 'integer',
+        'created_by_admin_id' => 'integer',
+        'target_course_id' => 'integer',
+        'target_group_id' => 'integer',
         'due_at' => 'datetime',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
+
+    public function belongsToStudentId(int|string|null $userId): bool
+    {
+        return $userId !== null && (int) $this->student_id === (int) $userId;
+    }
 
     public function student(): BelongsTo
     {

@@ -17,7 +17,8 @@ class StudentWeeklyReportController extends Controller
 
     public function index()
     {
-        $baseQuery = StudentWeeklyReport::query()->where('student_id', auth()->id());
+        $studentId = (int) auth()->id();
+        $baseQuery = StudentWeeklyReport::query()->where('student_id', $studentId);
 
         $reports = (clone $baseQuery)
             ->latest('due_at')
@@ -38,7 +39,7 @@ class StudentWeeklyReportController extends Controller
 
     public function show(StudentWeeklyReport $report)
     {
-        abort_if($report->student_id !== auth()->id(), 403);
+        $this->authorizeStudentReport($report);
 
         $report->load('selectedLessons.lesson', 'selectedLessons.module', 'selectedLessons.course');
         $courses = $this->reportService->resolveCoursesForStudentReport((int) auth()->id(), $report);
@@ -51,7 +52,7 @@ class StudentWeeklyReportController extends Controller
 
     public function save(Request $request, StudentWeeklyReport $report)
     {
-        abort_if($report->student_id !== auth()->id(), 403);
+        $this->authorizeStudentReport($report);
 
         $payload = $this->validatedPayload($request, $report);
         $this->reportService->saveStudentReport($report, $payload);
@@ -61,7 +62,7 @@ class StudentWeeklyReportController extends Controller
 
     public function submit(Request $request, StudentWeeklyReport $report)
     {
-        abort_if($report->student_id !== auth()->id(), 403);
+        $this->authorizeStudentReport($report);
 
         $payload = $this->validatedPayload($request, $report);
         $this->reportService->submitReport($report, $payload);
@@ -75,7 +76,7 @@ class StudentWeeklyReportController extends Controller
         abort_unless($reportId > 0, 403);
 
         $report = StudentWeeklyReport::query()->findOrFail($reportId);
-        abort_if($report->student_id !== auth()->id(), 403);
+        $this->authorizeStudentReport($report);
         abort_unless(
             $this->reportService->isCourseAllowedForStudentReport((int) auth()->id(), $report, (int) $course->id),
             403
@@ -120,5 +121,14 @@ class StudentWeeklyReportController extends Controller
         }
 
         return $validated;
+    }
+
+    private function authorizeStudentReport(StudentWeeklyReport $report): void
+    {
+        abort_unless(
+            $report->belongsToStudentId(auth()->id()),
+            403,
+            'غير مصرح لك بالوصول إلى هذا التقرير.'
+        );
     }
 }

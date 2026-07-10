@@ -38,7 +38,7 @@ class WeeklyReportApiController extends Controller
 
     public function show(Request $request, StudentWeeklyReport $report): JsonResponse
     {
-        abort_if($report->student_id !== $request->user()->id, 403);
+        abort_unless($report->belongsToStudentId($request->user()->id), 403);
         $report->load('selectedLessons.lesson', 'selectedLessons.module', 'selectedLessons.course');
 
         return response()->json(['success' => true, 'data' => $this->serialize($report, true)]);
@@ -46,7 +46,7 @@ class WeeklyReportApiController extends Controller
 
     public function save(Request $request, StudentWeeklyReport $report): JsonResponse
     {
-        abort_if($report->student_id !== $request->user()->id, 403);
+        abort_unless($report->belongsToStudentId($request->user()->id), 403);
         $this->reportService->saveStudentReport($report, $this->validatedPayload($request));
 
         return response()->json(['success' => true, 'message' => 'تم حفظ التقرير']);
@@ -54,7 +54,7 @@ class WeeklyReportApiController extends Controller
 
     public function submit(Request $request, StudentWeeklyReport $report): JsonResponse
     {
-        abort_if($report->student_id !== $request->user()->id, 403);
+        abort_unless($report->belongsToStudentId($request->user()->id), 403);
         $this->reportService->submitReport($report, $this->validatedPayload($request));
 
         return response()->json(['success' => true, 'message' => 'تم إرسال التقرير']);
