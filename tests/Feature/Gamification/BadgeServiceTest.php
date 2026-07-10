@@ -137,6 +137,32 @@ test('it cascades meta badges based on total_badges', function () {
     expect($service->userHasBadge($user, $hunter))->toBeTrue();
 });
 
+test('getUserBadgeStats works when user has no stats record', function () {
+    $user = User::factory()->create();
+
+    $service = app(BadgeService::class);
+    $stats = $service->getUserBadgeStats($user);
+
+    expect($stats['total_earned'])->toBe(0);
+    expect($stats['total_available'])->toBeGreaterThanOrEqual(0);
+    expect($user->fresh()->stats)->not->toBeNull();
+});
+
+test('getBadgeProgress handles structured criteria format', function () {
+    $user = User::factory()->create();
+    $badge = createTestBadge([
+        'slug' => 'structured-progress-' . uniqid(),
+        'criteria' => ['field' => 'lessons_completed', 'required_value' => 10],
+    ]);
+
+    $service = app(BadgeService::class);
+    $progress = $service->getBadgeProgress($user, $badge);
+
+    expect($progress['earned'])->toBeFalse();
+    expect($progress['progress'])->toBe(0.0);
+    expect($progress['requirements']['lessons_completed']['required'])->toBe(10);
+});
+
 test('getBadgeProgress returns awarded_at for earned badges', function () {
     $user = User::factory()->create();
     $badge = createTestBadge(['slug' => 'progress-test']);

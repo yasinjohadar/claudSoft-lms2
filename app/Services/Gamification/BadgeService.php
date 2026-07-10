@@ -221,6 +221,42 @@ class BadgeService
     }
 
     /**
+     * ضمان وجود سجل إحصائيات للمستخدم
+     */
+    protected function resolveUserStats(User $user)
+    {
+        return $user->stats()->firstOrCreate(['user_id' => $user->id]);
+    }
+
+    /**
+     * توحيد صيغ معايير الشارة إلى [criteria_key => required_value]
+     */
+    protected function normalizeBadgeCriteria(?array $criteria): array
+    {
+        if (empty($criteria)) {
+            return [];
+        }
+
+        if (isset($criteria['field']) && (isset($criteria['required_value']) || isset($criteria['value']))) {
+            return [
+                $criteria['field'] => (int) ($criteria['required_value'] ?? $criteria['value'] ?? 0),
+            ];
+        }
+
+        $normalized = [];
+
+        foreach ($criteria as $key => $requiredValue) {
+            if (in_array($key, ['field', 'required_value', 'value'], true)) {
+                continue;
+            }
+
+            $normalized[$key] = (int) $requiredValue;
+        }
+
+        return $normalized;
+    }
+
+    /**
      * التحقق من جميع الشارات المتاحة للمستخدم
      */
     public function checkAllBadges(User $user): array
@@ -317,8 +353,8 @@ class BadgeService
             ];
         }
 
-        $stats = $user->stats;
-        $criteria = $badge->criteria;
+        $stats = $this->resolveUserStats($user);
+        $criteria = $this->normalizeBadgeCriteria($badge->criteria);
         $requirements = [];
         $totalProgress = 0;
         $criteriaCount = count($criteria);
@@ -326,7 +362,11 @@ class BadgeService
         foreach ($criteria as $key => $required) {
             $current = $this->getStatValueForCriteriaKey($stats, $key) ?? 0;
 
-            $progress = min(100, ($current / $required) * 100);
+            if ($required <= 0) {
+                $progress = 0;
+            } else {
+                $progress = min(100, ($current / $required) * 100);
+            }
             $totalProgress += $progress;
 
             $requirements[$key] = [
@@ -383,13 +423,13 @@ class BadgeService
      */
     public function getUserBadgeStats(User $user): array
     {
-        $stats = $user->stats;
+        $stats = $this->resolveUserStats($user);
 
         $totalBadges = Badge::where('is_active', true)
             ->where('is_visible', true)
             ->count();
 
-        $earnedBadges = $stats->total_badges;
+        $earnedBadges = (int) ($stats->total_badges ?? 0);
 
         $byRarity = [
             'common' => UserBadge::where('user_id', $user->id)
