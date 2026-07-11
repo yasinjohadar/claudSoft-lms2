@@ -204,6 +204,22 @@ class GroupRegistrationController extends Controller
     public function resendEmail(GroupRegistration $registration)
     {
         try {
+            if ($registration->user_created && $registration->user) {
+                $result = app(\App\Services\Auth\AccountCreatedCredentialDeliveryService::class)
+                    ->resetAndDeliver($registration->user, sendEmail: true, sendWhatsApp: false);
+
+                if ($result['email_sent']) {
+                    $registration->update([
+                        'email_sent' => true,
+                        'email_sent_at' => now(),
+                    ]);
+
+                    return back()->with('success', 'تمت إعادة تعيين كلمة المرور وإرسال بيانات الدخول عبر البريد.');
+                }
+
+                return back()->with('error', $result['email_error'] ?: 'تعذّر إرسال بيانات الدخول عبر البريد.');
+            }
+
             SendGroupRegistrationEmailJob::dispatch($registration);
             return back()->with('success', 'تمت إعادة إرسال البريد الإلكتروني الترحيبي.');
         } catch (\Exception $e) {
@@ -218,6 +234,22 @@ class GroupRegistrationController extends Controller
     public function resendWhatsApp(GroupRegistration $registration)
     {
         try {
+            if ($registration->user_created && $registration->user) {
+                $result = app(\App\Services\Auth\AccountCreatedCredentialDeliveryService::class)
+                    ->resetAndDeliver($registration->user, sendEmail: false, sendWhatsApp: true);
+
+                if ($result['whatsapp_sent']) {
+                    $registration->update([
+                        'whatsapp_sent' => true,
+                        'whatsapp_sent_at' => now(),
+                    ]);
+
+                    return back()->with('success', 'تمت إعادة تعيين كلمة المرور وإرسال بيانات الدخول عبر الواتساب.');
+                }
+
+                return back()->with('error', $result['whatsapp_error'] ?: 'تعذّر إرسال بيانات الدخول عبر الواتساب.');
+            }
+
             SendGroupRegistrationWhatsAppJob::dispatch($registration);
             return back()->with('success', 'تمت إعادة إرسال رسالة الواتساب الترحيبية.');
         } catch (\Exception $e) {

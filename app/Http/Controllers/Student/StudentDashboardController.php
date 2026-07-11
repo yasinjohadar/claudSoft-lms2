@@ -6,9 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\CampEnrollment;
 use App\Models\CourseEnrollment;
 use App\Models\QuestionModuleAttempt;
+use App\Services\Student\StudentCourseVisibilityService;
 
 class StudentDashboardController extends Controller
 {
+    public function __construct(
+        private StudentCourseVisibilityService $courseVisibility,
+    ) {}
+
     public function index()
     {
         $student = auth()->user();
@@ -25,11 +30,14 @@ class StudentDashboardController extends Controller
             'last_attempt' => $attempts->sortByDesc('completed_at')->first(),
         ];
 
-        // Course Stats
-        $enrollments = CourseEnrollment::where('student_id', $student->id)
-            ->where('enrollment_status', 'active')
-            ->with('course')
-            ->get();
+        // Course Stats (exclude courses gated by pending group membership)
+        $enrollments = $this->courseVisibility->excludeHiddenEnrollments(
+            CourseEnrollment::where('student_id', $student->id)
+                ->where('enrollment_status', 'active')
+                ->with('course')
+                ->get(),
+            $student
+        );
 
         $courseStats = [
             'total_courses' => $enrollments->count(),
@@ -45,6 +53,8 @@ class StudentDashboardController extends Controller
             ->sortByDesc('updated_at')
             ->take(5)
             ->values();
+
+        $pendingMembershipNotices = $this->courseVisibility->pendingNotices($student);
 
         $activeCampEnrollments = CampEnrollment::query()
             ->where('student_id', $student->id)
@@ -66,6 +76,7 @@ class StudentDashboardController extends Controller
             'questionModuleStats',
             'courseStats',
             'inProgressCourses',
+            'pendingMembershipNotices',
             'activeCampEnrollments',
             'platformJoinedAt',
             'accountTier',

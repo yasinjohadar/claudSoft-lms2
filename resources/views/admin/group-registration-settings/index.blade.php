@@ -65,6 +65,9 @@
                                     @else
                                         <span class="group-show-chip group-show-chip--sm text-warning">موافقة يدوية</span>
                                     @endif
+                                    @if($settings->hide_courses_until_membership_approved)
+                                        <span class="group-show-chip group-show-chip--sm text-info">إخفاء الكورسات حتى الموافقة</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -158,6 +161,17 @@
                                     </div>
                                 </div>
 
+                                <div class="admin-group-form-toggle">
+                                    <div class="admin-group-form-toggle__info">
+                                        <span class="admin-group-form-toggle__label">إخفاء الكورسات حتى الموافقة على الانضمام</span>
+                                        <span class="admin-group-form-toggle__hint">بعد إكمال البروفايل تظهر رسالة «طلبكم قيد المعالجة» بدل كورسات هذه المجموعة. كورسات المجموعات الأخرى تبقى ظاهرة للطلاب القدامى.</span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="hide_courses_until_membership_approved" id="hide_courses_until_membership_approved"
+                                               {{ old('hide_courses_until_membership_approved', $settings->hide_courses_until_membership_approved) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
                                 <div class="admin-group-registration-settings-page__note">
                                     <i class="fe fe-info"></i>
                                     <div class="fs-12">
@@ -176,13 +190,17 @@
                         <div class="card custom-card group-show-members-card mt-4">
                             <div class="card-header border-0 pb-0">
                                 <h6 class="group-show-members-card__title mb-1">الإشعارات والرسائل</h6>
-                                <p class="fs-12 text-muted mb-0">إعدادات البريد والواتساب بعد التسجيل (تُحدَّد من الإدارة).</p>
+                                <p class="fs-12 text-muted mb-0">
+                                    عند إنشاء حساب جديد تُرسل <strong>بيانات الدخول</strong> (إيميل/واتساب) حسب القالب من
+                                    <a href="{{ route('admin.settings.account-created-message.edit') }}" target="_blank" rel="noopener">إعدادات بيانات الحساب عند الإنشاء</a>.
+                                    للمستخدم الموجود مسبقاً تُرسل رسالة ترحيب عادية بدون كلمة مرور.
+                                </p>
                             </div>
                             <div class="card-body pt-3">
                                 <div class="admin-group-form-toggle">
                                     <div class="admin-group-form-toggle__info">
-                                        <span class="admin-group-form-toggle__label">إرسال بريد إلكتروني ترحيبي</span>
-                                        <span class="admin-group-form-toggle__hint">رسالة ترحيب تلقائية للطالب</span>
+                                        <span class="admin-group-form-toggle__label">إرسال بريد إلكتروني</span>
+                                        <span class="admin-group-form-toggle__hint">بيانات الدخول للحساب الجديد، أو ترحيب إن كان الحساب موجوداً</span>
                                     </div>
                                     <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="send_welcome_email" id="send_welcome_email"
@@ -191,7 +209,7 @@
                                 </div>
 
                                 <div class="mb-3" id="emailTemplateWrap">
-                                    <label class="form-label fw-semibold">قالب البريد الإلكتروني</label>
+                                    <label class="form-label fw-semibold">قالب البريد (للمستخدم الموجود مسبقاً فقط)</label>
                                     <select name="email_template_id" class="form-select @error('email_template_id') is-invalid @enderror">
                                         <option value="">استخدام القالب الافتراضي</option>
                                         @foreach($emailTemplates as $template)
@@ -200,6 +218,7 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    <p class="admin-group-form-hint mb-0 mt-2">حساب جديد يستخدم قالب «بيانات الحساب عند الإنشاء» وليس هذا القالب.</p>
                                     @error('email_template_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -207,8 +226,8 @@
 
                                 <div class="admin-group-form-toggle">
                                     <div class="admin-group-form-toggle__info">
-                                        <span class="admin-group-form-toggle__label">إرسال رسالة واتساب ترحيبية</span>
-                                        <span class="admin-group-form-toggle__hint">رسالة واتساب تلقائية بعد التسجيل</span>
+                                        <span class="admin-group-form-toggle__label">إرسال رسالة واتساب</span>
+                                        <span class="admin-group-form-toggle__hint">يجب تفعيله لإرسال بيانات الدخول عبر واتساب بعد التسجيل</span>
                                     </div>
                                     <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="send_welcome_whatsapp" id="send_welcome_whatsapp"
@@ -340,6 +359,10 @@
                                     <div class="admin-module-show-page__meta-row">
                                         <dt>الانضمام</dt>
                                         <dd>{{ $settings->auto_approve_membership ? 'فوري' : 'بموافقة' }}</dd>
+                                    </div>
+                                    <div class="admin-module-show-page__meta-row">
+                                        <dt>إخفاء الكورسات</dt>
+                                        <dd>{{ $settings->hide_courses_until_membership_approved ? 'حتى الموافقة' : 'عادي' }}</dd>
                                     </div>
                                 </dl>
 

@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\ModuleCompletion;
 use App\Services\AccessControlService;
 use App\Services\Gamification\ReferralService;
+use App\Services\Student\StudentCourseVisibilityService;
 use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,11 +92,17 @@ class CourseController extends Controller
     {
         try {
             $student = auth()->user();
+            $visibility = app(StudentCourseVisibilityService::class);
+            $hiddenCourseIds = $visibility->hiddenCourseIds($student);
 
             $query = $student->courseEnrollments()->with([
                 'course.category',
                 'course' => fn ($q) => $q->withCount(['sections', 'modules']),
             ]);
+
+            if ($hiddenCourseIds !== []) {
+                $query->whereNotIn('course_id', $hiddenCourseIds);
+            }
 
             // Filter by status
             if ($request->filled('status')) {
@@ -118,15 +125,26 @@ class CourseController extends Controller
 
             $enrollments = $query->paginate($request->get('per_page', 12));
 
+            $statsQuery = function () use ($student, $hiddenCourseIds) {
+                $q = $student->courseEnrollments();
+                if ($hiddenCourseIds !== []) {
+                    $q->whereNotIn('course_id', $hiddenCourseIds);
+                }
+
+                return $q;
+            };
+
             // Get statistics
             $stats = [
-                'total_courses' => $student->courseEnrollments()->count(),
-                'active_courses' => $student->courseEnrollments()->where('enrollment_status', 'active')->count(),
-                'completed_courses' => $student->courseEnrollments()->where('enrollment_status', 'completed')->count(),
-                'average_progress' => $student->courseEnrollments()->avg('completion_percentage') ?? 0,
+                'total_courses' => $statsQuery()->count(),
+                'active_courses' => $statsQuery()->where('enrollment_status', 'active')->count(),
+                'completed_courses' => $statsQuery()->where('enrollment_status', 'completed')->count(),
+                'average_progress' => $statsQuery()->avg('completion_percentage') ?? 0,
             ];
 
-            return view('student.pages.courses.my-courses', compact('enrollments', 'stats'));
+            $pendingMembershipNotices = $visibility->pendingNotices($student);
+
+            return view('student.pages.courses.my-courses', compact('enrollments', 'stats', 'pendingMembershipNotices'));
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل كورساتي: ' . $e->getMessage());
         }

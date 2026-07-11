@@ -10,6 +10,7 @@ use App\Models\SectionAccessRestriction;
 use App\Models\ModuleAccessRestriction;
 use App\Models\CourseEnrollment;
 use App\Models\User;
+use App\Services\Student\StudentCourseVisibilityService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -84,6 +85,15 @@ class AccessControlService
                 'reason' => 'أنت غير مسجل في هذا الكورس',
                 'reason_en' => 'You are not enrolled in this course',
                 'code' => 'NOT_ENROLLED'
+            ];
+        }
+
+        if (app(StudentCourseVisibilityService::class)->isCourseHiddenForStudent($course, $student)) {
+            return [
+                'can_access' => false,
+                'reason' => StudentCourseVisibilityService::PENDING_MESSAGE,
+                'reason_en' => 'Your membership request is still under review',
+                'code' => 'MEMBERSHIP_PENDING_REVIEW',
             ];
         }
 

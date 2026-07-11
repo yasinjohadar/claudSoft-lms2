@@ -8,6 +8,7 @@ use App\Models\GroupRegistration;
 use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
 use App\Models\User;
+use App\Rules\UniqueUserFullPhone;
 use App\Services\GroupRegistrationService;
 use App\Services\Marketing\GoogleDataLayerService;
 use App\Services\Marketing\MetaPixelService;
@@ -67,6 +68,9 @@ class GroupRegistrationController extends Controller
                 ->exists();
         }
 
+        // Allow same phone when re-registering as an existing user (matched by email).
+        $ignoreUserId = User::where('email', $request->email)->value('id');
+
         // Build validation rules
         $validationRules = [
             'name' => 'required|string|max:255',
@@ -82,7 +86,12 @@ class GroupRegistrationController extends Controller
                         return $query->where('group_id', $group->id);
                     }),
             ],
-            'phone' => 'required|string|max:20',
+            'phone' => [
+                'required',
+                'string',
+                'max:20',
+                new UniqueUserFullPhone($ignoreUserId ? (int) $ignoreUserId : null),
+            ],
             'country_code' => ['required', 'string', 'max:8', \Illuminate\Validation\Rule::in(config('country_codes.allowed_codes'))],
             'commitment_to_training' => 'required|in:yes,no',
             'has_sufficient_time' => 'required|in:yes,no',

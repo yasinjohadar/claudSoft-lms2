@@ -449,6 +449,48 @@ class User extends Authenticatable
     }
 
     /**
+     * Users whose stored full_phone matches the given E.164 digits (any formatting).
+     */
+    public function scopeWhereFullPhoneDigits($query, string $digits, ?int $ignoreUserId = null)
+    {
+        $digits = preg_replace('/\D+/', '', $digits) ?? '';
+
+        if ($digits === '') {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $query->when($ignoreUserId !== null, fn ($q) => $q->where('id', '!=', $ignoreUserId))
+            ->whereNotNull('full_phone')
+            ->where('full_phone', '!=', '');
+
+        $driver = $query->getConnection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            return $query->whereRaw(
+                "REGEXP_REPLACE(COALESCE(full_phone, ''), '[^0-9]', '') = ?",
+                [$digits]
+            );
+        }
+
+        return $query->where(function ($q) use ($digits) {
+            $q->where('full_phone', '+'.$digits)
+                ->orWhere('full_phone', $digits)
+                ->orWhere('full_phone', '00'.$digits);
+        });
+    }
+
+    public static function fullPhoneDigitsTaken(string $digits, ?int $ignoreUserId = null): bool
+    {
+        $digits = preg_replace('/\D+/', '', $digits) ?? '';
+
+        if ($digits === '') {
+            return false;
+        }
+
+        return static::query()->whereFullPhoneDigits($digits, $ignoreUserId)->exists();
+    }
+
+    /**
      * Get WhatsApp URL
      */
     public function getWhatsappUrlAttribute(): ?string

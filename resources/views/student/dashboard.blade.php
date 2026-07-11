@@ -27,6 +27,10 @@
 
         @include('student.dashboard.partials.header-welcome')
 
+        @include('student.partials.pending-membership-notices', [
+            'pendingMembershipNotices' => $pendingMembershipNotices ?? [],
+        ])
+
         @include('student.dashboard.partials.kpi-cards', [
             'courseStats' => $courseStats,
             'questionModuleStats' => $questionModuleStats,
@@ -41,6 +45,7 @@
             <div class="col-xl-8 col-lg-7 mb-3 d-flex flex-column gap-3">
                 @include('student.dashboard.partials.courses-progress', [
                     'inProgressCourses' => $inProgressCourses ?? collect(),
+                    'pendingMembershipNotices' => $pendingMembershipNotices ?? [],
                 ])
 
                 @include('student.dashboard.partials.recent-activities', [

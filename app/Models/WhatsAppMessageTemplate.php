@@ -43,22 +43,9 @@ class WhatsAppMessageTemplate extends Model
      * @param array $replacements e.g. ['student_name' => 'أحمد', 'course_name' => 'البرمجة']
      * @return string
      */
-    public function render(array $replacements = []): string
-    {
-        $body = $this->body;
-        foreach ($replacements as $key => $value) {
-            $body = str_replace(
-                ['{{' . $key . '}}', '{' . $key . '}'],
-                (string) $value,
-                $body
-            );
-        }
-
-        return self::normalizeBodyForSending($body);
-    }
-
     /**
      * Convert stored HTML (from the editor) to WhatsApp-friendly plain text.
+     * Must run BEFORE inserting passwords/secrets so characters like "<" are not treated as tags.
      */
     public static function normalizeBodyForSending(string $body): string
     {
@@ -81,6 +68,21 @@ class WhatsAppMessageTemplate extends Model
         $text = preg_replace("/\n{3,}/", "\n\n", $text);
 
         return trim($text);
+    }
+
+    public function render(array $replacements = []): string
+    {
+        // Normalize HTML first, then inject secrets — never strip_tags after password insertion.
+        $body = self::normalizeBodyForSending($this->body);
+        foreach ($replacements as $key => $value) {
+            $body = str_replace(
+                ['{{'.$key.'}}', '{'.$key.'}'],
+                (string) $value,
+                $body
+            );
+        }
+
+        return $body;
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Services\Auth\PhoneOtpService;
 use App\Events\Registered;
 use App\Events\N8nWebhookEvent;
 use App\Services\Gamification\ReferralService;
+use App\Support\InternationalPhoneDigits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,17 @@ class RegisterOtpController extends Controller
             );
         } catch (\InvalidArgumentException $e) {
             return back()->withErrors(['code' => $e->getMessage()]);
+        }
+
+        $phoneDigits = InternationalPhoneDigits::fromCountryAndLocal(
+            (string) ($pending['country_code'] ?? ''),
+            (string) ($pending['phone'] ?? '')
+        );
+
+        if ($phoneDigits !== null && User::fullPhoneDigitsTaken($phoneDigits)) {
+            return redirect()->route('register')->withErrors([
+                'phone' => 'رقم الهاتف مستخدم بالفعل لحساب آخر.',
+            ]);
         }
 
         $user = User::create([

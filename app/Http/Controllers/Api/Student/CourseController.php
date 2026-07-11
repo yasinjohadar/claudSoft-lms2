@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Services\AccessControlService;
+use App\Services\Student\StudentCourseVisibilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -149,10 +150,18 @@ class CourseController extends Controller
     {
         $user = $request->user();
         $accessControl = new AccessControlService;
+        $visibility = app(StudentCourseVisibilityService::class);
+        $hiddenCourseIds = $visibility->hiddenCourseIds($user);
 
-        $enrollments = CourseEnrollment::query()
+        $enrollmentsQuery = CourseEnrollment::query()
             ->where('student_id', $user->id)
-            ->where('enrollment_status', 'active')
+            ->where('enrollment_status', 'active');
+
+        if ($hiddenCourseIds !== []) {
+            $enrollmentsQuery->whereNotIn('course_id', $hiddenCourseIds);
+        }
+
+        $enrollments = $enrollmentsQuery
             ->with([
                 'course' => function ($q) {
                     $q->select([
@@ -331,6 +340,7 @@ class CourseController extends Controller
             'success' => true,
             'data' => [
                 'courses' => $courses,
+                'pending_membership_notices' => $visibility->pendingNotices($user),
             ],
         ]);
     }

@@ -8,6 +8,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CourseGroup;
 use App\Models\CourseGroupMember;
 use App\Models\User;
+use App\Support\InternationalPhoneDigits;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -93,6 +94,18 @@ class BulkImportService
             ];
         }
 
+        if (! empty($data['full_phone'])) {
+            $digits = InternationalPhoneDigits::fromInput((string) $data['full_phone']);
+            $ignoreUserId = User::where('email', $data['email'] ?? '')->value('id');
+
+            if ($digits !== null && User::fullPhoneDigitsTaken($digits, $ignoreUserId ? (int) $ignoreUserId : null)) {
+                return [
+                    'valid' => false,
+                    'errors' => ['رقم الهاتف مستخدم بالفعل لحساب آخر.'],
+                ];
+            }
+        }
+
         return [
             'valid' => true,
             'data' => $data,
@@ -162,6 +175,17 @@ class BulkImportService
 
                 if (isset($data['full_phone']) && !empty($data['full_phone'])) {
                     $phoneComponents = $this->extractPhoneComponents($data['full_phone']);
+                    $digits = InternationalPhoneDigits::fromInput($phoneComponents['full_phone']);
+
+                    if ($digits !== null && User::fullPhoneDigitsTaken($digits, (int) $user->id)) {
+                        DB::rollBack();
+
+                        return [
+                            'success' => false,
+                            'error' => 'رقم الهاتف مستخدم بالفعل لحساب آخر.',
+                        ];
+                    }
+
                     $user->country_code = $phoneComponents['country_code'];
                     $user->phone = $phoneComponents['phone'];
                     $user->full_phone = $phoneComponents['full_phone'];
@@ -192,6 +216,17 @@ class BulkImportService
                 // معالجة رقم الهاتف
                 if (isset($data['full_phone']) && !empty($data['full_phone'])) {
                     $phoneComponents = $this->extractPhoneComponents($data['full_phone']);
+                    $digits = InternationalPhoneDigits::fromInput($phoneComponents['full_phone']);
+
+                    if ($digits !== null && User::fullPhoneDigitsTaken($digits)) {
+                        DB::rollBack();
+
+                        return [
+                            'success' => false,
+                            'error' => 'رقم الهاتف مستخدم بالفعل لحساب آخر.',
+                        ];
+                    }
+
                     $userData['country_code'] = $phoneComponents['country_code'];
                     $userData['phone'] = $phoneComponents['phone'];
                     $userData['full_phone'] = $phoneComponents['full_phone'];

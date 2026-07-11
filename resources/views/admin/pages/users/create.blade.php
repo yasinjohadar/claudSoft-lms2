@@ -269,6 +269,21 @@
                                 </div>
                             </div>
 
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           name="send_credentials" id="send_credentials" value="1"
+                                           @checked(old('send_credentials', true))>
+                                    <label class="form-check-label" for="send_credentials">
+                                        إرسال بيانات الدخول عبر البريد والواتساب
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    يُرسل الاسم والبريد وكلمة المرور ورابط الدخول حسب قالب
+                                    <a href="{{ route('admin.settings.account-created-message.edit') }}" target="_blank">بيانات الحساب عند الإنشاء</a>.
+                                </small>
+                            </div>
+
                             <!-- صورة المستخدم -->
                             <div class="col-md-6">
                                 <label class="form-label">صورة المستخدم</label>

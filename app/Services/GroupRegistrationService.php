@@ -7,10 +7,11 @@ use App\Models\User;
 use App\Models\CourseGroup;
 use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
+use App\Services\Auth\AccountCreatedCredentialDeliveryService;
+use App\Support\InternationalPhoneDigits;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class GroupRegistrationService
 {
@@ -55,6 +56,9 @@ class GroupRegistrationService
      */
     public function processRegistration(GroupRegistration $registration): void
     {
+        $plainPassword = null;
+        $userCreated = false;
+
         DB::beginTransaction();
         try {
             $registration->markAsProcessing();
@@ -72,18 +76,19 @@ class GroupRegistrationService
             // 1. التحقق أولاً من وجود المستخدم مسبقاً (من خلال الإيميل)
             $existingUser = User::where('email', $registration->email)->first();
             $user = null;
-            $isExistingUser = false;
 
             if ($existingUser) {
                 // المستخدم موجود مسبقاً
                 $user = $existingUser;
-                $isExistingUser = true;
                 $registration->update(['user_id' => $user->id]);
                 // لا يتم إنشاء مستخدم جديد
             } else {
                 // المستخدم غير موجود - إنشاء حساب جديد إذا كان auto_create_user = true
                 if ($settings->auto_create_user) {
-                    $user = $this->createUser($registration);
+                    $created = $this->createUser($registration);
+                    $user = $created['user'];
+                    $plainPassword = $created['plain_password'];
+                    $userCreated = $plainPassword !== null;
                     $registration->update([
                         'user_id' => $user->id,
                         'user_created' => true,
@@ -106,60 +111,17 @@ class GroupRegistrationService
 
             DB::commit();
 
-            // 3. إرسال البريد الإلكتروني (إجبارية من الإدارة)
-            if ($settings->send_welcome_email) {
-                try {
-                    // محاولة إرسال فوري أولاً
-                    $emailService = app(\App\Services\RegistrationEmailService::class);
-                    $sent = $emailService->sendWelcomeEmailForGroup($registration);
-                    
-                    if (!$sent) {
-                        // إذا فشل الإرسال الفوري، أرسل Job للمحاولة لاحقاً
-                        \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Failed to send welcome email', [
-                        'registration_id' => $registration->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                    // محاولة إرسال Job كبديل
-                    try {
-                        \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
-                    } catch (\Exception $jobException) {
-                        Log::error('Failed to dispatch email job', [
-                            'registration_id' => $registration->id,
-                            'error' => $jobException->getMessage(),
-                        ]);
-                    }
-                }
-            }
-
-            // 4. إرسال واتساب (إجبارية من الإدارة)
-            if ($settings->send_welcome_whatsapp) {
-                try {
-                    // محاولة إرسال فوري أولاً
-                    $whatsAppService = app(\App\Services\RegistrationWhatsAppService::class);
-                    $sent = $whatsAppService->sendWelcomeWhatsAppForGroup($registration);
-                    
-                    if (!$sent) {
-                        // إذا فشل الإرسال الفوري، أرسل Job للمحاولة لاحقاً
-                        \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Failed to send WhatsApp message', [
-                        'registration_id' => $registration->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                    // محاولة إرسال Job كبديل
-                    try {
-                        \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
-                    } catch (\Exception $jobException) {
-                        Log::error('Failed to dispatch WhatsApp job', [
-                            'registration_id' => $registration->id,
-                            'error' => $jobException->getMessage(),
-                        ]);
-                    }
-                }
+            // 3. إرسال الإشعارات بعد نجاح المعاملة
+            if ($userCreated && $plainPassword !== null && $user) {
+                $this->deliverNewAccountCredentials(
+                    $user,
+                    $plainPassword,
+                    (bool) $settings->send_welcome_email,
+                    (bool) $settings->send_welcome_whatsapp,
+                    $registration,
+                );
+            } else {
+                $this->sendExistingUserWelcome($registration, $settings);
             }
 
         } catch (\Exception $e) {
@@ -175,15 +137,130 @@ class GroupRegistrationService
     }
 
     /**
-     * إنشاء حساب مستخدم من التسجيل
+     * إرسال بيانات الدخول للحساب الجديد عبر الإيميل/الواتساب.
      */
-    public function createUser(GroupRegistration $registration): User
+    private function deliverNewAccountCredentials(
+        User $user,
+        #[\SensitiveParameter] string $plainPassword,
+        bool $sendEmail,
+        bool $sendWhatsApp,
+        GroupRegistration $registration,
+    ): void {
+        if (! $sendEmail && ! $sendWhatsApp) {
+            return;
+        }
+
+        try {
+            $result = app(AccountCreatedCredentialDeliveryService::class)->deliver(
+                $user,
+                $plainPassword,
+                AccountCreatedCredentialDeliveryService::CONTEXT_ACCOUNT_CREATED,
+                $sendEmail,
+                $sendWhatsApp,
+            );
+
+            $updates = [];
+            if ($result['email_sent']) {
+                $updates['email_sent'] = true;
+                $updates['email_sent_at'] = now();
+            }
+            if ($result['whatsapp_sent']) {
+                $updates['whatsapp_sent'] = true;
+                $updates['whatsapp_sent_at'] = now();
+            }
+            if ($updates !== []) {
+                $registration->update($updates);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to deliver account credentials for group registration', [
+                'registration_id' => $registration->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * ترحيب للمستخدم الموجود مسبقاً (بدون كلمة مرور).
+     */
+    private function sendExistingUserWelcome(GroupRegistration $registration, GroupRegistrationSetting $settings): void
+    {
+        if ($settings->send_welcome_email) {
+            try {
+                $emailService = app(RegistrationEmailService::class);
+                $sent = $emailService->sendWelcomeEmailForGroup($registration);
+
+                if (! $sent) {
+                    \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send welcome email', [
+                    'registration_id' => $registration->id,
+                    'error' => $e->getMessage(),
+                ]);
+                try {
+                    \App\Jobs\SendGroupRegistrationEmailJob::dispatch($registration);
+                } catch (\Exception $jobException) {
+                    Log::error('Failed to dispatch email job', [
+                        'registration_id' => $registration->id,
+                        'error' => $jobException->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        if ($settings->send_welcome_whatsapp) {
+            try {
+                $whatsAppService = app(RegistrationWhatsAppService::class);
+                $sent = $whatsAppService->sendWelcomeWhatsAppForGroup($registration);
+
+                if (! $sent) {
+                    \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send WhatsApp message', [
+                    'registration_id' => $registration->id,
+                    'error' => $e->getMessage(),
+                ]);
+                try {
+                    \App\Jobs\SendGroupRegistrationWhatsAppJob::dispatch($registration);
+                } catch (\Exception $jobException) {
+                    Log::error('Failed to dispatch WhatsApp job', [
+                        'registration_id' => $registration->id,
+                        'error' => $jobException->getMessage(),
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * إنشاء حساب مستخدم من التسجيل
+     *
+     * @return array{user: User, plain_password: string|null}
+     */
+    public function createUser(GroupRegistration $registration): array
     {
         // التحقق من عدم وجود مستخدم بنفس البريد
         $existingUser = User::where('email', $registration->email)->first();
         if ($existingUser) {
-            return $existingUser;
+            return ['user' => $existingUser, 'plain_password' => null];
         }
+
+        $phoneDigits = InternationalPhoneDigits::fromCountryAndLocal(
+            (string) ($registration->country_code ?? ''),
+            (string) ($registration->phone ?? '')
+        );
+
+        if ($phoneDigits === null && ! empty($registration->full_phone)) {
+            $phoneDigits = InternationalPhoneDigits::fromInput((string) $registration->full_phone);
+        }
+
+        if ($phoneDigits !== null && User::fullPhoneDigitsTaken($phoneDigits)) {
+            throw new \RuntimeException('رقم الهاتف مستخدم بالفعل لحساب آخر.');
+        }
+
+        $plainPassword = app(AccountCreatedCredentialDeliveryService::class)->generateSecurePassword();
 
         $userData = [
             'name' => $registration->name,
@@ -192,14 +269,14 @@ class GroupRegistrationService
             'phone' => $registration->phone,
             'country_code' => $registration->country_code,
             'full_phone' => $registration->full_phone,
-            'password' => Hash::make('claud@4soft123@#'),
+            'password' => Hash::make($plainPassword),
             'is_active' => true,
         ];
 
         $user = User::create($userData);
         $user->assignRole('student');
 
-        return $user;
+        return ['user' => $user, 'plain_password' => $plainPassword];
     }
 
     /**
@@ -281,6 +358,7 @@ class GroupRegistrationService
             'is_registration_enabled' => true,
             'auto_create_user' => true,
             'auto_approve_membership' => false, // افتراضياً: طلب انضمام يحتاج موافقة
+            'hide_courses_until_membership_approved' => false,
             'send_welcome_email' => true,
             'send_welcome_whatsapp' => false,
             'require_email_verification' => false,

@@ -7,20 +7,30 @@ use App\Models\Certificate;
 use App\Models\CourseEnrollment;
 use App\Models\QuestionModuleAttempt;
 use App\Models\QuizAttempt;
+use App\Services\Student\StudentCourseVisibilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DashboardApiController extends Controller
 {
+    public function __construct(
+        private StudentCourseVisibilityService $courseVisibility,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $student = $request->user();
 
-        $activeEnrollments = CourseEnrollment::query()
-            ->where('student_id', $student->id)
-            ->where('enrollment_status', 'active')
-            ->with('course')
-            ->get();
+        $activeEnrollments = $this->courseVisibility->excludeHiddenEnrollments(
+            CourseEnrollment::query()
+                ->where('student_id', $student->id)
+                ->where('enrollment_status', 'active')
+                ->with('course')
+                ->get(),
+            $student
+        );
+
+        $pendingMembershipNotices = $this->courseVisibility->pendingNotices($student);
 
         $courseStats = [
             'total_courses' => $activeEnrollments->count(),
@@ -90,6 +100,7 @@ class DashboardApiController extends Controller
                 'course_stats' => $courseStats,
                 'question_module_stats' => $questionModuleStats,
                 'in_progress_courses' => $inProgressCourses,
+                'pending_membership_notices' => $pendingMembershipNotices,
                 'enrollment_chart' => $enrollmentChart,
                 'stats' => [
                     'total_courses' => $courseStats['total_courses'],

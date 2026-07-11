@@ -2,11 +2,10 @@
 
 namespace App\Services\Auth;
 
-use App\Mail\PasswordCredentialsMail;
+use App\Mail\AccountCreatedCredentialsMail;
 use App\Models\EmailSetting;
 use App\Models\EvolutionInstance;
 use App\Models\User;
-use App\Models\WhatsAppMessage;
 use App\Support\InternationalPhoneDigits;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
 use App\Services\WhatsApp\Evolution\EvolutionWhatsAppNumberResolver;
@@ -16,18 +15,18 @@ use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-class PasswordCredentialDeliveryService
+class AccountCreatedCredentialDeliveryService
 {
-    public const CONTEXT_FORGOT_AUTO = 'forgot_auto';
+    public const CONTEXT_ACCOUNT_CREATED = 'account_created';
 
-    public const CONTEXT_FORGOT_MANUAL = 'forgot_manual';
+    public const CONTEXT_ACCOUNT_CREATED_RESEND = 'account_created_resend';
 
-    public const CONTEXT_ADMIN_RESET = 'admin_reset';
+    public const CONTEXT_ADMIN_CREATE = 'admin_create';
 
     private const WHATSAPP_MAX_ATTEMPTS = 3;
 
     public function __construct(
-        private PasswordResetMessageRenderer $renderer,
+        private AccountCreatedMessageRenderer $renderer,
         private WhatsAppSettingsService $whatsappSettings,
         private SendWhatsAppMessage $whatsAppSender,
         private EvolutionInstanceRotator $evolutionRotator,
@@ -61,10 +60,10 @@ class PasswordCredentialDeliveryService
     public function deliver(
         User $user,
         #[\SensitiveParameter] string $plainPassword,
-        string $context,
+        string $context = self::CONTEXT_ACCOUNT_CREATED,
+        bool $sendEmail = true,
+        bool $sendWhatsApp = true,
         ?string $whatsappRecipientOverride = null,
-        bool $requireWhatsApp = false,
-        bool $requireEmail = false,
     ): array {
         $emailSent = false;
         $whatsappSent = false;
@@ -72,8 +71,22 @@ class PasswordCredentialDeliveryService
         $emailError = null;
         $whatsappError = null;
 
-        // Prefer the required channel first so we never email/WA a password that will not be saved.
-        if ($requireWhatsApp) {
+        if ($sendEmail) {
+            try {
+                $this->sendEmail($user, $plainPassword);
+                $emailSent = true;
+            } catch (\Throwable $e) {
+                $emailError = $e->getMessage();
+                Log::error('Account created credential email failed', [
+                    'user_id' => $user->id,
+                    'context' => $context,
+                    'error' => $e->getMessage(),
+                    'exception' => $e::class,
+                ]);
+            }
+        }
+
+        if ($sendWhatsApp) {
             try {
                 $result = $this->sendWhatsAppWithRetries($user, $plainPassword, $whatsappRecipientOverride);
                 $whatsappSent = $result['sent'];
@@ -81,90 +94,7 @@ class PasswordCredentialDeliveryService
                 $whatsappError = $result['error'];
             } catch (\Throwable $e) {
                 $whatsappError = $e->getMessage();
-                Log::error('Password credential WhatsApp failed', [
-                    'user_id' => $user->id,
-                    'context' => $context,
-                    'recipient' => $whatsappRecipient,
-                    'error' => $e->getMessage(),
-                    'exception' => $e::class,
-                ]);
-            }
-
-            if (! $whatsappSent) {
-                throw new \InvalidArgumentException(
-                    $whatsappError ?: 'تعذّر إرسال بيانات الدخول عبر الواتساب. حاول لاحقاً أو استخدم البريد الإلكتروني.'
-                );
-            }
-
-            try {
-                $this->sendEmail($user, $plainPassword);
-                $emailSent = true;
-            } catch (\Throwable $e) {
-                $emailError = $e->getMessage();
-                Log::error('Password credential email failed', [
-                    'user_id' => $user->id,
-                    'context' => $context,
-                    'error' => $e->getMessage(),
-                    'exception' => $e::class,
-                ]);
-            }
-        } elseif ($requireEmail) {
-            try {
-                $this->sendEmail($user, $plainPassword);
-                $emailSent = true;
-            } catch (\Throwable $e) {
-                $emailError = $e->getMessage();
-                Log::error('Password credential email failed', [
-                    'user_id' => $user->id,
-                    'context' => $context,
-                    'error' => $e->getMessage(),
-                    'exception' => $e::class,
-                ]);
-            }
-
-            if (! $emailSent) {
-                throw new \InvalidArgumentException(
-                    $emailError ?: 'تعذّر إرسال بيانات الدخول عبر البريد الإلكتروني. تحقق من إعدادات SMTP أو حاول لاحقاً.'
-                );
-            }
-
-            try {
-                $result = $this->sendWhatsAppWithRetries($user, $plainPassword, $whatsappRecipientOverride);
-                $whatsappSent = $result['sent'];
-                $whatsappRecipient = $result['recipient'];
-                $whatsappError = $result['error'];
-            } catch (\Throwable $e) {
-                $whatsappError = $e->getMessage();
-                Log::error('Password credential WhatsApp failed', [
-                    'user_id' => $user->id,
-                    'context' => $context,
-                    'recipient' => $whatsappRecipient,
-                    'error' => $e->getMessage(),
-                    'exception' => $e::class,
-                ]);
-            }
-        } else {
-            try {
-                $this->sendEmail($user, $plainPassword);
-                $emailSent = true;
-            } catch (\Throwable $e) {
-                $emailError = $e->getMessage();
-                Log::error('Password credential email failed', [
-                    'user_id' => $user->id,
-                    'context' => $context,
-                    'error' => $e->getMessage(),
-                    'exception' => $e::class,
-                ]);
-            }
-
-            try {
-                $result = $this->sendWhatsAppWithRetries($user, $plainPassword, $whatsappRecipientOverride);
-                $whatsappSent = $result['sent'];
-                $whatsappRecipient = $result['recipient'];
-                $whatsappError = $result['error'];
-            } catch (\Throwable $e) {
-                $whatsappError = $e->getMessage();
-                Log::error('Password credential WhatsApp failed', [
+                Log::error('Account created credential WhatsApp failed', [
                     'user_id' => $user->id,
                     'context' => $context,
                     'recipient' => $whatsappRecipient,
@@ -174,7 +104,7 @@ class PasswordCredentialDeliveryService
             }
         }
 
-        Log::info('Password credentials delivered', [
+        Log::info('Account created credentials delivered', [
             'user_id' => $user->id,
             'context' => $context,
             'email_sent' => $emailSent,
@@ -191,6 +121,41 @@ class PasswordCredentialDeliveryService
             'email_error' => $emailError,
             'whatsapp_error' => $whatsappError,
         ];
+    }
+
+    /**
+     * إعادة تعيين كلمة المرور وإرسال بيانات الدخول (لإعادة الإرسال من الأدمن).
+     *
+     * @return array{
+     *     email_sent: bool,
+     *     whatsapp_sent: bool,
+     *     whatsapp_recipient: ?string,
+     *     email_error: ?string,
+     *     whatsapp_error: ?string,
+     *     plain_password: string
+     * }
+     */
+    public function resetAndDeliver(
+        User $user,
+        bool $sendEmail = true,
+        bool $sendWhatsApp = true,
+        ?string $whatsappRecipientOverride = null,
+    ): array {
+        $plainPassword = $this->generateSecurePassword();
+        $user->update(['password' => $plainPassword]);
+
+        $result = $this->deliver(
+            $user,
+            $plainPassword,
+            self::CONTEXT_ACCOUNT_CREATED_RESEND,
+            $sendEmail,
+            $sendWhatsApp,
+            $whatsappRecipientOverride,
+        );
+
+        $result['plain_password'] = $plainPassword;
+
+        return $result;
     }
 
     /**
@@ -266,7 +231,7 @@ class PasswordCredentialDeliveryService
                 $lastError = $e->getMessage();
             }
 
-            Log::warning('Password credential WhatsApp attempt failed', [
+            Log::warning('Account created credential WhatsApp attempt failed', [
                 'user_id' => $user->id,
                 'recipient' => $recipient,
                 'attempt' => $attempt,
@@ -303,7 +268,7 @@ class PasswordCredentialDeliveryService
                 applySendDelay: false,
             );
         } catch (\Throwable $e) {
-            Log::warning('Password-only WhatsApp follow-up failed', [
+            Log::warning('Account created password-only WhatsApp follow-up failed', [
                 'user_id' => $userId,
                 'recipient' => $sendTo,
                 'error' => $e->getMessage(),
@@ -319,7 +284,7 @@ class PasswordCredentialDeliveryService
 
         $this->applyActiveMailSettings();
 
-        Mail::to($user->email)->send(new PasswordCredentialsMail($user, $plainPassword));
+        Mail::to($user->email)->send(new AccountCreatedCredentialsMail($user, $plainPassword));
     }
 
     private function applyActiveMailSettings(): void

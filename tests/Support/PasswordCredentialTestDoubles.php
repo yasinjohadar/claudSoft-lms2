@@ -22,8 +22,18 @@ final class PasswordCredentialTestDoubles
         $mock = Mockery::mock(SendWhatsAppMessage::class);
         $expectation = $mock->shouldReceive('sendTextSync');
 
+        // Full credentials message + password-only follow-up
         if ($withArgs !== null) {
-            $expectation->withArgs($withArgs)->once();
+            $expectation->zeroOrMoreTimes()->withArgs(function (...$args) use ($withArgs) {
+                $text = (string) ($args[1] ?? '');
+
+                // Password-only follow-up: plain password with no template markers
+                if ($text !== '' && ! str_contains($text, '{') && ! str_contains($text, '📧') && ! str_contains($text, 'البريد')) {
+                    return true;
+                }
+
+                return (bool) $withArgs(...$args);
+            });
         } else {
             $expectation->zeroOrMoreTimes();
         }

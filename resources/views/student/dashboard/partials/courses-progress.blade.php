@@ -36,9 +36,14 @@
             </div>
         @else
             <div class="group-show-empty py-5">
-                <i class="fe fe-book-open group-show-empty__icon"></i>
-                <h5 class="group-show-empty__title">لا توجد كورسات قيد التقدم</h5>
-                <p class="group-show-empty__desc mb-0">لا توجد كورسات قيد التقدم حالياً.</p>
+                <i class="fe {{ !empty($pendingMembershipNotices) ? 'fe-clock' : 'fe-book-open' }} group-show-empty__icon"></i>
+                @if(!empty($pendingMembershipNotices))
+                    <h5 class="group-show-empty__title">طلبكم قيد المعالجة</h5>
+                    <p class="group-show-empty__text mb-0">سيتم إظهار كورسات المجموعة بعد الموافقة على طلب الانضمام.</p>
+                @else
+                    <h5 class="group-show-empty__title">لا توجد كورسات قيد التقدم</h5>
+                    <p class="group-show-empty__text mb-0">ابدأ التعلم من كورساتك المسجّلة لتظهر هنا.</p>
+                @endif
             </div>
         @endif
     </div>

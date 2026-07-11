@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Rules\UniqueUserFullPhone;
 use App\Services\Auth\PhoneOtpService;
+use App\Support\InternationalPhoneDigits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +26,12 @@ class PhoneChangeOtpController extends Controller
 
         $request->validate([
             'country_code' => 'required|string',
-            'phone' => 'required|string|regex:/^[0-9]{6,14}$/',
+            'phone' => [
+                'required',
+                'string',
+                'regex:/^[0-9]{6,14}$/',
+                new UniqueUserFullPhone(Auth::id() ? (int) Auth::id() : null),
+            ],
         ]);
 
         $fullPhone = $this->otpService->formatPhoneDisplay(
@@ -74,6 +82,16 @@ class PhoneChangeOtpController extends Controller
         }
 
         $user = Auth::user();
+
+        $digits = InternationalPhoneDigits::fromCountryAndLocal(
+            (string) ($pending['country_code'] ?? ''),
+            (string) ($pending['phone'] ?? '')
+        ) ?? preg_replace('/\D+/', '', $phoneDigits);
+
+        if ($digits && User::fullPhoneDigitsTaken($digits, (int) $user->id)) {
+            return redirect()->back()->with('error', 'رقم الهاتف مستخدم بالفعل لحساب آخر.');
+        }
+
         $user->country_code = $pending['country_code'];
         $user->phone = $pending['phone'];
         $user->phone_verified_at = now();

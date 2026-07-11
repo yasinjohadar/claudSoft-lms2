@@ -35,6 +35,10 @@
 
         @include('student.pages.courses.partials.my-courses-stats', ['stats' => $stats])
 
+        @include('student.partials.pending-membership-notices', [
+            'pendingMembershipNotices' => $pendingMembershipNotices ?? [],
+        ])
+
         <div class="card custom-card student-my-courses-panel">
             <div class="card-body">
                 @php
@@ -67,10 +71,15 @@
                         <div class="col-12">
                             <div class="student-my-courses-empty text-center py-5">
                                 <div class="student-my-courses-empty__icon mb-4">
-                                    <i class="fe fe-book-open"></i>
+                                    <i class="fe {{ !empty($pendingMembershipNotices) ? 'fe-clock' : 'fe-book-open' }}"></i>
                                 </div>
-                                <h4 class="mb-2">لا توجد كورسات مسجلة</h4>
-                                <p class="text-muted mb-0">لا توجد كورسات مسجّلة حالياً. تواصل مع الإدارة للتسجيل في كورسات جديدة.</p>
+                                @if(!empty($pendingMembershipNotices))
+                                    <h4 class="mb-2">طلبكم قيد المعالجة</h4>
+                                    <p class="text-muted mb-0">لا تظهر كورسات هذه المجموعة حالياً حتى تتم مراجعة طلب الانضمام والموافقة عليه.</p>
+                                @else
+                                    <h4 class="mb-2">لا توجد كورسات مسجلة</h4>
+                                    <p class="text-muted mb-0">لا توجد كورسات مسجّلة حالياً. تواصل مع الإدارة للتسجيل في كورسات جديدة.</p>
+                                @endif
                             </div>
                         </div>
                     @endforelse

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Student;
 
 use App\Models\SiteSetting;
 use App\Rules\PhoneMatchesCountryCode;
+use App\Rules\UniqueUserFullPhone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -46,6 +47,7 @@ class UpdateProfileRequest extends FormRequest
                 'max:20',
                 'regex:/^([0-9\s\-\+\(\)]*)$/',
                 new PhoneMatchesCountryCode,
+                new UniqueUserFullPhone($userId ? (int) $userId : null),
             ],
             'date_of_birth' => [$strict ? 'required' : 'nullable', 'date', 'before:today'],
             'gender' => [$strict ? 'required' : 'nullable', 'string', 'in:male,female'],

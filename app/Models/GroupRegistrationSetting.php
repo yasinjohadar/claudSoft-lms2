@@ -16,6 +16,7 @@ class GroupRegistrationSetting extends Model
         'is_registration_enabled',
         'auto_create_user',
         'auto_approve_membership',
+        'hide_courses_until_membership_approved',
         'send_welcome_email',
         'send_welcome_whatsapp',
         'whatsapp_delivery_mode',
@@ -38,6 +39,7 @@ class GroupRegistrationSetting extends Model
         'is_registration_enabled' => 'boolean',
         'auto_create_user' => 'boolean',
         'auto_approve_membership' => 'boolean',
+        'hide_courses_until_membership_approved' => 'boolean',
         'send_welcome_email' => 'boolean',
         'send_welcome_whatsapp' => 'boolean',
         'send_welcome_telegram' => 'boolean',
@@ -104,5 +106,10 @@ class GroupRegistrationSetting extends Model
     public function shouldAutoApproveMembership(): bool
     {
         return $this->auto_approve_membership;
+    }
+
+    public function shouldHideCoursesUntilMembershipApproved(): bool
+    {
+        return (bool) $this->hide_courses_until_membership_approved;
     }
 }

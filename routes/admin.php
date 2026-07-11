@@ -89,6 +89,7 @@ use App\Http\Controllers\Admin\N8nWebhookController;
 use App\Http\Controllers\Admin\NotificationHubAdminController;
 use App\Http\Controllers\Admin\NotificationManagementController;
 use App\Http\Controllers\Admin\PasswordResetMessageSettingsController;
+use App\Http\Controllers\Admin\AccountCreatedMessageSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentWhatsAppMessageSettingsController;
@@ -861,6 +862,10 @@ Route::prefix('admin')
         Route::get('settings/password-reset-message', [PasswordResetMessageSettingsController::class, 'edit'])->name('admin.settings.password-reset-message.edit');
         Route::put('settings/password-reset-message', [PasswordResetMessageSettingsController::class, 'update'])->name('admin.settings.password-reset-message.update');
         Route::post('settings/password-reset-message/restore-defaults', [PasswordResetMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.password-reset-message.restore-defaults');
+
+        Route::get('settings/account-created-message', [AccountCreatedMessageSettingsController::class, 'edit'])->name('admin.settings.account-created-message.edit');
+        Route::put('settings/account-created-message', [AccountCreatedMessageSettingsController::class, 'update'])->name('admin.settings.account-created-message.update');
+        Route::post('settings/account-created-message/restore-defaults', [AccountCreatedMessageSettingsController::class, 'restoreDefaults'])->name('admin.settings.account-created-message.restore-defaults');
 
         Route::get('settings/payment-whatsapp-message', [PaymentWhatsAppMessageSettingsController::class, 'edit'])->name('admin.settings.payment-whatsapp-message.edit');
         Route::put('settings/payment-whatsapp-message', [PaymentWhatsAppMessageSettingsController::class, 'update'])->name('admin.settings.payment-whatsapp-message.update');

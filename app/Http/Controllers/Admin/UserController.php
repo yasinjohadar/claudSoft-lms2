@@ -17,6 +17,7 @@ use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Rules\PhoneMatchesCountryCode;
+use App\Rules\UniqueUserFullPhone;
 use App\Services\Admin\ActivityLogService;
 use App\Services\Admin\AdminUserListQueryService;
 use App\Services\Storage\StorageHelperService;
@@ -180,11 +181,12 @@ class UserController extends Controller
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
-            'phone' => ['nullable', 'string', 'max:20', new PhoneMatchesCountryCode],
+            'phone' => ['nullable', 'string', 'max:20', new PhoneMatchesCountryCode, new UniqueUserFullPhone],
             'national_id' => 'nullable|string|max:20|unique:users,national_id',
             'nationality_id' => 'nullable|exists:nationalities,id',
             'password' => 'required|string|min:8|confirmed',
             'is_active' => 'boolean',
+            'send_credentials' => 'sometimes|boolean',
             'roles' => 'array',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ], [
@@ -247,7 +249,37 @@ class UserController extends Controller
             'registered_at' => now()->toIso8601String(),
         ]));
 
-        return redirect()->route('users.index')->with('success', 'تم إضافة مستخدم جديد بنجاح');
+        $credentialsMessage = '';
+        if ($request->boolean('send_credentials', true)) {
+            try {
+                $result = app(\App\Services\Auth\AccountCreatedCredentialDeliveryService::class)->deliver(
+                    $user,
+                    $request->password,
+                    \App\Services\Auth\AccountCreatedCredentialDeliveryService::CONTEXT_ADMIN_CREATE,
+                );
+
+                $parts = [];
+                if ($result['email_sent']) {
+                    $parts[] = 'البريد';
+                }
+                if ($result['whatsapp_sent']) {
+                    $parts[] = 'الواتساب';
+                }
+                if ($parts !== []) {
+                    $credentialsMessage = ' وتم إرسال بيانات الدخول عبر '.implode(' و', $parts).'.';
+                } elseif ($result['email_error'] || $result['whatsapp_error']) {
+                    $credentialsMessage = ' لكن تعذّر إرسال بعض قنوات بيانات الدخول.';
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send account credentials on admin create', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $credentialsMessage = ' لكن تعذّر إرسال بيانات الدخول.';
+            }
+        }
+
+        return redirect()->route('users.index')->with('success', 'تم إضافة مستخدم جديد بنجاح'.$credentialsMessage);
     }
 
     /**
@@ -595,7 +627,7 @@ class UserController extends Controller
             'name_ar' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$id,
             'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
-            'phone' => ['nullable', 'string', 'max:20', 'unique:users,phone,'.$id, new PhoneMatchesCountryCode],
+            'phone' => ['nullable', 'string', 'max:20', new PhoneMatchesCountryCode, new UniqueUserFullPhone((int) $id)],
             'national_id' => 'nullable|string|max:20|unique:users,national_id,'.$id,
             'nationality_id' => 'nullable|exists:nationalities,id',
             'is_active' => 'boolean',
@@ -607,7 +639,6 @@ class UserController extends Controller
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'البريد الإلكتروني غير صحيح',
             'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
             'national_id.unique' => 'رقم الهوية مستخدم بالفعل',
             'nationality_id.exists' => 'الجنسية المحددة غير موجودة',
             'photo.image' => 'يجب أن يكون الملف صورة',

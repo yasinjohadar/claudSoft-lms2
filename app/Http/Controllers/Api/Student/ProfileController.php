@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseEnrollment;
 use App\Models\Gamification\Level;
 use App\Models\Nationality;
+use App\Rules\PhoneMatchesCountryCode;
+use App\Rules\UniqueUserFullPhone;
 use App\Services\Student\StudentProfilePhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -197,7 +199,14 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'name_ar' => ['nullable', 'string', 'max:255'],
             'country_code' => ['nullable', 'string', 'max:8', Rule::in(config('country_codes.allowed_codes'))],
-            'phone' => ['nullable', 'string', 'max:20', 'regex:/^([0-9\s\-\+\(\)]*)$/'],
+            'phone' => [
+                'nullable',
+                'string',
+                'max:20',
+                'regex:/^([0-9\s\-\+\(\)]*)$/',
+                new PhoneMatchesCountryCode,
+                new UniqueUserFullPhone((int) $user->id),
+            ],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'gender' => ['nullable', 'string', 'in:male,female'],
             'address' => ['nullable', 'string', 'max:500'],

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Events\N8nWebhookEvent;
+use App\Rules\UniqueUserFullPhone;
 use App\Services\Auth\PhoneOtpService;
 use App\Enums\OtpPurpose;
 use App\Services\Gamification\ReferralService;
@@ -47,7 +48,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'country_code' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string', 'regex:/^[0-9]{6,14}$/'],
+            'phone' => ['nullable', 'string', 'regex:/^[0-9]{6,14}$/', new UniqueUserFullPhone],
         ]);
 
         $otpService = app(PhoneOtpService::class);
