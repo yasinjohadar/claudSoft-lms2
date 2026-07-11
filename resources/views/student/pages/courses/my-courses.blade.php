@@ -69,18 +69,27 @@
                         ])
                     @empty
                         <div class="col-12">
-                            <div class="student-my-courses-empty text-center py-5">
-                                <div class="student-my-courses-empty__icon mb-4">
-                                    <i class="fe {{ !empty($pendingMembershipNotices) ? 'fe-clock' : 'fe-book-open' }}"></i>
+                            @if(!empty($pendingMembershipNotices))
+                                <div class="student-pending-review-empty text-center py-5 px-3">
+                                    <div class="student-pending-review-empty__icon mb-3" aria-hidden="true">
+                                        <i class="fe fe-clock"></i>
+                                    </div>
+                                    <h3 class="student-pending-review-empty__title mb-2">طلبكم قيد المراجعة</h3>
+                                    <p class="student-pending-review-empty__text mb-0">
+                                        كورسات هذه المجموعة مخفية مؤقتاً حتى توافق الإدارة على طلب الانضمام.
+                                        <br>
+                                        <strong>لا تظهر الكورسات الآن — انتظر الموافقة.</strong>
+                                    </p>
                                 </div>
-                                @if(!empty($pendingMembershipNotices))
-                                    <h4 class="mb-2">طلبكم قيد المعالجة</h4>
-                                    <p class="text-muted mb-0">لا تظهر كورسات هذه المجموعة حالياً حتى تتم مراجعة طلب الانضمام والموافقة عليه.</p>
-                                @else
+                            @else
+                                <div class="student-my-courses-empty text-center py-5">
+                                    <div class="student-my-courses-empty__icon mb-4">
+                                        <i class="fe fe-book-open"></i>
+                                    </div>
                                     <h4 class="mb-2">لا توجد كورسات مسجلة</h4>
                                     <p class="text-muted mb-0">لا توجد كورسات مسجّلة حالياً. تواصل مع الإدارة للتسجيل في كورسات جديدة.</p>
-                                @endif
-                            </div>
+                                </div>
+                            @endif
                         </div>
                     @endforelse
                 </div>
@@ -101,7 +110,7 @@
 <script>
     (function () {
         setTimeout(function () {
-            document.querySelectorAll('.alert').forEach(function (el) {
+            document.querySelectorAll('.alert.alert-success, .alert.alert-danger, .alert.alert-dismissible').forEach(function (el) {
                 el.classList.remove('show');
             });
         }, 5000);

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class StudentCourseVisibilityService
 {
-    public const PENDING_MESSAGE = 'طلبكم قيد المعالجة حالياً. سيتم إظهار الكورسات بعد مراجعة طلب الانضمام والموافقة عليه.';
+    public const PENDING_MESSAGE = 'طلبكم قيد المعالجة حالياً — الكورسات مخفية الآن ولن تظهر إلا بعد مراجعة طلب الانضمام والموافقة عليه من الإدارة.';
 
     /**
      * Pending membership requests for groups that gate course visibility.
