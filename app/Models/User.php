@@ -450,6 +450,7 @@ class User extends Authenticatable
 
     /**
      * Users whose stored full_phone matches the given E.164 digits (any formatting).
+     * Uses nested REPLACE (MySQL 5.7 / MariaDB compatible) — not REGEXP_REPLACE.
      */
     public function scopeWhereFullPhoneDigits($query, string $digits, ?int $ignoreUserId = null)
     {
@@ -463,19 +464,13 @@ class User extends Authenticatable
             ->whereNotNull('full_phone')
             ->where('full_phone', '!=', '');
 
-        $driver = $query->getConnection()->getDriverName();
+        $digitsOnlyFullPhone = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(full_phone, ''), ' ', ''), '-', ''), '+', ''), '(', ''), ')', '')";
 
-        if ($driver === 'mysql') {
-            return $query->whereRaw(
-                "REGEXP_REPLACE(COALESCE(full_phone, ''), '[^0-9]', '') = ?",
-                [$digits]
-            );
-        }
-
-        return $query->where(function ($q) use ($digits) {
+        return $query->where(function ($q) use ($digits, $digitsOnlyFullPhone) {
             $q->where('full_phone', '+'.$digits)
                 ->orWhere('full_phone', $digits)
-                ->orWhere('full_phone', '00'.$digits);
+                ->orWhere('full_phone', '00'.$digits)
+                ->orWhereRaw("{$digitsOnlyFullPhone} = ?", [$digits]);
         });
     }
 

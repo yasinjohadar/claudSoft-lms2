@@ -7,6 +7,7 @@ use App\Models\EmailSetting;
 use App\Models\EvolutionInstance;
 use App\Models\User;
 use App\Models\WhatsAppMessage;
+use App\Support\CredentialPassword;
 use App\Support\InternationalPhoneDigits;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
 use App\Services\WhatsApp\Evolution\EvolutionWhatsAppNumberResolver;
@@ -36,17 +37,7 @@ class PasswordCredentialDeliveryService
 
     public function generateSecurePassword(): string
     {
-        // Avoid < > & " ' so passwords never get truncated by HTML strip_tags / email markup.
-        $alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%*_+-=';
-        $length = 16;
-        $password = '';
-        $max = strlen($alphabet) - 1;
-
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $alphabet[random_int(0, $max)];
-        }
-
-        return $password;
+        return CredentialPassword::generate();
     }
 
     /**
@@ -298,7 +289,7 @@ class PasswordCredentialDeliveryService
 
             $this->whatsAppSender->sendTextSync(
                 $sendTo,
-                $plainPassword,
+                CredentialPassword::forWhatsAppDisplay($plainPassword),
                 previewUrl: false,
                 applySendDelay: false,
             );

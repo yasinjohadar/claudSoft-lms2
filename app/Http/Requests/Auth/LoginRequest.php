@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Support\CredentialPassword;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +27,7 @@ class LoginRequest extends FormRequest
     {
         $this->merge([
             'email' => trim($this->input('email', '')),
-            'password' => trim($this->input('password', '')),
+            'password' => CredentialPassword::sanitizeForAuth((string) $this->input('password', '')),
         ]);
     }
 

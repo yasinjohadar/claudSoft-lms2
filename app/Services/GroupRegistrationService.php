@@ -8,9 +8,9 @@ use App\Models\CourseGroup;
 use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
 use App\Services\Auth\AccountCreatedCredentialDeliveryService;
+use App\Services\Auth\NewAccountGroupRegistrationWhatsAppBundleService;
 use App\Support\InternationalPhoneDigits;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class GroupRegistrationService
@@ -138,6 +138,7 @@ class GroupRegistrationService
 
     /**
      * إرسال بيانات الدخول للحساب الجديد عبر الإيميل/الواتساب.
+     * عند تفعيل الواتساب: ترحيب + بيانات دخول + كلمة مرور من نفس رقم Evolution.
      */
     private function deliverNewAccountCredentials(
         User $user,
@@ -151,13 +152,23 @@ class GroupRegistrationService
         }
 
         try {
-            $result = app(AccountCreatedCredentialDeliveryService::class)->deliver(
-                $user,
-                $plainPassword,
-                AccountCreatedCredentialDeliveryService::CONTEXT_ACCOUNT_CREATED,
-                $sendEmail,
-                $sendWhatsApp,
-            );
+            if ($sendWhatsApp) {
+                $result = app(NewAccountGroupRegistrationWhatsAppBundleService::class)->deliver(
+                    $user,
+                    $registration,
+                    $plainPassword,
+                    $sendEmail,
+                    true,
+                );
+            } else {
+                $result = app(AccountCreatedCredentialDeliveryService::class)->deliver(
+                    $user,
+                    $plainPassword,
+                    AccountCreatedCredentialDeliveryService::CONTEXT_ACCOUNT_CREATED,
+                    $sendEmail,
+                    false,
+                );
+            }
 
             $updates = [];
             if ($result['email_sent']) {
@@ -167,6 +178,9 @@ class GroupRegistrationService
             if ($result['whatsapp_sent']) {
                 $updates['whatsapp_sent'] = true;
                 $updates['whatsapp_sent_at'] = now();
+                $updates['whatsapp_error'] = null;
+            } elseif (! empty($result['whatsapp_error'])) {
+                $updates['whatsapp_error'] = $result['whatsapp_error'];
             }
             if ($updates !== []) {
                 $registration->update($updates);
@@ -269,7 +283,7 @@ class GroupRegistrationService
             'phone' => $registration->phone,
             'country_code' => $registration->country_code,
             'full_phone' => $registration->full_phone,
-            'password' => Hash::make($plainPassword),
+            'password' => $plainPassword, // hashed cast on User
             'is_active' => true,
         ];
 

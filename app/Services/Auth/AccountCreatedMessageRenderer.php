@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Models\User;
 use App\Models\WhatsAppMessageTemplate;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use App\Support\CredentialPassword;
 
 class AccountCreatedMessageRenderer
 {
@@ -46,6 +47,8 @@ class AccountCreatedMessageRenderer
     {
         $settings = $this->settingsService->getSettings();
         $variables = $this->credentialVariables($user, $plainPassword);
+        $variables['password'] = CredentialPassword::forWhatsAppDisplay($variables['password']);
+        $variables['new_password'] = CredentialPassword::forWhatsAppDisplay($variables['new_password']);
 
         if (! empty($settings['whatsapp_template_id'])) {
             $template = WhatsAppMessageTemplate::active()

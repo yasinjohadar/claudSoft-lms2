@@ -60,34 +60,9 @@ class RegistrationWhatsAppService
                 return true;
             }
 
-            $replacements = $this->registrationPlaceholders($registration, $group);
-
-            $messageTemplate = null;
-            if ($settings?->whatsapp_template_id) {
-                $messageTemplate = WhatsAppMessageTemplate::active()
-                    ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
-                    ->find($settings->whatsapp_template_id);
-            }
-
-            if ($messageTemplate) {
-                $message = $messageTemplate->render($replacements);
-            } elseif ($settings && trim((string) ($settings->whatsapp_template ?? '')) !== '') {
-                $message = str_replace(
-                    ['{{student_name}}', '{student_name}', '{{group_name}}', '{group_name}', '{{email}}', '{email}'],
-                    [$replacements['student_name'], $replacements['student_name'], $replacements['group_name'], $replacements['group_name'], $replacements['email'], $replacements['email']],
-                    $settings->whatsapp_template
-                );
-            } else {
-                $messageTemplate = WhatsAppMessageTemplate::findBySlug('welcome_group');
-                if ($messageTemplate) {
-                    $message = $messageTemplate->render($replacements);
-                } else {
-                    $message = str_replace(
-                        ['{{student_name}}', '{{group_name}}', '{{email}}'],
-                        [$replacements['student_name'], $replacements['group_name'], $replacements['email']],
-                        $this->getDefaultWhatsAppTemplateForGroup()
-                    );
-                }
+            $message = $this->buildWelcomeTextForGroup($registration);
+            if ($message === null || trim($message) === '') {
+                return false;
             }
 
             $phone = $registration->full_phone;
@@ -111,6 +86,56 @@ class RegistrationWhatsAppService
 
             return false;
         }
+    }
+
+    /**
+     * Build Evolution/text welcome body only (no Flaxxa, no send).
+     * Used by the sticky new-account WhatsApp bundle.
+     */
+    public function buildWelcomeTextForGroup(GroupRegistration $registration): ?string
+    {
+        $group = $registration->group;
+        if (! $group) {
+            return null;
+        }
+
+        $settings = GroupRegistrationSetting::where('group_id', $group->id)->first();
+        $replacements = $this->registrationPlaceholders($registration, $group);
+
+        $messageTemplate = null;
+        if ($settings?->whatsapp_template_id) {
+            $messageTemplate = WhatsAppMessageTemplate::active()
+                ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+                ->find($settings->whatsapp_template_id);
+        }
+
+        if ($messageTemplate) {
+            return $messageTemplate->render($replacements);
+        }
+
+        if ($settings && trim((string) ($settings->whatsapp_template ?? '')) !== '') {
+            return str_replace(
+                ['{{student_name}}', '{student_name}', '{{group_name}}', '{group_name}', '{{email}}', '{email}'],
+                [$replacements['student_name'], $replacements['student_name'], $replacements['group_name'], $replacements['group_name'], $replacements['email'], $replacements['email']],
+                $settings->whatsapp_template
+            );
+        }
+
+        $messageTemplate = WhatsAppMessageTemplate::findBySlug('welcome_group');
+        if ($messageTemplate) {
+            return $messageTemplate->render($replacements);
+        }
+
+        return str_replace(
+            ['{{student_name}}', '{{group_name}}', '{{email}}'],
+            [$replacements['student_name'], $replacements['group_name'], $replacements['email']],
+            $this->getDefaultWhatsAppTemplateForGroup()
+        );
+    }
+
+    public function markWelcomeSent(GroupRegistration $registration): void
+    {
+        $this->markSent($registration);
     }
 
     private function sendViaFlaxxaTemplate(

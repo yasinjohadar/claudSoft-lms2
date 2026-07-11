@@ -252,8 +252,11 @@
                                         <i class="fe fe-check"></i>
                                     </button>
                                 </form>
-                                <button type="button" class="btn btn-sm btn-danger-light" data-bs-toggle="modal"
-                                    data-bs-target="#rejectModal{{ $request->id }}" title="رفض">
+                                <button type="button"
+                                    class="btn btn-sm btn-danger-light js-open-membership-reject"
+                                    title="رفض"
+                                    data-reject-url="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $request->id]) }}"
+                                    data-student-name="{{ $request->student->name }}">
                                     <i class="fe fe-x"></i>
                                 </button>
                             @elseif($request->status === 'rejected')
@@ -275,8 +278,11 @@
                                     </button>
                                 </form>
                             @elseif($request->status === 'approved')
-                                <button type="button" class="btn btn-sm btn-danger-light" data-bs-toggle="modal"
-                                    data-bs-target="#rejectModal{{ $request->id }}" title="رفض">
+                                <button type="button"
+                                    class="btn btn-sm btn-danger-light js-open-membership-reject"
+                                    title="رفض"
+                                    data-reject-url="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $request->id]) }}"
+                                    data-student-name="{{ $request->student->name }}">
                                     <i class="fe fe-x"></i>
                                 </button>
                                 <form action="{{ route('courses.groups.membership-requests.delete', [$course->id, $group->id, $request->id]) }}"
@@ -294,32 +300,6 @@
                         </div>
                     </td>
                 </tr>
-
-                <div class="modal fade" id="rejectModal{{ $request->id }}" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow-lg">
-                            <form action="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $request->id]) }}" method="POST">
-                                @csrf
-                                <div class="modal-header border-0">
-                                    <h5 class="modal-title"><i class="fe fe-x-circle me-2 text-danger"></i>رفض طلب الانضمام</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <p>هل أنت متأكد من رفض طلب <strong>{{ $request->student->name }}</strong>؟</p>
-                                    <div class="mb-0">
-                                        <label class="form-label">ملاحظات (اختياري)</label>
-                                        <textarea name="admin_notes" class="form-control" rows="3"
-                                            placeholder="أضف ملاحظات حول سبب الرفض..."></textarea>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-0">
-                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                                    <button type="submit" class="btn btn-danger">رفض الطلب</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
             @empty
                 <tr>
                     <td colspan="20">

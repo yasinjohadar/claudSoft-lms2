@@ -58,15 +58,19 @@ class GroupRegistrationController extends Controller
         $existingRegistration = GroupRegistration::where('email', $request->email)
             ->where('group_id', $group->id)
             ->first();
-        
-        // التحقق من وجود طلب مرفوض للسماح بإعادة التسجيل
+
+        // السماح بإعادة التسجيل إذا: طلب انضمام مرفوض، أو تسجيل يتيم بعد حذف المستخدم
         $hasRejectedRequest = false;
+        $hasOrphanedRegistration = $existingRegistration && $existingRegistration->user_id === null;
+
         if ($existingRegistration && $existingRegistration->user_id) {
             $hasRejectedRequest = GroupMembershipRequest::where('group_id', $group->id)
                 ->where('student_id', $existingRegistration->user_id)
                 ->where('status', 'rejected')
                 ->exists();
         }
+
+        $canReregister = $hasRejectedRequest || $hasOrphanedRegistration;
 
         // Allow same phone when re-registering as an existing user (matched by email).
         $ignoreUserId = User::where('email', $request->email)->value('id');
@@ -78,7 +82,7 @@ class GroupRegistrationController extends Controller
             'email' => [
                 'required',
                 'email',
-                $hasRejectedRequest 
+                $canReregister
                     ? Rule::unique('group_registrations', 'email')->ignore($existingRegistration->id ?? null)->where(function ($query) use ($group) {
                         return $query->where('group_id', $group->id);
                     })
@@ -107,7 +111,7 @@ class GroupRegistrationController extends Controller
             'name_ar.required' => 'الاسم بالعربية مطلوب',
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'البريد الإلكتروني غير صحيح',
-            'email.unique' => 'هذا البريد الإلكتروني مستخدم بالفعل',
+            'email.unique' => 'هذا البريد الإلكتروني مسجّل مسبقاً في هذه المجموعة',
             'phone.required' => 'رقم الهاتف مطلوب',
             'country_code.required' => 'رمز الدولة مطلوب',
             'commitment_to_training.required' => 'يجب الإجابة على سؤال الالتزام بالتدريب',
@@ -135,6 +139,11 @@ class GroupRegistrationController extends Controller
 
         try {
             $validated['group_id'] = $group->id;
+
+            // استبدال التسجيل اليتيم/المرفوض بدل ترك صفوف مكررة
+            if ($canReregister && $existingRegistration) {
+                $existingRegistration->delete();
+            }
 
             $registration = $this->registrationService->createRegistration($validated);
 

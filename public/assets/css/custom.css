@@ -10811,3 +10811,11 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     }
 }
 
+/* Theme modal z-index (105) sits under body-level backdrops when markup is nested. */
+.modal {
+    z-index: 1055 !important;
+}
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+

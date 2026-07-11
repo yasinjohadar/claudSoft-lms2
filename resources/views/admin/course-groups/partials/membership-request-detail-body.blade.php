@@ -153,8 +153,10 @@
                     <i class="fe fe-check me-1"></i>قبول
                 </button>
             </form>
-            <button type="button" class="btn btn-danger btn-sm js-membership-detail-reject"
-                    data-bs-toggle="modal" data-bs-target="#rejectModal{{ $membershipRequest->id }}">
+            <button type="button"
+                    class="btn btn-danger btn-sm js-open-membership-reject js-membership-detail-reject"
+                    data-reject-url="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $membershipRequest->id]) }}"
+                    data-student-name="{{ $membershipRequest->student->name ?? 'الطالب' }}">
                 <i class="fe fe-x me-1"></i>رفض
             </button>
         @elseif($membershipRequest->status === 'rejected')
@@ -167,8 +169,10 @@
                 </button>
             </form>
         @elseif($membershipRequest->status === 'approved')
-            <button type="button" class="btn btn-outline-danger btn-sm js-membership-detail-reject"
-                    data-bs-toggle="modal" data-bs-target="#rejectModal{{ $membershipRequest->id }}">
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm js-open-membership-reject js-membership-detail-reject"
+                    data-reject-url="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $membershipRequest->id]) }}"
+                    data-student-name="{{ $membershipRequest->student->name ?? 'الطالب' }}">
                 <i class="fe fe-x me-1"></i>رفض
             </button>
         @endif

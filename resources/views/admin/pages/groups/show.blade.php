@@ -444,10 +444,82 @@
         </div>
     </div>
 
+    <div class="modal fade" id="removeGroupMemberModal" tabindex="-1" aria-labelledby="removeGroupMemberModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <form id="removeGroupMemberForm" method="POST" action="#">
+                    @csrf
+                    @method('DELETE')
+                    <div class="modal-body text-center p-4 p-md-5">
+                        <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
+                            <i class="fas fa-user-times text-danger fs-24"></i>
+                        </div>
+                        <h5 class="mb-3" id="removeGroupMemberModalLabel">تأكيد إزالة العضو</h5>
+                        <p class="text-muted mb-4">
+                            هل أنت متأكد من إزالة
+                            <strong class="text-dark" id="removeGroupMemberName">العضو</strong>
+                            من المجموعة؟
+                        </p>
+                        <div class="alert alert-warning py-2 mb-4 text-start">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            سيتم أيضاً إلغاء تسجيله من الكورسات المرتبطة بهذه المجموعة
+                        </div>
+                        <div class="d-flex gap-2 justify-content-center flex-wrap">
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>إلغاء
+                            </button>
+                            <button type="submit" class="btn btn-danger px-4">
+                                <i class="fas fa-user-times me-1"></i>نعم، إزالة
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @stop
 
 @section('script')
 <script>
+    (function initRemoveGroupMemberModal() {
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.js-open-remove-member');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const modalEl = document.getElementById('removeGroupMemberModal');
+            const form = document.getElementById('removeGroupMemberForm');
+            const nameEl = document.getElementById('removeGroupMemberName');
+            const url = btn.getAttribute('data-remove-url');
+            if (!modalEl || !form || !url) return;
+
+            if (modalEl.parentElement !== document.body) {
+                document.body.appendChild(modalEl);
+            }
+
+            form.setAttribute('action', url);
+            if (nameEl) {
+                nameEl.textContent = btn.getAttribute('data-member-name') || 'العضو';
+            }
+
+            function showModal() {
+                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                    return false;
+                }
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                return true;
+            }
+
+            if (!showModal()) {
+                window.addEventListener('load', function openWhenReady() {
+                    showModal();
+                }, { once: true });
+            }
+        });
+    })();
+
     function animateGroupShowCountup(el, target, duration) {
         const start = performance.now();
         const from = 0;

@@ -215,12 +215,10 @@
                                         <i class="fas fa-wallet"></i>
                                     </button>
                                     <button type="button"
-                                            class="btn btn-sm btn-outline-danger"
+                                            class="btn btn-sm btn-outline-danger js-open-remove-member"
                                             title="إزالة"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#removeMemberModal{{ $memberRecord->student_id }}"
-                                            data-member-name="{{ $memberRecord->student->name }}"
-                                            data-member-id="{{ $memberRecord->student_id }}">
+                                            data-remove-url="{{ route('groups.remove-member', [$group->id, $memberRecord->student_id]) }}"
+                                            data-member-name="{{ $memberRecord->student->name }}">
                                         <i class="fas fa-user-times"></i>
                                     </button>
                                 </div>
@@ -400,43 +398,6 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="removeMemberModal{{ $memberRecord->student_id }}" tabindex="-1" aria-labelledby="removeMemberModalLabel{{ $memberRecord->student_id }}" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content shadow-lg rounded-4">
-                    <div class="modal-header border-0 pb-0">
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body text-center py-4">
-                        <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
-                            <i class="fas fa-user-times text-danger fs-24"></i>
-                        </div>
-                        <h5 class="mb-3">تأكيد إزالة العضو</h5>
-                        <p class="text-muted mb-4">
-                            هل أنت متأكد من إزالة
-                            <strong class="text-dark">{{ $memberRecord->student->name }}</strong>
-                            من المجموعة؟
-                        </p>
-                        <div class="alert alert-warning py-2 mb-4">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            سيتم أيضاً إلغاء تسجيله من الكورسات المرتبطة بهذه المجموعة
-                        </div>
-                        <div class="d-flex gap-2 justify-content-center">
-                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-1"></i>إلغاء
-                            </button>
-                            <form action="{{ route('groups.remove-member', [$group->id, $memberRecord->student_id]) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger px-4">
-                                    <i class="fas fa-user-times me-1"></i>نعم، إزالة
-                                </button>
-                            </form>
-                        </div>
                     </div>
                 </div>
             </div>

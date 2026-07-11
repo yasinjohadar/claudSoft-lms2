@@ -259,21 +259,27 @@
             <div class="modal-content border-0 shadow-lg">
                 <form action="{{ route('courses.groups.membership-requests.reject', [$course->id, $group->id, $membershipRequest->id]) }}" method="POST">
                     @csrf
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title fw-bold">
-                            <i class="fe fe-x-circle me-2 text-danger"></i>رفض طلب الانضمام
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>هل أنت متأكد من رفض طلب <strong>{{ $membershipRequest->student->name ?? 'الطالب' }}</strong>؟</p>
-                        <label class="form-label">ملاحظات (اختياري)</label>
-                        <textarea name="admin_notes" class="form-control" rows="3"
-                                  placeholder="سبب الرفض أو ملاحظات للإدارة..."></textarea>
-                    </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-danger">رفض الطلب</button>
+                    <div class="modal-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
+                                <i class="fe fe-x-circle text-danger fs-24"></i>
+                            </div>
+                            <h5 class="mb-2 fw-bold">رفض طلب الانضمام</h5>
+                            <p class="text-muted mb-0">
+                                هل أنت متأكد من رفض طلب <strong>{{ $membershipRequest->student->name ?? 'الطالب' }}</strong>؟
+                            </p>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label">ملاحظات (اختياري)</label>
+                            <textarea name="admin_notes" class="form-control" rows="3"
+                                      placeholder="سبب الرفض أو ملاحظات للإدارة..."></textarea>
+                        </div>
+                        <div class="d-flex justify-content-center gap-2">
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger px-4">
+                                <i class="fe fe-x me-1"></i>رفض الطلب
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

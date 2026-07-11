@@ -6,6 +6,7 @@ use App\Mail\AccountCreatedCredentialsMail;
 use App\Models\EmailSetting;
 use App\Models\EvolutionInstance;
 use App\Models\User;
+use App\Support\CredentialPassword;
 use App\Support\InternationalPhoneDigits;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
 use App\Services\WhatsApp\Evolution\EvolutionWhatsAppNumberResolver;
@@ -35,17 +36,7 @@ class AccountCreatedCredentialDeliveryService
 
     public function generateSecurePassword(): string
     {
-        // Avoid < > & " ' so passwords never get truncated by HTML strip_tags / email markup.
-        $alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%*_+-=';
-        $length = 16;
-        $password = '';
-        $max = strlen($alphabet) - 1;
-
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $alphabet[random_int(0, $max)];
-        }
-
-        return $password;
+        return CredentialPassword::generate();
     }
 
     /**
@@ -64,6 +55,7 @@ class AccountCreatedCredentialDeliveryService
         bool $sendEmail = true,
         bool $sendWhatsApp = true,
         ?string $whatsappRecipientOverride = null,
+        ?string $evolutionInstanceName = null,
     ): array {
         $emailSent = false;
         $whatsappSent = false;
@@ -88,7 +80,12 @@ class AccountCreatedCredentialDeliveryService
 
         if ($sendWhatsApp) {
             try {
-                $result = $this->sendWhatsAppWithRetries($user, $plainPassword, $whatsappRecipientOverride);
+                $result = $this->sendWhatsAppWithRetries(
+                    $user,
+                    $plainPassword,
+                    $whatsappRecipientOverride,
+                    $evolutionInstanceName,
+                );
                 $whatsappSent = $result['sent'];
                 $whatsappRecipient = $result['recipient'];
                 $whatsappError = $result['error'];
@@ -110,6 +107,7 @@ class AccountCreatedCredentialDeliveryService
             'email_sent' => $emailSent,
             'whatsapp_sent' => $whatsappSent,
             'whatsapp_recipient' => $whatsappRecipient,
+            'evolution_instance' => $evolutionInstanceName,
             'email_error' => $emailError,
             'whatsapp_error' => $whatsappError,
         ]);
@@ -165,6 +163,7 @@ class AccountCreatedCredentialDeliveryService
         User $user,
         #[\SensitiveParameter] string $plainPassword,
         ?string $whatsappRecipientOverride = null,
+        ?string $evolutionInstanceName = null,
     ): array {
         $recipient = $whatsappRecipientOverride ?? $this->resolveWhatsAppRecipient($user);
 
@@ -206,6 +205,9 @@ class AccountCreatedCredentialDeliveryService
 
         $messageBody = $this->renderer->renderCredentialWhatsApp($user, $plainPassword);
         $lastError = null;
+        $stickyInstance = ($evolutionInstanceName !== null && $evolutionInstanceName !== '')
+            ? $evolutionInstanceName
+            : null;
 
         for ($attempt = 1; $attempt <= self::WHATSAPP_MAX_ATTEMPTS; $attempt++) {
             try {
@@ -214,10 +216,11 @@ class AccountCreatedCredentialDeliveryService
                     $messageBody,
                     previewUrl: false,
                     applySendDelay: false,
+                    evolutionInstanceName: $stickyInstance,
                 );
 
                 if (WhatsAppDeliveryAcceptance::isAccepted($sentMessage)) {
-                    $this->sendPasswordOnlyFollowUp($sendTo, $plainPassword, $user->id);
+                    $this->sendPasswordOnlyFollowUp($sendTo, $plainPassword, $user->id, $stickyInstance);
 
                     return [
                         'sent' => true,
@@ -235,6 +238,7 @@ class AccountCreatedCredentialDeliveryService
                 'user_id' => $user->id,
                 'recipient' => $recipient,
                 'attempt' => $attempt,
+                'evolution_instance' => $stickyInstance,
                 'error' => $lastError,
             ]);
 
@@ -257,20 +261,23 @@ class AccountCreatedCredentialDeliveryService
         string $sendTo,
         #[\SensitiveParameter] string $plainPassword,
         int $userId,
+        ?string $evolutionInstanceName = null,
     ): void {
         try {
             usleep(350_000);
 
             $this->whatsAppSender->sendTextSync(
                 $sendTo,
-                $plainPassword,
+                CredentialPassword::forWhatsAppDisplay($plainPassword),
                 previewUrl: false,
                 applySendDelay: false,
+                evolutionInstanceName: $evolutionInstanceName,
             );
         } catch (\Throwable $e) {
             Log::warning('Account created password-only WhatsApp follow-up failed', [
                 'user_id' => $userId,
                 'recipient' => $sendTo,
+                'evolution_instance' => $evolutionInstanceName,
                 'error' => $e->getMessage(),
             ]);
         }

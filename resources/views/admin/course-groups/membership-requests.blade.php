@@ -316,6 +316,38 @@
         </div>
     </div>
 
+    <div class="modal fade" id="membershipRejectModal" tabindex="-1" aria-labelledby="membershipRejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <form id="membershipRejectForm" method="POST" action="#">
+                    @csrf
+                    <div class="modal-body p-4 p-md-5">
+                        <div class="text-center mb-4">
+                            <div class="avatar avatar-xl bg-danger-transparent mx-auto mb-3">
+                                <i class="fe fe-x-circle text-danger fs-24"></i>
+                            </div>
+                            <h5 class="mb-2" id="membershipRejectModalLabel">رفض طلب الانضمام</h5>
+                            <p class="text-muted mb-0">
+                                هل أنت متأكد من رفض طلب <strong id="membershipRejectStudentName">الطالب</strong>؟
+                            </p>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label" for="membershipRejectNotes">ملاحظات (اختياري)</label>
+                            <textarea id="membershipRejectNotes" name="admin_notes" class="form-control" rows="3"
+                                      placeholder="أضف ملاحظات حول سبب الرفض..."></textarea>
+                        </div>
+                        <div class="d-flex justify-content-center gap-2">
+                            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger px-4">
+                                <i class="fe fe-x me-1"></i>رفض الطلب
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     @include('admin.course-groups.partials.membership-wa-invite-modal', [
         'course' => $course,
         'group' => $group,
@@ -624,6 +656,50 @@ document.addEventListener('DOMContentLoaded', function() {
             if (deleteSelectedForm) deleteSelectedForm.submit();
         });
     }
+
+    (function initMembershipRejectModal() {
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.js-open-membership-reject');
+            if (!btn) return;
+            e.preventDefault();
+
+            const rejectModalEl = document.getElementById('membershipRejectModal');
+            const rejectForm = document.getElementById('membershipRejectForm');
+            const rejectNameEl = document.getElementById('membershipRejectStudentName');
+            const rejectNotesEl = document.getElementById('membershipRejectNotes');
+            const url = btn.getAttribute('data-reject-url');
+            if (!rejectModalEl || !rejectForm || !url) return;
+
+            if (rejectModalEl.parentElement !== document.body) {
+                document.body.appendChild(rejectModalEl);
+            }
+
+            rejectForm.setAttribute('action', url);
+            if (rejectNameEl) rejectNameEl.textContent = btn.getAttribute('data-student-name') || 'الطالب';
+            if (rejectNotesEl) rejectNotesEl.value = '';
+
+            function showRejectModal() {
+                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                    return false;
+                }
+
+                const detailModalEl = document.getElementById('membershipRequestDetailModal');
+                if (detailModalEl && detailModalEl.classList.contains('show')) {
+                    const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+                    if (detailModal) detailModal.hide();
+                }
+
+                bootstrap.Modal.getOrCreateInstance(rejectModalEl).show();
+                return true;
+            }
+
+            if (!showRejectModal()) {
+                window.addEventListener('load', function () {
+                    showRejectModal();
+                }, { once: true });
+            }
+        });
+    })();
 
     initSelectionHandlers();
     initCopyEmailButtons();
