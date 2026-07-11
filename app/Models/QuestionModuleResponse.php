@@ -328,8 +328,12 @@ class QuestionModuleResponse extends Model
             ->pluck('id')
             ->toArray();
 
-        // Compare arrays
-        return $studentAnswer === $correctOrder;
+        $normalize = static fn (array $sequence): array => array_values(array_map(
+            static fn ($id) => (int) $id,
+            $sequence
+        ));
+
+        return $normalize($studentAnswer) === $normalize($correctOrder);
     }
 
     /**

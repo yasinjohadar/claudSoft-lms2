@@ -347,6 +347,49 @@ class QuestionBank extends Model
     }
 
     /**
+     * خيارات القائمة المنسدلة لفراغ معيّن (نصوص الخيارات، مخلوطة).
+     * فراغ واحد: كل خيارات السؤال. عدة فراغات: خيارات نفس option_order، أو كل النصوص إن لم توجد.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public function fillBlankSelectChoices(int $blankIndex, int $blankCount): \Illuminate\Support\Collection
+    {
+        $options = $this->relationLoaded('options')
+            ? $this->options
+            : $this->options()->orderBy('option_order')->orderBy('id')->get();
+
+        if ($options->isEmpty()) {
+            return collect();
+        }
+
+        if ($blankCount <= 1) {
+            return $options->pluck('option_text')
+                ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
+                ->map(fn ($t) => (string) $t)
+                ->unique()
+                ->shuffle()
+                ->values();
+        }
+
+        $forBlank = $options->where('option_order', $blankIndex + 1)
+            ->pluck('option_text')
+            ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
+            ->map(fn ($t) => (string) $t)
+            ->unique()
+            ->values();
+
+        if ($forBlank->isEmpty()) {
+            $forBlank = $options->pluck('option_text')
+                ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
+                ->map(fn ($t) => (string) $t)
+                ->unique()
+                ->values();
+        }
+
+        return $forBlank->shuffle()->values();
+    }
+
+    /**
      * ملء الفراغات من بنك الأسئلة: الخيارات الصحيحة في question_options (is_correct + option_order).
      *
      * @return array{blank_count: int, correct_count: int, all_filled: bool}
@@ -359,6 +402,9 @@ class QuestionBank extends Model
         }
 
         $blankCount = substr_count((string) $this->question_text, '[[blank]]');
+        if ($blankCount < 1) {
+            $blankCount = substr_count((string) preg_replace('/_{3,}/', '[[blank]]', (string) $this->question_text), '[[blank]]');
+        }
         if ($blankCount < 1) {
             return ['blank_count' => 0, 'correct_count' => 0, 'all_filled' => false];
         }
@@ -385,12 +431,14 @@ class QuestionBank extends Model
                 continue;
             }
 
-            $alts = $byOrder->get($i + 1, collect());
-            if ($alts->isEmpty() && $blankCount === 1 && $i === 0) {
+            // فراغ واحد: كل الإجابات الصحيحة المقبولة بدائل (حتى لو اختلف option_order عند الإنشاء)
+            if ($blankCount === 1) {
                 $alts = $correctOptions;
-            }
-            if ($alts->isEmpty()) {
-                continue;
+            } else {
+                $alts = $byOrder->get($i + 1, collect());
+                if ($alts->isEmpty()) {
+                    continue;
+                }
             }
 
             $acceptable = $alts->pluck('option_text')

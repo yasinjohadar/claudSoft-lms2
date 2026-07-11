@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" role="img" aria-label="مشروع وهمي 4">
+  <defs>
+    <linearGradient id="g4" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0066B3"/><stop offset="100%" stop-color="#0B1F33"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g4)"/>
+  <path d="M120 360 L280 200 L400 300 L560 140 L680 260" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="420" text-anchor="middle" fill="#fff" font-family="Tahoma, Arial, sans-serif" font-size="28" font-weight="700">DevOps</text>
+  <text x="400" y="455" text-anchor="middle" fill="#E8F4FC" font-family="Tahoma, Arial, sans-serif" font-size="18">صورة وهمية — مشروع 4</text>
+</svg>

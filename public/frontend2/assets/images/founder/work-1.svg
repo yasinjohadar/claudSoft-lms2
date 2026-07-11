@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" role="img" aria-label="مشروع وهمي 1">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#004C8A"/><stop offset="100%" stop-color="#3399E0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g1)"/>
+  <rect x="80" y="90" width="640" height="280" rx="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+  <text x="400" y="240" text-anchor="middle" fill="#fff" font-family="Tahoma, Arial, sans-serif" font-size="32" font-weight="700">منصة تعليمية</text>
+  <text x="400" y="285" text-anchor="middle" fill="#E8F4FC" font-family="Tahoma, Arial, sans-serif" font-size="18">صورة وهمية — مشروع 1</text>
+</svg>

@@ -127,6 +127,13 @@ class SitemapController extends Controller
             '0.6'
         );
 
+        $sitemap .= $this->addUrl(
+            route('frontend.yasin-jokhadar'),
+            now(),
+            'monthly',
+            '0.7'
+        );
+
         $sitemap .= '</urlset>';
 
         return response($sitemap, 200)

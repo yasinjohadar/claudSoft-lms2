@@ -660,6 +660,18 @@
     padding: 0.25rem;
 }
 
+.quiz-take-page .ordering-controls {
+    flex-shrink: 0;
+}
+
+.quiz-take-page .ordering-controls .btn {
+    min-width: 2.25rem;
+}
+
+.quiz-take-page .ordering-item {
+    cursor: default;
+}
+
 /* Fill blanks responsive table */
 @media (max-width: 767.98px) {
     .quiz-take-page .fill-blank-row,

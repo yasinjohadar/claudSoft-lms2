@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-label="صورة وهمية — ياسين جوخدار">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1F33"/>
+      <stop offset="55%" stop-color="#004C8A"/>
+      <stop offset="100%" stop-color="#0066B3"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8F4FC"/>
+      <stop offset="100%" stop-color="#A8D0EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <circle cx="400" cy="380" r="150" fill="url(#face)" opacity="0.95"/>
+  <ellipse cx="400" cy="720" rx="220" ry="260" fill="#E8F4FC" opacity="0.9"/>
+  <text x="400" y="930" text-anchor="middle" fill="#ffffff" font-family="Tahoma, Arial, sans-serif" font-size="28" opacity="0.85">صورة وهمية — للاستبدال</text>
+</svg>

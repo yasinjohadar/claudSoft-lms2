@@ -75,6 +75,11 @@ class HomeController extends Controller
         return view('frontend2.pages.about');
     }
 
+    public function yasinJokhadar()
+    {
+        return view('frontend2.pages.yasin-jokhadar');
+    }
+
     public function skillWeb()
     {
         return view('frontend2.pages.service-detail');

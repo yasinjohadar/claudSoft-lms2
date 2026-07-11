@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 Route::get('/about', [HomeController::class, 'about'])->name('frontend.about');
+Route::get('/yasin-jokhadar', [HomeController::class, 'yasinJokhadar'])->name('frontend.yasin-jokhadar');
 Route::get('/courses', [CourseController::class, 'index'])->name('frontend.courses.index');
 // تفاصيل الكورس للواجهة الجديدة (frontend2) — اسم الراوت ثابت ليتم تحديث الروابط تلقائياً
 Route::get('/course/{slug}', [CourseController::class, 'show'])->name('frontend.courses.show');
@@ -101,7 +102,8 @@ Route::get('/robots.txt', function () {
     $content .= "Allow: /blog\n";
     $content .= "Allow: /reviews\n";
     $content .= "Allow: /students\n";
-    $content .= "Allow: /contact\n\n";
+    $content .= "Allow: /contact\n";
+    $content .= "Allow: /yasin-jokhadar\n\n";
 
     $content .= "# Disallow admin and student panels\n";
     $content .= "Disallow: /admin/\n";

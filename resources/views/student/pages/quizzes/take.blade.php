@@ -382,15 +382,13 @@ if (remainingTimeSeconds !== null) {
                                             @foreach($parts as $index => $part)
                                                 <span>{!! mixed_bidi_html($part) !!}</span>
                                                 @if($index < count($parts) - 1)
-                                                    <input type="text"
-                                                           class="form-control d-inline-block fill-blank-input"
-                                                           style="width: 150px; display: inline-block !important;"
-                                                           name="question_{{ $question->id }}[{{ $index }}]"
-                                                           value="{{ $savedAnswers[$index] ?? '' }}"
-                                                           data-question-id="{{ $question->id }}"
-                                                           data-blank-index="{{ $index }}"
-                                                           placeholder="...">
-                                        @endif
+                                                    @include('partials.quiz.fill-blank-field', [
+                                                        'question' => $question,
+                                                        'blankIndex' => $index,
+                                                        'blankCount' => $blankCount,
+                                                        'savedAnswers' => $savedAnswers,
+                                                    ])
+                                                @endif
                                             @endforeach
                                     </div>
                                     </div>
@@ -519,50 +517,38 @@ if (remainingTimeSeconds !== null) {
                                     @php
                                         $orderItems = $question->options->sortBy('option_order');
                                         $savedOrder = is_array($savedAnswer) ? $savedAnswer : [];
+                                        if (!empty($savedOrder)) {
+                                            $displayItems = collect($savedOrder)->map(function ($itemId) use ($orderItems) {
+                                                return $orderItems->firstWhere('id', $itemId);
+                                            })->filter()->values();
+                                            if ($displayItems->count() < $orderItems->count()) {
+                                                $missing = $orderItems->whereNotIn('id', $displayItems->pluck('id'));
+                                                $displayItems = $displayItems->concat($missing)->values();
+                                            }
+                                        } else {
+                                            $displayItems = $orderItems->shuffle()->values();
+                                        }
+                                        $initialOrder = $displayItems->pluck('id')->values()->all();
                                     @endphp
                                     <div class="ordering-container" data-question-id="{{ $question->id }}">
                                         <div class="alert alert-info mb-3">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            اسحب العناصر لترتيبها بالشكل الصحيح
-                            </div>
+                                            استخدم الأسهم لإعادة ترتيب العناصر
+                                        </div>
                                         <div class="ordering-list" id="ordering-list-{{ $question->id }}">
-                                            <div class="ordering-drop-hint" hidden role="status" aria-live="polite">
-                                                <i class="fas fa-hand-pointer me-2"></i>
-                                                يمكنك الإفلات الآن — أسقط العنصر عند الشريط الأخضر
-                                            </div>
-                                            @php
-                                                // If saved order exists, use it; otherwise shuffle for display
-                                                if (!empty($savedOrder)) {
-                                                    $displayItems = collect($savedOrder)->map(function($itemId) use ($orderItems) {
-                                                        return $orderItems->firstWhere('id', $itemId);
-                                                    })->filter();
-                                                } else {
-                                                    $displayItems = $orderItems->shuffle();
-                                                }
-                                            @endphp
                                             @foreach($displayItems as $itemIndex => $item)
-                                                <div class="ordering-item"
-                                                     draggable="true"
-                                                     data-item-id="{{ $item->id }}"
-                                                     data-question-id="{{ $question->id }}">
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="ordering-handle me-3">
-                                                            <i class="fas fa-grip-vertical"></i>
-                                                        </span>
-                                                        <span class="ordering-number me-3">{{ $itemIndex + 1 }}</span>
-                                                        <span class="ordering-text">{!! mixed_bidi_html($item->option_text) !!}</span>
-                        </div>
-                                                </div>
-                                @endforeach
-                            </div>
-                                        <div class="ordering-drop-success" hidden role="status" aria-live="polite">
-                                            <i class="fas fa-check-circle me-2"></i>
-                                            تم تحديث الترتيب بنجاح
+                                                @include('partials.quiz.ordering-item', [
+                                                    'item' => $item,
+                                                    'itemIndex' => $itemIndex,
+                                                    'itemsCount' => $displayItems->count(),
+                                                    'questionId' => $question->id,
+                                                ])
+                                            @endforeach
                                         </div>
                                         <input type="hidden"
                                                name="question_{{ $question->id }}"
                                                id="ordering-input-{{ $question->id }}"
-                                               value="{{ json_encode($savedOrder) }}"
+                                               value="{{ json_encode($initialOrder) }}"
                                                class="ordering-input">
                                     </div>
                                     @break
@@ -850,12 +836,13 @@ $(document).ready(function() {
             typingTimer = setTimeout(() => saveAnswer(questionId), 1000);
         });
 
-        // Auto-save for fill in blank inputs
+        // Auto-save for fill in blank inputs / selects
         let blankTimer;
-        $(document).on('input', '.fill-blank-input', function() {
+        $(document).on('input change', '.fill-blank-input', function() {
             clearTimeout(blankTimer);
-        const questionId = $(this).data('question-id');
-            blankTimer = setTimeout(() => saveFillBlankAnswer(questionId), 1000);
+            const questionId = $(this).data('question-id');
+            const delay = $(this).is('select') ? 0 : 1000;
+            blankTimer = setTimeout(() => saveFillBlankAnswer(questionId), delay);
         });
 
         // Initialize drag and drop
@@ -1078,122 +1065,94 @@ $(document).ready(function() {
         }
     }
 
-    // Ordering functionality
+    // Ordering functionality — up/down buttons (no drag)
     function initOrdering() {
         if (window.__quizOrderingBound) {
             return;
         }
         window.__quizOrderingBound = true;
 
-        let draggedItem = null;
-
-        function clearOrderingDragState() {
-            $('.ordering-item').removeClass('dragging drag-over');
-            $('.ordering-container').removeClass('is-drag-active');
-            $('.ordering-drop-hint').prop('hidden', true);
-            draggedItem = null;
-        }
-
-        function activateOrderingDragUi($container) {
-            if ($container.hasClass('is-drag-active')) {
-                return;
-            }
-
-            $container.addClass('is-drag-active');
-            $container.find('.ordering-drop-hint').prop('hidden', false);
-        }
-
-        function showOrderingDropSuccess($item) {
-            const $container = $item.closest('.ordering-container');
-            const $success = $container.find('.ordering-drop-success');
-
-            $item.addClass('ordering-item--placed');
-            $item.find('.ordering-number').addClass('ordering-number--placed');
-            $success.prop('hidden', false);
-
-            window.setTimeout(function () {
-                $item.removeClass('ordering-item--placed');
-                $item.find('.ordering-number').removeClass('ordering-number--placed');
-                $success.prop('hidden', true);
-            }, 1800);
-        }
-
-        function finishOrderingDrop($item) {
-            const questionId = $item.data('question-id');
-            const $list = $item.closest('.ordering-list');
-
-            updateOrderingNumbers($list);
-            saveOrderingAnswer(questionId);
-            showOrderingDropSuccess($item);
-            clearOrderingDragState();
-        }
-
-        $(document).on('dragstart', '.ordering-item', function(e) {
-            draggedItem = this;
-            $(this).addClass('dragging');
-            e.originalEvent.dataTransfer.effectAllowed = 'move';
-            e.originalEvent.dataTransfer.setData('text/plain', String($(this).data('item-id') || 'ordering'));
-        });
-
-        $(document).on('dragend', '.ordering-item', function() {
-            clearOrderingDragState();
-        });
-
-        $(document).on('dragover', '.ordering-item', function(e) {
+        $(document).on('click', '.ordering-move-up', function (e) {
             e.preventDefault();
-
-            if (!draggedItem || this === draggedItem) {
+            if ($(this).prop('disabled')) {
                 return;
             }
-
-            e.originalEvent.dataTransfer.dropEffect = 'move';
-            activateOrderingDragUi($(this).closest('.ordering-container'));
-            $('.ordering-item').not(this).removeClass('drag-over');
-            $(this).addClass('drag-over');
+            const $item = $(this).closest('.ordering-item');
+            moveOrderingItem($item.data('question-id'), $item, 'up');
         });
 
-        $(document).on('dragleave', '.ordering-item', function(e) {
-            const related = e.originalEvent.relatedTarget;
-            if (related && this.contains(related)) {
-                return;
-            }
-
-            $(this).removeClass('drag-over');
-        });
-
-        $(document).on('drop', '.ordering-item', function(e) {
+        $(document).on('click', '.ordering-move-down', function (e) {
             e.preventDefault();
-            e.stopPropagation();
-
-            if (!draggedItem || this === draggedItem) {
+            if ($(this).prop('disabled')) {
                 return;
             }
+            const $item = $(this).closest('.ordering-item');
+            moveOrderingItem($item.data('question-id'), $item, 'down');
+        });
 
-            const $target = $(this);
-            const rect = this.getBoundingClientRect();
-            const insertBefore = e.originalEvent.clientY < rect.top + (rect.height / 2);
+        seedOrderingAnswersFromDom();
+    }
 
-            if (insertBefore) {
-                $(draggedItem).insertBefore($target);
-            } else {
-                $(draggedItem).insertAfter($target);
+    function moveOrderingItem(questionId, $item, direction) {
+        const $list = $(`#ordering-list-${questionId}`);
+        if (!$list.length || !$item.length) {
+            return;
+        }
+
+        if (direction === 'up') {
+            const $prev = $item.prev('.ordering-item');
+            if ($prev.length) {
+                $item.insertBefore($prev);
             }
+        } else {
+            const $next = $item.next('.ordering-item');
+            if ($next.length) {
+                $item.insertAfter($next);
+            }
+        }
 
-            finishOrderingDrop($(draggedItem));
+        updateOrderingNumbers($list);
+        refreshOrderingControls($list);
+        saveOrderingAnswer(questionId);
+    }
+
+    function refreshOrderingControls($list) {
+        const $items = $list.find('.ordering-item');
+        const last = $items.length - 1;
+        $items.each(function (index) {
+            $(this).find('.ordering-move-up').prop('disabled', index === 0);
+            $(this).find('.ordering-move-down').prop('disabled', index === last);
         });
     }
 
     function updateOrderingNumbers(list) {
-        list.find('.ordering-item').each(function(index) {
+        list.find('.ordering-item').each(function (index) {
             $(this).find('.ordering-number').text(index + 1);
         });
     }
 
-    function saveOrderingAnswer(questionId) {
+    function collectOrderingOrder(questionId) {
         const order = [];
-        $(`#ordering-list-${questionId} .ordering-item`).each(function() {
+        $(`#ordering-list-${questionId} .ordering-item`).each(function () {
             order.push($(this).data('item-id'));
         });
+        return order;
+    }
+
+    function seedOrderingAnswersFromDom() {
+        $('.ordering-container').each(function () {
+            const questionId = $(this).data('question-id');
+            const order = collectOrderingOrder(questionId);
+            if (order.length === 0) {
+                return;
+            }
+            $(`#ordering-input-${questionId}`).val(JSON.stringify(order));
+            saveOrderingAnswer(questionId);
+        });
+    }
+
+    function saveOrderingAnswer(questionId) {
+        const order = collectOrderingOrder(questionId);
 
         // Update hidden input
         $(`#ordering-input-${questionId}`).val(JSON.stringify(order));
@@ -1310,6 +1269,23 @@ $(document).ready(function() {
                 });
                 hasAnswer = allFilled;
                 console.log('Question', questionId, '(fill_blank) - has answer:', hasAnswer);
+            }
+
+            // Check for ordering
+            const orderingInput = $(`#ordering-input-${questionId}`);
+            if (orderingInput.length > 0) {
+                let order = [];
+                try {
+                    order = JSON.parse(orderingInput.val() || '[]');
+                } catch (e) {
+                    order = [];
+                }
+                if (!Array.isArray(order) || order.length === 0) {
+                    order = collectOrderingOrder(questionId);
+                    orderingInput.val(JSON.stringify(order));
+                }
+                hasAnswer = Array.isArray(order) && order.length > 0;
+                console.log('Question', questionId, '(ordering) - has answer:', hasAnswer);
             }
 
             if (hasAnswer) {
@@ -1679,7 +1655,15 @@ $(document).ready(function() {
                 // Ordering
                 const orderingInput = $(`#ordering-input-${questionId}`);
                 if (orderingInput.length > 0) {
-                    answer = JSON.parse(orderingInput.val() || '[]');
+                    try {
+                        answer = JSON.parse(orderingInput.val() || '[]');
+                    } catch (e) {
+                        answer = [];
+                    }
+                    if (!Array.isArray(answer) || answer.length === 0) {
+                        answer = collectOrderingOrder(questionId);
+                        orderingInput.val(JSON.stringify(answer));
+                    }
                     console.log('Question', questionId, '- Ordering answer:', answer);
                 }
 
