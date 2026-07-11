@@ -16,7 +16,7 @@
     <div class="col-12">
         <label for="whatsapp_template_body" class="form-label">نص الرسالة <span class="text-danger">*</span></label>
         <textarea class="form-control @error('body') is-invalid @enderror" id="whatsapp_template_body" name="body" rows="8" placeholder="@verbatimمثال: مرحباً {{student_name}}، تم استلام طلبك في {{group_name}}.@endverbatim">{{ old('body', $template?->body) }}</textarea>
-        <small class="text-muted">استخدم المتغيرات بصيغة @verbatim<code>{{اسم_المتغير}}</code>@endverbatim مثل: student_name, course_name, group_name, student_email</small>
+        <small class="text-muted">استخدم المتغيرات بصيغة @verbatim<code>{{اسم_المتغير}}</code> أو <code>{اسم_المتغير}</code>@endverbatim مثل: student_name, group_name, email, phone</small>
         @error('body')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-4">
@@ -46,7 +46,7 @@
     <div class="col-12">
         <label class="form-label">المتغيرات المتاحة (للمرجع)</label>
         <p class="text-muted small mb-0">
-            <code>student_name</code>, <code>student_name_ar</code>, <code>student_name_en</code>, <code>student_email</code>, <code>email</code>, <code>password</code>, <code>new_password</code>, <code>login_url</code>, <code>admin_instructions</code>, <code>course_name</code>, <code>group_name</code>
+            <code>student_name</code>, <code>student_name_ar</code>, <code>student_name_en</code>, <code>student_email</code>, <code>email</code>, <code>phone</code>, <code>full_phone</code>, <code>student_phone</code>, <code>password</code>, <code>new_password</code>, <code>login_url</code>, <code>admin_instructions</code>, <code>course_name</code>, <code>group_name</code>
         </p>
     </div>
     <div class="col-12">

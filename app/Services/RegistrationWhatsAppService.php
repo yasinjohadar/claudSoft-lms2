@@ -115,8 +115,22 @@ class RegistrationWhatsAppService
 
         if ($settings && trim((string) ($settings->whatsapp_template ?? '')) !== '') {
             return str_replace(
-                ['{{student_name}}', '{student_name}', '{{group_name}}', '{group_name}', '{{email}}', '{email}'],
-                [$replacements['student_name'], $replacements['student_name'], $replacements['group_name'], $replacements['group_name'], $replacements['email'], $replacements['email']],
+                [
+                    '{{student_name}}', '{student_name}',
+                    '{{group_name}}', '{group_name}',
+                    '{{email}}', '{email}',
+                    '{{phone}}', '{phone}',
+                    '{{full_phone}}', '{full_phone}',
+                    '{{student_phone}}', '{student_phone}',
+                ],
+                [
+                    $replacements['student_name'], $replacements['student_name'],
+                    $replacements['group_name'], $replacements['group_name'],
+                    $replacements['email'], $replacements['email'],
+                    $replacements['phone'], $replacements['phone'],
+                    $replacements['full_phone'], $replacements['full_phone'],
+                    $replacements['student_phone'], $replacements['student_phone'],
+                ],
                 $settings->whatsapp_template
             );
         }
@@ -191,10 +205,27 @@ class RegistrationWhatsAppService
      */
     private function registrationPlaceholders(GroupRegistration $registration, $group): array
     {
+        $phoneDisplay = trim((string) (
+            $registration->full_phone
+            ?: trim((string) (($registration->country_code ?? '').($registration->phone ?? '')))
+            ?: ($registration->phone ?? '')
+        ));
+
+        $email = (string) ($registration->email ?? '');
+        $nameAr = (string) ($registration->name_ar ?? $registration->name ?? '');
+        $nameEn = (string) ($registration->name ?? $registration->name_ar ?? '');
+
         return [
-            'student_name' => (string) ($registration->name_ar ?? $registration->name),
+            'student_name' => $nameAr !== '' ? $nameAr : $nameEn,
+            'student_name_ar' => $nameAr,
+            'student_name_en' => $nameEn,
             'group_name' => (string) $group->name,
-            'email' => (string) ($registration->email ?? ''),
+            'email' => $email,
+            'student_email' => $email,
+            'phone' => $phoneDisplay,
+            'full_phone' => $phoneDisplay,
+            'student_phone' => $phoneDisplay,
+            'phone_number' => $phoneDisplay,
             'registration_id' => (string) $registration->id,
         ];
     }

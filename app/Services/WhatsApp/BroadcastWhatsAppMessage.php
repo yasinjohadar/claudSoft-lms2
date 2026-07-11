@@ -153,11 +153,29 @@ class BroadcastWhatsAppMessage
         ?Course $course = null,
         ?CourseGroup $group = null
     ): string {
+        $phoneDisplay = trim((string) (
+            $student->full_phone
+            ?: trim((string) (($student->country_code ?? '').($student->phone ?? '')))
+            ?: ($student->phone ?? '')
+        ));
+
         $replacements = [
-            '{student_name}' => $student->name,
+            '{student_name}' => $student->name ?? '',
+            '{{student_name}}' => $student->name ?? '',
             '{student_email}' => $student->email ?? '',
-            '{course_name}' => '', // Default empty
-            '{group_name}' => '', // Default empty
+            '{{student_email}}' => $student->email ?? '',
+            '{email}' => $student->email ?? '',
+            '{{email}}' => $student->email ?? '',
+            '{phone}' => $phoneDisplay,
+            '{{phone}}' => $phoneDisplay,
+            '{full_phone}' => $phoneDisplay,
+            '{{full_phone}}' => $phoneDisplay,
+            '{student_phone}' => $phoneDisplay,
+            '{{student_phone}}' => $phoneDisplay,
+            '{course_name}' => '',
+            '{{course_name}}' => '',
+            '{group_name}' => '',
+            '{{group_name}}' => '',
         ];
 
         // Get course from student's enrollment if not provided
@@ -175,6 +193,7 @@ class BroadcastWhatsAppMessage
 
         if ($course) {
             $replacements['{course_name}'] = $course->title;
+            $replacements['{{course_name}}'] = $course->title;
         }
 
         // Get group from student's memberships if not provided
@@ -191,6 +210,7 @@ class BroadcastWhatsAppMessage
 
         if ($group) {
             $replacements['{group_name}'] = $group->name;
+            $replacements['{{group_name}}'] = $group->name;
         }
 
         return str_replace(
