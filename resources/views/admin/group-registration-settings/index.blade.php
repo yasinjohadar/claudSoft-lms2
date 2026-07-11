@@ -152,6 +152,33 @@
 
                                 <div class="admin-group-form-toggle">
                                     <div class="admin-group-form-toggle__info">
+                                        <span class="admin-group-form-toggle__label">كلمة مرور ثابتة للحسابات الجديدة</span>
+                                        <span class="admin-group-form-toggle__hint">بدل التوليد العشوائي — يقلل مشاكل الدخول والدعم في بداية التسجيل. اتركه مغلقاً للإبقاء على كلمة مرور عشوائية قوية.</span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="use_fixed_registration_password" id="use_fixed_registration_password"
+                                               {{ old('use_fixed_registration_password', $settings->use_fixed_registration_password) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3" id="fixedRegistrationPasswordWrap">
+                                    <label class="form-label fw-semibold" for="fixed_registration_password">كلمة المرور الثابتة</label>
+                                    <input type="text"
+                                           name="fixed_registration_password"
+                                           id="fixed_registration_password"
+                                           class="form-control @error('fixed_registration_password') is-invalid @enderror"
+                                           value="{{ old('fixed_registration_password', $settings->fixed_registration_password) }}"
+                                           autocomplete="off"
+                                           maxlength="64"
+                                           placeholder="مثال: ClaudSoft2026">
+                                    <p class="admin-group-form-hint mb-0 mt-2">تُرسل للطالب في رسالة بيانات الدخول كالمعتاد. يُفضَّل طلب تغييرها بعد أول دخول.</p>
+                                    @error('fixed_registration_password')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="admin-group-form-toggle">
+                                    <div class="admin-group-form-toggle__info">
                                         <span class="admin-group-form-toggle__label">الموافقة التلقائية على الانضمام</span>
                                         <span class="admin-group-form-toggle__hint">إضافة مباشرة للمجموعة بدل طلب قيد الانتظار</span>
                                     </div>
@@ -418,6 +445,15 @@
                 syncVisibility(whatsappToggle, whatsappWrap);
             });
             syncVisibility(whatsappToggle, whatsappWrap);
+        }
+
+        var fixedPasswordToggle = document.getElementById('use_fixed_registration_password');
+        var fixedPasswordWrap = document.getElementById('fixedRegistrationPasswordWrap');
+        if (fixedPasswordToggle && fixedPasswordWrap) {
+            fixedPasswordToggle.addEventListener('change', function () {
+                syncVisibility(fixedPasswordToggle, fixedPasswordWrap);
+            });
+            syncVisibility(fixedPasswordToggle, fixedPasswordWrap);
         }
 
         var deliveryMode = document.getElementById('whatsapp_delivery_mode');

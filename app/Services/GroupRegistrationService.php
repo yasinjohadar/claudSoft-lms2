@@ -274,7 +274,10 @@ class GroupRegistrationService
             throw new \RuntimeException('رقم الهاتف مستخدم بالفعل لحساب آخر.');
         }
 
-        $plainPassword = app(AccountCreatedCredentialDeliveryService::class)->generateSecurePassword();
+        $settings = GroupRegistrationSetting::where('group_id', $registration->group_id)->first();
+        $plainPassword = $settings
+            ? $settings->resolveNewAccountPassword()
+            : app(AccountCreatedCredentialDeliveryService::class)->generateSecurePassword();
 
         $userData = [
             'name' => $registration->name,

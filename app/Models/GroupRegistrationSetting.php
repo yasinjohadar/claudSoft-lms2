@@ -15,6 +15,8 @@ class GroupRegistrationSetting extends Model
         'diploma_name',
         'is_registration_enabled',
         'auto_create_user',
+        'use_fixed_registration_password',
+        'fixed_registration_password',
         'auto_approve_membership',
         'hide_courses_until_membership_approved',
         'send_welcome_email',
@@ -38,6 +40,7 @@ class GroupRegistrationSetting extends Model
     protected $casts = [
         'is_registration_enabled' => 'boolean',
         'auto_create_user' => 'boolean',
+        'use_fixed_registration_password' => 'boolean',
         'auto_approve_membership' => 'boolean',
         'hide_courses_until_membership_approved' => 'boolean',
         'send_welcome_email' => 'boolean',
@@ -46,6 +49,10 @@ class GroupRegistrationSetting extends Model
         'require_email_verification' => 'boolean',
         'wapi_body_variables' => 'array',
         'extra' => 'array',
+    ];
+
+    protected $hidden = [
+        'fixed_registration_password',
     ];
 
     // Relationships
@@ -91,6 +98,22 @@ class GroupRegistrationSetting extends Model
     public function shouldAutoCreateUser(): bool
     {
         return $this->auto_create_user;
+    }
+
+    /**
+     * Password for newly created accounts in this group.
+     * Fixed password when enabled; otherwise a secure random password.
+     */
+    public function resolveNewAccountPassword(): string
+    {
+        if ($this->use_fixed_registration_password) {
+            $fixed = trim((string) ($this->fixed_registration_password ?? ''));
+            if ($fixed !== '') {
+                return $fixed;
+            }
+        }
+
+        return app(\App\Services\Auth\AccountCreatedCredentialDeliveryService::class)->generateSecurePassword();
     }
 
     public function shouldSendWelcomeEmail(): bool

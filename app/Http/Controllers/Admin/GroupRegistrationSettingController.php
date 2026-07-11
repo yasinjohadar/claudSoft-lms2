@@ -9,6 +9,7 @@ use App\Models\EmailTemplate;
 use App\Models\WapiTemplate;
 use App\Models\WhatsAppMessageTemplate;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GroupRegistrationSettingController extends Controller
 {
@@ -51,6 +52,7 @@ class GroupRegistrationSettingController extends Controller
         $booleanFields = [
             'is_registration_enabled',
             'auto_create_user',
+            'use_fixed_registration_password',
             'auto_approve_membership',
             'hide_courses_until_membership_approved',
             'send_welcome_email',
@@ -71,6 +73,14 @@ class GroupRegistrationSettingController extends Controller
             'diploma_name' => 'nullable|string|max:255',
             'is_registration_enabled' => 'boolean',
             'auto_create_user' => 'boolean',
+            'use_fixed_registration_password' => 'boolean',
+            'fixed_registration_password' => [
+                'nullable',
+                'string',
+                'max:64',
+                Rule::requiredIf(fn () => (bool) $request->boolean('use_fixed_registration_password')),
+                'min:6',
+            ],
             'auto_approve_membership' => 'boolean',
             'hide_courses_until_membership_approved' => 'boolean',
             'send_welcome_email' => 'boolean',
@@ -83,6 +93,9 @@ class GroupRegistrationSettingController extends Controller
             'wapi_body_variables_text' => 'nullable|string|max:5000',
             'whatsapp_group_link' => 'nullable|url|max:500',
             'require_email_verification' => 'boolean',
+        ], [
+            'fixed_registration_password.required' => 'أدخل كلمة المرور الثابتة عند تفعيل هذا الخيار.',
+            'fixed_registration_password.min' => 'كلمة المرور الثابتة يجب أن تكون 6 أحرف على الأقل.',
         ]);
 
         $bodyVariables = null;
@@ -96,6 +109,12 @@ class GroupRegistrationSettingController extends Controller
         $validated['whatsapp_delivery_mode'] = $validated['whatsapp_delivery_mode'] ?? 'evolution_text';
         $validated['wapi_body_variables'] = $bodyVariables;
         unset($validated['wapi_body_variables_text']);
+
+        if (! $validated['use_fixed_registration_password']) {
+            $validated['fixed_registration_password'] = null;
+        } else {
+            $validated['fixed_registration_password'] = trim((string) ($validated['fixed_registration_password'] ?? ''));
+        }
 
         if ($validated['whatsapp_delivery_mode'] === 'flaxxa_template' && empty($validated['wapi_template_id'])) {
             return back()->withInput()->withErrors([

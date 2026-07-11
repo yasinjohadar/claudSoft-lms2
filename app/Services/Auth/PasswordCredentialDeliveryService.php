@@ -6,14 +6,15 @@ use App\Mail\PasswordCredentialsMail;
 use App\Models\EmailSetting;
 use App\Models\EvolutionInstance;
 use App\Models\User;
-use App\Models\WhatsAppMessage;
 use App\Support\CredentialPassword;
 use App\Support\InternationalPhoneDigits;
 use App\Services\WhatsApp\Evolution\EvolutionInstanceRotator;
+use App\Services\WhatsApp\Evolution\EvolutionRotatingSendService;
 use App\Services\WhatsApp\Evolution\EvolutionWhatsAppNumberResolver;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\WhatsAppDeliveryAcceptance;
 use App\Services\WhatsApp\WhatsAppSettingsService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -27,11 +28,14 @@ class PasswordCredentialDeliveryService
 
     private const WHATSAPP_MAX_ATTEMPTS = 3;
 
+    private const LAST_STICKY_CACHE_KEY = 'evolution_pwd_cred_last_instance';
+
     public function __construct(
         private PasswordResetMessageRenderer $renderer,
         private WhatsAppSettingsService $whatsappSettings,
         private SendWhatsAppMessage $whatsAppSender,
         private EvolutionInstanceRotator $evolutionRotator,
+        private EvolutionRotatingSendService $rotatingSend,
         private EvolutionWhatsAppNumberResolver $numberResolver,
     ) {}
 
@@ -230,6 +234,9 @@ class PasswordCredentialDeliveryService
             }
         }
 
+        // One sticky Evolution number for credentials + password-only; rotate on next request.
+        $sticky = $provider === 'evolution' ? $this->pickStickyInstance() : null;
+        $stickyInstance = $sticky?->instance_name;
         $messageBody = $this->renderer->renderCredentialWhatsApp($user, $plainPassword);
         $lastError = null;
 
@@ -240,10 +247,15 @@ class PasswordCredentialDeliveryService
                     $messageBody,
                     previewUrl: false,
                     applySendDelay: false,
+                    evolutionInstanceName: $stickyInstance,
                 );
 
                 if (WhatsAppDeliveryAcceptance::isAccepted($sentMessage)) {
-                    $this->sendPasswordOnlyFollowUp($sendTo, $plainPassword, $user->id);
+                    $this->sendPasswordOnlyFollowUp($sendTo, $plainPassword, $user->id, $stickyInstance);
+
+                    if ($stickyInstance !== null) {
+                        $this->rememberStickyInstanceUsed($stickyInstance);
+                    }
 
                     return [
                         'sent' => true,
@@ -261,6 +273,7 @@ class PasswordCredentialDeliveryService
                 'user_id' => $user->id,
                 'recipient' => $recipient,
                 'attempt' => $attempt,
+                'evolution_instance' => $stickyInstance,
                 'error' => $lastError,
             ]);
 
@@ -277,12 +290,13 @@ class PasswordCredentialDeliveryService
     }
 
     /**
-     * رسالة ثانية بكلمة المرور فقط لتسهيل النسخ.
+     * رسالة ثانية بكلمة المرور فقط لتسهيل النسخ — نفس رقم المرسل.
      */
     private function sendPasswordOnlyFollowUp(
         string $sendTo,
         #[\SensitiveParameter] string $plainPassword,
         int $userId,
+        ?string $evolutionInstanceName = null,
     ): void {
         try {
             usleep(350_000);
@@ -292,11 +306,82 @@ class PasswordCredentialDeliveryService
                 CredentialPassword::forWhatsAppDisplay($plainPassword),
                 previewUrl: false,
                 applySendDelay: false,
+                evolutionInstanceName: $evolutionInstanceName,
             );
         } catch (\Throwable $e) {
             Log::warning('Password-only WhatsApp follow-up failed', [
                 'user_id' => $userId,
                 'recipient' => $sendTo,
+                'evolution_instance' => $evolutionInstanceName,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Pick one Evolution instance for this delivery.
+     * Consecutive password-credential requests prefer a different number when the pool has 2+.
+     */
+    private function pickStickyInstance(): ?EvolutionInstance
+    {
+        $settings = $this->whatsappSettings->getSettings();
+
+        if (($settings['whatsapp_provider'] ?? '') !== 'evolution') {
+            return null;
+        }
+
+        if ($this->rotatingSend->isRotationActive() && $this->evolutionRotator->poolCount(true) > 0) {
+            try {
+                $pool = $this->evolutionRotator->orderedPoolForFailover(true);
+                if ($pool->isNotEmpty()) {
+                    $lastName = Cache::get(self::LAST_STICKY_CACHE_KEY);
+                    $preferred = $lastName
+                        ? $pool->first(fn (EvolutionInstance $instance) => $instance->instance_name !== $lastName)
+                        : null;
+
+                    $picked = $preferred ?? $pool->first();
+
+                    Log::info('Password credential sticky Evolution picked', [
+                        'instance' => $picked?->instance_name,
+                        'avoided_previous' => $lastName,
+                        'pool_size' => $pool->count(),
+                    ]);
+
+                    return $picked;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Password reset sticky Evolution pick from pool failed', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $fallback = $this->rotatingSend->fallbackInstanceName();
+        if ($fallback === '') {
+            return null;
+        }
+
+        return EvolutionInstance::query()
+            ->where('instance_name', $fallback)
+            ->first()
+            ?? new EvolutionInstance(['instance_name' => $fallback]);
+    }
+
+    private function rememberStickyInstanceUsed(string $instanceName): void
+    {
+        Cache::put(self::LAST_STICKY_CACHE_KEY, $instanceName, now()->addDays(7));
+
+        try {
+            $instance = EvolutionInstance::query()
+                ->where('instance_name', $instanceName)
+                ->first();
+
+            if ($instance !== null) {
+                $this->evolutionRotator->markUsed($instance);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Password credential sticky markUsed failed', [
+                'instance' => $instanceName,
                 'error' => $e->getMessage(),
             ]);
         }
