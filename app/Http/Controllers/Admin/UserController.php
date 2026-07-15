@@ -239,6 +239,10 @@ class UserController extends Controller
             );
         }
 
+        if ($user->hasRole('student')) {
+            $user->assignStudentSerial();
+        }
+
         // Dispatch n8n webhook event
         event(new N8nWebhookEvent('user.registered', [
             'user_id' => $user->id,
@@ -705,6 +709,51 @@ class UserController extends Controller
 
         return redirect()->route('users.index')->with('success', 'تم حذف مستخدم جديد بنجاح');
 
+    }
+
+    /**
+     * Delete multiple selected users in one transaction.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ], [
+            'user_ids.required' => 'يرجى تحديد مستخدم واحد على الأقل.',
+            'user_ids.*.exists' => 'أحد المستخدمين المحددين غير موجود.',
+        ]);
+
+        $userIds = array_map('intval', $validated['user_ids']);
+
+        if (in_array((int) auth()->id(), $userIds, true)) {
+            return back()->withErrors([
+                'user_ids' => 'لا يمكنك حذف حسابك الشخصي ضمن الحذف الجماعي.',
+            ]);
+        }
+
+        try {
+            $deletedCount = DB::transaction(function () use ($userIds) {
+                $users = User::query()
+                    ->whereIn('id', $userIds)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($users as $user) {
+                    $user->delete();
+                }
+
+                return $users->count();
+            });
+        } catch (\Throwable $e) {
+            return back()->with(
+                'error',
+                'تعذر حذف المستخدمين المحددين بسبب وجود بيانات مرتبطة: '.$e->getMessage()
+            );
+        }
+
+        return redirect()->route('users.index')
+            ->with('success', "تم حذف {$deletedCount} مستخدم بنجاح.");
     }
 
     public function updatePassword(Request $request, User $user)

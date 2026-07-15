@@ -2,7 +2,11 @@
     <table class="table table-hover text-nowrap dashboard-table admin-users-table mb-0">
         <thead>
             <tr>
+                <th scope="col" style="width: 42px;">
+                    <input type="checkbox" id="selectAllUsers" class="form-check-input" title="تحديد كل المستخدمين الظاهرين">
+                </th>
                 <th scope="col" style="width: 48px;">#</th>
+                <th scope="col" style="width: 175px;">الرقم التسلسلي</th>
                 <th scope="col">المستخدم</th>
                 <th scope="col">نوع الحساب</th>
                 <th scope="col">البريد</th>
@@ -26,7 +30,32 @@
                     $linkUrl = $user->whatsapp_url ?? ($displayPhone ? 'tel:' . preg_replace('/[^0-9+]/', '', $displayPhone) : null);
                 @endphp
                 <tr class="admin-users-table__row">
+                    <td>
+                        <input type="checkbox"
+                            class="form-check-input user-bulk-checkbox"
+                            value="{{ $user->id }}"
+                            data-user-name="{{ $user->name }}"
+                            @disabled($user->id === auth()->id())
+                            title="{{ $user->id === auth()->id() ? 'لا يمكنك تحديد حسابك الشخصي للحذف' : 'تحديد المستخدم' }}">
+                    </td>
                     <td>{{ $loop->iteration + ($users->currentPage() - 1) * $users->perPage() }}</td>
+
+                    <td>
+                        @if($user->student_id)
+                            <div class="d-inline-flex align-items-center gap-1" dir="ltr">
+                                <code class="admin-users-serial">{{ $user->student_id }}</code>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary py-0 px-1 copy-student-id-btn"
+                                    data-copy-value="{{ $user->student_id }}"
+                                    title="نسخ الرقم التسلسلي"
+                                    aria-label="نسخ الرقم التسلسلي {{ $user->student_id }}">
+                                    <i class="fe fe-copy"></i>
+                                </button>
+                            </div>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
 
                     <td>
                         <div class="d-flex align-items-center gap-2 min-w-0">
@@ -221,7 +250,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10">
+                    <td colspan="12">
                         <div class="group-show-empty py-5">
                             <i class="fe fe-users group-show-empty__icon"></i>
                             <h5 class="group-show-empty__title">لا يوجد مستخدمون</h5>

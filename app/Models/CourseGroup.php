@@ -17,6 +17,7 @@ class CourseGroup extends Model
         'max_members',
         'is_visible',
         'is_active',
+        'device_lock_enabled',
         'allow_membership_requests',
         'is_visible_for_students',
         'created_by',
@@ -25,6 +26,7 @@ class CourseGroup extends Model
     protected $casts = [
         'is_visible' => 'boolean',
         'is_active' => 'boolean',
+        'device_lock_enabled' => 'boolean',
         'allow_membership_requests' => 'boolean',
         'is_visible_for_students' => 'boolean',
     ];

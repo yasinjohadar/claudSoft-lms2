@@ -17,13 +17,18 @@
                 @else
                     <p class="group-show-hero__desc mb-0 text-muted">لا يوجد وصف لهذه المجموعة.</p>
                 @endif
-                @if($course)
-                    <div class="group-show-hero__meta mt-3">
+                <div class="group-show-hero__meta mt-3">
+                    @if($course)
                         <span class="badge bg-primary-transparent text-primary">
                             <i class="fe fe-book-open me-1"></i>{{ $course->title }}
                         </span>
-                    </div>
-                @endif
+                    @endif
+                    @if($group->device_lock_enabled)
+                        <span class="badge bg-warning-transparent text-warning">
+                            <i class="fe fe-shield me-1"></i>تقييد الأجهزة الموثوقة مُفعّل
+                        </span>
+                    @endif
+                </div>
             </div>
         </div>
         <div class="col-lg-5">

@@ -11,7 +11,9 @@ use App\Services\Auth\PhoneOtpService;
 use App\Services\Auth\PasswordResetDeliveryService;
 use App\Services\DeviceAccessService;
 use App\Services\DeviceTrackingService;
+use App\Services\SessionDeviceBindingService;
 use App\Services\SessionTrackingService;
+use App\Services\SingleSessionService;
 use App\Services\WhatsApp\Evolution\EvolutionApiException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,8 @@ class PhoneLoginController extends Controller
         private DeviceTrackingService $deviceTrackingService,
         private SessionTrackingService $sessionTrackingService,
         private DeviceAccessService $deviceAccessService,
+        private SingleSessionService $singleSessionService,
+        private SessionDeviceBindingService $sessionDeviceBindingService,
     ) {}
 
     public function create(): View|RedirectResponse
@@ -135,6 +139,9 @@ class PhoneLoginController extends Controller
         }
 
         $request->session()->regenerate();
+        $this->singleSessionService->enforce($user, $request);
+        $this->sessionDeviceBindingService->bind($user, $request);
+        $request->session()->put('_single_session_stamp', $request->session()->getId());
         session()->forget(['phone_login_user_id', 'phone_login_phone']);
 
         return $this->loginRedirectFor($user);

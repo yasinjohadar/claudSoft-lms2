@@ -22,4 +22,15 @@
         <span class="mx-2">·</span>
         تابع تقدمك التعليمي واختباراتك من لوحة واحدة.
     </p>
+    @if(auth()->user()->student_id)
+        <div class="mt-2 d-inline-flex align-items-center gap-2 rounded-pill border bg-white px-3 py-1 shadow-sm">
+            <span class="text-muted fs-12"><i class="fe fe-hash me-1"></i>رقم الطالب</span>
+            <code class="fw-bold text-primary" dir="ltr">{{ auth()->user()->student_id }}</code>
+            <button type="button" class="btn btn-sm btn-primary-light py-0 px-1"
+                    data-copy-student-id="{{ auth()->user()->student_id }}"
+                    title="نسخ رقم الطالب" aria-label="نسخ رقم الطالب">
+                <i class="fe fe-copy"></i>
+            </button>
+        </div>
+    @endif
 </div>

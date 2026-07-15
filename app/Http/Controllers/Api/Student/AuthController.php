@@ -29,32 +29,55 @@ class AuthController extends Controller
     /**
      * تسجيل الدخول: البريد + كلمة المرور، يُرجع توكن API للطالب فقط.
      */
-    public function login(Request $request): JsonResponse
-    {
+    public function login(
+        Request $request,
+        \App\Services\DeviceAccessService $deviceAccessService,
+    ): JsonResponse {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
+            'device_token' => ['nullable', 'uuid'],
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        if (! Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],
             ]);
         }
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (isset($user->is_active) && !$user->is_active) {
+        if (isset($user->is_active) && ! $user->is_active) {
             Auth::logout();
             throw ValidationException::withMessages([
                 'email' => [__('الحساب غير مفعّل. تواصل مع الدعم.')],
             ]);
         }
 
-        if (!$user->hasRole('student')) {
+        if (! $user->hasRole('student')) {
             Auth::logout();
             throw ValidationException::withMessages([
                 'email' => [__('هذا المسار مخصّص للطلاب فقط.')],
+            ]);
+        }
+
+        $accessResult = $deviceAccessService->validateLoginDevice($user, $request);
+
+        if (! $accessResult->isAllowed()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => [$accessResult->userMessage()],
+            ]);
+        }
+
+        try {
+            $deviceAccessService->completeAllowedLogin($user, $request, $accessResult);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to track device on API login', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
             ]);
         }
 

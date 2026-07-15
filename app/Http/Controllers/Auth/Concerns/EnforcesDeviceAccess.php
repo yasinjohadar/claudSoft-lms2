@@ -40,7 +40,8 @@ trait EnforcesDeviceAccess
                 'last_device_type' => $this->detectLoginDeviceType($request),
             ]);
         } catch (\Exception) {
-            // Ignore if columns don't exist
+            // Columns may be absent in lightweight schemas (e.g. feature tests).
+            $user->syncOriginal();
         }
 
         try {

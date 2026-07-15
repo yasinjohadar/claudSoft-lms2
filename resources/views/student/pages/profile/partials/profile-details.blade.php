@@ -48,6 +48,28 @@
         </div>
         <div class="row g-3">
             <div class="col-md-6">
+                <div class="student-profile-field {{ empty($student->student_id) ? 'is-empty' : '' }}">
+                    <span class="student-profile-field__icon">
+                        <i class="fe fe-hash"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <span class="student-profile-field__label">رقم الطالب</span>
+                        <span class="student-profile-field__value d-inline-flex align-items-center gap-2">
+                            @if($student->student_id)
+                                <code class="fw-bold text-primary" dir="ltr">{{ $student->student_id }}</code>
+                                <button type="button" class="btn btn-sm btn-primary-light py-0 px-1"
+                                        data-copy-student-id="{{ $student->student_id }}"
+                                        title="نسخ رقم الطالب" aria-label="نسخ رقم الطالب">
+                                    <i class="fe fe-copy"></i>
+                                </button>
+                            @else
+                                غير محدد
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
                 <div class="student-profile-field">
                     <span class="student-profile-field__icon">
                         <i class="fe fe-activity"></i>

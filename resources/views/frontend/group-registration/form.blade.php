@@ -33,10 +33,14 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" id="registrationForm" data-phone-ajax-validate data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
+                    <form action="{{ route('frontend.group-registration.store', $group->id) }}" method="POST" enctype="multipart/form-data" id="registrationForm" data-phone-ajax-validate data-flag-url="{{ config('country_codes.flag_image_url', 'https://flagcdn.com/w20/{iso}.png') }}">
                         @csrf
 
-                        <div class="gr-section">
+                        <div class="gr-section gr-section--primary">
+                            <h2 class="gr-section__title gr-section__title--primary">
+                                <i class="fas fa-user"></i>
+                                المعلومات الشخصية
+                            </h2>
                             <div class="row g-3">
                                 <div class="col-12">
                                     <div class="gr-field">
@@ -96,9 +100,7 @@
                             <div class="phone-country-ajax-feedback small text-muted mt-1" data-phone-ajax-feedback aria-live="polite"></div>
                         </div>
 
-                        <hr class="gr-divider">
-
-                        <div class="gr-section">
+                        <div class="gr-section gr-section--primary">
                             <h2 class="gr-section__title gr-section__title--primary">
                                 <i class="fas fa-calendar-check"></i>
                                 الالتزام والوقت
@@ -143,7 +145,7 @@
                             </div>
                         </div>
 
-                        <div class="gr-section">
+                        <div class="gr-section gr-section--info">
                             <h2 class="gr-section__title gr-section__title--info">
                                 <i class="fas fa-laptop-code"></i>
                                 المعدات والخبرة
@@ -215,7 +217,7 @@
                             </div>
                         </div>
 
-                        <div class="gr-section">
+                        <div class="gr-section gr-section--success">
                             <h2 class="gr-section__title gr-section__title--success">
                                 <i class="fas fa-graduation-cap"></i>
                                 المعلومات التعليمية
@@ -228,7 +230,7 @@
                             </div>
                         </div>
 
-                        <div class="gr-section">
+                        <div class="gr-section gr-section--warning">
                             <h2 class="gr-section__title gr-section__title--warning">
                                 <i class="fas fa-campground"></i>
                                 المعسكر التدريبي
@@ -250,6 +252,35 @@
                                     <span>مزايا المعسكر التدريبي مذكورة بالصفحة الخاصة بالدبلوم</span>
                                 </div>
                                 @error('interested_in_bootcamp')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <div class="gr-section gr-section--receipt">
+                            <h2 class="gr-section__title gr-section__title--receipt">
+                                <i class="fas fa-receipt"></i>
+                                رفع وصل الانتساب
+                            </h2>
+                            <div class="gr-field mb-0">
+                                <label for="membership_receipt" class="gr-label required">رفع وصل الانتساب</label>
+                                <label for="membership_receipt" class="gr-file-upload @error('membership_receipt') gr-file-upload--invalid @enderror">
+                                    <span class="gr-file-upload__icon">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </span>
+                                    <span class="gr-file-upload__content">
+                                        <strong>اضغط هنا لاختيار صورة أو ملف PDF</strong>
+                                        <small id="membershipReceiptName">JPG، PNG، WEBP أو PDF — بحد أقصى 10 ميجابايت</small>
+                                    </span>
+                                    <span class="gr-file-upload__button">اختيار الملف</span>
+                                </label>
+                                <input
+                                    type="file"
+                                    name="membership_receipt"
+                                    id="membership_receipt"
+                                    class="gr-file-input"
+                                    accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                                    required
+                                >
+                                @error('membership_receipt')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
                         </div>
 
@@ -315,6 +346,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (phoneInput.value.length === 1 && phoneInput.value === '0') {
                 phoneInput.value = '';
             }
+        });
+    }
+
+    var receiptInput = document.getElementById('membership_receipt');
+    var receiptName = document.getElementById('membershipReceiptName');
+    if (receiptInput && receiptName) {
+        receiptInput.addEventListener('change', function() {
+            var file = receiptInput.files && receiptInput.files[0];
+            receiptName.textContent = file
+                ? 'تم اختيار: ' + file.name
+                : 'JPG، PNG، WEBP أو PDF — بحد أقصى 10 ميجابايت';
+            receiptInput.previousElementSibling?.classList.toggle('gr-file-upload--selected', Boolean(file));
         });
     }
 });

@@ -500,6 +500,47 @@ class User extends Authenticatable
     }
 
     /**
+     * Generate the next student serial for a calendar year (STD-YYYY-NNNNN).
+     */
+    public static function generateStudentSerial(?int $year = null): string
+    {
+        $year = $year ?? (int) date('Y');
+        $prefix = 'STD-'.$year.'-';
+
+        $last = static::query()
+            ->where('student_id', 'like', $prefix.'%')
+            ->orderByRaw('CAST(RIGHT(student_id, 5) AS UNSIGNED) DESC')
+            ->value('student_id');
+
+        $number = $last ? ((int) substr($last, -5)) + 1 : 1;
+
+        return $prefix.str_pad((string) $number, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Assign a student serial when the user does not already have one.
+     */
+    public function assignStudentSerial(?int $year = null): void
+    {
+        if (! empty($this->student_id)) {
+            return;
+        }
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                $this->student_id = static::generateStudentSerial($year);
+                $this->save();
+
+                return;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->student_id = null;
+            }
+        }
+
+        throw new \RuntimeException('تعذر توليد الرقم التسلسلي للطالب بعد عدة محاولات.');
+    }
+
+    /**
      * Set full phone when country code or phone changes
      */
     protected static function boot()

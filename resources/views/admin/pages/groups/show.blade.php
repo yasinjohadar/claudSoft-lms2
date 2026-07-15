@@ -112,6 +112,14 @@
                                     <span class="text-muted">عضو محدد</span>
                                 </div>
                                 <div>
+                                    <button type="button" class="btn btn-warning btn-sm" id="bulkDeactivateBtn" disabled
+                                            data-bs-toggle="modal" data-bs-target="#bulkDeactivateMembersModal">
+                                        <i class="fas fa-user-lock me-2"></i>إيقاف الحساب (<span id="bulkDeactivateCount">0</span>)
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-sm" id="bulkReactivateBtn" disabled
+                                            data-bs-toggle="modal" data-bs-target="#bulkReactivateMembersModal" style="display: none;">
+                                        <i class="fas fa-user-check me-2"></i>تشغيل الحساب (<span id="bulkReactivateCount">0</span>)
+                                    </button>
                                     <button type="button" class="btn btn-danger btn-sm" id="bulkRemoveBtn" disabled>
                                         <i class="fas fa-user-times me-2"></i>فك الارتباط (<span id="bulkRemoveCount">0</span>)
                                     </button>
@@ -208,6 +216,89 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkDeactivateMembersModal" tabindex="-1" aria-labelledby="bulkDeactivateMembersModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ route('groups.bulk-deactivate-members', $group->id) }}" method="POST" id="bulkDeactivateMembersForm">
+                    @csrf
+                    <div id="bulkDeactivateMemberIds"></div>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="bulkDeactivateMembersModalTitle">
+                            <i class="fas fa-user-lock text-warning me-2"></i>إيقاف تفعيل الحسابات المحددة
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            سيتم إيقاف <strong id="bulkDeactivateModalCount">0</strong> حساب.
+                            ستُحفظ الملاحظة التالية نفسها في السجل الإداري لكل حساب، ولن يتم حذف الأعضاء من المجموعة.
+                        </div>
+                        <div class="mb-3">
+                            <label for="bulkDeactivateNote" class="form-label">الملاحظة المشتركة <span class="text-danger">*</span></label>
+                            <textarea name="admin_note_body" id="bulkDeactivateNote" class="form-control" rows="4"
+                                      maxlength="5000" required
+                                      placeholder="اكتب سبب إيقاف الحسابات المحددة...">{{ old('admin_note_body') }}</textarea>
+                            <div class="form-text">سيتم تسجيل هذه الملاحظة لجميع الطلاب المحددين.</div>
+                        </div>
+                        <div class="mb-0">
+                            <label for="bulkDeactivateOccurredOn" class="form-label">تاريخ الملاحظة <span class="text-danger">*</span></label>
+                            <input type="date" name="occurred_on" id="bulkDeactivateOccurredOn" class="form-control"
+                                   value="{{ old('occurred_on', now()->toDateString()) }}"
+                                   max="{{ now()->toDateString() }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-user-lock me-1"></i>تأكيد إيقاف الحسابات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkReactivateMembersModal" tabindex="-1" aria-labelledby="bulkReactivateMembersModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ route('groups.bulk-reactivate-members', $group->id) }}" method="POST" id="bulkReactivateMembersForm">
+                    @csrf
+                    <div id="bulkReactivateMemberIds"></div>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="bulkReactivateMembersModalTitle">
+                            <i class="fas fa-user-check text-success me-2"></i>تشغيل الحسابات المحددة
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-success">
+                            سيتم تشغيل <strong id="bulkReactivateModalCount">0</strong> حساب موقوف.
+                            ستُحفظ الملاحظة التالية نفسها في السجل الإداري لكل حساب.
+                        </div>
+                        <div class="mb-3">
+                            <label for="bulkReactivateNote" class="form-label">الملاحظة المشتركة <span class="text-danger">*</span></label>
+                            <textarea name="admin_note_body" id="bulkReactivateNote" class="form-control" rows="4"
+                                      maxlength="5000" required
+                                      placeholder="اكتب سبب إعادة تشغيل الحسابات المحددة..."></textarea>
+                            <div class="form-text">سيتم تسجيل هذه الملاحظة لجميع الطلاب الموقوفين المحددين.</div>
+                        </div>
+                        <div class="mb-0">
+                            <label for="bulkReactivateOccurredOn" class="form-label">تاريخ الملاحظة <span class="text-danger">*</span></label>
+                            <input type="date" name="occurred_on" id="bulkReactivateOccurredOn" class="form-control"
+                                   value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-user-check me-1"></i>تأكيد تشغيل الحسابات
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -560,12 +651,18 @@
         const selectedCountSpan = document.getElementById('selectedCount');
         const bulkRemoveBtn = document.getElementById('bulkRemoveBtn');
         const bulkRemoveCountSpan = document.getElementById('bulkRemoveCount');
+        const bulkDeactivateBtn = document.getElementById('bulkDeactivateBtn');
+        const bulkDeactivateCountSpan = document.getElementById('bulkDeactivateCount');
+        const bulkReactivateBtn = document.getElementById('bulkReactivateBtn');
+        const bulkReactivateCountSpan = document.getElementById('bulkReactivateCount');
         const clearSelectionBtn = document.getElementById('clearSelectionBtn');
 
         // Update bulk actions bar visibility and counts
         function updateBulkActions() {
-            const selected = document.querySelectorAll('.member-checkbox:checked');
+            const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'));
             const count = selected.length;
+            const activeCount = selected.filter(checkbox => checkbox.dataset.accountActive === '1').length;
+            const inactiveCount = count - activeCount;
             
             if (!bulkActionsBar || !selectedCountSpan || !bulkRemoveCountSpan || !bulkRemoveBtn) {
                 return;
@@ -576,9 +673,29 @@
                 selectedCountSpan.textContent = count;
                 bulkRemoveCountSpan.textContent = count;
                 bulkRemoveBtn.disabled = false;
+                if (bulkDeactivateBtn) {
+                    bulkDeactivateBtn.disabled = activeCount === 0;
+                    bulkDeactivateBtn.style.display = activeCount > 0 ? '' : 'none';
+                }
+                if (bulkDeactivateCountSpan) bulkDeactivateCountSpan.textContent = activeCount;
+                if (bulkReactivateBtn) {
+                    bulkReactivateBtn.disabled = inactiveCount === 0;
+                    bulkReactivateBtn.style.display = inactiveCount > 0 ? '' : 'none';
+                }
+                if (bulkReactivateCountSpan) bulkReactivateCountSpan.textContent = inactiveCount;
             } else {
                 bulkActionsBar.style.display = 'none';
                 bulkRemoveBtn.disabled = true;
+                if (bulkDeactivateBtn) {
+                    bulkDeactivateBtn.disabled = true;
+                    bulkDeactivateBtn.style.display = 'none';
+                }
+                if (bulkDeactivateCountSpan) bulkDeactivateCountSpan.textContent = '0';
+                if (bulkReactivateBtn) {
+                    bulkReactivateBtn.disabled = true;
+                    bulkReactivateBtn.style.display = 'none';
+                }
+                if (bulkReactivateCountSpan) bulkReactivateCountSpan.textContent = '0';
             }
 
             // Update select all checkbox state
@@ -615,6 +732,58 @@
                 }
                 updateBulkActions();
             });
+        }
+
+        // Bulk account deactivation with one shared note.
+        if (bulkDeactivateBtn) {
+            bulkDeactivateBtn.onclick = function() {
+                const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'))
+                    .filter(checkbox => checkbox.dataset.accountActive === '1');
+                const idsContainer = document.getElementById('bulkDeactivateMemberIds');
+                const modalCount = document.getElementById('bulkDeactivateModalCount');
+
+                if (selected.length === 0 || !idsContainer) {
+                    alert('يرجى تحديد عضو واحد على الأقل');
+                    return;
+                }
+
+                idsContainer.innerHTML = '';
+                selected.forEach(function(checkbox) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'member_ids[]';
+                    input.value = checkbox.value;
+                    idsContainer.appendChild(input);
+                });
+
+                if (modalCount) modalCount.textContent = selected.length;
+            };
+        }
+
+        // Bulk account reactivation with one shared note.
+        if (bulkReactivateBtn) {
+            bulkReactivateBtn.onclick = function() {
+                const selected = Array.from(document.querySelectorAll('.member-checkbox:checked'))
+                    .filter(checkbox => checkbox.dataset.accountActive === '0');
+                const idsContainer = document.getElementById('bulkReactivateMemberIds');
+                const modalCount = document.getElementById('bulkReactivateModalCount');
+
+                if (selected.length === 0 || !idsContainer) {
+                    alert('يرجى تحديد حساب موقوف واحد على الأقل');
+                    return;
+                }
+
+                idsContainer.innerHTML = '';
+                selected.forEach(function(checkbox) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'member_ids[]';
+                    input.value = checkbox.value;
+                    idsContainer.appendChild(input);
+                });
+
+                if (modalCount) modalCount.textContent = selected.length;
+            };
         }
 
         // Bulk remove

@@ -33,7 +33,8 @@
                     <th>تاريخ الانضمام</th>
                     <th>آخر دخول</th>
                     <th>اكتمال البروفايل</th>
-                    <th>الحالة</th>
+                    <th>حالة الحساب</th>
+                    <th>حالة الاتصال</th>
                     <th>المبلغ المستحق</th>
                     <th>المجموعات الأخرى</th>
                     <th>الإجراءات</th>
@@ -44,7 +45,9 @@
                     @if($memberRecord->student)
                         <tr data-student-row-id="{{ $memberRecord->student_id }}">
                             <td>
-                                <input type="checkbox" class="member-checkbox" value="{{ $memberRecord->student_id }}" data-member-name="{{ $memberRecord->student->name }}">
+                                <input type="checkbox" class="member-checkbox" value="{{ $memberRecord->student_id }}"
+                                       data-member-name="{{ $memberRecord->student->name }}"
+                                       data-account-active="{{ $memberRecord->student->is_active ? '1' : '0' }}">
                             </td>
                             <td>{{ ($members->currentPage() - 1) * $members->perPage() + $index + 1 }}</td>
                             <td>
@@ -105,6 +108,13 @@
                             </td>
                             <td>
                                 @include('admin.pages.users.partials.profile-completion-cell', ['user' => $memberRecord->student])
+                            </td>
+                            <td>
+                                <span class="admin-users-status-chip {{ $memberRecord->student->is_active ? 'admin-users-status-chip--active' : 'admin-users-status-chip--inactive' }}"
+                                      title="{{ $memberRecord->student->is_active ? 'الحساب مفعل ويمكنه تسجيل الدخول' : 'الحساب موقوف ولا يمكنه تسجيل الدخول' }}">
+                                    <i class="fe fe-power"></i>
+                                    {{ $memberRecord->student->is_active ? 'مفعل' : 'موقوف' }}
+                                </span>
                             </td>
                             <td>
                                 @if($isOnline)

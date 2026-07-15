@@ -209,14 +209,18 @@ class UserDeviceController extends Controller
     {
         try {
             $device = UserDevice::findOrFail($id);
-            
+
             if ($device->is_blocked) {
-                return back()->with('error', 'الجهاز محظور بالفعل.');
+                return redirect()
+                    ->route('admin.user-devices.show', $device->id)
+                    ->with('error', 'الجهاز محظور بالفعل.');
             }
 
             $device->block();
 
-            return back()->with('success', 'تم حظر الجهاز بنجاح.');
+            return redirect()
+                ->route('admin.user-devices.show', $device->id)
+                ->with('success', 'تم حظر الجهاز بنجاح.');
         } catch (\Exception $e) {
             return back()->with('error', 'حدث خطأ أثناء حظر الجهاز: ' . $e->getMessage());
         }
@@ -229,14 +233,18 @@ class UserDeviceController extends Controller
     {
         try {
             $device = UserDevice::findOrFail($id);
-            
-            if (!$device->is_blocked) {
-                return back()->with('error', 'الجهاز غير محظور.');
+
+            if (! $device->is_blocked) {
+                return redirect()
+                    ->route('admin.user-devices.show', $device->id)
+                    ->with('error', 'الجهاز غير محظور.');
             }
 
             $device->unblock();
 
-            return back()->with('success', 'تم إلغاء حظر الجهاز بنجاح.');
+            return redirect()
+                ->route('admin.user-devices.show', $device->id)
+                ->with('success', 'تم إلغاء حظر الجهاز بنجاح.');
         } catch (\Exception $e) {
             return back()->with('error', 'حدث خطأ أثناء إلغاء حظر الجهاز: ' . $e->getMessage());
         }
@@ -249,14 +257,18 @@ class UserDeviceController extends Controller
     {
         try {
             $device = UserDevice::findOrFail($id);
-            
-            if ($device->is_trusted) {
-                return back()->with('error', 'الجهاز موثوق بالفعل.');
+
+            if ($device->is_trusted && ! $device->is_blocked) {
+                return redirect()
+                    ->route('admin.user-devices.show', $device->id)
+                    ->with('error', 'الجهاز موثوق بالفعل.');
             }
 
             $device->trust();
 
-            return back()->with('success', 'تم تعيين الجهاز كموثوق بنجاح.');
+            return redirect()
+                ->route('admin.user-devices.show', $device->id)
+                ->with('success', 'تم تعيين الجهاز كموثوق بنجاح.');
         } catch (\Exception $e) {
             return back()->with('error', 'حدث خطأ أثناء تعيين الثقة: ' . $e->getMessage());
         }
@@ -269,14 +281,18 @@ class UserDeviceController extends Controller
     {
         try {
             $device = UserDevice::findOrFail($id);
-            
-            if (!$device->is_trusted) {
-                return back()->with('error', 'الجهاز غير موثوق.');
+
+            if (! $device->is_trusted) {
+                return redirect()
+                    ->route('admin.user-devices.show', $device->id)
+                    ->with('error', 'الجهاز غير موثوق.');
             }
 
             $device->untrust();
 
-            return back()->with('success', 'تم إلغاء الثقة من الجهاز بنجاح.');
+            return redirect()
+                ->route('admin.user-devices.show', $device->id)
+                ->with('success', 'تم إلغاء الثقة من الجهاز بنجاح.');
         } catch (\Exception $e) {
             return back()->with('error', 'حدث خطأ أثناء إلغاء الثقة: ' . $e->getMessage());
         }

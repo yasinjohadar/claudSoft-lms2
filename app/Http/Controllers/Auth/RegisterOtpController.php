@@ -62,6 +62,8 @@ class RegisterOtpController extends Controller
             'phone_verified_at' => now(),
         ]);
 
+        $user->assignStudentSerial();
+
         app(ReferralService::class)->attachReferrer($user, session('referral_code'));
         session()->forget(['pending_registration', 'referral_code']);
 

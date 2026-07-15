@@ -75,10 +75,8 @@
                                     <span class="ud-status-chip ud-status-chip--blocked"><i class="fe fe-slash me-1"></i>محظور</span>
                                 @elseif($device->is_trusted)
                                     <span class="ud-status-chip ud-status-chip--trusted"><i class="fe fe-shield me-1"></i>موثوق</span>
-                                @elseif($device->total_logins === 0)
-                                    <span class="ud-status-chip ud-status-chip--pending"><i class="fe fe-clock me-1"></i>بانتظار الموافقة</span>
                                 @else
-                                    <span class="ud-status-chip ud-status-chip--normal">عادي</span>
+                                    <span class="ud-status-chip ud-status-chip--pending"><i class="fe fe-clock me-1"></i>بانتظار الموافقة</span>
                                 @endif
                         </td>
                         <td>
@@ -88,6 +86,17 @@
                                    title="عرض التفاصيل">
                                     <i class="fe fe-eye"></i>
                                 </a>
+                                @if(! $device->is_trusted && ! $device->is_blocked)
+                                    <form action="{{ route('admin.user-devices.trust', $device->id) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('هل أنت متأكد من تعيين هذا الجهاز كموثوق؟');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success-light btn-sm assignments-actions__btn" title="اعتماد / تعيين كموثوق">
+                                            <i class="fe fe-shield"></i>
+                                        </button>
+                                    </form>
+                                @endif
                                 @if($device->is_blocked)
                                     <form action="{{ route('admin.user-devices.unblock', $device->id) }}"
                                           method="POST"

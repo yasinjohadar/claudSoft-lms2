@@ -130,4 +130,5 @@
     }
 })();
 </script>
+@include('student.partials.student-id-copy-script')
 @endpush

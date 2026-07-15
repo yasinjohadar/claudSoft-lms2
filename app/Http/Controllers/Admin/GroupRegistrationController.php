@@ -9,6 +9,8 @@ use App\Models\Nationality;
 use App\Jobs\ProcessGroupRegistrationJob;
 use App\Jobs\SendGroupRegistrationEmailJob;
 use App\Jobs\SendGroupRegistrationWhatsAppJob;
+use App\Services\GroupRegistrationReceiptService;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -177,6 +179,38 @@ class GroupRegistrationController extends Controller
     {
         $registration->load(['group', 'user', 'createdBy', 'nationality']);
         return view('admin.group-registrations.show', compact('registration'));
+    }
+
+    /**
+     * عرض أو تنزيل وصل الانتساب من التخزين الخاص عبر رابط إداري مؤقت.
+     */
+    public function receipt(
+        Request $request,
+        GroupRegistration $registration,
+        GroupRegistrationReceiptService $receiptService
+    ): Response {
+        abort_unless($registration->membership_receipt_path, 404);
+
+        $receipt = $receiptService->retrieve(
+            $registration->membership_receipt_path,
+            $registration->membership_receipt_disk
+        );
+
+        abort_if($receipt === null, 404, 'تعذر العثور على وصل الانتساب.');
+
+        $extension = strtolower(pathinfo($registration->membership_receipt_path, PATHINFO_EXTENSION));
+        $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'pdf'], true)
+            ? $extension
+            : 'bin';
+        $filename = "membership-receipt-{$registration->id}.{$extension}";
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($receipt['content'], 200, [
+            'Content-Type' => $receipt['mime_type'] ?: 'application/octet-stream',
+            'Content-Disposition' => "{$disposition}; filename=\"{$filename}\"",
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /**

@@ -22,11 +22,7 @@ class DeviceAccessService
         }
 
         $fingerprint = $this->deviceTrackingService->generateDeviceFingerprint($request);
-
-        $device = UserDevice::query()
-            ->where('user_id', $user->id)
-            ->where('device_fingerprint', $fingerprint)
-            ->first();
+        $device = $this->deviceTrackingService->findDeviceForRequest($user, $request, $fingerprint);
 
         if ($device?->is_blocked) {
             $this->logDeniedAttempt($user, $request, DeviceAccessResult::Blocked);
@@ -54,6 +50,7 @@ class DeviceAccessService
             return DeviceAccessResult::UntrustedNew;
         }
 
+        // Existing pending (untrusted) device — refresh last_used without creating duplicates.
         $this->logDeniedAttempt($user, $request, DeviceAccessResult::UntrustedExisting);
 
         return DeviceAccessResult::UntrustedExisting;

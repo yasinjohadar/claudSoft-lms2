@@ -112,6 +112,90 @@
     </div>
 </div>
 
+<div class="card custom-card group-show-members-card mb-4">
+    <div class="card-header border-0 pb-0 d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+            <h6 class="group-show-members-card__title mb-1">
+                <i class="fe fe-file-text me-1 text-primary"></i>وصل الانتساب
+            </h6>
+            <p class="fs-12 text-muted mb-0">
+                الملف الذي رفعه الطالب مع طلب التسجيل.
+            </p>
+        </div>
+        @if($registration->membership_receipt_path)
+            @php
+                $receiptUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                    'admin.group-registrations.receipt',
+                    now()->addMinutes(30),
+                    ['registration' => $registration->id]
+                );
+                $receiptDownloadUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                    'admin.group-registrations.receipt',
+                    now()->addMinutes(30),
+                    ['registration' => $registration->id, 'download' => 1]
+                );
+            @endphp
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ $receiptUrl }}" target="_blank" rel="noopener"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="fe fe-external-link me-1"></i>فتح بالحجم الكامل
+                </a>
+                <a href="{{ $receiptDownloadUrl }}" class="btn btn-sm btn-primary">
+                    <i class="fe fe-download me-1"></i>تنزيل الوصل
+                </a>
+            </div>
+        @endif
+    </div>
+    <div class="card-body pt-3">
+        @if($registration->membership_receipt_path)
+            @php
+                $receiptExtension = strtolower(pathinfo($registration->membership_receipt_path, PATHINFO_EXTENSION));
+                $receiptIsImage = in_array($receiptExtension, ['jpg', 'jpeg', 'png', 'webp'], true);
+            @endphp
+            @if($receiptIsImage)
+                <a href="{{ $receiptUrl }}" target="_blank" rel="noopener"
+                   class="d-block rounded-3 border bg-light p-2 text-center">
+                    <img src="{{ $receiptUrl }}"
+                         alt="وصل الانتساب للطلب #{{ $registration->id }}"
+                         class="img-fluid rounded-2"
+                         style="max-height: 560px; object-fit: contain;">
+                </a>
+            @elseif($receiptExtension === 'pdf')
+                <div class="ratio ratio-16x9 rounded-3 border overflow-hidden bg-light">
+                    <object data="{{ $receiptUrl }}" type="application/pdf"
+                            aria-label="معاينة وصل الانتساب PDF">
+                        <div class="d-flex h-100 align-items-center justify-content-center p-4 text-center">
+                            <div>
+                                <i class="fe fe-file fs-1 text-danger d-block mb-2"></i>
+                                <p class="text-muted mb-2">المتصفح لا يدعم معاينة PDF داخل الصفحة.</p>
+                                <a href="{{ $receiptUrl }}" target="_blank" rel="noopener"
+                                   class="btn btn-outline-primary btn-sm">فتح الملف</a>
+                            </div>
+                        </div>
+                    </object>
+                </div>
+            @else
+                <div class="alert alert-light border mb-0 d-flex align-items-center justify-content-between gap-3">
+                    <span><i class="fe fe-paperclip me-1"></i>وصل الانتساب مرفق بالطلب.</span>
+                    <a href="{{ $receiptUrl }}" target="_blank" rel="noopener"
+                       class="btn btn-outline-primary btn-sm">فتح الملف</a>
+                </div>
+            @endif
+        @else
+            <div class="alert alert-warning border mb-0 d-flex align-items-start gap-2">
+                <i class="fe fe-alert-triangle mt-1"></i>
+                <div>
+                    <strong class="d-block mb-1">لم يُرفع وصل انتساب لهذا الطلب</strong>
+                    <span class="fs-12 text-muted">
+                        الطلبات القديمة أو التي أُرسلت قبل تفعيل رفع الوصل لن تحتوي على ملف هنا.
+                        اطلب من الطالب إعادة التسجيل ورفع الوصل من نموذج التسجيل.
+                    </span>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
 @if($registration->notes || $registration->additional_info || $registration->special_requirements)
     <div class="card custom-card group-show-members-card mb-4">
         <div class="card-header border-0 pb-0">

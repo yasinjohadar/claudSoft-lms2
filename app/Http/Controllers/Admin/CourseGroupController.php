@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\TrainingCamp;
 use App\Models\User;
+use App\Models\UserAdminNote;
 use App\Models\WhatsAppMessageTemplate;
 use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
@@ -38,6 +39,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 class CourseGroupController extends Controller
@@ -123,6 +125,7 @@ class CourseGroupController extends Controller
             // Convert boolean fields (checkboxes send "on" when checked, nothing when unchecked)
             $validated['is_visible'] = $request->has('is_visible');
             $validated['is_active'] = $request->has('is_active');
+            $validated['device_lock_enabled'] = $request->has('device_lock_enabled');
             $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
 
             // Set creator
@@ -488,6 +491,7 @@ class CourseGroupController extends Controller
             // Convert boolean fields
             $validated['is_visible'] = $request->has('is_visible');
             $validated['is_active'] = $request->has('is_active');
+            $validated['device_lock_enabled'] = $request->has('device_lock_enabled');
             $validated['allow_membership_requests'] = $request->has('allow_membership_requests');
             $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
 
@@ -965,6 +969,130 @@ class CourseGroupController extends Controller
                 ->back()
                 ->with('error', 'حدث خطأ أثناء إزالة الأعضاء: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Deactivate selected group members and attach one shared admin note.
+     */
+    public function bulkDeactivateMembers(Request $request, $groupId)
+    {
+        $group = CourseGroup::findOrFail($groupId);
+
+        $validated = $request->validate([
+            'member_ids' => ['required', 'array', 'min:1'],
+            'member_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('course_group_members', 'student_id')
+                    ->where(fn ($query) => $query->where('group_id', $group->id)),
+            ],
+            'admin_note_body' => ['required', 'string', 'max:5000'],
+            'occurred_on' => ['required', 'date', 'before_or_equal:today'],
+        ], [
+            'member_ids.required' => 'يرجى تحديد عضو واحد على الأقل.',
+            'member_ids.*.exists' => 'أحد المستخدمين المحددين ليس عضوًا في هذه المجموعة.',
+            'admin_note_body.required' => 'يرجى إدخال الملاحظة المشتركة لإيقاف الحسابات.',
+            'occurred_on.required' => 'يرجى تحديد تاريخ الملاحظة.',
+            'occurred_on.before_or_equal' => 'تاريخ الملاحظة لا يمكن أن يكون في المستقبل.',
+        ]);
+
+        $memberIds = array_map('intval', $validated['member_ids']);
+
+        if (in_array((int) auth()->id(), $memberIds, true)) {
+            return back()->withErrors([
+                'member_ids' => 'لا يمكنك إيقاف تفعيل حسابك الشخصي.',
+            ]);
+        }
+
+        $deactivatedCount = DB::transaction(function () use ($memberIds, $validated) {
+            $users = User::query()
+                ->whereIn('id', $memberIds)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($users as $user) {
+                UserAdminNote::create([
+                    'user_id' => $user->id,
+                    'created_by' => auth()->id(),
+                    'body' => $validated['admin_note_body'],
+                    'occurred_on' => $validated['occurred_on'],
+                    'source' => 'bulk_group_deactivation',
+                ]);
+
+                $user->update(['is_active' => false]);
+            }
+
+            return $users->count();
+        });
+
+        if ($deactivatedCount === 0) {
+            return back()->with('warning', 'الحسابات المحددة موقوفة مسبقًا، ولم يتم إجراء أي تغيير.');
+        }
+
+        return back()->with(
+            'success',
+            "تم إيقاف تفعيل {$deactivatedCount} حساب وتسجيل الملاحظة المشتركة لكل حساب."
+        );
+    }
+
+    /**
+     * Reactivate selected inactive group members with one shared admin note.
+     */
+    public function bulkReactivateMembers(Request $request, $groupId)
+    {
+        $group = CourseGroup::findOrFail($groupId);
+
+        $validated = $request->validate([
+            'member_ids' => ['required', 'array', 'min:1'],
+            'member_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('course_group_members', 'student_id')
+                    ->where(fn ($query) => $query->where('group_id', $group->id)),
+            ],
+            'admin_note_body' => ['required', 'string', 'max:5000'],
+            'occurred_on' => ['required', 'date', 'before_or_equal:today'],
+        ], [
+            'member_ids.required' => 'يرجى تحديد عضو واحد على الأقل.',
+            'member_ids.*.exists' => 'أحد المستخدمين المحددين ليس عضوًا في هذه المجموعة.',
+            'admin_note_body.required' => 'يرجى إدخال الملاحظة المشتركة لتشغيل الحسابات.',
+            'occurred_on.required' => 'يرجى تحديد تاريخ الملاحظة.',
+            'occurred_on.before_or_equal' => 'تاريخ الملاحظة لا يمكن أن يكون في المستقبل.',
+        ]);
+
+        $memberIds = array_map('intval', $validated['member_ids']);
+
+        $reactivatedCount = DB::transaction(function () use ($memberIds, $validated) {
+            $users = User::query()
+                ->whereIn('id', $memberIds)
+                ->where('is_active', false)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($users as $user) {
+                UserAdminNote::create([
+                    'user_id' => $user->id,
+                    'created_by' => auth()->id(),
+                    'body' => $validated['admin_note_body'],
+                    'occurred_on' => $validated['occurred_on'],
+                    'source' => 'bulk_group_reactivation',
+                ]);
+
+                $user->update(['is_active' => true]);
+            }
+
+            return $users->count();
+        });
+
+        if ($reactivatedCount === 0) {
+            return back()->with('warning', 'الحسابات المحددة مفعلة مسبقًا، ولم يتم إجراء أي تغيير.');
+        }
+
+        return back()->with(
+            'success',
+            "تم تشغيل {$reactivatedCount} حساب وتسجيل الملاحظة المشتركة لكل حساب."
+        );
     }
 
     /**

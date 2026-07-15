@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\DeviceAccessService;
 use App\Services\DeviceTrackingService;
+use App\Services\SessionDeviceBindingService;
 use App\Services\SessionTrackingService;
+use App\Services\SingleSessionService;
 use App\Support\LocalDevLoginGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,8 @@ class LocalDevLoginController extends Controller
         protected DeviceTrackingService $deviceTrackingService,
         protected SessionTrackingService $sessionTrackingService,
         protected DeviceAccessService $deviceAccessService,
+        protected SingleSessionService $singleSessionService,
+        protected SessionDeviceBindingService $sessionDeviceBindingService,
     ) {}
 
     public function show(): View
@@ -79,6 +83,9 @@ class LocalDevLoginController extends Controller
         }
 
         $request->session()->regenerate();
+        $this->singleSessionService->enforce($user, $request);
+        $this->sessionDeviceBindingService->bind($user, $request);
+        $request->session()->put('_single_session_stamp', $request->session()->getId());
 
         return $this->loginRedirectFor($user);
     }

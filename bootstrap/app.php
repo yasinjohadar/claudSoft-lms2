@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
+            'check.device.blocked' => \App\Http\Middleware\CheckDeviceBlocked::class,
+            'single.session' => \App\Http\Middleware\EnforceSingleSession::class,
+            'session.device.binding' => \App\Http\Middleware\EnforceSessionDeviceBinding::class,
             'webhook.verify' => \App\Http\Middleware\VerifyWebhookSignature::class,
             'impersonate' => \App\Http\Middleware\ImpersonateMiddleware::class,
             'student.profile.complete' => \App\Http\Middleware\RequireCompleteStudentProfile::class,
@@ -53,6 +56,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add session tracking middleware to track user sessions and activities
         $middleware->web(append: [
             \App\Http\Middleware\SessionTrackingMiddleware::class,
+            \App\Http\Middleware\CheckDeviceBlocked::class,
+            \App\Http\Middleware\EnforceSingleSession::class,
+            \App\Http\Middleware\EnforceSessionDeviceBinding::class,
         ]);
         
         // Add debug middleware for question modules (only in debug mode and not in production)

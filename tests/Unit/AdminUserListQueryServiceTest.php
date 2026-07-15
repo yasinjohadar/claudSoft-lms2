@@ -37,3 +37,18 @@ test('treats plain text as name search not email or phone', function () {
     expect(invokeSearchHelper($service, 'isEmailSearch', 'ياسين جوخدار'))->toBeFalse();
     expect(invokeSearchHelper($service, 'isPhoneSearch', 'ياسين جوخدار'))->toBeFalse();
 });
+
+test('detects full and partial student serial searches', function () {
+    $service = new AdminUserListQueryService;
+
+    expect(invokeSearchHelper($service, 'isStudentSerialSearch', 'STD-2026-00001'))->toBeTrue()
+        ->and(invokeSearchHelper($service, 'isStudentSerialSearch', 'std-2026'))->toBeTrue()
+        ->and(invokeSearchHelper($service, 'isStudentSerialSearch', 'STD'))->toBeTrue();
+});
+
+test('does not confuse student serial with phone search', function () {
+    $service = new AdminUserListQueryService;
+
+    expect(invokeSearchHelper($service, 'isStudentSerialSearch', 'STD-2026-00001'))->toBeTrue()
+        ->and(invokeSearchHelper($service, 'isPhoneSearch', 'STD-2026-00001'))->toBeTrue();
+});

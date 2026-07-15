@@ -111,9 +111,9 @@
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">
                         <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="messageDropdown" aria-expanded="false">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="adminNotificationDropdown" aria-expanded="false">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon"  height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
-                            <span class="pulse-success"></span>
+                            <span class="badge bg-danger rounded-pill header-icon-badge" id="admin-notification-badge" style="display: none;">0</span>
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <!-- Start::main-header-dropdown -->
@@ -121,23 +121,114 @@
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الإشعارات</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
+                                    <button type="button" class="badge rounded-pill bg-warning pt-1 text-fixed-black border-0" id="admin-mark-all-read">تحديد الكل كمقروء</button>
                                 </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 إشعارات جديدة</p>
+                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12" id="admin-notification-subtitle">لديك 0 إشعارات جديدة</p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-notification-scroll">
+                            <ul class="list-unstyled mb-0" id="header-notification-scroll" style="max-height: 350px; overflow-y: auto;">
                                 <li class="dropdown-item text-center py-3">
                                     <p class="text-muted mb-0">لا توجد إشعارات جديدة</p>
                                 </li>
                             </ul>
                             <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
+                                <a href="{{ route('admin.user-devices.index', ['status' => 'pending_trust']) }}" class="text-primary fs-13">أجهزة بانتظار الموافقة</a>
                             </div>
                         </div>
                         <!-- End::main-header-dropdown -->
                     </div>
                     <!-- End::header-element -->
+
+                    @push('scripts')
+                    <script>
+                    (function () {
+                        const notificationsUrl = @json(route('admin.header-notifications.index'));
+                        const markAllUrl = @json(route('admin.header-notifications.mark-all-read'));
+                        const markReadUrlTemplate = @json(url('/admin/header-notifications/__ID__/mark-read'));
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+                        function updateBadge(count) {
+                            const badge = document.getElementById('admin-notification-badge');
+                            const subtitle = document.getElementById('admin-notification-subtitle');
+                            if (!badge || !subtitle) return;
+                            if (count > 0) {
+                                badge.style.display = '';
+                                badge.textContent = count > 99 ? '99+' : String(count);
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                            subtitle.textContent = 'لديك ' + count + ' إشعارات جديدة';
+                        }
+
+                        function renderNotifications(items) {
+                            const container = document.getElementById('header-notification-scroll');
+                            if (!container) return;
+                            if (!items.length) {
+                                container.innerHTML = '<li class="dropdown-item text-center py-3"><p class="text-muted mb-0">لا توجد إشعارات جديدة</p></li>';
+                                return;
+                            }
+                            container.innerHTML = items.map(function (n) {
+                                const unread = n.is_read ? '' : 'fw-semibold';
+                                const safeUrl = (n.action_url || '#').replace(/'/g, "\\'");
+                                return '<li class="dropdown-item border-bottom ' + unread + '" style="cursor:pointer" data-notif-id="' + n.id + '" data-notif-url="' + safeUrl + '">' +
+                                    '<div class="d-flex align-items-start p-2">' +
+                                    '<div class="flex-grow-1">' +
+                                    '<h6 class="mb-1 fs-13">' + (n.title || 'إشعار') + '</h6>' +
+                                    '<p class="mb-1 fs-12 text-muted">' + (n.message || '') + '</p>' +
+                                    '<small class="text-muted fs-11">' + (n.time_ago || '') + '</small>' +
+                                    '</div></div></li>';
+                            }).join('');
+
+                            container.querySelectorAll('[data-notif-id]').forEach(function (el) {
+                                el.addEventListener('click', function () {
+                                    const id = el.getAttribute('data-notif-id');
+                                    const url = el.getAttribute('data-notif-url') || '#';
+                                    fetch(markReadUrlTemplate.replace('__ID__', id), {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': csrfToken,
+                                            'Accept': 'application/json',
+                                        },
+                                    }).finally(function () {
+                                        window.location.href = url;
+                                    });
+                                });
+                            });
+                        }
+
+                        function loadNotifications() {
+                            fetch(notificationsUrl, { headers: { 'Accept': 'application/json' } })
+                                .then(function (r) { return r.json(); })
+                                .then(function (data) {
+                                    if (!data.success) return;
+                                    updateBadge(data.unread_count || 0);
+                                    renderNotifications(data.notifications || []);
+                                })
+                                .catch(function () {});
+                        }
+
+                        document.getElementById('adminNotificationDropdown')?.addEventListener('click', loadNotifications);
+                        document.getElementById('admin-mark-all-read')?.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            fetch(markAllUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'Accept': 'application/json',
+                                },
+                            }).then(function () { loadNotifications(); });
+                        });
+
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', loadNotifications);
+                        } else {
+                            loadNotifications();
+                        }
+                        setInterval(loadNotifications, 60000);
+                    })();
+                    </script>
+                    @endpush
 
                     <!-- Start::header-element -->
                     <div class="header-element header-fullscreen">

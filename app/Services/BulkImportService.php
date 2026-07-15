@@ -236,6 +236,7 @@ class BulkImportService
 
                 // تعيين صلاحية student
                 $user->assignRole('student');
+                $user->assignStudentSerial();
 
                 DB::commit();
                 return [

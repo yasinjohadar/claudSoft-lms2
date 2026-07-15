@@ -7,6 +7,21 @@
 
 
 @section('css')
+<style>
+    .admin-users-serial {
+        display: inline-block;
+        min-width: 116px;
+        padding: 0.3rem 0.5rem;
+        border: 1px solid rgba(var(--primary-rgb), 0.2);
+        border-radius: 0.4rem;
+        background: rgba(var(--primary-rgb), 0.06);
+        color: var(--primary-color);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-align: center;
+    }
+</style>
 @stop
 
 @section('content')
@@ -79,7 +94,7 @@
             <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية المستخدمين</h4>
-                    <p class="fs-12 text-muted mb-0">ابحث بالاسم العربي أو الإنجليزي أو البريد أو الهاتف، أو فلتر حسب الحالة أو الدور أو اكتمال البروفايل.</p>
+                    <p class="fs-12 text-muted mb-0">ابحث بالرقم التسلسلي أو الاسم العربي أو الإنجليزي أو البريد أو الهاتف، أو استخدم الفلاتر.</p>
                 </div>
                 <div class="card-body pt-3">
                     <form id="usersFilterForm" action="{{ route('users.index') }}" method="GET" class="group-show-filters mb-0">
@@ -87,8 +102,8 @@
                             <div class="col-xl-4 col-lg-5 col-md-6">
                                 <label class="form-label" for="usersSearchInput">بحث</label>
                                 <input id="usersSearchInput" type="text" name="query" class="form-control"
-                                    placeholder="البريد كاملاً، الهاتف بالأرقام، أو الاسم..." value="{{ request('query') }}">
-                                <div class="form-text">البريد: مطابقة دقيقة — الهاتف: بالأرقام — الاسم: عربي أو إنجليزي</div>
+                                    placeholder="STD-2026-00001، البريد، الهاتف، أو الاسم..." value="{{ request('query') }}">
+                                <div class="form-text">الرقم التسلسلي والبريد: مطابقة دقيقة — ويمكن البحث بجزء من الرقم التسلسلي</div>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">
                                 <label class="form-label" for="usersIsActive">الحالة النشطة</label>
@@ -160,6 +175,22 @@
                         <span class="group-show-members-card__count" id="usersTableCount">{{ $users->total() }}</span>
                     </h6>
                 </div>
+                <div class="mx-3 mt-3 p-3 border rounded bg-light" id="usersBulkActionsBar" style="display: none;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            تم تحديد <strong class="text-primary" id="selectedUsersCount">0</strong> مستخدم
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteUsersBtn" disabled
+                                    data-bs-toggle="modal" data-bs-target="#bulkDeleteUsersModal">
+                                <i class="fe fe-trash-2 me-1"></i>حذف المحدد
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearUsersSelectionBtn">
+                                <i class="fe fe-x me-1"></i>إلغاء التحديد
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div class="card-body pt-3">
                     <div id="usersTableContainer">
                         @include('admin.pages.users._users_table', ['users' => $users, 'sessions' => $sessions, 'tierByUserId' => $tierByUserId ?? []])
@@ -188,6 +219,37 @@
                 <div class="modal-body" id="adminUserNotesModalBody">
                     <p class="text-muted mb-0">جاري التحميل...</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkDeleteUsersModal" tabindex="-1" aria-labelledby="bulkDeleteUsersModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ route('users.bulk-destroy') }}" method="POST" id="bulkDeleteUsersForm">
+                    @csrf
+                    @method('DELETE')
+                    <div id="bulkDeleteUserIds"></div>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="bulkDeleteUsersModalTitle">
+                            <i class="fe fe-alert-triangle text-danger me-2"></i>تأكيد الحذف الجماعي
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger mb-3">
+                            سيتم حذف <strong id="bulkDeleteModalCount">0</strong> مستخدم وجميع البيانات المرتبطة بهم.
+                            هذا الإجراء لا يمكن التراجع عنه.
+                        </div>
+                        <div class="small text-muted" id="bulkDeleteUsersNames"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fe fe-trash-2 me-1"></i>تأكيد الحذف
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -223,12 +285,12 @@
         return Promise.resolve();
     }
 
-    // نسخ الإيميل
+    // نسخ البريد أو الرقم التسلسلي
     function initCopyEmailButtons() {
-        document.querySelectorAll('.copy-email-btn').forEach(function(btn) {
+        document.querySelectorAll('.copy-email-btn, .copy-student-id-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                const email = btn.getAttribute('data-email');
-                copyToClipboard(email).then(function() {
+                const value = btn.getAttribute('data-copy-value') || btn.getAttribute('data-email');
+                copyToClipboard(value).then(function() {
                     const originalHTML = btn.innerHTML;
                     btn.innerHTML = '<i class="fe fe-check text-success"></i>';
                     setTimeout(function() {
@@ -238,12 +300,93 @@
             });
         });
     }
+
+    function initBulkUserSelection() {
+        const selectAll = document.getElementById('selectAllUsers');
+        const checkboxes = Array.from(document.querySelectorAll('.user-bulk-checkbox:not(:disabled)'));
+        const bulkBar = document.getElementById('usersBulkActionsBar');
+        const selectedCount = document.getElementById('selectedUsersCount');
+        const deleteBtn = document.getElementById('bulkDeleteUsersBtn');
+        const clearBtn = document.getElementById('clearUsersSelectionBtn');
+
+        function updateSelection() {
+            const selected = checkboxes.filter(checkbox => checkbox.checked);
+            const count = selected.length;
+
+            if (bulkBar) bulkBar.style.display = count > 0 ? 'block' : 'none';
+            if (selectedCount) selectedCount.textContent = count;
+            if (deleteBtn) deleteBtn.disabled = count === 0;
+
+            if (selectAll) {
+                selectAll.checked = count > 0 && count === checkboxes.length;
+                selectAll.indeterminate = count > 0 && count < checkboxes.length;
+            }
+        }
+
+        if (selectAll) {
+            selectAll.onchange = function() {
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateSelection();
+            };
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.onchange = updateSelection;
+        });
+
+        if (clearBtn) {
+            clearBtn.onclick = function() {
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                updateSelection();
+            };
+        }
+
+        if (deleteBtn) {
+            deleteBtn.onclick = function() {
+                const selected = checkboxes.filter(checkbox => checkbox.checked);
+                const idsContainer = document.getElementById('bulkDeleteUserIds');
+                const modalCount = document.getElementById('bulkDeleteModalCount');
+                const namesContainer = document.getElementById('bulkDeleteUsersNames');
+
+                if (selected.length === 0 || !idsContainer) {
+                    return;
+                }
+
+                idsContainer.innerHTML = '';
+                selected.forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'user_ids[]';
+                    input.value = checkbox.value;
+                    idsContainer.appendChild(input);
+                });
+
+                if (modalCount) modalCount.textContent = selected.length;
+                if (namesContainer) {
+                    namesContainer.textContent = selected
+                        .map(checkbox => checkbox.dataset.userName)
+                        .filter(Boolean)
+                        .join('، ');
+                }
+            };
+        }
+
+        updateSelection();
+    }
     
     // تهيئة أزرار النسخ عند تحميل الصفحة
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initCopyEmailButtons);
+        document.addEventListener('DOMContentLoaded', function() {
+            initCopyEmailButtons();
+            initBulkUserSelection();
+        });
     } else {
         initCopyEmailButtons();
+        initBulkUserSelection();
     }
 
     function debounce(fn, delay) {
@@ -340,6 +483,7 @@
                         countBadge.textContent = data.count;
                     }
                     initCopyEmailButtons();
+                    initBulkUserSelection();
 
                     if (feedback) {
                         feedback.textContent = 'تم تحديث النتائج';

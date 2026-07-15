@@ -35,6 +35,7 @@ class UserDevice extends Model
         'last_used_at',
         'last_ip_address',
         'is_trusted',
+        'trusted_at',
         'is_blocked',
         'meta',
     ];
@@ -49,6 +50,7 @@ class UserDevice extends Model
         'first_used_at' => 'datetime',
         'last_used_at' => 'datetime',
         'is_trusted' => 'boolean',
+        'trusted_at' => 'datetime',
         'is_blocked' => 'boolean',
         'meta' => 'array',
         'created_at' => 'datetime',
@@ -148,11 +150,15 @@ class UserDevice extends Model
     }
 
     /**
-     * Mark the device as trusted.
+     * Mark the device as trusted (and clear any block).
      */
     public function trust(): bool
     {
-        return $this->update(['is_trusted' => true]);
+        return $this->update([
+            'is_trusted' => true,
+            'trusted_at' => now(),
+            'is_blocked' => false,
+        ]);
     }
 
     /**
@@ -160,15 +166,22 @@ class UserDevice extends Model
      */
     public function untrust(): bool
     {
-        return $this->update(['is_trusted' => false]);
+        return $this->update([
+            'is_trusted' => false,
+            'trusted_at' => null,
+        ]);
     }
 
     /**
-     * Block the device.
+     * Block the device (and revoke trust).
      */
     public function block(): bool
     {
-        return $this->update(['is_blocked' => true]);
+        return $this->update([
+            'is_blocked' => true,
+            'is_trusted' => false,
+            'trusted_at' => null,
+        ]);
     }
 
     /**
@@ -177,6 +190,14 @@ class UserDevice extends Model
     public function unblock(): bool
     {
         return $this->update(['is_blocked' => false]);
+    }
+
+    /**
+     * Whether the device is awaiting admin approval.
+     */
+    public function isPendingTrust(): bool
+    {
+        return ! $this->is_trusted && ! $this->is_blocked;
     }
 
     // ========== Accessors ==========
@@ -240,11 +261,11 @@ class UserDevice extends Model
                 'icon' => 'fa-shield-check',
             ];
         }
-        
+
         return [
-            'text' => 'عادي',
-            'class' => 'badge bg-secondary',
-            'icon' => 'fa-circle',
+            'text' => 'بانتظار الموافقة',
+            'class' => 'badge bg-warning',
+            'icon' => 'fa-clock',
         ];
     }
 

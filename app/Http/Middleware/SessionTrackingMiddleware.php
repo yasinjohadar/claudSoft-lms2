@@ -26,23 +26,23 @@ class SessionTrackingMiddleware
     {
         // Only track for authenticated users
         if (Auth::check()) {
-            $user = Auth::user();
-            
-            // Get current session ID from session
-            $sessionId = $request->session()->get('user_session_id');
-            
-            // If no session ID, try to get the latest active session
-            if (!$sessionId) {
-                $currentSession = $this->sessionTrackingService->getCurrentSession($user);
-                if ($currentSession) {
-                    $sessionId = $currentSession->id;
-                    $request->session()->put('user_session_id', $sessionId);
+            try {
+                $user = Auth::user();
+
+                // Get current session ID from session
+                $sessionId = $request->session()->get('user_session_id');
+
+                // If no session ID, try to get the latest active session
+                if (! $sessionId) {
+                    $currentSession = $this->sessionTrackingService->getCurrentSession($user);
+                    if ($currentSession) {
+                        $sessionId = $currentSession->id;
+                        $request->session()->put('user_session_id', $sessionId);
+                    }
                 }
-            }
-            
-            // Track page view if session exists
-            if ($sessionId && $this->shouldTrackPageView($request)) {
-                try {
+
+                // Track page view if session exists
+                if ($sessionId && $this->shouldTrackPageView($request)) {
                     $this->sessionTrackingService->trackPageView(
                         $sessionId,
                         $request->fullUrl(),
@@ -51,9 +51,10 @@ class SessionTrackingMiddleware
                             'referrer' => $request->header('referer'),
                         ]
                     );
-                } catch (\Exception $e) {
-                    // Silently fail to not interrupt the request
                 }
+            } catch (\Throwable $e) {
+                // Never interrupt the request if analytics tracking fails.
+                report($e);
             }
         }
 

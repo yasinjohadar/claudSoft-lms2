@@ -46,6 +46,10 @@
             </div>
         </div>
 
+        @include('student.pages.profile.partials.trusted-devices', [
+            'trustedDevices' => $trustedDevices,
+        ])
+
     </div>
 </div>
 @stop
@@ -62,4 +66,5 @@
         });
     });
 </script>
+@include('student.partials.student-id-copy-script')
 @endpush

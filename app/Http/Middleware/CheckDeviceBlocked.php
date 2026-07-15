@@ -26,18 +26,22 @@ class CheckDeviceBlocked
     {
         // Only check for authenticated users
         if (Auth::check()) {
-            $user = Auth::user();
-            
-            // Check if the current device is blocked
-            if ($this->deviceTrackingService->isDeviceBlocked($user, $request)) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+            try {
+                $user = Auth::user();
 
-                return redirect()->route('login')
-                    ->withErrors([
-                        'email' => 'تم حظر هذا الجهاز. يرجى التواصل مع الإدارة.',
-                    ]);
+                if ($this->deviceTrackingService->isDeviceBlocked($user, $request)) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return redirect()->route('login')
+                        ->withErrors([
+                            'email' => 'تم حظر هذا الجهاز. يرجى التواصل مع الإدارة.',
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                // Never block the whole app if device lookup fails.
+                report($e);
             }
         }
 

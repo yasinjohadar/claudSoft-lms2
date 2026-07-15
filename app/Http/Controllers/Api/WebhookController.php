@@ -177,6 +177,7 @@ class WebhookController extends Controller
 
             // Assign student role
             $user->assignRole('student');
+            $user->assignStudentSerial();
         }
 
         // Find course
@@ -249,6 +250,7 @@ class WebhookController extends Controller
                 'email_verified_at' => now(),
             ]);
             $user->assignRole('student');
+            $user->assignStudentSerial();
         }
 
         // Find course if specified
@@ -341,6 +343,7 @@ class WebhookController extends Controller
                 'email_verified_at' => now(),
             ]);
             $user->assignRole('student');
+            $user->assignStudentSerial();
         }
 
         $submission->markAsProcessed($user->id, null, "Contact form received. {$emailStatus}");

@@ -36,6 +36,8 @@ class GroupRegistration extends Model
         'education_major',
         'current_job',
         'interested_in_bootcamp',
+        'membership_receipt_path',
+        'membership_receipt_disk',
         'email_sent',
         'whatsapp_sent',
         'email_sent_at',

@@ -129,6 +129,17 @@
                                     </div>
                                 </div>
 
+                                <div class="admin-group-form-toggle">
+                                    <div class="admin-group-form-toggle__info">
+                                        <span class="admin-group-form-toggle__label">تقييد الأجهزة الموثوقة</span>
+                                        <span class="admin-group-form-toggle__hint">إلزام أعضاء المجموعة بالدخول من الأجهزة الموثوقة فقط</span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="device_lock_enabled" id="device_lock_enabled"
+                                               {{ old('device_lock_enabled', false) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
                                 <div class="mb-0">
                                     <label class="form-label fw-semibold">الحد الأقصى للأعضاء</label>
                                     <input type="number" name="max_members" class="form-control @error('max_members') is-invalid @enderror"

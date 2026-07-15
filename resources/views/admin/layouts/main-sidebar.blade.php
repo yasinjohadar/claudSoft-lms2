@@ -393,6 +393,12 @@
                                 <li class="slide {{ request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.user-devices.index') }}" class="side-menu__item {{ request()->routeIs('admin.user-devices.*') ? 'active' : '' }}">
                                         <i class="fas fa-mobile-alt me-2"></i>أجهزة المستخدمين
+                                        @php
+                                            $pendingDevicesCount = \App\Models\UserDevice::pendingTrust()->count();
+                                        @endphp
+                                        @if($pendingDevicesCount > 0)
+                                            <span class="badge bg-warning text-dark ms-1">{{ $pendingDevicesCount > 99 ? '99+' : $pendingDevicesCount }}</span>
+                                        @endif
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.student-profile-cards.*') ? 'active' : '' }}">

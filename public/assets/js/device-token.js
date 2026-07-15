@@ -1,5 +1,6 @@
 (function () {
     var STORAGE_KEY = 'claudsoft_device_token';
+    var COOKIE_KEY = 'claudsoft_device_token';
 
     function generateUuid() {
         if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -13,15 +14,26 @@
         });
     }
 
+    function setCookie(name, value) {
+        try {
+            document.cookie = name + '=' + encodeURIComponent(value)
+                + ';path=/;Max-Age=31536000;SameSite=Lax';
+        } catch (e) {
+            // ignore
+        }
+    }
+
     function getOrCreateDeviceToken() {
         try {
             var existing = localStorage.getItem(STORAGE_KEY);
             if (existing && /^[a-f0-9-]{36}$/i.test(existing)) {
+                setCookie(COOKIE_KEY, existing.toLowerCase());
                 return existing.toLowerCase();
             }
 
             var token = generateUuid().toLowerCase();
             localStorage.setItem(STORAGE_KEY, token);
+            setCookie(COOKIE_KEY, token);
             return token;
         } catch (e) {
             return null;

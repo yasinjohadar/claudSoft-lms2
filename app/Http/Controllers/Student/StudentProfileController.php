@@ -8,6 +8,7 @@ use App\Services\Auth\PhoneOtpService;
 use App\Enums\OtpPurpose;
 use App\Http\Requests\Student\ChangePasswordRequest;
 use App\Models\Nationality;
+use App\Models\UserDevice;
 use App\Services\Student\StudentProfileCompletionService;
 use App\Services\Student\StudentProfilePhotoService;
 use Illuminate\Http\Request;
@@ -84,8 +85,14 @@ class StudentProfileController extends Controller
     public function index()
     {
         $student = auth()->user()->load('nationality');
+        $trustedDevices = UserDevice::query()
+            ->where('user_id', $student->id)
+            ->where('is_trusted', true)
+            ->where('is_blocked', false)
+            ->latest('trusted_at')
+            ->get();
 
-        return view('student.pages.profile.index', compact('student'));
+        return view('student.pages.profile.index', compact('student', 'trustedDevices'));
     }
 
     /**

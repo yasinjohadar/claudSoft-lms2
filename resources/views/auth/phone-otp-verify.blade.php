@@ -77,6 +77,7 @@
 
 @push('auth-scripts')
 <script src="{{ asset('assets/js/device-token.js') }}?v={{ filemtime(public_path('assets/js/device-token.js')) }}"></script>
+<script src="{{ asset('assets/js/device-fingerprint.js') }}?v={{ filemtime(public_path('assets/js/device-fingerprint.js')) }}"></script>
 <script>
 (function () {
     let remaining = {{ (int) ($resendCooldownRemaining ?? 0) }};

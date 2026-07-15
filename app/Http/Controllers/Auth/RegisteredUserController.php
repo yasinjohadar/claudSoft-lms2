@@ -90,6 +90,8 @@ class RegisteredUserController extends Controller
             'phone' => $request->input('phone'),
         ]);
 
+        $user->assignStudentSerial();
+
         $referralService = app(ReferralService::class);
         $referralService->attachReferrer(
             $user,

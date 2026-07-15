@@ -324,7 +324,7 @@
                             @elseif($device->is_trusted)
                                 <span class="ud-status-chip ud-status-chip--trusted fs-14 px-3 py-2"><i class="fe fe-shield me-1"></i>موثوق</span>
                             @else
-                                <span class="ud-status-chip ud-status-chip--normal fs-14 px-3 py-2">عادي</span>
+                                <span class="ud-status-chip ud-status-chip--pending fs-14 px-3 py-2"><i class="fe fe-clock me-1"></i>بانتظار الموافقة</span>
                             @endif
                         </div>
 

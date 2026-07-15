@@ -19,6 +19,12 @@ class AdminUserListQueryService
             return;
         }
 
+        if ($this->isStudentSerialSearch($search)) {
+            $this->applyStudentSerialSearch($query, $search);
+
+            return;
+        }
+
         if (ctype_digit($search)) {
             $this->applyIdOrPhoneSearch($query, $search);
 
@@ -38,6 +44,24 @@ class AdminUserListQueryService
         }
 
         $this->applyNameSearch($query, $search);
+    }
+
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     */
+    private function applyStudentSerialSearch(Builder $query, string $search): void
+    {
+        $normalized = mb_strtoupper(trim($search));
+
+        if (preg_match('/^STD(?:-\d{4}-\d{5}|\d+)$/', $normalized) === 1) {
+            $query->whereRaw('UPPER(TRIM(student_id)) = ?', [$normalized]);
+
+            return;
+        }
+
+        $query->whereRaw('UPPER(student_id) LIKE ?', [
+            '%'.$this->escapeLike($normalized).'%',
+        ]);
     }
 
     /**
@@ -120,8 +144,14 @@ class AdminUserListQueryService
 
         $query->where(function (Builder $q) use ($likeTerm) {
             $q->where('name', 'like', $likeTerm)
-                ->orWhere('name_ar', 'like', $likeTerm);
+                ->orWhere('name_ar', 'like', $likeTerm)
+                ->orWhere('student_id', 'like', $likeTerm);
         });
+    }
+
+    private function isStudentSerialSearch(string $search): bool
+    {
+        return str_starts_with(mb_strtoupper(trim($search)), 'STD');
     }
 
     private function isEmailSearch(string $search): bool

@@ -38,6 +38,10 @@ class CreateUserHandler extends BaseHandler
                 $user->assignRole($payload['role']);
             }
 
+            if ($user->hasRole('student')) {
+                $user->assignStudentSerial();
+            }
+
             $this->logSuccess('User created successfully', [
                 'user_id' => $user->id,
                 'email' => $user->email,

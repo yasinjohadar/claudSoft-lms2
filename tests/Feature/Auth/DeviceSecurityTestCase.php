@@ -12,9 +12,14 @@ abstract class DeviceSecurityTestCase extends TestCase
     {
         parent::setUp();
 
+        config(['activitylog.enabled' => false]);
+
         Schema::dropIfExists('user_devices');
         Schema::dropIfExists('system_settings');
+        Schema::dropIfExists('course_group_members');
+        Schema::dropIfExists('course_groups');
         Schema::dropIfExists('users');
+        Schema::dropIfExists('notifications');
 
         $tableNames = config('permission.table_names');
         if (! empty($tableNames)) {
@@ -54,6 +59,7 @@ abstract class DeviceSecurityTestCase extends TestCase
             $table->string('last_ip_address', 45)->nullable();
             $table->boolean('is_trusted')->default(false);
             $table->boolean('is_blocked')->default(false);
+            $table->timestamp('trusted_at')->nullable();
             $table->json('meta')->nullable();
             $table->timestamps();
             $table->unique(['user_id', 'device_fingerprint']);
@@ -68,6 +74,39 @@ abstract class DeviceSecurityTestCase extends TestCase
             $table->text('description')->nullable();
             $table->timestamps();
             $table->unique(['key', 'group']);
+        });
+
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('course_groups', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->unsignedInteger('max_members')->nullable();
+            $table->boolean('is_visible')->default(true);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('device_lock_enabled')->default(false);
+            $table->boolean('allow_membership_requests')->default(false);
+            $table->boolean('is_visible_for_students')->default(true);
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('course_group_members', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('group_id');
+            $table->unsignedBigInteger('student_id');
+            $table->string('role')->default('member');
+            $table->timestamp('joined_at')->nullable();
+            $table->timestamps();
         });
 
         $this->createPermissionTables();

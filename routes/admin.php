@@ -124,6 +124,7 @@ use App\Http\Controllers\Admin\StudentWeeklyReportScheduleController as AdminStu
 use App\Http\Controllers\Admin\StudentWorkController;
 use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\AdminHeaderNotificationController;
 use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\DeviceSecuritySettingsController;
 use App\Http\Controllers\Admin\UserSendEmailController;
@@ -173,6 +174,7 @@ Route::prefix('admin')
         });
 
         Route::get('users/{user}/admin-notes', [UserController::class, 'adminNotesFragment'])->name('admin.users.admin-notes');
+        Route::delete('users/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
         Route::resource('users', UserController::class);
         Route::resource('roles', RoleController::class);
         Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
@@ -364,6 +366,8 @@ Route::prefix('admin')
         Route::post('groups/{group}/members/{user}/training-camp-enrollment', [CourseGroupController::class, 'storeMemberTrainingCampEnrollment'])->name('groups.members.training-camp-enrollment');
         Route::delete('groups/{groupId}/remove-member/{memberId}', [CourseGroupController::class, 'removeMember'])->name('groups.remove-member');
         Route::delete('groups/{groupId}/bulk-remove-members', [CourseGroupController::class, 'bulkRemoveMembers'])->name('groups.bulk-remove-members');
+        Route::post('groups/{groupId}/bulk-deactivate-members', [CourseGroupController::class, 'bulkDeactivateMembers'])->name('groups.bulk-deactivate-members');
+        Route::post('groups/{groupId}/bulk-reactivate-members', [CourseGroupController::class, 'bulkReactivateMembers'])->name('groups.bulk-reactivate-members');
         Route::post('groups/{groupId}/update-member-role/{memberId}', [CourseGroupController::class, 'updateMemberRole'])->name('groups.update-member-role');
         Route::post('groups/{groupId}/toggle-visibility', [CourseGroupController::class, 'toggleVisibility'])->name('groups.toggle-visibility');
         Route::post('groups/{groupId}/toggle-active', [CourseGroupController::class, 'toggleActive'])->name('groups.toggle-active');
@@ -395,6 +399,9 @@ Route::prefix('admin')
         Route::prefix('group-registrations')->name('admin.group-registrations.')->group(function () {
             Route::get('/', [GroupRegistrationController::class, 'index'])->name('index');
             Route::get('/whatsapp-report', [GroupRegistrationController::class, 'whatsappReport'])->name('whatsapp-report');
+            Route::get('/{registration}/receipt', [GroupRegistrationController::class, 'receipt'])
+                ->middleware('signed')
+                ->name('receipt');
             Route::get('/{registration}', [GroupRegistrationController::class, 'show'])->name('show');
             Route::post('/{registration}/reprocess', [GroupRegistrationController::class, 'reprocess'])->name('reprocess');
             Route::post('/{registration}/resend-email', [GroupRegistrationController::class, 'resendEmail'])->name('resend-email');
@@ -1454,6 +1461,13 @@ Route::prefix('admin')
             Route::post('/delete-all', [UserSessionController::class, 'deleteAll'])->name('delete-all');
             Route::post('/delete-completed', [UserSessionController::class, 'deleteCompleted'])->name('delete-completed');
             Route::post('/delete-disconnected', [UserSessionController::class, 'deleteDisconnected'])->name('delete-disconnected');
+        });
+
+        // ========== Admin header notifications (database) ==========
+        Route::prefix('header-notifications')->name('admin.header-notifications.')->group(function () {
+            Route::get('/', [AdminHeaderNotificationController::class, 'index'])->name('index');
+            Route::post('/mark-all-read', [AdminHeaderNotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+            Route::post('/{id}/mark-read', [AdminHeaderNotificationController::class, 'markAsRead'])->name('mark-read');
         });
 
         // ========== User Devices Routes ==========

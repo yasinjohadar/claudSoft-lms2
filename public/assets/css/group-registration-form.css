@@ -134,8 +134,19 @@ html {
 }
 
 .gr-section {
-    margin-bottom: 20px;
+    --gr-accent: var(--gr-primary);
+    margin-bottom: 22px;
+    padding: 14px 12px 4px;
+    border: 1px solid var(--gr-border);
+    border-radius: var(--gr-radius);
+    background: #f8fafc;
 }
+
+.gr-section--primary { --gr-accent: #0066B3; }
+.gr-section--info { --gr-accent: #0891b2; }
+.gr-section--success { --gr-accent: #059669; }
+.gr-section--warning { --gr-accent: #d97706; }
+.gr-section--receipt { --gr-accent: #7c3aed; }
 
 .gr-section__title {
     display: flex;
@@ -143,26 +154,52 @@ html {
     gap: 8px;
     font-size: 0.95rem;
     font-weight: 700;
-    margin: 0 0 14px;
-    padding: 10px 12px;
+    margin: 0 0 16px;
+    padding: 11px 14px;
     border-radius: var(--gr-radius-sm);
     color: #fff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .gr-section__title--primary { background: linear-gradient(135deg, #0066B3, #004C8A); }
 .gr-section__title--info { background: linear-gradient(135deg, #0891b2, #0e7490); }
 .gr-section__title--success { background: linear-gradient(135deg, #059669, #047857); }
 .gr-section__title--warning { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+.gr-section__title--receipt { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
 
 .gr-field {
+    position: relative;
     margin-bottom: 14px;
+    padding: 14px 14px 14px 14px;
+    border: 1px solid var(--gr-border);
+    border-radius: var(--gr-radius-sm);
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.gr-field::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    right: 0;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--gr-accent, var(--gr-primary));
+    opacity: 0.7;
+}
+
+.gr-field.mb-0 {
+    margin-bottom: 0;
 }
 
 .gr-label {
     display: block;
     font-size: 0.925rem;
     font-weight: 700;
-    margin-bottom: 7px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--gr-border);
     color: #1e293b;
 }
 
@@ -294,6 +331,89 @@ html {
     border: 1px solid var(--gr-border);
 }
 
+.gr-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.gr-file-upload {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 96px;
+    padding: 16px;
+    margin: 0;
+    border: 2px dashed #a78bfa;
+    border-radius: var(--gr-radius-sm);
+    background: #faf5ff;
+    color: var(--gr-text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.gr-file-upload:hover,
+.gr-file-upload:focus-within {
+    border-color: #7c3aed;
+    background: #f3e8ff;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.gr-file-upload--selected {
+    border-style: solid;
+    border-color: var(--gr-success);
+    background: var(--gr-success-soft);
+}
+
+.gr-file-upload--invalid {
+    border-color: var(--gr-danger);
+    background: #fef2f2;
+}
+
+.gr-file-upload__icon {
+    display: grid;
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border-radius: 50%;
+    background: #ede9fe;
+    color: #6d28d9;
+    font-size: 1.35rem;
+}
+
+.gr-file-upload__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.gr-file-upload__content strong {
+    font-size: 0.9rem;
+    color: #4c1d95;
+}
+
+.gr-file-upload__content small {
+    overflow-wrap: anywhere;
+    color: var(--gr-text-muted);
+    font-size: 0.78rem;
+}
+
+.gr-file-upload__button {
+    flex-shrink: 0;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #7c3aed;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
 .gr-divider {
     border: 0;
     border-top: 1px solid var(--gr-border);
@@ -397,5 +517,19 @@ html {
 
     .gr-submit-btn {
         width: 100%;
+    }
+
+    .gr-file-upload {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .gr-file-upload__content {
+        flex-basis: calc(100% - 60px);
+    }
+
+    .gr-file-upload__button {
+        width: 100%;
+        text-align: center;
     }
 }

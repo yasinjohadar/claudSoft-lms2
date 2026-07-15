@@ -292,6 +292,7 @@ class GroupRegistrationService
 
         $user = User::create($userData);
         $user->assignRole('student');
+        $user->assignStudentSerial();
 
         return ['user' => $user, 'plain_password' => $plainPassword];
     }

@@ -9,6 +9,7 @@ use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
 use App\Models\User;
 use App\Rules\UniqueUserFullPhone;
+use App\Services\GroupRegistrationReceiptService;
 use App\Services\GroupRegistrationService;
 use App\Services\Marketing\GoogleDataLayerService;
 use App\Services\Marketing\MetaPixelService;
@@ -20,6 +21,7 @@ class GroupRegistrationController extends Controller
 {
     public function __construct(
         private GroupRegistrationService $registrationService,
+        private GroupRegistrationReceiptService $receiptService,
         private MetaPixelService $metaPixel,
         private GoogleDataLayerService $googleDataLayer
     ) {}
@@ -104,6 +106,7 @@ class GroupRegistrationController extends Controller
             'programming_experience' => 'required|in:none,beginner,intermediate,expert',
             'education_level' => 'required|string|max:255',
             'interested_in_bootcamp' => 'required|in:yes,no',
+            'membership_receipt' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
         ];
         
         $validationMessages = [
@@ -128,6 +131,10 @@ class GroupRegistrationController extends Controller
             'education_level.max' => 'آخر مرحلة دراسية يجب أن تكون أقل من 255 حرف',
             'interested_in_bootcamp.required' => 'يجب الإجابة على سؤال الاهتمام بالمعسكر التدريبي',
             'interested_in_bootcamp.in' => 'قيمة غير صحيحة لسؤال الاهتمام بالمعسكر التدريبي',
+            'membership_receipt.required' => 'يرجى رفع وصل الانتساب',
+            'membership_receipt.file' => 'وصل الانتساب المرفوع غير صالح',
+            'membership_receipt.mimes' => 'يجب أن يكون وصل الانتساب صورة (JPG أو PNG أو WEBP) أو ملف PDF',
+            'membership_receipt.max' => 'يجب ألا يتجاوز حجم وصل الانتساب 10 ميجابايت',
         ];
 
         $validated = $request->validate($validationRules, $validationMessages);
@@ -139,6 +146,12 @@ class GroupRegistrationController extends Controller
 
         try {
             $validated['group_id'] = $group->id;
+            $validated['membership_receipt_path'] = $this->receiptService->store(
+                $request->file('membership_receipt'),
+                (int) $group->id
+            );
+            $validated['membership_receipt_disk'] = GroupRegistrationReceiptService::DISK;
+            unset($validated['membership_receipt']);
 
             // استبدال التسجيل اليتيم/المرفوض بدل ترك صفوف مكررة
             if ($canReregister && $existingRegistration) {

@@ -70,6 +70,8 @@
 </script>
 
 <!-- Page Specific Scripts -->
+<script src="{{ asset('assets/js/device-token.js') }}?v={{ filemtime(public_path('assets/js/device-token.js')) }}"></script>
+<script src="{{ asset('assets/js/device-fingerprint.js') }}?v={{ filemtime(public_path('assets/js/device-fingerprint.js')) }}"></script>
 @yield('script')
 @yield('scripts')
 @stack('scripts')
