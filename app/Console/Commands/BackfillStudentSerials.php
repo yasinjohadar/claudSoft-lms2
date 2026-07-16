@@ -8,28 +8,18 @@ use Illuminate\Console\Command;
 class BackfillStudentSerials extends Command
 {
     protected $signature = 'users:backfill-student-serials
-                            {--dry-run : عرض ما سيتم توليده دون حفظ}';
+                            {--dry-run : عرض ما سيتم توليده دون حفظ}
+                            {--include-inactive : تضمين الحسابات غير النشطة أيضاً}';
 
-    protected $description = 'توليد أرقام تسلسلية STD-YYYY-NNNNN للطلاب الحاليين الذين لا يملكون student_id';
-
-    /**
-     * Roles that should never receive a student serial during backfill.
-     *
-     * @var list<string>
-     */
-    private const EXCLUDED_ROLES = [
-        'admin',
-        'super-admin',
-        'super_admin',
-        'instructor',
-        'teacher',
-    ];
+    protected $description = 'توليد أرقام تسلسلية STD-YYYY-NNNNN للطلاب النشطين الذين لا يملكون student_id';
 
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
+        $includeInactive = (bool) $this->option('include-inactive');
         $assigned = 0;
-        $skipped = 0;
+        $skippedRoles = 0;
+        $skippedInactive = 0;
 
         /** @var array<int, int> $nextByYear */
         $nextByYear = [];
@@ -38,11 +28,14 @@ class BackfillStudentSerials extends Command
             ->where(function ($query) {
                 $query->whereNull('student_id')->orWhere('student_id', '');
             })
+            ->when(! $includeInactive, function ($query) {
+                $query->where('is_active', true);
+            })
             ->orderBy('id')
-            ->chunkById(200, function ($users) use ($dryRun, &$assigned, &$skipped, &$nextByYear) {
+            ->chunkById(200, function ($users) use ($dryRun, &$assigned, &$skippedRoles, &$nextByYear) {
                 foreach ($users as $user) {
-                    if ($user->hasAnyRole(self::EXCLUDED_ROLES)) {
-                        $skipped++;
+                    if ($user->hasAnyRole(User::studentSerialExcludedRoles())) {
+                        $skippedRoles++;
 
                         continue;
                     }
@@ -68,8 +61,17 @@ class BackfillStudentSerials extends Command
                 }
             });
 
+        if (! $includeInactive) {
+            $skippedInactive = User::query()
+                ->where(function ($query) {
+                    $query->whereNull('student_id')->orWhere('student_id', '');
+                })
+                ->where('is_active', false)
+                ->count();
+        }
+
         $prefix = $dryRun ? '[Dry run] ' : '';
-        $this->info("{$prefix}Assigned: {$assigned}, Skipped (non-student roles): {$skipped}");
+        $this->info("{$prefix}Assigned: {$assigned}, Skipped roles: {$skippedRoles}, Skipped inactive: {$skippedInactive}");
 
         return self::SUCCESS;
     }

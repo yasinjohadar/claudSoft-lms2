@@ -541,6 +541,40 @@ class User extends Authenticatable
     }
 
     /**
+     * Roles that should never receive an automatic student serial.
+     *
+     * @return list<string>
+     */
+    public static function studentSerialExcludedRoles(): array
+    {
+        return [
+            'admin',
+            'super-admin',
+            'super_admin',
+            'instructor',
+            'teacher',
+        ];
+    }
+
+    /**
+     * Assign a serial after activation when the account is active and eligible.
+     */
+    public function assignStudentSerialOnActivation(): void
+    {
+        if (! $this->is_active || ! empty($this->student_id)) {
+            return;
+        }
+
+        if ($this->hasAnyRole(static::studentSerialExcludedRoles())) {
+            return;
+        }
+
+        $this->assignStudentSerial(
+            $this->created_at ? (int) $this->created_at->format('Y') : null
+        );
+    }
+
+    /**
      * Set full phone when country code or phone changes
      */
     protected static function boot()
@@ -558,6 +592,14 @@ class User extends Authenticatable
                     ? \App\Support\InternationalPhoneDigits::toDisplay($canonical)
                     : $user->country_code.$user->phone;
             }
+        });
+
+        static::updated(function (User $user) {
+            if (! $user->wasChanged('is_active') || ! $user->is_active) {
+                return;
+            }
+
+            $user->assignStudentSerialOnActivation();
         });
     }
 

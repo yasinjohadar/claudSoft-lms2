@@ -87,4 +87,58 @@ class StudentSerialTest extends TestCase
         $this->assertNotNull($user->student_id);
         $this->assertMatchesRegularExpression('/^STD-\d{4}-\d{5}$/', $user->student_id);
     }
+
+    public function test_backfill_skips_inactive_users(): void
+    {
+        $active = User::factory()->create([
+            'student_id' => null,
+            'is_active' => true,
+            'email' => 'serial-active-' . uniqid() . '@example.com',
+        ]);
+        $inactive = User::factory()->create([
+            'student_id' => null,
+            'is_active' => false,
+            'email' => 'serial-inactive-' . uniqid() . '@example.com',
+        ]);
+
+        $this->artisan('users:backfill-student-serials')
+            ->assertSuccessful();
+
+        $active->refresh();
+        $inactive->refresh();
+
+        $this->assertNotNull($active->student_id);
+        $this->assertNull($inactive->student_id);
+    }
+
+    public function test_activating_user_assigns_student_serial_when_missing(): void
+    {
+        $user = User::factory()->create([
+            'student_id' => null,
+            'is_active' => false,
+            'email' => 'serial-reactivate-' . uniqid() . '@example.com',
+        ]);
+
+        $user->is_active = true;
+        $user->save();
+        $user->refresh();
+
+        $this->assertNotNull($user->student_id);
+        $this->assertMatchesRegularExpression('/^STD-\d{4}-\d{5}$/', $user->student_id);
+    }
+
+    public function test_activating_user_keeps_existing_student_serial(): void
+    {
+        $user = User::factory()->create([
+            'student_id' => 'STD-2024-00042',
+            'is_active' => false,
+            'email' => 'serial-keep-' . uniqid() . '@example.com',
+        ]);
+
+        $user->is_active = true;
+        $user->save();
+        $user->refresh();
+
+        $this->assertSame('STD-2024-00042', $user->student_id);
+    }
 }
