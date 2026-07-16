@@ -192,7 +192,20 @@
                                                     <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>تصاعدي</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-7 mt-md-4">
+                                            <div class="col-md-2">
+                                                <label class="form-label" for="groupMembersPerPage">عدد السجلات</label>
+                                                @php
+                                                    $selectedPerPage = in_array((int) request('per_page', 25), [25, 50, 100, 150], true)
+                                                        ? (int) request('per_page', 25)
+                                                        : 25;
+                                                @endphp
+                                                <select name="per_page" id="groupMembersPerPage" class="form-select">
+                                                    @foreach([25, 50, 100, 150] as $size)
+                                                        <option value="{{ $size }}" @selected($selectedPerPage === $size)>{{ $size }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-5 mt-md-4">
                                                 <div class="d-flex flex-wrap gap-2">
                                                     <button type="submit" class="btn btn-primary" id="groupMembersSearchBtn">
                                                         <i class="fas fa-search me-1"></i>بحث

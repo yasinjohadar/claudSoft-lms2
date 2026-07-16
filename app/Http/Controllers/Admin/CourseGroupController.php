@@ -326,7 +326,7 @@ class CourseGroupController extends Controller
                 $membersQuery->orderBy($sortBy, $sortOrder);
             }
 
-            $members = $membersQuery->paginate($request->get('per_page', 15));
+            $members = $membersQuery->paginate($this->resolveMembersPerPage($request));
 
             $memberIdsInPage = $members->pluck('student_id')->filter()->values();
             $dueAmountsByStudentId = Invoice::query()
@@ -1406,7 +1406,7 @@ class CourseGroupController extends Controller
             $sortOrder = $request->get('order', 'desc');
             $membersQuery->orderBy($sortBy, $sortOrder);
 
-            $members = $membersQuery->paginate($request->get('per_page', 15));
+            $members = $membersQuery->paginate($this->resolveMembersPerPage($request));
 
             $memberIdsInPage = $members->pluck('student_id')->filter()->values();
             $dueAmountsByStudentId = Invoice::query()
@@ -2548,6 +2548,23 @@ class CourseGroupController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء قبول جميع الطلبات: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Allowed page sizes for the group members table.
+     *
+     * @return list<int>
+     */
+    private function allowedMembersPerPage(): array
+    {
+        return [25, 50, 100, 150];
+    }
+
+    private function resolveMembersPerPage(Request $request): int
+    {
+        $perPage = (int) $request->get('per_page', 25);
+
+        return in_array($perPage, $this->allowedMembersPerPage(), true) ? $perPage : 25;
     }
 
     /**
