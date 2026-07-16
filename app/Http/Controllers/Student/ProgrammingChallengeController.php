@@ -9,6 +9,8 @@ use App\Models\ProgrammingChallenge;
 use App\Models\ProgrammingChallengeAttempt;
 use App\Services\ProgrammingChallenge\ChallengeSubmissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class ProgrammingChallengeController extends Controller
 {
@@ -18,8 +20,10 @@ class ProgrammingChallengeController extends Controller
 
     public function index(Request $request)
     {
+        $studentId = auth()->id();
+
         $query = ProgrammingChallenge::published()
-            ->standalone()
+            ->visibleToStudent($studentId)
             ->with('languages');
 
         if ($request->filled('difficulty')) {
@@ -35,18 +39,64 @@ class ProgrammingChallengeController extends Controller
         return view('student.pages.challenges.index', compact('challenges'));
     }
 
+    public function storeLivePreview(Request $request)
+    {
+        $validated = $request->validate([
+            'html' => ['required', 'string', 'max:1500000'],
+        ]);
+
+        $token = Str::lower(Str::random(40));
+        $cacheKey = 'challenge_live_preview:'.$token;
+
+        Cache::put($cacheKey, [
+            'html' => $validated['html'],
+            'user_id' => auth()->id(),
+            'created_at' => now()->toIso8601String(),
+        ], now()->addHours(12));
+
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'url' => route('student.challenges.live-preview.show', ['token' => $token]),
+        ]);
+    }
+
+    public function showLivePreview(string $token)
+    {
+        if (! preg_match('/^[a-z0-9]{32,64}$/', $token)) {
+            abort(404);
+        }
+
+        $payload = Cache::get('challenge_live_preview:'.$token);
+
+        if (! is_array($payload) || empty($payload['html'])) {
+            return response()
+                ->view('student.pages.challenges.live-preview-missing')
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return response($payload['html'], 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
+    }
+
     public function show(string $id)
     {
         $challenge = ProgrammingChallenge::published()
             ->with(['languages', 'files'])
             ->findOrFail($id);
 
-        if (! $challenge->is_standalone) {
-            abort(404);
+        $studentId = auth()->id();
+
+        if (! $challenge->is_standalone || ! $challenge->isVisibleToStudent($studentId)) {
+            abort(403, 'هذا التحدي غير متاح لحسابك');
         }
 
-        $studentId = auth()->id();
-        $attempts = $challenge->studentAttempts($studentId)->get();
+        $attempts = $challenge->studentAttempts($studentId)
+            ->with(['latestSubmission.files'])
+            ->get();
         $inProgress = $attempts->where('status', 'in_progress')->first();
         $canAttempt = $challenge->canStudentAttempt($studentId);
         $lastAttempt = $attempts->first();
@@ -70,16 +120,17 @@ class ProgrammingChallengeController extends Controller
 
         $courseModuleId = $request->query('module_id');
         $courseModule = null;
+        $studentId = auth()->id();
 
         if ($courseModuleId) {
             $courseModule = CourseModule::with('course')->findOrFail($courseModuleId);
             $this->authorizeCourseAccess($courseModule);
-        } elseif (! $challenge->is_standalone) {
-            abort(403);
+        } elseif (! $challenge->is_standalone || ! $challenge->isVisibleToStudent($studentId)) {
+            abort(403, 'هذا التحدي غير متاح لحسابك');
         }
 
         $attempt = ProgrammingChallengeAttempt::where('programming_challenge_id', $challenge->id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', $studentId)
             ->where('status', 'in_progress')
             ->when($courseModuleId, fn ($q) => $q->where('course_module_id', $courseModuleId))
             ->first();
@@ -90,6 +141,9 @@ class ProgrammingChallengeController extends Controller
                 ->with('error', 'يجب بدء محاولة أولاً');
         }
 
+        $this->submissionService->restoreDraftFromPreviousIfNeeded($attempt, $challenge);
+
+        $attempt->refresh();
         $draft = $attempt->draftSubmission?->load('files') ?? $attempt->latestSubmission?->load('files');
 
         return view('student.pages.challenges.work', compact(
@@ -110,6 +164,7 @@ class ProgrammingChallengeController extends Controller
 
         $courseModuleId = $request->input('module_id') ?? $request->query('module_id');
         $courseModule = null;
+        $studentId = auth()->id();
 
         if ($courseModuleId) {
             $courseModule = CourseModule::findOrFail($courseModuleId);
@@ -118,11 +173,11 @@ class ProgrammingChallengeController extends Controller
             if ($courseModule->modulable_id != $challenge->id) {
                 abort(403);
             }
-        } elseif (! $challenge->is_standalone) {
-            abort(403);
+        } elseif (! $challenge->is_standalone || ! $challenge->isVisibleToStudent($studentId)) {
+            abort(403, 'هذا التحدي غير متاح لحسابك');
         }
 
-        if (! $challenge->canStudentAttempt(auth()->id())) {
+        if (! $challenge->canStudentAttempt($studentId)) {
             return back()->with('error', 'استنفدت جميع المحاولات المسموحة');
         }
 

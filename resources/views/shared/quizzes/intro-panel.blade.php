@@ -7,6 +7,7 @@
     $heroIcon = $heroIcon ?? ($heroVariant === 'question_module' ? 'fe-clipboard' : 'fe-help-circle');
     $stats = $stats ?? [];
     $chips = $chips ?? [];
+    $richHtml = (bool) ($richHtml ?? false);
 @endphp
 
 <div class="quiz-intro mb-4">
@@ -17,7 +18,11 @@
                 <div class="min-w-0">
                     <h2 class="quiz-intro__title">{{ $title }}</h2>
                     @if(!empty($description))
-                        <p class="quiz-intro__subtitle">{{ $description }}</p>
+                        @if($richHtml)
+                            <div class="quiz-intro__subtitle quiz-intro__rich">{!! $description !!}</div>
+                        @else
+                            <p class="quiz-intro__subtitle">{{ $description }}</p>
+                        @endif
                     @endif
                     @if(count($chips))
                         <div class="quiz-intro__chips">
@@ -39,7 +44,11 @@
                     <span class="quiz-intro__instructions-icon"><i class="fe fe-info"></i></span>
                     <div>
                         <strong class="d-block mb-1">تعليمات مهمة</strong>
-                        {!! nl2br(e($instructions)) !!}
+                        @if($richHtml)
+                            <div class="quiz-intro__rich">{!! $instructions !!}</div>
+                        @else
+                            {!! nl2br(e($instructions)) !!}
+                        @endif
                     </div>
                 </div>
             @endif

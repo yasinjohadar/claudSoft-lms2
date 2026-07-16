@@ -30,6 +30,8 @@ class ChallengeSubmissionService
             ->first();
 
         if ($inProgress) {
+            $this->restoreDraftFromPreviousIfNeeded($inProgress, $challenge);
+
             return $inProgress;
         }
 
@@ -182,18 +184,171 @@ class ChallengeSubmissionService
             'status' => 'draft',
         ]);
 
-        $starterFiles = $challenge->files;
-        foreach ($starterFiles as $starter) {
+        foreach ($this->resolveDraftSeedFiles($attempt, $challenge) as $seed) {
             ProgrammingChallengeSubmissionFile::create([
                 'programming_challenge_submission_id' => $submission->id,
-                'programming_language_id' => $starter->programming_language_id,
-                'file_role' => $starter->file_role,
-                'filename' => $starter->filename,
-                'content' => $starter->content,
+                'programming_language_id' => $seed->programming_language_id,
+                'file_role' => $seed->file_role,
+                'filename' => $seed->filename,
+                'content' => $seed->content ?? '',
             ]);
         }
 
         return $submission;
+    }
+
+    /**
+     * Seed a new attempt from the student's last submitted work when available,
+     * otherwise fall back to the challenge starter files.
+     *
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    protected function resolveDraftSeedFiles(
+        ProgrammingChallengeAttempt $attempt,
+        ProgrammingChallenge $challenge
+    ) {
+        $previousFiles = $this->previousSubmittedFiles($attempt, $challenge);
+
+        if ($previousFiles && $previousFiles->isNotEmpty()) {
+            return $previousFiles;
+        }
+
+        return $challenge->files;
+    }
+
+    /**
+     * If an in-progress draft still matches the starter template, restore the
+     * student's previous submission so a graded attempt is not "lost".
+     */
+    public function restoreDraftFromPreviousIfNeeded(
+        ProgrammingChallengeAttempt $attempt,
+        ProgrammingChallenge $challenge
+    ): void {
+        if (! $attempt->isInProgress()) {
+            return;
+        }
+
+        $previousFiles = $this->previousSubmittedFiles($attempt, $challenge);
+
+        if (! $previousFiles || $previousFiles->isEmpty()) {
+            return;
+        }
+
+        $draft = $this->ensureDraftSubmission($attempt, $challenge)->load('files');
+
+        $shouldRestore = $draft->files->isEmpty()
+            || $this->filesMatchStarter($draft->files, $challenge->files)
+            || $this->filesMatchDefaultWebStarter($draft->files, $challenge);
+
+        if (! $shouldRestore) {
+            return;
+        }
+
+        $this->syncSubmissionFiles(
+            $draft,
+            $previousFiles->map(function ($file) {
+                return [
+                    'programming_language_id' => $file->programming_language_id,
+                    'file_role' => $file->file_role,
+                    'filename' => $file->filename,
+                    'content' => $file->content ?? '',
+                ];
+            })->all()
+        );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, object>|null
+     */
+    protected function previousSubmittedFiles(
+        ProgrammingChallengeAttempt $attempt,
+        ProgrammingChallenge $challenge
+    ) {
+        $previousAttempt = ProgrammingChallengeAttempt::query()
+            ->where('programming_challenge_id', $challenge->id)
+            ->where('user_id', $attempt->user_id)
+            ->where('id', '!=', $attempt->id)
+            ->whereIn('status', ['submitted', 'graded', 'returned'])
+            ->when(
+                $attempt->course_module_id,
+                fn ($q) => $q->where('course_module_id', $attempt->course_module_id),
+                fn ($q) => $q->whereNull('course_module_id')
+            )
+            ->orderByDesc('attempt_number')
+            ->first();
+
+        if (! $previousAttempt) {
+            return null;
+        }
+
+        $previousSubmission = ProgrammingChallengeSubmission::query()
+            ->where('programming_challenge_attempt_id', $previousAttempt->id)
+            ->where('status', '!=', 'draft')
+            ->orderByDesc('submission_number')
+            ->orderByDesc('id')
+            ->with('files')
+            ->first();
+
+        if (! $previousSubmission || $previousSubmission->files->isEmpty()) {
+            return null;
+        }
+
+        return $previousSubmission->files;
+    }
+
+    protected function filesMatchStarter($draftFiles, $starterFiles): bool
+    {
+        if ($starterFiles->isEmpty()) {
+            return false;
+        }
+
+        $draftMap = collect($draftFiles)->keyBy(function ($file) {
+            return strtolower((string) ($file->file_role ?: $file->filename));
+        });
+
+        foreach ($starterFiles as $starter) {
+            $key = strtolower((string) ($starter->file_role ?: $starter->filename));
+            $draft = $draftMap->get($key);
+
+            if (! $draft) {
+                return false;
+            }
+
+            if (trim((string) ($draft->content ?? '')) !== trim((string) ($starter->content ?? ''))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    protected function filesMatchDefaultWebStarter($draftFiles, ProgrammingChallenge $challenge): bool
+    {
+        if (! $challenge->isWebSandbox() || $challenge->files->isNotEmpty()) {
+            return false;
+        }
+
+        $defaults = [
+            'html' => "<h1>مرحباً</h1>\n<p>ابدأ التعديل هنا</p>",
+            'css' => 'body { font-family: sans-serif; padding: 1rem; }',
+            'js' => '',
+        ];
+
+        $draftMap = collect($draftFiles)->keyBy(function ($file) {
+            return strtolower((string) ($file->file_role ?: ''));
+        });
+
+        foreach ($defaults as $role => $content) {
+            $draft = $draftMap->get($role);
+            if (! $draft) {
+                continue;
+            }
+            if (trim((string) ($draft->content ?? '')) !== trim($content)) {
+                return false;
+            }
+        }
+
+        return $draftMap->isNotEmpty();
     }
 
     protected function syncSubmissionFiles(ProgrammingChallengeSubmission $submission, array $files): void

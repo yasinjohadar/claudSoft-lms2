@@ -8,12 +8,9 @@
     @include('shared.challenges.assets', ['includeCss' => true, 'includeJs' => false])
 @endpush
 
-@push('head-scripts')
-    <script>document.documentElement.classList.add('challenge-ide-fullscreen-pending');</script>
-@endpush
-
 @section('content')
-    <div class="challenge-ide-page">
+    <div class="main-content app-content challenge-ide-page">
+        <div class="container-fluid challenge-ide-page__inner">
     @php
         $backUrl = $courseModule
             ? route('student.learn.module', $courseModule->id)
@@ -54,6 +51,7 @@
             'csrf' => csrf_token(),
             'autoSaveInterval' => $challenge->getDefaultSettings()['auto_save_interval'] ?? 30,
             'backUrl' => $backUrl,
+            'previewStoreUrl' => route('student.challenges.live-preview.store'),
         ];
     @endphp
 
@@ -64,13 +62,13 @@
         'ideConfig' => $ideConfig,
         'pistonAvailable' => app(\App\Services\CodeExecution\CodeExecutionService::class)->isAvailable(),
     ])
+        </div>
     </div>
 @stop
 
 @push('scripts')
     @include('shared.challenges.assets', ['includeCss' => false, 'includeJs' => true])
     <script>
-        document.body.classList.add('challenge-ide-fullscreen');
         window.__challengeIdeConfig = @json($ideConfig);
         (function () {
             function bootChallengeIde() {

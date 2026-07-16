@@ -3,5 +3,6 @@
 @endif
 
 @if($includeJs ?? true)
+    <script src="{{ asset('assets/js/challenge-ide-codemirror.bundle.js') }}?v={{ @filemtime(public_path('assets/js/challenge-ide-codemirror.bundle.js')) ?: '1' }}"></script>
     <script src="{{ asset('assets/js/challenge-ide.js') }}?v={{ @filemtime(public_path('assets/js/challenge-ide.js')) ?: '1' }}"></script>
 @endif

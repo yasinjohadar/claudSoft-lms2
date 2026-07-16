@@ -81,6 +81,25 @@
     line-height: 1.55;
 }
 
+.quiz-intro__rich {
+    line-height: 1.7;
+}
+
+.quiz-intro__rich p:last-child {
+    margin-bottom: 0;
+}
+
+.quiz-intro__rich img {
+    max-width: 100%;
+    height: auto;
+}
+
+.quiz-intro__rich ul,
+.quiz-intro__rich ol {
+    padding-inline-start: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
 .quiz-intro__chips {
     display: flex;
     flex-wrap: wrap;

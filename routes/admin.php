@@ -580,6 +580,7 @@ Route::prefix('admin')
         Route::put('programming-challenges/{id}/starter', [ProgrammingChallengeController::class, 'updateStarter'])->name('programming-challenges.update-starter');
         Route::get('programming-challenges/{id}/test-cases', [ProgrammingChallengeController::class, 'manageTestCases'])->name('programming-challenges.manage-test-cases');
         Route::put('programming-challenges/{id}/test-cases', [ProgrammingChallengeController::class, 'updateTestCases'])->name('programming-challenges.update-test-cases');
+        Route::get('programming-challenges/{id}/attempts', [ProgrammingChallengeController::class, 'attempts'])->name('programming-challenges.attempts');
 
         // ========== Lesson Simulators ==========
         Route::prefix('lesson-simulators')->name('admin.lesson-simulators.')->group(function () {
@@ -611,6 +612,8 @@ Route::prefix('admin')
 
         Route::prefix('challenge-grading')->name('admin.challenge-grading.')->group(function () {
             Route::get('/', [ChallengeGradingController::class, 'index'])->name('index');
+            Route::post('/live-preview', [ChallengeGradingController::class, 'storeLivePreview'])->name('live-preview.store');
+            Route::get('/live-preview/{token}', [ChallengeGradingController::class, 'showLivePreview'])->name('live-preview.show');
             Route::get('/{attemptId}', [ChallengeGradingController::class, 'show'])->name('show');
             Route::post('/{attemptId}/grade', [ChallengeGradingController::class, 'grade'])->name('grade');
         });

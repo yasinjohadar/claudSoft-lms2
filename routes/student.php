@@ -203,6 +203,8 @@ Route::prefix('student')
 
         Route::prefix('challenges')->name('student.challenges.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'index'])->name('index');
+            Route::post('/live-preview', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'storeLivePreview'])->name('live-preview.store');
+            Route::get('/live-preview/{token}', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'showLivePreview'])->name('live-preview.show');
             Route::get('/{id}', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'show'])->name('show');
             Route::get('/{id}/work', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'work'])->name('work');
             Route::get('/{id}/start', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'startAttempt'])->name('start');
