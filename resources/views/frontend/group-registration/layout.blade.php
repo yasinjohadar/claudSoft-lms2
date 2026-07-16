@@ -8,13 +8,21 @@
     <meta name="theme-color" content="#ffffff">
     <title>@yield('title', 'التسجيل — كلاودسوفت')</title>
 
-    <link rel="icon" type="image/png" href="{{ asset('frontend/assets/images/logo.png') }}">
+    @php
+        $grAssetVersion = static function (string $publicPath, string $fallback = '1'): string {
+            $fullPath = public_path($publicPath);
+
+            return file_exists($fullPath) ? (string) filemtime($fullPath) : $fallback;
+        };
+    @endphp
+
+    <link rel="icon" type="image/png" href="/frontend/assets/images/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&family=Alexandria:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('assets/css/group-registration-form.css') }}">
+    <link rel="stylesheet" href="/frontend/assets/css/bootstrap.css?v={{ $grAssetVersion('frontend/assets/css/bootstrap.css') }}">
+    <link rel="stylesheet" href="/assets/icon-fonts/fontawesome/css/all.min.css?v={{ $grAssetVersion('assets/icon-fonts/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="/assets/css/group-registration-form.css?v={{ $grAssetVersion('assets/css/group-registration-form.css') }}">
 
     @stack('head')
     @include('partials.marketing.google.search-console')
@@ -26,7 +34,7 @@
     @include('partials.marketing.google.gtm-body')
     @yield('content')
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/frontend/assets/bootstrap.js?v={{ $grAssetVersion('frontend/assets/bootstrap.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

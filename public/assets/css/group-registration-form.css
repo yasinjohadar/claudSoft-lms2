@@ -1,8 +1,8 @@
 /* Group registration — light mode only, mobile-first */
 
 :root {
-    --gr-font-body: 'Cairo', sans-serif;
-    --gr-font-heading: 'Alexandria', sans-serif;
+    --gr-font-body: 'Cairo', Tahoma, Arial, sans-serif;
+    --gr-font-heading: 'Alexandria', Tahoma, Arial, sans-serif;
     --gr-primary: #0066B3;
     --gr-primary-dark: #004C8A;
     --gr-primary-soft: #eff6ff;

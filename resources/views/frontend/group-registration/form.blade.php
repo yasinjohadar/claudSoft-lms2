@@ -13,7 +13,7 @@
             <div class="gr-card">
                 <div class="gr-card__inner">
                     <header class="gr-hero">
-                        <img src="{{ asset('frontend/assets/images/logo.png') }}" alt="كلاودسوفت التعليمية" class="gr-hero__logo">
+                        <img src="/frontend/assets/images/logo.png" alt="كلاودسوفت التعليمية" class="gr-hero__logo">
                         <h1 class="gr-hero__title">
                             التسجيل في {{ $settings->diploma_name ?? 'دبلوم البرمجة' }}
                             <br>
