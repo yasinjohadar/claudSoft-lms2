@@ -6,6 +6,7 @@ use App\Events\N8nWebhookEvent;
 use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
 use App\Models\CampEnrollment;
+use App\Models\CourseGroup;
 use App\Models\Invoice;
 use App\Models\EmailSetting;
 use App\Models\EmailTemplate;
@@ -55,6 +56,10 @@ class UserController extends Controller
     public function index(Request $request, StudentAccountTierService $tierService, AdminUserListQueryService $listQuery)
     {
         $roles = Role::all();
+        $courseGroups = CourseGroup::query()
+            ->orderByDesc('is_active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_active']);
 
         // جلب آخر جلسات المستخدمين
         $sessions = DB::table('sessions')
@@ -88,6 +93,9 @@ class UserController extends Controller
             $listQuery->applyProfileCompletionFilter($usersQuery, $request->input('profile_completion'));
         }
 
+        // فلترة الطلاب حسب الانتماء لأي مجموعة مختارة
+        $listQuery->applyCourseGroupFilter($usersQuery, (array) $request->input('group_ids', []));
+
         // تنفيذ الاستعلام
         $stats = [
             'total' => (clone $usersQuery)->count(),
@@ -115,7 +123,7 @@ class UserController extends Controller
         }
 
         return view('admin.pages.users.index', array_merge(
-            compact('users', 'roles', 'sessions', 'stats', 'tierByUserId'),
+            compact('users', 'roles', 'courseGroups', 'sessions', 'stats', 'tierByUserId'),
             $this->userMessagingFormData()
         ));
     }

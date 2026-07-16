@@ -21,6 +21,55 @@
         letter-spacing: 0.02em;
         text-align: center;
     }
+
+    .admin-users-filters-card {
+        position: relative;
+        z-index: 30;
+        overflow: visible !important;
+    }
+
+    .admin-users-filters-card .card-header,
+    .admin-users-filters-card .card-body,
+    .admin-users-filters-card #usersFilterForm,
+    .admin-users-filters-card .row,
+    .admin-users-filters-card [class*="col-"] {
+        overflow: visible !important;
+    }
+
+    .admin-users-filters-card.is-groups-open {
+        z-index: 3000;
+    }
+
+    .admin-users-table-card {
+        position: relative;
+        z-index: 1;
+    }
+
+    #usersGroupIdsChoices.choices {
+        margin-bottom: 0;
+        position: relative;
+        z-index: 40;
+    }
+
+    #usersGroupIdsChoices.is-open {
+        z-index: 3000;
+    }
+
+    #usersGroupIdsChoices .choices__inner {
+        min-height: 38px;
+        border-radius: 0.375rem;
+    }
+
+    #usersGroupIdsChoices .choices__list--dropdown {
+        position: absolute !important;
+        z-index: 3001 !important;
+        max-height: min(70vh, 420px);
+        overflow: auto;
+    }
+
+    #usersGroupIdsChoices .choices__list--dropdown .choices__list {
+        max-height: min(70vh, 400px);
+    }
 </style>
 @stop
 
@@ -91,7 +140,7 @@
                 @include('admin.pages.users.partials.stats', ['stats' => $stats ?? []])
             </div>
 
-            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card custom-card group-show-members-card dashboard-fade-in mb-4 admin-users-filters-card">
                 <div class="card-header border-0 pb-0">
                     <h4 class="card-title mb-1">تصفية المستخدمين</h4>
                     <p class="fs-12 text-muted mb-0">ابحث بالرقم التسلسلي أو الاسم العربي أو الإنجليزي أو البريد أو الهاتف، أو استخدم الفلاتر.</p>
@@ -152,6 +201,17 @@
                                     <option value="medium" @selected(request('profile_completion') === 'medium')>من 50% إلى 99%</option>
                                 </select>
                             </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <label class="form-label" for="usersGroupIds">المجموعات</label>
+                                <select name="group_ids[]" id="usersGroupIds" multiple>
+                                    @foreach($courseGroups ?? [] as $group)
+                                        <option value="{{ $group->id }}" @selected(collect(request('group_ids', []))->contains($group->id))>
+                                            {{ $group->name }}@if(! $group->is_active) (غير نشطة)@endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">قائمة منسدلة — يمكن اختيار أكثر من مجموعة</div>
+                            </div>
                             <div class="col-xl-4 col-lg-12">
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <button type="submit" class="btn btn-primary btn-sm">
@@ -168,7 +228,7 @@
                 </div>
             </div>
 
-            <div class="card custom-card group-show-members-card dashboard-fade-in">
+            <div class="card custom-card group-show-members-card dashboard-fade-in admin-users-table-card">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
                     <h6 class="group-show-members-card__title mb-0">
                         قائمة المستخدمين
@@ -517,10 +577,55 @@
             selectElement.addEventListener('change', triggerSearch);
         });
 
+        let groupsChoices = null;
+        const groupsSelect = document.getElementById('usersGroupIds');
+        if (groupsSelect && typeof Choices !== 'undefined') {
+            groupsChoices = new Choices(groupsSelect, {
+                removeItemButton: true,
+                searchEnabled: true,
+                searchChoices: true,
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: 'اختر مجموعة أو أكثر',
+                searchPlaceholderValue: 'ابحث عن مجموعة...',
+                itemSelectText: '',
+                noResultsText: 'لا توجد نتائج',
+                noChoicesText: 'لا توجد مجموعات',
+            });
+
+            const choicesContainer = groupsSelect.closest('.choices');
+            if (choicesContainer) {
+                choicesContainer.id = 'usersGroupIdsChoices';
+            }
+
+            groupsSelect.addEventListener('change', triggerSearch);
+            groupsSelect.addEventListener('showDropdown', function() {
+                if (choicesContainer) {
+                    choicesContainer.classList.add('is-open');
+                }
+                document.querySelector('.admin-users-filters-card')?.classList.add('is-groups-open');
+            });
+            groupsSelect.addEventListener('hideDropdown', function() {
+                if (choicesContainer) {
+                    choicesContainer.classList.remove('is-open');
+                }
+                document.querySelector('.admin-users-filters-card')?.classList.remove('is-groups-open');
+            });
+        } else if (groupsSelect) {
+            groupsSelect.addEventListener('change', triggerSearch);
+        }
+
         if (resetBtn) {
             resetBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 form.reset();
+                if (groupsChoices) {
+                    groupsChoices.removeActiveItems();
+                } else if (groupsSelect) {
+                    Array.from(groupsSelect.options).forEach(function(option) {
+                        option.selected = false;
+                    });
+                }
                 triggerSearch();
             });
         }

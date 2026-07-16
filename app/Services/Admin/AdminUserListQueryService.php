@@ -205,6 +205,28 @@ class AdminUserListQueryService
         };
     }
 
+    /**
+     * @param  Builder<\App\Models\User>  $query
+     * @param  array<int|string>  $groupIds
+     */
+    public function applyCourseGroupFilter(Builder $query, array $groupIds): void
+    {
+        $groupIds = collect($groupIds)
+            ->filter(fn ($id) => is_numeric($id) && (int) $id > 0)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($groupIds === []) {
+            return;
+        }
+
+        $query->whereHas('courseGroupMemberships', function (Builder $membershipQuery) use ($groupIds) {
+            $membershipQuery->whereIn('group_id', $groupIds);
+        });
+    }
+
     private function profileCompletionScoreExpression(): string
     {
         return '(
