@@ -148,9 +148,9 @@
                                     <div class="col-md-4">
                                         <label class="form-label" for="tone">الأسلوب</label>
                                         <select id="tone" class="form-select">
-                                            <option value="professional" selected>احترافي</option>
+                                            <option value="professional">احترافي</option>
                                             <option value="friendly">ودود</option>
-                                            <option value="technical">تقني</option>
+                                            <option value="technical" selected>تقني</option>
                                             <option value="casual">عادي</option>
                                             <option value="formal">رسمي</option>
                                         </select>
@@ -272,13 +272,13 @@
                                 <div class="mb-3">
                                     <label class="form-label">الحالة <span class="text-danger">*</span></label>
                                     <select name="status" class="form-select" required>
-                                        <option value="draft" {{ old('status', 'draft') === 'draft' ? 'selected' : '' }}>مسودة</option>
-                                        <option value="published" {{ old('status') === 'published' ? 'selected' : '' }}>منشور</option>
+                                        <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>مسودة</option>
+                                        <option value="published" {{ old('status', 'published') === 'published' ? 'selected' : '' }}>منشور</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">تاريخ النشر</label>
-                                    <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at') }}">
+                                    <input type="datetime-local" name="published_at" class="form-control" value="{{ old('published_at', $defaultPublishedAt ?? now()->format('Y-m-d\TH:i')) }}">
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="is_indexable" value="1" id="is_indexable" {{ old('is_indexable', true) ? 'checked' : '' }}>

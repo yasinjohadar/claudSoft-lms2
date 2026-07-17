@@ -33,6 +33,14 @@ class AIDocumentationPageController extends Controller
         $models = $this->modelService->getAvailableModels('all');
         $categoryId = $request->get('documentation_category_id');
 
+        if (! $categoryId) {
+            $categoryId = $categories->first(function (DocumentationCategory $cat) {
+                return strcasecmp((string) $cat->slug, 'html') === 0
+                    || strcasecmp((string) $cat->name, 'html') === 0;
+            })?->id;
+        }
+
+        $defaultPublishedAt = now()->format('Y-m-d\TH:i');
         $parentPages = DocumentationPage::with('category')
             ->orderBy('documentation_category_id')
             ->orderBy('sort_order')
@@ -53,6 +61,7 @@ class AIDocumentationPageController extends Controller
             'categories',
             'models',
             'categoryId',
+            'defaultPublishedAt',
             'parentPagesJson',
             'useLaravelAiEngine',
             'laravelAiModels',
