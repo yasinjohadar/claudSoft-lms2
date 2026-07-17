@@ -106,36 +106,33 @@
                      data-rating="{{ (int)($review->rating ?? 5) }}"
                      data-text="{{ e($review->review_text ?? '') }}"
                      data-avatar="{{ $review->student_image ? asset('storage/' . $review->student_image) : ($review->user && $review->user->avatar ? asset('storage/' . $review->user->avatar) : '') }}">
-                    <div class="glass-panel testimonial-card h-100" style="cursor: pointer;" title="اضغط لقراءة كامل الرأي">
-                        @if($review->is_featured)
-                        <span class="badge rounded-pill testimonial-card__badge" style="background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark)); color: #fff;"><i class="fas fa-star me-1"></i> مميز</span>
-                        @endif
-                        <div class="testimonial-card__inner">
-                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
-                            <div class="stars testimonial-card__stars">
+                    <article class="tcard tcard--clickable h-100" title="اضغط لقراءة كامل الرأي">
+                        <div class="tcard__top">
+                            <div class="tcard__stars" aria-label="تقييم {{ (int)($review->rating ?? 5) }} من 5">
                                 @php $rating = (int)($review->rating ?? 5); @endphp
                                 @for($i = 1; $i <= 5; $i++)
                                     <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
                                 @endfor
                             </div>
-                            <blockquote class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</blockquote>
-                            <div class="student-info testimonial-card__author">
-                                <div class="testimonial-card__avatar-ring">
-                                    @if($review->student_image)
-                                        <img src="{{ asset('storage/' . $review->student_image) }}" alt="{{ $review->student_name }}" class="student-avatar" width="52" height="52" loading="lazy">
-                                    @elseif($review->user && $review->user->avatar)
-                                        <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="{{ $review->student_name ?? $review->user->name }}" class="student-avatar" width="52" height="52" loading="lazy">
-                                    @else
-                                        <div class="student-avatar-placeholder">{{ strtoupper(mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1)) }}</div>
-                                    @endif
-                                </div>
-                                <div class="testimonial-card__author-text">
-                                    <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
-                                    <div class="student-role">{{ $review->student_position ?? '—' }}</div>
-                                </div>
-                            </div>
+                            <span class="tcard__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
                         </div>
-                    </div>
+                        <blockquote class="tcard__text">{{ Str::limit($review->review_text ?? '', 180) }}</blockquote>
+                        <footer class="tcard__author">
+                            <div class="tcard__avatar">
+                                @if($review->student_image)
+                                    <img src="{{ asset('storage/' . $review->student_image) }}" alt="" width="48" height="48" loading="lazy">
+                                @elseif($review->user && $review->user->avatar)
+                                    <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="" width="48" height="48" loading="lazy">
+                                @else
+                                    <span class="tcard__initial">{{ mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1) }}</span>
+                                @endif
+                            </div>
+                            <div class="tcard__meta">
+                                <strong class="tcard__name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</strong>
+                                <span class="tcard__role">{{ $review->student_position ?? '—' }}</span>
+                            </div>
+                        </footer>
+                    </article>
                 </div>
                 @empty
                 <div class="col-12">
@@ -172,23 +169,22 @@
 
     <!-- Modal كامل الرأي -->
     <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true" dir="rtl">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content glass-panel" style="border: 1px solid var(--clr-border); background: var(--glass-bg);">
-                <div class="modal-header border-bottom" style="border-color: var(--clr-border) !important;">
-                    <h5 class="modal-title" id="reviewModalLabel" style="color: var(--clr-text);">رأي الطالب</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" style="color: var(--clr-text);">
-                    <div class="d-flex flex-row-reverse align-items-start gap-3 mb-3">
-                        <div id="reviewModalAvatar" class="review-modal-avatar flex-shrink-0"></div>
-                        <div class="text-end flex-grow-1">
-                            <h5 id="reviewModalName" class="mb-1"></h5>
-                            <p id="reviewModalPosition" class="small mb-2" style="color: var(--clr-text-muted);"></p>
-                            <div id="reviewModalStars" class="text-warning"></div>
-                        </div>
+        <div class="modal-dialog modal-dialog-centered rmodal-dialog">
+            <div class="modal-content rmodal">
+                <button type="button" class="rmodal__close" data-bs-dismiss="modal" aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="rmodal__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></div>
+                <div class="rmodal__head">
+                    <div id="reviewModalAvatar" class="rmodal__avatar"></div>
+                    <div class="rmodal__meta">
+                        <h5 class="rmodal__name" id="reviewModalName"></h5>
+                        <p class="rmodal__role" id="reviewModalPosition"></p>
+                        <div class="rmodal__stars" id="reviewModalStars" aria-hidden="true"></div>
                     </div>
-                    <p id="reviewModalText" class="mb-0" style="line-height: 1.8; color: var(--clr-text-secondary);"></p>
                 </div>
+                <blockquote class="rmodal__text" id="reviewModalText"></blockquote>
+                <p class="rmodal__label" id="reviewModalLabel">رأي الطالب</p>
             </div>
         </div>
     </div>
@@ -206,7 +202,7 @@
 
         document.querySelectorAll('.review-card').forEach(function (card) {
             if (!card.dataset.text) return;
-            card.querySelector('.testimonial-card').addEventListener('click', function () {
+            card.querySelector('.tcard').addEventListener('click', function () {
                 var name = card.dataset.name || '';
                 var position = card.dataset.position || '';
                 var rating = parseInt(card.dataset.rating || '0', 10);
@@ -214,24 +210,24 @@
                 var avatar = card.dataset.avatar || '';
 
                 if (nameEl) nameEl.textContent = name;
-                if (positionEl) positionEl.textContent = position;
+                if (positionEl) positionEl.textContent = position || '—';
                 if (textEl) textEl.textContent = text;
 
                 if (avatarEl) {
                     avatarEl.innerHTML = '';
-                    avatarEl.className = 'flex-shrink-0';
                     if (avatar) {
                         var img = document.createElement('img');
                         img.src = avatar;
                         img.alt = name;
-                        img.className = 'student-avatar';
-                        img.style.width = '50px'; img.style.height = '50px'; img.style.borderRadius = '50%'; img.style.objectFit = 'cover';
+                        img.width = 56;
+                        img.height = 56;
+                        img.loading = 'lazy';
                         avatarEl.appendChild(img);
                     } else {
-                        var placeholder = document.createElement('div');
-                        placeholder.className = 'student-avatar-placeholder';
-                        placeholder.textContent = name ? name.trim().charAt(0).toUpperCase() : '؟';
-                        avatarEl.appendChild(placeholder);
+                        var initial = document.createElement('span');
+                        initial.className = 'rmodal__initial';
+                        initial.textContent = name ? name.trim().charAt(0) : '؟';
+                        avatarEl.appendChild(initial);
                     }
                 }
 

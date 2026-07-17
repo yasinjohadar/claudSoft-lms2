@@ -147,13 +147,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const lightboxClose = document.getElementById('lightboxClose');
 
   document.querySelectorAll('.gallery-item').forEach(item => {
-    item.addEventListener('click', () => {
+    const open = () => {
       const img = item.querySelector('img');
       if (img && lightboxImg && lightbox) {
         lightboxImg.src = img.src;
         lightboxImg.alt = img.alt;
         lightbox.classList.add('active');
         document.body.style.overflow = 'hidden';
+      }
+    };
+    item.addEventListener('click', open);
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        open();
       }
     });
   });

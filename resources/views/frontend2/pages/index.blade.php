@@ -255,94 +255,82 @@
             <div class="row g-4">
                 @forelse($reviews ?? [] as $review)
                 <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel testimonial-card animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
-                        <div class="testimonial-card__inner">
-                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
-                            <div class="stars testimonial-card__stars">
+                    <article class="tcard animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
+                        <div class="tcard__top">
+                            <div class="tcard__stars" aria-label="تقييم {{ (int)($review->rating ?? 5) }} من 5">
                                 @php $rating = (int)($review->rating ?? 5); @endphp
                                 @for($i = 1; $i <= 5; $i++)
                                     <i class="{{ $i <= $rating ? 'fas' : 'far' }} fa-star"></i>
                                 @endfor
                             </div>
-                            <blockquote class="quote-text">"{{ Str::limit($review->review_text ?? '', 180) }}"</blockquote>
-                            <div class="student-info testimonial-card__author">
-                                <div class="testimonial-card__avatar-ring">
-                                    @if(!empty($review->student_image))
-                                        <img src="{{ asset('storage/' . $review->student_image) }}" alt="" class="student-avatar" width="52" height="52" loading="lazy">
-                                    @elseif($review->relationLoaded('user') && $review->user && $review->user->avatar)
-                                        <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="" class="student-avatar" width="52" height="52" loading="lazy">
-                                    @else
-                                        <div class="student-avatar-placeholder">{{ strtoupper(mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1)) }}</div>
-                                    @endif
-                                </div>
-                                <div class="testimonial-card__author-text">
-                                    <div class="student-name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</div>
-                                    <div class="student-role">{{ $review->student_position ?? '—' }}</div>
-                                </div>
-                            </div>
+                            <span class="tcard__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
                         </div>
-                    </div>
+                        <blockquote class="tcard__text">{{ Str::limit($review->review_text ?? '', 180) }}</blockquote>
+                        <footer class="tcard__author">
+                            <div class="tcard__avatar">
+                                @if(!empty($review->student_image))
+                                    <img src="{{ asset('storage/' . $review->student_image) }}" alt="" width="48" height="48" loading="lazy">
+                                @elseif($review->relationLoaded('user') && $review->user && $review->user->avatar)
+                                    <img src="{{ asset('storage/' . $review->user->avatar) }}" alt="" width="48" height="48" loading="lazy">
+                                @else
+                                    <span class="tcard__initial">{{ mb_substr($review->student_name ?? optional($review->user)->name ?? 'ط', 0, 1) }}</span>
+                                @endif
+                            </div>
+                            <div class="tcard__meta">
+                                <strong class="tcard__name">{{ $review->student_name ?? optional($review->user)->name ?? 'طالب' }}</strong>
+                                <span class="tcard__role">{{ $review->student_position ?? '—' }}</span>
+                            </div>
+                        </footer>
+                    </article>
                 </div>
                 @empty
                 <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel testimonial-card animate-on-scroll animate-delay-1">
-                        <div class="testimonial-card__inner">
-                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
-                            <div class="stars testimonial-card__stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <blockquote class="quote-text">"دورة تطوير الويب كانت نقطة تحول في مسيرتي المهنية. أسلوب الشرح ممتاز والتطبيقات العملية رائعة. أنصح الجميع بالتسجيل!"</blockquote>
-                            <div class="student-info testimonial-card__author">
-                                <div class="testimonial-card__avatar-ring">
-                                    <div class="student-avatar-placeholder">أ</div>
-                                </div>
-                                <div class="testimonial-card__author-text">
-                                    <div class="student-name">أحمد محمد</div>
-                                    <div class="student-role">مطور ويب - سوريا</div>
-                                </div>
-                            </div>
+                    <article class="tcard animate-on-scroll animate-delay-1">
+                        <div class="tcard__top">
+                            <div class="tcard__stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                            <span class="tcard__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
                         </div>
-                    </div>
+                        <blockquote class="tcard__text">دورة تطوير الويب كانت نقطة تحول في مسيرتي المهنية. أسلوب الشرح ممتاز والتطبيقات العملية رائعة. أنصح الجميع بالتسجيل!</blockquote>
+                        <footer class="tcard__author">
+                            <div class="tcard__avatar"><span class="tcard__initial">أ</span></div>
+                            <div class="tcard__meta">
+                                <strong class="tcard__name">أحمد محمد</strong>
+                                <span class="tcard__role">مطور ويب - سوريا</span>
+                            </div>
+                        </footer>
+                    </article>
                 </div>
                 <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel testimonial-card animate-on-scroll animate-delay-2">
-                        <div class="testimonial-card__inner">
-                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
-                            <div class="stars testimonial-card__stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <blockquote class="quote-text">"المدرب ياسين من أفضل المدربين العرب. شرحه واضح ومبسط، والمحتوى محدث دائماً بآخر التقنيات. استفدت كثيراً من دورة بايثون."</blockquote>
-                            <div class="student-info testimonial-card__author">
-                                <div class="testimonial-card__avatar-ring">
-                                    <div class="student-avatar-placeholder">س</div>
-                                </div>
-                                <div class="testimonial-card__author-text">
-                                    <div class="student-name">سارة العلي</div>
-                                    <div class="student-role">مهندسة برمجيات - الأردن</div>
-                                </div>
-                            </div>
+                    <article class="tcard animate-on-scroll animate-delay-2">
+                        <div class="tcard__top">
+                            <div class="tcard__stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                            <span class="tcard__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
                         </div>
-                    </div>
+                        <blockquote class="tcard__text">المدرب ياسين من أفضل المدربين العرب. شرحه واضح ومبسط، والمحتوى محدث دائماً بآخر التقنيات. استفدت كثيراً من دورة بايثون.</blockquote>
+                        <footer class="tcard__author">
+                            <div class="tcard__avatar"><span class="tcard__initial">س</span></div>
+                            <div class="tcard__meta">
+                                <strong class="tcard__name">سارة العلي</strong>
+                                <span class="tcard__role">مهندسة برمجيات - الأردن</span>
+                            </div>
+                        </footer>
+                    </article>
                 </div>
                 <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel testimonial-card animate-on-scroll animate-delay-3">
-                        <div class="testimonial-card__inner">
-                            <span class="testimonial-card__quotemark" aria-hidden="true"><i class="fas fa-quote-right"></i></span>
-                            <div class="stars testimonial-card__stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
-                            </div>
-                            <blockquote class="quote-text">"تعلمت Flutter من دورة الموبايل وقمت ببناء أول تطبيق لي خلال شهرين فقط! الدعم الفني والمتابعة من المدرب كانت ممتازة."</blockquote>
-                            <div class="student-info testimonial-card__author">
-                                <div class="testimonial-card__avatar-ring">
-                                    <div class="student-avatar-placeholder">ع</div>
-                                </div>
-                                <div class="testimonial-card__author-text">
-                                    <div class="student-name">عمر حسان</div>
-                                    <div class="student-role">مطور تطبيقات - العراق</div>
-                                </div>
-                            </div>
+                    <article class="tcard animate-on-scroll animate-delay-3">
+                        <div class="tcard__top">
+                            <div class="tcard__stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></div>
+                            <span class="tcard__quote" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
                         </div>
-                    </div>
+                        <blockquote class="tcard__text">تعلمت Flutter من دورة الموبايل وقمت ببناء أول تطبيق لي خلال شهرين فقط! الدعم الفني والمتابعة من المدرب كانت ممتازة.</blockquote>
+                        <footer class="tcard__author">
+                            <div class="tcard__avatar"><span class="tcard__initial">ع</span></div>
+                            <div class="tcard__meta">
+                                <strong class="tcard__name">عمر حسان</strong>
+                                <span class="tcard__role">مطور تطبيقات - العراق</span>
+                            </div>
+                        </footer>
+                    </article>
                 </div>
                 @endforelse
             </div>
@@ -355,7 +343,7 @@
     </section>
 
     <!-- ============ GALLERY SECTION ============ -->
-    <section class="section-padding" id="gallery" style="background: var(--clr-bg-secondary);">
+    <section class="section-padding gallery-section" id="gallery">
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">معرض الصور</span>
@@ -363,231 +351,199 @@
                 <p>لقطات من فعالياتنا وورشاتنا ودوراتنا التدريبية</p>
             </div>
             <div class="gallery-grid animate-on-scroll">
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/workshop.svg') }}" alt="ورشة عمل تقنية" width="400" height="250" loading="lazy">
+                <div class="gallery-item" role="button" tabindex="0">
+                    <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=560&fit=crop&q=80" alt="ورشة عمل تطوير الويب" width="400" height="280" loading="lazy">
                     <div class="gallery-overlay">
+                        <span class="gallery-zoom" aria-hidden="true"><i class="fas fa-search-plus"></i></span>
                         <span class="gallery-caption">ورشة عمل تطوير الويب</span>
                     </div>
                 </div>
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/trainer.svg') }}" alt="محاضرة تدريبية" width="400" height="250" loading="lazy">
+                <div class="gallery-item" role="button" tabindex="0">
+                    <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=560&fit=crop&q=80" alt="محاضرة تدريبية" width="400" height="280" loading="lazy">
                     <div class="gallery-overlay">
+                        <span class="gallery-zoom" aria-hidden="true"><i class="fas fa-search-plus"></i></span>
                         <span class="gallery-caption">محاضرة في تطوير البرمجيات</span>
                     </div>
                 </div>
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="فعالية تقنية" width="400" height="250" loading="lazy">
+                <div class="gallery-item" role="button" tabindex="0">
+                    <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&h=560&fit=crop&q=80" alt="فعالية تقنية" width="400" height="280" loading="lazy">
                     <div class="gallery-overlay">
-                        <span class="gallery-caption">فعالية تقنية سنوية</span>
+                        <span class="gallery-zoom" aria-hidden="true"><i class="fas fa-search-plus"></i></span>
+                        <span class="gallery-caption">فعالية تقنية وورشات عمل</span>
                     </div>
                 </div>
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="مؤتمر تكنولوجيا" width="400" height="250" loading="lazy">
+                <div class="gallery-item" role="button" tabindex="0">
+                    <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=560&fit=crop&q=80" alt="دورة تدريبية" width="400" height="280" loading="lazy">
                     <div class="gallery-overlay">
-                        <span class="gallery-caption">مؤتمر التكنولوجيا والابتكار</span>
+                        <span class="gallery-zoom" aria-hidden="true"><i class="fas fa-search-plus"></i></span>
+                        <span class="gallery-caption">دورة تحليل البيانات والتدريب</span>
                     </div>
                 </div>
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="تخريج دورة" width="400" height="250" loading="lazy">
-                    <div class="gallery-overlay">
-                        <span class="gallery-caption">حفل تخريج دورة Flutter</span>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <img src="{{ asset('frontend2/assets/images/workshop.svg') }}" alt="ورشة برمجة" width="400" height="250" loading="lazy">
-                    <div class="gallery-overlay">
-                        <span class="gallery-caption">ورشة البرمجة للمبتدئين</span>
-                    </div>
-                </div>
+            </div>
+            <div class="gallery-cta animate-on-scroll">
+                <a href="#gallery" class="gallery-cta-btn">
+                    <i class="fas fa-images"></i>
+                    عرض المعرض
+                </a>
             </div>
         </div>
     </section>
 
     <!-- ============ VIDEOS SECTION ============ -->
-    <section class="section-padding" id="videos">
+    <section class="section-padding videos-section" id="videos">
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">الفيديوهات</span>
                 <h2>فيديوهات من نشاطاتنا</h2>
                 <p>مقاطع تعليمية وعملية من قناتنا وحصصنا التدريبية</p>
             </div>
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel video-card animate-on-scroll animate-delay-1">
-                        <div class="video-wrapper" onclick="window.open('https://youtube.com', '_blank')">
-                            <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="فيديو تعليمي" width="400" height="200" loading="lazy">
-                            <div class="play-btn"><i class="fas fa-play-circle"></i></div>
-                        </div>
-                        <div class="video-body">
-                            <h6>أساسيات تطوير الويب</h6>
-                            <span><i class="fas fa-eye"></i> 15,000 مشاهدة</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel video-card animate-on-scroll animate-delay-2">
-                        <div class="video-wrapper" onclick="window.open('https://youtube.com', '_blank')">
-                            <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="فيديو بايثون" width="400" height="200" loading="lazy">
-                            <div class="play-btn"><i class="fas fa-play-circle"></i></div>
-                        </div>
-                        <div class="video-body">
-                            <h6>مقدمة في لغة بايثون</h6>
-                            <span><i class="fas fa-eye"></i> 12,000 مشاهدة</span>
+            <div class="videos-grid animate-on-scroll">
+                <article class="vcard">
+                    <a class="vcard__media" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" aria-label="مشاهدة: أساسيات تطوير الويب">
+                        <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=500&fit=crop&q=80" alt="أساسيات تطوير الويب" width="400" height="240" loading="lazy">
+                        <span class="vcard__yt" aria-hidden="true"><i class="fab fa-youtube"></i></span>
+                        <span class="vcard__watch"><i class="fas fa-play"></i> شاهد الآن</span>
+                    </a>
+                    <div class="vcard__body">
+                        <h6 class="vcard__title">أساسيات تطوير الويب</h6>
+                        <div class="vcard__meta">
+                            <span class="vcard__views"><i class="fas fa-eye"></i> 15,000 مشاهدة</span>
+                            <a class="vcard__ext" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">
+                                يوتيوب <i class="fas fa-external-link-alt"></i>
+                            </a>
                         </div>
                     </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel video-card animate-on-scroll animate-delay-3">
-                        <div class="video-wrapper" onclick="window.open('https://youtube.com', '_blank')">
-                            <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="فيديو Flutter" width="400" height="200" loading="lazy">
-                            <div class="play-btn"><i class="fas fa-play-circle"></i></div>
-                        </div>
-                        <div class="video-body">
-                            <h6>بناء تطبيق متكامل بـ Flutter</h6>
-                            <span><i class="fas fa-eye"></i> 8,500 مشاهدة</span>
+                </article>
+
+                <article class="vcard">
+                    <a class="vcard__media" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" aria-label="مشاهدة: مقدمة في لغة بايثون">
+                        <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&h=500&fit=crop&q=80" alt="مقدمة في لغة بايثون" width="400" height="240" loading="lazy">
+                        <span class="vcard__yt" aria-hidden="true"><i class="fab fa-youtube"></i></span>
+                        <span class="vcard__watch"><i class="fas fa-play"></i> شاهد الآن</span>
+                    </a>
+                    <div class="vcard__body">
+                        <h6 class="vcard__title">مقدمة في لغة بايثون</h6>
+                        <div class="vcard__meta">
+                            <span class="vcard__views"><i class="fas fa-eye"></i> 12,000 مشاهدة</span>
+                            <a class="vcard__ext" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">
+                                يوتيوب <i class="fas fa-external-link-alt"></i>
+                            </a>
                         </div>
                     </div>
-                </div>
+                </article>
+
+                <article class="vcard">
+                    <a class="vcard__media" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" aria-label="مشاهدة: بناء تطبيق بـ Flutter">
+                        <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=500&fit=crop&q=80" alt="بناء تطبيق متكامل بـ Flutter" width="400" height="240" loading="lazy">
+                        <span class="vcard__yt" aria-hidden="true"><i class="fab fa-youtube"></i></span>
+                        <span class="vcard__watch"><i class="fas fa-play"></i> شاهد الآن</span>
+                    </a>
+                    <div class="vcard__body">
+                        <h6 class="vcard__title">بناء تطبيق متكامل بـ Flutter</h6>
+                        <div class="vcard__meta">
+                            <span class="vcard__views"><i class="fas fa-eye"></i> 8,500 مشاهدة</span>
+                            <a class="vcard__ext" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">
+                                يوتيوب <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                </article>
             </div>
-            <div class="text-center mt-5 animate-on-scroll">
-                <a href="{{ route('frontend.home') }}#videos" class="btn-primary-custom">
-                    <i class="fas fa-play-circle"></i> عرض كل الفيديوهات
+            <div class="videos-cta animate-on-scroll">
+                <a href="#videos" class="videos-cta-btn">
+                    <i class="fas fa-play"></i>
+                    عرض كل الفيديوهات
                 </a>
             </div>
         </div>
     </section>
 
     <!-- ============ BLOG SECTION ============ -->
-    <section class="section-padding" id="blog" style="background: var(--clr-bg-secondary);">
+    <section class="section-padding blog-section" id="blog">
         <div class="container">
             <div class="section-header animate-on-scroll">
                 <span class="section-badge">المدونة</span>
                 <h2>آخر التدوينات</h2>
                 <p>مقالات تقنية وتعليمية في عالم البرمجة والتكنولوجيا</p>
             </div>
-            <div class="row g-4">
-                @forelse($latestPosts ?? [] as $post)
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel blog-card animate-on-scroll animate-delay-1">
-                        <div class="blog-img-wrapper">
-                            <img src="{{ $post->featured_image ? blog_image_url($post->featured_image) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $post->title }}" width="400" height="180" loading="lazy">
+            <div class="blog-grid animate-on-scroll">
+                @forelse($latestPosts ?? [] as $index => $post)
+                <article class="bcard {{ $index === 0 ? 'bcard--featured' : '' }}">
+                    <a class="bcard__media" href="{{ route('frontend.blog.show', $post->slug) }}" aria-label="{{ $post->title }}">
+                        <img src="{{ $post->featured_image ? blog_image_url($post->featured_image) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=500&fit=crop&q=80' }}"
+                             alt="{{ $post->title }}" width="400" height="220" loading="lazy">
+                    </a>
+                    <div class="bcard__body">
+                        <div class="bcard__tags">
+                            <span class="bcard__tag">
+                                <i class="fas fa-calendar-alt"></i>
+                                {{ $post->published_at?->translatedFormat('d F Y') ?? $post->published_at?->format('d M Y') }}
+                            </span>
+                            @if($post->category)
+                                <span class="bcard__tag">
+                                    <i class="fas fa-tag"></i>
+                                    {{ $post->category->name }}
+                                </span>
+                            @endif
                         </div>
-                        <div class="blog-body">
-                            <div class="blog-meta">
-                                <span><i class="fas fa-calendar-alt"></i> {{ $post->published_at?->format('d F Y') }}</span>
-                                @if($post->category)<span><i class="fas fa-tag"></i> {{ $post->category->name }}</span>@endif
-                            </div>
-                            <h5>{{ Str::limit($post->title, 50) }}</h5>
-                            <p>{{ Str::limit(strip_tags($post->excerpt ?? $post->content ?? ''), 80) }}</p>
-                            <a href="{{ route('frontend.blog.show', $post->slug) }}" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
-                        </div>
+                        <h5 class="bcard__title">
+                            <a href="{{ route('frontend.blog.show', $post->slug) }}">{{ Str::limit($post->title, 55) }}</a>
+                        </h5>
+                        <p class="bcard__excerpt">{{ Str::limit(strip_tags($post->excerpt ?? $post->content ?? ''), 90) }}</p>
+                        <a href="{{ route('frontend.blog.show', $post->slug) }}" class="bcard__more">
+                            اقرأ المزيد <i class="fas fa-arrow-left"></i>
+                        </a>
                     </div>
-                </div>
+                </article>
                 @empty
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel blog-card animate-on-scroll animate-delay-1">
-                        <div class="blog-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="مقال تقني" width="400" height="180" loading="lazy">
+                <article class="bcard bcard--featured">
+                    <a class="bcard__media" href="{{ route('frontend.blog.index') }}">
+                        <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=500&fit=crop&q=80" alt="تطوير الويب" width="400" height="220" loading="lazy">
+                    </a>
+                    <div class="bcard__body">
+                        <div class="bcard__tags">
+                            <span class="bcard__tag"><i class="fas fa-calendar-alt"></i> 20 فبراير 2026</span>
+                            <span class="bcard__tag"><i class="fas fa-tag"></i> تطوير الويب</span>
                         </div>
-                        <div class="blog-body">
-                            <div class="blog-meta">
-                                <span><i class="fas fa-calendar-alt"></i> 20 فبراير 2026</span>
-                                <span><i class="fas fa-tag"></i> تطوير الويب</span>
-                            </div>
-                            <h5>أفضل 10 أدوات لمطوري الويب في 2026</h5>
-                            <p>تعرف على أحدث الأدوات والتقنيات التي يجب على كل مطور ويب معرفتها...</p>
-                            <a href="{{ route('frontend.blog.index') }}" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
-                        </div>
+                        <h5 class="bcard__title"><a href="{{ route('frontend.blog.index') }}">أفضل 10 أدوات لمطوري الويب في 2026</a></h5>
+                        <p class="bcard__excerpt">تعرف على أحدث الأدوات والتقنيات التي يجب على كل مطور ويب معرفتها هذا العام.</p>
+                        <a href="{{ route('frontend.blog.index') }}" class="bcard__more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
                     </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel blog-card animate-on-scroll animate-delay-2">
-                        <div class="blog-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="مقال بايثون" width="400" height="180" loading="lazy">
+                </article>
+                <article class="bcard">
+                    <a class="bcard__media" href="{{ route('frontend.blog.index') }}">
+                        <img src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=500&fit=crop&q=80" alt="الذكاء الاصطناعي" width="400" height="220" loading="lazy">
+                    </a>
+                    <div class="bcard__body">
+                        <div class="bcard__tags">
+                            <span class="bcard__tag"><i class="fas fa-calendar-alt"></i> 15 فبراير 2026</span>
+                            <span class="bcard__tag"><i class="fas fa-tag"></i> الذكاء الاصطناعي</span>
                         </div>
-                        <div class="blog-body">
-                            <div class="blog-meta">
-                                <span><i class="fas fa-calendar-alt"></i> 15 فبراير 2026</span>
-                                <span><i class="fas fa-tag"></i> بايثون</span>
-                            </div>
-                            <h5>كيف تبدأ في تعلم الذكاء الاصطناعي</h5>
-                            <p>دليل شامل للمبتدئين في عالم الذكاء الاصطناعي وتعلم الآلة مع بايثون...</p>
-                            <a href="{{ route('frontend.blog.index') }}" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
-                        </div>
+                        <h5 class="bcard__title"><a href="{{ route('frontend.blog.index') }}">كيف تبدأ في تعلم الذكاء الاصطناعي</a></h5>
+                        <p class="bcard__excerpt">دليل شامل للمبتدئين في عالم الذكاء الاصطناعي وتعلم الآلة مع بايثون.</p>
+                        <a href="{{ route('frontend.blog.index') }}" class="bcard__more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
                     </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel blog-card animate-on-scroll animate-delay-3">
-                        <div class="blog-img-wrapper">
-                            <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="مقال موبايل" width="400" height="180" loading="lazy">
+                </article>
+                <article class="bcard">
+                    <a class="bcard__media" href="{{ route('frontend.blog.index') }}">
+                        <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=500&fit=crop&q=80" alt="موبايل" width="400" height="220" loading="lazy">
+                    </a>
+                    <div class="bcard__body">
+                        <div class="bcard__tags">
+                            <span class="bcard__tag"><i class="fas fa-calendar-alt"></i> 10 فبراير 2026</span>
+                            <span class="bcard__tag"><i class="fas fa-tag"></i> موبايل</span>
                         </div>
-                        <div class="blog-body">
-                            <div class="blog-meta">
-                                <span><i class="fas fa-calendar-alt"></i> 10 فبراير 2026</span>
-                                <span><i class="fas fa-tag"></i> موبايل</span>
-                            </div>
-                            <h5>Flutter vs React Native: مقارنة شاملة</h5>
-                            <p>مقارنة تفصيلية بين أشهر إطارين لتطوير تطبيقات الموبايل في 2026...</p>
-                            <a href="{{ route('frontend.blog.index') }}" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
-                        </div>
+                        <h5 class="bcard__title"><a href="{{ route('frontend.blog.index') }}">Flutter vs React Native: مقارنة شاملة</a></h5>
+                        <p class="bcard__excerpt">مقارنة تفصيلية بين أشهر إطارين لتطوير تطبيقات الموبايل في 2026.</p>
+                        <a href="{{ route('frontend.blog.index') }}" class="bcard__more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
                     </div>
-                </div>
+                </article>
                 @endforelse
             </div>
-            <div class="text-center mt-5 animate-on-scroll">
-                <a href="{{ route('frontend.blog.index') }}" class="btn-primary-custom">
-                    <i class="fas fa-newspaper"></i> عرض كل التدوينات
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============ CLIENTS PREVIEW ============ -->
-    <section class="section-padding" id="clients-preview" style="background: var(--clr-bg-secondary);">
-        <div class="container">
-            <div class="section-header animate-on-scroll">
-                <span class="section-badge">ثقة غالية</span>
-                <h2>شركاؤنا والعملاء</h2>
-                <p>شكراً لكل من وثق بي — تعرف على بعض الشركات والعملاء الذين تعاملت معهم</p>
-            </div>
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel client-card animate-on-scroll">
-                        <div class="client-card-logo">
-                            <img src="{{ asset('frontend2/assets/images/logo.svg') }}" alt="اسم الشركة الأولى" width="80" height="80" loading="lazy">
-                        </div>
-                        <span class="client-card-type">شركة</span>
-                        <h3 class="client-card-name">اسم الشركة الأولى</h3>
-                        <p class="client-card-desc">شركة رائدة في مجالها، تعاملت معها بكل احترافية وشفافية. أشكرهم على الثقة والتعاون المثمر.</p>
-                        <blockquote class="client-card-quote">"شريك موثوق يلتزم بالمواعيد والجودة."</blockquote>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel client-card animate-on-scroll">
-                        <div class="client-card-logo">
-                            <img src="{{ asset('frontend2/assets/images/logo.svg') }}" alt="عميل / مشروع ثانٍ" width="80" height="80" loading="lazy">
-                        </div>
-                        <span class="client-card-type">عميل</span>
-                        <h3 class="client-card-name">عميل / مشروع ثانٍ</h3>
-                        <p class="client-card-desc">عميل كريم كان واضحاً في المتطلبات ومتعاوناً طوال التنفيذ. أقدّر صبره وثقته.</p>
-                        <blockquote class="client-card-quote">"تجربة سلسة ونتيجة تفوق التوقعات."</blockquote>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-panel client-card animate-on-scroll">
-                        <div class="client-card-logo">
-                            <img src="{{ asset('frontend2/assets/images/logo.svg') }}" alt="شركة تقنية" width="80" height="80" loading="lazy">
-                        </div>
-                        <span class="client-card-type">شركة</span>
-                        <h3 class="client-card-name">شركة تقنية</h3>
-                        <p class="client-card-desc">تعاون مميز في مشروع تطوير ويب وتدريب الفريق. فريقهم المحترم جعل العمل متعة.</p>
-                        <blockquote class="client-card-quote">"احترافية عالية وتواصل ممتاز."</blockquote>
-                    </div>
-                </div>
-            </div>
-            <div class="text-center mt-5 animate-on-scroll">
-                <a href="{{ route('frontend.students.index') }}" class="btn-primary-custom">
-                    <i class="fas fa-handshake"></i> تعرف على كل الشركات والعملاء
+            <div class="blog-cta animate-on-scroll">
+                <a href="{{ route('frontend.blog.index') }}" class="blog-cta-btn">
+                    عرض كل التدوينات
+                    <i class="fas fa-arrow-left"></i>
                 </a>
             </div>
         </div>
