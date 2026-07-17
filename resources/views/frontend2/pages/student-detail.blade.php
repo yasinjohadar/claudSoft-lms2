@@ -103,129 +103,142 @@
 
             <div class="row g-4">
                 <aside class="col-lg-4">
-                    <div class="glass-panel student-detail-profile animate-on-scroll h-100">
-                        <div class="student-detail-profile-top text-center">
-                            <div class="student-showcase-avatar-wrap student-detail-avatar-xl mx-auto">
+                    <div class="sdp-profile animate-on-scroll">
+                        <div class="sdp-profile__hero">
+                            <div class="sdp-profile__avatar">
                                 @if($student->avatar)
-                                    <img src="{{ asset('storage/' . $student->avatar) }}" alt="{{ $displayName }}" class="student-showcase-avatar-img" width="140" height="140" loading="lazy">
+                                    <img src="{{ asset('storage/' . $student->avatar) }}" alt="{{ $displayName }}" width="120" height="120" loading="lazy">
                                 @else
-                                    <span class="student-showcase-avatar-placeholder student-detail-placeholder-xl" aria-hidden="true">{{ $initial }}</span>
+                                    <span class="sdp-profile__initial" aria-hidden="true">{{ $initial }}</span>
                                 @endif
                             </div>
-                            <h2 class="student-detail-profile-name">{{ $displayName }}</h2>
-                            <span class="student-detail-role-badge"><i class="fas fa-graduation-cap"></i> طالب</span>
+                            <h2 class="sdp-profile__name">{{ $displayName }}</h2>
+                            <span class="sdp-profile__badge"><i class="fas fa-graduation-cap"></i> طالب</span>
                         </div>
-                        <div class="student-detail-profile-body">
-                            <h3 class="student-detail-section-heading"><i class="fas fa-circle-info"></i> المعلومات</h3>
-                            @if($student->address)
-                                <div class="student-detail-info-row">
-                                    <span class="student-detail-info-label"><i class="fas fa-location-dot"></i> العنوان</span>
-                                    <span class="student-detail-info-value">{{ $student->address }}</span>
-                                </div>
-                            @endif
-                            @if($student->date_of_birth)
-                                <div class="student-detail-info-row">
-                                    <span class="student-detail-info-label"><i class="fas fa-calendar-days"></i> تاريخ الميلاد</span>
-                                    <span class="student-detail-info-value">{{ \Carbon\Carbon::parse($student->date_of_birth)->format('Y-m-d') }}</span>
-                                </div>
-                            @endif
-                            @if($student->gender)
-                                <div class="student-detail-info-row">
-                                    <span class="student-detail-info-label"><i class="fas fa-venus-mars"></i> الجنس</span>
-                                    <span class="student-detail-info-value">{{ $student->gender == 'male' ? 'ذكر' : ($student->gender == 'female' ? 'أنثى' : $student->gender) }}</span>
-                                </div>
-                            @endif
-                            <div class="student-detail-info-row">
-                                <span class="student-detail-info-label"><i class="fas fa-clock"></i> تاريخ التسجيل</span>
-                                <span class="student-detail-info-value">{{ $student->created_at->format('Y-m-d') }}</span>
-                            </div>
-                            <div class="student-detail-info-row">
-                                <span class="student-detail-info-label"><i class="fas fa-calendar-check"></i> عضو منذ</span>
-                                <span class="student-detail-info-value">{{ $student->created_at->diffForHumans() }}</span>
-                            </div>
+                        <div class="sdp-profile__body">
+                            <h3 class="sdp-profile__heading"><i class="fas fa-circle-info"></i> المعلومات</h3>
+                            <ul class="sdp-profile__list">
+                                @if($student->address)
+                                    <li class="sdp-profile__item">
+                                        <span class="sdp-profile__icon"><i class="fas fa-location-dot"></i></span>
+                                        <div>
+                                            <span class="sdp-profile__label">العنوان</span>
+                                            <span class="sdp-profile__value">{{ $student->address }}</span>
+                                        </div>
+                                    </li>
+                                @endif
+                                @if($student->date_of_birth)
+                                    <li class="sdp-profile__item">
+                                        <span class="sdp-profile__icon"><i class="fas fa-calendar-days"></i></span>
+                                        <div>
+                                            <span class="sdp-profile__label">تاريخ الميلاد</span>
+                                            <span class="sdp-profile__value">{{ \Carbon\Carbon::parse($student->date_of_birth)->format('Y-m-d') }}</span>
+                                        </div>
+                                    </li>
+                                @endif
+                                @if($student->gender)
+                                    <li class="sdp-profile__item">
+                                        <span class="sdp-profile__icon"><i class="fas fa-venus-mars"></i></span>
+                                        <div>
+                                            <span class="sdp-profile__label">الجنس</span>
+                                            <span class="sdp-profile__value">{{ $student->gender == 'male' ? 'ذكر' : ($student->gender == 'female' ? 'أنثى' : $student->gender) }}</span>
+                                        </div>
+                                    </li>
+                                @endif
+                                <li class="sdp-profile__item">
+                                    <span class="sdp-profile__icon"><i class="fas fa-clock"></i></span>
+                                    <div>
+                                        <span class="sdp-profile__label">تاريخ التسجيل</span>
+                                        <span class="sdp-profile__value">{{ $student->created_at->format('Y-m-d') }}</span>
+                                    </div>
+                                </li>
+                                <li class="sdp-profile__item">
+                                    <span class="sdp-profile__icon"><i class="fas fa-calendar-check"></i></span>
+                                    <div>
+                                        <span class="sdp-profile__label">عضو منذ</span>
+                                        <span class="sdp-profile__value">{{ $student->created_at->diffForHumans() }}</span>
+                                    </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </aside>
 
                 <div class="col-lg-8">
-                    <div class="row g-3 g-md-4 mb-4">
-                        <div class="col-6 col-xl-3 animate-on-scroll">
-                            <div class="glass-panel student-detail-stat h-100">
-                                <div class="student-detail-stat-icon"><i class="fas fa-book"></i></div>
-                                <div class="student-detail-stat-text">
-                                    <span class="student-detail-stat-num">{{ $stats['total_courses'] ?? 0 }}</span>
-                                    <span class="student-detail-stat-label">مسجّل</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-xl-3 animate-on-scroll animate-delay-1">
-                            <div class="glass-panel student-detail-stat h-100">
-                                <div class="student-detail-stat-icon"><i class="fas fa-circle-check"></i></div>
-                                <div class="student-detail-stat-text">
-                                    <span class="student-detail-stat-num">{{ $stats['completed_courses'] ?? 0 }}</span>
-                                    <span class="student-detail-stat-label">مكتمل</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-xl-3 animate-on-scroll animate-delay-2">
-                            <div class="glass-panel student-detail-stat h-100">
-                                <div class="student-detail-stat-icon"><i class="fas fa-certificate"></i></div>
-                                <div class="student-detail-stat-text">
-                                    <span class="student-detail-stat-num">{{ $stats['certificates_count'] ?? 0 }}</span>
-                                    <span class="student-detail-stat-label">شهادات</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6 col-xl-3 animate-on-scroll animate-delay-3">
-                            <div class="glass-panel student-detail-stat h-100">
-                                <div class="student-detail-stat-icon"><i class="fas fa-award"></i></div>
-                                <div class="student-detail-stat-text">
-                                    <span class="student-detail-stat-num">{{ $stats['badges_count'] ?? 0 }}</span>
-                                    <span class="student-detail-stat-label">أوسمة</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="sdp-widgets mb-4" role="group" aria-label="إحصائيات الطالب">
+                        <button type="button" class="sdp-widget sdp-widget--courses is-active animate-on-scroll" data-sdp-tab="sd-courses-tab" data-sdp-pane="sd-courses">
+                            <span class="sdp-widget__icon"><i class="fas fa-book"></i></span>
+                            <span class="sdp-widget__body">
+                                <span class="sdp-widget__num" data-sdp-count="{{ (int) ($stats['total_courses'] ?? 0) }}">0</span>
+                                <span class="sdp-widget__label">مسجّل</span>
+                            </span>
+                            <span class="sdp-widget__hint"><i class="fas fa-arrow-left"></i></span>
+                        </button>
+                        <button type="button" class="sdp-widget sdp-widget--done animate-on-scroll animate-delay-1" data-sdp-tab="sd-courses-tab" data-sdp-pane="sd-courses">
+                            <span class="sdp-widget__icon"><i class="fas fa-circle-check"></i></span>
+                            <span class="sdp-widget__body">
+                                <span class="sdp-widget__num" data-sdp-count="{{ (int) ($stats['completed_courses'] ?? 0) }}">0</span>
+                                <span class="sdp-widget__label">مكتمل</span>
+                            </span>
+                            <span class="sdp-widget__hint"><i class="fas fa-arrow-left"></i></span>
+                        </button>
+                        <button type="button" class="sdp-widget sdp-widget--certs animate-on-scroll animate-delay-2" data-sdp-tab="sd-cert-tab" data-sdp-pane="sd-cert">
+                            <span class="sdp-widget__icon"><i class="fas fa-certificate"></i></span>
+                            <span class="sdp-widget__body">
+                                <span class="sdp-widget__num" data-sdp-count="{{ (int) ($stats['certificates_count'] ?? 0) }}">0</span>
+                                <span class="sdp-widget__label">شهادات</span>
+                            </span>
+                            <span class="sdp-widget__hint"><i class="fas fa-arrow-left"></i></span>
+                        </button>
+                        <button type="button" class="sdp-widget sdp-widget--badges animate-on-scroll animate-delay-3" data-sdp-tab="sd-badges-tab" data-sdp-pane="sd-badges">
+                            <span class="sdp-widget__icon"><i class="fas fa-award"></i></span>
+                            <span class="sdp-widget__body">
+                                <span class="sdp-widget__num" data-sdp-count="{{ (int) ($stats['badges_count'] ?? 0) }}">0</span>
+                                <span class="sdp-widget__label">أوسمة</span>
+                            </span>
+                            <span class="sdp-widget__hint"><i class="fas fa-arrow-left"></i></span>
+                        </button>
                     </div>
 
-                    <div class="glass-panel student-detail-tabs-shell animate-on-scroll overflow-hidden">
-                        <div class="student-detail-tabs-scroll">
-                            <ul class="nav nav-tabs student-detail-tabs border-0" id="studentDetailTabs" role="tablist">
+                    <div class="sdp-tabs animate-on-scroll">
+                        <div class="sdp-tabs__nav-wrap">
+                            <ul class="nav sdp-tabs__nav" id="studentDetailTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link active" id="sd-courses-tab" data-bs-toggle="tab" data-bs-target="#sd-courses" type="button" role="tab" aria-controls="sd-courses" aria-selected="true">
-                                        <i class="fas fa-book me-1"></i>الكورسات
+                                        <i class="fas fa-book"></i><span>الكورسات</span>
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="sd-cert-tab" data-bs-toggle="tab" data-bs-target="#sd-cert" type="button" role="tab" aria-controls="sd-cert" aria-selected="false">
-                                        <i class="fas fa-certificate me-1"></i>الشهادات
+                                        <i class="fas fa-certificate"></i><span>الشهادات</span>
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="sd-badges-tab" data-bs-toggle="tab" data-bs-target="#sd-badges" type="button" role="tab" aria-controls="sd-badges" aria-selected="false">
-                                        <i class="fas fa-award me-1"></i>الأوسمة
+                                        <i class="fas fa-award"></i><span>الأوسمة</span>
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="sd-ach-tab" data-bs-toggle="tab" data-bs-target="#sd-ach" type="button" role="tab" aria-controls="sd-ach" aria-selected="false">
-                                        <i class="fas fa-trophy me-1"></i>الإنجازات
+                                        <i class="fas fa-trophy"></i><span>الإنجازات</span>
                                     </button>
                                 </li>
                                 @if($student->bio)
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link" id="sd-about-tab" data-bs-toggle="tab" data-bs-target="#sd-about" type="button" role="tab" aria-controls="sd-about" aria-selected="false">
-                                            <i class="fas fa-user me-1"></i>نبذة
+                                            <i class="fas fa-user"></i><span>نبذة</span>
                                         </button>
                                     </li>
                                 @endif
                             </ul>
                         </div>
 
-                        <div class="tab-content student-detail-tab-panels" id="studentDetailTabsContent">
+                        <div class="tab-content sdp-tabs__panels" id="studentDetailTabsContent">
                             <div class="tab-pane fade show active" id="sd-courses" role="tabpanel" aria-labelledby="sd-courses-tab" tabindex="0">
                                 @if($enrollments && $enrollments->count() > 0)
                                     <div class="d-lg-none">
                                         @foreach($enrollments as $enrollment)
-                                            <div class="glass-panel student-detail-mobile-enroll mb-3">
+                                            <div class="sdp-enroll-card mb-3">
                                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                                     <strong class="student-detail-mobile-course-title">{{ $enrollment->course->title ?? 'كورس محذوف' }}</strong>
                                                     @if($enrollment->enrollment_status == 'completed')
@@ -310,7 +323,7 @@
                                     <div class="row g-3">
                                         @foreach($certificates as $certificate)
                                             <div class="col-md-6">
-                                                <div class="glass-panel student-detail-cert-card h-100">
+                                                <div class="sdp-item-card sdp-item-card--cert h-100">
                                                     <div class="student-detail-cert-icon"><i class="fas fa-certificate"></i></div>
                                                     <div class="flex-grow-1">
                                                         <h3 class="h6 fw-bold mb-2" style="color: var(--clr-text);">{{ $certificate->course->title ?? 'كورس محذوف' }}</h3>
@@ -338,7 +351,7 @@
                                     <div class="row g-3">
                                         @foreach($badges as $badge)
                                             <div class="col-sm-6 col-lg-4">
-                                                <div class="glass-panel student-detail-badge-card text-center h-100">
+                                                <div class="sdp-item-card sdp-item-card--badge text-center h-100">
                                                     <div class="student-detail-badge-icon" style="background: {{ $badge->color ?? 'var(--clr-primary)' }};">
                                                         <i class="{{ $badge->icon ?? 'fas fa-award' }}"></i>
                                                     </div>
@@ -363,7 +376,7 @@
                                     <div class="row g-3">
                                         @foreach($achievements as $achievement)
                                             <div class="col-md-6">
-                                                <div class="glass-panel student-detail-ach-card d-flex gap-3 h-100">
+                                                <div class="sdp-item-card sdp-item-card--ach d-flex gap-3 h-100">
                                                     <div class="student-detail-ach-icon"><i class="{{ $achievement->icon ?? 'fas fa-trophy' }}"></i></div>
                                                     <div>
                                                         <h3 class="h6 fw-bold mb-1" style="color: var(--clr-text);">{{ $achievement->name }}</h3>
@@ -389,7 +402,7 @@
                             @if($student->bio)
                                 <div class="tab-pane fade" id="sd-about" role="tabpanel" aria-labelledby="sd-about-tab" tabindex="0">
                                     <div class="student-detail-bio">
-                                        <h3 class="student-detail-section-heading border-0 pb-0 mb-3"><i class="fas fa-user"></i> نبذة عني</h3>
+                                        <h3 class="sdp-profile__heading border-0 pb-0 mb-3"><i class="fas fa-user"></i> نبذة عني</h3>
                                         <div class="student-detail-bio-text">{{ $student->bio }}</div>
                                     </div>
                                 </div>
@@ -402,3 +415,75 @@
     </section>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var widgets = document.querySelectorAll('.sdp-widget[data-sdp-tab]');
+    var tabButtons = document.querySelectorAll('#studentDetailTabs [data-bs-toggle="tab"]');
+    var nums = document.querySelectorAll('.sdp-widget__num[data-sdp-count]');
+
+    function setActiveWidgetByPane(paneId) {
+        widgets.forEach(function (w) {
+            w.classList.toggle('is-active', w.getAttribute('data-sdp-pane') === paneId);
+        });
+    }
+
+    function animateCount(el, target) {
+        target = parseInt(target, 10) || 0;
+        if (target === 0) {
+            el.textContent = '0';
+            return;
+        }
+        var count = 0;
+        var step = Math.max(1, Math.ceil(target / 28));
+        var timer = setInterval(function () {
+            count += step;
+            if (count >= target) {
+                count = target;
+                clearInterval(timer);
+            }
+            el.textContent = String(count);
+        }, 28);
+    }
+
+    if ('IntersectionObserver' in window) {
+        var countObs = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                animateCount(entry.target, entry.target.getAttribute('data-sdp-count'));
+                countObs.unobserve(entry.target);
+            });
+        }, { threshold: 0.4 });
+        nums.forEach(function (n) { countObs.observe(n); });
+    } else {
+        nums.forEach(function (n) { animateCount(n, n.getAttribute('data-sdp-count')); });
+    }
+
+    widgets.forEach(function (widget) {
+        widget.addEventListener('click', function () {
+            var tabId = widget.getAttribute('data-sdp-tab');
+            var paneId = widget.getAttribute('data-sdp-pane');
+            var tabEl = document.getElementById(tabId);
+            if (!tabEl) return;
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                bootstrap.Tab.getOrCreateInstance(tabEl).show();
+            } else {
+                tabEl.click();
+            }
+            setActiveWidgetByPane(paneId);
+            widget.classList.add('is-pulse');
+            setTimeout(function () { widget.classList.remove('is-pulse'); }, 450);
+        });
+    });
+
+    tabButtons.forEach(function (btn) {
+        btn.addEventListener('shown.bs.tab', function (e) {
+            var target = e.target.getAttribute('data-bs-target');
+            if (!target) return;
+            setActiveWidgetByPane(target.replace('#', ''));
+        });
+    });
+});
+</script>
+@endpush

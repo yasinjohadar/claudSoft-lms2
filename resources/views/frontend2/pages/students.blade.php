@@ -129,36 +129,30 @@
                 </div>
             @endif
 
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-4">
+            <div class="scards-grid">
                 @forelse($students as $student)
                     @php
                         $displayName = trim((string) ($student->name_ar ?: $student->name));
-                        $initial = mb_strtoupper(mb_substr($displayName !== '' ? $displayName : '?', 0, 1));
+                        $initial = mb_substr($displayName !== '' ? $displayName : '؟', 0, 1);
                     @endphp
-                    <div class="col">
-                        <a href="{{ route('frontend.students.show', $student->id) }}" class="glass-panel student-showcase-card animate-on-scroll animate-delay-{{ min($loop->iteration, 4) }} text-decoration-none">
-                            <div class="student-showcase-top">
-                                <div class="student-showcase-avatar-wrap">
-                                    @if($student->avatar)
-                                        <img src="{{ asset('storage/' . $student->avatar) }}" alt="{{ $displayName }}" class="student-showcase-avatar-img" width="112" height="112" loading="lazy">
-                                    @else
-                                        <span class="student-showcase-avatar-placeholder" aria-hidden="true">{{ $initial }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="student-showcase-body">
-                                <h2 class="student-showcase-name">{{ $displayName }}</h2>
-                                <p class="student-showcase-meta">
-                                    <span class="student-showcase-badge"><i class="fas fa-calendar-plus"></i> انضم {{ $student->created_at->diffForHumans() }}</span>
-                                </p>
-                            </div>
-                            <div class="student-showcase-footer">
-                                <span class="student-showcase-cta">عرض الملف الشخصي <i class="fas fa-arrow-left"></i></span>
-                            </div>
-                        </a>
-                    </div>
+                    <a href="{{ route('frontend.students.show', $student->id) }}" class="scard animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
+                        <div class="scard__avatar">
+                            @if($student->avatar)
+                                <img src="{{ asset('storage/' . $student->avatar) }}" alt="{{ $displayName }}" width="88" height="88" loading="lazy">
+                            @else
+                                <span class="scard__initial" aria-hidden="true">{{ $initial }}</span>
+                            @endif
+                        </div>
+                        <div class="scard__body">
+                            <h2 class="scard__name">{{ $displayName }}</h2>
+                            <p class="scard__meta"><i class="fas fa-calendar-plus"></i> انضم {{ $student->created_at->diffForHumans() }}</p>
+                        </div>
+                        <div class="scard__footer">
+                            <span class="scard__cta">عرض الملف الشخصي <i class="fas fa-arrow-left"></i></span>
+                        </div>
+                    </a>
                 @empty
-                    <div class="col-12">
+                    <div class="scards-empty">
                         <div class="glass-panel students-empty-state text-center py-5 px-4 animate-on-scroll">
                             @if(request('search'))
                                 <i class="fas fa-search fa-3x students-empty-icon mb-3" aria-hidden="true"></i>
