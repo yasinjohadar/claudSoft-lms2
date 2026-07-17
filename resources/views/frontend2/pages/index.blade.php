@@ -15,7 +15,6 @@
     <meta name="twitter:title" content="أكاديمية كلاودسوفت للخدمات والحلول البرمجية">
     <meta name="twitter:description" content="أكاديمية كلاودسوفت — تدريب تقني، تطوير ويب وموبايل، استشارات وحلول برمجية. دورات عملية واحترافية.">
     <meta name="twitter:image" content="{{ asset('frontend2/assets/images/logo.png') }}">
-    <link rel="stylesheet" href="{{ asset('assets/libs/swiper/swiper-bundle.min.css') }}">
 @endpush
 
 @section('content')
@@ -158,83 +157,76 @@
                 <h2>أحدث الدورات التدريبية</h2>
                 <p>دورات عملية شاملة تأخذك من الصفر إلى الاحتراف</p>
             </div>
-            <div class="home-courses-swiper-wrap position-relative">
-                <div class="swiper home-courses-swiper">
-                    <div class="swiper-wrapper">
-                        @forelse($courses ?? [] as $course)
-                        <div class="swiper-slide">
-                            <a href="{{ route('frontend.courses.show', $course->slug) }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
-                                <div class="course-img-wrapper">
-                                    <img src="{{ $course->thumbnail ? course_image_url($course->thumbnail) : asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $course->title }}" width="400" height="200" loading="lazy">
-                                </div>
-                                <div class="course-body">
-                                    <h5>{{ $course->title }}</h5>
-                                    <p>{{ Str::limit(strip_tags($course->description ?? ''), 100) }}</p>
-                                </div>
-                                <div class="course-footer">
-                                    <span><i class="fas fa-folder"></i> {{ $course->category?->name ?? '—' }}</span>
-                                    <span><i class="fas fa-clock"></i> {{ $course->duration ? number_format((float) $course->duration, 2) . ' ساعة' : '—' }}</span>
-                                    <span class="price">{{ $course->is_free ? 'مجاني' : (isset($course->price) ? number_format((float) $course->price, 2) . ' ' . ($course->currency ?? 'ر.س') : '—') }}</span>
-                                </div>
-                            </a>
-                        </div>
-                        @empty
-                        <div class="swiper-slide">
-                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-1" style="text-decoration:none;color:inherit;cursor:pointer;">
-                                <div class="course-img-wrapper">
-                                    <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="تطوير الويب الشامل" width="400" height="200" loading="lazy">
-                                    <span class="course-badge">الأكثر مبيعاً</span>
-                                </div>
-                                <div class="course-body">
-                                    <h5>دورة تطوير الويب الشاملة</h5>
-                                    <p>تعلم HTML, CSS, JavaScript, React وNode.js من الصفر حتى بناء مشاريع حقيقية كاملة</p>
-                                </div>
-                                <div class="course-footer">
-                                    <span><i class="fas fa-folder"></i> تطوير الويب</span>
-                                    <span><i class="fas fa-clock"></i> 45 ساعة</span>
-                                    <span class="price">$49.99</span>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="swiper-slide">
-                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-2" style="text-decoration:none;color:inherit;cursor:pointer;">
-                                <div class="course-img-wrapper">
-                                    <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="بايثون للمبتدئين" width="400" height="200" loading="lazy">
-                                    <span class="course-badge">جديد</span>
-                                </div>
-                                <div class="course-body">
-                                    <h5>بايثون من الصفر إلى الاحتراف</h5>
-                                    <p>تعلم لغة بايثون وعلوم البيانات والأتمتة مع تطبيقات عملية ومشاريع حقيقية</p>
-                                </div>
-                                <div class="course-footer">
-                                    <span><i class="fas fa-folder"></i> البرمجة</span>
-                                    <span><i class="fas fa-clock"></i> 35 ساعة</span>
-                                    <span class="price">$39.99</span>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="swiper-slide">
-                            <a href="{{ route('frontend.courses.index') }}" class="glass-panel course-card animate-on-scroll animate-delay-3" style="text-decoration:none;color:inherit;cursor:pointer;">
-                                <div class="course-img-wrapper">
-                                    <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="تطوير تطبيقات الموبايل" width="400" height="200" loading="lazy">
-                                    <span class="course-badge">متقدم</span>
-                                </div>
-                                <div class="course-body">
-                                    <h5>تطوير تطبيقات الموبايل بـ Flutter</h5>
-                                    <p>ابنِ تطبيقات موبايل احترافية لـ Android و iOS باستخدام Flutter و Dart</p>
-                                </div>
-                                <div class="course-footer">
-                                    <span><i class="fas fa-folder"></i> تطبيقات الجوال</span>
-                                    <span><i class="fas fa-clock"></i> 40 ساعة</span>
-                                    <span class="price">$44.99</span>
-                                </div>
-                            </a>
-                        </div>
-                        @endforelse
+            <div class="ccards-grid animate-on-scroll">
+                @forelse($courses ?? [] as $course)
+                <a href="{{ route('frontend.courses.show', $course->slug) }}" class="ccard animate-delay-{{ min($loop->iteration, 3) }}">
+                    <div class="ccard__media">
+                        <img
+                            src="{{ $course->thumbnail ? course_image_url($course->thumbnail) : asset('frontend2/assets/images/course-webdev.svg') }}"
+                            alt="{{ $course->title }}"
+                            width="800"
+                            height="450"
+                            loading="lazy"
+                            decoding="async"
+                        >
                     </div>
-                </div>
-                <div class="swiper-button-prev home-courses-swiper-btn home-courses-swiper-btn-prev" role="button" aria-label="الشريحة السابقة"></div>
-                <div class="swiper-button-next home-courses-swiper-btn home-courses-swiper-btn-next" role="button" aria-label="الشريحة التالية"></div>
+                    <div class="ccard__body">
+                        <h3 class="ccard__title">{{ $course->title }}</h3>
+                        <p class="ccard__excerpt">{{ Str::limit(strip_tags($course->description ?? ''), 110) }}</p>
+                    </div>
+                    <div class="ccard__footer">
+                        <span class="ccard__meta"><i class="fas fa-folder"></i> {{ $course->category?->name ?? '—' }}</span>
+                        <span class="ccard__meta"><i class="fas fa-clock"></i> {{ $course->duration ? number_format((float) $course->duration, 0) . ' ساعة' : '—' }}</span>
+                        <span class="ccard__price">{{ $course->is_free ? 'مجاني' : (isset($course->price) ? number_format((float) $course->price, 2) . ' ' . ($course->currency ?? 'ر.س') : '—') }}</span>
+                    </div>
+                </a>
+                @empty
+                <a href="{{ route('frontend.courses.index') }}" class="ccard animate-delay-1">
+                    <div class="ccard__media">
+                        <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="تطوير الويب الشامل" width="800" height="450" loading="lazy">
+                        <span class="ccard__badge">الأكثر مبيعاً</span>
+                    </div>
+                    <div class="ccard__body">
+                        <h3 class="ccard__title">دورة تطوير الويب الشاملة</h3>
+                        <p class="ccard__excerpt">تعلم HTML, CSS, JavaScript, React وNode.js من الصفر حتى بناء مشاريع حقيقية كاملة</p>
+                    </div>
+                    <div class="ccard__footer">
+                        <span class="ccard__meta"><i class="fas fa-folder"></i> تطوير الويب</span>
+                        <span class="ccard__meta"><i class="fas fa-clock"></i> 45 ساعة</span>
+                        <span class="ccard__price">$49.99</span>
+                    </div>
+                </a>
+                <a href="{{ route('frontend.courses.index') }}" class="ccard animate-delay-2">
+                    <div class="ccard__media">
+                        <img src="{{ asset('frontend2/assets/images/course-python.svg') }}" alt="بايثون للمبتدئين" width="800" height="450" loading="lazy">
+                        <span class="ccard__badge">جديد</span>
+                    </div>
+                    <div class="ccard__body">
+                        <h3 class="ccard__title">بايثون من الصفر إلى الاحتراف</h3>
+                        <p class="ccard__excerpt">تعلم لغة بايثون وعلوم البيانات والأتمتة مع تطبيقات عملية ومشاريع حقيقية</p>
+                    </div>
+                    <div class="ccard__footer">
+                        <span class="ccard__meta"><i class="fas fa-folder"></i> البرمجة</span>
+                        <span class="ccard__meta"><i class="fas fa-clock"></i> 35 ساعة</span>
+                        <span class="ccard__price">$39.99</span>
+                    </div>
+                </a>
+                <a href="{{ route('frontend.courses.index') }}" class="ccard animate-delay-3">
+                    <div class="ccard__media">
+                        <img src="{{ asset('frontend2/assets/images/course-mobile.svg') }}" alt="تطوير تطبيقات الموبايل" width="800" height="450" loading="lazy">
+                        <span class="ccard__badge">متقدم</span>
+                    </div>
+                    <div class="ccard__body">
+                        <h3 class="ccard__title">تطوير تطبيقات الموبايل بـ Flutter</h3>
+                        <p class="ccard__excerpt">ابنِ تطبيقات موبايل احترافية لـ Android و iOS باستخدام Flutter و Dart</p>
+                    </div>
+                    <div class="ccard__footer">
+                        <span class="ccard__meta"><i class="fas fa-folder"></i> تطبيقات الجوال</span>
+                        <span class="ccard__meta"><i class="fas fa-clock"></i> 40 ساعة</span>
+                        <span class="ccard__price">$44.99</span>
+                    </div>
+                </a>
+                @endforelse
             </div>
             <div class="text-center mt-5 animate-on-scroll">
                 <a href="{{ route('frontend.courses.index') }}" class="btn-primary-custom">
@@ -573,28 +565,3 @@
         }
     </style>
 @endsection
-
-@push('scripts')
-    <script src="{{ asset('assets/libs/swiper/swiper-bundle.min.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var el = document.querySelector('.home-courses-swiper');
-            if (!el || typeof Swiper === 'undefined') return;
-            new Swiper('.home-courses-swiper', {
-                rtl: true,
-                slidesPerView: 1,
-                spaceBetween: 24,
-                watchOverflow: true,
-                navigation: {
-                    nextEl: '.home-courses-swiper-wrap .swiper-button-next',
-                    prevEl: '.home-courses-swiper-wrap .swiper-button-prev',
-                },
-                breakpoints: {
-                    576: { slidesPerView: 2, spaceBetween: 24 },
-                    992: { slidesPerView: 3, spaceBetween: 24 },
-                    1200: { slidesPerView: 4, spaceBetween: 24 },
-                },
-            });
-        });
-    </script>
-@endpush

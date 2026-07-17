@@ -35,7 +35,7 @@ class HomeController extends Controller
                         ->featured()
                         ->orderBy('order', 'asc')
                         ->orderBy('created_at', 'desc')
-                        ->limit(8)
+                        ->limit(3)
                         ->get();
 
         // Get latest blog posts
