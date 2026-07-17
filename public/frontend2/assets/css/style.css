@@ -4826,17 +4826,16 @@ ul {
 .cdp-hero {
     position: relative;
     padding: 150px 0 2.75rem;
-    background: var(--clr-primary-dark);
+    background: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 50%, #1a1a2e 100%);
     overflow: hidden;
 }
 
 .cdp-hero__glow {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 12% 28%, rgba(255, 255, 255, 0.09), transparent 40%),
-        radial-gradient(circle at 90% 72%, rgba(255, 111, 0, 0.18), transparent 42%);
+    display: none;
+}
+
+[data-theme="dark"] .cdp-hero {
+    background: linear-gradient(135deg, var(--clr-primary-dark) 0%, #1a1a2e 60%, #0d0d1a 100%);
 }
 
 .cdp-hero__inner {
@@ -4988,9 +4987,9 @@ ul {
     position: relative;
     border-radius: 18px;
     overflow: hidden;
-    border: 3px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
-    background: #0b1220;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+    background: #fff;
     aspect-ratio: 16 / 9;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -5010,25 +5009,26 @@ ul {
 
 .cdp-preview__badge {
     position: absolute;
-    inset: 0;
+    inset-inline-end: 1rem;
+    bottom: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.28);
+    background: transparent;
     pointer-events: none;
 }
 
 .cdp-preview__badge i {
-    width: 64px;
-    height: 64px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: var(--clr-secondary);
     color: #fff;
-    font-size: 1.25rem;
-    box-shadow: 0 10px 28px rgba(255, 111, 0, 0.4);
+    font-size: 1.05rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
     padding-inline-start: 3px;
 }
 
@@ -5593,10 +5593,6 @@ ul {
     background: #16a34a;
     border-color: #16a34a;
     color: #fff;
-}
-
-[data-theme="dark"] .cdp-hero {
-    background: #003a6b;
 }
 
 [data-theme="dark"] .cdp-card,
