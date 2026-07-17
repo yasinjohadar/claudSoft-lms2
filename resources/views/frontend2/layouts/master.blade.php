@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('frontend2/assets/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('frontend2/assets/css/style.css') }}?v={{ @filemtime(public_path('frontend2/assets/css/style.css')) ?: time() }}">
 
     @stack('head')
     @include('partials.marketing.google.search-console')
@@ -50,7 +50,7 @@
     @include('frontend2.layouts.footer')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ asset('frontend2/assets/js/main.js') }}"></script>
+    <script src="{{ asset('frontend2/assets/js/main.js') }}?v={{ @filemtime(public_path('frontend2/assets/js/main.js')) ?: time() }}"></script>
     @stack('scripts')
 </body>
 </html>
