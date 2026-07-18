@@ -1,7 +1,7 @@
 # Session Activity Tracking — Performance Hardening Design
 
 **Date:** 2026-07-17  
-**Status:** Approved (with amendments)  
+**Status:** Approved (final — 2026-07-17 amendments applied)  
 **Scope:** Improve existing session activity tracking; do not remove or rebuild from scratch.
 
 ---
@@ -35,6 +35,8 @@ Non-goals:
 | Cache driver | Default Laravel `Cache` facade (Redis / file / database — no code changes per driver) |
 | Always-insert events | `action` plus extensible learning events |
 | Real session end | Server only (logout, timeout, forced disconnect policies) |
+| Column type | Keep MySQL `ENUM`; expand via migration for new values |
+| Cache payload | No `activity_id` — only `occurred_at`, `last_type`, `last_hash` |
 
 ---
 
@@ -76,20 +78,25 @@ These are always recorded (no dedup), even if unused today:
 - `quiz_submit`
 - `file_download`
 
-Implementation note: keep a single allow-list in config (e.g. `config/session_tracking.php`) used by validation and recorder. Adding a new learning type later = config + DB enum migration when needed.
+Implementation note: keep a single allow-list in config (e.g. `config/session_tracking.php`) used by validation and recorder. Adding a new learning type later = config + **ENUM expansion migration**.
 
-### 3.5 Database enum compatibility
+### 3.5 Database enum compatibility (locked)
 
-Current DB enum includes:  
+**Keep `activity_type` as MySQL ENUM.** Do not convert to string.
+
+Current values:  
 `session_start`, `session_end`, `page_view`, `action`, `disconnect`, `reconnect`, `idle_start`, `idle_end`, `focus_lost`, `focus_gained`.
 
-Learning event values are **not** in the enum yet. Plan:
+This work adds a migration that **expands the ENUM** to include:
 
-1. Phase 1 (this work): accept them in application validation/config and map unknown-but-always-insert types that are not yet in DB to `action` **with** original type preserved in `activity_details.event` — **OR** add a migration expanding the enum.
+`lesson_open`, `lesson_complete`, `video_start`, `video_complete`, `quiz_start`, `quiz_submit`, `file_download`.
 
-**Preferred for correctness and reports:** add a migration that expands `activity_type` enum (or converts column to `string` indexed) to include the learning events. Prefer converting `activity_type` from enum to `string(64)` + index for future extensibility without repeated ALTER ENUM. Existing values remain valid. This is still “keeping the table,” only improving the column type.
+Reasons for keeping ENUM:
 
-If converting enum → string is considered too invasive for this pass, expand the MySQL enum list in a migration instead. Spec default: **convert to string(64) + index** for maintainability.
+- Values are known and finite.
+- Slightly better storage/indexing characteristics for MySQL.
+- Rejects invalid values at the database layer.
+- Future types require an intentional migration (safer than free-form strings).
 
 ---
 
@@ -123,46 +130,60 @@ return [
 ];
 ```
 
-### 4.2 Cache key / value
+### 4.2 Cache key / value (no activity_id)
 
 - Key: `session_activity:last:{userSessionId}:{activityType}`
-- Value: `['id' => int, 'occurred_at' => iso8601 string]`
+- Value (JSON-serializable array only):
+
+```json
+{
+  "occurred_at": "2026-07-17T19:00:00+00:00",
+  "last_type": "focus_lost",
+  "last_hash": "sha1-of-normalized-details-or-empty"
+}
+```
+
+- Do **not** store `activity_id` in cache. Cache must not be tightly coupled to DB row identity.
 - TTL: `cache_ttl_seconds` (dedup + 5)
-- Driver: `Cache` facade (whatever `CACHE_STORE` / `CACHE_DRIVER` is)
+- Driver: Laravel `Cache` facade (Redis / file / database via app config — no driver-specific code)
+
+`last_hash` is a short hash of normalized `activity_details` + `page_url` (optional aid for “same event” checks). For skip/update rules keyed primarily by type + time window, hash may be empty for simple focus/disconnect events.
 
 ### 4.3 Flow for `trackActivity`
 
 1. If tracking disabled → return null / no-op success.
 2. Classify type via config lists.
-3. If `always_insert` → INSERT, then write cache, return activity.
+3. If `always_insert` → INSERT, then write cache payload (no id), return activity.
 4. If `skip_if_recent` or `update_if_recent`:
-   - Read cache.
-   - On miss: load latest matching row from DB for this session+type within window (or latest overall if needed); refill cache.
-   - If last event age < `dedup_seconds`:
-     - skip types → return existing activity (or null with success “skipped”) without DB write.
-     - update types → UPDATE `occurred_at` (+ merge details/page_url lightly), refresh cache, return.
-   - Else → INSERT, refresh cache.
-5. Never throw validation noise into ERROR logs.
+   - Read cache payload.
+   - If cache hit and age < `dedup_seconds`:
+     - skip types → return success with `skipped: true` and **no DB write**.
+     - update types → **query DB once** for latest row of this session+type, UPDATE `occurred_at` / details, then refresh cache (still without storing id in cache after write — or store only timestamps/hash).
+   - If cache miss:
+     - Query DB once for latest matching row; if recent enough, apply skip/update as above and refill cache; else INSERT and refill cache.
+5. Validation / expected paths never call `Log::error`.
 
 Heartbeat remains UPDATE-only on `user_sessions` (touch), no activity row.
 
 ---
 
-## 5. Logging policy
+## 5. Logging policy (locked)
 
 | Case | HTTP | Log |
 |------|------|-----|
 | Unauthenticated | 401 | none |
-| No active session | 400 | none (or debug at most) |
-| Validation failure (unknown/disallowed type) | 422 | **none** — do not catch as generic Exception with stack |
+| No active session | 400 | none |
+| `ValidationException` / disallowed type | 422 | **none** (never `Log::error`, never stack trace) |
 | Expected skip (dedup) | 200 `{success:true, skipped:true}` | none |
-| Unexpected exception | 500 | `Log::error` **without** dumping full trace unless `app.debug` |
+| Unexpected exception | 500 | **`Log::error`** for real failures (message + context; stack only when `app.debug`) |
+| Unknown `activity_type` repeated abnormally | 422 | **`Log::warning` rate-limited** — e.g. at most once per minute per type (or after > X occurrences / minute via cache counter). Not per request. |
 
 Controller changes:
 
-- Use Form Request or explicit validation that returns 422.
-- Catch `ValidationException` separately and rethrow / return JSON without `Log::error`.
-- Remove broad `catch (\Exception)` that logs every validation as error with `trace`.
+- Do not wrap validation in a generic `\Exception` catch that logs errors.
+- Let Laravel return 422 for validation, or catch `ValidationException` and return JSON without logging.
+- Keep `Log::error` for unexpected exceptions only.
+- For unknown types: increment a short-lived cache counter; when threshold exceeded, emit one `Log::warning` then silence until the window resets.
 
 ---
 
@@ -220,9 +241,10 @@ Feature/unit tests (RefreshDatabase or DatabaseTransactions as project conventio
 ## 10. Rollout / compatibility constraints
 
 - No table drops; no data deletes required for deploy.
-- Optional migration: enum → string(64) for extensibility (backward-compatible values).
+- Migration: **expand ENUM** only (add learning event values); keep existing rows intact.
 - Minimal file touch set: service, controller, config, middleware (light), layouts JS, migration, tests.
 - Feature flag `SESSION_ACTIVITY_TRACKING_ENABLED` allows emergency off without deploy of logic removal.
+- Implement in phases with tests green before moving to the next phase.
 
 ---
 
