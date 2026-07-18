@@ -7,6 +7,7 @@ use App\Services\Storage\StorageBulkMigrationService;
 use App\Services\Storage\StorageCloudBrowserService;
 use App\Services\Storage\StorageFileCatalogService;
 use App\Services\Storage\StorageInventoryService;
+use App\Services\Storage\StorageLocalBrowserService;
 use App\Services\Storage\StorageLocationResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class StorageInventoryController extends Controller
         protected StorageBulkMigrationService $migrationService,
         protected StorageFileCatalogService $catalogService,
         protected StorageCloudBrowserService $cloudBrowser,
+        protected StorageLocalBrowserService $localBrowser,
     ) {}
 
     public function index(Request $request): View
@@ -551,6 +553,39 @@ class StorageInventoryController extends Controller
             'shortcuts' => $this->cloudBrowser->folderShortcuts(),
             'filters' => [
                 'config' => $selectedConfig?->id,
+                'path' => $listing['path'] ?? $safePath,
+            ],
+            'inventoryService' => $this->inventoryService,
+        ]);
+    }
+
+    public function browseLocal(Request $request): View
+    {
+        $path = (string) $request->get('path', '');
+        $listing = null;
+        $browseError = null;
+        $safePath = '';
+
+        try {
+            $safePath = $this->cloudBrowser->normalizePath($path);
+        } catch (\InvalidArgumentException $e) {
+            $browseError = $e->getMessage();
+        }
+
+        if ($browseError === null) {
+            try {
+                $listing = $this->localBrowser->browse($safePath);
+            } catch (\Throwable $e) {
+                $browseError = 'تعذّر قراءة الملفات المحلية: '.$e->getMessage();
+            }
+        }
+
+        return view('admin.pages.app-storage.browse-local', [
+            'listing' => $listing,
+            'browseError' => $browseError,
+            'shortcuts' => $this->localBrowser->folderShortcuts(),
+            'rootLabel' => $this->localBrowser->rootLabel(),
+            'filters' => [
                 'path' => $listing['path'] ?? $safePath,
             ],
             'inventoryService' => $this->inventoryService,

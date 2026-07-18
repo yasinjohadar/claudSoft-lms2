@@ -85,6 +85,9 @@
                     <a href="{{ route('app-storage.inventory.local-files') }}" class="btn btn-sm btn-outline-light">
                         <i class="fas fa-hdd me-1"></i> النسخ المحلية
                     </a>
+                    <a href="{{ route('app-storage.inventory.browse-local') }}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-folder-open me-1"></i> استعراض المحلي
+                    </a>
                 </div>
             </div>
         </div>

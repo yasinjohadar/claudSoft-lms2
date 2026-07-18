@@ -164,6 +164,9 @@
                     <a href="{{ route('app-storage.inventory.cloud-files') }}" class="btn btn-sm btn-light text-dark fw-semibold">
                         <i class="fas fa-cloud me-1"></i> استعراض السحابة
                     </a>
+                    <a href="{{ route('app-storage.inventory.browse-local') }}" class="btn btn-sm btn-light text-dark fw-semibold">
+                        <i class="fas fa-folder-open me-1"></i> استعراض المحلي
+                    </a>
                     <a href="{{ route('app-storage.inventory.local-files') }}" class="btn btn-sm btn-light text-dark fw-semibold">
                         <i class="fas fa-hdd me-1"></i> إدارة النسخ المحلية
                     </a>
