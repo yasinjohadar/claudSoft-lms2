@@ -59,7 +59,7 @@ class StorageLocationResolver
                 'storage_name' => 'Laravel public disk',
                 'driver' => 'local',
                 'is_cloud' => false,
-                'size' => (int) \Illuminate\Support\Facades\Storage::disk('public')->size($path),
+                'size' => $this->storageManager->legacyPublicSize($path),
             ];
         }
 

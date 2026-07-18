@@ -826,7 +826,7 @@ class AppStorageManager
                 return true;
             }
 
-            if ($disk === 'public' && Storage::disk('public')->exists($candidatePath)) {
+            if ($disk === 'public' && $this->legacyPublicExists($candidatePath)) {
                 return true;
             }
         }
@@ -900,14 +900,23 @@ class AppStorageManager
             ->values();
     }
 
+    public function legacyPublicPhysicalPath(string $path): string
+    {
+        $path = ltrim(str_replace(['\\', '..'], ['/', ''], $path), '/');
+
+        return storage_path('app/public/'.$path);
+    }
+
     public function getLegacyPublicContent(string $path): ?string
     {
         try {
-            if (! Storage::disk('public')->exists($path)) {
+            $fullPath = $this->legacyPublicPhysicalPath($path);
+
+            if (! is_file($fullPath)) {
                 return null;
             }
 
-            $content = Storage::disk('public')->get($path);
+            $content = file_get_contents($fullPath);
 
             return ($content !== false && $content !== '') ? $content : null;
         } catch (\Exception $e) {
@@ -917,20 +926,19 @@ class AppStorageManager
 
     public function deleteLegacyPublic(string $path): bool
     {
-        try {
-            return Storage::disk('public')->delete($path);
-        } catch (\Exception $e) {
-            return false;
-        }
+        return $this->deletePhysicalFileAtRoot(storage_path('app/public'), ltrim($path, '/'));
     }
 
     public function legacyPublicExists(string $path): bool
     {
-        try {
-            return Storage::disk('public')->exists($path);
-        } catch (\Exception $e) {
-            return false;
-        }
+        return is_file($this->legacyPublicPhysicalPath($path));
+    }
+
+    public function legacyPublicSize(string $path): int
+    {
+        $fullPath = $this->legacyPublicPhysicalPath($path);
+
+        return is_file($fullPath) ? (int) filesize($fullPath) : 0;
     }
 
     /**
@@ -980,17 +988,12 @@ class AppStorageManager
     public function deleteLegacyPublicCopy(string $path): bool
     {
         $path = ltrim($path, '/');
-        $removed = false;
 
-        if ($this->legacyPublicExists($path)) {
-            $removed = $this->deleteLegacyPublic($path) || $removed;
+        if (! $this->legacyPublicExists($path)) {
+            return true;
         }
 
-        if ($this->legacyPublicExists($path)) {
-            $removed = $this->deletePhysicalFileAtRoot(storage_path('app/public'), $path) || $removed;
-        }
-
-        return $removed || ! $this->legacyPublicExists($path);
+        return $this->deleteLegacyPublic($path) && ! $this->legacyPublicExists($path);
     }
 
     public function deletePhysicalFileAtRoot(string $rootDirectory, string $path): bool
