@@ -70,10 +70,10 @@ return array (
   11 => 
   array (
     'code' => '+20',
-    'name_ar' => 'مصر',
+    'name_ar' => 'مصر العربية',
     'iso' => 'EG',
   ),
-  11 => 
+  43 => 
   array (
     'code' => '+218',
     'name_ar' => 'ليبيا',
