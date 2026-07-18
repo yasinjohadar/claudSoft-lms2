@@ -33,6 +33,11 @@
                                 @else
                                     <span>{{ $initial }}</span>
                                 @endif
+                                @if($course->image)
+                                    @include('admin.components.storage-location-badge', [
+                                        'location' => $course->image_storage ?? null,
+                                    ])
+                                @endif
                             </div>
                             <div class="min-w-0">
                                 <a href="{{ route('courses.show', $course->id) }}"

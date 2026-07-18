@@ -12,6 +12,7 @@ use App\Models\Lesson;
 use App\Models\Resource;
 use App\Models\User;
 use App\Services\Storage\StorageHelperService;
+use App\Services\Storage\StorageLocationResolver;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,18 @@ class CourseController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             $courses = $query->paginate($request->get('per_page', 15));
+
+            $locationResolver = app(StorageLocationResolver::class);
+            $courses->through(function (Course $course) use ($locationResolver) {
+                if ($course->image) {
+                    $course->setAttribute(
+                        'image_storage',
+                        $locationResolver->resolve('course_images', $course->image)
+                    );
+                }
+
+                return $course;
+            });
 
             // Get filter options
             $categories = CourseCategory::all();
