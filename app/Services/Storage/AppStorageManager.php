@@ -699,6 +699,92 @@ class AppStorageManager
         }
     }
 
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    public function resolveLocalConfigsForInventory(string $disk): Collection
+    {
+        $chain = $this->resolveFailoverStorages($disk);
+
+        if ($chain->isNotEmpty()) {
+            return $chain
+                ->filter(fn (AppStorageConfig $config) => $config->driver === 'local')
+                ->unique('id')
+                ->values();
+        }
+
+        return AppStorageConfig::query()
+            ->where('is_active', true)
+            ->where('driver', 'local')
+            ->orderByDesc('priority')
+            ->get();
+    }
+
+    public function getLocalConfigRoot(AppStorageConfig $config): string
+    {
+        $driverConfig = $config->getDecryptedConfig();
+
+        return storage_path('app/'.ltrim((string) ($driverConfig['path'] ?? 'public'), '/'));
+    }
+
+    public function deleteLocalFromConfig(AppStorageConfig $config, string $path): bool
+    {
+        $path = ltrim($path, '/');
+        $removed = false;
+
+        if ($this->existsOnConfig($config, $path)) {
+            $removed = $this->deleteFromConfig($config, $path) || $removed;
+        }
+
+        if ($this->existsOnConfig($config, $path)) {
+            $removed = $this->deletePhysicalFileAtRoot($this->getLocalConfigRoot($config), $path) || $removed;
+        }
+
+        return $removed || ! $this->existsOnConfig($config, $path);
+    }
+
+    public function deleteLegacyPublicCopy(string $path): bool
+    {
+        $path = ltrim($path, '/');
+        $removed = false;
+
+        if ($this->legacyPublicExists($path)) {
+            $removed = $this->deleteLegacyPublic($path) || $removed;
+        }
+
+        if ($this->legacyPublicExists($path)) {
+            $removed = $this->deletePhysicalFileAtRoot(storage_path('app/public'), $path) || $removed;
+        }
+
+        return $removed || ! $this->legacyPublicExists($path);
+    }
+
+    public function deletePhysicalFileAtRoot(string $rootDirectory, string $path): bool
+    {
+        $path = ltrim(str_replace(['\\', '..'], ['/', ''], $path), '/');
+        if ($path === '') {
+            return false;
+        }
+
+        $full = rtrim(str_replace(['\\', '..'], ['/', ''], $rootDirectory), '/').'/'.$path;
+        $realBase = realpath($rootDirectory);
+        $realFile = realpath($full);
+
+        if ($realBase === false) {
+            return is_file($full) ? @unlink($full) : false;
+        }
+
+        if ($realFile === false) {
+            return is_file($full) ? @unlink($full) : false;
+        }
+
+        if (! str_starts_with($realFile, $realBase)) {
+            return false;
+        }
+
+        return is_file($realFile) ? @unlink($realFile) : false;
+    }
+
     private function resolveMimeType(Filesystem $storage, string $path): string
     {
         try {

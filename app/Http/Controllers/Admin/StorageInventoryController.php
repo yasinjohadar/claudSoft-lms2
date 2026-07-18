@@ -394,19 +394,40 @@ class StorageInventoryController extends Controller
             sourceKey: $validated['filter_source'] ?? null,
         );
 
-        return redirect()
-            ->route('app-storage.inventory.local-files', array_filter([
-                'disk' => $validated['filter_disk'] ?? null,
-                'source' => $validated['filter_source'] ?? null,
-                'status' => $validated['filter_status'] ?? null,
-            ]))
-            ->with('success', sprintf(
-                'نتيجة حذف المحلي: %d نجح، %d تُخطى، %d فشل. (السحابة لم تُمس)',
-                $report['cleaned'],
-                $report['skipped'],
-                $report['failed']
-            ))
-            ->with('storage_local_delete', $report);
+        $redirect = redirect()->route('app-storage.inventory.local-files', array_filter([
+            'disk' => $validated['filter_disk'] ?? null,
+            'source' => $validated['filter_source'] ?? null,
+            'status' => $validated['filter_status'] ?? null,
+        ]))->with('storage_local_delete', $report);
+
+        $summaryMessage = sprintf(
+            'نتيجة حذف المحلي: %d نجح، %d تُخطى، %d فشل. (السحابة لم تُمس)',
+            $report['cleaned'],
+            $report['skipped'],
+            $report['failed']
+        );
+
+        $firstFailure = collect($report['details'] ?? [])
+            ->first(fn (array $detail) => ($detail['action'] ?? '') === 'failed');
+
+        if (($report['cleaned'] ?? 0) > 0 && ($report['failed'] ?? 0) === 0) {
+            return $redirect->with('success', $summaryMessage);
+        }
+
+        if (($report['failed'] ?? 0) > 0) {
+            $detailMessage = $firstFailure['message'] ?? '';
+
+            return $redirect->with('error', $summaryMessage.($detailMessage ? ' — '.$detailMessage : ''));
+        }
+
+        if (($report['skipped'] ?? 0) > 0) {
+            $detailMessage = collect($report['details'] ?? [])
+                ->first(fn (array $detail) => ($detail['action'] ?? '') === 'skipped')['message'] ?? '';
+
+            return $redirect->with('warning', $summaryMessage.($detailMessage ? ' — '.$detailMessage : ''));
+        }
+
+        return $redirect->with('warning', $summaryMessage);
     }
 
     public function export(Request $request): StreamedResponse|JsonResponse|Response

@@ -271,15 +271,6 @@ class StorageBulkMigrationService
 
         $after = $this->locationResolver->resolve($logicalDisk, $path);
         $localStillThere = collect($after['locations'])->contains(fn (array $hit) => empty($hit['is_cloud']));
-        $cloudStillThere = collect($after['locations'])->contains(fn (array $hit) => ! empty($hit['is_cloud']));
-
-        // If resolver lost the cloud hit briefly, re-check known cloud backends directly.
-        if (! $cloudStillThere && $cloudHitsBefore !== []) {
-            $cloudStillThere = $this->cloudHitsStillExist($cloudHitsBefore, $path);
-            if ($cloudStillThere && ! $localStillThere) {
-                $after['status'] = StorageLocationResolver::STATUS_CLOUD_ONLY;
-            }
-        }
 
         if ($localStillThere) {
             $remaining = collect($after['locations'])
@@ -298,47 +289,86 @@ class StorageBulkMigrationService
                 'success' => false,
                 'action' => 'failed',
                 'message' => 'فشلت إزالة المحلي — ما زال موجوداً في: '.($remaining ?: 'غير معروف')
-                    .' | محاولات الحذف: '.($deleteReport['summary'] ?? ''),
+                    .' | محاولات: '.($deleteReport['summary'] ?? ''),
                 'path' => $path,
                 'disk' => $logicalDisk,
                 'after_status' => $after['status'],
+                'delete_report' => $deleteReport,
             ];
         }
 
-        if ($location['status'] === StorageLocationResolver::STATUS_BOTH && ! $cloudStillThere) {
-            Log::warning('Storage local deleted but cloud not confirmed after', [
-                'disk' => $logicalDisk,
-                'path' => $path,
-                'delete_report' => $deleteReport,
-            ]);
+        if ($location['status'] === StorageLocationResolver::STATUS_BOTH) {
+            if ($cloudHitsBefore !== []) {
+                Log::info('Storage local duplicate cleaned', [
+                    'disk' => $logicalDisk,
+                    'path' => $path,
+                    'after_status' => $after['status'],
+                    'delete_report' => $deleteReport,
+                ]);
+
+                return [
+                    'success' => true,
+                    'action' => 'cleaned',
+                    'message' => 'حُذفت النسخة المحلية — بقيت السحابة فقط',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $after['status'] ?: StorageLocationResolver::STATUS_CLOUD_ONLY,
+                    'delete_report' => $deleteReport,
+                ];
+            }
+
+            $cloudStillThere = collect($after['locations'])->contains(fn (array $hit) => ! empty($hit['is_cloud']))
+                || $this->cloudHitsStillExist($cloudHitsBefore, $path);
+
+            if ($cloudStillThere) {
+                return [
+                    'success' => true,
+                    'action' => 'cleaned',
+                    'message' => 'حُذفت النسخة المحلية — بقيت السحابة فقط',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $after['status'] ?: StorageLocationResolver::STATUS_CLOUD_ONLY,
+                    'delete_report' => $deleteReport,
+                ];
+            }
 
             return [
                 'success' => false,
                 'action' => 'failed',
-                'message' => 'حُذف المحلي لكن تعذّر تأكيد السحابة بعدها — راجع الملف على S3 يدوياً',
+                'message' => 'تعذّر تأكيد السحابة قبل/بعد الحذف — لم يُحذف المحلي',
                 'path' => $path,
                 'disk' => $logicalDisk,
                 'after_status' => $after['status'],
+                'delete_report' => $deleteReport,
             ];
         }
 
-        Log::info('Storage local copy cleaned', [
-            'disk' => $logicalDisk,
-            'path' => $path,
-            'after_status' => $after['status'],
-            'delete_report' => $deleteReport,
-            'allow_orphan' => $allowOrphanLocal,
-        ]);
+        if ($location['status'] === StorageLocationResolver::STATUS_LOCAL_ONLY && $allowOrphanLocal) {
+            Log::warning('Storage local-only file deleted without cloud copy', [
+                'disk' => $logicalDisk,
+                'path' => $path,
+                'after_status' => $after['status'],
+            ]);
+
+            return [
+                'success' => true,
+                'action' => 'cleaned',
+                'message' => 'حُذف المحلي فقط (لم تكن هناك نسخة سحابية)',
+                'path' => $path,
+                'disk' => $logicalDisk,
+                'after_status' => $after['status'],
+                'delete_report' => $deleteReport,
+            ];
+        }
 
         return [
-            'success' => true,
-            'action' => 'cleaned',
-            'message' => $cloudStillThere
-                ? 'حُذفت النسخة المحلية — بقيت السحابة فقط'
-                : 'حُذف المحلي فقط (لم تكن هناك نسخة سحابية)',
+            'success' => false,
+            'action' => 'failed',
+            'message' => 'لم تكتمل عملية الحذف — الحالة بعدها: '.($after['status'] ?? 'unknown'),
             'path' => $path,
             'disk' => $logicalDisk,
             'after_status' => $after['status'],
+            'delete_report' => $deleteReport,
         ];
     }
 
@@ -570,8 +600,25 @@ class StorageBulkMigrationService
     {
         $attempts = [];
         $location ??= $this->locationResolver->resolve($logicalDisk, $path);
-        $mappedLocals = $this->storageManager->resolveLocalStorages($logicalDisk)->keyBy('id');
         $seenConfigIds = [];
+
+        foreach ($this->storageManager->resolveLocalConfigsForInventory($logicalDisk) as $localConfig) {
+            if ($this->locationResolver->isCloudDriver($localConfig->driver)) {
+                continue;
+            }
+
+            if (! $this->storageManager->existsOnConfig($localConfig, $path)
+                && ! is_file($this->storageManager->getLocalConfigRoot($localConfig).'/'.ltrim($path, '/'))) {
+                continue;
+            }
+
+            $seenConfigIds[$localConfig->id] = true;
+            $ok = $this->storageManager->deleteLocalFromConfig($localConfig, $path);
+            $attempts[] = [
+                'target' => $localConfig->name.'#'.$localConfig->id,
+                'ok' => $ok,
+            ];
+        }
 
         foreach ($location['locations'] ?? [] as $hit) {
             if (! empty($hit['is_cloud'])) {
@@ -581,72 +628,34 @@ class StorageBulkMigrationService
             $configId = $hit['storage_config_id'] ?? null;
 
             if ($configId === null) {
-                $ok = $this->storageManager->deleteLegacyPublic($path);
-                $physical = $this->deletePhysicalPublicFile($path);
+                $ok = $this->storageManager->deleteLegacyPublicCopy($path);
                 $attempts[] = [
                     'target' => 'legacy_public',
-                    'ok' => $ok || $physical,
-                    'flysystem' => $ok,
-                    'physical' => $physical,
+                    'ok' => $ok,
                 ];
 
                 continue;
             }
 
-            $seenConfigIds[$configId] = true;
-            $config = $mappedLocals->get($configId) ?? AppStorageConfig::find($configId);
-
-            if (! $config) {
-                $attempts[] = ['target' => 'config_'.$configId, 'ok' => false, 'error' => 'config missing'];
-
+            if (isset($seenConfigIds[$configId])) {
                 continue;
             }
 
-            if ($this->locationResolver->isCloudDriver($config->driver)) {
-                $attempts[] = ['target' => $config->name, 'ok' => false, 'error' => 'skipped cloud config'];
-
+            $config = AppStorageConfig::find($configId);
+            if (! $config || $this->locationResolver->isCloudDriver($config->driver)) {
                 continue;
             }
 
-            $existed = $this->storageManager->existsOnConfig($config, $path);
-            $ok = $existed ? $this->storageManager->deleteFromConfig($config, $path) : true;
+            $ok = $this->storageManager->deleteLocalFromConfig($config, $path);
             $attempts[] = [
-                'target' => $config->name.'#'.$config->id,
-                'ok' => $ok,
-                'existed' => $existed,
-            ];
-        }
-
-        foreach ($mappedLocals as $localConfig) {
-            if (isset($seenConfigIds[$localConfig->id])) {
-                continue;
-            }
-
-            if (! $this->storageManager->existsOnConfig($localConfig, $path)) {
-                continue;
-            }
-
-            $ok = $this->storageManager->deleteFromConfig($localConfig, $path);
-            $attempts[] = [
-                'target' => 'mapped:'.$localConfig->name.'#'.$localConfig->id,
+                'target' => 'hit:'.$config->name.'#'.$config->id,
                 'ok' => $ok,
             ];
         }
 
         if ($this->storageManager->legacyPublicExists($path)) {
-            $ok = $this->storageManager->deleteLegacyPublic($path);
-            $physical = $this->deletePhysicalPublicFile($path);
-            $attempts[] = [
-                'target' => 'legacy_public_fallback',
-                'ok' => $ok || $physical,
-                'flysystem' => $ok,
-                'physical' => $physical,
-            ];
-        } else {
-            $physical = $this->deletePhysicalPublicFile($path);
-            if ($physical) {
-                $attempts[] = ['target' => 'physical_public', 'ok' => true];
-            }
+            $ok = $this->storageManager->deleteLegacyPublicCopy($path);
+            $attempts[] = ['target' => 'legacy_public_fallback', 'ok' => $ok];
         }
 
         $summary = collect($attempts)
@@ -657,35 +666,6 @@ class StorageBulkMigrationService
             'attempts' => $attempts,
             'summary' => $summary !== '' ? $summary : 'no-targets',
         ];
-    }
-
-    /**
-     * Last-resort unlink under storage/app/public (Laravel public disk root).
-     */
-    protected function deletePhysicalPublicFile(string $path): bool
-    {
-        $path = ltrim(str_replace(['\\', '..'], ['/', ''], $path), '/');
-        if ($path === '') {
-            return false;
-        }
-
-        $full = storage_path('app/public/'.$path);
-        $realBase = realpath(storage_path('app/public'));
-        $realFile = realpath($full);
-
-        if ($realBase === false || $realFile === false) {
-            if (is_file($full)) {
-                return @unlink($full);
-            }
-
-            return false;
-        }
-
-        if (! str_starts_with($realFile, $realBase)) {
-            return false;
-        }
-
-        return is_file($realFile) ? @unlink($realFile) : false;
     }
 
     protected function progressCacheKey(string $migrationId): string
