@@ -161,6 +161,9 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('app-storage.inventory.cloud-files') }}" class="btn btn-sm btn-light text-dark fw-semibold">
+                        <i class="fas fa-cloud me-1"></i> استعراض السحابة
+                    </a>
                     <a href="{{ route('app-storage.inventory.local-files') }}" class="btn btn-sm btn-light text-dark fw-semibold">
                         <i class="fas fa-hdd me-1"></i> إدارة النسخ المحلية
                     </a>

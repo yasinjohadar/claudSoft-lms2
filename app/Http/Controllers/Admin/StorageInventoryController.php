@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Storage\StorageBulkMigrationService;
+use App\Services\Storage\StorageCloudBrowserService;
 use App\Services\Storage\StorageFileCatalogService;
 use App\Services\Storage\StorageInventoryService;
 use App\Services\Storage\StorageLocationResolver;
@@ -20,6 +21,7 @@ class StorageInventoryController extends Controller
         protected StorageInventoryService $inventoryService,
         protected StorageBulkMigrationService $migrationService,
         protected StorageFileCatalogService $catalogService,
+        protected StorageCloudBrowserService $cloudBrowser,
     ) {}
 
     public function index(Request $request): View
@@ -512,5 +514,46 @@ class StorageInventoryController extends Controller
             $validated['source'] ?? null,
             $validated['status'] ?? $defaultStatus,
         );
+    }
+
+    public function cloudFiles(Request $request): View
+    {
+        $configs = $this->cloudBrowser->availableConfigs();
+        $requestedConfigId = $request->integer('config') ?: null;
+        $selectedConfig = $requestedConfigId
+            ? $configs->firstWhere('id', $requestedConfigId)
+            : $configs->first();
+
+        $path = (string) $request->get('path', '');
+        $listing = null;
+        $browseError = null;
+        $safePath = '';
+
+        try {
+            $safePath = $this->cloudBrowser->normalizePath($path);
+        } catch (\InvalidArgumentException $e) {
+            $browseError = $e->getMessage();
+        }
+
+        if ($selectedConfig && $browseError === null) {
+            try {
+                $listing = $this->cloudBrowser->browse($selectedConfig, $safePath);
+            } catch (\Throwable $e) {
+                $browseError = 'تعذّر قراءة محتويات السحابة: '.$e->getMessage();
+            }
+        }
+
+        return view('admin.pages.app-storage.cloud-files', [
+            'configs' => $configs,
+            'selectedConfig' => $selectedConfig,
+            'listing' => $listing,
+            'browseError' => $browseError,
+            'shortcuts' => $this->cloudBrowser->folderShortcuts(),
+            'filters' => [
+                'config' => $selectedConfig?->id,
+                'path' => $listing['path'] ?? $safePath,
+            ],
+            'inventoryService' => $this->inventoryService,
+        ]);
     }
 }

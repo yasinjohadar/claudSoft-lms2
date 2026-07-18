@@ -73,6 +73,9 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('app-storage.inventory.cloud-files') }}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-cloud me-1"></i> استعراض السحابة
+                    </a>
                     <a href="{{ route('app-storage.inventory.index') }}" class="btn btn-sm btn-outline-light">
                         ← العودة للجرد
                     </a>
