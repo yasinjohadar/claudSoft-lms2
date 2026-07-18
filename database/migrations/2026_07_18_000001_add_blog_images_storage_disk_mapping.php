@@ -32,9 +32,7 @@ return new class extends Migration
             'disk_name' => 'blog_images',
             'label' => 'Blog Images Storage',
             'primary_storage_id' => ($cloudStorage ?? $localStorage)->id,
-            'fallback_storage_ids' => $cloudStorage && $localStorage
-                ? [$localStorage->id]
-                : null,
+            'fallback_storage_ids' => null,
             'file_types' => ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
             'is_active' => true,
         ]);

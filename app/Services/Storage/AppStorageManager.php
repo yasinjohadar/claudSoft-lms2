@@ -27,6 +27,16 @@ class AppStorageManager
      */
     public function getDisk(string $diskName): Filesystem
     {
+        if ($this->isCloudOnlyDisk($diskName)) {
+            $cloud = $this->resolveCloudStoragesForDisk($diskName)->first();
+
+            if ($cloud) {
+                return AppStorageFactory::create($cloud);
+            }
+
+            Log::error("No active cloud storage found for cloud-only disk {$diskName}");
+        }
+
         $mapping = StorageDiskMapping::where('disk_name', $diskName)
             ->where('is_active', true)
             ->first();
@@ -164,16 +174,26 @@ class AppStorageManager
         $storages = $this->resolveFailoverStorages($disk);
 
         if ($storages->isEmpty()) {
-            try {
-                $storage = $this->getDisk($disk);
-                $storedPath = $storage->putFile($directory, $file);
+            if ($this->isCloudOnlyDisk($disk)) {
+                $storages = $this->resolveCloudStoragesForDisk($disk);
+            } else {
+                try {
+                    $storage = $this->getDisk($disk);
+                    $storedPath = $storage->putFile($directory, $file);
 
-                return $storedPath ?: null;
-            } catch (\Exception $e) {
-                Log::error("Storage uploaded file failed for disk {$disk}: " . $e->getMessage());
+                    return $storedPath ?: null;
+                } catch (\Exception $e) {
+                    Log::error("Storage uploaded file failed for disk {$disk}: " . $e->getMessage());
 
-                return null;
+                    return null;
+                }
             }
+        }
+
+        if ($storages->isEmpty()) {
+            Log::error("No storage target available for disk {$disk}");
+
+            return null;
         }
 
         foreach ($storages as $storageConfig) {
@@ -214,16 +234,26 @@ class AppStorageManager
         $storages = $this->resolveFailoverStorages($disk);
 
         if ($storages->isEmpty()) {
-            try {
-                $storage = $this->getDisk($disk);
-                $storedPath = $storage->putFileAs($directory, $file, $filename);
+            if ($this->isCloudOnlyDisk($disk)) {
+                $storages = $this->resolveCloudStoragesForDisk($disk);
+            } else {
+                try {
+                    $storage = $this->getDisk($disk);
+                    $storedPath = $storage->putFileAs($directory, $file, $filename);
 
-                return $storedPath ?: null;
-            } catch (\Exception $e) {
-                Log::error("Storage uploaded file-as failed for disk {$disk}: " . $e->getMessage());
+                    return $storedPath ?: null;
+                } catch (\Exception $e) {
+                    Log::error("Storage uploaded file-as failed for disk {$disk}: " . $e->getMessage());
 
-                return null;
+                    return null;
+                }
             }
+        }
+
+        if ($storages->isEmpty()) {
+            Log::error("No storage target available for disk {$disk}");
+
+            return null;
         }
 
         foreach ($storages as $storageConfig) {
@@ -391,9 +421,11 @@ class AppStorageManager
             ->first();
 
         if ($mapping && $mapping->primaryStorage) {
-            return collect([$mapping->primaryStorage])
+            $chain = collect([$mapping->primaryStorage])
                 ->merge($mapping->getFallbackStorages())
                 ->filter();
+
+            return $this->applyDiskStoragePolicy($disk, $chain);
         }
 
         if ($disk === 'payment_receipts') {
@@ -411,10 +443,59 @@ class AppStorageManager
                 $chain = $chain->push($local);
             }
 
-            return $chain->filter();
+            return $this->applyDiskStoragePolicy($disk, $chain->filter());
+        }
+
+        if ($this->isCloudOnlyDisk($disk)) {
+            return $this->resolveCloudStoragesForDisk($disk);
         }
 
         return $this->resolveGlobalFailoverStorages();
+    }
+
+    public function isCloudOnlyDisk(string $disk): bool
+    {
+        return in_array($disk, config('storage_inventory.cloud_only_disks', []), true);
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    public function resolveCloudStoragesForDisk(string $disk): Collection
+    {
+        $mapping = StorageDiskMapping::where('disk_name', $disk)
+            ->where('is_active', true)
+            ->first();
+
+        $chain = collect([$mapping?->primaryStorage])
+            ->merge($mapping ? $mapping->getFallbackStorages() : collect())
+            ->filter();
+
+        $cloudFromMapping = $this->applyDiskStoragePolicy($disk, $chain);
+
+        if ($cloudFromMapping->isNotEmpty()) {
+            return $cloudFromMapping;
+        }
+
+        return $this->resolveGlobalCloudStorages();
+    }
+
+    /**
+     * @param  Collection<int, AppStorageConfig>  $chain
+     * @return Collection<int, AppStorageConfig>
+     */
+    protected function applyDiskStoragePolicy(string $disk, Collection $chain): Collection
+    {
+        if (! $this->isCloudOnlyDisk($disk)) {
+            return $chain->unique('id')->values();
+        }
+
+        $cloudDrivers = config('storage_inventory.cloud_drivers', ['s3']);
+
+        return $chain
+            ->filter(fn (AppStorageConfig $config) => in_array($config->driver, $cloudDrivers, true))
+            ->unique('id')
+            ->values();
     }
 
     /**

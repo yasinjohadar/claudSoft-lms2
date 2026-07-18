@@ -220,4 +220,13 @@ return [
 
     'migration_progress_cache_key' => 'storage_migration_progress',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Logical disks that must never write to local storage
+    |--------------------------------------------------------------------------
+    */
+    'cloud_only_disks' => [
+        'blog_images',
+    ],
+
 ];
