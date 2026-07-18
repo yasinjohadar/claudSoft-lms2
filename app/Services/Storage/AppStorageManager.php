@@ -254,25 +254,51 @@ class AppStorageManager
     public function retrieveWithFailover(string $disk, string $path): ?array
     {
         $path = ltrim($path, '/');
+        $mappedChain = $this->resolveFailoverStorages($disk);
+        $mappedIds = $mappedChain->pluck('id')->all();
 
-        $chain = $this->resolveFailoverStorages($disk);
-
-        if ($chain->isEmpty()) {
-            $cloud = AppStorageConfig::query()
-                ->where('is_active', true)
-                ->whereIn('driver', config('storage_inventory.cloud_drivers', ['s3']))
-                ->orderByDesc('priority')
-                ->get();
-
-            $local = AppStorageConfig::query()
-                ->where('is_active', true)
-                ->where('driver', 'local')
-                ->orderByDesc('priority')
-                ->get();
-
-            $chain = $cloud->merge($local)->unique('id')->values();
+        foreach ($this->resolvePathCandidates($path) as $candidatePath) {
+            $result = $this->retrieveFromStorageChain($mappedChain, $disk, $candidatePath);
+            if ($result !== null) {
+                return $result;
+            }
         }
 
+        $extraCloud = $this->resolveGlobalCloudStorages()
+            ->reject(fn (AppStorageConfig $config) => in_array($config->id, $mappedIds, true))
+            ->values();
+
+        if ($extraCloud->isNotEmpty()) {
+            foreach ($this->resolvePathCandidates($path) as $candidatePath) {
+                $result = $this->retrieveFromStorageChain($extraCloud, $disk, $candidatePath);
+                if ($result !== null) {
+                    return $result;
+                }
+            }
+        }
+
+        if ($this->shouldServeLegacyPublic($disk)) {
+            foreach ($this->resolvePathCandidates($path) as $candidatePath) {
+                $content = $this->getLegacyPublicContent($candidatePath);
+
+                if ($content !== null) {
+                    return [
+                        'content' => $content,
+                        'mime_type' => $this->resolveMimeType(Storage::disk('public'), $candidatePath),
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, AppStorageConfig>  $chain
+     * @return array{content: string, mime_type: string}|null
+     */
+    protected function retrieveFromStorageChain(Collection $chain, string $disk, string $path): ?array
+    {
         foreach ($chain as $storageConfig) {
             try {
                 $storage = AppStorageFactory::create($storageConfig);
@@ -291,18 +317,56 @@ class AppStorageManager
             }
         }
 
-        if ($this->shouldServeLegacyPublic($disk)) {
-            $content = $this->getLegacyPublicContent($path);
+        return null;
+    }
 
-            if ($content !== null) {
-                return [
-                    'content' => $content,
-                    'mime_type' => $this->resolveMimeType(Storage::disk('public'), $path),
-                ];
+    /**
+     * @return array<int, string>
+     */
+    public function resolvePathCandidates(string $path): array
+    {
+        $path = ltrim($path, '/');
+        $candidates = [$path];
+        $basename = basename($path);
+
+        if ($basename !== $path) {
+            $candidates[] = $basename;
+        }
+
+        if (! str_contains($path, '/')) {
+            foreach (['blog/images/', 'courses/images/', 'courses/thumbnails/', 'gifts/images/'] as $prefix) {
+                $candidates[] = $prefix.$path;
             }
         }
 
-        return null;
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    protected function resolveGlobalCloudStorages(): Collection
+    {
+        return AppStorageConfig::query()
+            ->where('is_active', true)
+            ->whereIn('driver', config('storage_inventory.cloud_drivers', ['s3']))
+            ->orderByDesc('priority')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    protected function resolveGlobalFailoverStorages(): Collection
+    {
+        $cloud = $this->resolveGlobalCloudStorages();
+        $local = AppStorageConfig::query()
+            ->where('is_active', true)
+            ->where('driver', 'local')
+            ->orderByDesc('priority')
+            ->get();
+
+        return $cloud->merge($local)->unique('id')->values();
     }
 
     protected function shouldServeLegacyPublic(string $logicalDisk): bool
@@ -350,7 +414,7 @@ class AppStorageManager
             return $chain->filter();
         }
 
-        return collect();
+        return $this->resolveGlobalFailoverStorages();
     }
 
     /**
@@ -630,14 +694,33 @@ class AppStorageManager
 
     public function fileExistsWithFailover(string $disk, string $path): bool
     {
-        foreach ($this->resolveFailoverStorages($disk) as $config) {
-            if ($this->existsOnConfig($config, $path)) {
+        $path = ltrim($path, '/');
+        $mappedChain = $this->resolveFailoverStorages($disk);
+        $mappedIds = $mappedChain->pluck('id')->all();
+        $extraCloud = $this->resolveGlobalCloudStorages()
+            ->reject(fn (AppStorageConfig $config) => in_array($config->id, $mappedIds, true))
+            ->values();
+
+        foreach ($this->resolvePathCandidates($path) as $candidatePath) {
+            foreach ($mappedChain as $config) {
+                if ($this->existsOnConfig($config, $candidatePath)) {
+                    return true;
+                }
+            }
+
+            foreach ($extraCloud as $config) {
+                if ($this->existsOnConfig($config, $candidatePath)) {
+                    return true;
+                }
+            }
+
+            if ($this->shouldServeLegacyPublic($disk) && $this->legacyPublicExists($candidatePath)) {
                 return true;
             }
-        }
 
-        if ($disk === 'public' && Storage::disk('public')->exists($path)) {
-            return true;
+            if ($disk === 'public' && Storage::disk('public')->exists($candidatePath)) {
+                return true;
+            }
         }
 
         return false;

@@ -122,35 +122,42 @@ if (!function_exists('serve_storage_image_response')) {
             // fall through to local file
         }
 
-        $path = storage_path('app/public/' . $localRelativePath);
+        $pathCandidates = app(\App\Services\Storage\AppStorageManager::class)
+            ->resolvePathCandidates($localRelativePath);
 
-        if (is_dir($path)) {
-            $innerFiles = array_values(array_filter(
-                scandir($path) ?: [],
-                fn (string $entry) => ! in_array($entry, ['.', '..'], true)
-                    && is_file($path . DIRECTORY_SEPARATOR . $entry)
-            ));
+        foreach ($pathCandidates as $candidatePath) {
+            $path = storage_path('app/public/' . $candidatePath);
 
-            if (count($innerFiles) === 1) {
-                $path = $path . DIRECTORY_SEPARATOR . $innerFiles[0];
-            } else {
-                abort(404, 'الصورة غير موجودة');
+            if (is_dir($path)) {
+                $innerFiles = array_values(array_filter(
+                    scandir($path) ?: [],
+                    fn (string $entry) => ! in_array($entry, ['.', '..'], true)
+                        && is_file($path . DIRECTORY_SEPARATOR . $entry)
+                ));
+
+                if (count($innerFiles) === 1) {
+                    $path = $path . DIRECTORY_SEPARATOR . $innerFiles[0];
+                } else {
+                    continue;
+                }
             }
+
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $mimeType = mime_content_type($path);
+            if (! in_array($mimeType, $allowedMimeTypes, true)) {
+                abort(403, 'نوع الملف غير مسموح');
+            }
+
+            return response()->file($path, [
+                'Content-Type' => $mimeType,
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
         }
 
-        if (! is_file($path)) {
-            abort(404, 'الصورة غير موجودة');
-        }
-
-        $mimeType = mime_content_type($path);
-        if (! in_array($mimeType, $allowedMimeTypes, true)) {
-            abort(403, 'نوع الملف غير مسموح');
-        }
-
-        return response()->file($path, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000, immutable',
-        ]);
+        abort(404, 'الصورة غير موجودة');
     }
 }
 
