@@ -98,7 +98,8 @@ class StorageCleanupTest extends TestCase
         ];
 
         $resolver->shouldReceive('resolve')->twice()->andReturn($both, $after);
-        $manager->shouldReceive('resolveLocalStorages')->once()->andReturn(collect([$local]));
+        $resolver->shouldReceive('isCloudDriver')->andReturnUsing(fn (string $driver) => $driver === 's3');
+        $manager->shouldReceive('resolveLocalStorages')->andReturn(collect([$local]));
         $manager->shouldReceive('existsOnConfig')->with($local, 'payments/receipts/dup.jpg')->andReturn(true);
         $manager->shouldReceive('deleteFromConfig')->with($local, 'payments/receipts/dup.jpg')->once()->andReturn(true);
         $manager->shouldReceive('legacyPublicExists')->with('payments/receipts/dup.jpg')->andReturn(false);
