@@ -110,6 +110,24 @@ class SessionActivityTrackingTest extends TestCase
             ]);
 
         $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+    }
+
+    public function test_invalid_activity_type_from_form_post_does_not_flash_session_errors(): void
+    {
+        $user = User::factory()->create();
+        $session = $this->makeActiveSession($user);
+
+        $response = $this->actingAs($user)
+            ->withSession(['user_session_id' => $session->id])
+            ->post(route('session.track'), [
+                'activity_type' => 'session_end',
+                '_token' => csrf_token(),
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+        $this->assertFalse(session()->has('errors'));
     }
 
     public function test_client_disconnect_is_accepted(): void

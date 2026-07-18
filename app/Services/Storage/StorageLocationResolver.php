@@ -118,7 +118,14 @@ class StorageLocationResolver
 
     protected function shouldProbeLegacyPublic(string $logicalDisk): bool
     {
-        return in_array($logicalDisk, ['public', 'blog_images', 'course_thumbnails', 'gift_images', 'images'], true);
+        return in_array($logicalDisk, [
+            'public',
+            'blog_images',
+            'course_thumbnails',
+            'gift_images',
+            'images',
+            'payment_receipts',
+        ], true);
     }
 
     protected function normalizePath(string $path): string

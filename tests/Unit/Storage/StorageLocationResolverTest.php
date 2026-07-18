@@ -55,6 +55,28 @@ class StorageLocationResolverTest extends TestCase
         $result = $resolver->resolve('public', 'courses/images/x.jpg');
 
         $this->assertSame(StorageLocationResolver::STATUS_BOTH, $result['status']);
+        $this->assertCount(2, $result['locations']);
+    }
+
+    public function test_classifies_local_only_when_only_local_backend_has_file(): void
+    {
+        $local = new AppStorageConfig(['name' => 'Local', 'driver' => 'local']);
+        $local->id = 21;
+        $cloud = new AppStorageConfig(['name' => 'S3', 'driver' => 's3']);
+        $cloud->id = 22;
+
+        $manager = Mockery::mock(AppStorageManager::class);
+        $manager->shouldReceive('resolveFailoverStorages')->andReturn(collect([$cloud, $local]));
+        $manager->shouldReceive('existsOnConfig')
+            ->andReturnUsing(fn (AppStorageConfig $config) => $config->id === $local->id);
+        $manager->shouldReceive('getFileSizeOnConfig')->andReturn(80);
+        $manager->shouldReceive('legacyPublicExists')->andReturn(false);
+
+        $resolver = new StorageLocationResolver($manager);
+        $result = $resolver->resolve('payment_receipts', 'payments/receipts/a.jpg');
+
+        $this->assertSame(StorageLocationResolver::STATUS_LOCAL_ONLY, $result['status']);
+        $this->assertFalse($result['locations'][0]['is_cloud']);
     }
 
     public function test_normalizes_storage_prefixed_paths(): void

@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 class StorageFileCatalogService
 {
@@ -19,11 +20,20 @@ class StorageFileCatalogService
                 continue;
             }
 
-            if ($disk !== null && $source['disk'] !== $disk) {
+            if ($disk !== null && ($source['disk'] ?? null) !== $disk && empty($source['disk_column'])) {
                 continue;
             }
 
-            $references = array_merge($references, $this->collectFromSource($source));
+            $collected = $this->collectFromSource($source);
+
+            if ($disk !== null) {
+                $collected = array_values(array_filter(
+                    $collected,
+                    fn (array $item) => ($item['disk'] ?? null) === $disk
+                ));
+            }
+
+            $references = array_merge($references, $collected);
         }
 
         return $references;
@@ -42,8 +52,8 @@ class StorageFileCatalogService
 
         $references = [];
 
-        foreach ($sourceKeys as $sourceKey) {
-            $references = array_merge($references, $this->collectReferences($sourceKey));
+        foreach ($sourceKeys as $key) {
+            $references = array_merge($references, $this->collectReferences($key));
         }
 
         return $references;
@@ -58,6 +68,23 @@ class StorageFileCatalogService
         $modelClass = $source['model'];
         $column = $source['column'];
         $pathFilter = $source['path_filter'] ?? null;
+        $diskColumn = $source['disk_column'] ?? null;
+
+        if (! class_exists($modelClass)) {
+            return [];
+        }
+
+        $table = (new $modelClass)->getTable();
+
+        if (! Schema::hasColumn($table, $column)) {
+            return [];
+        }
+
+        if ($diskColumn !== null && ! Schema::hasColumn($table, $diskColumn)) {
+            $diskColumn = null;
+        }
+
+        $select = array_values(array_unique(array_filter(['id', $column, $diskColumn])));
 
         $query = $modelClass::query()
             ->whereNotNull($column)
@@ -69,14 +96,22 @@ class StorageFileCatalogService
 
         $items = [];
 
-        $query->select(['id', $column])
+        $query->select($select)
             ->orderBy('id')
-            ->chunkById(200, function ($rows) use (&$items, $source, $column) {
+            ->chunkById(200, function ($rows) use (&$items, $source, $column, $diskColumn) {
                 foreach ($rows as $row) {
-                    $path = (string) $row->{$column};
+                    $path = trim((string) $row->{$column});
 
                     if ($path === '') {
                         continue;
+                    }
+
+                    $disk = $source['disk'] ?? 'public';
+                    if ($diskColumn !== null) {
+                        $fromRow = trim((string) ($row->{$diskColumn} ?? ''));
+                        if ($fromRow !== '') {
+                            $disk = $fromRow;
+                        }
                     }
 
                     $items[] = [
@@ -85,9 +120,9 @@ class StorageFileCatalogService
                         'entity_id' => $row->id,
                         'entity_label' => $source['label'].' #'.$row->id,
                         'entity_url' => $this->buildEntityUrl($source, $row->id),
-                        'disk' => $source['disk'],
+                        'disk' => $disk,
                         'path' => $path,
-                        'path_prefix' => $source['path_prefix'],
+                        'path_prefix' => $source['path_prefix'] ?? '',
                     ];
                 }
             });

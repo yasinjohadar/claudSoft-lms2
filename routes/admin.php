@@ -1547,6 +1547,9 @@ Route::prefix('admin')
             Route::get('/inventory', [StorageInventoryController::class, 'index'])->name('inventory.index');
             Route::post('/inventory/scan', [StorageInventoryController::class, 'scan'])->name('inventory.scan');
             Route::post('/inventory/migrate', [StorageInventoryController::class, 'migrate'])->name('inventory.migrate');
+            Route::post('/inventory/verify', [StorageInventoryController::class, 'verify'])->name('inventory.verify');
+            Route::post('/inventory/cleanup-local', [StorageInventoryController::class, 'cleanupLocal'])->name('inventory.cleanup-local');
+            Route::get('/inventory/export', [StorageInventoryController::class, 'export'])->name('inventory.export');
             Route::get('/inventory/progress', [StorageInventoryController::class, 'progress'])->name('inventory.progress');
         });
 

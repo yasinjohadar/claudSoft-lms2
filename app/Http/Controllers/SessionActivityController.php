@@ -83,7 +83,14 @@ class SessionActivityController extends Controller
         } catch (ValidationException $e) {
             $this->maybeWarnUnknownActivityType($request->input('activity_type'));
 
-            throw $e;
+            // Always JSON — never redirect-with-errors into the web session
+            // (sendBeacon/FormData has no Accept: application/json and would otherwise
+            // flash "activity type invalid" on the next admin page).
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid activity type',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Throwable $e) {
             Log::error('Failed to track activity from frontend', [
                 'error' => $e->getMessage(),
