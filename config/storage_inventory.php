@@ -218,6 +218,10 @@ return [
 
     'inventory_cache_ttl' => 600,
 
+    'capacity_cache_key' => 'storage_capacity_summary',
+
+    'capacity_cache_ttl' => 3600,
+
     'migration_progress_cache_key' => 'storage_migration_progress',
 
     'force_cloud_only' => env('STORAGE_FORCE_CLOUD_ONLY', true),

@@ -1553,6 +1553,7 @@ Route::prefix('admin')
             Route::post('/inventory/local-files/delete', [StorageInventoryController::class, 'deleteLocalFiles'])->name('inventory.local-files.delete');
             Route::get('/inventory/cloud-files', [StorageInventoryController::class, 'cloudFiles'])->name('inventory.cloud-files');
             Route::get('/inventory/browse-local', [StorageInventoryController::class, 'browseLocal'])->name('inventory.browse-local');
+            Route::post('/inventory/refresh-capacity', [StorageInventoryController::class, 'refreshCapacity'])->name('inventory.refresh-capacity');
             Route::get('/inventory/export', [StorageInventoryController::class, 'export'])->name('inventory.export');
             Route::get('/inventory/progress', [StorageInventoryController::class, 'progress'])->name('inventory.progress');
         });

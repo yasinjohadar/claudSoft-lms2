@@ -102,6 +102,11 @@
             <div class="alert alert-danger">{{ $browseError }}</div>
         @endif
 
+        @include('admin.pages.app-storage.partials.capacity-summary', [
+            'capacitySummary' => $capacitySummary,
+            'inventoryService' => $inventoryService,
+        ])
+
         @if($configs->isEmpty())
             <div class="alert alert-warning">
                 لا يوجد إعداد تخزين سحابي نشط. راجع

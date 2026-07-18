@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Storage\StorageBulkMigrationService;
+use App\Services\Storage\StorageCapacityService;
 use App\Services\Storage\StorageCloudBrowserService;
 use App\Services\Storage\StorageFileCatalogService;
 use App\Services\Storage\StorageInventoryService;
@@ -24,6 +25,7 @@ class StorageInventoryController extends Controller
         protected StorageFileCatalogService $catalogService,
         protected StorageCloudBrowserService $cloudBrowser,
         protected StorageLocalBrowserService $localBrowser,
+        protected StorageCapacityService $capacityService,
     ) {}
 
     public function index(Request $request): View
@@ -62,7 +64,20 @@ class StorageInventoryController extends Controller
             'verifyReport' => session('storage_verify'),
             'cleanupReport' => session('storage_cleanup'),
             'migrateReport' => session('storage_migrate'),
+            'capacitySummary' => $this->capacityService->getCachedSummary(),
         ]);
+    }
+
+    public function refreshCapacity(Request $request): RedirectResponse
+    {
+        $this->capacityService->getCachedSummary(refresh: true);
+
+        $return = $request->string('return')->toString();
+        if ($return === '' || ! str_starts_with($return, url('/'))) {
+            $return = route('app-storage.inventory.index');
+        }
+
+        return redirect($return)->with('success', 'تم تحديث حساب سعة التخزين المحلي والسحابة.');
     }
 
     public function scan(Request $request): RedirectResponse
@@ -297,6 +312,7 @@ class StorageInventoryController extends Controller
             'disks' => collect($items)->pluck('disk')->unique()->filter()->values(),
             'inventoryService' => $this->inventoryService,
             'deleteReport' => session('storage_local_delete'),
+            'capacitySummary' => $this->capacityService->getCachedSummary(),
         ]);
     }
 
@@ -556,6 +572,7 @@ class StorageInventoryController extends Controller
                 'path' => $listing['path'] ?? $safePath,
             ],
             'inventoryService' => $this->inventoryService,
+            'capacitySummary' => $this->capacityService->getCachedSummary(),
         ]);
     }
 
@@ -589,6 +606,7 @@ class StorageInventoryController extends Controller
                 'path' => $listing['path'] ?? $safePath,
             ],
             'inventoryService' => $this->inventoryService,
+            'capacitySummary' => $this->capacityService->getCachedSummary(),
         ]);
     }
 }

@@ -102,6 +102,11 @@
             <div class="alert alert-danger">{{ $browseError }}</div>
         @endif
 
+        @include('admin.pages.app-storage.partials.capacity-summary', [
+            'capacitySummary' => $capacitySummary,
+            'inventoryService' => $inventoryService,
+        ])
+
         @if(!empty($shortcuts))
             <div class="bl-card">
                 <div class="bl-card-head">

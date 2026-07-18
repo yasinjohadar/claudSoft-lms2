@@ -108,6 +108,11 @@
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
 
+        @include('admin.pages.app-storage.partials.capacity-summary', [
+            'capacitySummary' => $capacitySummary,
+            'inventoryService' => $inventoryService,
+        ])
+
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
                 <div class="lf-stat">
