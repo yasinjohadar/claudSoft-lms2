@@ -121,6 +121,7 @@ class StorageLocationResolver
         return in_array($logicalDisk, [
             'public',
             'blog_images',
+            'course_images',
             'course_thumbnails',
             'gift_images',
             'images',

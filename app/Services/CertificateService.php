@@ -12,7 +12,6 @@ use App\Notifications\CertificateIssuedNotification;
 use App\Events\N8nWebhookEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -305,7 +304,7 @@ class CertificateService
 
         // QR Code
         if ($certificate->qr_code_path) {
-            $qrCodeUrl = asset('storage/' . $certificate->qr_code_path);
+            $qrCodeUrl = storage_url($certificate->qr_code_path);
             $replacements['{qr_code}'] = '<img src="' . $qrCodeUrl . '" width="150" height="150" />';
         } else {
             $replacements['{qr_code}'] = '';
@@ -389,12 +388,12 @@ class CertificateService
      */
     protected function deleteCertificateFiles(Certificate $certificate): void
     {
-        if ($certificate->pdf_path && Storage::disk('public')->exists($certificate->pdf_path)) {
-            Storage::disk('public')->delete($certificate->pdf_path);
+        if ($certificate->pdf_path && cloud_file_exists($certificate->pdf_path)) {
+            cloud_delete_file($certificate->pdf_path);
         }
 
-        if ($certificate->qr_code_path && Storage::disk('public')->exists($certificate->qr_code_path)) {
-            Storage::disk('public')->delete($certificate->qr_code_path);
+        if ($certificate->qr_code_path && cloud_file_exists($certificate->qr_code_path)) {
+            cloud_delete_file($certificate->qr_code_path);
         }
     }
 

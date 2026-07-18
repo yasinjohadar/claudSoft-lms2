@@ -9,8 +9,6 @@ use App\Models\TrainingCamp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
-
 class InvoiceController extends Controller
 {
     /**
@@ -375,10 +373,10 @@ class InvoiceController extends Controller
             
             // Save PDF to storage
             $pdfPath = 'invoices/pdf/' . $invoice->invoice_number . '.pdf';
-            Storage::disk('public')->put($pdfPath, $pdf->output());
+            cloud_store_content($pdfPath, $pdf->output());
 
             // Get full URL for the PDF (ensure HTTPS)
-            $pdfUrl = Storage::disk('public')->url($pdfPath);
+            $pdfUrl = cloud_file_url($pdfPath);
             // Ensure URL is absolute with HTTPS
             if (!str_starts_with($pdfUrl, 'http')) {
                 $pdfUrl = url($pdfUrl);

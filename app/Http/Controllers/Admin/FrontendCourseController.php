@@ -169,7 +169,7 @@ class FrontendCourseController extends Controller
             // Handle thumbnail upload
             if ($request->hasFile('thumbnail')) {
                 // Delete old thumbnail if exists
-                if ($frontendCourse->thumbnail) {
+                if ($frontendCourse->thumbnail && $this->storageHelper->fileExistsWithFailover('course_thumbnails', $frontendCourse->thumbnail)) {
                     $this->storageHelper->deleteFile('course_thumbnails', $frontendCourse->thumbnail);
                 }
                 $thumbnailPath = $this->storageHelper->storeUploadedFileWithFailover('course_thumbnails', 'courses/thumbnails', $request->file('thumbnail'), 'image');
@@ -209,7 +209,7 @@ class FrontendCourseController extends Controller
     {
         try {
             // Delete thumbnail if exists
-            if ($frontendCourse->thumbnail) {
+            if ($frontendCourse->thumbnail && $this->storageHelper->fileExistsWithFailover('course_thumbnails', $frontendCourse->thumbnail)) {
                 $this->storageHelper->deleteFile('course_thumbnails', $frontendCourse->thumbnail);
             }
 

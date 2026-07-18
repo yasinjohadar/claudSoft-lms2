@@ -7,8 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-
 class LessonController extends Controller
 {
     /**
@@ -109,7 +107,7 @@ class LessonController extends Controller
             $attachmentsPaths = [];
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    $path = $file->store('lessons/attachments', 'public');
+                    $path = cloud_upload('lessons/attachments', $file);
                     $attachmentsPaths[] = [
                         'path' => $path,
                         'name' => $file->getClientOriginalName(),
@@ -142,7 +140,7 @@ class LessonController extends Controller
             // Delete uploaded files if exists
             if (! empty($attachmentsPaths)) {
                 foreach ($attachmentsPaths as $attachment) {
-                    Storage::disk('public')->delete($attachment['path']);
+                    cloud_delete_file($attachment['path']);
                 }
             }
 
@@ -236,7 +234,7 @@ class LessonController extends Controller
             if ($request->filled('remove_attachments')) {
                 foreach ($request->remove_attachments as $index) {
                     if (isset($existingAttachments[$index])) {
-                        Storage::disk('public')->delete($existingAttachments[$index]['path']);
+                        cloud_delete_file($existingAttachments[$index]['path']);
                         unset($existingAttachments[$index]);
                     }
                 }
@@ -246,7 +244,7 @@ class LessonController extends Controller
             // Add new attachments
             if ($request->hasFile('new_attachments')) {
                 foreach ($request->file('new_attachments') as $file) {
-                    $path = $file->store('lessons/attachments', 'public');
+                    $path = cloud_upload('lessons/attachments', $file);
                     $existingAttachments[] = [
                         'path' => $path,
                         'name' => $file->getClientOriginalName(),
@@ -316,7 +314,7 @@ class LessonController extends Controller
             // Delete attachments
             if ($lesson->attachments) {
                 foreach ($lesson->attachments as $attachment) {
-                    Storage::disk('public')->delete($attachment['path']);
+                    cloud_delete_file($attachment['path']);
                 }
             }
 
@@ -402,9 +400,9 @@ class LessonController extends Controller
             if ($originalLesson->attachments) {
                 $newAttachments = [];
                 foreach ($originalLesson->attachments as $attachment) {
-                    if (Storage::disk('public')->exists($attachment['path'])) {
+                    if (cloud_file_exists($attachment['path'])) {
                         $newPath = 'lessons/attachments/'.uniqid().'_'.basename($attachment['path']);
-                        Storage::disk('public')->copy($attachment['path'], $newPath);
+                        cloud_copy_file($attachment['path'], $newPath);
                         $newAttachments[] = [
                             'path' => $newPath,
                             'name' => $attachment['name'],
@@ -499,13 +497,13 @@ class LessonController extends Controller
 
             $attachment = $lesson->attachments[$index];
 
-            if (! Storage::disk('public')->exists($attachment['path'])) {
+            if (! cloud_file_exists($attachment['path'])) {
                 return redirect()
                     ->back()
                     ->with('error', 'الملف غير موجود');
             }
 
-            return Storage::disk('public')->download($attachment['path'], $attachment['name']);
+            return cloud_download_response($attachment['path'], $attachment['name'], 'public', true);
         } catch (\Exception $e) {
             return redirect()
                 ->back()

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use App\Events\AssignmentSubmitted;
 
 class AssignmentSubmissionController extends Controller
@@ -205,7 +204,7 @@ class AssignmentSubmissionController extends Controller
         $uploadedFiles = [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('assignments/submissions/' . $assignment->id, 'public');
+                $path = cloud_upload('assignments/submissions/' . $assignment->id, $file);
                 $uploadedFiles[] = [
                     'name' => $file->getClientOriginalName(),
                     'path' => $path,
@@ -275,7 +274,7 @@ class AssignmentSubmissionController extends Controller
         $uploadedFiles = $draft->submitted_files ?? [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('assignments/submissions/' . $assignment->id, 'public');
+                $path = cloud_upload('assignments/submissions/' . $assignment->id, $file);
                 $uploadedFiles[] = [
                     'name' => $file->getClientOriginalName(),
                     'path' => $path,
@@ -311,7 +310,7 @@ class AssignmentSubmissionController extends Controller
 
         if (isset($submission->submitted_files[$fileIndex])) {
             $file = $submission->submitted_files[$fileIndex];
-            Storage::disk('public')->delete($file['path']);
+            cloud_delete_file($file['path']);
 
             $files = $submission->submitted_files;
             unset($files[$fileIndex]);

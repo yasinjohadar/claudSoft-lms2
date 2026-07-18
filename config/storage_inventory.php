@@ -23,7 +23,7 @@ return [
             'label' => 'الكورسات',
             'model' => \App\Models\Course::class,
             'column' => 'image',
-            'disk' => 'public',
+            'disk' => 'course_images',
             'path_prefix' => 'courses/images/',
             'route_name' => 'courses.show',
             'route_param' => 'course',
@@ -220,13 +220,22 @@ return [
 
     'migration_progress_cache_key' => 'storage_migration_progress',
 
+    'force_cloud_only' => env('STORAGE_FORCE_CLOUD_ONLY', true),
+
     /*
     |--------------------------------------------------------------------------
     | Logical disks that must never write to local storage
+    | (ignored when force_cloud_only is true — then ALL disks are cloud-only)
     |--------------------------------------------------------------------------
     */
     'cloud_only_disks' => [
         'blog_images',
+        'course_images',
+        'course_thumbnails',
+        'gift_images',
+        'images',
+        'public',
+        'payment_receipts',
     ],
 
 ];

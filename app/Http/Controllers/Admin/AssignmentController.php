@@ -13,7 +13,6 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AssignmentController extends Controller
@@ -152,7 +151,7 @@ class AssignmentController extends Controller
         $attachments = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $path = $file->store('assignments/attachments', 'public');
+                $path = cloud_upload('assignments/attachments', $file);
                 $attachments[] = [
                     'name' => $file->getClientOriginalName(),
                     'path' => $path,
@@ -336,7 +335,7 @@ class AssignmentController extends Controller
             $attachments = $assignment->attachments ?? [];
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    $path = $file->store('assignments/attachments', 'public');
+                    $path = cloud_upload('assignments/attachments', $file);
                     $attachments[] = [
                         'name' => $file->getClientOriginalName(),
                         'path' => $path,
@@ -382,7 +381,7 @@ class AssignmentController extends Controller
             // Delete attachments
             if ($assignment->attachments) {
                 foreach ($assignment->attachments as $attachment) {
-                    Storage::disk('public')->delete($attachment['path']);
+                    cloud_delete_file($attachment['path']);
                 }
             }
 
@@ -454,7 +453,7 @@ class AssignmentController extends Controller
 
         if (isset($assignment->attachments[$attachmentIndex])) {
             $attachment = $assignment->attachments[$attachmentIndex];
-            Storage::disk('public')->delete($attachment['path']);
+            cloud_delete_file($attachment['path']);
 
             $attachments = $assignment->attachments;
             unset($attachments[$attachmentIndex]);

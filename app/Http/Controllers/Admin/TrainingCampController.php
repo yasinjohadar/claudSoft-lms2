@@ -13,7 +13,6 @@ use App\Models\InvoiceItem;
 use App\Services\TrainingCampEnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
@@ -377,8 +376,8 @@ class TrainingCampController extends Controller
             // Handle image upload
             if ($request->hasFile('image')) {
                 // Delete old image
-                if ($camp->image && Storage::disk('public')->exists($camp->image)) {
-                    Storage::disk('public')->delete($camp->image);
+                if ($camp->image && cloud_file_exists($camp->image)) {
+                    cloud_delete_file($camp->image);
                 }
 
                 $image = $request->file('image');
@@ -430,8 +429,8 @@ class TrainingCampController extends Controller
             }
 
             // Delete image if exists
-            if ($camp->image && Storage::disk('public')->exists($camp->image)) {
-                Storage::disk('public')->delete($camp->image);
+            if ($camp->image && cloud_file_exists($camp->image)) {
+                cloud_delete_file($camp->image);
             }
 
             $camp->delete();

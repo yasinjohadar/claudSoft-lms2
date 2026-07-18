@@ -148,6 +148,6 @@ class StudentWork extends Model
 
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset('storage/' . $this->image) : asset('assets/images/default-work.png');
+        return $this->image ? storage_url($this->image) : asset('assets/images/default-work.png');
     }
 }

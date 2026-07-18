@@ -77,7 +77,7 @@ Route::post('toggle-user-status/{id}', [UserController::class, 'toggleStatus'])-
 // Route لعرض صور الكورسات المصغرة (thumbnails) - يخدم من S3 أو التخزين المحلي
 Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
     return serve_storage_image_response(
-        ['course_thumbnails', 'public'],
+        ['course_thumbnails', 'course_images', 'public'],
         'courses/thumbnails/' . $filename,
         'courses/thumbnails/' . $filename
     );
@@ -86,7 +86,7 @@ Route::get('/storage/courses/thumbnails/{filename}', function ($filename) {
 // Route لعرض صور الكورسات - يخدم من S3 أو التخزين المحلي
 Route::get('/storage/courses/images/{filename}', function ($filename) {
     return serve_storage_image_response(
-        ['public', 'course_thumbnails'],
+        ['course_images', 'course_thumbnails', 'public'],
         'courses/images/' . $filename,
         'courses/images/' . $filename
     );

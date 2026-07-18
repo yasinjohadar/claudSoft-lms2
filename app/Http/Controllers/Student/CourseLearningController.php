@@ -21,8 +21,6 @@ use App\Services\Gamification\GamificationService;
 use App\Services\Quiz\QuizAttemptLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-
 class CourseLearningController extends Controller
 {
     /**
@@ -647,7 +645,7 @@ class CourseLearningController extends Controller
             $resource->incrementDownloadCount();
 
             // Return file for download
-            return Storage::disk('public')->download($resource->file_path, $resource->file_name);
+            return cloud_download_response($resource->file_path, $resource->file_name, 'public', true);
 
         } catch (\Exception $e) {
             return redirect()

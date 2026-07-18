@@ -8,8 +8,6 @@ use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 class AssignmentApiController extends Controller
 {
     public function index(Request $request): JsonResponse
@@ -173,11 +171,11 @@ class AssignmentApiController extends Controller
         $uploaded = [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('assignments/submissions/' . $assignment->id, 'public');
+                $path = cloud_upload('assignments/submissions/' . $assignment->id, $file);
                 $uploaded[] = [
                     'name' => $file->getClientOriginalName(),
                     'path' => $path,
-                    'url' => asset('storage/' . $path),
+                    'url' => storage_url($path),
                     'size' => $file->getSize(),
                     'type' => $file->getClientOriginalExtension(),
                 ];
@@ -233,7 +231,7 @@ class AssignmentApiController extends Controller
             'submitted_links' => $s->submitted_links ?? [],
             'submitted_files' => collect($s->submitted_files ?? [])->map(fn ($f) => [
                 'name' => $f['name'] ?? '',
-                'url' => isset($f['path']) ? asset('storage/' . $f['path']) : ($f['url'] ?? null),
+                'url' => isset($f['path']) ? storage_url($f['path']) : ($f['url'] ?? null),
             ])->values(),
             'grade' => $s->grade,
             'feedback' => $s->feedback,

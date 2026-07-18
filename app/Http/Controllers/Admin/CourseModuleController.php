@@ -12,7 +12,6 @@ use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CourseModuleController extends Controller
@@ -194,7 +193,7 @@ class CourseModuleController extends Controller
 
                         if ($request->resource_source_type === 'file' && $request->hasFile('resource_file')) {
                             $file = $request->file('resource_file');
-                            $resourceData['file_path'] = $file->store('resources', 'public');
+                            $resourceData['file_path'] = cloud_upload('resources', $file);
                             $resourceData['file_name'] = $file->getClientOriginalName();
                             $resourceData['file_size'] = $file->getSize();
                             $resourceData['mime_type'] = $file->getMimeType();
@@ -280,8 +279,8 @@ class CourseModuleController extends Controller
                 try {
                     $file = $request->file('resource_file');
                     $filePath = 'resources/' . $file->hashName();
-                    if (Storage::disk('public')->exists($filePath)) {
-                        Storage::disk('public')->delete($filePath);
+                    if (cloud_file_exists($filePath)) {
+                        cloud_delete_file($filePath);
                     }
                 } catch (\Exception $fileException) {
                     // Ignore file deletion errors

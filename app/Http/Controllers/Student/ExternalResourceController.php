@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Resource;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 /**
  * الموارد الخارجية للطالب: كل مورد نطاقه ليس «خاص» + منشور وظاهر ومتاح.
  */
@@ -59,18 +57,20 @@ class ExternalResourceController extends Controller
             }
         }
 
-        if ($resource->file_path && Storage::disk('public')->exists($resource->file_path)) {
+        if ($resource->file_path && cloud_file_exists($resource->file_path)) {
             if ($resource->allow_download) {
                 $resource->incrementDownloadCount();
 
-                return Storage::disk('public')->download(
+                return cloud_download_response(
                     $resource->file_path,
-                    $resource->file_name ?: basename($resource->file_path)
+                    $resource->file_name ?: basename($resource->file_path),
+                    'public',
+                    true
                 );
             }
 
             if (in_array($resource->resource_type, ['pdf', 'image'], true)) {
-                return redirect()->away(asset('storage/'.$resource->file_path));
+                return redirect()->away(storage_url($resource->file_path));
             }
 
             return redirect()

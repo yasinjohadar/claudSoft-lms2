@@ -38,7 +38,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -584,7 +583,7 @@ class CourseGroupController extends Controller
 
             // Delete image
             if ($group->image) {
-                Storage::disk('public')->delete($group->image);
+                cloud_delete_file($group->image);
             }
 
             $group->delete();
@@ -1298,7 +1297,7 @@ class CourseGroupController extends Controller
 
             // Delete image
             if ($group->image) {
-                Storage::disk('public')->delete($group->image);
+                cloud_delete_file($group->image);
             }
 
             $group->delete();

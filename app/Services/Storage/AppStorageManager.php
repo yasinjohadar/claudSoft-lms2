@@ -49,10 +49,14 @@ class AppStorageManager
             }
         }
 
-        // Fallback: try to find ANY active storage config to use
-        $anyActiveStorage = AppStorageConfig::where('is_active', true)
-            ->orderBy('priority', 'desc')
-            ->first();
+        // Fallback: prefer cloud when force_cloud_only is enabled
+        $anyActiveQuery = AppStorageConfig::where('is_active', true);
+
+        if ($this->isForceCloudOnly()) {
+            $anyActiveQuery->whereIn('driver', config('storage_inventory.cloud_drivers', ['s3']));
+        }
+
+        $anyActiveStorage = $anyActiveQuery->orderBy('priority', 'desc')->first();
         
         if ($anyActiveStorage) {
             try {
@@ -69,8 +73,13 @@ class AppStorageManager
                 ]);
             }
         }
+
+        if ($this->isForceCloudOnly() || $this->isCloudOnlyDisk($diskName)) {
+            Log::error("Cloud storage required but not configured for disk {$diskName}");
+            throw new \RuntimeException("Cloud storage required but not configured for disk: {$diskName}");
+        }
         
-        // Last fallback: local storage
+        // Last fallback: local public disk (only when local storage is allowed)
         Log::warning("No active storage found for disk {$diskName}, using local storage");
         return Storage::disk('public');
     }
@@ -389,6 +398,10 @@ class AppStorageManager
      */
     protected function resolveGlobalFailoverStorages(): Collection
     {
+        if ($this->isForceCloudOnly()) {
+            return $this->resolveGlobalCloudStorages();
+        }
+
         $cloud = $this->resolveGlobalCloudStorages();
         $local = AppStorageConfig::query()
             ->where('is_active', true)
@@ -404,6 +417,7 @@ class AppStorageManager
         return in_array($logicalDisk, [
             'public',
             'blog_images',
+            'course_images',
             'course_thumbnails',
             'gift_images',
             'images',
@@ -428,7 +442,7 @@ class AppStorageManager
             return $this->applyDiskStoragePolicy($disk, $chain);
         }
 
-        if ($disk === 'payment_receipts') {
+        if ($disk === 'payment_receipts' && ! $this->isForceCloudOnly()) {
             $chain = AppStorageConfig::where('is_active', true)
                 ->where('driver', 's3')
                 ->orderByDesc('priority')
@@ -446,6 +460,10 @@ class AppStorageManager
             return $this->applyDiskStoragePolicy($disk, $chain->filter());
         }
 
+        if ($disk === 'payment_receipts') {
+            return $this->resolveCloudStoragesForDisk($disk);
+        }
+
         if ($this->isCloudOnlyDisk($disk)) {
             return $this->resolveCloudStoragesForDisk($disk);
         }
@@ -455,7 +473,16 @@ class AppStorageManager
 
     public function isCloudOnlyDisk(string $disk): bool
     {
+        if ($this->isForceCloudOnly()) {
+            return true;
+        }
+
         return in_array($disk, config('storage_inventory.cloud_only_disks', []), true);
+    }
+
+    public function isForceCloudOnly(): bool
+    {
+        return (bool) config('storage_inventory.force_cloud_only', false);
     }
 
     /**

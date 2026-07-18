@@ -9,7 +9,6 @@ use App\Models\CourseSection;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
 class ResourceController extends Controller
@@ -218,7 +217,7 @@ class ResourceController extends Controller
                     throw new \Exception('لم يتم اختيار ملف للرفع');
                 }
                 $file = $request->file('file');
-                $validated['file_path'] = $file->store('resources', 'public');
+                $validated['file_path'] = cloud_upload('resources', $file);
                 $validated['file_name'] = $file->getClientOriginalName();
                 $validated['file_size'] = $file->getSize();
                 $validated['mime_type'] = $file->getMimeType();
@@ -314,7 +313,7 @@ class ResourceController extends Controller
             
             // Delete uploaded file if exists
             if (isset($validated['file_path'])) {
-                Storage::disk('public')->delete($validated['file_path']);
+                cloud_delete_file($validated['file_path']);
             }
             
             throw $e; // Re-throw validation exception to show validation errors
@@ -323,7 +322,7 @@ class ResourceController extends Controller
 
             // Delete uploaded file if exists
             if (isset($validated['file_path'])) {
-                Storage::disk('public')->delete($validated['file_path']);
+                cloud_delete_file($validated['file_path']);
             }
 
             \Log::error('Resource creation error: ' . $e->getMessage(), [
@@ -400,7 +399,7 @@ class ResourceController extends Controller
                     throw new \Exception('لم يتم اختيار ملف للرفع');
                 }
                 $file = $request->file('file');
-                $validated['file_path'] = $file->store('resources', 'public');
+                $validated['file_path'] = cloud_upload('resources', $file);
                 $validated['file_name'] = $file->getClientOriginalName();
                 $validated['file_size'] = $file->getSize();
                 $validated['mime_type'] = $file->getMimeType();
@@ -530,7 +529,7 @@ class ResourceController extends Controller
             
             // Delete uploaded file if exists
             if ($request->hasFile('file')) {
-                Storage::disk('public')->delete($request->file('file')->store('resources', 'public'));
+                cloud_delete_file(cloud_upload('resources', $request->file('file')));
             }
 
             return response()->json([
@@ -545,7 +544,7 @@ class ResourceController extends Controller
             // Delete uploaded file if exists
             if ($request->hasFile('file')) {
                 try {
-                    Storage::disk('public')->delete($request->file('file')->store('resources', 'public'));
+                    cloud_delete_file(cloud_upload('resources', $request->file('file')));
                 } catch (\Exception $deleteException) {
                     // Ignore deletion errors
                 }
@@ -666,11 +665,11 @@ class ResourceController extends Controller
             if ($request->resource_source === 'file' && $request->hasFile('file')) {
                 // Delete old file if exists
                 if ($resource->file_path) {
-                    Storage::disk('public')->delete($resource->file_path);
+                    cloud_delete_file($resource->file_path);
                 }
 
                 $file = $request->file('file');
-                $validated['file_path'] = $file->store('resources', 'public');
+                $validated['file_path'] = cloud_upload('resources', $file);
                 $validated['file_name'] = $file->getClientOriginalName();
                 $validated['file_size'] = $file->getSize();
                 $validated['mime_type'] = $file->getMimeType();
@@ -680,7 +679,7 @@ class ResourceController extends Controller
                 
                 // Delete old file if switching from file to URL
                 if ($resource->file_path) {
-                    Storage::disk('public')->delete($resource->file_path);
+                    cloud_delete_file($resource->file_path);
                 }
                 
                 $validated['file_path'] = null;
@@ -760,7 +759,7 @@ class ResourceController extends Controller
 
             // Delete file
             if ($resource->file_path) {
-                Storage::disk('public')->delete($resource->file_path);
+                cloud_delete_file($resource->file_path);
             }
 
             $resource->delete();
@@ -816,9 +815,9 @@ class ResourceController extends Controller
             $newResource->download_count = 0;
 
             // Copy file
-            if ($originalResource->file_path && Storage::disk('public')->exists($originalResource->file_path)) {
+            if ($originalResource->file_path && cloud_file_exists($originalResource->file_path)) {
                 $newPath = 'resources/' . uniqid() . '_' . basename($originalResource->file_path);
-                Storage::disk('public')->copy($originalResource->file_path, $newPath);
+                cloud_copy_file($originalResource->file_path, $newPath);
                 $newResource->file_path = $newPath;
             }
 
@@ -898,7 +897,7 @@ class ResourceController extends Controller
                     ->with('error', 'التحميل غير مسموح لهذا الملف');
             }
 
-            if (!Storage::disk('public')->exists($resource->file_path)) {
+            if (!cloud_file_exists($resource->file_path)) {
                 return redirect()
                     ->back()
                     ->with('error', 'الملف غير موجود');
@@ -907,7 +906,7 @@ class ResourceController extends Controller
             // Increment download count
             $resource->incrementDownloadCount();
 
-            return Storage::disk('public')->download($resource->file_path, $resource->file_name);
+            return cloud_download_response($resource->file_path, $resource->file_name, 'public', true);
         } catch (\Exception $e) {
             return redirect()
                 ->back()
@@ -929,13 +928,13 @@ class ResourceController extends Controller
                     ->with('error', 'المعاينة غير متاحة لهذا الملف');
             }
 
-            if (!Storage::disk('public')->exists($resource->file_path)) {
+            if (!cloud_file_exists($resource->file_path)) {
                 return redirect()
                     ->back()
                     ->with('error', 'الملف غير موجود');
             }
 
-            return response()->file(Storage::disk('public')->path($resource->file_path));
+            return cloud_download_response($resource->file_path, basename($resource->file_path));
         } catch (\Exception $e) {
             return redirect()
                 ->back()

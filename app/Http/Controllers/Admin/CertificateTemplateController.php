@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CertificateTemplate;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 class CertificateTemplateController extends Controller
 {
     public function __construct()
@@ -49,7 +47,7 @@ class CertificateTemplateController extends Controller
         $data = $request->except(['template_file']);
 
         if ($request->hasFile('template_file')) {
-            $data['template_file'] = $request->file('template_file')->store('certificates/templates', 'public');
+            $data['template_file'] = cloud_upload('certificates/templates', $request->file('template_file'));
         }
 
         $template = CertificateTemplate::create($data);
@@ -86,10 +84,10 @@ class CertificateTemplateController extends Controller
         if ($request->hasFile('template_file')) {
             // حذف الملف القديم
             if ($certificateTemplate->template_file) {
-                Storage::disk('public')->delete($certificateTemplate->template_file);
+                cloud_delete_file($certificateTemplate->template_file);
             }
 
-            $data['template_file'] = $request->file('template_file')->store('certificates/templates', 'public');
+            $data['template_file'] = cloud_upload('certificates/templates', $request->file('template_file'));
         }
 
         $certificateTemplate->update($data);
@@ -102,7 +100,7 @@ class CertificateTemplateController extends Controller
     {
         try {
             if ($certificateTemplate->template_file) {
-                Storage::disk('public')->delete($certificateTemplate->template_file);
+                cloud_delete_file($certificateTemplate->template_file);
             }
 
             $certificateTemplate->delete();

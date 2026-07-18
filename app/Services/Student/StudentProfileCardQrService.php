@@ -58,6 +58,6 @@ class StudentProfileCardQrService
             return null;
         }
 
-        return asset('storage/'.$card->qr_code_path);
+        return storage_url($card->qr_code_path);
     }
 }

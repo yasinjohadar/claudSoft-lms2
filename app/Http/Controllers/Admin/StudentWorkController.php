@@ -7,8 +7,6 @@ use App\Models\StudentWork;
 use App\Models\User;
 use App\Models\Course;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-
 class StudentWorkController extends Controller
 {
     public function index(Request $request)
@@ -76,7 +74,7 @@ class StudentWorkController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('student-works/images', 'public');
+            $validated['image'] = cloud_upload('student-works/images', $request->file('image'));
         }
 
         if ($validated['status'] === 'approved') {
@@ -127,9 +125,9 @@ class StudentWorkController extends Controller
 
         if ($request->hasFile('image')) {
             if ($studentWork->image) {
-                Storage::disk('public')->delete($studentWork->image);
+                cloud_delete_file($studentWork->image);
             }
-            $validated['image'] = $request->file('image')->store('student-works/images', 'public');
+            $validated['image'] = cloud_upload('student-works/images', $request->file('image'));
         }
 
         if ($validated['status'] === 'approved' && $studentWork->status !== 'approved') {
@@ -145,7 +143,7 @@ class StudentWorkController extends Controller
     public function destroy(StudentWork $studentWork)
     {
         if ($studentWork->image) {
-            Storage::disk('public')->delete($studentWork->image);
+            cloud_delete_file($studentWork->image);
         }
 
         $studentWork->delete();

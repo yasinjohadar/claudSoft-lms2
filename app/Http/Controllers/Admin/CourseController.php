@@ -180,7 +180,7 @@ class CourseController extends Controller
                     $imageUploadWarning = 'تم الحفظ ولكن لم يتم حفظ الصورة.';
                     Log::warning('Course image upload failed during create', [
                         'course_id' => null,
-                        'disk' => 'public',
+                        'disk' => 'course_images',
                         'path' => 'courses/images',
                         'original_file_name' => $request->file('image')->getClientOriginalName(),
                         'mime' => $request->file('image')->getClientMimeType(),
@@ -214,7 +214,9 @@ class CourseController extends Controller
 
             // Delete uploaded image if exists
             if (isset($validated['image'])) {
-                $this->storageHelper->deleteFile('public', $validated['image']);
+                if ($this->storageHelper->fileExistsWithFailover('course_images', $validated['image'])) {
+                    $this->storageHelper->deleteFile('course_images', $validated['image']);
+                }
             }
 
             return redirect()
@@ -390,7 +392,9 @@ class CourseController extends Controller
                 if ($storedPath) {
                     // Delete old image only after successful upload
                     if ($course->image) {
-                        $this->storageHelper->deleteFile('public', $course->image);
+                        if ($this->storageHelper->fileExistsWithFailover('course_images', $course->image)) {
+                            $this->storageHelper->deleteFile('course_images', $course->image);
+                        }
                     }
                     $validated['image'] = $storedPath;
                 } else {
@@ -398,7 +402,7 @@ class CourseController extends Controller
                     $imageUploadWarning = 'تم الحفظ ولكن لم يتم حفظ الصورة.';
                     Log::warning('Course image upload failed during update', [
                         'course_id' => $course->id,
-                        'disk' => 'public',
+                        'disk' => 'course_images',
                         'path' => 'courses/images',
                         'original_file_name' => $request->file('image')->getClientOriginalName(),
                         'mime' => $request->file('image')->getClientMimeType(),
@@ -499,12 +503,12 @@ class CourseController extends Controller
     }
 
     /**
-     * Upload course image with cloud-first failover (S3 then local).
+     * Upload course image to cloud storage only.
      */
     protected function uploadCourseImageWithFallback($file): string|false
     {
         $storedPath = $this->storageHelper->storeUploadedFileWithFailover(
-            'public',
+            'course_images',
             'courses/images',
             $file,
             'image'

@@ -15,7 +15,6 @@ use App\Services\QuestionBankExcelImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -209,7 +208,7 @@ class QuestionBankController extends Controller
 
         // Handle image upload
         if ($request->hasFile('question_image')) {
-            $validated['question_image'] = $request->file('question_image')->store('question-images', 'public');
+            $validated['question_image'] = cloud_upload('question-images', $request->file('question_image'));
         }
 
         // Handle tags (convert comma-separated string to array)
@@ -405,9 +404,9 @@ class QuestionBankController extends Controller
         if ($request->hasFile('question_image')) {
             // Delete old image if exists
             if ($question->question_image) {
-                Storage::disk('public')->delete($question->question_image);
+                cloud_delete_file($question->question_image);
             }
-            $validated['question_image'] = $request->file('question_image')->store('question-images', 'public');
+            $validated['question_image'] = cloud_upload('question-images', $request->file('question_image'));
         }
 
         // Set updater

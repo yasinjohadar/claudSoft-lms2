@@ -422,4 +422,55 @@ class StorageHelperService
     {
         return $this->getDisk($diskName);
     }
+
+    public function storePublicUpload(string $directory, $file, ?string $fileType = null): ?string
+    {
+        return $this->storeUploadedFileWithFailover('public', $directory, $file, $fileType);
+    }
+
+    public function storePublicContent(string $path, $content, ?string $fileType = null): bool
+    {
+        return $this->storeFileWithFailover('public', ltrim($path, '/'), $content, $fileType);
+    }
+
+    public function publicFileExists(string $path): bool
+    {
+        return $this->fileExistsWithFailover('public', ltrim($path, '/'));
+    }
+
+    public function deletePublicFile(string $path): bool
+    {
+        $path = ltrim($path, '/');
+        $deleted = false;
+
+        foreach ($this->storageManager->resolveCloudStoragesForDisk('public') as $config) {
+            if ($this->storageManager->existsOnConfig($config, $path)) {
+                $deleted = $this->storageManager->deleteFromConfig($config, $path) || $deleted;
+            }
+        }
+
+        if ($this->storageManager->legacyPublicExists($path)) {
+            $deleted = $this->storageManager->deleteLegacyPublicCopy($path) || $deleted;
+        }
+
+        return $deleted;
+    }
+
+    public function copyPublicFile(string $fromPath, string $toPath): bool
+    {
+        $fromPath = ltrim($fromPath, '/');
+        $toPath = ltrim($toPath, '/');
+        $payload = $this->storageManager->retrieveWithFailover('public', $fromPath);
+
+        if ($payload === null) {
+            return false;
+        }
+
+        return $this->storeFileWithFailover('public', $toPath, $payload['content']);
+    }
+
+    public function getPublicFileUrl(string $path): string
+    {
+        return $this->getFileUrl('public', ltrim($path, '/'));
+    }
 }

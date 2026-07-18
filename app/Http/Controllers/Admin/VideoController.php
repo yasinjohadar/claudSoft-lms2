@@ -8,8 +8,6 @@ use App\Models\CourseModule;
 use App\Models\CourseSection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-
 class VideoController extends Controller
 {
     /**
@@ -148,7 +146,7 @@ class VideoController extends Controller
         try {
             // Handle video upload
             if ($request->video_type === 'upload' && $request->hasFile('video_file')) {
-                $validated['video_path'] = $request->file('video_file')->store('videos', 'public');
+                $validated['video_path'] = cloud_upload('videos', $request->file('video_file'));
                 $validated['processing_status'] = 'pending';
             } else {
                 $validated['processing_status'] = 'completed';
@@ -156,7 +154,7 @@ class VideoController extends Controller
 
             // Handle thumbnail upload
             if ($request->hasFile('thumbnail')) {
-                $validated['thumbnail'] = $request->file('thumbnail')->store('videos/thumbnails', 'public');
+                $validated['thumbnail'] = cloud_upload('videos/thumbnails', $request->file('thumbnail'));
             }
 
             // Convert boolean fields
@@ -243,10 +241,10 @@ class VideoController extends Controller
 
             // Delete uploaded files if exists
             if (isset($validated['video_path'])) {
-                Storage::disk('public')->delete($validated['video_path']);
+                cloud_delete_file($validated['video_path']);
             }
             if (isset($validated['thumbnail'])) {
-                Storage::disk('public')->delete($validated['thumbnail']);
+                cloud_delete_file($validated['thumbnail']);
             }
 
             return redirect()
@@ -347,9 +345,9 @@ class VideoController extends Controller
             if ($request->hasFile('video_file')) {
                 // Delete old video
                 if ($video->video_path) {
-                    Storage::disk('public')->delete($video->video_path);
+                    cloud_delete_file($video->video_path);
                 }
-                $validated['video_path'] = $request->file('video_file')->store('videos', 'public');
+                $validated['video_path'] = cloud_upload('videos', $request->file('video_file'));
                 $validated['processing_status'] = 'pending';
             }
 
@@ -357,9 +355,9 @@ class VideoController extends Controller
             if ($request->hasFile('thumbnail')) {
                 // Delete old thumbnail
                 if ($video->thumbnail) {
-                    Storage::disk('public')->delete($video->thumbnail);
+                    cloud_delete_file($video->thumbnail);
                 }
-                $validated['thumbnail'] = $request->file('thumbnail')->store('videos/thumbnails', 'public');
+                $validated['thumbnail'] = cloud_upload('videos/thumbnails', $request->file('thumbnail'));
             }
 
             // Convert boolean fields
@@ -452,10 +450,10 @@ class VideoController extends Controller
 
             // Delete video file and thumbnail
             if ($video->video_path) {
-                Storage::disk('public')->delete($video->video_path);
+                cloud_delete_file($video->video_path);
             }
             if ($video->thumbnail) {
-                Storage::disk('public')->delete($video->thumbnail);
+                cloud_delete_file($video->thumbnail);
             }
 
             $video->delete();
@@ -542,16 +540,16 @@ class VideoController extends Controller
             $newVideo->updated_by = null;
 
             // Copy video file if it's uploaded
-            if ($originalVideo->video_path && Storage::disk('public')->exists($originalVideo->video_path)) {
+            if ($originalVideo->video_path && cloud_file_exists($originalVideo->video_path)) {
                 $newPath = 'videos/' . uniqid() . '_' . basename($originalVideo->video_path);
-                Storage::disk('public')->copy($originalVideo->video_path, $newPath);
+                cloud_copy_file($originalVideo->video_path, $newPath);
                 $newVideo->video_path = $newPath;
             }
 
             // Copy thumbnail
-            if ($originalVideo->thumbnail && Storage::disk('public')->exists($originalVideo->thumbnail)) {
+            if ($originalVideo->thumbnail && cloud_file_exists($originalVideo->thumbnail)) {
                 $newPath = 'videos/thumbnails/' . uniqid() . '_' . basename($originalVideo->thumbnail);
-                Storage::disk('public')->copy($originalVideo->thumbnail, $newPath);
+                cloud_copy_file($originalVideo->thumbnail, $newPath);
                 $newVideo->thumbnail = $newPath;
             }
 

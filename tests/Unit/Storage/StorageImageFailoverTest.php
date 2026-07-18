@@ -26,11 +26,13 @@ class StorageImageFailoverTest extends TestCase
         $this->assertSame(['blog/images/example.jpg', 'example.jpg'], $candidates);
     }
 
-    public function test_blog_images_is_marked_cloud_only_in_config(): void
+    public function test_cloud_only_enabled_globally_by_default(): void
     {
         $manager = app(AppStorageManager::class);
 
+        $this->assertTrue(config('storage_inventory.force_cloud_only'));
+        $this->assertTrue($manager->isForceCloudOnly());
+        $this->assertTrue($manager->isCloudOnlyDisk('public'));
         $this->assertTrue($manager->isCloudOnlyDisk('blog_images'));
-        $this->assertContains('blog_images', config('storage_inventory.cloud_only_disks', []));
     }
 }

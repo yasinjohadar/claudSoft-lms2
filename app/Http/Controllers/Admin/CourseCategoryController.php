@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CourseCategoryController extends Controller
@@ -172,8 +171,8 @@ class CourseCategoryController extends Controller
             // Handle image upload
             if ($request->hasFile('image')) {
                 // Delete old image
-                if ($category->image && Storage::disk('public')->exists($category->image)) {
-                    Storage::disk('public')->delete($category->image);
+                if ($category->image && cloud_file_exists($category->image)) {
+                    cloud_delete_file($category->image);
                 }
 
                 $image = $request->file('image');
@@ -216,8 +215,8 @@ class CourseCategoryController extends Controller
             }
 
             // Delete image if exists
-            if ($category->image && Storage::disk('public')->exists($category->image)) {
-                Storage::disk('public')->delete($category->image);
+            if ($category->image && cloud_file_exists($category->image)) {
+                cloud_delete_file($category->image);
             }
 
             $category->delete();
@@ -262,8 +261,8 @@ class CourseCategoryController extends Controller
             $category = CourseCategory::withTrashed()->findOrFail($id);
 
             // Delete image if exists
-            if ($category->image && Storage::disk('public')->exists($category->image)) {
-                Storage::disk('public')->delete($category->image);
+            if ($category->image && cloud_file_exists($category->image)) {
+                cloud_delete_file($category->image);
             }
 
             $category->forceDelete();

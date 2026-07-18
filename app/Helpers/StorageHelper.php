@@ -13,7 +13,11 @@ if (!function_exists('storage_url')) {
         // Remove 'storage/' prefix if exists (already handled by symbolic link)
         $cleanPath = ltrim($path, '/');
         $cleanPath = str_replace('storage/', '', $cleanPath);
-        
+
+        if (config('storage_inventory.force_cloud_only', false)) {
+            return cloud_file_url($cleanPath);
+        }
+
         // Use asset() which works correctly with symbolic links
         return asset('storage/' . $cleanPath);
     }
@@ -397,7 +401,7 @@ if (!function_exists('course_image_url')) {
     function course_image_url($imagePath)
     {
         return resolve_storage_image_url(
-            ['course_thumbnails', 'public'],
+            ['course_images', 'course_thumbnails', 'public'],
             $imagePath,
             asset('frontend/assets/img/default-course.jpg')
         );
@@ -501,5 +505,97 @@ if (!function_exists('student_profile_photo_url')) {
                 ? student_gender_default_avatar_url($student)
                 : student_default_avatar_url()
         );
+    }
+}
+
+if (!function_exists('cloud_upload')) {
+    function cloud_upload(string $directory, $file, ?string $fileType = null, string $disk = 'public'): ?string
+    {
+        return app(\App\Services\Storage\StorageHelperService::class)
+            ->storeUploadedFileWithFailover($disk, $directory, $file, $fileType);
+    }
+}
+
+if (!function_exists('cloud_store_content')) {
+    function cloud_store_content(string $path, $content, ?string $fileType = null, string $disk = 'public'): bool
+    {
+        return app(\App\Services\Storage\StorageHelperService::class)
+            ->storeFileWithFailover($disk, ltrim($path, '/'), $content, $fileType);
+    }
+}
+
+if (!function_exists('cloud_file_exists')) {
+    function cloud_file_exists(string $path, string $disk = 'public'): bool
+    {
+        return app(\App\Services\Storage\StorageHelperService::class)
+            ->fileExistsWithFailover($disk, ltrim($path, '/'));
+    }
+}
+
+if (!function_exists('cloud_delete_file')) {
+    function cloud_delete_file(string $path, string $disk = 'public'): bool
+    {
+        if ($disk === 'public') {
+            return app(\App\Services\Storage\StorageHelperService::class)->deletePublicFile($path);
+        }
+
+        if (! app(\App\Services\Storage\StorageHelperService::class)->fileExistsWithFailover($disk, ltrim($path, '/'))) {
+            return false;
+        }
+
+        return app(\App\Services\Storage\StorageHelperService::class)->deleteFile($disk, ltrim($path, '/'));
+    }
+}
+
+if (!function_exists('cloud_copy_file')) {
+    function cloud_copy_file(string $fromPath, string $toPath, string $disk = 'public'): bool
+    {
+        if ($disk === 'public') {
+            return app(\App\Services\Storage\StorageHelperService::class)->copyPublicFile($fromPath, $toPath);
+        }
+
+        $helper = app(\App\Services\Storage\StorageHelperService::class);
+        $payload = app(\App\Services\Storage\AppStorageManager::class)->retrieveWithFailover($disk, ltrim($fromPath, '/'));
+
+        if ($payload === null) {
+            return false;
+        }
+
+        return $helper->storeFileWithFailover($disk, ltrim($toPath, '/'), $payload['content']);
+    }
+}
+
+if (!function_exists('cloud_download_response')) {
+    function cloud_download_response(string $path, ?string $downloadName = null, string $disk = 'public', bool $attachment = false)
+    {
+        $path = ltrim($path, '/');
+        $payload = app(\App\Services\Storage\StorageHelperService::class)->retrieveFileWithFailover($disk, $path);
+
+        if ($payload === null) {
+            abort(404, 'الملف غير موجود');
+        }
+
+        $headers = [
+            'Content-Type' => $payload['mime_type'] ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=3600',
+        ];
+
+        if ($downloadName) {
+            $disposition = $attachment ? 'attachment' : 'inline';
+            $headers['Content-Disposition'] = $disposition.'; filename="'.addslashes($downloadName).'"';
+        }
+
+        return response($payload['content'], 200, $headers);
+    }
+}
+
+if (!function_exists('cloud_file_url')) {
+    function cloud_file_url(string $path, string $disk = 'public'): string
+    {
+        if ($disk === 'public') {
+            return app(\App\Services\Storage\StorageHelperService::class)->getPublicFileUrl($path);
+        }
+
+        return app(\App\Services\Storage\StorageHelperService::class)->getFileUrl($disk, ltrim($path, '/'));
     }
 }

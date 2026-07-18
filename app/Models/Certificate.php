@@ -155,12 +155,12 @@ class Certificate extends Model
 
     public function getPdfUrlAttribute(): ?string
     {
-        return $this->pdf_path ? asset('storage/' . $this->pdf_path) : null;
+        return $this->pdf_path ? storage_url($this->pdf_path) : null;
     }
 
     public function getQrCodeUrlAttribute(): ?string
     {
-        return $this->qr_code_path ? asset('storage/' . $this->qr_code_path) : null;
+        return $this->qr_code_path ? storage_url($this->qr_code_path) : null;
     }
 
     // Methods
