@@ -47,7 +47,7 @@ class StorageCleanupTest extends TestCase
 
         $this->assertFalse($result['success']);
         $this->assertSame('skipped', $result['action']);
-        $this->assertStringContainsString('requires both', $result['message']);
+        $this->assertStringContainsString('محلي فقط', $result['message']);
     }
 
     public function test_cleanup_deletes_local_when_both_confirmed(): void
@@ -108,5 +108,28 @@ class StorageCleanupTest extends TestCase
 
         $this->assertTrue($result['success']);
         $this->assertSame('cleaned', $result['action']);
+        $this->assertSame(StorageLocationResolver::STATUS_CLOUD_ONLY, $result['after_status']);
+    }
+
+    public function test_delete_local_only_requires_explicit_allow_flag(): void
+    {
+        $manager = Mockery::mock(AppStorageManager::class);
+        $resolver = Mockery::mock(StorageLocationResolver::class);
+        $resolver->shouldReceive('resolve')->once()->andReturn([
+            'found' => true,
+            'status' => StorageLocationResolver::STATUS_LOCAL_ONLY,
+            'path' => 'x.jpg',
+            'locations' => [
+                ['storage_config_id' => 1, 'storage_name' => 'Local', 'driver' => 'local', 'is_cloud' => false, 'size' => 1],
+            ],
+            'size' => 1,
+        ]);
+        $manager->shouldReceive('deleteFromConfig')->never();
+
+        $service = new StorageBulkMigrationService($manager, $resolver);
+        $result = $service->deleteLocalCopy('public', 'x.jpg', allowOrphanLocal: false);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('skipped', $result['action']);
     }
 }

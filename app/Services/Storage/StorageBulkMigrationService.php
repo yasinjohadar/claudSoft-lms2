@@ -195,72 +195,139 @@ class StorageBulkMigrationService
     /**
      * Delete local copies only when a fresh resolve confirms BOTH (cloud + local).
      *
-     * @return array{success: bool, action: string, message: string, path?: string, disk?: string}
+     * @return array{success: bool, action: string, message: string, path?: string, disk?: string, after_status?: string}
      */
     public function cleanupLocalIfVerified(string $logicalDisk, string $path): array
+    {
+        return $this->deleteLocalCopy($logicalDisk, $path, allowOrphanLocal: false);
+    }
+
+    /**
+     * Delete local copies only. Never deletes cloud objects.
+     *
+     * @return array{success: bool, action: string, message: string, path?: string, disk?: string, after_status?: string|null}
+     */
+    public function deleteLocalCopy(string $logicalDisk, string $path, bool $allowOrphanLocal = false): array
     {
         $location = $this->locationResolver->resolve($logicalDisk, $path);
         $path = $location['path'];
 
-        if ($location['status'] !== StorageLocationResolver::STATUS_BOTH) {
-            return [
-                'success' => false,
-                'action' => 'skipped',
-                'message' => 'Cleanup refused: status is '.$location['status'].' (requires both)',
-                'path' => $path,
-                'disk' => $logicalDisk,
-            ];
-        }
-
         $hasCloud = collect($location['locations'])->contains(fn (array $hit) => ! empty($hit['is_cloud']));
         $hasLocal = collect($location['locations'])->contains(fn (array $hit) => empty($hit['is_cloud']));
 
-        if (! $hasCloud || ! $hasLocal) {
+        if (! $hasLocal) {
             return [
                 'success' => false,
                 'action' => 'skipped',
-                'message' => 'Cleanup refused: cloud+local not both confirmed',
+                'message' => 'لا توجد نسخة محلية للحذف',
                 'path' => $path,
                 'disk' => $logicalDisk,
+                'after_status' => $location['status'],
             ];
         }
 
-        $this->deleteLocalCopies($logicalDisk, $path);
+        if ($location['status'] === StorageLocationResolver::STATUS_BOTH) {
+            if (! $hasCloud) {
+                return [
+                    'success' => false,
+                    'action' => 'skipped',
+                    'message' => 'رُفض: لم تُؤكَّد النسخة السحابية',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $location['status'],
+                ];
+            }
 
-        $after = $this->locationResolver->resolve($logicalDisk, $path);
+            $this->deleteLocalCopies($logicalDisk, $path);
+            $after = $this->locationResolver->resolve($logicalDisk, $path);
 
-        if ($after['status'] === StorageLocationResolver::STATUS_BOTH) {
+            if ($after['status'] === StorageLocationResolver::STATUS_BOTH) {
+                return [
+                    'success' => false,
+                    'action' => 'failed',
+                    'message' => 'فشلت إزالة المحلي — النسخة المحلية ما زالت موجودة',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $after['status'],
+                ];
+            }
+
+            if ($after['status'] === StorageLocationResolver::STATUS_MISSING) {
+                return [
+                    'success' => false,
+                    'action' => 'failed',
+                    'message' => 'تحذير: الملف اختفى بعد الحذف — تحقق من السحابة يدوياً',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $after['status'],
+                ];
+            }
+
+            Log::info('Storage local duplicate cleaned', [
+                'disk' => $logicalDisk,
+                'path' => $path,
+                'after_status' => $after['status'],
+            ]);
+
             return [
-                'success' => false,
-                'action' => 'failed',
-                'message' => 'Local copy still present after cleanup',
+                'success' => true,
+                'action' => 'cleaned',
+                'message' => 'حُذفت النسخة المحلية — بقيت السحابة فقط',
                 'path' => $path,
                 'disk' => $logicalDisk,
+                'after_status' => $after['status'],
             ];
         }
 
-        if ($after['status'] === StorageLocationResolver::STATUS_MISSING) {
+        if ($location['status'] === StorageLocationResolver::STATUS_LOCAL_ONLY) {
+            if (! $allowOrphanLocal) {
+                return [
+                    'success' => false,
+                    'action' => 'skipped',
+                    'message' => 'رُفض: محلي فقط بدون سحابة — فعّل «يشمل المحلي فقط» صراحةً',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $location['status'],
+                ];
+            }
+
+            $this->deleteLocalCopies($logicalDisk, $path);
+            $after = $this->locationResolver->resolve($logicalDisk, $path);
+
+            if ($after['status'] === StorageLocationResolver::STATUS_LOCAL_ONLY || $after['status'] === StorageLocationResolver::STATUS_BOTH) {
+                return [
+                    'success' => false,
+                    'action' => 'failed',
+                    'message' => 'فشلت إزالة الملف المحلي',
+                    'path' => $path,
+                    'disk' => $logicalDisk,
+                    'after_status' => $after['status'],
+                ];
+            }
+
+            Log::warning('Storage local-only file deleted without cloud copy', [
+                'disk' => $logicalDisk,
+                'path' => $path,
+                'after_status' => $after['status'],
+            ]);
+
             return [
-                'success' => false,
-                'action' => 'failed',
-                'message' => 'File missing after cleanup — cloud copy may be gone',
+                'success' => true,
+                'action' => 'cleaned',
+                'message' => 'حُذف المحلي فقط (لم تكن هناك نسخة سحابية)',
                 'path' => $path,
                 'disk' => $logicalDisk,
+                'after_status' => $after['status'],
             ];
         }
-
-        Log::info('Storage local duplicate cleaned', [
-            'disk' => $logicalDisk,
-            'path' => $path,
-            'after_status' => $after['status'],
-        ]);
 
         return [
-            'success' => true,
-            'action' => 'cleaned',
-            'message' => 'Local duplicate removed; cloud copy kept',
+            'success' => false,
+            'action' => 'skipped',
+            'message' => 'رُفض: الحالة '.$location['status'].' لا تسمح بحذف محلي',
             'path' => $path,
             'disk' => $logicalDisk,
+            'after_status' => $location['status'],
         ];
     }
 
@@ -268,7 +335,7 @@ class StorageBulkMigrationService
      * @param  array<int, array<string, mixed>>  $items
      * @return array<string, mixed>
      */
-    public function cleanupLocalBatch(array $items): array
+    public function cleanupLocalBatch(array $items, bool $allowOrphanLocal = false): array
     {
         $results = [
             'cleaned' => 0,
@@ -278,9 +345,10 @@ class StorageBulkMigrationService
         ];
 
         foreach ($items as $item) {
-            $outcome = $this->cleanupLocalIfVerified(
+            $outcome = $this->deleteLocalCopy(
                 (string) ($item['disk'] ?? 'public'),
-                (string) ($item['path'] ?? '')
+                (string) ($item['path'] ?? ''),
+                $allowOrphanLocal
             );
 
             match ($outcome['action']) {

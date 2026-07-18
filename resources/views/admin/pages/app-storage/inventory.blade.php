@@ -161,6 +161,9 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('app-storage.inventory.local-files') }}" class="btn btn-sm btn-light text-dark fw-semibold">
+                        <i class="fas fa-hdd me-1"></i> إدارة النسخ المحلية
+                    </a>
                     <a href="{{ route('app-storage.configs.index') }}" class="btn btn-sm btn-outline-light">إعدادات التخزين</a>
                     <a href="{{ route('storage-disk-mappings.index') }}" class="btn btn-sm btn-outline-light">Disk Mappings</a>
                 </div>
@@ -204,18 +207,22 @@
                 </div>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="inv-stat is-local">
-                    <div class="label">محلي فقط</div>
-                    <div class="value">{{ $summary['local_only'] }}</div>
-                    <div class="meta">{{ $formatBytes($summary['local_only_bytes'] ?? 0) }}</div>
-                </div>
+                <a href="{{ route('app-storage.inventory.local-files', ['status' => 'local_only']) }}" class="text-decoration-none d-block">
+                    <div class="inv-stat is-local">
+                        <div class="label">محلي فقط</div>
+                        <div class="value">{{ $summary['local_only'] }}</div>
+                        <div class="meta">{{ $formatBytes($summary['local_only_bytes'] ?? 0) }} · إدارة ←</div>
+                    </div>
+                </a>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="inv-stat is-both">
-                    <div class="label">نسختان</div>
-                    <div class="value">{{ $summary['both'] }}</div>
-                    <div class="meta">{{ $formatBytes($summary['both_bytes'] ?? 0) }}</div>
-                </div>
+                <a href="{{ route('app-storage.inventory.local-files', ['status' => 'both']) }}" class="text-decoration-none d-block">
+                    <div class="inv-stat is-both">
+                        <div class="label">نسختان</div>
+                        <div class="value">{{ $summary['both'] }}</div>
+                        <div class="meta">{{ $formatBytes($summary['both_bytes'] ?? 0) }} · إدارة ←</div>
+                    </div>
+                </a>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
                 <div class="inv-stat is-missing">
@@ -335,16 +342,20 @@
                     <div class="inv-step">
                         <span class="step-num">5</span>
                         <h6><i class="fas fa-broom me-1"></i> تنظيف</h6>
-                        <p>يحذف النسخة المحلية فقط إذا تأكد وجود نسختين (محلي + سحابة). لا يحذف من السحابة أبداً.</p>
+                        <p>لحذف المحلي بدقة (مفرد / جماعي / الكل الآمن) افتح صفحة إدارة النسخ المحلية. السحابة محمية دائماً.</p>
                         <div class="step-actions">
+                            <a href="{{ route('app-storage.inventory.local-files', ['status' => 'both']) }}"
+                               class="btn btn-sm btn-warning" @class(['disabled' => !$hasScan || ($summary['both'] ?? 0) < 1])>
+                                <i class="fas fa-hdd me-1"></i> إدارة المحلي
+                            </a>
                             <form method="POST" action="{{ route('app-storage.inventory.cleanup-local') }}"
                                   onsubmit="return confirm('حذف النسخ المحلية للملفات المؤكدة كنسختين فقط؟ لن تُحذف النسخة السحابية.');">
                                 @csrf
                                 @if($filters['disk'])<input type="hidden" name="disk" value="{{ $filters['disk'] }}">@endif
                                 @if($filters['source'])<input type="hidden" name="source" value="{{ $filters['source'] }}">@endif
-                                <button type="submit" class="btn btn-sm btn-warning" @disabled(!$hasScan || ($summary['both'] ?? 0) < 1)
-                                        title="يتطلب ملفات بحالة نسختان بعد التحليل">
-                                    تنظيف محلي آمن
+                                <button type="submit" class="btn btn-sm btn-outline-warning" @disabled(!$hasScan || ($summary['both'] ?? 0) < 1)
+                                        title="حذف سريع لكل المكرر في التصفية الحالية">
+                                    تنظيف سريع
                                 </button>
                             </form>
                         </div>

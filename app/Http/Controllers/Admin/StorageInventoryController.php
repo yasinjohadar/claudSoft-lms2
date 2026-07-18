@@ -206,6 +206,209 @@ class StorageInventoryController extends Controller
             ->with('storage_cleanup', $report);
     }
 
+    /**
+     * Dedicated page: manage local copies only (never deletes cloud).
+     */
+    public function localFiles(Request $request): View|RedirectResponse
+    {
+        $scan = $this->inventoryService->getCachedScan();
+
+        if ($scan['scanned_at'] === null) {
+            return redirect()
+                ->route('app-storage.inventory.index')
+                ->with('warning', 'قم بتحليل الجرد أولاً ثم افتح إدارة النسخ المحلية.');
+        }
+
+        $disk = $request->get('disk');
+        $sourceKey = $request->get('source');
+        $status = $request->get('status'); // both | local_only | empty=both+local_only
+
+        $items = collect($scan['items'])
+            ->filter(function (array $item) use ($disk, $sourceKey, $status) {
+                $itemStatus = $item['status'] ?? '';
+
+                if (! in_array($itemStatus, [
+                    StorageLocationResolver::STATUS_BOTH,
+                    StorageLocationResolver::STATUS_LOCAL_ONLY,
+                ], true)) {
+                    return false;
+                }
+
+                if ($status !== null && $status !== '' && $itemStatus !== $status) {
+                    return false;
+                }
+
+                if ($disk !== null && $disk !== '' && ($item['disk'] ?? null) !== $disk) {
+                    return false;
+                }
+
+                if ($sourceKey !== null && $sourceKey !== '' && ($item['source_key'] ?? null) !== $sourceKey) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->map(function (array $item) {
+                $item = $this->inventoryService->enrichItem($item);
+                $localLocations = array_values(array_filter(
+                    $item['locations'] ?? [],
+                    fn (array $loc) => empty($loc['is_cloud'])
+                ));
+                $cloudLocations = array_values(array_filter(
+                    $item['locations'] ?? [],
+                    fn (array $loc) => ! empty($loc['is_cloud'])
+                ));
+                $item['local_locations'] = $localLocations;
+                $item['cloud_locations'] = $cloudLocations;
+                $item['cloud_confirmed'] = $cloudLocations !== [];
+                $item['local_bytes'] = (int) collect($localLocations)->sum('size');
+                $item['selection_key'] = ($item['disk'] ?? '').'::'.($item['path'] ?? '');
+                $item['can_safe_delete'] = ($item['status'] ?? '') === StorageLocationResolver::STATUS_BOTH
+                    && $item['cloud_confirmed'];
+
+                return $item;
+            })
+            ->values()
+            ->all();
+
+        $summary = [
+            'total' => count($items),
+            'both' => count(array_filter($items, fn ($i) => ($i['status'] ?? '') === StorageLocationResolver::STATUS_BOTH)),
+            'local_only' => count(array_filter($items, fn ($i) => ($i['status'] ?? '') === StorageLocationResolver::STATUS_LOCAL_ONLY)),
+            'safe_deletable' => count(array_filter($items, fn ($i) => ! empty($i['can_safe_delete']))),
+            'local_bytes' => (int) collect($items)->sum('local_bytes'),
+        ];
+
+        return view('admin.pages.app-storage.local-files', [
+            'items' => $items,
+            'summary' => $summary,
+            'scannedAt' => $scan['scanned_at'],
+            'sources' => $this->catalogService->sources(),
+            'statusLabels' => $this->inventoryService->statusLabels(),
+            'filters' => [
+                'disk' => $disk,
+                'source' => $sourceKey,
+                'status' => $status,
+            ],
+            'disks' => collect($items)->pluck('disk')->unique()->filter()->values(),
+            'inventoryService' => $this->inventoryService,
+            'deleteReport' => session('storage_local_delete'),
+        ]);
+    }
+
+    public function deleteLocalFiles(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'mode' => 'required|in:single,selected,all_safe,all_local',
+            'disk' => 'nullable|string',
+            'path' => 'nullable|string',
+            'keys' => 'nullable|array',
+            'keys.*' => 'string',
+            'allow_orphan_local' => 'nullable|boolean',
+            'confirm_orphan' => 'nullable|string',
+            'filter_disk' => 'nullable|string',
+            'filter_source' => 'nullable|string',
+            'filter_status' => 'nullable|string',
+        ]);
+
+        $scan = $this->inventoryService->getCachedScan();
+
+        if ($scan['scanned_at'] === null) {
+            return redirect()
+                ->route('app-storage.inventory.index')
+                ->with('error', 'قم بتحليل الجرد أولاً.');
+        }
+
+        $allowOrphan = $request->boolean('allow_orphan_local');
+        $mode = $validated['mode'];
+
+        if ($mode === 'all_local') {
+            if (! $allowOrphan || $request->input('confirm_orphan') !== 'DELETE_LOCAL') {
+                return back()->with('error', 'لحذف كل المحلي بما فيه «محلي فقط» يجب التأكيد بالنص DELETE_LOCAL وتفعيل الخيار.');
+            }
+            $allowOrphan = true;
+        }
+
+        if ($mode === 'all_safe') {
+            $allowOrphan = false;
+        }
+
+        $pool = collect($scan['items'])->filter(function (array $item) use ($validated) {
+            $itemStatus = $item['status'] ?? '';
+
+            if (! in_array($itemStatus, [
+                StorageLocationResolver::STATUS_BOTH,
+                StorageLocationResolver::STATUS_LOCAL_ONLY,
+            ], true)) {
+                return false;
+            }
+
+            if (! empty($validated['filter_disk']) && ($item['disk'] ?? null) !== $validated['filter_disk']) {
+                return false;
+            }
+
+            if (! empty($validated['filter_source']) && ($item['source_key'] ?? null) !== $validated['filter_source']) {
+                return false;
+            }
+
+            if (! empty($validated['filter_status']) && $itemStatus !== $validated['filter_status']) {
+                return false;
+            }
+
+            return true;
+        })->values();
+
+        $targets = match ($mode) {
+            'single' => $pool->filter(fn (array $item) => ($item['disk'] ?? '') === ($validated['disk'] ?? '')
+                && ($item['path'] ?? '') === ($validated['path'] ?? ''))->values()->all(),
+            'selected' => $pool->filter(function (array $item) use ($validated) {
+                $key = ($item['disk'] ?? '').'::'.($item['path'] ?? '');
+
+                return in_array($key, $validated['keys'] ?? [], true);
+            })->values()->all(),
+            'all_safe' => $pool->filter(fn (array $item) => ($item['status'] ?? '') === StorageLocationResolver::STATUS_BOTH)
+                ->values()->all(),
+            'all_local' => $pool->all(),
+            default => [],
+        };
+
+        if ($targets === []) {
+            return back()->with('warning', 'لا توجد ملفات مطابقة للحذف.');
+        }
+
+        // For selected/single without allow orphan: only delete safe both unless explicitly allowed
+        if (in_array($mode, ['single', 'selected'], true) && ! $allowOrphan) {
+            $unsafe = array_filter(
+                $targets,
+                fn (array $item) => ($item['status'] ?? '') === StorageLocationResolver::STATUS_LOCAL_ONLY
+            );
+            if ($unsafe !== []) {
+                // Still process; service will skip unsafe ones unless allowOrphan
+            }
+        }
+
+        $report = $this->migrationService->cleanupLocalBatch($targets, $allowOrphan);
+
+        $this->inventoryService->scan(
+            disk: $validated['filter_disk'] ?? null,
+            sourceKey: $validated['filter_source'] ?? null,
+        );
+
+        return redirect()
+            ->route('app-storage.inventory.local-files', array_filter([
+                'disk' => $validated['filter_disk'] ?? null,
+                'source' => $validated['filter_source'] ?? null,
+                'status' => $validated['filter_status'] ?? null,
+            ]))
+            ->with('success', sprintf(
+                'نتيجة حذف المحلي: %d نجح، %d تُخطى، %d فشل. (السحابة لم تُمس)',
+                $report['cleaned'],
+                $report['skipped'],
+                $report['failed']
+            ))
+            ->with('storage_local_delete', $report);
+    }
+
     public function export(Request $request): StreamedResponse|JsonResponse|Response
     {
         $scan = $this->inventoryService->getCachedScan();
