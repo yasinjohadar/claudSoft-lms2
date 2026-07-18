@@ -253,7 +253,27 @@ class AppStorageManager
      */
     public function retrieveWithFailover(string $disk, string $path): ?array
     {
-        foreach ($this->resolveFailoverStorages($disk) as $storageConfig) {
+        $path = ltrim($path, '/');
+
+        $chain = $this->resolveFailoverStorages($disk);
+
+        if ($chain->isEmpty()) {
+            $cloud = AppStorageConfig::query()
+                ->where('is_active', true)
+                ->whereIn('driver', config('storage_inventory.cloud_drivers', ['s3']))
+                ->orderByDesc('priority')
+                ->get();
+
+            $local = AppStorageConfig::query()
+                ->where('is_active', true)
+                ->where('driver', 'local')
+                ->orderByDesc('priority')
+                ->get();
+
+            $chain = $cloud->merge($local)->unique('id')->values();
+        }
+
+        foreach ($chain as $storageConfig) {
             try {
                 $storage = AppStorageFactory::create($storageConfig);
                 $content = $storage->get($path);
@@ -271,7 +291,30 @@ class AppStorageManager
             }
         }
 
+        if ($this->shouldServeLegacyPublic($disk)) {
+            $content = $this->getLegacyPublicContent($path);
+
+            if ($content !== null) {
+                return [
+                    'content' => $content,
+                    'mime_type' => $this->resolveMimeType(Storage::disk('public'), $path),
+                ];
+            }
+        }
+
         return null;
+    }
+
+    protected function shouldServeLegacyPublic(string $logicalDisk): bool
+    {
+        return in_array($logicalDisk, [
+            'public',
+            'blog_images',
+            'course_thumbnails',
+            'gift_images',
+            'images',
+            'payment_receipts',
+        ], true);
     }
 
     /**

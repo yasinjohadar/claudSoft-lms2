@@ -92,45 +92,37 @@ if (!function_exists('serve_storage_image_response')) {
     function serve_storage_image_response(array $diskCandidates, string $filePath, string $localRelativePath)
     {
         $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        $filePath = ltrim($filePath, '/');
+        $localRelativePath = ltrim($localRelativePath, '/');
 
         try {
             $storageHelper = app(\App\Services\Storage\StorageHelperService::class);
+            $seenDisks = [];
 
             foreach ($diskCandidates as $diskName) {
-                try {
-                    $disk = $storageHelper->getDisk($diskName);
-                    $content = $disk->get($filePath);
-
-                    if ($content !== false && $content !== '') {
-                        $mimeType = 'image/jpeg';
-
-                        try {
-                            $mimeType = $disk->mimeType($filePath) ?: $mimeType;
-                        } catch (\Exception $e) {
-                            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                            $mimeType = match ($extension) {
-                                'png' => 'image/png',
-                                'gif' => 'image/gif',
-                                'webp' => 'image/webp',
-                                'svg' => 'image/svg+xml',
-                                default => $mimeType,
-                            };
-                        }
-
-                        return response($content, 200, [
-                            'Content-Type' => $mimeType,
-                            'Cache-Control' => 'public, max-age=31536000, immutable',
-                        ]);
-                    }
-                } catch (\Exception $e) {
+                if (in_array($diskName, $seenDisks, true)) {
                     continue;
+                }
+                $seenDisks[] = $diskName;
+
+                $failoverResult = $storageHelper->retrieveFileWithFailover($diskName, $filePath);
+                if ($failoverResult) {
+                    $mimeType = $failoverResult['mime_type'];
+                    if (! in_array($mimeType, $allowedMimeTypes, true)) {
+                        abort(403, 'نوع الملف غير مسموح');
+                    }
+
+                    return response($failoverResult['content'], 200, [
+                        'Content-Type' => $mimeType,
+                        'Cache-Control' => 'public, max-age=31536000, immutable',
+                    ]);
                 }
             }
         } catch (\Exception $e) {
             // fall through to local file
         }
 
-        $path = storage_path('app/public/' . ltrim($localRelativePath, '/'));
+        $path = storage_path('app/public/' . $localRelativePath);
 
         if (is_dir($path)) {
             $innerFiles = array_values(array_filter(
