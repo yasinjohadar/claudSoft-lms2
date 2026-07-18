@@ -245,38 +245,35 @@
                     }
                 }, IDLE_THRESHOLD);
             }
-            
-            // Track page view on load
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    trackActivity('page_view', {
-                        referrer: document.referrer,
-                    });
-                });
-            } else {
-                trackActivity('page_view', {
-                    referrer: document.referrer,
+
+            function sendDisconnectBeacon() {
+                if (!csrfToken) return;
+
+                if (navigator.sendBeacon) {
+                    const formData = new FormData();
+                    formData.append('activity_type', 'disconnect');
+                    formData.append('page_url', window.location.href);
+                    formData.append('_token', csrfToken);
+                    navigator.sendBeacon('{{ route("session.track") }}', formData);
+                    return;
+                }
+
+                trackActivity('disconnect', {
+                    duration: Date.now() - lastActivity,
                 });
             }
             
-            // Track visibility changes (focus/blur)
+            // page_view is recorded server-side by SessionTrackingMiddleware only.
+            
+            // Single focus source to avoid duplicate focus_lost/focus_gained
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     trackActivity('focus_lost');
                 } else {
                     trackActivity('focus_gained');
+                    trackActivity('reconnect');
                     updateActivity();
                 }
-            });
-            
-            // Track window focus/blur
-            window.addEventListener('blur', () => {
-                trackActivity('focus_lost');
-            });
-            
-            window.addEventListener('focus', () => {
-                trackActivity('focus_gained');
-                updateActivity();
             });
             
             // Track user activity
@@ -284,39 +281,9 @@
                 document.addEventListener(event, updateActivity, { passive: true });
             });
             
-            // Track page unload
-            window.addEventListener('beforeunload', () => {
-                trackActivity('session_end', {
-                    duration: Date.now() - lastActivity,
-                });
-                
-                // Send synchronously
-                if (navigator.sendBeacon && csrfToken) {
-                    const formData = new FormData();
-                    formData.append('activity_type', 'session_end');
-                    formData.append('_token', csrfToken);
-                    navigator.sendBeacon('{{ route("session.track") }}', formData);
-                }
-            });
-            
-            // Track history changes (SPA navigation)
-            let lastUrl = location.href;
-            new MutationObserver(() => {
-                const url = location.href;
-                if (url !== lastUrl) {
-                    lastUrl = url;
-                    trackActivity('page_view', {
-                        referrer: document.referrer,
-                    });
-                }
-            }).observe(document, { subtree: true, childList: true });
-            
-            // Track popstate (browser back/forward)
-            window.addEventListener('popstate', () => {
-                trackActivity('page_view', {
-                    referrer: document.referrer,
-                });
-            });
+            // Closing the tab/app reports disconnect only — never session_end
+            window.addEventListener('pagehide', sendDisconnectBeacon);
+            window.addEventListener('beforeunload', sendDisconnectBeacon);
             
             // Start heartbeat
             heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);

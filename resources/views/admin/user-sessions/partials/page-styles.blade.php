@@ -166,6 +166,13 @@
     .us-activity-chip--idle_end { background: rgba(108, 117, 125, 0.14); color: #6c757d; }
     .us-activity-chip--focus_lost { background: rgba(255, 193, 7, 0.15); color: #cc9a00; }
     .us-activity-chip--focus_gained { background: rgba(25, 135, 84, 0.12); color: #198754; }
+    .us-activity-chip--lesson_open,
+    .us-activity-chip--lesson_complete,
+    .us-activity-chip--video_start,
+    .us-activity-chip--video_complete,
+    .us-activity-chip--quiz_start,
+    .us-activity-chip--quiz_submit,
+    .us-activity-chip--file_download { background: rgba(var(--primary-rgb), 0.12); color: rgb(var(--primary-rgb)); }
     .us-activity-chip--default { background: rgba(108, 117, 125, 0.14); color: #6c757d; }
 
     .us-distribution-row {

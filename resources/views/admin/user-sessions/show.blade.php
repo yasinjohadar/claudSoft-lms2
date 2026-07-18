@@ -20,6 +20,13 @@
         'idle_end' => 'نهاية خمول',
         'focus_lost' => 'فقدان التركيز',
         'focus_gained' => 'استعادة التركيز',
+        'lesson_open' => 'فتح درس',
+        'lesson_complete' => 'إكمال درس',
+        'video_start' => 'بدء فيديو',
+        'video_complete' => 'إكمال فيديو',
+        'quiz_start' => 'بدء اختبار',
+        'quiz_submit' => 'تسليم اختبار',
+        'file_download' => 'تنزيل ملف',
     ];
 
     $isActive = $session->status === 'active';
