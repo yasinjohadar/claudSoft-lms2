@@ -25,6 +25,8 @@ class CampEnrollment extends Model
         'status',
         'payment_status',
         'notes',
+        'receipt_path',
+        'receipt_disk',
     ];
 
     /**
@@ -35,6 +37,11 @@ class CampEnrollment extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function hasReceipt(): bool
+    {
+        return is_string($this->receipt_path) && trim($this->receipt_path) !== '';
+    }
 
     /**
      * Get the training camp that owns the enrollment.
@@ -129,7 +136,7 @@ class CampEnrollment extends Model
     public function getStatusLabelAttribute()
     {
         return match($this->status) {
-            'pending' => 'قيد الانتظار',
+            'pending' => 'قيد المراجعة',
             'approved' => 'مقبول',
             'rejected' => 'مرفوض',
             'cancelled' => 'ملغي',

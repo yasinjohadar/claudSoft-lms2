@@ -2,7 +2,7 @@
     $currentStatus = request('status', 'all');
     $filters = [
         ['key' => 'all', 'label' => 'جميع الحالات', 'icon' => 'fe-grid', 'params' => []],
-        ['key' => 'pending', 'label' => 'قيد الانتظار', 'icon' => 'fe-clock', 'params' => ['status' => 'pending']],
+        ['key' => 'pending', 'label' => 'قيد المراجعة', 'icon' => 'fe-clock', 'params' => ['status' => 'pending']],
         ['key' => 'approved', 'label' => 'مقبولة', 'icon' => 'fe-check-circle', 'params' => ['status' => 'approved']],
         ['key' => 'rejected', 'label' => 'مرفوضة', 'icon' => 'fe-x-circle', 'params' => ['status' => 'rejected']],
         ['key' => 'cancelled', 'label' => 'ملغاة', 'icon' => 'fe-slash', 'params' => ['status' => 'cancelled']],

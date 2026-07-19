@@ -221,10 +221,12 @@ Route::prefix('admin')
             Route::get('/search-students', [TrainingCampController::class, 'searchStudents'])->name('search-students');
             Route::get('/groups/{group}/students', [TrainingCampController::class, 'getGroupStudents'])->name('group-students');
             Route::get('/{enrollment}', [TrainingCampController::class, 'showEnrollment'])->name('show');
+            Route::get('/{enrollment}/receipt', [TrainingCampController::class, 'enrollmentReceipt'])->name('receipt');
             Route::delete('/{enrollment}', [TrainingCampController::class, 'destroyEnrollment'])->name('destroy');
             Route::post('/{enrollment}/approve', [TrainingCampController::class, 'approveEnrollment'])->name('approve');
             Route::post('/{enrollment}/reject', [TrainingCampController::class, 'rejectEnrollment'])->name('reject');
             Route::post('/{enrollment}/update-status', [TrainingCampController::class, 'updateEnrollmentStatus'])->name('update-status');
+            Route::post('/{enrollment}/update-payment-status', [TrainingCampController::class, 'updateEnrollmentPaymentStatus'])->name('update-payment-status');
         });
 
         // Invoices routes
@@ -379,6 +381,7 @@ Route::prefix('admin')
         Route::get('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}', [CourseGroupController::class, 'showMembershipRequest'])->name('courses.groups.membership-requests.show');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/approve', [CourseGroupController::class, 'approveRequest'])->name('courses.groups.membership-requests.approve');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/reject', [CourseGroupController::class, 'rejectRequest'])->name('courses.groups.membership-requests.reject');
+        Route::get('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/receipt', [CourseGroupController::class, 'membershipRequestReceipt'])->name('courses.groups.membership-requests.receipt');
         Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/{requestId}/delete', [CourseGroupController::class, 'deleteRequest'])->name('courses.groups.membership-requests.delete');
         Route::delete('courses/{courseId}/groups/{groupId}/membership-requests/delete-multiple', [CourseGroupController::class, 'deleteMultipleRequests'])->name('courses.groups.membership-requests.delete-multiple');
         Route::post('courses/{courseId}/groups/{groupId}/membership-requests/approve-multiple', [CourseGroupController::class, 'approveMultipleRequests'])->name('courses.groups.membership-requests.approve-multiple');

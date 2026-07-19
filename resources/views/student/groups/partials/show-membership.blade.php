@@ -16,15 +16,22 @@
                 @csrf
 
                 <div class="mb-3">
+                    @if($group->terms)
+                        <div class="border rounded p-3 mb-3 bg-light student-group-details-content" style="max-height: 220px; overflow-y: auto;">
+                            <h6 class="fs-12 fw-semibold text-muted mb-2">شروط {{ $group->is_camp ? 'المعسكر' : 'المجموعة' }}</h6>
+                            {!! $group->terms !!}
+                        </div>
+                    @endif
                     <div class="form-check">
                         <input class="form-check-input @error('terms_accepted') is-invalid @enderror"
                                type="checkbox"
                                name="terms_accepted"
                                value="1"
                                id="terms_accepted"
+                               {{ old('terms_accepted') ? 'checked' : '' }}
                                required>
                         <label class="form-check-label" for="terms_accepted">
-                            أوافق على شروط المعسكر
+                            أوافق على شروط {{ $group->is_camp ? 'المعسكر' : 'المجموعة' }}
                         </label>
                         @error('terms_accepted')
                             <div class="invalid-feedback d-block">{{ $message }}</div>

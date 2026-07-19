@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
+use App\Models\CourseGroup;
+use App\Models\CourseGroupMember;
 use App\Models\TrainingCamp;
 use App\Services\Finance\StudentPaymentSubmissionService;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -28,6 +31,10 @@ class PaymentController extends Controller
 
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
         $camps = TrainingCamp::query()->orderBy('name')->get(['id', 'name']);
+        $campGroups = CourseGroup::query()
+            ->where('is_camp', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $globalPendingReviewCount = Payment::where('status', 'pending')
             ->whereNotNull('receipt_path')
             ->count();
@@ -45,6 +52,7 @@ class PaymentController extends Controller
             'payments',
             'paymentMethods',
             'camps',
+            'campGroups',
             'stats',
             'globalPendingReviewCount'
         ));
@@ -55,6 +63,11 @@ class PaymentController extends Controller
         $query = Payment::with([
             'invoice.student',
             'invoice.items.campEnrollment.camp',
+            'invoice.items.itemable' => function (MorphTo $morphTo) {
+                $morphTo->morphWith([
+                    CourseGroupMember::class => ['group'],
+                ]);
+            },
             'paymentMethod',
             'receivedBy',
             'student',
@@ -132,9 +145,23 @@ class PaymentController extends Controller
         }
 
         if ($request->filled('camp_id')) {
-            $query->whereHas('invoice.items.campEnrollment', function ($q) use ($request) {
-                $q->where('camp_id', $request->camp_id);
-            });
+            $campFilter = (string) $request->camp_id;
+
+            if (str_starts_with($campFilter, 'group:')) {
+                $groupId = (int) substr($campFilter, 6);
+                $query->whereHas('invoice.items', function ($q) use ($groupId) {
+                    $q->where('itemable_type', CourseGroupMember::class)
+                        ->whereIn('itemable_id', function ($sub) use ($groupId) {
+                            $sub->select('id')
+                                ->from('course_group_members')
+                                ->where('group_id', $groupId);
+                        });
+                });
+            } else {
+                $query->whereHas('invoice.items.campEnrollment', function ($q) use ($campFilter) {
+                    $q->where('camp_id', $campFilter);
+                });
+            }
         }
 
         if ($request->filled('from_date')) {

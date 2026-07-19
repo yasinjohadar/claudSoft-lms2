@@ -143,6 +143,11 @@
                 ])
             </div>
         </div>
+
+        @include('admin.pages.training-camps.partials.audience-targets', [
+            'camp' => $camp ?? null,
+            'courses' => $courses ?? collect(),
+        ])
     </div>
 
     <div class="col-lg-4">
@@ -178,7 +183,7 @@
                 <div class="admin-group-form-toggle">
                     <div class="admin-group-form-toggle__info">
                         <span class="admin-group-form-toggle__label">تفعيل المعسكر</span>
-                        <span class="admin-group-form-toggle__hint">يظهر للطلاب عند التفعيل</span>
+                        <span class="admin-group-form-toggle__hint">يظهر فقط للمجموعات المستهدفة عند التفعيل</span>
                     </div>
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" name="is_active" id="campIsActive"
@@ -194,6 +199,19 @@
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" name="is_featured" id="campIsFeatured"
                                {{ $isEdit ? (old('is_featured', $camp->is_featured) ? 'checked' : '') : (old('is_featured') ? 'checked' : '') }}>
+                    </div>
+                </div>
+
+                <div class="admin-group-form-toggle">
+                    <div class="admin-group-form-toggle__info">
+                        <span class="admin-group-form-toggle__label">طلب إيصال الدفع</span>
+                        <span class="admin-group-form-toggle__hint">إظهار حقل رفع الإيصال وإلزامه عند التسجيل</span>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" name="require_payment_receipt" id="campRequireReceipt"
+                               {{ $isEdit
+                                    ? (old('require_payment_receipt', $camp->require_payment_receipt ?? true) ? 'checked' : '')
+                                    : (old('require_payment_receipt', true) ? 'checked' : '') }}>
                     </div>
                 </div>
 

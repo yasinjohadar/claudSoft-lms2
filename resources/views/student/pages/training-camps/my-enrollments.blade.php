@@ -15,10 +15,15 @@
                 <h4 class="student-my-courses-welcome__title mb-1">تسجيلاتي في المعسكرات</h4>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.training-camps.index') }}">المعسكرات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('student.training-camps.index') }}">التسجيل على المعسكرات</a></li>
                         <li class="breadcrumb-item active">تسجيلاتي</li>
                     </ol>
                 </nav>
+            </div>
+            <div class="mt-3 mt-md-0">
+                <a href="{{ route('student.training-camps.index') }}" class="btn btn-sm btn-primary-light">
+                    <i class="fe fe-flag me-1"></i>التسجيل على المعسكرات
+                </a>
             </div>
         </div>
 

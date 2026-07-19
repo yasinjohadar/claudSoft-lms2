@@ -3,7 +3,7 @@
         ['variant' => 'blue', 'icon' => 'fe-flag', 'label' => 'معسكرات متاحة', 'value' => $stats['total'] ?? 0, 'sub' => 'حسب الفلاتر الحالية'],
         ['variant' => 'cyan', 'icon' => 'fe-calendar', 'label' => 'معسكرات قادمة', 'value' => $stats['upcoming'] ?? 0, 'sub' => 'لم تبدأ بعد'],
         ['variant' => 'green', 'icon' => 'fe-play-circle', 'label' => 'معسكرات جارية', 'value' => $stats['ongoing'] ?? 0, 'sub' => 'جارية الآن'],
-        ['variant' => 'orange', 'icon' => 'fe-star', 'label' => 'معسكرات مميزة', 'value' => $stats['featured'] ?? 0, 'sub' => 'موصى بها'],
+        ['variant' => 'orange', 'icon' => 'fe-users', 'label' => 'حسب الظهور', 'value' => $stats['total'] ?? 0, 'sub' => 'مسموح لك برؤيتها'],
     ];
 @endphp
 

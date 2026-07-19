@@ -12,6 +12,26 @@ class ProjectChallengeController extends Controller
 {
     public function index(Request $request)
     {
+        $baseQuery = ProjectChallenge::published()->open();
+
+        $userTeamIds = ProjectTeamMember::query()
+            ->where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->pluck('project_team_id');
+
+        $userTeams = ProjectTeam::with('challenge')
+            ->whereIn('id', $userTeamIds)
+            ->get()
+            ->keyBy('project_challenge_id');
+
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'featured' => (clone $baseQuery)->featured()->count(),
+            'my_teams' => $userTeams->count(),
+            'teams' => ProjectTeam::query()
+                ->whereHas('challenge', fn ($q) => $q->published()->open())
+                ->count(),
+        ];
         $query = ProjectChallenge::published()
             ->open()
             ->with(['skills', 'technologies'])
@@ -29,19 +49,18 @@ class ProjectChallengeController extends Controller
             $query->featured();
         }
 
-        $challenges = $query->orderByDesc('created_at')->paginate(12);
+        if ($request->filled('q')) {
+            $term = $request->q;
+            $query->where(function ($q) use ($term) {
+                $q->where('title', 'like', "%{$term}%")
+                    ->orWhere('summary', 'like', "%{$term}%")
+                    ->orWhere('description', 'like', "%{$term}%");
+            });
+        }
 
-        $userTeamIds = ProjectTeamMember::query()
-            ->where('user_id', auth()->id())
-            ->where('status', 'active')
-            ->pluck('project_team_id');
+        $challenges = $query->orderByDesc('created_at')->paginate(12)->withQueryString();
 
-        $userTeams = ProjectTeam::with('challenge')
-            ->whereIn('id', $userTeamIds)
-            ->get()
-            ->keyBy('project_challenge_id');
-
-        return view('student.pages.project-challenges.index', compact('challenges', 'userTeams'));
+        return view('student.pages.project-challenges.index', compact('challenges', 'userTeams', 'stats'));
     }
 
     public function show(string $id)

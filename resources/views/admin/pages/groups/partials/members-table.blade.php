@@ -31,6 +31,9 @@
                     <th>البريد الإلكتروني</th>
                     <th>رقم الهاتف</th>
                     <th>تاريخ الانضمام</th>
+                    @if($group->is_camp)
+                        <th>حالة الدفع</th>
+                    @endif
                     <th>آخر دخول</th>
                     <th>اكتمال البروفايل</th>
                     <th>حالة الحساب</th>
@@ -88,6 +91,20 @@
                                 @endif
                             </td>
                             <td>{{ $memberRecord->joined_at ? $memberRecord->joined_at->format('Y-m-d') : '-' }}</td>
+                            @if($group->is_camp)
+                                <td>
+                                    @php
+                                        $paymentClasses = [
+                                            'paid' => 'admin-camp-enrollment-payment admin-camp-enrollment-payment--paid',
+                                            'unpaid' => 'admin-camp-enrollment-payment admin-camp-enrollment-payment--unpaid',
+                                            'refunded' => 'admin-camp-enrollment-payment admin-camp-enrollment-payment--refunded',
+                                        ];
+                                    @endphp
+                                    <span class="{{ $paymentClasses[$memberRecord->payment_status] ?? 'admin-camp-enrollment-payment' }}">
+                                        {{ $memberRecord->payment_status_label }}
+                                    </span>
+                                </td>
+                            @endif
                             <td>
                                 @php
                                     $studentId = $memberRecord->student_id;

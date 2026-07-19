@@ -24,6 +24,24 @@
             </div>
         @endif
 
+        @if($group->details)
+            <div class="mb-4">
+                <h6 class="text-muted fs-12 fw-semibold mb-2">التفاصيل</h6>
+                <div class="student-group-details-content">
+                    {!! $group->details !!}
+                </div>
+            </div>
+        @endif
+
+        @if($group->terms)
+            <div class="mb-4">
+                <h6 class="text-muted fs-12 fw-semibold mb-2">الشروط</h6>
+                <div class="student-group-details-content">
+                    {!! $group->terms !!}
+                </div>
+            </div>
+        @endif
+
         @if($group->courses->count() > 0)
             <div>
                 <h6 class="text-muted fs-12 fw-semibold mb-2">الكورسات المرتبطة</h6>

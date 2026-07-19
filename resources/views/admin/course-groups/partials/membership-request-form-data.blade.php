@@ -116,10 +116,10 @@
     <div class="card-header border-0 pb-0 d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
             <h6 class="group-show-members-card__title mb-1">
-                <i class="fe fe-file-text me-1 text-primary"></i>وصل الانتساب
+                <i class="fe fe-file-text me-1 text-primary"></i>وصل الانتساب (التسجيل الخارجي)
             </h6>
             <p class="fs-12 text-muted mb-0">
-                الملف الذي رفعه الطالب مع طلب التسجيل.
+                الملف الذي رفعه الطالب مع فورم التسجيل من خارج المنصة.
             </p>
         </div>
         @if($registration->membership_receipt_path)

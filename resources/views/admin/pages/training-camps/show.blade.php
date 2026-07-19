@@ -180,6 +180,25 @@
                                 <hr class="my-3">
                                 <p class="text-muted mb-0 small">{{ Str::limit(strip_tags($camp->description), 300) }}</p>
                             @endif
+
+                            <hr class="my-3">
+                            <small class="text-muted d-block mb-2">الجمهور المستهدف</small>
+                            @php $audienceRows = $camp->audienceRowsForForm(); @endphp
+                            @if($audienceRows === [])
+                                <div class="alert alert-warning py-2 mb-0 small">
+                                    لا يوجد جمهور محدد — المعسكر مخفي عن جميع الطلاب. عدّل المعسكر وأضف مجموعات.
+                                </div>
+                            @else
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach($camp->targets->groupBy('course_id') as $courseId => $targets)
+                                        @php $courseTitle = optional($targets->first()->course)->title ?? ('كورس #'.$courseId); @endphp
+                                        <span class="badge bg-primary-transparent text-primary border">
+                                            {{ $courseTitle }}:
+                                            {{ $targets->map(fn ($t) => optional($t->group)->name)->filter()->implode('، ') }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -259,7 +278,17 @@
                     <div class="mb-3"><small class="text-muted d-block">الحالة</small><span id="enrollment-details-status">—</span></div>
                     <div class="mb-3"><small class="text-muted d-block">حالة الدفع</small><span id="enrollment-details-payment-status">—</span></div>
                     <div class="mb-3"><small class="text-muted d-block">تاريخ التسجيل</small><span id="enrollment-details-date">—</span></div>
-                    <div class="mb-0"><small class="text-muted d-block">ملاحظات</small><span id="enrollment-details-notes">—</span></div>
+                    <div class="mb-3"><small class="text-muted d-block">ملاحظات</small><span id="enrollment-details-notes">—</span></div>
+                    <div class="mb-0" id="enrollment-details-receipt-wrap">
+                        <small class="text-muted d-block">إيصال الدفع</small>
+                        <div id="enrollment-details-receipt">—</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-success d-none" id="enrollment-details-approve-btn">
+                        <i class="fe fe-check me-1"></i>موافقة
+                    </button>
                 </div>
             </div>
         </div>
@@ -293,6 +322,7 @@
     const baseUrl = @json(route('training-camps.enrollments.index', $camp->id));
     const showUrlTemplate = @json(route('training-camps.enrollments.show', [$camp->id, ':id']));
     const updateStatusUrlTemplate = @json(route('training-camps.enrollments.update-status', [$camp->id, ':id']));
+    const updatePaymentStatusUrlTemplate = @json(route('training-camps.enrollments.update-payment-status', [$camp->id, ':id']));
     const destroyUrlTemplate = @json(route('training-camps.enrollments.destroy', [$camp->id, ':id']));
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -300,8 +330,9 @@
     let filterController = null;
     let currentDeleteEnrollmentId = null;
 
-    const statusLabels = { pending: 'قيد الانتظار', approved: 'مقبول', rejected: 'مرفوض', cancelled: 'ملغي' };
-    const paymentLabels = { unpaid: 'غير مدفوع', paid: 'مدفوع', refunded: 'مسترد' };
+    const statusLabels = { pending: 'قيد المراجعة', approved: 'مقبول', rejected: 'مرفوض', cancelled: 'ملغي' };
+    const paymentLabels = { unpaid: 'غير مدفوع', paid: 'مدفوع', refunded: 'مسترجع' };
+    let currentViewEnrollmentId = null;
 
     function debounce(fn, delay) {
         let timer = null;
@@ -373,6 +404,7 @@
     }
 
     function viewEnrollmentDetails(enrollmentId) {
+        currentViewEnrollmentId = enrollmentId;
         fetch(showUrlTemplate.replace(':id', enrollmentId), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         })
@@ -382,16 +414,39 @@
                 const e = data.enrollment;
                 document.getElementById('enrollment-details-name').textContent = e.student?.name || '—';
                 document.getElementById('enrollment-details-email').textContent = e.student?.email || '—';
-                document.getElementById('enrollment-details-status').textContent = statusLabels[e.status] || e.status;
-                document.getElementById('enrollment-details-payment-status').textContent = paymentLabels[e.payment_status] || e.payment_status;
+                document.getElementById('enrollment-details-status').textContent = e.status_label || statusLabels[e.status] || e.status;
+                document.getElementById('enrollment-details-payment-status').textContent = e.payment_status_label || paymentLabels[e.payment_status] || e.payment_status;
                 document.getElementById('enrollment-details-date').textContent = e.enrollment_date ? new Date(e.enrollment_date).toLocaleDateString('ar-SA') : '—';
                 document.getElementById('enrollment-details-notes').textContent = e.notes || '—';
+
+                const receiptBox = document.getElementById('enrollment-details-receipt');
+                if (e.has_receipt && e.receipt_url) {
+                    receiptBox.innerHTML =
+                        '<a href="' + e.receipt_url + '" target="_blank" class="btn btn-sm btn-outline-primary me-2">' +
+                        '<i class="fe fe-eye me-1"></i>عرض الإيصال</a>' +
+                        '<a href="' + e.receipt_url + '?download=1" class="btn btn-sm btn-outline-secondary">' +
+                        '<i class="fe fe-download me-1"></i>تنزيل</a>';
+                } else {
+                    receiptBox.textContent = 'لا يوجد إيصال مرفق';
+                }
+
+                const approveBtn = document.getElementById('enrollment-details-approve-btn');
+                if (approveBtn) {
+                    approveBtn.classList.toggle('d-none', e.status === 'approved');
+                }
+
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('enrollmentDetailsModal')).show();
             })
             .catch(function () {
                 if (typeof toastr !== 'undefined') toastr.error('تعذر تحميل التفاصيل');
             });
     }
+
+    document.getElementById('enrollment-details-approve-btn')?.addEventListener('click', function () {
+        if (!currentViewEnrollmentId) return;
+        updateEnrollmentStatus(currentViewEnrollmentId, 'approved');
+        bootstrap.Modal.getInstance(document.getElementById('enrollmentDetailsModal'))?.hide();
+    });
 
     function updateEnrollmentStatus(enrollmentId, newStatus) {
         const label = statusLabels[newStatus] || newStatus;
@@ -416,6 +471,31 @@
             })
             .catch(function (err) {
                 if (typeof toastr !== 'undefined') toastr.error(err.message || 'تعذر التحديث');
+            });
+    }
+
+    function updateEnrollmentPaymentStatus(enrollmentId, newPaymentStatus) {
+        const label = paymentLabels[newPaymentStatus] || newPaymentStatus;
+        if (!confirm('هل أنت متأكد من تغيير حالة الدفع إلى: ' + label + '؟')) return;
+
+        fetch(updatePaymentStatusUrlTemplate.replace(':id', enrollmentId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ payment_status: newPaymentStatus }),
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) throw new Error(data.message);
+                if (typeof toastr !== 'undefined') toastr.success(data.message);
+                loadEnrollments(currentPage);
+            })
+            .catch(function (err) {
+                if (typeof toastr !== 'undefined') toastr.error(err.message || 'تعذر تحديث حالة الدفع');
             });
     }
 
@@ -461,6 +541,14 @@
             const statusBtn = e.target.closest('.js-update-camp-enrollment-status');
             if (statusBtn) {
                 updateEnrollmentStatus(statusBtn.getAttribute('data-enrollment-id'), statusBtn.getAttribute('data-new-status'));
+                return;
+            }
+            const paymentBtn = e.target.closest('.js-update-camp-enrollment-payment');
+            if (paymentBtn) {
+                updateEnrollmentPaymentStatus(
+                    paymentBtn.getAttribute('data-enrollment-id'),
+                    paymentBtn.getAttribute('data-new-payment-status')
+                );
                 return;
             }
             const deleteBtn = e.target.closest('.js-delete-camp-enrollment');

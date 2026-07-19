@@ -28,7 +28,8 @@ class GroupMembershipRequestController extends Controller
             ->where('is_visible', true)
             ->where('is_active', true)
             ->where('allow_membership_requests', true)
-            ->where('is_visible_for_students', true);
+            ->where('is_visible_for_students', true)
+            ->where('is_camp', false);
 
         // Search
         if ($request->filled('search')) {
@@ -99,7 +100,8 @@ class GroupMembershipRequestController extends Controller
             $q->where('course_groups.is_visible', true)
                 ->where('course_groups.is_active', true)
                 ->where('course_groups.allow_membership_requests', true)
-                ->where('course_groups.is_visible_for_students', true);
+                ->where('course_groups.is_visible_for_students', true)
+                ->where('course_groups.is_camp', false);
         })
             ->orderBy('title')
             ->get(['id', 'title']);
@@ -121,6 +123,10 @@ class GroupMembershipRequestController extends Controller
             ->withCount('members')
             ->findOrFail($id);
 
+        if ($group->is_camp) {
+            return redirect()->route('student.training-camps.show', $group->id);
+        }
+
         // Check if student can request membership
         $canRequest = $group->canRequestMembership($student);
         $hasPendingRequest = $group->membershipRequests()
@@ -138,6 +144,12 @@ class GroupMembershipRequestController extends Controller
     {
         $student = Auth::user();
         $group = CourseGroup::findOrFail($groupId);
+
+        if ($group->is_camp) {
+            return redirect()
+                ->route('student.training-camps.show', $group->id)
+                ->with('info', 'يرجى التسجيل من صفحة المعسكر');
+        }
 
         // Validate request
         $validated = $request->validate([

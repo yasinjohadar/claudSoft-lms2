@@ -1,7 +1,7 @@
 @php
     $statCards = [
         ['variant' => 'blue', 'icon' => 'fe-layers', 'label' => 'إجمالي التسجيلات', 'value' => $stats['total']],
-        ['variant' => 'orange', 'icon' => 'fe-clock', 'label' => 'قيد الانتظار', 'value' => $stats['pending']],
+        ['variant' => 'orange', 'icon' => 'fe-clock', 'label' => 'قيد المراجعة', 'value' => $stats['pending']],
         ['variant' => 'green', 'icon' => 'fe-check-circle', 'label' => 'مقبولة', 'value' => $stats['approved']],
         ['variant' => 'cyan', 'icon' => 'fe-dollar-sign', 'label' => 'غير مدفوعة', 'value' => $stats['unpaid']],
     ];

@@ -17,6 +17,8 @@ class GroupMembershipRequest extends Model
         'terms_accepted',
         'payment_date',
         'message',
+        'receipt_path',
+        'receipt_disk',
         'admin_notes',
         'approved_at',
         'approved_by',
@@ -271,5 +273,10 @@ class GroupMembershipRequest extends Model
         }
 
         return null;
+    }
+
+    public function hasReceipt(): bool
+    {
+        return is_string($this->receipt_path) && trim($this->receipt_path) !== '';
     }
 }

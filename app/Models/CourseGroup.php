@@ -13,6 +13,8 @@ class CourseGroup extends Model
     protected $fillable = [
         'name',
         'description',
+        'details',
+        'terms',
         'image',
         'max_members',
         'is_visible',
@@ -20,6 +22,11 @@ class CourseGroup extends Model
         'device_lock_enabled',
         'allow_membership_requests',
         'is_visible_for_students',
+        'is_camp',
+        'price',
+        'start_date',
+        'end_date',
+        'require_payment_receipt',
         'created_by',
     ];
 
@@ -29,6 +36,11 @@ class CourseGroup extends Model
         'device_lock_enabled' => 'boolean',
         'allow_membership_requests' => 'boolean',
         'is_visible_for_students' => 'boolean',
+        'is_camp' => 'boolean',
+        'require_payment_receipt' => 'boolean',
+        'price' => 'decimal:2',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     // Relationships
@@ -352,6 +364,7 @@ class CourseGroup extends Model
             'student_id' => $user->id,
             'role' => $role,
             'joined_at' => now(),
+            'payment_status' => 'unpaid',
         ]);
 
         // Automatically enroll student in all group courses
@@ -360,9 +373,109 @@ class CourseGroup extends Model
 
             app(\App\Services\CourseGroup\CourseGroupMembershipHistoryService::class)
                 ->recordJoin($this, $user, $role, $context);
+
+            app(\App\Services\CourseGroupBillingService::class)
+                ->createInvoiceForMember($this, $member);
         }
 
         return $member;
+    }
+
+    /**
+     * Whether this group is configured as a paid camp-style group.
+     */
+    public function isCamp(): bool
+    {
+        return (bool) $this->is_camp;
+    }
+
+    /**
+     * Camp fee amount (0 when not a camp or price unset).
+     */
+    public function campPrice(): float
+    {
+        return $this->isCamp() ? (float) ($this->price ?? 0) : 0.0;
+    }
+
+    /**
+     * Whether camp end date has passed (display only).
+     */
+    public function hasEnded(): bool
+    {
+        return $this->end_date !== null && $this->end_date->lt(now()->startOfDay());
+    }
+
+    /**
+     * Whether camp is currently within start/end window (display only).
+     */
+    public function isOngoing(): bool
+    {
+        if ($this->hasEnded()) {
+            return false;
+        }
+
+        if (! $this->start_date) {
+            return true;
+        }
+
+        return $this->start_date->lte(now()->endOfDay());
+    }
+
+    /**
+     * Whether camp start date is still in the future (display only).
+     */
+    public function isUpcoming(): bool
+    {
+        return $this->start_date !== null && $this->start_date->gt(now()->endOfDay());
+    }
+
+    /**
+     * Duration in days from start/end dates when both are set.
+     */
+    public function getDurationDaysAttribute(): ?int
+    {
+        if (! $this->start_date || ! $this->end_date) {
+            return null;
+        }
+
+        return max(1, $this->start_date->diffInDays($this->end_date) + 1);
+    }
+
+    /**
+     * Remaining seats for camp-style groups (null = unlimited).
+     */
+    public function availableSeats(): ?int
+    {
+        return $this->getAvailableSlots();
+    }
+
+    public function hasAvailableSeats(): bool
+    {
+        return ! $this->isFull();
+    }
+
+    /**
+     * Alias used by camp UI templates.
+     */
+    public function getMaxParticipantsAttribute(): ?int
+    {
+        return $this->max_members;
+    }
+
+    /**
+     * Alias used by camp UI templates.
+     */
+    public function getCurrentParticipantsAttribute(): int
+    {
+        if (array_key_exists('members_count', $this->attributes)) {
+            return (int) $this->attributes['members_count'];
+        }
+
+        if (isset($this->members_count)) {
+            return (int) $this->members_count;
+        }
+
+        return $this->getMembersCount();
     }
 
     /**

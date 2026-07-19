@@ -3,258 +3,385 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Models\TrainingCamp;
-use App\Models\CampEnrollment;
-use App\Models\CourseCategory;
+use App\Models\CourseGroup;
+use App\Models\CourseGroupMember;
+use App\Models\GroupMembershipRequest;
+use App\Services\CourseGroupReceiptService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class TrainingCampController extends Controller
 {
     /**
-     * Display a listing of available training camps for students.
+     * Available camp-style groups the student may see and join.
+     * Approved camp memberships are excluded (they appear under «معسكراتي»).
      */
     public function index(Request $request)
     {
-        $query = TrainingCamp::with('category')
-            ->active()
-            ->where('end_date', '>=', now()->startOfDay());
+        $student = Auth::user();
 
-        // Filter by category
-        if ($request->filled('category_id') || $request->filled('category')) {
-            $query->where('category_id', $request->input('category_id', $request->input('category')));
-        }
+        $approvedCampGroupIds = CourseGroupMember::query()
+            ->where('student_id', $student->id)
+            ->whereHas('group', fn ($q) => $q->where('is_camp', true))
+            ->pluck('group_id');
 
-        // Filter by camp timing
-        if ($request->filled('status')) {
-            if ($request->status === 'upcoming') {
-                $query->upcoming();
-            } elseif ($request->status === 'ongoing') {
-                $query->ongoing();
-            }
-        }
+        $query = CourseGroup::query()
+            ->with(['visibilityRequirements.requiredGroup', 'courses'])
+            ->withCount('members')
+            ->where('is_camp', true)
+            ->where('is_active', true)
+            ->where('is_visible', true)
+            ->where('is_visible_for_students', true)
+            ->where('allow_membership_requests', true)
+            ->whereNotIn('id', $approvedCampGroupIds);
 
-        // Filter by price range
-        if ($request->filled('price_min')) {
-            $query->where('price', '>=', $request->price_min);
-        }
-        if ($request->filled('price_max')) {
-            $query->where('price', '<=', $request->price_max);
-        }
-
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('instructor_name', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        // Sort
+        if ($request->filled('status')) {
+            if ($request->status === 'upcoming') {
+                $query->whereNotNull('start_date')->where('start_date', '>', now());
+            } elseif ($request->status === 'ongoing') {
+                $query->where(function ($q) {
+                    $q->whereNull('start_date')
+                        ->orWhere('start_date', '<=', now());
+                })->where(function ($q) {
+                    $q->whereNull('end_date')
+                        ->orWhere('end_date', '>=', now()->startOfDay());
+                });
+            }
+        }
+
         $sortBy = $request->get('sort', 'start_date');
         $sortOrder = $request->get('order', 'asc');
-        $query->orderBy($sortBy, $sortOrder);
+        if (in_array($sortBy, ['start_date', 'end_date', 'price', 'name', 'created_at'], true)) {
+            $query->orderBy($sortBy, $sortOrder === 'desc' ? 'desc' : 'asc');
+        } else {
+            $query->orderBy('start_date');
+        }
+
+        $visibleCamps = $query->get()->filter(
+            fn (CourseGroup $group) => $group->isVisibleForStudent($student)
+        )->values();
 
         $stats = [
-            'total' => (clone $query)->count(),
-            'upcoming' => (clone $query)->where('start_date', '>', now())->count(),
-            'ongoing' => (clone $query)->where('start_date', '<=', now())->where('end_date', '>=', now())->count(),
-            'featured' => (clone $query)->where('is_featured', true)->count(),
+            'total' => $visibleCamps->count(),
+            'upcoming' => $visibleCamps->filter(fn (CourseGroup $g) => $g->isUpcoming())->count(),
+            'ongoing' => $visibleCamps->filter(fn (CourseGroup $g) => $g->isOngoing() && ! $g->isUpcoming())->count(),
+            'featured' => 0,
         ];
 
-        $camps = $query->paginate(12);
-        $categories = CourseCategory::active()->ordered()->get();
+        $perPage = 12;
+        $page = (int) $request->get('page', 1);
+        $camps = new LengthAwarePaginator(
+            $visibleCamps->forPage($page, $perPage)->values(),
+            $visibleCamps->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
-        // Get user enrollments
-        $userEnrollments = [];
-        if (Auth::check()) {
-            $userEnrollments = CampEnrollment::where('student_id', Auth::id())
-                ->pluck('camp_id')
-                ->toArray();
-        }
+        // Only pending requests remain on this list (approved members are excluded above)
+        $userEnrollments = GroupMembershipRequest::query()
+            ->where('student_id', $student->id)
+            ->where('status', 'pending')
+            ->whereIn('group_id', $visibleCamps->pluck('id'))
+            ->pluck('group_id')
+            ->all();
+
+        $categories = collect();
 
         return view('student.pages.training-camps.index', compact('camps', 'categories', 'userEnrollments', 'stats'));
     }
 
     /**
-     * Display the specified training camp details.
+     * Camp-style group details.
      */
     public function show(string $slug)
     {
-        $trainingCamp = TrainingCamp::with(['category', 'enrollments'])
-            ->where('slug', $slug)
-            ->active()
-            ->firstOrFail();
+        $student = Auth::user();
+        $trainingCamp = CourseGroup::query()
+            ->with(['courses', 'visibilityRequirements.requiredGroup'])
+            ->withCount('members')
+            ->where('is_camp', true)
+            ->where('is_active', true)
+            ->findOrFail($slug);
 
-        // Check if user is already enrolled
-        $isEnrolled = false;
+        $isMember = $trainingCamp->hasMember($student);
+        $pendingRequest = GroupMembershipRequest::query()
+            ->where('group_id', $trainingCamp->id)
+            ->where('student_id', $student->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (! $isMember && ! $pendingRequest && ! $trainingCamp->isVisibleForStudent($student)) {
+            abort(404);
+        }
+
+        $isEnrolled = $isMember || $pendingRequest !== null;
         $enrollment = null;
 
-        if (Auth::check()) {
-            $enrollment = CampEnrollment::where('camp_id', $trainingCamp->id)
-                ->where('student_id', Auth::id())
+        if ($isMember) {
+            $member = CourseGroupMember::query()
+                ->where('group_id', $trainingCamp->id)
+                ->where('student_id', $student->id)
                 ->first();
-            $isEnrolled = $enrollment !== null;
+
+            $enrollment = $this->makeEnrollmentViewModel(
+                status: 'approved',
+                paymentStatus: $member?->payment_status ?? 'unpaid',
+                camp: $trainingCamp,
+                createdAt: $member?->joined_at ?? $member?->created_at ?? now(),
+                cancelId: null,
+                notes: null,
+            );
+        } elseif ($pendingRequest) {
+            $enrollment = $this->makeEnrollmentViewModel(
+                status: 'pending',
+                paymentStatus: 'unpaid',
+                camp: $trainingCamp,
+                createdAt: $pendingRequest->created_at,
+                cancelId: $pendingRequest->id,
+                notes: $pendingRequest->message,
+                hasReceipt: $pendingRequest->hasReceipt(),
+            );
         }
 
         return view('student.pages.training-camps.show', compact('trainingCamp', 'isEnrolled', 'enrollment'));
     }
 
     /**
-     * Enroll student in a training camp.
+     * Submit a membership request for a camp-style group.
      */
-    public function enroll(Request $request, string $id)
+    public function enroll(Request $request, string $id, CourseGroupReceiptService $receiptService)
     {
-        $camp = TrainingCamp::findOrFail($id);
+        $student = Auth::user();
+        $camp = CourseGroup::query()
+            ->where('is_camp', true)
+            ->findOrFail($id);
 
-        // Check if camp is active
-        if (!$camp->is_active) {
-            return redirect()
-                ->back()
-                ->with('error', 'هذا المعسكر غير متاح حالياً');
+        if (! $camp->is_active || ! $camp->allow_membership_requests) {
+            return redirect()->back()->with('error', 'هذا المعسكر غير متاح حالياً');
         }
 
-        // Check if camp is full
+        if (! $camp->isVisibleForStudent($student)) {
+            return redirect()->back()->with('error', 'هذا المعسكر غير متاح لك');
+        }
+
         if ($camp->isFull()) {
-            return redirect()
-                ->back()
-                ->with('error', 'المعسكر ممتلئ، لا توجد مقاعد متاحة');
+            return redirect()->back()->with('error', 'المعسكر ممتلئ، لا توجد مقاعد متاحة');
         }
 
-        // Check if already enrolled
-        $existingEnrollment = CampEnrollment::where('camp_id', $camp->id)
-            ->where('student_id', Auth::id())
+        if ($camp->hasMember($student)) {
+            return redirect()->back()->with('error', 'أنت مسجل بالفعل في هذا المعسكر');
+        }
+
+        $existingRequest = GroupMembershipRequest::query()
+            ->where('group_id', $camp->id)
+            ->where('student_id', $student->id)
+            ->where('status', 'pending')
             ->first();
 
-        if ($existingEnrollment) {
-            return redirect()
-                ->back()
-                ->with('error', 'أنت مسجل بالفعل في هذا المعسكر');
+        if ($existingRequest) {
+            return redirect()->back()->with('error', 'لديك طلب تسجيل قيد المراجعة لهذا المعسكر');
         }
 
+        $requireReceipt = (bool) ($camp->require_payment_receipt ?? true);
+
+        $rules = [
+            'notes' => 'nullable|string|max:1000',
+            'terms_accepted' => 'required|accepted',
+        ];
+
+        if ($requireReceipt) {
+            $rules['receipt'] = 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120';
+        }
+
+        $validated = $request->validate($rules, [
+            'terms_accepted.required' => 'يجب الموافقة على شروط المعسكر.',
+            'terms_accepted.accepted' => 'يجب الموافقة على شروط المعسكر.',
+            'receipt.required' => 'يرجى رفع إيصال الدفع المالي.',
+            'receipt.mimes' => 'صيغة الإيصال يجب أن تكون صورة أو PDF.',
+            'receipt.max' => 'حجم الإيصال يجب ألا يتجاوز 5 ميغابايت.',
+        ]);
+
         try {
-            DB::beginTransaction();
+            $receiptPath = null;
+            $receiptDisk = null;
 
-            // Create enrollment
-            $enrollment = CampEnrollment::create([
-                'camp_id' => $camp->id,
-                'student_id' => Auth::id(),
+            if ($requireReceipt && $request->hasFile('receipt')) {
+                $receiptPath = $receiptService->store(
+                    $request->file('receipt'),
+                    (int) $camp->id,
+                    (int) $student->id
+                );
+                $receiptDisk = CourseGroupReceiptService::DISK;
+            }
+
+            GroupMembershipRequest::create([
+                'group_id' => $camp->id,
+                'student_id' => $student->id,
                 'status' => 'pending',
-                'payment_status' => 'unpaid',
-                'notes' => $request->notes,
+                'terms_accepted' => true,
+                'payment_date' => null,
+                'message' => $validated['notes'] ?: 'طلب تسجيل في معسكر: '.$camp->name,
+                'receipt_path' => $receiptPath,
+                'receipt_disk' => $receiptDisk,
             ]);
-
-            // Increment current participants
-            $camp->increment('current_participants');
-
-            // Create invoice for the camp enrollment
-            $invoice = \App\Models\Invoice::create([
-                'invoice_number' => \App\Models\Invoice::generateInvoiceNumber(),
-                'student_id' => Auth::id(),
-                'total_amount' => $camp->price,
-                'paid_amount' => 0,
-                'remaining_amount' => $camp->price,
-                'tax_amount' => 0,
-                'discount_amount' => 0,
-                'status' => 'issued',
-                'issue_date' => now(),
-                'due_date' => $camp->start_date,
-                'notes' => 'فاتورة التسجيل في معسكر: ' . $camp->name,
-                'created_by' => null, // System generated
-            ]);
-
-            // Create invoice item
-            \App\Models\InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'description' => 'رسوم التسجيل في معسكر: ' . $camp->name,
-                'quantity' => 1,
-                'unit_price' => $camp->price,
-                'total_price' => $camp->price,
-                'camp_enrollment_id' => $enrollment->id,
-            ]);
-
-            DB::commit();
 
             return redirect()
                 ->route('student.training-camps.my-enrollments')
-                ->with('success', 'تم إرسال طلب التسجيل بنجاح! سيتم مراجعته قريباً');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
+                ->with('success', 'تم إرسال طلب التسجيل بنجاح وهو قيد المراجعة.');
+        } catch (\RuntimeException $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء التسجيل: ' . $e->getMessage());
+                ->withInput()
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'حدث خطأ أثناء التسجيل: '.$e->getMessage());
         }
     }
 
     /**
-     * Display student's enrollments.
+     * Student's camp-group memberships and pending requests.
      */
     public function myEnrollments(Request $request)
     {
         $studentId = Auth::id();
-        $query = CampEnrollment::with(['camp.category'])
+
+        $memberships = CourseGroupMember::query()
+            ->with('group')
             ->where('student_id', $studentId)
-            ->orderBy('created_at', 'desc');
+            ->whereHas('group', fn ($q) => $q->where('is_camp', true))
+            ->get()
+            ->map(function (CourseGroupMember $member) {
+                return $this->makeEnrollmentViewModel(
+                    status: 'approved',
+                    paymentStatus: $member->payment_status ?? 'unpaid',
+                    camp: $member->group,
+                    createdAt: $member->joined_at ?? $member->created_at,
+                    cancelId: null,
+                    notes: null,
+                    key: 'm-'.$member->id,
+                );
+            });
+
+        $requests = GroupMembershipRequest::query()
+            ->with('group')
+            ->where('student_id', $studentId)
+            ->whereHas('group', fn ($q) => $q->where('is_camp', true))
+            ->whereIn('status', ['pending', 'rejected'])
+            ->get()
+            ->reject(function (GroupMembershipRequest $req) use ($memberships) {
+                // Hide pending/rejected if already a member of the same group
+                return $memberships->contains(fn ($item) => (int) ($item->camp?->id) === (int) $req->group_id);
+            })
+            ->map(function (GroupMembershipRequest $req) {
+                return $this->makeEnrollmentViewModel(
+                    status: $req->status,
+                    paymentStatus: 'unpaid',
+                    camp: $req->group,
+                    createdAt: $req->created_at,
+                    cancelId: $req->status === 'pending' ? $req->id : null,
+                    notes: $req->message,
+                    key: 'r-'.$req->id,
+                    hasReceipt: $req->hasReceipt(),
+                );
+            });
+
+        $items = $memberships->concat($requests)->sortByDesc(fn ($item) => $item->created_at)->values();
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $items = $items->where('status', $request->status)->values();
         }
 
-        $enrollments = $query->paginate(10)->withQueryString();
-
-        $baseQuery = CampEnrollment::where('student_id', $studentId);
         $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
-            'approved' => (clone $baseQuery)->where('status', 'approved')->count(),
-            'unpaid' => (clone $baseQuery)->where('payment_status', 'unpaid')->count(),
+            'total' => $memberships->count() + $requests->count(),
+            'pending' => $requests->where('status', 'pending')->count(),
+            'approved' => $memberships->count(),
+            'unpaid' => $memberships->where('payment_status', 'unpaid')->count()
+                + $requests->where('status', 'pending')->count(),
         ];
+
+        $perPage = 10;
+        $page = (int) $request->get('page', 1);
+        $enrollments = new LengthAwarePaginator(
+            $items->forPage($page, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('student.pages.training-camps.my-enrollments', compact('enrollments', 'stats'));
     }
 
     /**
-     * Cancel enrollment.
+     * Cancel a pending camp-group membership request.
      */
     public function cancelEnrollment(string $id)
     {
-        $enrollment = CampEnrollment::where('id', $id)
+        $request = GroupMembershipRequest::query()
+            ->where('id', $id)
             ->where('student_id', Auth::id())
+            ->whereHas('group', fn ($q) => $q->where('is_camp', true))
             ->firstOrFail();
 
-        // Check if payment is made
-        if ($enrollment->payment_status === 'paid') {
-            return redirect()
-                ->back()
-                ->with('error', 'لا يمكن إلغاء التسجيل بعد الدفع، يرجى التواصل مع الإدارة');
+        if ($request->status !== 'pending') {
+            return redirect()->back()->with('error', 'لا يمكن إلغاء هذا الطلب');
         }
 
-        try {
-            DB::beginTransaction();
+        $request->delete();
 
-            // Update enrollment status
-            $enrollment->update(['status' => 'cancelled']);
+        return redirect()->back()->with('success', 'تم إلغاء طلب التسجيل بنجاح');
+    }
 
-            // Decrement current participants
-            $enrollment->camp->decrement('current_participants');
+    /**
+     * Build a lightweight enrollment object for camp views.
+     */
+    private function makeEnrollmentViewModel(
+        string $status,
+        string $paymentStatus,
+        ?CourseGroup $camp,
+        $createdAt,
+        ?int $cancelId,
+        ?string $notes,
+        ?string $key = null,
+        bool $hasReceipt = false,
+    ): object {
+        $statusLabels = [
+            'pending' => 'قيد المراجعة',
+            'approved' => 'مقبول',
+            'rejected' => 'مرفوض',
+            'cancelled' => 'ملغي',
+        ];
 
-            DB::commit();
+        $paymentLabels = [
+            'unpaid' => 'غير مدفوع',
+            'paid' => 'مدفوع',
+            'refunded' => 'مسترجع',
+        ];
 
-            return redirect()
-                ->back()
-                ->with('success', 'تم إلغاء التسجيل بنجاح');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ أثناء إلغاء التسجيل: ' . $e->getMessage());
-        }
+        return (object) [
+            'id' => $cancelId ?? $key ?? uniqid('camp-', true),
+            'status' => $status,
+            'status_label' => $statusLabels[$status] ?? $status,
+            'payment_status' => $paymentStatus,
+            'payment_status_label' => $paymentLabels[$paymentStatus] ?? $paymentStatus,
+            'created_at' => $createdAt,
+            'notes' => $notes,
+            'camp' => $camp,
+            'cancel_id' => $cancelId,
+            'has_receipt' => $hasReceipt,
+        ];
     }
 }

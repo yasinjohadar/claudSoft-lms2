@@ -20,9 +20,6 @@
         <div class="student-camp-enrollment-card__header">
             <div class="min-w-0 flex-fill">
                 <h5 class="student-camp-enrollment-card__title mb-1">{{ $camp?->name ?? 'معسكر غير متوفر' }}</h5>
-                @if($camp?->category)
-                    <span class="badge bg-info-transparent fs-11">{{ $camp->category->name }}</span>
-                @endif
             </div>
             <span class="badge bg-{{ $status['class'] }}-transparent">
                 <i class="fe {{ $status['icon'] }} me-1"></i>{{ $enrollment->status_label }}
@@ -40,7 +37,7 @@
             </div>
             <div class="student-camp-enrollment-card__stat">
                 <span class="student-camp-enrollment-card__stat-label"><i class="fe fe-dollar-sign me-1"></i>السعر</span>
-                <span class="student-camp-enrollment-card__stat-value text-primary">${{ number_format($camp?->price ?? 0, 2) }}</span>
+                <span class="student-camp-enrollment-card__stat-value text-primary">${{ number_format((float) ($camp?->price ?? 0), 2) }}</span>
             </div>
             <div class="student-camp-enrollment-card__stat">
                 <span class="student-camp-enrollment-card__stat-label"><i class="fe fe-credit-card me-1"></i>الدفع</span>
@@ -51,13 +48,9 @@
         </div>
 
         <div class="student-camp-enrollment-card__meta">
-            @if($camp?->instructor_name)
-                <span><i class="fe fe-user me-1"></i>{{ $camp->instructor_name }}</span>
+            @if($enrollment->created_at)
+                <span><i class="fe fe-clock me-1"></i>{{ \Illuminate\Support\Carbon::parse($enrollment->created_at)->diffForHumans() }}</span>
             @endif
-            @if($camp?->location)
-                <span><i class="fe fe-map-pin me-1"></i>{{ $camp->location }}</span>
-            @endif
-            <span><i class="fe fe-clock me-1"></i>{{ $enrollment->created_at->diffForHumans() }}</span>
         </div>
 
         @if($enrollment->notes)
@@ -68,12 +61,12 @@
 
         <div class="student-camp-enrollment-card__actions">
             @if($camp)
-                <a href="{{ route('student.training-camps.show', $camp) }}" class="btn btn-primary btn-sm rounded-pill flex-fill">
+                <a href="{{ route('student.training-camps.show', $camp->id) }}" class="btn btn-primary btn-sm rounded-pill flex-fill">
                     <i class="fe fe-eye me-1"></i>عرض التفاصيل
                 </a>
             @endif
-            @if($enrollment->status !== 'approved' && $enrollment->payment_status !== 'paid' && $enrollment->status !== 'cancelled')
-                <form action="{{ route('student.training-camps.cancel-enrollment', $enrollment->id) }}"
+            @if(!empty($enrollment->cancel_id) && $enrollment->status === 'pending' && $enrollment->payment_status !== 'paid')
+                <form action="{{ route('student.training-camps.cancel-enrollment', $enrollment->cancel_id) }}"
                       method="POST"
                       class="flex-fill"
                       onsubmit="return confirm('هل أنت متأكد من إلغاء التسجيل؟')">

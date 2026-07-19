@@ -1,66 +1,121 @@
 @extends('student.layouts.master')
 
 @section('page-title')
-    معرض المشاريع
+    مجتمع المشاريع
 @stop
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/project-challenge.css') }}">
-@endpush
-
 @section('content')
-    <div class="main-content app-content pc-page">
-        <div class="container-fluid">
-            @include('student.components.alerts')
+<div class="main-content app-content student-community-projects-page">
+    <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+        @include('student.components.alerts')
+
+        <div class="my-4 page-header-breadcrumb admin-dashboard-welcome dashboard-fade-in">
+            <nav class="mb-2">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item">الواجبات والتحديات</li>
+                    <li class="breadcrumb-item active">مجتمع المشاريع</li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
-                    <h4 class="mb-1">معرض المشاريع</h4>
-                    <p class="text-muted mb-0">استكشف مشاريع الطلاب المنشورة</p>
+                    <h4 class="mb-1 admin-dashboard-welcome__title">معرض المشاريع</h4>
+                    <p class="mb-0 text-muted admin-dashboard-welcome__subtitle">
+                        استكشف مشاريع الطلاب المنشورة وتعلّم من أعمال زملائك.
+                    </p>
                 </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('student.project-challenges.index') }}" class="btn btn-outline-primary">
-                        <i class="fe fe-layers me-1"></i>تحديات المشاريع
-                    </a>
-                </div>
+                <a href="{{ route('student.project-challenges.index') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-layers me-1"></i>تحديات المشاريع
+                </a>
             </div>
+        </div>
 
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" class="row g-2">
-                        <div class="col-md-8">
-                            <input type="text" name="q" class="form-control" placeholder="ابحث في المشاريع..." value="{{ request('q') }}">
-                        </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fe fe-search me-1"></i>بحث
-                            </button>
-                        </div>
-                    </form>
-                </div>
+        @include('student.pages.community-projects.partials.index-stats', ['stats' => $stats ?? []])
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">تصفية المشاريع</h4>
+                <p class="fs-12 text-muted mb-0">ابحث بالعنوان أو فلتر حسب التحدي.</p>
             </div>
+            <div class="card-body pt-3">
+                @include('student.pages.community-projects.partials.index-filters', ['challenges' => $challenges ?? collect()])
+            </div>
+        </div>
 
-            <div class="pc-showcase-grid">
-                @forelse($showcases as $showcase)
-                    <a href="{{ route('student.community-projects.show', $showcase->slug) }}" class="pc-showcase-card">
-                        <div class="pc-showcase-card__image" @if($showcase->cover_image) style="background-image:url('{{ $showcase->cover_image }}')" @endif></div>
-                        <div class="pc-showcase-card__body">
-                            <h5 class="pc-showcase-card__title">{{ $showcase->title }}</h5>
-                            <p class="text-muted small mb-2">{{ Str::limit($showcase->summary, 100) }}</p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted">{{ $showcase->team->name ?? '' }}</small>
-                                @if($showcase->challenge)
-                                    <span class="badge bg-primary-transparent">{{ Str::limit($showcase->challenge->title, 20) }}</span>
+        <div class="card custom-card group-show-members-card dashboard-fade-in">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                <h6 class="group-show-members-card__title mb-0">
+                    المشاريع المنشورة
+                    <span class="group-show-members-card__count">{{ $showcases->total() }}</span>
+                </h6>
+            </div>
+            <div class="card-body pt-3">
+                <div class="row g-4">
+                    @forelse($showcases as $index => $showcase)
+                        @include('student.pages.community-projects.partials.showcase-card', [
+                            'showcase' => $showcase,
+                            'index' => $index,
+                        ])
+                    @empty
+                        <div class="col-12">
+                            <div class="group-show-empty py-5">
+                                <i class="fe fe-globe group-show-empty__icon"></i>
+                                <h5 class="group-show-empty__title">لا توجد مشاريع منشورة بعد</h5>
+                                <p class="group-show-empty__desc mb-3">
+                                    @if(request()->hasAny(['q', 'challenge_id']))
+                                        جرّب تعديل البحث أو الفلاتر.
+                                    @else
+                                        عندما ينشر الطلاب مشاريعهم ستظهر هنا.
+                                    @endif
+                                </p>
+                                @if(request()->hasAny(['q', 'challenge_id']))
+                                    <a href="{{ route('student.community-projects.index') }}" class="btn btn-primary btn-sm rounded-pill">
+                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
+                                    </a>
+                                @else
+                                    <a href="{{ route('student.project-challenges.index') }}" class="btn btn-primary btn-sm rounded-pill">
+                                        <i class="fe fe-layers me-1"></i>تصفّح التحديات
+                                    </a>
                                 @endif
                             </div>
                         </div>
-                    </a>
-                @empty
-                    <div class="col-12 text-center text-muted py-5">لا توجد مشاريع منشورة بعد</div>
-                @endforelse
-            </div>
+                    @endforelse
+                </div>
 
-            <div class="mt-4">{{ $showcases->links() }}</div>
+                @if($showcases->hasPages())
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $showcases->links() }}
+                    </div>
+                @endif
+            </div>
         </div>
+
     </div>
-@stop
+</div>
+@endsection
+
+@push('scripts')
+<script>
+(function () {
+    function formatNumber(value) {
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+    }
+
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        const duration = 900;
+        const start = performance.now();
+
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = formatNumber(target * eased);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+    });
+})();
+</script>
+@endpush

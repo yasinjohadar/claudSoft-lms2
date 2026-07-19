@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class CourseGroupMember extends Model
 {
@@ -14,6 +15,7 @@ class CourseGroupMember extends Model
         'student_id',
         'role',
         'joined_at',
+        'payment_status',
     ];
 
     protected $casts = [
@@ -36,6 +38,14 @@ class CourseGroupMember extends Model
     public function student()
     {
         return $this->belongsTo(User::class, 'student_id');
+    }
+
+    /**
+     * Invoice items linked to this membership (camp-style billing).
+     */
+    public function invoiceItems(): MorphMany
+    {
+        return $this->morphMany(InvoiceItem::class, 'itemable');
     }
 
     // Scopes
@@ -96,5 +106,15 @@ class CourseGroupMember extends Model
     public function demoteToMember(): void
     {
         $this->update(['role' => 'member']);
+    }
+
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        return match ($this->payment_status) {
+            'unpaid' => 'غير مدفوع',
+            'paid' => 'مدفوع',
+            'refunded' => 'مسترجع',
+            default => 'غير معروف',
+        };
     }
 }

@@ -32,7 +32,7 @@
                      onerror="this.style.display='none'">
             @endif
 
-            <span class="student-camp-card__price">${{ number_format($camp->price, 2) }}</span>
+            <span class="student-camp-card__price">${{ number_format((float) $camp->price, 2) }}</span>
 
             <span class="student-course-card__badge bg-{{ $campStatusClass }}-transparent text-{{ $campStatusClass }}">
                 <i class="fe fe-clock me-1"></i>{{ $campStatusLabel }}
@@ -41,14 +41,6 @@
 
         <div class="student-course-card__body">
             <div class="d-flex flex-wrap gap-1 mb-2">
-                @if($camp->category)
-                    <span class="student-course-card__category">{{ $camp->category->name }}</span>
-                @endif
-                @if($camp->is_featured)
-                    <span class="badge bg-warning-transparent text-warning fs-11">
-                        <i class="fe fe-star me-1"></i>مميز
-                    </span>
-                @endif
                 @if($isEnrolled)
                     <span class="badge bg-success-transparent text-success fs-11">
                         <i class="fe fe-check me-1"></i>مسجّل
@@ -57,7 +49,7 @@
             </div>
 
             <h5 class="student-course-card__title">
-                <a href="{{ route('student.training-camps.show', $camp->slug) }}">{{ $camp->name }}</a>
+                <a href="{{ route('student.training-camps.show', $camp->id) }}">{{ $camp->name }}</a>
             </h5>
 
             @if($camp->description)
@@ -67,7 +59,7 @@
             <div class="row g-2 mb-3 student-course-card__stats">
                 <div class="col-6">
                     <div class="student-course-card__stat">
-                        <span class="student-course-card__stat-value">{{ $camp->duration_days }}</span>
+                        <span class="student-course-card__stat-value">{{ $camp->duration_days ?? '—' }}</span>
                         <span class="student-course-card__stat-label">يوم</span>
                     </div>
                 </div>
@@ -82,17 +74,16 @@
             </div>
 
             <div class="student-course-card__meta">
-                @if($camp->instructor_name)
-                    <span><i class="fe fe-user me-1"></i>{{ $camp->instructor_name }}</span>
+                @if($camp->start_date)
+                    <span><i class="fe fe-calendar me-1"></i>{{ $camp->start_date->format('Y-m-d') }}</span>
                 @endif
-                <span><i class="fe fe-calendar me-1"></i>{{ $camp->start_date->format('Y-m-d') }}</span>
-                @if($camp->location)
-                    <span><i class="fe fe-map-pin me-1"></i>{{ $camp->location }}</span>
+                @if($camp->end_date)
+                    <span><i class="fe fe-calendar me-1"></i>{{ $camp->end_date->format('Y-m-d') }}</span>
                 @endif
             </div>
 
             <div class="student-course-card__actions">
-                <a href="{{ route('student.training-camps.show', $camp->slug) }}"
+                <a href="{{ route('student.training-camps.show', $camp->id) }}"
                    class="btn btn-primary btn-sm rounded-pill">
                     <i class="fe fe-eye me-1"></i>عرض التفاصيل
                 </a>

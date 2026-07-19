@@ -5,17 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TrainingCamp;
 use App\Models\CampEnrollment;
+use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseGroup;
 use App\Models\User;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Services\TrainingCampEnrollmentService;
+use App\Services\TrainingCampReceiptService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use InvalidArgumentException;
 
@@ -156,7 +160,9 @@ class TrainingCampController extends Controller
     public function create()
     {
         $categories = CourseCategory::active()->ordered()->get();
-        return view('admin.pages.training-camps.create', compact('categories'));
+        $courses = Course::query()->orderBy('title')->get(['id', 'title']);
+
+        return view('admin.pages.training-camps.create', compact('categories', 'courses'));
     }
 
     /**
@@ -164,36 +170,13 @@ class TrainingCampController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge($this->campBaseRules(), [
             'name' => 'required|string|max:255|unique:training_camps,name',
             'slug' => 'nullable|string|max:255|unique:training_camps,slug',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'category_id' => 'nullable|exists:course_categories,id',
-            'price' => 'required|numeric|min:0',
             'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
-            'instructor_name' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'max_participants' => 'nullable|integer|min:1',
-            'order' => 'nullable|integer|min:0',
-        ], [
-            'name.required' => 'اسم المعسكر مطلوب',
-            'name.unique' => 'اسم المعسكر موجود بالفعل',
-            'slug.unique' => 'المعرف موجود بالفعل',
-            'image.image' => 'يجب أن يكون الملف صورة',
-            'image.mimes' => 'نوع الصورة غير مدعوم',
-            'image.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
-            'category_id.exists' => 'التصنيف المحدد غير موجود',
-            'price.required' => 'السعر مطلوب',
-            'price.numeric' => 'السعر يجب أن يكون رقماً',
-            'start_date.required' => 'تاريخ البداية مطلوب',
-            'start_date.after_or_equal' => 'تاريخ البداية يجب أن يكون اليوم أو بعده',
-            'end_date.required' => 'تاريخ النهاية مطلوب',
-            'end_date.after' => 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية',
-            'max_participants.integer' => 'الحد الأقصى للمشاركين يجب أن يكون رقماً صحيحاً',
-            'max_participants.min' => 'الحد الأقصى للمشاركين يجب أن يكون 1 على الأقل',
-        ]);
+        ]), $this->campValidationMessages());
+
+        $audienceRows = $this->normalizeAudienceRows($request);
 
         try {
             DB::beginTransaction();
@@ -218,6 +201,7 @@ class TrainingCampController extends Controller
                 'current_participants' => 0,
                 'is_active' => $request->boolean('is_active'),
                 'is_featured' => $request->boolean('is_featured'),
+                'require_payment_receipt' => $request->boolean('require_payment_receipt'),
                 'order' => $request->order ?: 0,
             ];
 
@@ -230,6 +214,7 @@ class TrainingCampController extends Controller
             }
 
             $camp = TrainingCamp::create($data);
+            $this->syncAudienceTargets($camp, $audienceRows);
 
             DB::commit();
 
@@ -237,6 +222,9 @@ class TrainingCampController extends Controller
                 ->route('training-camps.index')
                 ->with('success', 'تم إنشاء المعسكر التدريبي بنجاح');
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -252,7 +240,7 @@ class TrainingCampController extends Controller
      */
     public function show(string $id)
     {
-        $camp = TrainingCamp::with('category')
+        $camp = TrainingCamp::with(['category', 'targets.course', 'targets.group'])
             ->withCount('enrollments')
             ->findOrFail($id);
 
@@ -305,10 +293,11 @@ class TrainingCampController extends Controller
      */
     public function edit(string $id)
     {
-        $camp = TrainingCamp::findOrFail($id);
+        $camp = TrainingCamp::with(['targets.course', 'targets.group'])->findOrFail($id);
         $categories = CourseCategory::active()->ordered()->get();
+        $courses = Course::query()->orderBy('title')->get(['id', 'title']);
 
-        return view('admin.pages.training-camps.edit', compact('camp', 'categories'));
+        return view('admin.pages.training-camps.edit', compact('camp', 'categories', 'courses'));
     }
 
     /**
@@ -318,35 +307,13 @@ class TrainingCampController extends Controller
     {
         $camp = TrainingCamp::findOrFail($id);
 
-        $request->validate([
+        $request->validate(array_merge($this->campBaseRules(), [
             'name' => 'required|string|max:255|unique:training_camps,name,' . $id,
             'slug' => 'nullable|string|max:255|unique:training_camps,slug,' . $id,
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'category_id' => 'nullable|exists:course_categories,id',
-            'price' => 'required|numeric|min:0',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'instructor_name' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'max_participants' => 'nullable|integer|min:1',
-            'order' => 'nullable|integer|min:0',
-        ], [
-            'name.required' => 'اسم المعسكر مطلوب',
-            'name.unique' => 'اسم المعسكر موجود بالفعل',
-            'slug.unique' => 'المعرف موجود بالفعل',
-            'image.image' => 'يجب أن يكون الملف صورة',
-            'image.mimes' => 'نوع الصورة غير مدعوم',
-            'image.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
-            'category_id.exists' => 'التصنيف المحدد غير موجود',
-            'price.required' => 'السعر مطلوب',
-            'price.numeric' => 'السعر يجب أن يكون رقماً',
-            'start_date.required' => 'تاريخ البداية مطلوب',
-            'end_date.required' => 'تاريخ النهاية مطلوب',
-            'end_date.after' => 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية',
-            'max_participants.integer' => 'الحد الأقصى للمشاركين يجب أن يكون رقماً صحيحاً',
-            'max_participants.min' => 'الحد الأقصى للمشاركين يجب أن يكون 1 على الأقل',
-        ]);
+        ]), $this->campValidationMessages());
+
+        $audienceRows = $this->normalizeAudienceRows($request);
 
         try {
             DB::beginTransaction();
@@ -370,6 +337,7 @@ class TrainingCampController extends Controller
                 'max_participants' => $request->max_participants,
                 'is_active' => $request->boolean('is_active'),
                 'is_featured' => $request->boolean('is_featured'),
+                'require_payment_receipt' => $request->boolean('require_payment_receipt'),
                 'order' => $request->order ?: 0,
             ];
 
@@ -387,6 +355,7 @@ class TrainingCampController extends Controller
             }
 
             $camp->update($data);
+            $this->syncAudienceTargets($camp, $audienceRows);
 
             DB::commit();
 
@@ -394,6 +363,9 @@ class TrainingCampController extends Controller
                 ->route('training-camps.index')
                 ->with('success', 'تم تحديث المعسكر التدريبي بنجاح');
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -542,7 +514,10 @@ class TrainingCampController extends Controller
         try {
             $enrollment = CampEnrollment::findOrFail($id);
             $oldStatus = $enrollment->status;
-            $enrollment->update(['status' => 'approved']);
+            $enrollment->update([
+                'status' => 'approved',
+                'payment_status' => $enrollment->hasReceipt() ? 'paid' : $enrollment->payment_status,
+            ]);
 
             // Update participants count
             if ($oldStatus !== 'approved') {
@@ -573,7 +548,13 @@ class TrainingCampController extends Controller
                 ->findOrFail($enrollmentId);
 
             $oldStatus = $enrollment->status;
-            $enrollment->update(['status' => 'approved']);
+            $updates = ['status' => 'approved'];
+
+            if ($enrollment->hasReceipt() && $enrollment->payment_status !== 'paid') {
+                $updates['payment_status'] = 'paid';
+            }
+
+            $enrollment->update($updates);
 
             // Update participants count
             if ($oldStatus !== 'approved') {
@@ -845,6 +826,64 @@ class TrainingCampController extends Controller
     }
 
     /**
+     * Update enrollment payment status.
+     */
+    public function updateEnrollmentPaymentStatus(Request $request, string $campId, string $enrollmentId)
+    {
+        try {
+            $camp = TrainingCamp::findOrFail($campId);
+            $enrollment = CampEnrollment::where('camp_id', $campId)
+                ->findOrFail($enrollmentId);
+
+            $newStatus = $request->input('payment_status');
+            $validStatuses = ['unpaid', 'paid', 'refunded'];
+
+            if (! in_array($newStatus, $validStatuses, true)) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'حالة دفع غير صحيحة',
+                    ], 422);
+                }
+
+                return redirect()->back()->with('error', 'حالة دفع غير صحيحة');
+            }
+
+            $enrollment->update(['payment_status' => $newStatus]);
+
+            $labels = [
+                'unpaid' => 'غير مدفوع',
+                'paid' => 'مدفوع',
+                'refunded' => 'مسترجع',
+            ];
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تغيير حالة الدفع إلى: '.($labels[$newStatus] ?? $newStatus),
+                    'enrollment' => $enrollment->fresh(['student']),
+                    'camp' => $camp->fresh(),
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم تغيير حالة الدفع إلى: '.($labels[$newStatus] ?? $newStatus));
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Get camp enrollments with filters and pagination.
      */
     public function campEnrollments(Request $request, string $campId)
@@ -975,7 +1014,24 @@ class TrainingCampController extends Controller
 
             return response()->json([
                 'success' => true,
-                'enrollment' => $enrollment
+                'enrollment' => [
+                    'id' => $enrollment->id,
+                    'status' => $enrollment->status,
+                    'status_label' => $enrollment->status_label,
+                    'payment_status' => $enrollment->payment_status,
+                    'payment_status_label' => $enrollment->payment_status_label,
+                    'enrollment_date' => $enrollment->enrollment_date,
+                    'notes' => $enrollment->notes,
+                    'has_receipt' => $enrollment->hasReceipt(),
+                    'receipt_url' => $enrollment->hasReceipt()
+                        ? route('training-camps.enrollments.receipt', [$campId, $enrollment->id])
+                        : null,
+                    'student' => $enrollment->student ? [
+                        'id' => $enrollment->student->id,
+                        'name' => $enrollment->student->name,
+                        'email' => $enrollment->student->email,
+                    ] : null,
+                ],
             ]);
 
         } catch (\Exception $e) {
@@ -984,6 +1040,42 @@ class TrainingCampController extends Controller
                 'message' => 'حدث خطأ: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * View/download enrollment payment receipt from cloud storage.
+     */
+    public function enrollmentReceipt(
+        Request $request,
+        string $campId,
+        string $enrollmentId,
+        TrainingCampReceiptService $receiptService
+    ): Response {
+        $enrollment = CampEnrollment::where('camp_id', $campId)
+            ->findOrFail($enrollmentId);
+
+        abort_unless($enrollment->hasReceipt(), 404);
+
+        $receipt = $receiptService->retrieve(
+            $enrollment->receipt_path,
+            $enrollment->receipt_disk
+        );
+
+        abort_if($receipt === null, 404, 'تعذر العثور على إيصال الدفع.');
+
+        $extension = strtolower(pathinfo($enrollment->receipt_path, PATHINFO_EXTENSION));
+        $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'pdf'], true)
+            ? $extension
+            : 'bin';
+        $filename = "camp-enrollment-receipt-{$enrollment->id}.{$extension}";
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($receipt['content'], 200, [
+            'Content-Type' => $receipt['mime_type'] ?: 'application/octet-stream',
+            'Content-Disposition' => "{$disposition}; filename=\"{$filename}\"",
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /**
@@ -1252,6 +1344,155 @@ class TrainingCampController extends Controller
             return redirect()->route('training-camps.enrollments.create-bulk', $campId)
                 ->withErrors(['error' => 'حدث خطأ: ' . $e->getMessage()])
                 ->withInput();
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function campBaseRules(): array
+    {
+        return [
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'category_id' => 'nullable|exists:course_categories,id',
+            'price' => 'required|numeric|min:0',
+            'end_date' => 'required|date|after:start_date',
+            'instructor_name' => 'nullable|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'max_participants' => 'nullable|integer|min:1',
+            'order' => 'nullable|integer|min:0',
+            'targets' => 'required|array|min:1',
+            'targets.*.course_id' => 'required|exists:courses,id',
+            'targets.*.group_ids' => 'required|array|min:1',
+            'targets.*.group_ids.*' => 'integer|exists:course_groups,id',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function campValidationMessages(): array
+    {
+        return [
+            'name.required' => 'اسم المعسكر مطلوب',
+            'name.unique' => 'اسم المعسكر موجود بالفعل',
+            'slug.unique' => 'المعرف موجود بالفعل',
+            'image.image' => 'يجب أن يكون الملف صورة',
+            'image.mimes' => 'نوع الصورة غير مدعوم',
+            'image.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
+            'category_id.exists' => 'التصنيف المحدد غير موجود',
+            'price.required' => 'السعر مطلوب',
+            'price.numeric' => 'السعر يجب أن يكون رقماً',
+            'start_date.required' => 'تاريخ البداية مطلوب',
+            'start_date.after_or_equal' => 'تاريخ البداية يجب أن يكون اليوم أو بعده',
+            'end_date.required' => 'تاريخ النهاية مطلوب',
+            'end_date.after' => 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية',
+            'max_participants.integer' => 'الحد الأقصى للمشاركين يجب أن يكون رقماً صحيحاً',
+            'max_participants.min' => 'الحد الأقصى للمشاركين يجب أن يكون 1 على الأقل',
+            'targets.required' => 'يجب تحديد جمهور مستهدف (كورس ومجموعة واحدة على الأقل)',
+            'targets.min' => 'يجب تحديد جمهور مستهدف (كورس ومجموعة واحدة على الأقل)',
+            'targets.*.course_id.required' => 'اختر كورساً لكل صف جمهور',
+            'targets.*.group_ids.required' => 'اختر مجموعة واحدة على الأقل لكل كورس',
+            'targets.*.group_ids.min' => 'اختر مجموعة واحدة على الأقل لكل كورس',
+        ];
+    }
+
+    /**
+     * @return array<int, array{course_id: int, group_ids: array<int, int>}>
+     */
+    protected function normalizeAudienceRows(Request $request): array
+    {
+        $raw = $request->input('targets', []);
+        if (! is_array($raw)) {
+            throw ValidationException::withMessages([
+                'targets' => 'يجب تحديد جمهور مستهدف (كورس ومجموعة واحدة على الأقل)',
+            ]);
+        }
+
+        $rows = [];
+        $seenCourses = [];
+
+        foreach ($raw as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $courseId = isset($row['course_id']) && $row['course_id'] !== ''
+                ? (int) $row['course_id']
+                : null;
+
+            if (! $courseId) {
+                continue;
+            }
+
+            if (isset($seenCourses[$courseId])) {
+                throw ValidationException::withMessages([
+                    "targets.{$index}.course_id" => 'لا تكرر نفس الكورس أكثر من مرة — اختر مجموعات متعددة داخل صف واحد.',
+                ]);
+            }
+            $seenCourses[$courseId] = true;
+
+            $groupIds = collect($row['group_ids'] ?? [])
+                ->filter(fn ($id) => $id !== null && $id !== '')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($groupIds === []) {
+                throw ValidationException::withMessages([
+                    "targets.{$index}.group_ids" => 'اختر مجموعة واحدة على الأقل لكل كورس.',
+                ]);
+            }
+
+            foreach ($groupIds as $groupId) {
+                $this->assertTargetGroupLinkedToCourse($groupId, $courseId);
+            }
+
+            $rows[] = [
+                'course_id' => $courseId,
+                'group_ids' => $groupIds,
+            ];
+        }
+
+        if ($rows === []) {
+            throw ValidationException::withMessages([
+                'targets' => 'يجب تحديد جمهور مستهدف (كورس ومجموعة واحدة على الأقل)',
+            ]);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<int, array{course_id: int, group_ids: array<int, int>}>  $rows
+     */
+    protected function syncAudienceTargets(TrainingCamp $camp, array $rows): void
+    {
+        $camp->targets()->delete();
+
+        foreach ($rows as $row) {
+            foreach ($row['group_ids'] as $groupId) {
+                $camp->targets()->create([
+                    'course_id' => $row['course_id'],
+                    'group_id' => $groupId,
+                ]);
+            }
+        }
+    }
+
+    protected function assertTargetGroupLinkedToCourse(int $groupId, int $courseId): void
+    {
+        $isLinked = DB::table('course_group_courses')
+            ->where('course_id', $courseId)
+            ->where('group_id', $groupId)
+            ->exists();
+
+        if (! $isLinked) {
+            throw ValidationException::withMessages([
+                'targets' => 'إحدى المجموعات غير مرتبطة بالكورس المحدد.',
+            ]);
         }
     }
 }

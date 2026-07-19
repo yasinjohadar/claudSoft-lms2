@@ -21,12 +21,19 @@
             'value' => $totalMembers,
             'sub' => 'في جميع المجموعات',
         ],
+        [
+            'variant' => 'gold',
+            'icon' => 'fe-flag',
+            'label' => 'مجموعات معسكر',
+            'value' => $campGroups ?? 0,
+            'sub' => 'مصنّفة كمعسكر مدفوع',
+        ],
     ];
 @endphp
 
 <div class="row g-3 dashboard-fade-in mb-4">
     @foreach ($kpiCards as $index => $card)
-        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 dashboard-stagger-item" style="--stagger-delay: {{ $index * 70 }}ms">
             <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="admin-stats-card__icon-wrap">

@@ -74,6 +74,12 @@
 
             <div class="row g-4">
                 <div class="col-xl-8">
+                    @include('admin.course-groups.partials.membership-request-camp-receipt', [
+                        'membershipRequest' => $membershipRequest,
+                        'group' => $group,
+                        'course' => $course,
+                    ])
+
                     @if($registration)
                         @include('admin.course-groups.partials.membership-request-form-data', ['registration' => $registration])
                     @else
@@ -83,7 +89,7 @@
                                     <i class="fe fe-file-text group-show-empty__icon"></i>
                                     <h5 class="group-show-empty__title">لا توجد بيانات فورم مرتبطة</h5>
                                     <p class="text-muted mb-0">
-                                        لم يُعثر على تسجيل فورم لهذا الطلب في هذه المجموعة.
+                                        لم يُعثر على تسجيل فورم خارجي لهذا الطلب في هذه المجموعة.
                                         يمكنك مراجعة بيانات الحساب من الشريط الجانبي.
                                     </p>
                                 </div>
@@ -151,6 +157,19 @@
                                     <span class="group-show-chip group-show-chip--sm text-success">
                                         <i class="fe fe-check me-1"></i>وافق على الشروط
                                     </span>
+                                </div>
+                            @endif
+                            @if($membershipRequest->hasReceipt())
+                                <div class="mb-3">
+                                    <span class="group-show-chip group-show-chip--sm text-warning">
+                                        <i class="fe fe-paperclip me-1"></i>إيصال دفع مرفق
+                                    </span>
+                                    <div class="mt-2">
+                                        <a href="{{ route('courses.groups.membership-requests.receipt', [$course->id, $group->id, $membershipRequest->id]) }}"
+                                           target="_blank" rel="noopener" class="btn btn-sm btn-outline-warning w-100">
+                                            <i class="fe fe-eye me-1"></i>عرض إيصال المعسكر
+                                        </a>
+                                    </div>
                                 </div>
                             @endif
                             @if($membershipRequest->approved_at)

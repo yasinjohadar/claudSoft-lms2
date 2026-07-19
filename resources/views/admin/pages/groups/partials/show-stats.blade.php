@@ -38,6 +38,21 @@
             'countup' => false,
         ],
     ];
+
+    if ($group->is_camp) {
+        $dateSub = ($group->start_date ? $group->start_date->format('Y-m-d') : '—')
+            .' → '
+            .($group->end_date ? $group->end_date->format('Y-m-d') : '—');
+
+        $kpiCards[] = [
+            'variant' => 'gold',
+            'icon' => 'fe-dollar-sign',
+            'label' => 'سعر المعسكر',
+            'value' => '$' . number_format((float) $group->price, 2),
+            'sub' => $dateSub,
+            'countup' => false,
+        ];
+    }
 @endphp
 
 <div class="row g-3 dashboard-fade-in mb-4">

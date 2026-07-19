@@ -4,117 +4,119 @@
     تحديات المشاريع
 @stop
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('assets/css/project-challenge.css') }}">
-@endpush
-
 @section('content')
-    <div class="main-content app-content pc-page">
-        <div class="container-fluid">
-            @include('student.components.alerts')
+<div class="main-content app-content student-project-challenges-page">
+    <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4">
+        @include('student.components.alerts')
+
+        <div class="my-4 page-header-breadcrumb admin-dashboard-welcome dashboard-fade-in">
+            <nav class="mb-2">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item">الواجبات والتحديات</li>
+                    <li class="breadcrumb-item active">تحديات المشاريع</li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
-                    <h4 class="mb-1">تحديات المشاريع</h4>
-                    <p class="text-muted mb-0">انضم لفريق وابنِ مشروعك خطوة بخطوة</p>
+                    <h4 class="mb-1 admin-dashboard-welcome__title">تحديات المشاريع</h4>
+                    <p class="mb-0 text-muted admin-dashboard-welcome__subtitle">
+                        انضم لفريق وابنِ مشروعك خطوة بخطوة.
+                    </p>
                 </div>
-                <div class="mt-3 mt-md-0">
-                    <a href="{{ route('student.community-projects.index') }}" class="btn btn-outline-primary">
-                        <i class="fe fe-grid me-1"></i>معرض المشاريع
-                    </a>
-                </div>
+                <a href="{{ route('student.community-projects.index') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fe fe-globe me-1"></i>معرض المشاريع
+                </a>
             </div>
+        </div>
 
-            <div class="card custom-card mb-4">
-                <div class="card-body">
-                    <form method="GET" class="row g-2">
-                        <div class="col-md-3">
-                            <select name="difficulty" class="form-select">
-                                <option value="">كل المستويات</option>
-                                @foreach(['easy' => 'سهل', 'medium' => 'متوسط', 'hard' => 'صعب', 'expert' => 'خبير'] as $v => $l)
-                                    <option value="{{ $v }}" @selected(request('difficulty') === $v)>{{ $l }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="type" class="form-select">
-                                <option value="">كل الأنواع</option>
-                                @foreach(['team_project' => 'مشروع فريق', 'open_challenge' => 'تحدي مفتوح', 'hackathon' => 'هاكاثون', 'capstone' => 'مشروع تخرج'] as $v => $l)
-                                    <option value="{{ $v }}" @selected(request('type') === $v)>{{ $l }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-check mt-2">
-                                <input class="form-check-input" type="checkbox" name="featured" value="1" id="featured" @checked(request()->boolean('featured'))>
-                                <label class="form-check-label" for="featured">المميزة فقط</label>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100">تصفية</button>
-                        </div>
-                    </form>
-                </div>
+        @include('student.pages.project-challenges.partials.index-stats', ['stats' => $stats ?? []])
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card-header border-0 pb-0">
+                <h4 class="card-title mb-1">تصفية التحديات</h4>
+                <p class="fs-12 text-muted mb-0">ابحث أو فلتر حسب المستوى والنوع.</p>
             </div>
+            <div class="card-body pt-3">
+                @include('student.pages.project-challenges.partials.index-filters')
+            </div>
+        </div>
 
-            <div class="pc-challenge-grid">
-                @php
-                    $typeLabels = [
-                        'team_project' => 'مشروع فريق',
-                        'open_challenge' => 'تحدي مفتوح',
-                        'hackathon' => 'هاكاثون',
-                        'capstone' => 'مشروع تخرج',
-                    ];
-                    $diffLabels = ['easy' => 'سهل', 'medium' => 'متوسط', 'hard' => 'صعب', 'expert' => 'خبير'];
-                @endphp
-                @forelse($challenges as $challenge)
-                    @php $myTeam = $userTeams->get($challenge->id); @endphp
-                    <div class="pc-challenge-card">
-                        <div class="pc-challenge-card__cover">
-                            @if($challenge->cover_image)
-                                <img src="{{ $challenge->cover_image }}" alt="" style="width:100%;height:100%;object-fit:cover">
-                            @else
-                                <i class="fe fe-layers"></i>
-                            @endif
-                        </div>
-                        <div class="pc-challenge-card__body">
-                            <div class="pc-challenge-card__meta">
-                                <span class="pc-tag">{{ $typeLabels[$challenge->project_type] ?? $challenge->project_type }}</span>
-                                <span class="pc-tag pc-tag--{{ $challenge->difficulty }}">{{ $diffLabels[$challenge->difficulty] ?? $challenge->difficulty }}</span>
-                                @if($challenge->is_featured)
-                                    <span class="pc-tag" style="background:rgba(245,158,11,.15);color:#f59e0b">مميز</span>
-                                @endif
-                            </div>
-                            <h5 class="pc-challenge-card__title">{{ $challenge->title }}</h5>
-                            <p class="pc-challenge-card__summary">{{ Str::limit(strip_tags($challenge->summary ?? $challenge->description), 120) }}</p>
-                            <div class="d-flex gap-2 flex-wrap mb-3">
-                                @foreach($challenge->skills->take(3) as $skill)
-                                    <span class="badge bg-light text-dark">{{ $skill->name }}</span>
-                                @endforeach
-                                @foreach($challenge->technologies->take(3) as $tech)
-                                    <span class="badge bg-primary-transparent">{{ $tech->name }}</span>
-                                @endforeach
-                            </div>
-                            <div class="pc-challenge-card__footer">
-                                @if($myTeam)
-                                    <a href="{{ route('student.project-teams.workspace', $myTeam->id) }}" class="btn btn-success btn-sm w-100">
-                                        <i class="fe fe-monitor me-1"></i>مساحة العمل
+        <div class="card custom-card group-show-members-card dashboard-fade-in">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-0 pb-0">
+                <h6 class="group-show-members-card__title mb-0">
+                    التحديات المتاحة
+                    <span class="group-show-members-card__count">{{ $challenges->total() }}</span>
+                </h6>
+            </div>
+            <div class="card-body pt-3">
+                <div class="row g-4">
+                    @forelse($challenges as $index => $challenge)
+                        @include('student.pages.project-challenges.partials.challenge-card', [
+                            'challenge' => $challenge,
+                            'index' => $index,
+                            'myTeam' => $userTeams->get($challenge->id),
+                        ])
+                    @empty
+                        <div class="col-12">
+                            <div class="group-show-empty py-5">
+                                <i class="fe fe-layers group-show-empty__icon"></i>
+                                <h5 class="group-show-empty__title">لا توجد تحديات منشورة حالياً</h5>
+                                <p class="group-show-empty__desc mb-3">
+                                    @if(request()->hasAny(['q', 'difficulty', 'type', 'featured']))
+                                        جرّب تعديل الفلاتر أو البحث.
+                                    @else
+                                        عندما تُنشر تحديات جديدة ستظهر هنا للانضمام.
+                                    @endif
+                                </p>
+                                @if(request()->hasAny(['q', 'difficulty', 'type', 'featured']))
+                                    <a href="{{ route('student.project-challenges.index') }}" class="btn btn-primary btn-sm rounded-pill">
+                                        <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين
                                     </a>
                                 @else
-                                    <a href="{{ route('student.project-challenges.show', $challenge->id) }}" class="btn btn-primary btn-sm w-100">
-                                        <i class="fe fe-arrow-left me-1"></i>عرض التفاصيل
+                                    <a href="{{ route('student.community-projects.index') }}" class="btn btn-primary btn-sm rounded-pill">
+                                        <i class="fe fe-globe me-1"></i>تصفّح المعرض
                                     </a>
                                 @endif
-                                <small class="text-muted d-block text-center mt-2">{{ $challenge->teams_count }} فريق</small>
                             </div>
                         </div>
-                    </div>
-                @empty
-                    <div class="col-12 text-center text-muted py-5">لا توجد تحديات منشورة حالياً</div>
-                @endforelse
-            </div>
+                    @endforelse
+                </div>
 
-            <div class="mt-4">{{ $challenges->links() }}</div>
+                @if($challenges->hasPages())
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $challenges->links() }}
+                    </div>
+                @endif
+            </div>
         </div>
+
     </div>
-@stop
+</div>
+@endsection
+
+@push('scripts')
+<script>
+(function () {
+    function formatNumber(value) {
+        return new Intl.NumberFormat('ar-EG').format(Math.round(value));
+    }
+
+    document.querySelectorAll('[data-countup]').forEach(function (el) {
+        const target = parseFloat(el.dataset.countup || '0');
+        const duration = 900;
+        const start = performance.now();
+
+        function step(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = formatNumber(target * eased);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+    });
+})();
+</script>
+@endpush

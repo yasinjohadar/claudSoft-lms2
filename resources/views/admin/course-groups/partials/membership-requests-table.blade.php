@@ -53,6 +53,12 @@
                         @if($request->student->name_ar)
                             <br><small class="text-muted">{{ $request->student->name_ar }}</small>
                         @endif
+                        @if($request->hasReceipt())
+                            <br>
+                            <span class="badge bg-warning-transparent text-warning fs-11" title="إيصال دفع المعسكر مرفق">
+                                <i class="fe fe-paperclip me-1"></i>إيصال
+                            </span>
+                        @endif
                     </td>
                     <td data-mr-col="other_groups">
                         @php

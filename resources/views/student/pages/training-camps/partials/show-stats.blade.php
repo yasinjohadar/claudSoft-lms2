@@ -5,7 +5,7 @@
             'variant' => 'green',
             'icon' => 'fe-dollar-sign',
             'label' => 'سعر المعسكر',
-            'value' => round($trainingCamp->price, 2),
+            'value' => round((float) $trainingCamp->price, 2),
             'prefix' => '$',
             'decimals' => true,
             'sub' => 'رسوم التسجيل',
@@ -15,18 +15,18 @@
             'variant' => 'blue',
             'icon' => 'fe-clock',
             'label' => 'مدة المعسكر',
-            'value' => $trainingCamp->duration_days,
+            'value' => $trainingCamp->duration_days ?? 0,
             'suffix' => ' يوم',
             'sub' => 'من البداية للنهاية',
-            'countup' => true,
+            'countup' => (bool) $trainingCamp->duration_days,
         ],
         [
             'variant' => 'cyan',
             'icon' => 'fe-users',
             'label' => 'المقاعد المتبقية',
             'value' => $availableSeats ?? '∞',
-            'sub' => $trainingCamp->max_participants
-                ? $trainingCamp->current_participants . ' / ' . $trainingCamp->max_participants . ' مشارك'
+            'sub' => $trainingCamp->max_members
+                ? ($trainingCamp->current_participants . ' / ' . $trainingCamp->max_members . ' مشارك')
                 : 'بدون حد أقصى',
             'countup' => $availableSeats !== null,
         ],

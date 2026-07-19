@@ -54,5 +54,25 @@
                 });
             });
         }
+
+        const isCampToggle = document.getElementById('is_camp');
+        const campFields = document.getElementById('camp-group-fields');
+        const campPrice = document.getElementById('camp_price');
+
+        function syncCampFieldsVisibility() {
+            if (!isCampToggle || !campFields) {
+                return;
+            }
+            const enabled = isCampToggle.checked;
+            campFields.classList.toggle('d-none', !enabled);
+            if (campPrice) {
+                campPrice.required = enabled;
+            }
+        }
+
+        if (isCampToggle) {
+            isCampToggle.addEventListener('change', syncCampFieldsVisibility);
+            syncCampFieldsVisibility();
+        }
     });
 </script>

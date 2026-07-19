@@ -54,7 +54,7 @@
         <td>
             @php
                 $campNames = collect(optional($payment->invoice)->items)
-                    ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
+                    ->map(fn ($item) => $item->relatedCampOrGroupName())
                     ->filter()
                     ->unique()
                     ->values();
@@ -63,7 +63,9 @@
             @if($campNames->isNotEmpty())
                 <div class="d-flex flex-wrap gap-1">
                     @foreach($campNames as $campName)
-                        <span class="group-show-chip group-show-chip--sm">{{ $campName }}</span>
+                        <span class="badge bg-primary-transparent text-primary">
+                            <i class="fe fe-flag me-1"></i>{{ $campName }}
+                        </span>
                     @endforeach
                 </div>
             @else

@@ -52,7 +52,7 @@
                 </div>
             </div>
 
-            <form action="{{ route('courses.groups.store', $course->id) }}" method="POST">
+            <form id="groupForm" action="{{ route('courses.groups.store', $course->id) }}" method="POST">
                 @csrf
 
                 <div class="row g-4 dashboard-fade-in">
@@ -71,12 +71,33 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                <div class="mb-0">
-                                    <label class="form-label fw-semibold">الوصف</label>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">الوصف المختصر</label>
                                     <textarea name="description" class="form-control @error('description') is-invalid @enderror"
                                               rows="3" placeholder="وصف اختياري للمجموعة...">{{ old('description') }}</textarea>
+                                    <small class="text-muted fs-12">يظهر كنص مختصر في القوائم ولوحة التحكم.</small>
                                     @error('description')
                                         <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold" for="group_details">التفاصيل</label>
+                                    <textarea name="details" id="group_details"
+                                              class="form-control @error('details') is-invalid @enderror"
+                                              rows="10">{{ old('details') }}</textarea>
+                                    <small class="text-muted fs-12">تظهر للطالب في صفحة تفاصيل المجموعة / المعسكر.</small>
+                                    @error('details')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label fw-semibold" for="group_terms">الشروط</label>
+                                    <textarea name="terms" id="group_terms"
+                                              class="form-control @error('terms') is-invalid @enderror"
+                                              rows="10">{{ old('terms') }}</textarea>
+                                    <small class="text-muted fs-12">تظهر للطالب ويرتبط بها مربع الموافقة عند طلب الانضمام / التسجيل.</small>
+                                    @error('terms')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
@@ -140,6 +161,8 @@
                                     </div>
                                 </div>
 
+                                @include('admin.pages.groups.partials.camp-fields')
+
                                 <div class="mb-0">
                                     <label class="form-label fw-semibold">الحد الأقصى للأعضاء</label>
                                     <input type="number" name="max_members" class="form-control @error('max_members') is-invalid @enderror"
@@ -170,4 +193,11 @@
 
 @section('script')
     @include('admin.pages.groups.partials.form-scripts')
+    @include('admin.blog.partials.tinymce-config', [
+        'editors' => [
+            ['selector' => '#group_details', 'height' => 420],
+            ['selector' => '#group_terms', 'height' => 360],
+        ],
+        'formSelector' => '#groupForm',
+    ])
 @stop

@@ -61,20 +61,67 @@
                         </li>
                         <!-- End::slide -->
 
+                        @php
+                            $tasksChallengesActive = request()->routeIs(
+                                'student.assignments.*',
+                                'student.works.*',
+                                'student.challenges.*',
+                                'student.project-challenges.*',
+                                'student.project-teams.*',
+                                'student.community-projects.*'
+                            );
+                        @endphp
+
+                        <!-- Start::slide - الواجبات والتحديات -->
+                        <li class="slide has-sub student-sidebar-submenu {{ $tasksChallengesActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $tasksChallengesActive ? 'active' : '' }}">
+                                <i class="fe fe-check-square side-menu__icon"></i>
+                                <span class="side-menu__label">الواجبات والتحديات</span>
+                                <i class="fe fe-chevron-down side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الواجبات والتحديات</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
+                                        <i class="fe fe-check-square student-submenu__icon"></i>
+                                        <span>واجباتي</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.works.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.works.index') }}" class="side-menu__item {{ request()->routeIs('student.works.*') ? 'active' : '' }}">
+                                        <i class="fe fe-briefcase student-submenu__icon"></i>
+                                        <span>جدول أعمالي</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
+                                        <i class="fe fe-code student-submenu__icon"></i>
+                                        <span>التحديات البرمجية</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.project-challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'active' : '' }}">
+                                        <i class="fe fe-layers student-submenu__icon"></i>
+                                        <span>مشاريع التحدي</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.community-projects.index') }}" class="side-menu__item {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
+                                        <i class="fe fe-globe student-submenu__icon"></i>
+                                        <span>مجتمع المشاريع</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide - اختباراتي -->
                         <li class="slide {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.review.index') }}" class="side-menu__item {{ request()->routeIs('student.quizzes.review.*') ? 'active' : '' }}">
                                 <i class="fe fe-clipboard side-menu__icon"></i>
                                 <span class="side-menu__label">اختباراتي</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - واجباتي -->
-                        <li class="slide {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
-                            <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->routeIs('student.assignments.*') ? 'active' : '' }}">
-                                <i class="fe fe-check-square side-menu__icon"></i>
-                                <span class="side-menu__label">واجباتي</span>
                             </a>
                         </li>
                         <!-- End::slide -->
@@ -117,6 +164,43 @@
                                     <a href="{{ route('student.weekly-reports.index') }}" class="side-menu__item {{ request()->routeIs('student.weekly-reports.*') ? 'active' : '' }}">
                                         <i class="fe fe-calendar student-submenu__icon"></i>
                                         <span>التقارير الأسبوعية</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- End::slide -->
+
+                        @php
+                            $enrollmentsMenuActive = request()->routeIs('student.groups.*', 'student.training-camps.*');
+                        @endphp
+
+                        <!-- Start::slide - الانضمامات (قائمة منسدلة) -->
+                        <li class="slide has-sub student-sidebar-submenu {{ $enrollmentsMenuActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $enrollmentsMenuActive ? 'active' : '' }}">
+                                <i class="fe fe-user-plus side-menu__icon"></i>
+                                <span class="side-menu__label">الانضمامات</span>
+                                <i class="fe fe-chevron-down side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الانضمامات</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.groups.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.groups.index') }}" class="side-menu__item {{ request()->routeIs('student.groups.*') ? 'active' : '' }}">
+                                        <i class="fe fe-users student-submenu__icon"></i>
+                                        <span>المجموعات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.training-camps.index', 'student.training-camps.show') ? 'active' : '' }}">
+                                    <a href="{{ route('student.training-camps.index') }}" class="side-menu__item {{ request()->routeIs('student.training-camps.index', 'student.training-camps.show') ? 'active' : '' }}">
+                                        <i class="fe fe-flag student-submenu__icon"></i>
+                                        <span>التسجيل على المعسكرات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.training-camps.my-enrollments') ? 'active' : '' }}">
+                                    <a href="{{ route('student.training-camps.my-enrollments') }}" class="side-menu__item {{ request()->routeIs('student.training-camps.my-enrollments') ? 'active' : '' }}">
+                                        <i class="fe fe-clipboard student-submenu__icon"></i>
+                                        <span>معسكراتي</span>
                                     </a>
                                 </li>
                             </ul>
@@ -173,87 +257,6 @@
                                     <a href="{{ route('student.payments.index') }}" class="side-menu__item {{ request()->routeIs('student.payments.*') ? 'active' : '' }}">
                                         <i class="fe fe-dollar-sign student-submenu__icon"></i>
                                         <span>مدفوعاتي</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - ملفي الشخصي -->
-                        <li class="slide">
-                            <a href="{{ route('student.profile.edit') }}" class="side-menu__item student-sidebar-profile-link {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
-                                <i class="fe fe-user side-menu__icon"></i>
-                                <span class="side-menu__label">{{ ($studentProfileLocked ?? false) ? 'إكمال الملف الشخصي' : 'ملفي الشخصي' }}</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - بطاقتي التعريفية -->
-                        <li class="slide">
-                            <a href="{{ route('student.profile-card.edit') }}" class="side-menu__item {{ request()->routeIs('student.profile-card.*') ? 'active' : '' }}">
-                                <i class="fe fe-credit-card side-menu__icon"></i>
-                                <span class="side-menu__label">بطاقتي التعريفية</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - إعدادات الإشعارات -->
-                        <li class="slide">
-                            <a href="{{ route('student.settings.notifications') }}" class="side-menu__item {{ request()->routeIs('student.settings.notifications') ? 'active' : '' }}">
-                                <i class="fe fe-bell side-menu__icon"></i>
-                                <span class="side-menu__label">إعدادات الإشعارات</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - ربط Telegram -->
-                        <li class="slide">
-                            <a href="{{ route('student.telegram.link') }}" class="side-menu__item {{ request()->routeIs('student.telegram.*') ? 'active' : '' }}">
-                                <i class="fe fe-send side-menu__icon"></i>
-                                <span class="side-menu__label">ربط Telegram</span>
-                                @if($studentTelegram['linked'] ?? false)
-                                    <span class="badge bg-success-transparent ms-auto">مرتبط</span>
-                                @elseif($studentTelegram['enabled'] ?? false)
-                                    <span class="badge bg-warning-transparent ms-auto">!</span>
-                                @endif
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - ملاحظات AI -->
-                        <li class="slide">
-                            <a href="{{ route('student.feedback.index') }}" class="side-menu__item">
-                                <i class="fe fe-cpu side-menu__icon"></i>
-                                <span class="side-menu__label">ملاحظات AI</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        @php
-                            $enrollmentsMenuActive = request()->routeIs('student.groups.*', 'student.training-camps.*');
-                        @endphp
-
-                        <!-- Start::slide - الانضمامات (قائمة منسدلة) -->
-                        <li class="slide has-sub student-sidebar-submenu {{ $enrollmentsMenuActive ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ $enrollmentsMenuActive ? 'active' : '' }}">
-                                <i class="fe fe-user-plus side-menu__icon"></i>
-                                <span class="side-menu__label">الانضمامات</span>
-                                <i class="fe fe-chevron-down side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">الانضمامات</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('student.groups.*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.groups.index') }}" class="side-menu__item {{ request()->routeIs('student.groups.*') ? 'active' : '' }}">
-                                        <i class="fe fe-users student-submenu__icon"></i>
-                                        <span>المجموعات</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('student.training-camps.*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.training-camps.my-enrollments') }}" class="side-menu__item {{ request()->routeIs('student.training-camps.*') ? 'active' : '' }}">
-                                        <i class="fe fe-clipboard student-submenu__icon"></i>
-                                        <span>معسكراتي</span>
                                     </a>
                                 </li>
                             </ul>
@@ -343,10 +346,10 @@
                         @php
                             $notesRemindersActive = request()->routeIs(
                                 'student.calendar.*',
-                                'student.works.*',
                                 'student.notes.*',
                                 'student.course-notes.*',
-                                'student.reminders.*'
+                                'student.reminders.*',
+                                'student.feedback.*'
                             );
                         @endphp
 
@@ -367,12 +370,6 @@
                                         <span>التقويم والمواعيد</span>
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('student.works.*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.works.index') }}" class="side-menu__item {{ request()->routeIs('student.works.*') ? 'active' : '' }}">
-                                        <i class="fe fe-briefcase student-submenu__icon"></i>
-                                        <span>جدول أعمالي</span>
-                                    </a>
-                                </li>
                                 <li class="slide {{ request()->routeIs('student.notes.*') ? 'active' : '' }}">
                                     <a href="{{ route('student.notes.index') }}" class="side-menu__item {{ request()->routeIs('student.notes.*') ? 'active' : '' }}">
                                         <i class="fe fe-edit student-submenu__icon"></i>
@@ -385,6 +382,12 @@
                                         <span>ملاحظات الكورسات</span>
                                     </a>
                                 </li>
+                                <li class="slide {{ request()->routeIs('student.feedback.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.feedback.index') }}" class="side-menu__item {{ request()->routeIs('student.feedback.*') ? 'active' : '' }}">
+                                        <i class="fe fe-cpu student-submenu__icon"></i>
+                                        <span>ملاحظات AI</span>
+                                    </a>
+                                </li>
                                 <li class="slide {{ request()->routeIs('student.reminders.*') ? 'active' : '' }}">
                                     <a href="{{ route('student.reminders.index') }}" class="side-menu__item {{ request()->routeIs('student.reminders.*') ? 'active' : '' }}">
                                         <i class="fe fe-clock student-submenu__icon"></i>
@@ -395,51 +398,65 @@
                         </li>
                         <!-- End::slide -->
 
-
-                        <!-- Start::slide - التحديات البرمجية -->
-                        <li class="slide {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
-                            <a href="{{ route('student.challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.challenges.*') ? 'active' : '' }}">
-                                <i class="fe fe-code side-menu__icon"></i>
-                                <span class="side-menu__label">التحديات البرمجية</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - مشاريع التحدي -->
-                        <li class="slide has-sub student-sidebar-submenu {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'open active' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('student.project-challenges.*', 'student.project-teams.*') ? 'active' : '' }}">
-                                <i class="fe fe-layers side-menu__icon"></i>
-                                <span class="side-menu__label">مشاريع التحدي</span>
-                                <i class="fe fe-chevron-down side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">مشاريع التحدي</a>
-                                </li>
-                                <li class="slide {{ request()->routeIs('student.project-challenges.index', 'student.project-challenges.show') ? 'active' : '' }}">
-                                    <a href="{{ route('student.project-challenges.index') }}" class="side-menu__item {{ request()->routeIs('student.project-challenges.index', 'student.project-challenges.show') ? 'active' : '' }}">
-                                        <i class="fe fe-flag student-submenu__icon"></i>
-                                        <span>التحديات المتاحة</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                        <!-- End::slide -->
-
-                        <!-- Start::slide - مجتمع المشاريع -->
-                        <li class="slide {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
-                            <a href="{{ route('student.community-projects.index') }}" class="side-menu__item {{ request()->routeIs('student.community-projects.*') ? 'active' : '' }}">
-                                <i class="fe fe-globe side-menu__icon"></i>
-                                <span class="side-menu__label">مجتمع المشاريع</span>
-                            </a>
-                        </li>
-                        <!-- End::slide -->
                         <!-- Start::slide - تقييمي للمنصة -->
                         <li class="slide {{ request()->routeIs('student.platform-review.*') ? 'active' : '' }}">
                             <a href="{{ route('student.platform-review.index') }}" class="side-menu__item {{ request()->routeIs('student.platform-review.*') ? 'active' : '' }}">
                                 <i class="fe fe-star side-menu__icon"></i>
                                 <span class="side-menu__label">تقييمي للمنصة</span>
                             </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        @php
+                            $accountMenuActive = request()->routeIs(
+                                'student.profile.*',
+                                'student.profile-card.*',
+                                'student.settings.notifications',
+                                'student.telegram.*'
+                            );
+                        @endphp
+
+                        <!-- Start::slide - حسابي (نهاية القائمة) -->
+                        <li class="slide has-sub student-sidebar-submenu {{ $accountMenuActive ? 'open active' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item {{ $accountMenuActive ? 'active' : '' }}">
+                                <i class="fe fe-user side-menu__icon"></i>
+                                <span class="side-menu__label">{{ ($studentProfileLocked ?? false) ? 'إكمال الملف الشخصي' : 'حسابي' }}</span>
+                                <i class="fe fe-chevron-down side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">حسابي</a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.profile.edit') }}" class="side-menu__item student-sidebar-profile-link {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
+                                        <i class="fe fe-user student-submenu__icon"></i>
+                                        <span>{{ ($studentProfileLocked ?? false) ? 'إكمال الملف الشخصي' : 'ملفي الشخصي' }}</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.profile-card.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.profile-card.edit') }}" class="side-menu__item {{ request()->routeIs('student.profile-card.*') ? 'active' : '' }}">
+                                        <i class="fe fe-credit-card student-submenu__icon"></i>
+                                        <span>بطاقتي التعريفية</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.settings.notifications') ? 'active' : '' }}">
+                                    <a href="{{ route('student.settings.notifications') }}" class="side-menu__item {{ request()->routeIs('student.settings.notifications') ? 'active' : '' }}">
+                                        <i class="fe fe-bell student-submenu__icon"></i>
+                                        <span>إعدادات الإشعارات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('student.telegram.*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.telegram.link') }}" class="side-menu__item {{ request()->routeIs('student.telegram.*') ? 'active' : '' }}">
+                                        <i class="fe fe-send student-submenu__icon"></i>
+                                        <span>ربط Telegram</span>
+                                        @if($studentTelegram['linked'] ?? false)
+                                            <span class="badge bg-success-transparent ms-auto">مرتبط</span>
+                                        @elseif($studentTelegram['enabled'] ?? false)
+                                            <span class="badge bg-warning-transparent ms-auto">!</span>
+                                        @endif
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <!-- End::slide -->
 

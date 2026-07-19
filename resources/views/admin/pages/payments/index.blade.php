@@ -119,14 +119,27 @@
                                 </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">
-                                <label class="form-label" for="paymentsCampId">المعسكر</label>
+                                <label class="form-label" for="paymentsCampId">المعسكر / المجموعة</label>
                                 <select name="camp_id" id="paymentsCampId" class="form-select">
-                                    <option value="">جميع المعسكرات</option>
-                                    @foreach($camps as $camp)
-                                        <option value="{{ $camp->id }}" {{ (string) request('camp_id') === (string) $camp->id ? 'selected' : '' }}>
-                                            {{ $camp->name }}
-                                        </option>
-                                    @endforeach
+                                    <option value="">الكل</option>
+                                    @if(isset($camps) && $camps->isNotEmpty())
+                                        <optgroup label="المعسكرات القديمة">
+                                            @foreach($camps as $camp)
+                                                <option value="{{ $camp->id }}" {{ (string) request('camp_id') === (string) $camp->id ? 'selected' : '' }}>
+                                                    {{ $camp->name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endif
+                                    @if(isset($campGroups) && $campGroups->isNotEmpty())
+                                        <optgroup label="مجموعات المعسكر">
+                                            @foreach($campGroups as $campGroup)
+                                                <option value="group:{{ $campGroup->id }}" {{ (string) request('camp_id') === 'group:'.$campGroup->id ? 'selected' : '' }}>
+                                                    {{ $campGroup->name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endif
                                 </select>
                             </div>
                             <div class="col-xl-2 col-lg-3 col-md-6">

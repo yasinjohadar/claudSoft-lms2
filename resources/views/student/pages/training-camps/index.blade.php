@@ -40,28 +40,17 @@
         <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
             <div class="card-header border-0 pb-0">
                 <h4 class="card-title mb-1">تصفية المعسكرات</h4>
-                <p class="fs-12 text-muted mb-0">ابحث بالاسم أو المدرب، أو فلتر حسب التخصص والحالة.</p>
+                <p class="fs-12 text-muted mb-0">ابحث بالاسم أو فلتر حسب الحالة.</p>
             </div>
             <div class="card-body pt-3">
                 <form method="GET" action="{{ route('student.training-camps.index') }}" class="group-show-filters mb-0">
                     <div class="row g-3 align-items-end">
-                        <div class="col-xl-4 col-lg-5 col-md-6">
+                        <div class="col-xl-5 col-lg-5 col-md-6">
                             <label class="form-label" for="campSearch">بحث</label>
                             <input type="text" name="search" id="campSearch" class="form-control"
-                                   placeholder="البحث بالاسم أو المدرب..." value="{{ request('search') }}">
+                                   placeholder="البحث بالاسم..." value="{{ request('search') }}">
                         </div>
-                        <div class="col-xl-3 col-lg-3 col-md-6">
-                            <label class="form-label" for="campCategory">التخصص</label>
-                            <select name="category_id" id="campCategory" class="form-select">
-                                <option value="">جميع التخصصات</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ request('category_id', request('category')) == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-xl-3 col-lg-2 col-md-6">
+                        <div class="col-xl-4 col-lg-4 col-md-6">
                             <label class="form-label" for="campStatus">الحالة</label>
                             <select name="status" id="campStatus" class="form-select">
                                 <option value="">جميع الحالات</option>
@@ -69,12 +58,12 @@
                                 <option value="ongoing" {{ request('status') === 'ongoing' ? 'selected' : '' }}>جاري</option>
                             </select>
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-12">
+                        <div class="col-xl-3 col-lg-3 col-md-12">
                             <button type="submit" class="btn btn-primary btn-sm w-100">
                                 <i class="fe fe-search me-1"></i>بحث
                             </button>
                         </div>
-                        @if(request()->hasAny(['search', 'category_id', 'category', 'status']))
+                        @if(request()->hasAny(['search', 'status']))
                             <div class="col-12">
                                 <a href="{{ route('student.training-camps.index') }}" class="btn btn-outline-secondary btn-sm">
                                     <i class="fe fe-rotate-cw me-1"></i>إعادة تعيين

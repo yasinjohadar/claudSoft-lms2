@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class TrainingCamp extends Model
 {
@@ -39,6 +41,7 @@ class TrainingCamp extends Model
         'current_participants',
         'is_active',
         'is_featured',
+        'require_payment_receipt',
         'order',
     ];
 
@@ -56,6 +59,7 @@ class TrainingCamp extends Model
         'current_participants' => 'integer',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'require_payment_receipt' => 'boolean',
         'order' => 'integer',
         'deleted_at' => 'datetime',
     ];
@@ -77,6 +81,14 @@ class TrainingCamp extends Model
     }
 
     /**
+     * Audience targets (course + group) that control student visibility.
+     */
+    public function targets(): HasMany
+    {
+        return $this->hasMany(TrainingCampTarget::class)->orderBy('id');
+    }
+
+    /**
      * Get the invoice items for the training camp.
      */
     public function invoiceItems(): HasMany
@@ -90,6 +102,84 @@ class TrainingCamp extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Camps visible to a student: must have targets and student must be
+     * a member of at least one targeted group.
+     */
+    public function scopeVisibleToStudent(Builder $query, int $studentId): Builder
+    {
+        $memberGroupIds = DB::table('course_group_members')
+            ->where('student_id', $studentId)
+            ->pluck('group_id');
+
+        if ($memberGroupIds->isEmpty()) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->whereHas('targets', function (Builder $targetQuery) use ($memberGroupIds) {
+            $targetQuery->whereIn('group_id', $memberGroupIds);
+        });
+    }
+
+    public function isVisibleToStudent(int $studentId): bool
+    {
+        $targets = $this->relationLoaded('targets')
+            ? $this->targets
+            : $this->targets()->get();
+
+        if ($targets->isEmpty()) {
+            return false;
+        }
+
+        $memberGroupIds = DB::table('course_group_members')
+            ->where('student_id', $studentId)
+            ->pluck('group_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($memberGroupIds === []) {
+            return false;
+        }
+
+        foreach ($targets as $target) {
+            if (in_array((int) $target->group_id, $memberGroupIds, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Audience rows for admin forms: one row per course with group_ids[].
+     *
+     * @return array<int, array{course_id: int, group_ids: array<int, int>}>
+     */
+    public function audienceRowsForForm(): array
+    {
+        $targets = $this->relationLoaded('targets')
+            ? $this->targets
+            : $this->targets()->get();
+
+        if ($targets->isEmpty()) {
+            return [];
+        }
+
+        return $targets
+            ->groupBy('course_id')
+            ->map(function ($rows, $courseId) {
+                return [
+                    'course_id' => (int) $courseId,
+                    'group_ids' => $rows->pluck('group_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**

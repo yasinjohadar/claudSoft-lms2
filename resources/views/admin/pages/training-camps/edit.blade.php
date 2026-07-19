@@ -58,6 +58,7 @@
                 @method('PUT')
                 @include('admin.pages.training-camps.partials.form-fields', [
                     'categories' => $categories,
+                    'courses' => $courses,
                     'camp' => $camp,
                     'submitLabel' => 'حفظ التعديلات',
                 ])
@@ -84,6 +85,10 @@
 
     startDate?.addEventListener('change', updateEndDateMin);
     updateEndDateMin();
+
+    if (window.CampAudience) {
+        window.CampAudience.bind();
+    }
 })();
 </script>
 @stop

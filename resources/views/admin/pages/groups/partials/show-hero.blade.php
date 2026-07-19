@@ -23,6 +23,19 @@
                             <i class="fe fe-book-open me-1"></i>{{ $course->title }}
                         </span>
                     @endif
+                    @if($group->is_camp)
+                        <span class="badge bg-success-transparent text-success">
+                            <i class="fe fe-dollar-sign me-1"></i>معسكر — ${{ number_format((float) $group->price, 2) }}
+                        </span>
+                        @if($group->start_date || $group->end_date)
+                            <span class="badge bg-info-transparent text-info">
+                                <i class="fe fe-calendar me-1"></i>
+                                {{ $group->start_date ? $group->start_date->format('Y-m-d') : '—' }}
+                                →
+                                {{ $group->end_date ? $group->end_date->format('Y-m-d') : '—' }}
+                            </span>
+                        @endif
+                    @endif
                     @if($group->device_lock_enabled)
                         <span class="badge bg-warning-transparent text-warning">
                             <i class="fe fe-shield me-1"></i>تقييد الأجهزة الموثوقة مُفعّل

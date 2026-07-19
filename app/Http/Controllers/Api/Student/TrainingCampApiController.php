@@ -15,6 +15,7 @@ class TrainingCampApiController extends Controller
         $studentId = $request->user()->id;
         $camps = TrainingCamp::with('category')
             ->active()
+            ->visibleToStudent($studentId)
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%');
             })
@@ -44,10 +45,18 @@ class TrainingCampApiController extends Controller
 
     public function show(Request $request, TrainingCamp $camp): JsonResponse
     {
-        $camp->load('category');
+        $camp->load(['category', 'targets']);
+        $studentId = $request->user()->id;
         $enrollment = CampEnrollment::where('camp_id', $camp->id)
-            ->where('student_id', $request->user()->id)
+            ->where('student_id', $studentId)
             ->first();
+
+        if (! $enrollment && ! $camp->isVisibleToStudent($studentId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا المعسكر غير متاح لمجموعتك',
+            ], 404);
+        }
 
         return response()->json([
             'success' => true,

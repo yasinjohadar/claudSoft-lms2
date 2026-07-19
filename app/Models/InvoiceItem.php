@@ -40,6 +40,27 @@ class InvoiceItem extends Model
         return $this->belongsTo(CampEnrollment::class);
     }
 
+    /**
+     * Display name for linked training camp or camp-style course group.
+     */
+    public function relatedCampOrGroupName(): ?string
+    {
+        $campName = $this->campEnrollment?->camp?->name;
+        if ($campName) {
+            return $campName;
+        }
+
+        if ($this->itemable_type === CourseGroupMember::class) {
+            $member = $this->relationLoaded('itemable')
+                ? $this->itemable
+                : $this->itemable()->with('group')->first();
+
+            return $member?->group?->name;
+        }
+
+        return null;
+    }
+
     // Methods
     public function calculateTotal()
     {

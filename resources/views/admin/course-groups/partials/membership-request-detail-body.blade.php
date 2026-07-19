@@ -108,6 +108,12 @@
         </div>
     @endif
 
+    @include('admin.course-groups.partials.membership-request-camp-receipt', [
+        'membershipRequest' => $membershipRequest,
+        'group' => $group,
+        'course' => $course,
+    ])
+
     @if($registration)
         <div class="membership-request-detail__form-data">
             @include('admin.course-groups.partials.membership-request-form-data', ['registration' => $registration])
@@ -116,7 +122,7 @@
         <div class="group-show-empty py-4 mb-4">
             <i class="fe fe-file-text group-show-empty__icon"></i>
             <h6 class="group-show-empty__title">لا توجد بيانات فورم مرتبطة</h6>
-            <p class="text-muted mb-0 small">لم يُعثر على تسجيل فورم لهذا الطلب في هذه المجموعة.</p>
+            <p class="text-muted mb-0 small">لم يُعثر على تسجيل فورم خارجي لهذا الطلب في هذه المجموعة.</p>
         </div>
     @endif
 

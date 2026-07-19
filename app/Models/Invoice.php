@@ -203,7 +203,7 @@ class Invoice extends Model
     }
 
     /**
-     * Update payment status of related camp enrollments based on invoice status
+     * Update payment status of related camp enrollments / camp-group members based on invoice status
      */
     public function updateRelatedCampEnrollments()
     {
@@ -228,6 +228,38 @@ class Invoice extends Model
                 }
             }
         }
+
+        $this->updateRelatedCourseGroupMembers();
+    }
+
+    /**
+     * Sync payment_status on CourseGroupMember items linked via polymorphic itemable.
+     */
+    public function updateRelatedCourseGroupMembers(): void
+    {
+        $items = $this->items()
+            ->where('itemable_type', CourseGroupMember::class)
+            ->whereNotNull('itemable_id')
+            ->get();
+
+        foreach ($items as $item) {
+            $member = CourseGroupMember::find($item->itemable_id);
+            if (! $member) {
+                continue;
+            }
+
+            if ($this->status === 'paid' && $this->remaining_amount <= 0) {
+                $member->payment_status = 'paid';
+            } elseif ($this->status === 'issued' && $this->paid_amount == 0) {
+                $member->payment_status = 'unpaid';
+            } elseif ($this->status === 'partial') {
+                $member->payment_status = 'unpaid';
+            } elseif ($this->status === 'refunded') {
+                $member->payment_status = 'refunded';
+            }
+
+            $member->save();
+        }
     }
 
     /**
@@ -246,6 +278,27 @@ class Invoice extends Model
                     $enrollment->payment_status = 'unpaid';
                     $enrollment->save();
                 }
+            }
+        }
+
+        $this->revertCourseGroupMemberPaymentStatus();
+    }
+
+    /**
+     * Revert CourseGroupMember payment_status to unpaid when invoice is deleted.
+     */
+    public function revertCourseGroupMemberPaymentStatus(): void
+    {
+        $items = $this->items()
+            ->where('itemable_type', CourseGroupMember::class)
+            ->whereNotNull('itemable_id')
+            ->get();
+
+        foreach ($items as $item) {
+            $member = CourseGroupMember::find($item->itemable_id);
+            if ($member) {
+                $member->payment_status = 'unpaid';
+                $member->save();
             }
         }
     }

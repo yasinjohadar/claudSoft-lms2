@@ -7,6 +7,7 @@
                 <th scope="col">تاريخ التسجيل</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">حالة الدفع</th>
+                <th scope="col">الإيصال</th>
                 <th scope="col" style="width: 150px;">الإجراءات</th>
             </tr>
         </thead>
@@ -71,6 +72,19 @@
                     </td>
 
                     <td>
+                        @if($enrollment->hasReceipt())
+                            <a href="{{ route('training-camps.enrollments.receipt', [$camp->id ?? $enrollment->camp_id, $enrollment->id]) }}"
+                               class="btn btn-sm btn-outline-primary"
+                               target="_blank"
+                               title="عرض الإيصال">
+                                <i class="fe fe-paperclip"></i>
+                            </a>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
+
+                    <td>
                         <div class="d-flex align-items-center gap-1">
                             <button type="button" class="btn btn-sm btn-info-light js-view-camp-enrollment"
                                     data-enrollment-id="{{ $enrollment->id }}" title="عرض التفاصيل">
@@ -84,10 +98,11 @@
                                     <i class="fe fe-more-horizontal"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li><h6 class="dropdown-header">حالة التسجيل</h6></li>
                                     @foreach(['pending', 'approved', 'rejected', 'cancelled'] as $status)
                                         @if($enrollment->status !== $status)
                                             @php
-                                                $labels = ['pending' => 'قيد الانتظار', 'approved' => 'مقبول', 'rejected' => 'مرفوض', 'cancelled' => 'ملغي'];
+                                                $labels = ['pending' => 'قيد المراجعة', 'approved' => 'مقبول', 'rejected' => 'مرفوض', 'cancelled' => 'ملغي'];
                                                 $icons = ['pending' => 'fe-clock', 'approved' => 'fe-check-circle', 'rejected' => 'fe-x-circle', 'cancelled' => 'fe-ban'];
                                             @endphp
                                             <li>
@@ -95,6 +110,23 @@
                                                         data-enrollment-id="{{ $enrollment->id }}"
                                                         data-new-status="{{ $status }}">
                                                     <i class="fe {{ $icons[$status] }} me-2"></i>{{ $labels[$status] }}
+                                                </button>
+                                            </li>
+                                        @endif
+                                    @endforeach
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">حالة الدفع</h6></li>
+                                    @foreach(['unpaid', 'paid', 'refunded'] as $paymentStatus)
+                                        @if($enrollment->payment_status !== $paymentStatus)
+                                            @php
+                                                $paymentLabels = ['unpaid' => 'غير مدفوع', 'paid' => 'مدفوع', 'refunded' => 'مسترجع'];
+                                                $paymentIcons = ['unpaid' => 'fe-alert-circle', 'paid' => 'fe-dollar-sign', 'refunded' => 'fe-rotate-ccw'];
+                                            @endphp
+                                            <li>
+                                                <button type="button" class="dropdown-item js-update-camp-enrollment-payment"
+                                                        data-enrollment-id="{{ $enrollment->id }}"
+                                                        data-new-payment-status="{{ $paymentStatus }}">
+                                                    <i class="fe {{ $paymentIcons[$paymentStatus] }} me-2"></i>{{ $paymentLabels[$paymentStatus] }}
                                                 </button>
                                             </li>
                                         @endif
@@ -113,7 +145,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="group-show-empty py-5">
                             <i class="fe fe-users group-show-empty__icon"></i>
                             <h5 class="group-show-empty__title">لا يوجد أعضاء</h5>

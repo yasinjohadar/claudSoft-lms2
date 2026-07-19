@@ -302,20 +302,14 @@ class GroupRegistrationService
      */
     private function addUserToGroup(User $user, CourseGroup $group): void
     {
-        // التحقق من عدم وجود المستخدم في المجموعة
-        if (!$group->hasMember($user)) {
-            // استخدام CourseGroupMember model
-            \App\Models\CourseGroupMember::firstOrCreate(
-                [
-                    'student_id' => $user->id,
-                    'group_id' => $group->id,
-                ],
-                [
-                    'role' => 'member',
-                    'joined_at' => now(),
-                ]
-            );
+        if ($group->hasMember($user)) {
+            return;
         }
+
+        $group->addMember($user, 'member', [
+            'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_SYSTEM,
+            'reason' => 'تسجيل عام مع موافقة تلقائية',
+        ]);
     }
 
     /**

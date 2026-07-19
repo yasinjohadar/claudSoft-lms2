@@ -53,6 +53,7 @@
                 @csrf
                 @include('admin.pages.training-camps.partials.form-fields', [
                     'categories' => $categories,
+                    'courses' => $courses,
                     'submitLabel' => 'حفظ المعسكر',
                 ])
             </form>
@@ -78,6 +79,10 @@
 
     startDate?.addEventListener('change', updateEndDateMin);
     updateEndDateMin();
+
+    if (window.CampAudience) {
+        window.CampAudience.bind();
+    }
 })();
 </script>
 @stop

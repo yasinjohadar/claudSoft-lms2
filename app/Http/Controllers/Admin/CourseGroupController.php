@@ -16,6 +16,7 @@ use App\Models\TrainingCamp;
 use App\Models\User;
 use App\Models\UserAdminNote;
 use App\Models\WhatsAppMessageTemplate;
+use App\Services\CourseGroupReceiptService;
 use App\Services\TrainingCampEnrollmentService;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Services\WhatsApp\Evolution\EvolutionApiException;
@@ -36,6 +37,7 @@ use App\Services\Telegram\MembershipTelegramInviteService;
 use App\Services\Telegram\TelegramApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -112,9 +114,14 @@ class CourseGroupController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'details' => 'nullable|string',
+            'terms' => 'nullable|string',
             'max_members' => 'nullable|integer|min:1',
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
+            'price' => 'nullable|numeric|min:0|required_if:is_camp,on,1,true',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         DB::beginTransaction();
@@ -126,6 +133,7 @@ class CourseGroupController extends Controller
             $validated['is_active'] = $request->has('is_active');
             $validated['device_lock_enabled'] = $request->has('device_lock_enabled');
             $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
+            $this->applyCampFieldsToValidated($request, $validated);
 
             // Set creator
             $validated['created_by'] = auth()->id();
@@ -480,9 +488,14 @@ class CourseGroupController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'details' => 'nullable|string',
+            'terms' => 'nullable|string',
             'max_members' => 'nullable|integer|min:1',
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'exists:courses,id',
+            'price' => 'nullable|numeric|min:0|required_if:is_camp,on,1,true',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         DB::beginTransaction();
@@ -493,6 +506,7 @@ class CourseGroupController extends Controller
             $validated['device_lock_enabled'] = $request->has('device_lock_enabled');
             $validated['allow_membership_requests'] = $request->has('allow_membership_requests');
             $validated['is_visible_for_students'] = $request->has('is_visible_for_students');
+            $this->applyCampFieldsToValidated($request, $validated);
 
             // Remove course_ids from validated data
             $courseIds = $validated['course_ids'];
@@ -1184,7 +1198,7 @@ class CourseGroupController extends Controller
     public function allGroups(Request $request)
     {
         try {
-            $query = CourseGroup::with(['courses', 'creator'])
+            $query = CourseGroup::with(['courses', 'visibilityRequirements.requiredGroup'])
                 ->withCount('members');
 
             // Search
@@ -1211,29 +1225,50 @@ class CourseGroupController extends Controller
                 $query->where('is_active', $request->is_active);
             }
 
+            // Filter by camp type
+            if ($request->filled('is_camp')) {
+                $query->where('is_camp', (bool) (int) $request->is_camp);
+            }
+
             // Sort
-            $sortBy = $request->get('sort', 'created_at');
-            $sortOrder = $request->get('order', 'desc');
+            $allowedSorts = ['created_at', 'name', 'members_count', 'price', 'is_camp'];
+            $sortBy = in_array($request->get('sort'), $allowedSorts, true)
+                ? $request->get('sort')
+                : 'created_at';
+            $sortOrder = $request->get('order') === 'asc' ? 'asc' : 'desc';
             $query->orderBy($sortBy, $sortOrder);
 
-            $groups = $query->paginate(20);
+            $groups = $query->paginate(20)->withQueryString();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->view('admin.pages.groups.partials.all-groups-table', compact('groups'));
+            }
 
             // Get courses for filter
-            $courses = \App\Models\Course::select('id', 'title')->get();
+            $courses = \App\Models\Course::select('id', 'title')->orderBy('title')->get();
 
             // Get statistics
             $totalGroups = CourseGroup::count();
             $activeGroups = CourseGroup::where('is_active', true)->count();
             $totalMembers = DB::table('course_group_members')->count();
+            $campGroups = CourseGroup::where('is_camp', true)->count();
 
             return view('admin.pages.groups.all', compact(
                 'groups',
                 'courses',
                 'totalGroups',
                 'activeGroups',
-                'totalMembers'
+                'totalMembers',
+                'campGroups'
             ));
         } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحميل المجموعات: '.$e->getMessage(),
+                ], 500);
+            }
+
             return redirect()
                 ->route('admin.dashboard')
                 ->with('error', 'حدث خطأ أثناء تحميل المجموعات: '.$e->getMessage());
@@ -2237,6 +2272,40 @@ class CourseGroupController extends Controller
     /**
      * Approve a membership request.
      */
+    public function membershipRequestReceipt(
+        Request $request,
+        $courseId,
+        $groupId,
+        $requestId,
+        CourseGroupReceiptService $receiptService
+    ): Response {
+        $membershipRequest = GroupMembershipRequest::where('group_id', $groupId)
+            ->findOrFail($requestId);
+
+        abort_unless($membershipRequest->hasReceipt(), 404);
+
+        $receipt = $receiptService->retrieve(
+            $membershipRequest->receipt_path,
+            $membershipRequest->receipt_disk
+        );
+
+        abort_if($receipt === null, 404, 'تعذر العثور على إيصال الدفع.');
+
+        $extension = strtolower(pathinfo($membershipRequest->receipt_path, PATHINFO_EXTENSION));
+        $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'pdf'], true)
+            ? $extension
+            : 'bin';
+        $filename = "group-membership-receipt-{$membershipRequest->id}.{$extension}";
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($receipt['content'], 200, [
+            'Content-Type' => $receipt['mime_type'] ?: 'application/octet-stream',
+            'Content-Disposition' => "{$disposition}; filename=\"{$filename}\"",
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function approveRequest($courseId, $groupId, $requestId, Request $request)
     {
         DB::beginTransaction();
@@ -2699,6 +2768,29 @@ class CourseGroupController extends Controller
                 'success' => false,
                 'message' => 'حدث خطأ أثناء تسجيل الدفعة: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Normalize camp-style paid group fields on create/update.
+     */
+    private function applyCampFieldsToValidated(Request $request, array &$validated): void
+    {
+        $validated['is_camp'] = $request->has('is_camp');
+
+        if ($validated['is_camp']) {
+            $validated['price'] = $request->input('price');
+            $validated['start_date'] = $request->input('start_date') ?: null;
+            $validated['end_date'] = $request->input('end_date') ?: null;
+            $validated['require_payment_receipt'] = $request->has('require_payment_receipt');
+            // Ensure camp groups are joinable/visible to eligible students
+            $validated['allow_membership_requests'] = true;
+            $validated['is_visible_for_students'] = true;
+        } else {
+            $validated['price'] = null;
+            $validated['start_date'] = null;
+            $validated['end_date'] = null;
+            $validated['require_payment_receipt'] = false;
         }
     }
 }
