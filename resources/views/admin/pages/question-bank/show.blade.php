@@ -101,6 +101,16 @@
                                         $fillBlanksPreview = $question->getFillBlanksPreviewData();
                                         $hasFilledPreview = collect($fillBlanksPreview['answers'] ?? [])
                                             ->contains(fn ($answer) => trim((string) $answer) !== '');
+                                        $dropdownPool = $question->options
+                                            ->pluck('option_text')
+                                            ->map(fn ($t) => trim((string) $t))
+                                            ->filter()
+                                            ->unique()
+                                            ->values();
+                                        $correctByBlank = $question->options
+                                            ->where('is_correct', true)
+                                            ->sortBy(['option_order', 'id'])
+                                            ->groupBy(fn ($o) => (int) $o->option_order);
                                     @endphp
                                     @if($hasFilledPreview)
                                         <div class="mb-3">
@@ -115,24 +125,38 @@
                                             </div>
                                         </div>
                                     @endif
-                                @endif
 
-                                @if($lessonShow)
-                                    <div class="qb-show-meta-list__item mb-3 pb-3 border-bottom">
-                                        <div class="qb-show-meta-list__label">اسم الدرس</div>
-                                        <div class="qb-show-meta-list__value">{{ $lessonShow }}</div>
-                                    </div>
-                                @endif
+                                    @if($dropdownPool->isNotEmpty())
+                                        <div class="mb-3">
+                                            <p class="mb-2 fw-semibold">خيارات القائمة المنسدلة (مشتركة لكل الفراغات)</p>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                @foreach($dropdownPool as $opt)
+                                                    <span class="badge bg-primary-transparent fs-12 px-3 py-2">{{ $opt }}</span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
 
-                                @if($question->question_image)
-                                    <div class="mb-3">
-                                        <p class="mb-2 fw-semibold">صورة السؤال</p>
-                                        <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال"
-                                             class="img-fluid rounded" style="max-width: 100%;">
-                                    </div>
-                                @endif
-
-                                @if($question->options && $question->options->count() > 0)
+                                    @if($correctByBlank->isNotEmpty())
+                                        <div class="mb-3">
+                                            <p class="mb-2 fw-semibold">الإجابة الصحيحة لكل فراغ</p>
+                                            <div class="d-flex flex-column gap-2">
+                                                @foreach($correctByBlank->sortKeys() as $blankOrder => $alts)
+                                                    @if((int) $blankOrder < 1)
+                                                        @continue
+                                                    @endif
+                                                    <div class="qb-show-option qb-show-option--correct">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="badge bg-success-transparent">فراغ {{ $blankOrder }}</span>
+                                                            <span class="fw-semibold">{!! mixed_bidi_html($alts->first()->option_text) !!}</span>
+                                                            <i class="fe fe-check-circle text-success"></i>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                @elseif($question->options && $question->options->count() > 0)
                                     <p class="mb-2 fw-semibold">خيارات الإجابة</p>
                                     <div class="d-flex flex-column gap-2 mb-3">
                                         @foreach($question->options->sortBy('option_order') as $index => $option)
@@ -159,6 +183,21 @@
                                                 </div>
                                             </div>
                                         @endforeach
+                                    </div>
+                                @endif
+
+                                @if($lessonShow)
+                                    <div class="qb-show-meta-list__item mb-3 pb-3 border-bottom">
+                                        <div class="qb-show-meta-list__label">اسم الدرس</div>
+                                        <div class="qb-show-meta-list__value">{{ $lessonShow }}</div>
+                                    </div>
+                                @endif
+
+                                @if($question->question_image)
+                                    <div class="mb-3">
+                                        <p class="mb-2 fw-semibold">صورة السؤال</p>
+                                        <img src="{{ asset('storage/' . $question->question_image) }}" alt="صورة السؤال"
+                                             class="img-fluid rounded" style="max-width: 100%;">
                                     </div>
                                 @endif
 

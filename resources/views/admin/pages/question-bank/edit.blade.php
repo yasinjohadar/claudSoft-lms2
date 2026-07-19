@@ -116,7 +116,7 @@
 
                             <div class="col-12">
                                 <label class="form-label">نص السؤال <span class="text-danger">*</span></label>
-                                <textarea name="question_text" class="form-control @error('question_text') is-invalid @enderror"
+                                <textarea name="question_text" id="question_text" class="form-control @error('question_text') is-invalid @enderror"
                                           rows="4" placeholder="اكتب نص السؤال..." required>{{ old('question_text', $question->question_text) }}</textarea>
                                 @error('question_text')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -154,6 +154,8 @@
                         </div>
                     </div>
                 </div>
+
+                @include('admin.pages.question-bank.partials.edit-fill-blanks')
 
                 <div class="card custom-card group-show-members-card dashboard-fade-in qb-page-animate mb-4" id="options-section">
                     <div class="card-header border-0 pb-0">
@@ -291,33 +293,28 @@ function isFillBlanksType(typeName, displayText) {
 }
 
 function applyFillBlanksOptionsUi(isFillBlanks) {
-    const $section = $('#options-section');
-    const $title = $section.find('.card-title');
-    const $addBtn = $('#add-option-btn');
+    const $fillSection = $('#fill-blanks-edit-section');
+    const $optionsSection = $('#options-section');
+    const $inputMode = $('#fillBlanksInputMode');
 
     if (isFillBlanks) {
-        $title.html('<span class="assignments-section-icon"><i class="fe fe-check-circle"></i></span> الإجابات الصحيحة');
-        $addBtn.html('<i class="fe fe-plus me-1"></i>إضافة إجابة بديلة');
-        $section.find('.option-item').each(function() {
-            const $item = $(this);
-            $item.find('label:contains("نص الخيار")').text('الإجابة الصحيحة');
-            $item.find('.form-check').hide();
-            if ($item.find('input[type="hidden"][name$="[is_correct]"]').length === 0) {
-                const checkbox = $item.find('input[type="checkbox"][name$="[is_correct]"]');
-                if (checkbox.length) {
-                    $('<input>', {
-                        type: 'hidden',
-                        name: checkbox.attr('name'),
-                        value: '1'
-                    }).insertAfter(checkbox);
-                }
-            }
-        });
+        $fillSection.removeClass('d-none');
+        $optionsSection.hide();
+        $optionsSection.find('input, select, textarea, button').prop('disabled', true);
+        $fillSection.find('input, select, textarea, button').prop('disabled', false);
+        if ($inputMode.length) {
+            $inputMode.prop('disabled', false);
+        }
+        if (window.refreshEditFillBlanks) {
+            window.refreshEditFillBlanks();
+        }
     } else {
-        $title.html('<span class="assignments-section-icon"><i class="fe fe-list"></i></span> خيارات الإجابة');
-        $addBtn.html('<i class="fe fe-plus me-1"></i>إضافة خيار');
-        $section.find('input[type="hidden"][name$="[is_correct]"]').remove();
-        $section.find('.form-check').show();
+        $fillSection.addClass('d-none');
+        $fillSection.find('input, select, textarea, button').prop('disabled', true);
+        if ($inputMode.length) {
+            $inputMode.prop('disabled', true);
+        }
+        $optionsSection.find('input, select, textarea, button').prop('disabled', false);
     }
 }
 
@@ -331,10 +328,12 @@ $(document).ready(function() {
 
     if (!showOptions) {
         $('#options-section').hide();
+        $('#fill-blanks-edit-section').addClass('d-none').find('input, select, textarea, button').prop('disabled', true);
+        $('#fillBlanksInputMode').prop('disabled', true);
+    } else if (fillBlanks) {
+        applyFillBlanksOptionsUi(true);
     } else {
-        if (fillBlanks) {
-            applyFillBlanksOptionsUi(true);
-        }
+        applyFillBlanksOptionsUi(false);
         // إذا كان السؤال من نوع true_false وليس لديه خيارات، أضف خيارين تلقائياً
         const isTrueFalse = selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ');
         const hasNoOptions = $('#options-container .option-item').length === 0;
@@ -439,9 +438,13 @@ $(document).ready(function() {
         const fillBlanks = isFillBlanksType(selectedTypeName, selectedType);
 
         if (showOptions) {
-            $('#options-section').show();
-            applyFillBlanksOptionsUi(fillBlanks);
-            if ($('#options-container .option-item').length === 0) {
+            if (fillBlanks) {
+                applyFillBlanksOptionsUi(true);
+            } else {
+                $('#options-section').show();
+                applyFillBlanksOptionsUi(false);
+            }
+            if (!fillBlanks && $('#options-container .option-item').length === 0) {
                 if (fillBlanks) {
                     addOption();
                 } else if (selectedTypeName === 'true_false' || selectedType.includes('صح / خطأ') || selectedType.includes('صح وخطأ')) {
@@ -537,6 +540,8 @@ $(document).ready(function() {
             }
         } else {
             $('#options-section').hide();
+            $('#fill-blanks-edit-section').addClass('d-none').find('input, select, textarea, button').prop('disabled', true);
+            $('#fillBlanksInputMode').prop('disabled', true);
         }
     });
 
@@ -551,6 +556,106 @@ $(document).ready(function() {
             $(this).closest('.option-item').remove();
         }
     });
+
+    // Fill blanks dedicated editor (same UX as create)
+    (function initEditFillBlanks() {
+        var section = document.getElementById('fill-blanks-edit-section');
+        if (!section) return;
+
+        var oldBlankAnswers = {};
+        try {
+            oldBlankAnswers = JSON.parse(section.getAttribute('data-initial-blank-answers') || '{}');
+        } catch (e) {
+            oldBlankAnswers = {};
+        }
+
+        function countBlanks(text) {
+            var normalized = String(text || '').replace(/_{3,}/g, '[[blank]]');
+            var matches = normalized.match(/\[\[blank\]\]/gi);
+            return matches ? matches.length : 0;
+        }
+
+        function getOptions() {
+            return Array.prototype.slice.call(document.querySelectorAll('.edit-dropdown-option-input'))
+                .map(function (el) { return (el.value || '').trim(); })
+                .filter(function (v) { return v !== ''; });
+        }
+
+        function optionRowHtml(value) {
+            return '<div class="fb-option-row d-flex gap-2 align-items-center mb-2">' +
+                '<input type="text" name="dropdown_options[]" class="form-control edit-dropdown-option-input" placeholder="نص الخيار..." value="' + (value || '') + '">' +
+                '<button type="button" class="btn btn-outline-danger btn-sm edit-remove-option-btn"><i class="fe fe-trash-2"></i></button>' +
+                '</div>';
+        }
+
+        window.refreshEditFillBlanks = function refreshEditFillBlanks() {
+            var textEl = document.getElementById('question_text');
+            var count = countBlanks(textEl ? textEl.value : '');
+            var chip = document.getElementById('editBlankCountChip');
+            if (chip) {
+                chip.textContent = count + (count === 1 ? ' فراغ' : ' فراغات');
+            }
+
+            var container = document.getElementById('editBlankAnswersContainer');
+            if (!container) return;
+
+            var options = getOptions();
+            if (count < 1) {
+                container.innerHTML = '<p class="text-muted mb-0" id="editBlankAnswersPlaceholder">أضف فراغات في نص السؤال أولاً.</p>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < count; i++) {
+                var selected = oldBlankAnswers[i] || oldBlankAnswers[String(i)] || '';
+                html += '<div class="fb-blank-answer-row">' +
+                    '<label class="form-label mb-2">الفراغ ' + (i + 1) + ' <span class="text-danger">*</span></label>' +
+                    '<select name="blank_answers[' + i + ']" class="form-select edit-blank-answer-select" required data-blank-index="' + i + '">' +
+                    '<option value="">-- اختر الإجابة الصحيحة --</option>';
+                options.forEach(function (opt) {
+                    html += '<option value="' + opt.replace(/"/g, '&quot;') + '"' + (selected === opt ? ' selected' : '') + '>' + opt + '</option>';
+                });
+                html += '</select></div>';
+            }
+            container.innerHTML = html;
+            oldBlankAnswers = {};
+        };
+
+        var addBtn = document.getElementById('editAddOptionBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                document.getElementById('editOptionsContainer').insertAdjacentHTML('beforeend', optionRowHtml(''));
+                window.refreshEditFillBlanks();
+            });
+        }
+
+        var optionsContainer = document.getElementById('editOptionsContainer');
+        if (optionsContainer) {
+            optionsContainer.addEventListener('click', function (e) {
+                var btn = e.target.closest('.edit-remove-option-btn');
+                if (!btn) return;
+                var rows = optionsContainer.querySelectorAll('.fb-option-row');
+                if (rows.length <= 2) {
+                    alert('يجب توفر خيارين على الأقل في القائمة المنسدلة');
+                    return;
+                }
+                btn.closest('.fb-option-row').remove();
+                window.refreshEditFillBlanks();
+            });
+            optionsContainer.addEventListener('input', function (e) {
+                if (e.target.classList.contains('edit-dropdown-option-input')) {
+                    window.refreshEditFillBlanks();
+                }
+            });
+        }
+
+        var textEl = document.getElementById('question_text');
+        if (textEl) {
+            textEl.addEventListener('input', window.refreshEditFillBlanks);
+        }
+
+        window.refreshEditFillBlanks();
+    })();
 });
 
 function addOption() {
@@ -560,11 +665,12 @@ function addOption() {
         selectedOption.data('type-name') || '',
         selectedOption.text()
     );
-    const labelText = fillBlanks ? 'الإجابة الصحيحة' : `نص الخيار ${optionCount}`;
-    const placeholder = fillBlanks ? 'الإجابة الصحيحة للفراغ...' : 'أدخل نص الخيار...';
-    const correctField = fillBlanks
-        ? `<input type="hidden" name="options[${optionCount}][is_correct]" value="1">`
-        : `<div class="form-check mt-4">
+    const labelText = fillBlanks ? 'نص الخيار' : `نص الخيار ${optionCount}`;
+    const placeholder = fillBlanks ? 'خيار يظهر في القائمة المنسدلة...' : 'أدخل نص الخيار...';
+    const orderLabel = fillBlanks ? 'رقم الفراغ (0 = مشتت)' : 'الترتيب';
+    const orderMin = fillBlanks ? '0' : '1';
+    const orderValue = fillBlanks ? '0' : String(optionCount);
+    const correctField = `<div class="form-check mt-4">
                 <input class="form-check-input" type="checkbox"
                        name="options[${optionCount}][is_correct]"
                        id="correct_${optionCount}" value="1">
@@ -581,9 +687,9 @@ function addOption() {
                            class="form-control" placeholder="${placeholder}" required>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">الترتيب</label>
+                    <label class="form-label">${orderLabel}</label>
                     <input type="number" name="options[${optionCount}][option_order]"
-                           class="form-control" value="${optionCount}" min="1">
+                           class="form-control" value="${orderValue}" min="${orderMin}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">الوزن</label>

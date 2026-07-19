@@ -98,15 +98,38 @@
                 @break
 
             @case('fill_blanks')
+                @php
+                    $dropdownPool = $options
+                        ->pluck('option_text')
+                        ->map(fn ($t) => trim((string) $t))
+                        ->filter()
+                        ->unique()
+                        ->values();
+                    $correctByBlank = $options
+                        ->where('is_correct', true)
+                        ->sortBy(['option_order', 'id'])
+                        ->groupBy(fn ($o) => (int) $o->option_order)
+                        ->sortKeys()
+                        ->filter(fn ($alts, $order) => (int) $order >= 1);
+                @endphp
                 <div class="alert alert-info mb-3">
-                    <i class="fe fe-info me-1"></i>معاينة نوع «ملء الفراغات»
+                    <i class="fe fe-info me-1"></i>معاينة نوع «ملء الفراغات» — قائمة منسدلة مشتركة
                 </div>
-                @if($options->isNotEmpty())
+                @if($dropdownPool->isNotEmpty())
+                    <p class="fw-semibold mb-2">خيارات القائمة</p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach($dropdownPool as $opt)
+                            <span class="badge bg-primary-transparent">{{ $opt }}</span>
+                        @endforeach
+                    </div>
+                @endif
+                @if($correctByBlank->isNotEmpty())
+                    <p class="fw-semibold mb-2">الإجابة الصحيحة لكل فراغ</p>
                     <div class="d-flex flex-column gap-2">
-                        @foreach($options as $index => $option)
+                        @foreach($correctByBlank as $blankOrder => $alts)
                             <div class="p-3 border rounded d-flex justify-content-between gap-2">
-                                <span>فراغ {{ $index + 1 }}</span>
-                                <span class="fw-semibold text-success">{!! mixed_bidi_html($option->option_text) !!}</span>
+                                <span>فراغ {{ $blankOrder }}</span>
+                                <span class="fw-semibold text-success">{!! mixed_bidi_html($alts->first()->option_text) !!}</span>
                             </div>
                         @endforeach
                     </div>

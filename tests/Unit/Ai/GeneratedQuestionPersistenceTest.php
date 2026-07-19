@@ -12,7 +12,8 @@ test('validate preserves type-specific fields', function () {
     ], [
         'type' => 'fill_blanks',
         'question' => 'املأ [[blank]]',
-        'correct_answers' => ['جواب'],
+        'dropdown_options' => ['جواب', 'مشتت'],
+        'blank_answers' => ['جواب'],
     ], [
         'type' => 'numerical',
         'question' => 'كم؟',
@@ -24,7 +25,9 @@ test('validate preserves type-specific fields', function () {
 
     expect($validated)->toHaveCount(3);
     expect($validated[0]['pairs'])->toHaveCount(1);
+    expect($validated[1]['blank_answers'])->toBe(['جواب']);
     expect($validated[1]['correct_answers'])->toBe(['جواب']);
+    expect($validated[1]['dropdown_options'])->toBe(['جواب', 'مشتت']);
     expect($validated[2]['expected_value'])->toBe(42);
     expect($validated[2]['tolerance'])->toBe(0.5);
 });
@@ -59,7 +62,7 @@ test('normalize prepares true_false for consistent save', function () {
     expect($data['options'])->toBe(['صح', 'خطأ']);
 });
 
-test('validate and normalize pipeline keeps fill blank answers', function () {
+test('validate and normalize pipeline keeps fill blank dropdown answers', function () {
     $raw = [[
         'type' => 'fill_blanks',
         'question' => 'الإجابة [___] هنا',
@@ -69,8 +72,23 @@ test('validate and normalize pipeline keeps fill blank answers', function () {
     $validated = GeneratedQuestionValidator::validate($raw);
     $normalized = GeneratedQuestionValidator::normalize($validated[0]);
 
+    expect($validated[0]['blank_answers'])->toBe(['صحيحة']);
     expect($validated[0]['correct_answers'])->toBe(['صحيحة']);
     expect($normalized['question'])->toBe('الإجابة [[blank]] هنا');
+    expect($normalized['dropdown_options'])->toContain('صحيحة');
+    expect($normalized['blank_answers'])->toBe(['صحيحة']);
+});
+
+test('normalize merges blank answers into dropdown options', function () {
+    $data = GeneratedQuestionValidator::normalize([
+        'type' => 'fill_blanks',
+        'question' => 'استخدم [[blank]] داخل [[blank]]',
+        'dropdown_options' => ['src', 'img'],
+        'blank_answers' => ['href', 'a'],
+    ]);
+
+    expect($data['blank_answers'])->toBe(['href', 'a']);
+    expect($data['dropdown_options'])->toEqualCanonicalizing(['src', 'img', 'href', 'a']);
 });
 
 test('numerical normalize maps correct_answer to expected_value', function () {

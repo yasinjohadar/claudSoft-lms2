@@ -227,6 +227,10 @@ class QuestionBankController extends Controller
         if ($request->filled('model_answer')) $metadata['model_answer'] = $validated['model_answer'];
         if ($request->filled('grading_criteria')) $metadata['grading_criteria'] = $validated['grading_criteria'];
         if ($request->has('shuffle_options')) $metadata['shuffle_options'] = $request->has('shuffle_options');
+        if ($request->input('input_mode') === 'dropdown' || $request->has('dropdown_options')) {
+            $metadata['input_mode'] = 'dropdown';
+            $metadata['shared_dropdown'] = true;
+        }
         $validated['metadata'] = $metadata;
 
         // Set creator
@@ -256,8 +260,15 @@ class QuestionBankController extends Controller
                 $this->createDragDropOptions($question, $request->input('drop_zones'));
             }
 
-            // Handle fill in the blanks answers
-            if ($request->has('correct_answers')) {
+            // Handle fill in the blanks answers (dropdown shared pool)
+            if ($request->has('dropdown_options')) {
+                $this->createFillBlanksDropdownOptions(
+                    $question,
+                    $request->input('dropdown_options', []),
+                    $request->input('blank_answers', [])
+                );
+            } elseif ($request->has('correct_answers')) {
+                // Legacy flat answers (import / older forms)
                 $this->createFillBlanksOptions($question, $request->input('correct_answers'), $request->has('case_sensitive'));
             }
 
@@ -416,8 +427,13 @@ class QuestionBankController extends Controller
         try {
             $question->update($validated);
 
-            // Update or create question options
-            if ($request->has('options')) {
+            if ($request->has('dropdown_options')) {
+                $question->options()->delete();
+                $question->syncFillBlanksDropdownOptions(
+                    $request->input('dropdown_options', []),
+                    $request->input('blank_answers', [])
+                );
+            } elseif ($request->has('options')) {
                 // Delete old options
                 $question->options()->delete();
 
@@ -747,19 +763,30 @@ class QuestionBankController extends Controller
     }
 
     /**
-     * Create fill in the blanks question options.
+     * Create fill-in-the-blanks options as a shared dropdown pool.
+     *
+     * @param  array<int, string>  $dropdownOptions
+     * @param  array<int|string, string>  $blankAnswers
+     */
+    private function createFillBlanksDropdownOptions(QuestionBank $question, array $dropdownOptions, array $blankAnswers): void
+    {
+        $question->syncFillBlanksDropdownOptions($dropdownOptions, $blankAnswers);
+    }
+
+    /**
+     * Create fill in the blanks question options (legacy flat answers).
      */
     private function createFillBlanksOptions(QuestionBank $question, array $correctAnswers, bool $caseSensitive = false): void
     {
         $order = 1;
         foreach ($correctAnswers as $answer) {
-            if (empty($answer)) {
+            if ($answer === null || trim((string) $answer) === '') {
                 continue;
             }
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'option_text' => $answer,
+                'option_text' => trim((string) $answer),
                 'is_correct' => true,
                 'option_order' => $order,
                 'feedback' => $caseSensitive ? 'case_sensitive' : null,

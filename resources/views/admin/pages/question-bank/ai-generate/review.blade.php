@@ -325,12 +325,31 @@
                                     </div>
                                 @endif
 
-                                @if(!empty($question['correct_answers']) && is_array($question['correct_answers']))
+                                @php
+                                    $blankAnswers = $question['blank_answers'] ?? $question['correct_answers'] ?? [];
+                                    $dropdownOptions = $question['dropdown_options'] ?? [];
+                                @endphp
+
+                                @if(!empty($dropdownOptions) && is_array($dropdownOptions))
                                     <div class="mb-3">
-                                        <strong class="text-muted small">إجابات الفراغات:</strong>
+                                        <strong class="text-muted small">خيارات القائمة المنسدلة (مشتركة):</strong>
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            @foreach($dropdownOptions as $opt)
+                                                <span class="badge bg-primary-transparent">{{ $opt }}</span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(!empty($blankAnswers) && is_array($blankAnswers))
+                                    <div class="mb-3">
+                                        <strong class="text-muted small">الإجابة الصحيحة لكل فراغ:</strong>
                                         <ol class="mb-0 mt-1">
-                                            @foreach($question['correct_answers'] as $blankAnswer)
-                                                <li>{{ $blankAnswer }}</li>
+                                            @foreach($blankAnswers as $blankIndex => $blankAnswer)
+                                                <li>
+                                                    الفراغ {{ $blankIndex + 1 }}:
+                                                    <span class="text-success fw-semibold">{{ $blankAnswer }}</span>
+                                                </li>
                                             @endforeach
                                         </ol>
                                     </div>

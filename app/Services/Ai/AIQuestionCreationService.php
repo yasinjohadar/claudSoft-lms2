@@ -381,15 +381,21 @@ class AIQuestionCreationService
   \"points\": 10
 }
 
-8. **fill_blanks** (ملء الفراغات):
+8. **fill_blanks** (ملء الفراغات — قوائم منسدلة مشتركة، بدون كتابة حرة):
 {
   \"type\": \"fill_blanks\",
   \"question\": \"نص السؤال مع [[blank]] لكل فراغ (استخدم [[blank]] وليس [___])\",
-  \"correct_answers\": [\"الإجابة 1\", \"الإجابة 2\", \"الإجابة 3\"],
+  \"dropdown_options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],
+  \"blank_answers\": [\"خيار1\", \"خيار3\"],
   \"explanation\": \"شرح الإجابات بجمل واضحة\",
   \"difficulty\": \"easy|medium|hard\",
   \"points\": 10
 }
+ملاحظة fill_blanks:
+- dropdown_options: قائمة خيارات مشتركة تظهر في كل فراغ للطالب (يجب أن تتضمن الإجابات الصحيحة + مشتتات).
+- blank_answers: الإجابة الصحيحة لكل فراغ بالترتيب (طول المصفوفة = عدد [[blank]] في السؤال).
+- كل عنصر في blank_answers يجب أن يكون موجوداً داخل dropdown_options.
+- لا تستخدم كتابة حرة؛ الطالب يختار من القائمة فقط.
 
 9. **numerical** (إجابة رقمية):
 {
@@ -421,7 +427,7 @@ class AIQuestionCreationService
 - تأكد من إنشاء الأسئلة بالأنواع المطلوبة فقط: {$questionTypes}
 - إذا كان النوع المطلوب \"مطابقة\"، استخدم type: \"matching\" مع pairs
 - إذا كان النوع المطلوب \"ترتيب\"، استخدم type: \"ordering\" مع items و correct_order
-- إذا كان النوع المطلوب \"ملء الفراغات\"، استخدم type: \"fill_blanks\" مع correct_answers وضع [[blank]] في نص السؤال لكل فراغ
+- إذا كان النوع المطلوب \"ملء الفراغات\"، استخدم type: \"fill_blanks\" مع dropdown_options و blank_answers وضع [[blank]] في نص السؤال لكل فراغ (قائمة منسدلة مشتركة بدون كتابة حرة)
 - إذا كان النوع المطلوب \"إجابة رقمية\"، استخدم type: \"numerical\" مع expected_value
 - إذا كان النوع المطلوب \"محسوب\"، استخدم type: \"calculated\" مع formula و variables
 - الإجابات الصحيحة يجب أن تكون دقيقة ومتسقة مع المحتوى المصدر
@@ -549,16 +555,22 @@ class AIQuestionCreationService
                     $metadata['correct_order'] = $correctOrder;
                     $question->update(['metadata' => $metadata]);
                 }
-                // Fill blanks questions
-                elseif ($questionTypeName === 'fill_blanks' && isset($questionData['correct_answers']) && is_array($questionData['correct_answers'])) {
-                    foreach ($questionData['correct_answers'] as $index => $answer) {
-                        QuestionOption::create([
-                            'question_id' => $question->id,
-                            'option_text' => $answer,
-                            'is_correct' => true,
-                            'option_order' => $index + 1,
-                            'grade_percentage' => 100,
-                        ]);
+                // Fill blanks — shared dropdown pool + per-blank correct answers
+                elseif ($questionTypeName === 'fill_blanks') {
+                    $blankAnswers = $questionData['blank_answers']
+                        ?? $questionData['correct_answers']
+                        ?? [];
+                    $dropdownOptions = $questionData['dropdown_options'] ?? [];
+
+                    if (! is_array($blankAnswers)) {
+                        $blankAnswers = [];
+                    }
+                    if (! is_array($dropdownOptions) || count($dropdownOptions) < 1) {
+                        $dropdownOptions = $blankAnswers;
+                    }
+
+                    if (! empty($blankAnswers) || ! empty($dropdownOptions)) {
+                        $question->syncFillBlanksDropdownOptions($dropdownOptions, $blankAnswers);
                     }
                 }
                 // Numerical questions

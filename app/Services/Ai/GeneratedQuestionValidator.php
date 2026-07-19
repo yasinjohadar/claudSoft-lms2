@@ -59,8 +59,21 @@ class GeneratedQuestionValidator
                 }
             }
 
-            if ($type === 'fill_blanks' && isset($question['correct_answers'])) {
-                $validatedQuestion['correct_answers'] = $question['correct_answers'];
+            if ($type === 'fill_blanks') {
+                if (isset($question['dropdown_options']) && is_array($question['dropdown_options'])) {
+                    $validatedQuestion['dropdown_options'] = array_values(array_filter(
+                        array_map(static fn ($v) => trim((string) $v), $question['dropdown_options']),
+                        static fn ($v) => $v !== ''
+                    ));
+                }
+
+                $blankAnswers = $question['blank_answers'] ?? $question['correct_answers'] ?? null;
+                if (is_array($blankAnswers)) {
+                    $blankAnswers = array_values(array_map(static fn ($v) => trim((string) $v), $blankAnswers));
+                    $validatedQuestion['blank_answers'] = $blankAnswers;
+                    // Backward-compatible alias for older review UI / consumers
+                    $validatedQuestion['correct_answers'] = $blankAnswers;
+                }
             }
 
             if ($type === 'numerical') {
@@ -105,6 +118,37 @@ class GeneratedQuestionValidator
 
         if ($type === 'fill_blanks') {
             $questionData['question'] = self::normalizeFillBlanksText((string) ($questionData['question'] ?? ''));
+
+            $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
+            if (! is_array($blankAnswers)) {
+                $blankAnswers = [];
+            }
+            $blankAnswers = array_values(array_map(static fn ($v) => trim((string) $v), $blankAnswers));
+            $questionData['blank_answers'] = $blankAnswers;
+            $questionData['correct_answers'] = $blankAnswers;
+
+            $dropdownOptions = $questionData['dropdown_options'] ?? [];
+            if (! is_array($dropdownOptions)) {
+                $dropdownOptions = [];
+            }
+            $dropdownOptions = array_values(array_unique(array_filter(
+                array_map(static fn ($v) => trim((string) $v), $dropdownOptions),
+                static fn ($v) => $v !== ''
+            )));
+
+            // Ensure every correct blank answer appears in the shared dropdown pool
+            foreach ($blankAnswers as $answer) {
+                if ($answer !== '' && ! in_array($answer, $dropdownOptions, true)) {
+                    $dropdownOptions[] = $answer;
+                }
+            }
+
+            // If AI omitted distractors, keep at least the correct answers as selectable options
+            if ($dropdownOptions === [] && $blankAnswers !== []) {
+                $dropdownOptions = array_values(array_unique(array_filter($blankAnswers)));
+            }
+
+            $questionData['dropdown_options'] = $dropdownOptions;
         }
 
         if ($type === 'numerical') {

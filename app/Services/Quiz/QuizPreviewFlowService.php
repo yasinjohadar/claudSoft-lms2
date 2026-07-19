@@ -97,13 +97,10 @@ class QuizPreviewFlowService
         $questions = $questions->map(function ($question) use ($attempt) {
             if (! $question->relationLoaded('options')) {
                 $question->load(['options' => fn ($q) => $q->orderBy('option_order', 'asc')]);
-            } else {
-                $question->setRelation('options', $question->options->sortBy('option_order')->values());
             }
 
-            if ($attempt->quiz->shuffle_answers && $question->options->isNotEmpty()) {
-                $question->setRelation('options', $question->options->shuffle()->values());
-            }
+            // shuffle_answers is applied inside resolveQuestionsForAttempt (stable per attempt)
+            $this->attemptStartService->applyStableOptionShuffle($question, $attempt);
 
             return $question;
         });

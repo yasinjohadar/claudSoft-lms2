@@ -347,8 +347,75 @@ class QuestionBank extends Model
     }
 
     /**
-     * خيارات القائمة المنسدلة لفراغ معيّن (نصوص الخيارات، مخلوطة).
-     * فراغ واحد: كل خيارات السؤال. عدة فراغات: خيارات نفس option_order، أو كل النصوص إن لم توجد.
+     * Shared dropdown pool for fill_blanks:
+     * - Correct rows: is_correct=true, option_order = blank number (1-based)
+     * - Distractors: is_correct=false, option_order = 0
+     *
+     * @param  array<int, string>  $dropdownOptions
+     * @param  array<int|string, string>  $blankAnswers
+     */
+    public function syncFillBlanksDropdownOptions(array $dropdownOptions, array $blankAnswers): void
+    {
+        $pool = collect($dropdownOptions)
+            ->map(fn ($text) => trim((string) $text))
+            ->filter(fn ($text) => $text !== '')
+            ->unique()
+            ->values();
+
+        if ($pool->isEmpty()) {
+            return;
+        }
+
+        $correctByBlank = [];
+        foreach ($blankAnswers as $blankIndex => $answer) {
+            $answer = trim((string) $answer);
+            if ($answer === '') {
+                continue;
+            }
+            $correctByBlank[(int) $blankIndex + 1] = $answer;
+        }
+
+        $usedAsCorrect = [];
+
+        foreach ($correctByBlank as $blankOrder => $answer) {
+            if (! $pool->contains($answer)) {
+                // Ensure correct answer is always in the student dropdown pool
+                $pool->push($answer);
+            }
+
+            QuestionOption::create([
+                'question_id' => $this->id,
+                'option_text' => $answer,
+                'is_correct' => true,
+                'option_order' => $blankOrder,
+            ]);
+
+            $usedAsCorrect[$answer] = true;
+        }
+
+        $pool = $pool->unique()->values();
+
+        foreach ($pool as $text) {
+            if (isset($usedAsCorrect[$text])) {
+                continue;
+            }
+
+            QuestionOption::create([
+                'question_id' => $this->id,
+                'option_text' => $text,
+                'is_correct' => false,
+                'option_order' => 0,
+            ]);
+        }
+
+        $metadata = $this->metadata ?? [];
+        $metadata['input_mode'] = 'dropdown';
+        $metadata['shared_dropdown'] = true;
+        $this->update(['metadata' => $metadata]);
+    }
+
+    /**
+     * خيارات القائمة المنسدلة المشتركة لكل الفراغات (نصوص فريدة مخلوطة).
      *
      * @return \Illuminate\Support\Collection<int, string>
      */
@@ -362,31 +429,12 @@ class QuestionBank extends Model
             return collect();
         }
 
-        if ($blankCount <= 1) {
-            return $options->pluck('option_text')
-                ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
-                ->map(fn ($t) => (string) $t)
-                ->unique()
-                ->shuffle()
-                ->values();
-        }
-
-        $forBlank = $options->where('option_order', $blankIndex + 1)
-            ->pluck('option_text')
+        return $options->pluck('option_text')
             ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
             ->map(fn ($t) => (string) $t)
             ->unique()
+            ->shuffle()
             ->values();
-
-        if ($forBlank->isEmpty()) {
-            $forBlank = $options->pluck('option_text')
-                ->filter(fn ($t) => $t !== null && trim((string) $t) !== '')
-                ->map(fn ($t) => (string) $t)
-                ->unique()
-                ->values();
-        }
-
-        return $forBlank->shuffle()->values();
     }
 
     /**
@@ -431,11 +479,15 @@ class QuestionBank extends Model
                 continue;
             }
 
-            // فراغ واحد: كل الإجابات الصحيحة المقبولة بدائل (حتى لو اختلف option_order عند الإنشاء)
-            if ($blankCount === 1) {
+            // فراغ واحد قديم: كل الإجابات الصحيحة بدائل مقبولة
+            // فراغات متعددة أو وضع القائمة: الإجابة حسب option_order
+            if ($blankCount === 1 && ! ($this->metadata['shared_dropdown'] ?? false) && ! (($this->metadata['input_mode'] ?? null) === 'dropdown')) {
                 $alts = $correctOptions;
             } else {
                 $alts = $byOrder->get($i + 1, collect());
+                if ($alts->isEmpty() && $blankCount === 1) {
+                    $alts = $correctOptions;
+                }
                 if ($alts->isEmpty()) {
                     continue;
                 }

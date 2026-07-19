@@ -144,7 +144,7 @@ class QuizAttemptStartService
                 ->with($questionRelations)
                 ->orderBy('question_order')
                 ->get()
-                ->map(function (QuizQuestion $quizQuestion) {
+                ->map(function (QuizQuestion $quizQuestion) use ($attempt) {
                     $question = $quizQuestion->question;
                     if (! $question) {
                         return null;
@@ -153,6 +153,8 @@ class QuizAttemptStartService
                     $question->setRelation('pivot', (object) [
                         'question_grade' => $quizQuestion->getGrade(),
                     ]);
+
+                    $this->applyStableOptionShuffle($question, $attempt);
 
                     return $question;
                 })
@@ -174,6 +176,8 @@ class QuizAttemptStartService
                     'question_grade' => $quizQuestion->getGrade(),
                 ]);
 
+                $this->applyStableOptionShuffle($question, $attempt);
+
                 return $question;
             }
 
@@ -189,7 +193,34 @@ class QuizAttemptStartService
                 'question_grade' => $this->gradeForQuestion($attempt->quiz, $questionId),
             ]);
 
+            $this->applyStableOptionShuffle($question, $attempt);
+
             return $question;
         })->filter()->values();
+    }
+
+    /**
+     * Keep option order stable for the lifetime of an attempt (survives page reloads).
+     */
+    public function applyStableOptionShuffle(QuestionBank $question, QuizAttempt $attempt): void
+    {
+        $quiz = $attempt->quiz;
+        if (! $quiz || ! $quiz->shuffle_answers) {
+            return;
+        }
+
+        if (! $question->relationLoaded('options') || $question->options->count() < 2) {
+            return;
+        }
+
+        $attemptId = (int) $attempt->id;
+        $questionId = (int) $question->id;
+
+        $shuffled = $question->options
+            ->values()
+            ->sortBy(fn ($option) => sprintf('%u', crc32($attemptId.':'.$questionId.':'.(int) $option->id)))
+            ->values();
+
+        $question->setRelation('options', $shuffled);
     }
 }
