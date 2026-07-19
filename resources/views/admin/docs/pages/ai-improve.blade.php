@@ -160,6 +160,15 @@
                                     <i class="fe fe-zap"></i>
                                     <span class="btn-text">تحسين المحتوى</span>
                                 </button>
+                                <div id="docAiProgressWrap" class="mt-3" style="display:none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted" id="docAiProgressLabel">جاري التحسين…</small>
+                                        <small class="fw-semibold" id="docAiProgressPct">0%</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="docAiProgressBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -344,6 +353,7 @@
 @endsection
 
 @section('scripts')
+@include('admin.docs.pages.partials.ai-job-poller')
 @php($tinymceSelector = '#doc_source, #doc_result')
 @include('admin.docs.partials.tinymce-doc')
 <script>
@@ -502,20 +512,68 @@ document.documentElement.classList.add('loaded');
         })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })
         .then(function (res) {
-            if (res.body.success && res.body.data && res.body.data.content !== undefined) {
-                setEditorHtml('doc_result', res.body.data.content);
-                if (res.body.data.excerpt) {
-                    document.getElementById('doc_excerpt_result').value = res.body.data.excerpt;
+            function applyRefineData(data) {
+                setEditorHtml('doc_result', data.content);
+                if (data.excerpt) {
+                    document.getElementById('doc_excerpt_result').value = data.excerpt;
                     document.getElementById('excerptWrap').style.display = 'block';
                     var se = document.getElementById('save_excerpt');
                     if (se && !se.value.trim()) {
-                        se.value = res.body.data.excerpt;
+                        se.value = data.excerpt;
                     }
                 }
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({ icon: 'success', title: 'تم', text: 'راجع النتيجة ثم احفظ لتحديث التوثيق.', timer: 2500 });
                 }
+            }
+
+            function resetRefineBtn() {
+                btn.disabled = false;
+                btnText.textContent = 'تحسين المحتوى';
+                spinner.classList.remove('active');
+                var wrap = document.getElementById('docAiProgressWrap');
+                if (wrap) wrap.style.display = 'none';
+            }
+
+            function setProgress(job) {
+                var wrap = document.getElementById('docAiProgressWrap');
+                var bar = document.getElementById('docAiProgressBar');
+                var label = document.getElementById('docAiProgressLabel');
+                var pct = document.getElementById('docAiProgressPct');
+                if (!wrap) return;
+                wrap.style.display = '';
+                var p = Math.max(0, Math.min(100, parseInt(job.progress || 0, 10)));
+                if (bar) bar.style.width = p + '%';
+                if (pct) pct.textContent = p + '%';
+                if (label) label.textContent = job.stage_label || 'جاري التحسين…';
+            }
+
+            if (res.body.success && res.body.job && res.body.job.uuid) {
+                window.DocAiJobPoller.poll({
+                    uuid: res.body.job.uuid,
+                    storageKey: 'docs_ai_refine_job_uuid',
+                    onProgress: setProgress,
+                    onComplete: function (result) {
+                        applyRefineData(result || {});
+                        resetRefineBtn();
+                    },
+                    onError: function (msg) {
+                        resetRefineBtn();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشل التحسين' });
+                        } else {
+                            alert(msg || 'فشل التحسين');
+                        }
+                    }
+                });
+                return;
+            }
+
+            if (res.body.success && res.body.data && res.body.data.content !== undefined) {
+                applyRefineData(res.body.data);
+                resetRefineBtn();
             } else {
+                resetRefineBtn();
                 const msg = res.body.message || 'فشل التحسين';
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
@@ -525,16 +583,14 @@ document.documentElement.classList.add('loaded');
             }
         })
         .catch(function () {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل الاتصال بالخادم' });
-            } else {
-                alert('فشل الاتصال');
-            }
-        })
-        .finally(function () {
             btn.disabled = false;
             btnText.textContent = 'تحسين المحتوى';
             spinner.classList.remove('active');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر بدء المهمة' });
+            } else {
+                alert('تعذر بدء المهمة');
+            }
         });
     });
 

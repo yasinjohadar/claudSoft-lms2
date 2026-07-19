@@ -173,13 +173,22 @@
                             <div class="doc-ai-generate-bar">
                                 <p class="doc-ai-hint mb-0">
                                     <i class="fe fe-info me-1"></i>
-                                    اختر القسم من الشريط الجانبي قبل التوليد.
+                                    اختر القسم من الشريط الجانبي قبل التوليد. المحتوى الطويل يُولَّد على مراحل مع شريط تقدم.
                                 </p>
                                 <button type="button" class="doc-ai-generate-btn" id="generateBtn">
                                     <span class="loading-spinner spinner-border spinner-border-sm" role="status"></span>
                                     <i class="fe fe-zap"></i>
                                     <span class="btn-text">توليد المحتوى</span>
                                 </button>
+                            </div>
+                            <div id="docAiProgressWrap" class="mt-3" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted" id="docAiProgressLabel">جاري التوليد…</small>
+                                    <small class="fw-semibold" id="docAiProgressPct">0%</small>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="docAiProgressBar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -305,6 +314,7 @@
 
 @section('scripts')
 @include('admin.docs.partials.tinymce-doc')
+@include('admin.docs.pages.partials.ai-job-poller')
 <script>
 document.documentElement.classList.add('loaded');
 </script>
@@ -313,6 +323,86 @@ document.documentElement.classList.add('loaded');
     const useLaravelAiEngineDefault = @json(!empty($useLaravelAiEngine));
     const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
     const parentPages = @json($parentPagesJson);
+    const STORAGE_KEY = 'docs_ai_generate_job_uuid';
+    let activePoller = null;
+
+    function setProgress(job) {
+        const wrap = document.getElementById('docAiProgressWrap');
+        const bar = document.getElementById('docAiProgressBar');
+        const label = document.getElementById('docAiProgressLabel');
+        const pct = document.getElementById('docAiProgressPct');
+        if (!wrap) return;
+        wrap.style.display = '';
+        const p = Math.max(0, Math.min(100, parseInt(job.progress || 0, 10)));
+        if (bar) bar.style.width = p + '%';
+        if (pct) pct.textContent = p + '%';
+        if (label) {
+            let text = job.stage_label || 'جاري التوليد…';
+            if (job.queue_hint && job.status === 'queued') {
+                text = 'في الطابور — تأكد أن عامل الطابور يعمل (php artisan queue:work)';
+            }
+            label.textContent = text;
+        }
+    }
+
+    function hideProgress() {
+        const wrap = document.getElementById('docAiProgressWrap');
+        if (wrap) wrap.style.display = 'none';
+    }
+
+    function applyGenerateResult(d) {
+        if (d.title) document.getElementById('doc_title').value = d.title;
+        if (d.slug) {
+            document.getElementById('doc_slug').value = d.slug;
+            document.getElementById('doc_slug').dataset.touched = '1';
+        }
+        if (d.excerpt) document.getElementById('doc_excerpt').value = d.excerpt;
+        if (d.meta_title) document.getElementById('meta_title').value = d.meta_title;
+        if (d.meta_description) document.getElementById('meta_description').value = d.meta_description;
+        if (d.content) {
+            const ed = tinymce.get('doc_content');
+            if (ed) ed.setContent(d.content);
+            else document.getElementById('doc_content').value = d.content;
+        }
+    }
+
+    function resetGenerateBtn() {
+        const btn = document.getElementById('generateBtn');
+        if (!btn) return;
+        btn.disabled = false;
+        const btnText = btn.querySelector('.btn-text');
+        const spinner = btn.querySelector('.loading-spinner');
+        if (btnText) btnText.textContent = 'توليد المحتوى';
+        if (spinner) spinner.classList.remove('active');
+    }
+
+    function startPolling(uuid) {
+        if (activePoller) activePoller.stop();
+        const btn = document.getElementById('generateBtn');
+        if (btn) btn.disabled = true;
+        activePoller = window.DocAiJobPoller.poll({
+            uuid: uuid,
+            storageKey: STORAGE_KEY,
+            onProgress: setProgress,
+            onComplete: function (result) {
+                applyGenerateResult(result || {});
+                hideProgress();
+                resetGenerateBtn();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'تم التوليد', text: 'راجع المحتوى ثم احفظ.', timer: 2800 });
+                }
+            },
+            onError: function (msg) {
+                hideProgress();
+                resetGenerateBtn();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشل التوليد' });
+                } else {
+                    alert(msg || 'فشل التوليد');
+                }
+            }
+        });
+    }
 
     function syncDocsEngineModelVisibility() {
         if (!docsEngineChoiceAvailable) return;
@@ -348,36 +438,39 @@ document.documentElement.classList.add('loaded');
         document.querySelectorAll('input[name="docs_engine"]').forEach(function (el) {
             el.addEventListener('change', syncDocsEngineModelVisibility);
         });
-    });
 
-    function slugify(t) {
-        if (!t) return '';
-        return t.toString().trim()
-            .replace(/\s+/g, '-')
-            .replace(/[^\u0600-\u06FFa-zA-Z0-9-]/g, '')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '') || ('page-' + Date.now());
-    }
+        // Resume unfinished job after leave/return
+        window.DocAiJobPoller.resumeIfAny(STORAGE_KEY, {
+            onProgress: function (job) {
+                setProgress(job);
+                const btn = document.getElementById('generateBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    const btnText = btn.querySelector('.btn-text');
+                    const spinner = btn.querySelector('.loading-spinner');
+                    if (btnText) btnText.textContent = 'جاري التوليد...';
+                    if (spinner) spinner.classList.add('active');
+                }
+            },
+            onComplete: function (result) {
+                applyGenerateResult(result || {});
+                hideProgress();
+                resetGenerateBtn();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'تم التوليد', text: 'اكتملت المهمة أثناء غيابك — راجع المحتوى.', timer: 3200 });
+                }
+            },
+            onError: function (msg) {
+                hideProgress();
+                resetGenerateBtn();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشل التوليد' });
+                }
+            }
+        });
 
-    document.addEventListener('DOMContentLoaded', function () {
-        var titleEl = document.getElementById('doc_title');
-        var slugEl = document.getElementById('doc_slug');
-        var btn = document.getElementById('doc_generate_slug');
-        if (titleEl && slugEl) {
-            titleEl.addEventListener('input', function () {
-                if (!slugEl.dataset.touched) slugEl.value = slugify(this.value);
-            });
-            slugEl.addEventListener('input', function () { this.dataset.touched = '1'; });
-        }
-        if (btn && titleEl && slugEl) {
-            btn.addEventListener('click', function () {
-                slugEl.value = slugify(titleEl.value);
-                delete slugEl.dataset.touched;
-            });
-        }
-    });
+        // slug handled in separate DOMContentLoaded below
 
-    document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('generateBtn').addEventListener('click', function () {
             const topic = document.getElementById('topic').value.trim();
             const cat = document.getElementById('doc_category_id').value;
@@ -404,6 +497,7 @@ document.documentElement.classList.add('loaded');
             btn.disabled = true;
             btnText.textContent = 'جاري التوليد...';
             spinner.classList.add('active');
+            setProgress({ progress: 1, stage_label: 'بدء المهمة…', status: 'queued' });
 
             let engine = useLaravelAiEngineDefault ? 'laravel_ai' : 'legacy';
             if (docsEngineChoiceAvailable) {
@@ -435,47 +529,65 @@ document.documentElement.classList.add('loaded');
                 },
                 body: JSON.stringify(payload)
             })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success && data.data) {
-                    const d = data.data;
-                    if (d.title) document.getElementById('doc_title').value = d.title;
-                    if (d.slug) {
-                        document.getElementById('doc_slug').value = d.slug;
-                        document.getElementById('doc_slug').dataset.touched = '1';
-                    }
-                    if (d.excerpt) document.getElementById('doc_excerpt').value = d.excerpt;
-                    if (d.meta_title) document.getElementById('meta_title').value = d.meta_title;
-                    if (d.meta_description) document.getElementById('meta_description').value = d.meta_description;
-                    if (d.content) {
-                        const ed = tinymce.get('doc_content');
-                        if (ed) ed.setContent(d.content);
-                        else document.getElementById('doc_content').value = d.content;
-                    }
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({ icon: 'success', title: 'تم التوليد', text: 'راجع المحتوى ثم احفظ.', timer: 2800 });
-                    }
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+            .then(function (res) {
+                if (res.body.success && res.body.job && res.body.job.uuid) {
+                    startPolling(res.body.job.uuid);
+                    return;
+                }
+                // Legacy sync shape (should not happen)
+                if (res.body.success && res.body.data) {
+                    applyGenerateResult(res.body.data);
+                    hideProgress();
+                    resetGenerateBtn();
+                    return;
+                }
+                hideProgress();
+                resetGenerateBtn();
+                const msg = res.body.message || 'فشل التوليد';
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
                 } else {
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({ icon: 'error', title: 'خطأ', text: data.message || 'فشل التوليد' });
-                    } else {
-                        alert(data.message || 'فشل التوليد');
-                    }
+                    alert(msg);
                 }
             })
             .catch(function () {
+                hideProgress();
+                resetGenerateBtn();
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل الاتصال بالخادم' });
+                    Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر بدء المهمة — تحقق من الاتصال ثم أعد المحاولة' });
                 } else {
-                    alert('فشل الاتصال');
+                    alert('تعذر بدء المهمة');
                 }
-            })
-            .finally(function () {
-                btn.disabled = false;
-                btnText.textContent = 'توليد المحتوى';
-                spinner.classList.remove('active');
             });
         });
+    });
+
+    function slugify(t) {
+        if (!t) return '';
+        return t.toString().trim()
+            .replace(/\s+/g, '-')
+            .replace(/[^\u0600-\u06FFa-zA-Z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '') || ('page-' + Date.now());
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var titleEl = document.getElementById('doc_title');
+        var slugEl = document.getElementById('doc_slug');
+        var slugBtn = document.getElementById('doc_generate_slug');
+        if (titleEl && slugEl) {
+            titleEl.addEventListener('input', function () {
+                if (!slugEl.dataset.touched) slugEl.value = slugify(this.value);
+            });
+            slugEl.addEventListener('input', function () { this.dataset.touched = '1'; });
+        }
+        if (slugBtn && titleEl && slugEl) {
+            slugBtn.addEventListener('click', function () {
+                slugEl.value = slugify(titleEl.value);
+                delete slugEl.dataset.touched;
+            });
+        }
     });
 })();
 </script>

@@ -6,13 +6,13 @@ use App\Http\Controllers\Admin\Concerns\CleansUtf8AiResponse;
 use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveDocumentationPageRequest;
-use App\Models\AIModel;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
+use App\Models\DocumentationAiGeneration;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
-use App\Services\AiNew\LaravelAiDocumentationService;
+use App\Services\AiNew\DocumentationAiJobStarter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +24,8 @@ class AIDocumentationPageController extends Controller
 
     public function __construct(
         private AIDocumentationPageService $docService,
-        private AIModelService $modelService
+        private AIModelService $modelService,
+        private DocumentationAiJobStarter $jobStarter,
     ) {}
 
     public function create(Request $request)
@@ -186,17 +187,11 @@ class AIDocumentationPageController extends Controller
         ]);
 
         $mode = $validated['mode'] ?? 'refine';
+        $operation = $mode === 'enhance'
+            ? DocumentationAiGeneration::OPERATION_ENHANCE
+            : DocumentationAiGeneration::OPERATION_REFINE;
 
         try {
-            $refineOptions = [
-                'user_notes' => $validated['user_notes'] ?? null,
-                'tone' => $validated['tone'] ?? 'professional',
-                'language' => $validated['language'] ?? 'ar',
-                'update_excerpt' => $validated['update_excerpt'] ?? false,
-            ];
-
-            $sourceHtml = $validated['source_html'];
-
             $requestedEngine = $validated['docs_engine'] ?? null;
             if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
                 return response()->json([
@@ -205,81 +200,52 @@ class AIDocumentationPageController extends Controller
                 ], 400);
             }
 
-            if ($this->resolveDocumentationAiEngine(
+            $engine = $this->resolveDocumentationAiEngine(
                 $requestedEngine,
                 ! empty($validated['laravel_ai_model_id']) ? (int) $validated['laravel_ai_model_id'] : null,
                 ! empty($validated['ai_model_id']) ? (int) $validated['ai_model_id'] : null,
-            )) {
-                $laraModel = null;
-                if (! empty($validated['laravel_ai_model_id'])) {
-                    $laraModel = LaravelAiModel::query()
-                        ->where('id', $validated['laravel_ai_model_id'])
-                        ->where('is_active', true)
-                        ->first();
-                    if (! $laraModel) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
-                        ], 400);
-                    }
-                }
+            ) ? 'laravel_ai' : 'legacy';
 
-                $laravelService = app(LaravelAiDocumentationService::class);
-                $data = $mode === 'enhance'
-                    ? $laravelService->enhanceForLegacy($sourceHtml, $refineOptions, Auth::user(), $laraModel)
-                    : $laravelService->refineForLegacy($sourceHtml, $refineOptions, Auth::user(), $laraModel);
-            } else {
-                $model = $validated['ai_model_id']
-                    ? AIModel::find($validated['ai_model_id'])
-                    : $this->modelService->getDefaultModel();
-
-                if (! $model) {
+            if ($engine === 'laravel_ai' && ! empty($validated['laravel_ai_model_id'])) {
+                $laraModel = LaravelAiModel::query()
+                    ->where('id', $validated['laravel_ai_model_id'])
+                    ->where('is_active', true)
+                    ->first();
+                if (! $laraModel) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'لا يوجد موديل AI متاح',
+                        'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
                     ], 400);
-                }
-
-                $data = $mode === 'enhance'
-                    ? $this->docService->enhanceDocumentationContent($sourceHtml, $model, $refineOptions)
-                    : $this->docService->refineDocumentationContent($sourceHtml, $model, $refineOptions);
-
-                if ($mode === 'enhance' && ! isset($data['stats'])) {
-                    $data['stats'] = AIDocumentationPageService::computeEnhanceStats($sourceHtml, $data['content']);
                 }
             }
 
-            $data = $this->cleanUtf8Data($data);
+            $generation = $this->jobStarter->start(Auth::user(), $operation, [
+                'source_html' => $validated['source_html'],
+                'user_notes' => $validated['user_notes'] ?? null,
+                'docs_engine' => $engine,
+                'ai_model_id' => $validated['ai_model_id'] ?? null,
+                'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+                'tone' => $validated['tone'] ?? 'professional',
+                'language' => $validated['language'] ?? 'ar',
+                'update_excerpt' => $validated['update_excerpt'] ?? false,
+            ]);
 
             return response()->json([
                 'success' => true,
-                'data' => $data,
-            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+                'async' => true,
+                'job' => $generation->toStatusPayload(),
+            ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('AI documentation refine: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            $errorMessage = $e->getMessage();
-            if (str_contains($errorMessage, 'timeout') || str_contains($errorMessage, 'Timeout')) {
-                $userMessage = 'انتهت مهلة الاتصال. جرّب تقسيم المحتوى أو تقليل الحجم.';
-            } elseif (str_contains($errorMessage, 'API Key') || str_contains(strtolower($errorMessage), 'api key')) {
-                $userMessage = 'مشكلة في API Key. يرجى التحقق من إعدادات الموديل.';
-            } elseif (str_contains($errorMessage, 'quota') || str_contains($errorMessage, 'رصيد')) {
-                $userMessage = 'رصيد الموديل غير كافٍ.';
-            } else {
-                $userMessage = 'حدث خطأ أثناء التحسين: '.$errorMessage;
-            }
+            Log::error('AI documentation refine start: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => $userMessage,
-                'error_details' => config('app.debug') ? $e->getMessage() : null,
+                'message' => 'تعذر بدء المهمة: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -312,15 +278,6 @@ class AIDocumentationPageController extends Controller
                 ], 422);
             }
 
-            $wizardOptions = [
-                'content_length' => $validated['content_length'],
-                'tone' => $validated['tone'] ?? 'professional',
-                'language' => $validated['language'] ?? 'ar',
-                'category' => $category,
-                'parent' => $parent,
-                'generate_meta' => $validated['generate_meta'] ?? true,
-            ];
-
             $requestedEngine = $validated['docs_engine'] ?? null;
             if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
                 return response()->json([
@@ -329,79 +286,70 @@ class AIDocumentationPageController extends Controller
                 ], 400);
             }
 
-            if ($this->resolveDocumentationAiEngine(
+            $engine = $this->resolveDocumentationAiEngine(
                 $requestedEngine,
                 ! empty($validated['laravel_ai_model_id']) ? (int) $validated['laravel_ai_model_id'] : null,
                 ! empty($validated['ai_model_id']) ? (int) $validated['ai_model_id'] : null,
-            )) {
-                $laraModel = null;
-                if (! empty($validated['laravel_ai_model_id'])) {
-                    $laraModel = LaravelAiModel::query()
-                        ->where('id', $validated['laravel_ai_model_id'])
-                        ->where('is_active', true)
-                        ->first();
-                    if (! $laraModel) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
-                        ], 400);
-                    }
-                }
+            ) ? 'laravel_ai' : 'legacy';
 
-                $data = app(LaravelAiDocumentationService::class)->generateForLegacyWizard(
-                    $validated['topic'],
-                    $wizardOptions,
-                    Auth::user(),
-                    $laraModel,
-                );
-            } else {
-                $model = $validated['ai_model_id']
-                    ? AIModel::find($validated['ai_model_id'])
-                    : $this->modelService->getDefaultModel();
-
-                if (! $model) {
+            if ($engine === 'laravel_ai' && ! empty($validated['laravel_ai_model_id'])) {
+                $laraModel = LaravelAiModel::query()
+                    ->where('id', $validated['laravel_ai_model_id'])
+                    ->where('is_active', true)
+                    ->first();
+                if (! $laraModel) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'لا يوجد موديل AI متاح',
+                        'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
                     ], 400);
                 }
-
-                $data = $this->docService->generateDocumentationPage(
-                    $validated['topic'],
-                    $model,
-                    $wizardOptions
-                );
             }
 
-            $data = $this->cleanUtf8Data($data);
+            $generation = $this->jobStarter->start(
+                Auth::user(),
+                DocumentationAiGeneration::OPERATION_GENERATE,
+                [
+                    'topic' => $validated['topic'],
+                    'docs_engine' => $engine,
+                    'ai_model_id' => $validated['ai_model_id'] ?? null,
+                    'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+                    'content_length' => $validated['content_length'],
+                    'tone' => $validated['tone'] ?? 'professional',
+                    'language' => $validated['language'] ?? 'ar',
+                    'documentation_category_id' => $validated['documentation_category_id'],
+                    'parent_id' => $validated['parent_id'] ?? null,
+                    'generate_meta' => $validated['generate_meta'] ?? true,
+                ]
+            );
 
             return response()->json([
                 'success' => true,
-                'data' => $data,
-            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+                'async' => true,
+                'job' => $generation->toStatusPayload(),
+            ]);
         } catch (\Exception $e) {
-            Log::error('AI documentation generate: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+            Log::error('AI documentation generate start: '.$e->getMessage(), [
                 'validated' => $validated,
             ]);
 
-            $errorMessage = $e->getMessage();
-            if (str_contains($errorMessage, 'timeout') || str_contains($errorMessage, 'Timeout')) {
-                $userMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى أو تقليل طول المحتوى المطلوب.';
-            } elseif (str_contains($errorMessage, 'API Key') || str_contains(strtolower($errorMessage), 'api key')) {
-                $userMessage = 'مشكلة في API Key. يرجى التحقق من إعدادات الموديل.';
-            } elseif (str_contains($errorMessage, 'quota') || str_contains($errorMessage, 'رصيد')) {
-                $userMessage = 'رصيد الموديل غير كافٍ. يرجى التحقق من رصيدك.';
-            } else {
-                $userMessage = 'حدث خطأ أثناء التوليد: '.$errorMessage;
-            }
-
             return response()->json([
                 'success' => false,
-                'message' => $userMessage,
-                'error_details' => config('app.debug') ? $e->getMessage() : null,
+                'message' => 'تعذر بدء التوليد: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function jobStatus(string $uuid)
+    {
+        $generation = DocumentationAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
     }
 
     public function store(SaveDocumentationPageRequest $request)

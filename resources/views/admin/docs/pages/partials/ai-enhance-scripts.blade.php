@@ -360,16 +360,52 @@
         })
             .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
             .then(function (res) {
-                if (res.body.success && res.body.data && res.body.data.content !== undefined) {
-                    const newHtml = res.body.data.content;
-                    showReview(sourceHtml, newHtml, res.body.data.stats);
-                    if (res.body.data.excerpt) {
-                        document.getElementById('save_excerpt').value = res.body.data.excerpt;
+                function resetEnhanceBtn() {
+                    spinner.classList.remove('active');
+                    if (btnText) btnText.textContent = 'تطبيق الأفكار';
+                    validateReady();
+                }
+
+                function applyEnhance(data) {
+                    const newHtml = data.content;
+                    showReview(sourceHtml, newHtml, data.stats);
+                    if (data.excerpt) {
+                        document.getElementById('save_excerpt').value = data.excerpt;
                     }
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({ icon: 'success', title: 'تم', text: 'راجع المقارنة ثم وافق للحفظ.', timer: 2500 });
                     }
+                }
+
+                if (res.body.success && res.body.job && res.body.job.uuid) {
+                    if (btnText) btnText.textContent = 'جاري التطبيق…';
+                    window.DocAiJobPoller.poll({
+                        uuid: res.body.job.uuid,
+                        storageKey: 'docs_ai_enhance_job_uuid',
+                        onProgress: function (job) {
+                            if (btnText) btnText.textContent = (job.stage_label || 'جاري التطبيق…') + ' ' + (job.progress || 0) + '%';
+                        },
+                        onComplete: function (result) {
+                            applyEnhance(result || {});
+                            resetEnhanceBtn();
+                        },
+                        onError: function (msg) {
+                            resetEnhanceBtn();
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشل التطبيق' });
+                            } else {
+                                alert(msg || 'فشل التطبيق');
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                if (res.body.success && res.body.data && res.body.data.content !== undefined) {
+                    applyEnhance(res.body.data);
+                    resetEnhanceBtn();
                 } else {
+                    resetEnhanceBtn();
                     const msg = res.body.message || 'فشل التطبيق';
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
@@ -379,16 +415,14 @@
                 }
             })
             .catch(function () {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل الاتصال بالخادم' });
-                } else {
-                    alert('فشل الاتصال');
-                }
-            })
-            .finally(function () {
                 spinner.classList.remove('active');
                 if (btnText) btnText.textContent = 'تطبيق الأفكار';
                 validateReady();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر بدء المهمة' });
+                } else {
+                    alert('تعذر بدء المهمة');
+                }
             });
     }
 

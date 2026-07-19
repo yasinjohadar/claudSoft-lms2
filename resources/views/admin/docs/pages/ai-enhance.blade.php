@@ -275,5 +275,6 @@
 <script>document.documentElement.classList.add('loaded');</script>
 @php($tinymceSelector = '#doc_result')
 @include('admin.docs.partials.tinymce-doc')
+@include('admin.docs.pages.partials.ai-job-poller')
 @include('admin.docs.pages.partials.ai-enhance-scripts')
 @endsection
