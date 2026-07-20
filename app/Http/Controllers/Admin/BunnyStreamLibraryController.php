@@ -129,7 +129,7 @@ class BunnyStreamLibraryController extends Controller
         ];
 
         $validated = $request->validate($rules);
-        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_active'] = $request->boolean('is_active');
 
         return $validated;
     }
