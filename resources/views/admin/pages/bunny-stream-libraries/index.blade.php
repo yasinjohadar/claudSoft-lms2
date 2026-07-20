@@ -180,11 +180,22 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if($library->is_active)
-                                                    <span class="badge bg-success">نشط</span>
-                                                @else
-                                                    <span class="badge bg-danger">معطّل</span>
-                                                @endif
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input class="form-check-input library-toggle"
+                                                               type="checkbox"
+                                                               role="switch"
+                                                               id="library-toggle-{{ $library->id }}"
+                                                               data-id="{{ $library->id }}"
+                                                               data-url="{{ route('bunny-stream-libraries.toggle-active', $library) }}"
+                                                               {{ $library->is_active ? 'checked' : '' }}
+                                                               title="{{ $library->is_active ? 'إضغط لإيقاف المكتبة' : 'إضغط لتفعيل المكتبة' }}">
+                                                    </div>
+                                                    <span class="badge library-status-badge {{ $library->is_active ? 'bg-success' : 'bg-danger' }}"
+                                                          id="library-status-{{ $library->id }}">
+                                                        {{ $library->is_active ? 'نشط' : 'معطّل' }}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td>
                                                 <div class="btn-group">
@@ -282,5 +293,57 @@
 
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     }
+
+    document.querySelectorAll('.library-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            const checkbox = this;
+            const url = checkbox.dataset.url;
+            const previousChecked = !checkbox.checked;
+            const badge = document.getElementById('library-status-' + checkbox.dataset.id);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+            checkbox.disabled = true;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({}),
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('فشل تحديث الحالة');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                if (!data.success) {
+                    throw new Error(data.message || 'فشل تحديث الحالة');
+                }
+
+                checkbox.checked = !!data.is_active;
+                checkbox.title = data.is_active ? 'إضغط لإيقاف المكتبة' : 'إضغط لتفعيل المكتبة';
+
+                if (badge) {
+                    badge.textContent = data.is_active ? 'نشط' : 'معطّل';
+                    badge.classList.toggle('bg-success', !!data.is_active);
+                    badge.classList.toggle('bg-danger', !data.is_active);
+                }
+            })
+            .catch(function (error) {
+                checkbox.checked = previousChecked;
+                console.error(error);
+                alert(error.message || 'حدث خطأ أثناء تحديث حالة المكتبة');
+            })
+            .finally(function () {
+                checkbox.disabled = false;
+            });
+        });
+    });
 </script>
 @stop

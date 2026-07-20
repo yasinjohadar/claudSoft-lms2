@@ -96,6 +96,20 @@ class BunnyStreamLibraryController extends Controller
             ->with('success', 'تم حذف مكتبة Bunny بنجاح');
     }
 
+    public function toggleActive(BunnyStreamLibrary $bunnyStreamLibrary)
+    {
+        $bunnyStreamLibrary->is_active = ! $bunnyStreamLibrary->is_active;
+        $bunnyStreamLibrary->save();
+
+        $statusLabel = $bunnyStreamLibrary->is_active ? 'نشطة' : 'معطّلة';
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $bunnyStreamLibrary->is_active,
+            'message' => "تم تحديث حالة المكتبة إلى: {$statusLabel}",
+        ]);
+    }
+
     public function syncVideos(BunnyStreamVideoLinker $linker)
     {
         $stats = $linker->linkAll();

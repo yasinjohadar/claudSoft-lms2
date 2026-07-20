@@ -326,6 +326,7 @@ Route::prefix('admin')
         Route::resource('bunny-stream-libraries', BunnyStreamLibraryController::class)->except(['show']);
         Route::post('bunny-stream-libraries/sync-videos', [BunnyStreamLibraryController::class, 'syncVideos'])->name('bunny-stream-libraries.sync-videos');
         Route::post('bunny-stream-libraries/detect-from-url', [BunnyStreamLibraryController::class, 'detectFromUrl'])->name('bunny-stream-libraries.detect-from-url');
+        Route::post('bunny-stream-libraries/{bunny_stream_library}/toggle-active', [BunnyStreamLibraryController::class, 'toggleActive'])->name('bunny-stream-libraries.toggle-active');
 
         // Resources routes
         Route::resource('resources', AdminResourceController::class);
