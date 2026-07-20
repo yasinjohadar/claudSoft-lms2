@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BunnyStreamLibrary;
 use App\Models\Video;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
+use App\Support\BunnyStreamUrlParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 class VideoController extends Controller
 {
     /**
@@ -108,7 +111,8 @@ class VideoController extends Controller
                 $course = \App\Models\Course::find($courseId);
             }
 
-            return view('admin.pages.videos.create', compact('videoTypes', 'courses', 'section', 'course', 'sectionId', 'courseId'));
+            return view('admin.pages.videos.create', compact('videoTypes', 'courses', 'section', 'course', 'sectionId', 'courseId'))
+                + ['bunnyLibraries' => $this->activeBunnyLibraries()];
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
         }
@@ -140,10 +144,12 @@ class VideoController extends Controller
             'available_until' => 'nullable|date|after:available_from',
             'course_id' => 'nullable|exists:courses,id',
             'section_id' => 'nullable|exists:course_sections,id',
+            'bunny_stream_library_id' => 'nullable|exists:bunny_stream_libraries,id',
         ]);
 
         DB::beginTransaction();
         try {
+            $this->applyBunnyLibraryAssignment($validated, $request);
             // Handle video upload
             if ($request->video_type === 'upload' && $request->hasFile('video_file')) {
                 $validated['video_path'] = cloud_upload('videos', $request->file('video_file'));
@@ -304,7 +310,8 @@ class VideoController extends Controller
             $video = Video::findOrFail($id);
             $videoTypes = ['upload', 'youtube', 'vimeo', 'external'];
 
-            return view('admin.pages.videos.edit', compact('video', 'videoTypes'));
+            return view('admin.pages.videos.edit', compact('video', 'videoTypes'))
+                + ['bunnyLibraries' => $this->activeBunnyLibraries()];
         } catch (\Exception $e) {
             return redirect()
                 ->route('videos.index')
@@ -337,10 +344,12 @@ class VideoController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'available_from' => 'nullable|date',
             'available_until' => 'nullable|date|after:available_from',
+            'bunny_stream_library_id' => 'nullable|exists:bunny_stream_libraries,id',
         ]);
 
         DB::beginTransaction();
         try {
+            $this->applyBunnyLibraryAssignment($validated, $request);
             // Handle video upload
             if ($request->hasFile('video_file')) {
                 // Delete old video
@@ -672,5 +681,58 @@ class VideoController extends Controller
                 'message' => 'حدث خطأ: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, BunnyStreamLibrary>
+     */
+    private function activeBunnyLibraries()
+    {
+        return BunnyStreamLibrary::query()
+            ->where('is_active', true)
+            ->orderBy('library_name')
+            ->get();
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function applyBunnyLibraryAssignment(array &$validated, Request $request): void
+    {
+        $videoUrl = isset($validated['video_url']) ? (string) $validated['video_url'] : null;
+        $embedCode = isset($validated['embed_code']) ? (string) $validated['embed_code'] : null;
+
+        if (! BunnyStreamUrlParser::isBunnySource($videoUrl, $embedCode)) {
+            $validated['bunny_stream_library_id'] = null;
+
+            return;
+        }
+
+        $ids = BunnyStreamUrlParser::parseIds($videoUrl, $embedCode);
+
+        if ($request->filled('bunny_stream_library_id')) {
+            $library = BunnyStreamLibrary::query()->find($request->input('bunny_stream_library_id'));
+
+            if ($library && $ids && $library->library_id !== $ids['library_id']) {
+                throw ValidationException::withMessages([
+                    'bunny_stream_library_id' => 'المكتبة المختارة لا تطابق Library ID في الرابط ('.$ids['library_id'].').',
+                ]);
+            }
+
+            $validated['bunny_stream_library_id'] = $library?->id;
+
+            return;
+        }
+
+        if (! $ids) {
+            return;
+        }
+
+        $library = BunnyStreamLibrary::query()
+            ->where('library_id', $ids['library_id'])
+            ->where('is_active', true)
+            ->first();
+
+        $validated['bunny_stream_library_id'] = $library?->id;
     }
 }

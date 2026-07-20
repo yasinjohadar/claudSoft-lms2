@@ -112,6 +112,8 @@
                                         @enderror
                                     </div>
 
+                                    @include('admin.pages.videos.partials.bunny-library-field', ['selectedLibraryId' => old('bunny_stream_library_id')])
+
                                     <!-- Embed Code (for external videos, especially Bunny Stream) -->
                                     <div class="col-xl-12" id="embed_code_field" style="display: none;">
                                         <label class="form-label">كود Embed <span class="text-info">(اختياري)</span></label>
@@ -196,6 +198,52 @@
             const videoFileInput = document.getElementById('video_file');
             const embedCodeInput = document.getElementById('embed_code');
             const generateEmbedBtn = document.getElementById('generate_embed_btn');
+            const bunnyLibraryField = document.getElementById('bunny_library_field');
+            const bunnyLibrarySelect = document.getElementById('bunny_stream_library_id');
+            const bunnyLibraryHint = document.getElementById('bunny_library_hint');
+
+            function isBunnyUrl(value) {
+                if (!value) return false;
+                return value.includes('mediadelivery.net') || value.includes('bunny.net') || value.includes('b-cdn.net');
+            }
+
+            function parseBunnyLibraryId(value) {
+                if (!value) return null;
+                const match = value.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\//i);
+                return match ? match[1] : null;
+            }
+
+            function syncBunnyLibrarySelection() {
+                if (!bunnyLibraryField || !bunnyLibrarySelect) return;
+
+                const url = (videoUrlInput?.value || '').trim();
+                const embed = (embedCodeInput?.value || '').trim();
+                const source = url || embed;
+                const isExternal = videoTypeSelect.value === 'external';
+                const show = isExternal && (isBunnyUrl(url) || isBunnyUrl(embed));
+
+                bunnyLibraryField.style.display = show ? 'block' : 'none';
+
+                if (!show) return;
+
+                const libraryId = parseBunnyLibraryId(url) || parseBunnyLibraryId(embed);
+                if (!libraryId) {
+                    bunnyLibraryHint.textContent = 'لم يُستخرج Library ID من الرابط. اختر المكتبة يدوياً.';
+                    return;
+                }
+
+                let matched = false;
+                Array.from(bunnyLibrarySelect.options).forEach(option => {
+                    if (option.dataset.libraryId === libraryId) {
+                        bunnyLibrarySelect.value = option.value;
+                        matched = true;
+                    }
+                });
+
+                bunnyLibraryHint.textContent = matched
+                    ? `تم اختيار المكتبة ${libraryId} تلقائياً.`
+                    : `المكتبة ${libraryId} غير مسجّلة بعد. أضفها من إدارة المكتبات ثم اضغط «ربط الفيديوهات تلقائياً».`;
+            }
 
             function toggleFields() {
                 const selectedType = videoTypeSelect.value;
@@ -222,6 +270,8 @@
                     videoFileField.style.display = 'block';
                     videoFileInput.setAttribute('required', 'required');
                 }
+
+                syncBunnyLibrarySelection();
             }
             
             // Generate embed code from video URL
@@ -283,6 +333,8 @@
 
             // Listen for changes
             videoTypeSelect.addEventListener('change', toggleFields);
+            videoUrlInput?.addEventListener('input', syncBunnyLibrarySelection);
+            embedCodeInput?.addEventListener('input', syncBunnyLibrarySelection);
         });
     </script>
 @stop

@@ -132,17 +132,20 @@
                                     </a>
                                 </li>
 
-                                <li class="slide has-sub {{ request()->routeIs('videos.*') ? 'open active' : '' }}">
-                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('videos.*') ? 'active' : '' }}">
+                                <li class="slide has-sub {{ request()->routeIs('videos.*') || request()->routeIs('bunny-stream-libraries.*') ? 'open active' : '' }}">
+                                    <a href="javascript:void(0);" class="side-menu__item {{ request()->routeIs('videos.*') || request()->routeIs('bunny-stream-libraries.*') ? 'active' : '' }}">
                                         <i class="fas fa-video me-2"></i>مكتبة الفيديوهات
                                         <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
-                                    <ul class="slide-menu child2 {{ request()->routeIs('videos.*') ? 'active' : '' }}" style="{{ request()->routeIs('videos.*') ? 'display: block;' : '' }}">
+                                    <ul class="slide-menu child2 {{ request()->routeIs('videos.*') || request()->routeIs('bunny-stream-libraries.*') ? 'active' : '' }}" style="{{ request()->routeIs('videos.*') || request()->routeIs('bunny-stream-libraries.*') ? 'display: block;' : '' }}">
                                         <li class="slide {{ request()->routeIs('videos.index') ? 'active' : '' }}">
                                             <a href="{{ route('videos.index') }}" class="side-menu__item {{ request()->routeIs('videos.index') ? 'active' : '' }}">جميع الفيديوهات</a>
                                         </li>
                                         <li class="slide {{ request()->routeIs('videos.create') ? 'active' : '' }}">
                                             <a href="{{ route('videos.create') }}" class="side-menu__item {{ request()->routeIs('videos.create') ? 'active' : '' }}">إضافة فيديو جديد</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('bunny-stream-libraries.*') ? 'active' : '' }}">
+                                            <a href="{{ route('bunny-stream-libraries.index') }}" class="side-menu__item {{ request()->routeIs('bunny-stream-libraries.*') ? 'active' : '' }}">مكتبات Bunny</a>
                                         </li>
                                     </ul>
                                 </li>

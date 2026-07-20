@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Services\Video\BunnyStreamPlaybackService;
+use App\Support\BunnyStreamUrlParser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Video extends Model
@@ -18,6 +20,7 @@ class Video extends Model
         'video_url',
         'video_path',
         'embed_code',
+        'bunny_stream_library_id',
         'thumbnail',
         'duration',
         'quality',
@@ -72,6 +75,11 @@ class Video extends Model
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function bunnyStreamLibrary(): BelongsTo
+    {
+        return $this->belongsTo(BunnyStreamLibrary::class, 'bunny_stream_library_id');
     }
 
     // Scopes
@@ -318,8 +326,62 @@ class Video extends Model
             return null;
         }
 
-        return app(BunnyStreamPlaybackService::class)
-            ->signEmbedUrl($ids['library_id'], $ids['video_id']);
+        return app(BunnyStreamPlaybackService::class)->signEmbedUrlForVideo($this);
+    }
+
+    public function resolveBunnyStreamLibrary(): ?BunnyStreamLibrary
+    {
+        if ($this->relationLoaded('bunnyStreamLibrary') && $this->bunnyStreamLibrary) {
+            return $this->bunnyStreamLibrary->is_active ? $this->bunnyStreamLibrary : null;
+        }
+
+        if ($this->bunny_stream_library_id) {
+            $library = BunnyStreamLibrary::query()
+                ->whereKey($this->bunny_stream_library_id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($library) {
+                return $library;
+            }
+        }
+
+        $ids = $this->parseBunnyStreamIds();
+        if (! $ids) {
+            return null;
+        }
+
+        return BunnyStreamLibrary::query()
+            ->where('library_id', $ids['library_id'])
+            ->where('is_active', true)
+            ->first();
+    }
+
+    public function syncBunnyStreamLibraryFromUrl(): bool
+    {
+        if (! $this->isBunnyStreamVideo()) {
+            $this->bunny_stream_library_id = null;
+
+            return false;
+        }
+
+        $ids = $this->parseBunnyStreamIds();
+        if (! $ids) {
+            return false;
+        }
+
+        $library = BunnyStreamLibrary::query()
+            ->where('library_id', $ids['library_id'])
+            ->where('is_active', true)
+            ->first();
+
+        if (! $library) {
+            return false;
+        }
+
+        $this->bunny_stream_library_id = $library->id;
+
+        return true;
     }
 
     /**
@@ -327,20 +389,7 @@ class Video extends Model
      */
     public function parseBunnyStreamIds(): ?array
     {
-        foreach ([$this->video_url, $this->embed_code] as $source) {
-            if (! is_string($source) || $source === '') {
-                continue;
-            }
-
-            if (preg_match('#mediadelivery\.net/(?:embed|play)/(\d+)/([a-f0-9-]+)#i', $source, $matches)) {
-                return [
-                    'library_id' => $matches[1],
-                    'video_id' => $matches[2],
-                ];
-            }
-        }
-
-        return null;
+        return BunnyStreamUrlParser::parseIds($this->video_url, $this->embed_code);
     }
 
     public function resolveBunnyCdnHostname(): ?string
@@ -354,8 +403,9 @@ class Video extends Model
 
         $ids = $this->parseBunnyStreamIds();
         if ($ids) {
+            $library = $this->resolveBunnyStreamLibrary();
             $hostname = app(BunnyStreamPlaybackService::class)
-                ->resolveCdnHostname($ids['library_id'], $ids['video_id']);
+                ->resolveCdnHostname($ids['library_id'], $ids['video_id'], $library);
 
             if ($hostname) {
                 return $hostname;

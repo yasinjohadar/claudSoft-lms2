@@ -24,7 +24,7 @@ use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\BulkEmailController;
 use App\Http\Controllers\Admin\BulkEmailSettingsController;
-use App\Http\Controllers\Admin\BulkUserImportController;
+use App\Http\Controllers\Admin\BunnyStreamLibraryController;
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ChallengeGradingController;
 use App\Http\Controllers\Admin\ContactSettingController;
@@ -321,6 +321,11 @@ Route::prefix('admin')
         Route::post('videos/{id}/toggle-publish', [VideoController::class, 'togglePublish'])->name('videos.toggle-publish');
         Route::post('videos/{id}/toggle-visibility', [VideoController::class, 'toggleVisibility'])->name('videos.toggle-visibility');
         Route::post('videos/{id}/update-processing-status', [VideoController::class, 'updateProcessingStatus'])->name('videos.update-processing-status');
+
+        // Bunny Stream libraries
+        Route::resource('bunny-stream-libraries', BunnyStreamLibraryController::class)->except(['show']);
+        Route::post('bunny-stream-libraries/sync-videos', [BunnyStreamLibraryController::class, 'syncVideos'])->name('bunny-stream-libraries.sync-videos');
+        Route::post('bunny-stream-libraries/detect-from-url', [BunnyStreamLibraryController::class, 'detectFromUrl'])->name('bunny-stream-libraries.detect-from-url');
 
         // Resources routes
         Route::resource('resources', AdminResourceController::class);

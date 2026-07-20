@@ -2,16 +2,14 @@
 
 namespace App\Services\Video;
 
+use App\Models\BunnyStreamLibrary;
+use App\Models\Video;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BunnyStreamPlaybackService
 {
-    /**
-     * Whether Embed View Token Authentication should be applied to iframe URLs.
-     * When env flag is unset, auto-enables if token_security_key is present.
-     */
     public function isEmbedTokenAuthEnabled(): bool
     {
         $flag = config('services.bunny_stream.embed_token_enabled');
@@ -24,22 +22,100 @@ class BunnyStreamPlaybackService
             return true;
         }
 
-        return $this->hasTokenSecurityKey();
+        return BunnyStreamLibrary::query()->where('is_active', true)->exists()
+            || $this->hasLegacyTokenSecurityKey();
     }
 
+    /**
+     * @deprecated Legacy single-key fallback; prefer per-library keys in DB.
+     */
     public function hasTokenSecurityKey(): bool
+    {
+        return $this->hasLegacyTokenSecurityKey()
+            || BunnyStreamLibrary::query()->where('is_active', true)->exists();
+    }
+
+    private function hasLegacyTokenSecurityKey(): bool
     {
         $key = config('services.bunny_stream.token_security_key');
 
         return is_string($key) && $key !== '';
     }
 
+    public function signEmbedUrlForVideo(Video $video, ?int $ttl = null): ?string
+    {
+        $ids = $video->parseBunnyStreamIds();
+        if (! $ids) {
+            return null;
+        }
+
+        $library = $video->resolveBunnyStreamLibrary();
+        if ($library) {
+            return $this->signEmbedUrl($library, $ids['video_id'], $ttl);
+        }
+
+        if ($this->isEmbedTokenAuthEnabled() && $this->hasLegacyTokenSecurityKey()) {
+            return $this->signEmbedUrlWithLegacyKey($ids['library_id'], $ids['video_id'], $ttl);
+        }
+
+        if ($this->isEmbedTokenAuthEnabled()) {
+            Log::error('Bunny Stream video has no registered library for signing', [
+                'video_id' => $video->id,
+                'library_id' => $ids['library_id'],
+            ]);
+        }
+
+        return $this->buildEmbedUrl($ids['library_id'], $ids['video_id'], [
+            'responsive' => 'true',
+            'preload' => 'false',
+        ]);
+    }
+
     /**
-     * Build a Bunny Stream embed iframe URL, optionally signed with token + expires.
+     * Build a signed Bunny Stream embed iframe URL for a library + video.
      *
      * @see https://docs.bunny.net/docs/stream-embed-token-authentication
      */
-    public function signEmbedUrl(string $libraryId, string $videoId, ?int $ttl = null): ?string
+    public function signEmbedUrl(BunnyStreamLibrary $library, string $videoId, ?int $ttl = null): ?string
+    {
+        $libraryId = trim((string) $library->library_id);
+        $videoId = trim($videoId);
+
+        if ($libraryId === '' || $videoId === '') {
+            return null;
+        }
+
+        $query = [
+            'responsive' => 'true',
+            'preload' => 'false',
+        ];
+
+        if (! $this->isEmbedTokenAuthEnabled()) {
+            return $this->buildEmbedUrl($libraryId, $videoId, $query);
+        }
+
+        if (! $library->is_active || ! $library->hasTokenSecurityKey()) {
+            Log::error('Bunny Stream library missing token security key or inactive', [
+                'library_id' => $libraryId,
+                'library_record_id' => $library->id,
+            ]);
+
+            return null;
+        }
+
+        $ttl = $ttl ?? (int) config('services.bunny_stream.embed_token_ttl', 7200);
+        $expires = time() + max(1, $ttl);
+
+        $query['token'] = $this->generateEmbedToken($library->token_security_key, $videoId, $expires);
+        $query['expires'] = $expires;
+
+        return $this->buildEmbedUrl($libraryId, $videoId, $query);
+    }
+
+    /**
+     * Legacy signing path for backwards compatibility during migration.
+     */
+    public function signEmbedUrlWithLegacyKey(string $libraryId, string $videoId, ?int $ttl = null): ?string
     {
         $libraryId = trim($libraryId);
         $videoId = trim($videoId);
@@ -57,9 +133,7 @@ class BunnyStreamPlaybackService
             return $this->buildEmbedUrl($libraryId, $videoId, $query);
         }
 
-        if (! $this->hasTokenSecurityKey()) {
-            Log::error('Bunny Stream embed token auth is enabled but BUNNY_STREAM_TOKEN_SECURITY_KEY is missing');
-
+        if (! $this->hasLegacyTokenSecurityKey()) {
             return null;
         }
 
@@ -67,15 +141,12 @@ class BunnyStreamPlaybackService
         $expires = time() + max(1, $ttl);
         $securityKey = (string) config('services.bunny_stream.token_security_key');
 
-        $query['token'] = hash('sha256', $securityKey.$videoId.$expires);
+        $query['token'] = $this->generateEmbedToken($securityKey, $videoId, $expires);
         $query['expires'] = $expires;
 
         return $this->buildEmbedUrl($libraryId, $videoId, $query);
     }
 
-    /**
-     * SHA256 hex token per Bunny Embed View Token docs (for tests / callers).
-     */
     public function generateEmbedToken(string $securityKey, string $videoId, int $expires): string
     {
         return hash('sha256', $securityKey.$videoId.$expires);
@@ -99,8 +170,16 @@ class BunnyStreamPlaybackService
         return $value === false || $value === 0 || $value === '0' || $value === 'false';
     }
 
-    public function resolveCdnHostname(?string $libraryId, ?string $videoId = null): ?string
+    public function resolveCdnHostname(?string $libraryId, ?string $videoId = null, ?BunnyStreamLibrary $library = null): ?string
     {
+        $libraryRecord = $library;
+        if (! $libraryRecord && $libraryId) {
+            $libraryRecord = BunnyStreamLibrary::query()
+                ->where('library_id', $libraryId)
+                ->where('is_active', true)
+                ->first();
+        }
+
         $configured = config('services.bunny_stream.cdn_hostname');
         if (is_string($configured) && $configured !== '') {
             return $this->normalizeHostname($configured);
@@ -110,12 +189,16 @@ class BunnyStreamPlaybackService
             return null;
         }
 
-        $apiKey = config('services.bunny_stream.api_key');
+        $apiKey = $libraryRecord?->api_key;
+        if (! is_string($apiKey) || $apiKey === '') {
+            $apiKey = config('services.bunny_stream.api_key');
+        }
+
         if (! is_string($apiKey) || $apiKey === '') {
             return null;
         }
 
-        $cacheKey = 'bunny_stream_cdn_host:' . $libraryId;
+        $cacheKey = 'bunny_stream_cdn_host:'.$libraryId;
 
         return Cache::remember($cacheKey, now()->addDay(), function () use ($libraryId, $videoId, $apiKey) {
             $hostname = $this->fetchLibraryCdnHostname($libraryId, $apiKey);

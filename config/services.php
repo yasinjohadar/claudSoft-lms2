@@ -55,7 +55,7 @@ return [
         'cdn_hostname' => env('BUNNY_STREAM_CDN_HOSTNAME'),
         // Optional: auto-resolve CDN hostname per library via Bunny Stream API
         'api_key' => env('BUNNY_STREAM_API_KEY'),
-        // Token authentication key from Bunny Stream → Security (not the Stream API key)
+        // Token authentication key from Bunny Stream → Security (legacy single-library fallback only)
         'token_security_key' => env('BUNNY_STREAM_TOKEN_SECURITY_KEY'),
         // Embed view token TTL in seconds (default 2 hours)
         'embed_token_ttl' => (int) env('BUNNY_STREAM_EMBED_TOKEN_TTL', 7200),
