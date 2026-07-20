@@ -8,6 +8,97 @@ use Illuminate\Support\Facades\Log;
 
 class BunnyStreamPlaybackService
 {
+    /**
+     * Whether Embed View Token Authentication should be applied to iframe URLs.
+     * When env flag is unset, auto-enables if token_security_key is present.
+     */
+    public function isEmbedTokenAuthEnabled(): bool
+    {
+        $flag = config('services.bunny_stream.embed_token_enabled');
+
+        if ($this->isExplicitFalse($flag)) {
+            return false;
+        }
+
+        if ($this->isExplicitTrue($flag)) {
+            return true;
+        }
+
+        return $this->hasTokenSecurityKey();
+    }
+
+    public function hasTokenSecurityKey(): bool
+    {
+        $key = config('services.bunny_stream.token_security_key');
+
+        return is_string($key) && $key !== '';
+    }
+
+    /**
+     * Build a Bunny Stream embed iframe URL, optionally signed with token + expires.
+     *
+     * @see https://docs.bunny.net/docs/stream-embed-token-authentication
+     */
+    public function signEmbedUrl(string $libraryId, string $videoId, ?int $ttl = null): ?string
+    {
+        $libraryId = trim($libraryId);
+        $videoId = trim($videoId);
+
+        if ($libraryId === '' || $videoId === '') {
+            return null;
+        }
+
+        $query = [
+            'responsive' => 'true',
+            'preload' => 'false',
+        ];
+
+        if (! $this->isEmbedTokenAuthEnabled()) {
+            return $this->buildEmbedUrl($libraryId, $videoId, $query);
+        }
+
+        if (! $this->hasTokenSecurityKey()) {
+            Log::error('Bunny Stream embed token auth is enabled but BUNNY_STREAM_TOKEN_SECURITY_KEY is missing');
+
+            return null;
+        }
+
+        $ttl = $ttl ?? (int) config('services.bunny_stream.embed_token_ttl', 7200);
+        $expires = time() + max(1, $ttl);
+        $securityKey = (string) config('services.bunny_stream.token_security_key');
+
+        $query['token'] = hash('sha256', $securityKey.$videoId.$expires);
+        $query['expires'] = $expires;
+
+        return $this->buildEmbedUrl($libraryId, $videoId, $query);
+    }
+
+    /**
+     * SHA256 hex token per Bunny Embed View Token docs (for tests / callers).
+     */
+    public function generateEmbedToken(string $securityKey, string $videoId, int $expires): string
+    {
+        return hash('sha256', $securityKey.$videoId.$expires);
+    }
+
+    /**
+     * @param  array<string, scalar>  $query
+     */
+    private function buildEmbedUrl(string $libraryId, string $videoId, array $query): string
+    {
+        return 'https://iframe.mediadelivery.net/embed/'.$libraryId.'/'.$videoId.'?'.http_build_query($query);
+    }
+
+    private function isExplicitTrue(mixed $value): bool
+    {
+        return $value === true || $value === 1 || $value === '1' || $value === 'true';
+    }
+
+    private function isExplicitFalse(mixed $value): bool
+    {
+        return $value === false || $value === 0 || $value === '0' || $value === 'false';
+    }
+
     public function resolveCdnHostname(?string $libraryId, ?string $videoId = null): ?string
     {
         $configured = config('services.bunny_stream.cdn_hostname');

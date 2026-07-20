@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\Video\BunnyStreamPlaybackService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Video extends Model
 {
@@ -233,6 +234,10 @@ class Video extends Model
      */
     public function getEmbedUrl(): ?string
     {
+        if ($this->isBunnyStreamVideo()) {
+            return $this->getBunnyIframeSrc();
+        }
+
         if (!$this->video_url) {
             return null;
         }
@@ -275,11 +280,16 @@ class Video extends Model
     }
 
     /**
-     * Direct MP4/HLS URL for Bunny Stream (bypasses iframe player and RUM metrics).
+     * Direct MP4/HLS URL for Bunny Stream.
+     * Disabled when Embed View Token Authentication is enabled (iframe-only path).
      */
     public function getBunnyNativePlaybackUrl(string $quality = '720p'): ?string
     {
         if (! $this->isBunnyStreamVideo()) {
+            return null;
+        }
+
+        if (app(BunnyStreamPlaybackService::class)->isEmbedTokenAuthEnabled()) {
             return null;
         }
 
@@ -299,7 +309,7 @@ class Video extends Model
     }
 
     /**
-     * Bunny iframe embed URL (fallback when direct playback is unavailable).
+     * Bunny iframe embed URL (signed when Embed View Token Authentication is enabled).
      */
     public function getBunnyIframeSrc(): ?string
     {
@@ -308,12 +318,8 @@ class Video extends Model
             return null;
         }
 
-        $query = http_build_query([
-            'responsive' => 'true',
-            'preload' => 'false',
-        ]);
-
-        return "https://iframe.mediadelivery.net/embed/{$ids['library_id']}/{$ids['video_id']}?{$query}";
+        return app(BunnyStreamPlaybackService::class)
+            ->signEmbedUrl($ids['library_id'], $ids['video_id']);
     }
 
     /**
@@ -348,7 +354,7 @@ class Video extends Model
 
         $ids = $this->parseBunnyStreamIds();
         if ($ids) {
-            $hostname = app(\App\Services\Video\BunnyStreamPlaybackService::class)
+            $hostname = app(BunnyStreamPlaybackService::class)
                 ->resolveCdnHostname($ids['library_id'], $ids['video_id']);
 
             if ($hostname) {
@@ -361,7 +367,7 @@ class Video extends Model
 
     private function extractBunnyCdnHostnameFromText(mixed $text): ?string
     {
-        return app(\App\Services\Video\BunnyStreamPlaybackService::class)
+        return app(BunnyStreamPlaybackService::class)
             ->extractBunnyCdnHostnameFromText($text);
     }
 

@@ -408,6 +408,9 @@
                                             </div>
                                         @endif
 
+                                    @elseif($video->isBunnyStreamVideo())
+                                        @include('shared.video.bunny-player', ['video' => $video])
+
                                     @elseif($video->video_type == 'upload' && $video->video_path)
                                         <video controls controlsList="{{ $video->allow_download ? '' : 'nodownload' }}"
                                                {{ $video->allow_speed_control ? '' : 'disablepictureinpicture' }}>
@@ -424,15 +427,6 @@
                                             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                                                 {!! $embedCode !!}
                                             </div>
-                                        @elseif(Str::contains($video->video_url, 'bunny.net') || Str::contains($video->video_url, 'b-cdn.net'))
-                                            {{-- Bunny.net Video --}}
-                                            <iframe
-                                                src="{{ $video->video_url }}"
-                                                loading="lazy"
-                                                style="border: none; position: absolute; top: 0; height: 100%; width: 100%;"
-                                                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                                                allowfullscreen="true">
-                                            </iframe>
                                         @else
                                             {{-- Generic External Video --}}
                                             <iframe

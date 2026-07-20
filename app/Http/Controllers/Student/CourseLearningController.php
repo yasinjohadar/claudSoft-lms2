@@ -675,11 +675,14 @@ class CourseLearningController extends Controller
                 ];
 
             case 'video':
+                $isBunny = $modulable instanceof \App\Models\Video && $modulable->isBunnyStreamVideo();
+
                 return [
                     'video_type' => $modulable->video_type,
-                    'video_url' => $modulable->video_url,
+                    // Do not expose raw Bunny URLs when embed token auth signs playback separately
+                    'video_url' => $isBunny ? null : $modulable->video_url,
                     'video_path' => $modulable->video_path,
-                    'embed_url' => $modulable->getEmbedUrl(),
+                    'embed_url' => $isBunny ? $modulable->getBunnyIframeSrc() : $modulable->getEmbedUrl(),
                     'duration' => $modulable->duration,
                     'thumbnail' => $modulable->thumbnail,
                     'allow_download' => $modulable->allow_download,

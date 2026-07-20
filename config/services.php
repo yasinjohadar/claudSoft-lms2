@@ -51,10 +51,16 @@ return [
     ],
 
     'bunny_stream' => [
-        // CDN hostname for direct MP4 playback (e.g. vz-xxxxx.b-cdn.net) — avoids Bunny iframe RUM pings
+        // CDN hostname for direct MP4 playback (e.g. vz-xxxxx.b-cdn.net) — unused when embed token auth is on
         'cdn_hostname' => env('BUNNY_STREAM_CDN_HOSTNAME'),
         // Optional: auto-resolve CDN hostname per library via Bunny Stream API
         'api_key' => env('BUNNY_STREAM_API_KEY'),
+        // Token authentication key from Bunny Stream → Security (not the Stream API key)
+        'token_security_key' => env('BUNNY_STREAM_TOKEN_SECURITY_KEY'),
+        // Embed view token TTL in seconds (default 2 hours)
+        'embed_token_ttl' => (int) env('BUNNY_STREAM_EMBED_TOKEN_TTL', 7200),
+        // null/omit = auto-enable when token_security_key is set; true/false to force
+        'embed_token_enabled' => env('BUNNY_STREAM_EMBED_TOKEN_ENABLED'),
     ],
 
 ];
