@@ -366,6 +366,45 @@
         </div>
     </div>
 
+    <div class="modal fade" id="memberPaymentDetailsModal" tabindex="-1" aria-labelledby="memberPaymentDetailsModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="memberPaymentDetailsModalTitle">
+                        <i class="fas fa-wallet me-2 text-info"></i>
+                        <span id="memberPaymentDetailsName">تفاصيل الدفع</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body pt-3">
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <div class="rounded-3 border p-3 h-100 bg-danger-transparent">
+                                <div class="text-muted small mb-1">إجمالي المبلغ المستحق</div>
+                                <div class="fs-5 fw-bold" id="memberPaymentDetailsDue">—</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="rounded-3 border p-3 h-100 bg-success-transparent">
+                                <div class="text-muted small mb-1">إجمالي الدفعات المسددة</div>
+                                <div class="fs-5 fw-bold text-success" id="memberPaymentDetailsPaid">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mb-2 text-danger">المبالغ المستحقة ومصدرها</h6>
+                    <div id="memberPaymentDetailsInvoices"></div>
+
+                    <h6 class="mb-2 mt-4 text-success">الدفعات التي قام الطالب بتسديدها</h6>
+                    <div id="memberPaymentDetailsPayments"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if(($trainingCampsForModal ?? collect())->isNotEmpty())
     <div class="modal fade" id="attachTrainingCampModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -927,6 +966,112 @@
     initGroupMembersAjaxFilters();
 
     const groupMemberPaymentBaseUrl = @json(url('/admin/groups/' . $group->id . '/members'));
+
+    function escapeHtmlPayment(text) {
+        if (text == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(text);
+        return d.innerHTML;
+    }
+
+    function formatMoneyPayment(amount) {
+        const n = Number(amount || 0);
+        return '$' + n.toFixed(2);
+    }
+
+    function openMemberPaymentDetailsModal(btn) {
+        let details = {};
+        try {
+            details = JSON.parse(btn.getAttribute('data-details') || '{}');
+        } catch (err) {
+            details = {};
+        }
+
+        const modalEl = document.getElementById('memberPaymentDetailsModal');
+        if (!modalEl) return;
+
+        if (modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+
+        const nameEl = document.getElementById('memberPaymentDetailsName');
+        const dueEl = document.getElementById('memberPaymentDetailsDue');
+        const paidEl = document.getElementById('memberPaymentDetailsPaid');
+        const invoicesEl = document.getElementById('memberPaymentDetailsInvoices');
+        const paymentsEl = document.getElementById('memberPaymentDetailsPayments');
+
+        if (nameEl) {
+            nameEl.textContent = 'تفاصيل الدفع - ' + (details.name || '');
+        }
+
+        const due = Number(details.due || 0);
+        const paid = Number(details.paid || 0);
+        if (dueEl) {
+            dueEl.innerHTML = due > 0
+                ? '<span class="text-danger">' + formatMoneyPayment(due) + '</span>'
+                : '<span class="badge bg-success">لا يوجد مستحقات</span>';
+        }
+        if (paidEl) {
+            paidEl.textContent = formatMoneyPayment(paid);
+        }
+
+        const invoices = Array.isArray(details.invoices) ? details.invoices : [];
+        if (invoicesEl) {
+            if (invoices.length === 0) {
+                invoicesEl.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="fas fa-check-circle me-1"></i>لا يوجد مستحقات على هذا الطالب.</div>';
+            } else {
+                let rows = '';
+                invoices.forEach(function (invoice) {
+                    const camps = Array.isArray(invoice.camp_names) ? invoice.camp_names : [];
+                    const source = camps.length
+                        ? camps.map(function (n) {
+                            return '<span class="badge bg-primary-transparent text-primary me-1">' + escapeHtmlPayment(n) + '</span>';
+                        }).join('')
+                        : '<span class="text-muted">بدون معسكر مرتبط</span>';
+                    rows += '<tr>' +
+                        '<td class="text-muted small">' + escapeHtmlPayment(invoice.id ?? '-') + '</td>' +
+                        '<td>' + escapeHtmlPayment(invoice.invoice_number ?? '-') + '</td>' +
+                        '<td><span class="text-danger fw-bold">' + formatMoneyPayment(invoice.remaining_amount) + '</span></td>' +
+                        '<td>' + escapeHtmlPayment(invoice.due_date ?? '-') +
+                            (invoice.is_overdue ? ' <span class="badge bg-danger ms-1">متأخرة</span>' : '') +
+                        '</td>' +
+                        '<td>' + source + '</td>' +
+                    '</tr>';
+                });
+                invoicesEl.innerHTML =
+                    '<div class="table-responsive">' +
+                    '<table class="table table-sm table-bordered align-middle mb-0">' +
+                    '<thead class="table-light"><tr><th>#</th><th>رقم الفاتورة</th><th>المبلغ المتبقي</th><th>تاريخ الاستحقاق</th><th>المصدر</th></tr></thead>' +
+                    '<tbody>' + rows + '</tbody></table></div>';
+            }
+        }
+
+        const payments = Array.isArray(details.payments) ? details.payments : [];
+        if (paymentsEl) {
+            if (payments.length === 0) {
+                paymentsEl.innerHTML = '<div class="alert alert-secondary py-2 mb-0"><i class="fas fa-info-circle me-1"></i>لا توجد دفعات مسددة لهذا الطالب حتى الآن.</div>';
+            } else {
+                let rows = '';
+                payments.forEach(function (payment) {
+                    rows += '<tr>' +
+                        '<td>' + escapeHtmlPayment(payment.payment_number ?? '-') + '</td>' +
+                        '<td><span class="text-success fw-bold">' + formatMoneyPayment(payment.amount) + '</span></td>' +
+                        '<td>' + escapeHtmlPayment(payment.payment_date ?? '-') + '</td>' +
+                        '<td>' + escapeHtmlPayment(payment.invoice_number ?? '-') + '</td>' +
+                        '<td>' + escapeHtmlPayment(payment.payment_method ?? '-') + '</td>' +
+                    '</tr>';
+                });
+                paymentsEl.innerHTML =
+                    '<div class="table-responsive">' +
+                    '<table class="table table-sm table-bordered align-middle mb-0">' +
+                    '<thead class="table-light"><tr><th>رقم الدفعة</th><th>المبلغ</th><th>التاريخ</th><th>رقم الفاتورة</th><th>طريقة الدفع</th></tr></thead>' +
+                    '<tbody>' + rows + '</tbody></table></div>';
+            }
+        }
+
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
     @if(($trainingCampsForModal ?? collect())->isNotEmpty())
     @php
         $campModalDataUrlTemplateJs = str_replace(
@@ -1139,6 +1284,10 @@
             return;
         }
 
+        if (modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+
         const nameEl = document.getElementById('recordPaymentStudentName');
         if (nameEl) {
             nameEl.textContent = studentName;
@@ -1259,6 +1408,14 @@
             if (payBtn) {
                 e.preventDefault();
                 openRecordGroupMemberPaymentModal(payBtn);
+                return;
+            }
+
+            const paymentDetailsBtn = e.target.closest('.js-open-payment-details');
+            if (paymentDetailsBtn) {
+                e.preventDefault();
+                openMemberPaymentDetailsModal(paymentDetailsBtn);
+                return;
             }
 
             @if(($trainingCampsForModal ?? collect())->isNotEmpty())

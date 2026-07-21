@@ -9772,6 +9772,71 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 }
 
 /* ==========================================================================
+   Admin portal — sidebar brand (logo + academy name)
+   ========================================================================== */
+.admin-portal .main-sidebar-header .header-logo.admin-sidebar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+
+.admin-portal .main-sidebar-header .admin-sidebar-brand__logo {
+    flex-shrink: 0;
+    width: auto;
+    object-fit: contain;
+}
+
+.admin-portal .main-sidebar-header .admin-sidebar-brand__logo--expanded {
+    display: block;
+    height: 2.35rem;
+}
+
+.admin-portal .main-sidebar-header .admin-sidebar-brand__logo--collapsed {
+    display: none;
+    height: 2.1rem;
+}
+
+.admin-portal .main-sidebar-header .admin-sidebar-brand__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--default-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 992px) {
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .admin-portal .admin-sidebar-brand__title,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .admin-portal .admin-sidebar-brand__title,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .admin-portal .admin-sidebar-brand__title {
+        display: none;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .admin-portal .admin-sidebar-brand__logo--expanded,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .admin-portal .admin-sidebar-brand__logo--expanded,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .admin-portal .admin-sidebar-brand__logo--expanded {
+        display: none;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .admin-portal .admin-sidebar-brand__logo--collapsed,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .admin-portal .admin-sidebar-brand__logo--collapsed,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .admin-portal .admin-sidebar-brand__logo--collapsed {
+        display: block;
+    }
+
+    [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .admin-portal .main-sidebar-header .admin-sidebar-brand,
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .admin-portal .main-sidebar-header .admin-sidebar-brand,
+    [data-vertical-style="doublemenu"][data-toggled="double-menu-close"] .admin-portal .main-sidebar-header .admin-sidebar-brand {
+        justify-content: center;
+        gap: 0;
+    }
+}
+
+/* ==========================================================================
    Admin portal — sidebar icons (colored rounded boxes)
    ========================================================================== */
 .admin-portal .admin-sidebar .side-menu__item::before,

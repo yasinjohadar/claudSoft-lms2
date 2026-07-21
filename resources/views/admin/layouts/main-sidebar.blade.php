@@ -3,11 +3,13 @@
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
-                <a href="{{ route('admin.dashboard') }}" class="header-logo">
-                    <img src="{{ asset('assets/images/brand-logos/desktop-logo.png') }}" alt="logo" class="desktop-logo">
-                    <img src="{{ asset('assets/images/brand-logos/toggle-logo.png') }}" alt="logo" class="toggle-logo">
-                    <img src="{{ asset('assets/images/brand-logos/desktop-white.png') }}" alt="logo" class="desktop-white">
-                    <img src="{{ asset('assets/images/brand-logos/toggle-white.png') }}" alt="logo" class="toggle-white">
+                @php
+                    $sidebarLogoUrl = asset('frontend2/assets/images/logo.png');
+                @endphp
+                <a href="{{ route('admin.dashboard') }}" class="header-logo admin-sidebar-brand">
+                    <img src="{{ $sidebarLogoUrl }}" alt="أكاديمية كلاودسوفت" class="admin-sidebar-brand__logo admin-sidebar-brand__logo--expanded">
+                    <img src="{{ $sidebarLogoUrl }}" alt="أكاديمية كلاودسوفت" class="admin-sidebar-brand__logo admin-sidebar-brand__logo--collapsed">
+                    <span class="admin-sidebar-brand__title">أكاديمية كلاودسوفت</span>
                 </a>
             </div>
             <!-- End::main-sidebar-header -->
