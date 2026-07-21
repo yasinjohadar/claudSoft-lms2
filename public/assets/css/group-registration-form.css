@@ -170,8 +170,8 @@ html {
 .gr-section__title--terms { background: linear-gradient(135deg, #e11d48, #be123c); }
 
 .gr-terms-content {
-    max-height: 260px;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
     padding: 14px 16px;
     border: 1.5px solid #fecdd3;
     border-radius: var(--gr-radius-sm);
