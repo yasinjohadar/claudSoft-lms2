@@ -288,6 +288,34 @@
                             </div>
                         </div>
 
+                        @if(!empty($registrationTerms))
+                            <div class="gr-section gr-section--terms">
+                                <h2 class="gr-section__title gr-section__title--terms">
+                                    <i class="fas fa-file-contract"></i>
+                                    الشروط والأحكام
+                                </h2>
+                                <div class="gr-terms-content">
+                                    {!! $registrationTerms !!}
+                                </div>
+                                <div class="gr-field mb-0 mt-3">
+                                    <div class="gr-checkbox-agree gr-checkbox-agree--danger">
+                                        <input
+                                            type="checkbox"
+                                            name="registration_terms_ack"
+                                            id="registration_terms_ack"
+                                            value="1"
+                                            {{ old('registration_terms_ack') ? 'checked' : '' }}
+                                            required
+                                        >
+                                        <label for="registration_terms_ack">
+                                            قرأت الشروط والأحكام وأوافق عليها.
+                                        </label>
+                                    </div>
+                                    @error('registration_terms_ack')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="gr-field mb-3">
                             <div class="gr-checkbox-agree gr-checkbox-agree--danger">
                                 <input

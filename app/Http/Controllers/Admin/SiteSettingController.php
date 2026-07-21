@@ -19,6 +19,9 @@ class SiteSettingController extends Controller
         $localDevLoginEnabled = SiteSetting::isLocalDevLoginEnabled();
         $localDevLoginAvailable = LocalDevLoginGate::isEnvironmentLocal();
         $localDevLoginUrl = $localDevLoginAvailable ? LocalDevLoginGate::url() : null;
+        $groupRegistrationTerms = SiteSetting::query()
+            ->where('key', 'group_registration_terms')
+            ->value('value') ?? '';
 
         return view('admin.pages.settings.site.index', compact(
             'registrationEnabled',
@@ -26,6 +29,7 @@ class SiteSettingController extends Controller
             'localDevLoginEnabled',
             'localDevLoginAvailable',
             'localDevLoginUrl',
+            'groupRegistrationTerms',
         ));
     }
 
@@ -34,6 +38,10 @@ class SiteSettingController extends Controller
      */
     public function update(Request $request)
     {
+        $request->validate([
+            'group_registration_terms' => ['nullable', 'string', 'max:65000'],
+        ]);
+
         // التحقق من وجود الحقل (checkbox غير محدد = false)
         $registrationEnabled = $request->has('registration_public_enabled') && $request->input('registration_public_enabled') == '1';
         $forceProfileCompletion = $request->has('force_student_profile_completion') && $request->input('force_student_profile_completion') == '1';
@@ -48,6 +56,12 @@ class SiteSettingController extends Controller
             'force_student_profile_completion',
             $forceProfileCompletion,
             'إجبار الطلاب على إكمال ملفهم الشخصي 100% قبل استخدام المنصة'
+        );
+
+        SiteSetting::setValue(
+            'group_registration_terms',
+            (string) $request->input('group_registration_terms', ''),
+            'شروط التسجيل العامة المعروضة في نماذج تسجيل المجموعات'
         );
 
         if (LocalDevLoginGate::isEnvironmentLocal()) {

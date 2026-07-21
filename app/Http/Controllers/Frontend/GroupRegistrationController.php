@@ -7,6 +7,7 @@ use App\Models\CourseGroup;
 use App\Models\GroupRegistration;
 use App\Models\GroupRegistrationSetting;
 use App\Models\GroupMembershipRequest;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Rules\UniqueUserFullPhone;
 use App\Services\GroupRegistrationReceiptService;
@@ -41,7 +42,9 @@ class GroupRegistrationController extends Controller
         $diplomaName = $settings->diploma_name ?? 'دبلوم البرمجة';
         $this->metaPixel->trackLeadStarted("{$diplomaName} - {$group->name}");
 
-        return view('frontend.group-registration.form', compact('group', 'settings'));
+        $registrationTerms = SiteSetting::getGroupRegistrationTerms();
+
+        return view('frontend.group-registration.form', compact('group', 'settings', 'registrationTerms'));
     }
 
     /**
@@ -109,6 +112,10 @@ class GroupRegistrationController extends Controller
             'membership_receipt' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
             'whatsapp_group_ack' => 'accepted',
         ];
+
+        if (SiteSetting::getGroupRegistrationTerms() !== '') {
+            $validationRules['registration_terms_ack'] = 'accepted';
+        }
         
         $validationMessages = [
             'name.required' => 'الاسم بالإنجليزية مطلوب',
@@ -136,11 +143,12 @@ class GroupRegistrationController extends Controller
             'membership_receipt.file' => 'ملف إثبات الشخصية المرفوع غير صالح',
             'membership_receipt.mimes' => 'يجب أن يكون إثبات الشخصية صورة (JPG أو PNG أو WEBP) أو ملف PDF',
             'membership_receipt.max' => 'يجب ألا يتجاوز حجم ملف إثبات الشخصية 10 ميجابايت',
+            'registration_terms_ack.accepted' => 'يجب قراءة الشروط والموافقة عليها قبل إرسال الطلب',
             'whatsapp_group_ack.accepted' => 'يجب الموافقة على الانضمام إلى مجموعة الواتساب قبل إرسال الطلب',
         ];
 
         $validated = $request->validate($validationRules, $validationMessages);
-        unset($validated['whatsapp_group_ack']);
+        unset($validated['whatsapp_group_ack'], $validated['registration_terms_ack']);
 
         // إزالة الصفر من بداية رقم الهاتف إن أدخله الطالب
         if (!empty($validated['phone']) && str_starts_with(trim($validated['phone']), '0')) {

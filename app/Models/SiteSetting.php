@@ -100,4 +100,19 @@ class SiteSetting extends Model
     {
         return (bool) static::getValue('profile_card_enabled_gold', true);
     }
+
+    /**
+     * شروط التسجيل العامة (HTML) لكل نماذج تسجيل المجموعات.
+     */
+    public static function getGroupRegistrationTerms(): string
+    {
+        $setting = static::query()->where('key', 'group_registration_terms')->first();
+        $html = $setting?->value;
+
+        if (! is_string($html) || trim(strip_tags($html)) === '') {
+            return '';
+        }
+
+        return $html;
+    }
 }

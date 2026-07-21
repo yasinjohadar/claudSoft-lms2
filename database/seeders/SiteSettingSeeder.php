@@ -19,5 +19,11 @@ class SiteSettingSeeder extends Seeder
             true,
             'تفعيل/إيقاف التسجيل العام للزوار (صفحة /register)'
         );
+
+        SiteSetting::setValue(
+            'group_registration_terms',
+            '',
+            'شروط التسجيل العامة المعروضة في نماذج تسجيل المجموعات'
+        );
     }
 }

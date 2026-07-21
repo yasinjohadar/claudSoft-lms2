@@ -38,7 +38,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('admin.settings.site.update') }}" method="POST">
+                        <form action="{{ route('admin.settings.site.update') }}" method="POST" id="siteSettingsForm">
                             @csrf
                             @method('POST')
 
@@ -67,6 +67,35 @@
                                         <strong>ملاحظة:</strong> عند إيقاف هذا الخيار، سيتم منع الوصول إلى صفحة التسجيل العامة (<code>/register</code>) 
                                         وسيتم توجيه المستخدمين إلى صفحة تسجيل الدخول. 
                                         <strong>التسجيل من لوحة التحكم للأدمن يبقى متاحاً.</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group Registration Terms -->
+                            <div class="card border mb-4">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">
+                                        <i class="ri-file-list-3-line me-2"></i>شروط تسجيل المجموعات
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <label class="form-label fw-semibold" for="group_registration_terms">
+                                        نص الشروط والأحكام
+                                    </label>
+                                    <textarea
+                                        name="group_registration_terms"
+                                        id="group_registration_terms"
+                                        class="form-control @error('group_registration_terms') is-invalid @enderror"
+                                        rows="12"
+                                    >{{ old('group_registration_terms', $groupRegistrationTerms ?? '') }}</textarea>
+                                    @error('group_registration_terms')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    <div class="alert alert-info mt-3 mb-0">
+                                        <i class="ri-information-line me-2"></i>
+                                        يظهر هذا النص في <strong>جميع نماذج تسجيل المجموعات</strong>.
+                                        عند وجود محتوى، يُطلب من المتقدم الموافقة عبر تشيك بوكس إلزامي (بدون حفظ الموافقة في قاعدة البيانات).
+                                        اتركه فارغاً لإخفاء القسم من النموذج.
                                     </div>
                                 </div>
                             </div>
@@ -149,5 +178,14 @@
     </div>
 </div>
 <!-- End::app-content -->
+@endsection
+
+@section('script')
+    @include('admin.blog.partials.tinymce-config', [
+        'editors' => [
+            ['selector' => '#group_registration_terms', 'height' => 420],
+        ],
+        'formSelector' => '#siteSettingsForm',
+    ])
 @endsection
 

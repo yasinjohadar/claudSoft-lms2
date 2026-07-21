@@ -147,6 +147,7 @@ html {
 .gr-section--success { --gr-accent: #059669; }
 .gr-section--warning { --gr-accent: #d97706; }
 .gr-section--receipt { --gr-accent: #7c3aed; }
+.gr-section--terms { --gr-accent: #be123c; }
 
 .gr-section__title {
     display: flex;
@@ -166,6 +167,29 @@ html {
 .gr-section__title--success { background: linear-gradient(135deg, #059669, #047857); }
 .gr-section__title--warning { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
 .gr-section__title--receipt { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+.gr-section__title--terms { background: linear-gradient(135deg, #e11d48, #be123c); }
+
+.gr-terms-content {
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 14px 16px;
+    border: 1.5px solid #fecdd3;
+    border-radius: var(--gr-radius-sm);
+    background: #fff;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--gr-text);
+}
+
+.gr-terms-content p:last-child {
+    margin-bottom: 0;
+}
+
+.gr-terms-content ul,
+.gr-terms-content ol {
+    padding-right: 1.25rem;
+    margin-bottom: 0.75rem;
+}
 
 .gr-field {
     position: relative;
