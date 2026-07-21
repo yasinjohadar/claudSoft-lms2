@@ -257,11 +257,11 @@
 
                         <div class="gr-section gr-section--receipt">
                             <h2 class="gr-section__title gr-section__title--receipt">
-                                <i class="fas fa-receipt"></i>
-                                رفع وصل الانتساب
+                                <i class="fas fa-id-card"></i>
+                                إثبات الشخصية
                             </h2>
                             <div class="gr-field mb-0">
-                                <label for="membership_receipt" class="gr-label required">رفع وصل الانتساب</label>
+                                <label for="membership_receipt" class="gr-label required">إثبات الشخصية (هوية، جواز، بطاقة جامعة، شهادة سواقة)</label>
                                 <label for="membership_receipt" class="gr-file-upload @error('membership_receipt') gr-file-upload--invalid @enderror">
                                     <span class="gr-file-upload__icon">
                                         <i class="fas fa-cloud-upload-alt"></i>
@@ -280,8 +280,29 @@
                                     accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
                                     required
                                 >
+                                <div class="gr-note gr-note--danger mt-2">
+                                    <i class="fas fa-exclamation-triangle mt-1"></i>
+                                    <span>ملاحظة: رفع وثيقة إثبات الشخصية إلزامي، وكل طلب بدون وثيقة سيتم رفضه.</span>
+                                </div>
                                 @error('membership_receipt')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             </div>
+                        </div>
+
+                        <div class="gr-field mb-3">
+                            <div class="gr-checkbox-agree gr-checkbox-agree--danger">
+                                <input
+                                    type="checkbox"
+                                    name="whatsapp_group_ack"
+                                    id="whatsapp_group_ack"
+                                    value="1"
+                                    {{ old('whatsapp_group_ack') ? 'checked' : '' }}
+                                    required
+                                >
+                                <label for="whatsapp_group_ack">
+                                    أوافق على الانضمام الإلزامي لمجموعة واتساب عبر الرابط الذي سيظهر في نهاية التسجيل، لاستلام التحديثات والمتابعة.
+                                </label>
+                            </div>
+                            @error('whatsapp_group_ack')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="gr-submit-wrap">

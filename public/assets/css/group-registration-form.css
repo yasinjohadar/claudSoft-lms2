@@ -237,6 +237,51 @@ html {
     margin-bottom: 0;
 }
 
+.gr-checkbox-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--gr-border-input);
+    border-radius: var(--gr-radius-sm);
+    background: #fff;
+}
+
+.gr-checkbox-agree--danger {
+    border-color: #f87171;
+    background: #fef2f2;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.08);
+}
+
+.gr-checkbox-agree--danger label {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.gr-checkbox-agree input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    accent-color: var(--gr-primary);
+    cursor: pointer;
+}
+
+.gr-checkbox-agree--danger input[type="checkbox"] {
+    accent-color: #dc2626;
+    width: 22px;
+    height: 22px;
+}
+
+.gr-checkbox-agree label {
+    margin: 0;
+    font-size: 0.925rem;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--gr-text);
+    cursor: pointer;
+}
+
 .gr-radio-list {
     display: flex;
     flex-direction: column;
