@@ -12,13 +12,6 @@
             @include('admin.dashboard.partials.kpi-cards')
 
             @include('admin.dashboard.partials.quick-access')
-
-            <div class="row mt-2">
-                @include('admin.dashboard.partials.chart-enrollments')
-                @include('admin.dashboard.partials.today-summary')
-            </div>
-
-            @include('admin.dashboard.partials.activity-row')
         </div>
     </div>
 @stop
