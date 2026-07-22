@@ -309,6 +309,10 @@ class QuizResponse extends Model
 
     /**
      * Grade multiple choice multiple answers.
+     *
+     * Exact set match → full score.
+     * Any wrong option selected → 0 (selecting everything must not award full points).
+     * Subset of correct options only → proportional partial credit, still marked incorrect.
      */
     private function gradeMultipleChoiceMultiple(): array
     {
@@ -316,28 +320,34 @@ class QuizResponse extends Model
             return [false, 0];
         }
 
-        $correctOptions = $this->question->options()->where('is_correct', true)->pluck('id')->toArray();
-        $selectedOptions = $this->selected_option_ids;
+        $correctOptions = array_map(
+            'intval',
+            $this->question->options()->where('is_correct', true)->pluck('id')->all()
+        );
+        $selectedOptions = array_map('intval', (array) $this->selected_option_ids);
 
-        // Check if all correct options are selected and no incorrect options
-        $isFullyCorrect = count(array_diff($correctOptions, $selectedOptions)) === 0
-            && count(array_diff($selectedOptions, $correctOptions)) === 0;
+        sort($correctOptions);
+        sort($selectedOptions);
 
-        if ($isFullyCorrect) {
-            return [true, $this->max_score];
+        if ($correctOptions === $selectedOptions) {
+            return [true, (float) $this->max_score];
         }
 
-        // Partial credit: calculate based on correct selections
-        $correctSelections = count(array_intersect($correctOptions, $selectedOptions));
+        $incorrectSelections = count(array_diff($selectedOptions, $correctOptions));
+        if ($incorrectSelections > 0) {
+            // Wrong extras invalidate the answer (no credit for "select all")
+            return [false, 0.0];
+        }
+
         $totalCorrect = count($correctOptions);
-
         if ($totalCorrect === 0) {
-            return [false, 0];
+            return [false, 0.0];
         }
 
-        $partialScore = ($correctSelections / $totalCorrect) * $this->max_score;
+        $correctSelections = count(array_intersect($correctOptions, $selectedOptions));
+        $partialScore = ($correctSelections / $totalCorrect) * (float) $this->max_score;
 
-        return [$isFullyCorrect, $partialScore];
+        return [false, (float) $partialScore];
     }
 
     /**
