@@ -94,16 +94,26 @@ class BackupSchedule extends Model
      */
     public function calculateNextRun(): Carbon
     {
-        $time = Carbon::parse($this->time);
-        $now = now();
-
-        return match($this->frequency) {
-            'daily' => $now->copy()->setTimeFromTimeString($this->time)->addDay(),
+        return match ($this->frequency) {
+            'daily', 'custom' => $this->nextDailyOccurrence(),
             'weekly' => $this->calculateNextWeeklyRun(),
             'monthly' => $this->calculateNextMonthlyRun(),
-            'custom' => $now->copy()->setTimeFromTimeString($this->time)->addDay(),
-            default => $now->copy()->addDay(),
+            default => $this->nextDailyOccurrence(),
         };
+    }
+
+    /**
+     * اليوم في الوقت المحدد إن لم يفت، وإلا غداً.
+     */
+    private function nextDailyOccurrence(): Carbon
+    {
+        $candidate = now()->copy()->setTimeFromTimeString((string) $this->time);
+
+        if ($candidate->lte(now())) {
+            $candidate->addDay();
+        }
+
+        return $candidate;
     }
 
     /**
@@ -111,30 +121,32 @@ class BackupSchedule extends Model
      */
     private function calculateNextWeeklyRun(): Carbon
     {
-        $time = Carbon::parse($this->time);
         $now = now();
-        $daysOfWeek = $this->days_of_week ?? [];
+        $daysOfWeek = collect($this->days_of_week ?? [])->map(fn ($d) => (int) $d)->sort()->values();
 
-        if (empty($daysOfWeek)) {
-            return $now->copy()->addWeek();
+        if ($daysOfWeek->isEmpty()) {
+            return $now->copy()->addWeek()->setTimeFromTimeString((string) $this->time);
         }
 
         $currentDay = $now->dayOfWeek;
-        $nextDay = null;
 
-        foreach ($daysOfWeek as $day) {
-            if ($day > $currentDay) {
-                $nextDay = $day;
-                break;
+        // اليوم ضمن الأيام المحددة والوقت لم يفت بعد
+        if ($daysOfWeek->contains($currentDay)) {
+            $todayAt = $now->copy()->setTimeFromTimeString((string) $this->time);
+            if ($todayAt->gt($now)) {
+                return $todayAt;
             }
         }
 
-        if ($nextDay === null) {
-            $nextDay = $daysOfWeek[0];
-            return $now->copy()->next($this->getDayName($nextDay))->setTimeFromTimeString($this->time);
+        foreach ($daysOfWeek as $day) {
+            if ($day > $currentDay) {
+                return $now->copy()->next($this->getDayName($day))->setTimeFromTimeString((string) $this->time);
+            }
         }
 
-        return $now->copy()->next($this->getDayName($nextDay))->setTimeFromTimeString($this->time);
+        $firstDay = $daysOfWeek->first();
+
+        return $now->copy()->next($this->getDayName($firstDay))->setTimeFromTimeString((string) $this->time);
     }
 
     /**

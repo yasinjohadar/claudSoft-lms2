@@ -129,17 +129,19 @@ class BackupController extends Controller
                 'created_by' => Auth::id(),
             ];
 
-            if (config('app.env') === 'local' || config('app.debug')) {
-                // في بيئة التطوير، شغّل Job بشكل متزامن
+            // Database / full backups always queue (avoid HTTP timeout on large dumps)
+            $forceQueue = in_array($validated['backup_type'], ['database', 'full'], true)
+                || config('backup.always_queue', false);
+
+            if (!$forceQueue && (config('app.env') === 'local' || config('app.debug'))) {
                 \App\Jobs\CreateBackupJob::dispatchSync($backup, $jobOptions);
                 return redirect()->route('backups.show', $backup)
                                ->with('success', 'تم إنشاء النسخة الاحتياطية بنجاح.');
-            } else {
-                // في الإنتاج، شغّل Job بشكل غير متزامن
-                \App\Jobs\CreateBackupJob::dispatch($backup, $jobOptions);
-                return redirect()->route('backups.show', $backup)
-                               ->with('info', 'تم بدء عملية إنشاء النسخة الاحتياطية. جاري المعالجة...');
             }
+
+            \App\Jobs\CreateBackupJob::dispatch($backup, $jobOptions);
+            return redirect()->route('backups.show', $backup)
+                           ->with('info', 'تم بدء عملية إنشاء النسخة الاحتياطية. جاري المعالجة...');
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -171,6 +173,10 @@ class BackupController extends Controller
         
         return response()->json([
             'status' => $backup->status,
+            'progress' => $backup->progress ?? 0,
+            'stage' => $backup->stage,
+            'bytes_processed' => $backup->bytes_processed,
+            'bytes_total' => $backup->bytes_total,
             'file_size' => $backup->file_size,
             'file_size_formatted' => $backup->getFileSize(),
             'completed_at' => $backup->completed_at?->format('Y-m-d H:i:s'),
@@ -187,6 +193,27 @@ class BackupController extends Controller
                 ];
             })->values(),
         ]);
+    }
+
+    /**
+     * تعليم نسخة عالقة (running) كمفشل
+     */
+    public function markFailed(Backup $backup)
+    {
+        if ($backup->status !== 'running' && $backup->status !== 'pending') {
+            return redirect()->back()
+                ->with('error', 'يمكن تعليم النسخ المعلقة أو قيد التنفيذ فقط كمفاشلة.');
+        }
+
+        $backup->update([
+            'status' => 'failed',
+            'stage' => 'failed',
+            'completed_at' => now(),
+            'error_message' => $backup->error_message
+                ?: 'Marked as failed manually by admin',
+        ]);
+
+        return redirect()->back()->with('success', 'تم تعليم النسخة كمفشل.');
     }
 
     /**
@@ -213,16 +240,19 @@ class BackupController extends Controller
                 'created_by' => $backup->created_by,
             ];
 
-            // تشغيل Job (متزامن في التطوير، غير متزامن في الإنتاج)
-            if (config('app.env') === 'local' || config('app.debug')) {
+            // تشغيل Job (queue للنسخ الثقيلة دائماً)
+            $forceQueue = in_array($backup->backup_type, ['database', 'full'], true)
+                || config('backup.always_queue', false);
+
+            if (!$forceQueue && (config('app.env') === 'local' || config('app.debug'))) {
                 \App\Jobs\CreateBackupJob::dispatchSync($backup, $jobOptions);
                 return redirect()->back()
                                ->with('success', 'تم تشغيل النسخة الاحتياطية بنجاح.');
-            } else {
-                \App\Jobs\CreateBackupJob::dispatch($backup, $jobOptions);
-                return redirect()->back()
-                               ->with('info', 'تم بدء تشغيل النسخة الاحتياطية. جاري المعالجة...');
             }
+
+            \App\Jobs\CreateBackupJob::dispatch($backup, $jobOptions);
+            return redirect()->back()
+                           ->with('info', 'تم بدء تشغيل النسخة الاحتياطية. جاري المعالجة...');
         } catch (\Exception $e) {
             Log::error('Error running backup manually: ' . $e->getMessage(), [
                 'backup_id' => $backup->id,

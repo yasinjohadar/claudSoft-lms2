@@ -50,6 +50,12 @@ Schedule::command('backup:cleanup-expired')
     ->withoutOverlapping()
     ->runInBackground();
 
+// تعليم النسخ العالقة في حالة running كمفاشلة - كل ساعة
+Schedule::command('backups:mark-stuck-failed')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 /*
 |--------------------------------------------------------------------------
 | Weekly Student Reports Scheduled Tasks

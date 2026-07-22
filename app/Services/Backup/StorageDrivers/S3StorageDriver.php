@@ -3,12 +3,16 @@
 namespace App\Services\Backup\StorageDrivers;
 
 use App\Contracts\BackupStorageInterface;
+use Aws\S3\MultipartUploader;
+use Aws\Exception\MultipartUploadException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
 
 class S3StorageDriver implements BackupStorageInterface
 {
+    use Concerns\StoresFromPath;
+
     protected array $config;
     protected string $diskName;
 
@@ -37,6 +41,66 @@ class S3StorageDriver implements BackupStorageInterface
             return Storage::disk($this->diskName)->put($path, $content) !== false;
         } catch (\Exception $e) {
             Log::error('S3 storage store failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function storeFromPath(string $remotePath, string $localPath): bool
+    {
+        try {
+            if (!is_readable($localPath)) {
+                Log::error('S3 storeFromPath: local file not readable', ['path' => $localPath]);
+                return false;
+            }
+
+            $disk = Storage::disk($this->diskName);
+            $bucket = $this->config['bucket'] ?? '';
+            $partSize = (int) config('backup.multipart_part_size', 16 * 1024 * 1024);
+            $threshold = (int) config('backup.multipart_threshold', 16 * 1024 * 1024);
+            $fileSize = filesize($localPath) ?: 0;
+
+            // Multipart for larger files when AWS client is available
+            if ($fileSize >= $threshold && $bucket !== '' && method_exists($disk, 'getClient')) {
+                $client = $disk->getClient();
+                $source = fopen($localPath, 'rb');
+                if ($source === false) {
+                    return false;
+                }
+
+                try {
+                    $uploader = new MultipartUploader($client, $source, [
+                        'bucket' => $bucket,
+                        'key' => $remotePath,
+                        'part_size' => max($partSize, 5 * 1024 * 1024),
+                    ]);
+                    $uploader->upload();
+                    return true;
+                } catch (MultipartUploadException $e) {
+                    Log::error('S3 multipart upload failed: ' . $e->getMessage());
+                    return false;
+                } finally {
+                    if (is_resource($source)) {
+                        fclose($source);
+                    }
+                }
+            }
+
+            // Stream put for smaller files / fallback
+            $stream = fopen($localPath, 'rb');
+            if ($stream === false) {
+                return false;
+            }
+
+            try {
+                $result = $disk->writeStream($remotePath, $stream);
+                return $result !== false;
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('S3 storage storeFromPath failed: ' . $e->getMessage());
             return false;
         }
     }

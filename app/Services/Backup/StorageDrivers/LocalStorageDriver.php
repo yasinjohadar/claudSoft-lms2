@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class LocalStorageDriver implements BackupStorageInterface
 {
+    use Concerns\StoresFromPath;
+
     protected string $root;
 
     public function __construct(array $config)
@@ -21,6 +23,27 @@ class LocalStorageDriver implements BackupStorageInterface
             return Storage::disk('local')->put($this->root . '/' . $path, $content);
         } catch (\Exception $e) {
             Log::error('Local storage store failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function storeFromPath(string $remotePath, string $localPath): bool
+    {
+        try {
+            if (!is_readable($localPath)) {
+                return false;
+            }
+
+            $destination = $this->root . '/' . $remotePath;
+            $absoluteDest = Storage::disk('local')->path($destination);
+            $dir = dirname($absoluteDest);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            return copy($localPath, $absoluteDest);
+        } catch (\Exception $e) {
+            Log::error('Local storage storeFromPath failed: ' . $e->getMessage());
             return false;
         }
     }

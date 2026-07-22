@@ -25,7 +25,6 @@ class StorageManager
      */
     public function storeWithFailover(Backup $backup, string $filePath): bool
     {
-        $fileContent = file_get_contents($filePath);
         $fileSize = filesize($filePath);
 
         // محاولة استخدام storageConfig المحدد للنسخة أولاً
@@ -43,7 +42,7 @@ class StorageManager
                     $storagePath = 'backups/' . $backup->id . '/' . basename($filePath);
                     
                     Log::info("Storing backup file to: {$storagePath}");
-                    if ($driver->store($storagePath, $fileContent)) {
+                    if ($driver->storeFromPath($storagePath, $filePath)) {
                         // تتبع الإحصائيات
                         $this->analyticsService->trackStorageUsage($config, $fileSize);
                         $this->analyticsService->trackBandwidth($config, 'upload', $fileSize);
@@ -100,7 +99,7 @@ class StorageManager
                 if ($driver->testConnection()) {
                     $storagePath = 'backups/' . $backup->id . '/' . basename($filePath);
                     
-                    if ($driver->store($storagePath, $fileContent)) {
+                    if ($driver->storeFromPath($storagePath, $filePath)) {
                         // تتبع الإحصائيات
                         $this->analyticsService->trackStorageUsage($config, $fileSize);
                         $this->analyticsService->trackBandwidth($config, 'upload', $fileSize);
@@ -161,7 +160,6 @@ class StorageManager
 
         Log::info("Starting redundancy storage to " . $configs->count() . " additional location(s)");
 
-        $fileContent = file_get_contents($filePath);
         $fileSize = filesize($filePath);
         $successfulStorages = [];
         $failedStorages = [];
@@ -173,7 +171,7 @@ class StorageManager
                 if ($driver->testConnection()) {
                     $storagePath = 'backups/' . $backup->id . '/' . basename($filePath);
                     
-                    if ($driver->store($storagePath, $fileContent)) {
+                    if ($driver->storeFromPath($storagePath, $filePath)) {
                         $this->analyticsService->trackStorageUsage($config, $fileSize);
                         $this->analyticsService->trackBandwidth($config, 'upload', $fileSize);
                         
@@ -212,17 +210,20 @@ class StorageManager
      */
     public function retrieve(Backup $backup): string
     {
-        // استخدام storageConfig المحدد للنسخة
         $config = $backup->storageConfig;
-        
+
         if (!$config || !$config->is_active) {
             throw new \Exception("Storage config not found or inactive for backup: {$backup->id}");
         }
 
+        $path = $backup->storage_path;
+        if (!is_string($path) || $path === '') {
+            throw new \Exception("لا يوجد ملف مخزّن لهذه النسخة (storage_path فارغ).");
+        }
+
         $driver = StorageFactory::create($config);
-        $content = $driver->retrieve($backup->storage_path);
-        
-        // تتبع النطاق الترددي
+        $content = $driver->retrieve($path);
+
         $this->analyticsService->trackBandwidth($config, 'download', strlen($content));
 
         return $content;
@@ -233,15 +234,21 @@ class StorageManager
      */
     public function delete(Backup $backup): bool
     {
-        // استخدام storageConfig المحدد للنسخة
         $config = $backup->storageConfig;
-        
+
         if (!$config || !$config->is_active) {
             return false;
         }
 
+        $path = $backup->storage_path;
+        if (!is_string($path) || $path === '') {
+            // Incomplete/failed backups never uploaded — nothing to delete remotely
+            return true;
+        }
+
         $driver = StorageFactory::create($config);
-        return $driver->delete($backup->storage_path);
+
+        return $driver->delete($path);
     }
 
     /**

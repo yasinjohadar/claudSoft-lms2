@@ -4,6 +4,7 @@ namespace App\Services\Backup;
 
 use App\Models\BackupSchedule;
 use App\Models\Backup;
+use App\Jobs\CreateBackupJob;
 use App\Services\Backup\BackupService;
 use Carbon\Carbon;
 
@@ -18,10 +19,11 @@ class BackupScheduleService
      */
     public function createSchedule(array $data): BackupSchedule
     {
+        $data['is_active'] = $data['is_active'] ?? true;
         $schedule = BackupSchedule::create($data);
         $schedule->update(['next_run_at' => $schedule->calculateNextRun()]);
 
-        return $schedule;
+        return $schedule->fresh();
     }
 
     /**
@@ -53,9 +55,9 @@ class BackupScheduleService
         $backups = collect();
 
         foreach ($storageDrivers as $driver) {
-            // البحث عن AppStorageConfig الذي له نفس الـ driver
             $storageConfig = \App\Models\AppStorageConfig::where('driver', $driver)
                 ->where('is_active', true)
+                ->orderByDesc('priority')
                 ->first();
 
             if (!$storageConfig) {
@@ -64,19 +66,55 @@ class BackupScheduleService
             }
 
             foreach ($compressionTypes as $compression) {
-                $backup = $this->backupService->createBackup([
+                $backup = Backup::create([
                     'name' => $schedule->name . '_' . now()->format('Y-m-d_H-i-s'),
                     'type' => 'scheduled',
                     'backup_type' => $schedule->backup_type,
                     'storage_driver' => $driver,
                     'storage_config_id' => $storageConfig->id,
+                    'storage_path' => null,
+                    'file_path' => null,
                     'compression_type' => $compression,
+                    'status' => 'pending',
                     'retention_days' => $schedule->retention_days,
+                    'created_by' => null,
                     'schedule_id' => $schedule->id,
                 ]);
 
+                $backup->update([
+                    'expires_at' => $backup->calculateExpiresAt(),
+                ]);
+
+                $jobOptions = [
+                    'name' => $backup->name,
+                    'type' => 'scheduled',
+                    'backup_type' => $schedule->backup_type,
+                    'storage_config_id' => $storageConfig->id,
+                    'storage_driver' => $driver,
+                    'compression_type' => $compression,
+                    'retention_days' => $schedule->retention_days,
+                    'schedule_id' => $schedule->id,
+                ];
+
+                $useSync = config('backup.schedule_dispatch_sync', false)
+                    && $schedule->backup_type !== 'database'
+                    && $schedule->backup_type !== 'full';
+
+                if ($useSync) {
+                    CreateBackupJob::dispatchSync($backup, $jobOptions);
+                } else {
+                    CreateBackupJob::dispatch($backup, $jobOptions);
+                }
+
                 $backups->push($backup);
             }
+        }
+
+        if ($backups->isEmpty()) {
+            throw new \RuntimeException(
+                'تعذر إنشاء نسخة مجدولة: لا يوجد مكان تخزين نشط يطابق السائقين المحددين ('
+                . implode(', ', $storageDrivers) . ')'
+            );
         }
 
         $schedule->update([

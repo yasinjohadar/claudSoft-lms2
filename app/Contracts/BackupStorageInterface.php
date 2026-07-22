@@ -10,6 +10,11 @@ interface BackupStorageInterface
     public function store(string $path, string $content): bool;
 
     /**
+     * تخزين ملف من مسار محلي (تدفق / multipart) دون تحميل المحتوى كاملاً في الذاكرة
+     */
+    public function storeFromPath(string $remotePath, string $localPath): bool;
+
+    /**
      * استرجاع ملف
      */
     public function retrieve(string $path): string;

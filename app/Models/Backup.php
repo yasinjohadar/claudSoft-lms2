@@ -22,6 +22,10 @@ class Backup extends Model
         'file_size',
         'compression_type',
         'status',
+        'progress',
+        'stage',
+        'bytes_processed',
+        'bytes_total',
         'started_at',
         'completed_at',
         'duration',
@@ -37,6 +41,9 @@ class Backup extends Model
         'file_size' => 'integer',
         'duration' => 'integer',
         'retention_days' => 'integer',
+        'progress' => 'integer',
+        'bytes_processed' => 'integer',
+        'bytes_total' => 'integer',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -174,6 +181,46 @@ class Backup extends Model
         }
         
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * امتداد الملف الحقيقي للتحميل (ليس قيمة compression_type في قاعدة البيانات).
+     * مثال: gzip → gz أو sql.gz — وليس "gzip".
+     */
+    public function fileExtension(): string
+    {
+        $fromMeta = $this->metadata['extension'] ?? null;
+        if (is_string($fromMeta) && $fromMeta !== '') {
+            return ltrim($fromMeta, '.');
+        }
+
+        if ($this->storage_path) {
+            $basename = basename($this->storage_path);
+            if (str_ends_with(strtolower($basename), '.sql.gz')) {
+                return 'sql.gz';
+            }
+            $ext = pathinfo($basename, PATHINFO_EXTENSION);
+            if ($ext !== '' && strtolower($ext) !== 'gzip') {
+                return $ext;
+            }
+        }
+
+        return match ($this->compression_type) {
+            'gzip' => $this->backup_type === 'database' ? 'sql.gz' : 'gz',
+            'zip' => 'zip',
+            'tar' => 'tar',
+            default => $this->compression_type ?: 'bin',
+        };
+    }
+
+    /**
+     * اسم ملف التحميل المعروض للمتصفح.
+     */
+    public function downloadFilename(): string
+    {
+        $safeName = preg_replace('/[\\\\\\/:*?"<>|]+/u', '_', (string) $this->name) ?: 'backup';
+
+        return $safeName . '.' . $this->fileExtension();
     }
 
     /**

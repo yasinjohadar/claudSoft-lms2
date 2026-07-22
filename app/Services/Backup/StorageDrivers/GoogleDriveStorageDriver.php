@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Config;
 
 class GoogleDriveStorageDriver implements BackupStorageInterface
 {
+    use Concerns\StoresFromPath;
+
     protected array $config;
     protected string $diskName;
     protected $adapter;
@@ -37,6 +39,52 @@ class GoogleDriveStorageDriver implements BackupStorageInterface
         } catch (\Exception $e) {
             Log::error('Google Drive storage store failed: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    protected function putFromStream(string $remotePath, string $localPath): bool
+    {
+        $stream = fopen($localPath, 'rb');
+        if ($stream === false) {
+            Log::error('Google Drive putFromStream: cannot open local file', ['path' => $localPath]);
+
+            return false;
+        }
+
+        try {
+            $disk = \Storage::disk($this->diskName);
+            $size = filesize($localPath) ?: 0;
+
+            Log::info('Google Drive upload starting', [
+                'remote' => $remotePath,
+                'local' => $localPath,
+                'bytes' => $size,
+            ]);
+
+            // Flysystem writeStream throws on failure when disk throw=true
+            if (method_exists($disk, 'writeStream')) {
+                $disk->writeStream($remotePath, $stream);
+            } else {
+                $ok = $disk->put($remotePath, $stream);
+                if ($ok === false) {
+                    throw new \RuntimeException('Google Drive put() returned false');
+                }
+            }
+
+            Log::info('Google Drive upload finished', ['remote' => $remotePath, 'bytes' => $size]);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Google Drive putFromStream failed: ' . $e->getMessage(), [
+                'remote' => $remotePath,
+                'local' => $localPath,
+            ]);
+
+            return false;
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
     }
 

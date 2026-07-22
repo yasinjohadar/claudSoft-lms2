@@ -24,7 +24,13 @@ class BackupScheduleController extends Controller
                                   ->latest()
                                   ->paginate(20);
 
-        return view('admin.pages.backup-schedules.index', compact('schedules'));
+        $stats = [
+            'total' => BackupSchedule::count(),
+            'active' => BackupSchedule::where('is_active', true)->count(),
+            'inactive' => BackupSchedule::where('is_active', false)->count(),
+        ];
+
+        return view('admin.pages.backup-schedules.index', compact('schedules', 'stats'));
     }
 
     /**
@@ -222,7 +228,7 @@ class BackupScheduleController extends Controller
         try {
             $this->scheduleService->deleteSchedule($schedule);
 
-            return redirect()->route('admin.backup-schedules.index')
+            return redirect()->route('backup-schedules.index')
                            ->with('success', 'تم حذف الجدولة بنجاح.');
         } catch (\Exception $e) {
             Log::error('Error deleting backup schedule: ' . $e->getMessage());
@@ -239,8 +245,8 @@ class BackupScheduleController extends Controller
         try {
             $backup = $this->scheduleService->executeSchedule($schedule);
 
-            return redirect()->route('admin.backups.show', $backup)
-                           ->with('success', 'تم تشغيل الجدولة بنجاح.');
+            return redirect()->route('backups.show', $backup)
+                           ->with('success', 'تم تشغيل الجدولة بنجاح. جاري المعالجة عبر الطابور...');
         } catch (\Exception $e) {
             Log::error('Error executing backup schedule: ' . $e->getMessage());
             return redirect()->back()
@@ -255,6 +261,9 @@ class BackupScheduleController extends Controller
     {
         try {
             $schedule->update(['is_active' => !$schedule->is_active]);
+            if ($schedule->is_active) {
+                $schedule->update(['next_run_at' => $schedule->calculateNextRun()]);
+            }
 
             return redirect()->back()
                            ->with('success', 'تم تحديث حالة الجدولة بنجاح.');

@@ -1511,6 +1511,7 @@ Route::prefix('admin')
             Route::get('/{backup}', [BackupController::class, 'show'])->name('show');
             Route::get('/{backup}/status', [BackupController::class, 'status'])->name('status');
             Route::post('/{backup}/run', [BackupController::class, 'run'])->name('run');
+            Route::post('/{backup}/mark-failed', [BackupController::class, 'markFailed'])->name('mark-failed');
             Route::post('/{backup}/restore', [BackupController::class, 'restore'])->name('restore');
             Route::get('/{backup}/download', [BackupController::class, 'download'])->name('download');
             Route::delete('/{backup}', [BackupController::class, 'destroy'])->name('destroy');

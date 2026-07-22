@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Config;
 
 class BunnyStorageDriver implements BackupStorageInterface
 {
+    use Concerns\StoresFromPath;
+
     protected array $config;
     protected string $diskName;
 
@@ -37,6 +39,26 @@ class BunnyStorageDriver implements BackupStorageInterface
         } catch (\Exception $e) {
             Log::error('Bunny Storage store failed: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    protected function putFromStream(string $remotePath, string $localPath): bool
+    {
+        $stream = fopen($localPath, 'rb');
+        if ($stream === false) {
+            return false;
+        }
+        try {
+            $disk = Storage::disk($this->diskName);
+            if (method_exists($disk, 'writeStream')) {
+                return $disk->writeStream($remotePath, $stream) !== false;
+            }
+
+            return $disk->put($remotePath, $stream) !== false;
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
     }
 

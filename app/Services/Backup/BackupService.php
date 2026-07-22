@@ -8,7 +8,6 @@ use App\Services\Backup\BackupStorageService;
 use App\Services\Backup\BackupCompressionService;
 use App\Services\Backup\BackupNotificationService;
 use App\Services\Backup\StorageManager;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +20,8 @@ class BackupService
         private BackupStorageService $storageService,
         private BackupCompressionService $compressionService,
         private BackupNotificationService $notificationService,
-        private StorageManager $storageManager
+        private StorageManager $storageManager,
+        private BackupEngine $backupEngine,
     ) {}
 
     /**
@@ -77,12 +77,16 @@ class BackupService
         // تحميل storageConfig relationship
         $backup->load('storageConfig');
 
+        // مسار JetBackup-style لقاعدة البيانات فقط
+        if ($backup->backup_type === 'database') {
+            return $this->backupEngine->runDatabaseBackup($backup, $options);
+        }
+
         try {
             $this->log($backup, 'info', 'بدء عملية النسخ الاحتياطي');
 
             $filePath = match($backup->backup_type) {
                 'full' => $this->createFullBackup($backup, $options),
-                'database' => $this->createDatabaseBackup($backup, $options),
                 'files' => $this->createFilesBackup($backup, $options),
                 'config' => $this->createConfigBackup($backup, $options),
                 default => throw new \Exception('نوع النسخ غير معروف: ' . $backup->backup_type),
@@ -139,7 +143,9 @@ class BackupService
             
             $storagePath = $backup->storage_path;
 
-            $duration = now()->diffInSeconds($backup->started_at);
+            $duration = $backup->started_at
+                ? (int) abs($backup->started_at->diffInSeconds(now()))
+                : 0;
             
             // الحصول على حجم الملف - استخدام filesize() لأن compressedPath هو مسار كامل
             if (!file_exists($compressedPath)) {
@@ -435,103 +441,32 @@ class BackupService
     }
 
     /**
-     * إنشاء نسخة قاعدة البيانات
+     * إنشاء نسخة قاعدة البيانات (للاستخدام داخل full؛ النوع database يمر عبر BackupEngine)
      */
     public function createDatabaseBackup(Backup $backup, array $options): string
     {
-        $filename = 'database_' . now()->format('Y-m-d_H-i-s') . '.sql';
-        $backupDir = storage_path('app/backups');
-        $path = $backupDir . '/' . $filename;
-
-        // التأكد من وجود المجلد
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
-
-        $database = config('database.connections.mysql.database');
-        $username = config('database.connections.mysql.username');
-        $password = config('database.connections.mysql.password');
-        $host = config('database.connections.mysql.host');
-        $port = config('database.connections.mysql.port', 3306);
-
-        // استخدام Laravel DB facade بدلاً من mysqldump
         try {
-            $tables = DB::select('SHOW TABLES');
-            $databaseName = $database;
-            $tablesKey = 'Tables_in_' . $databaseName;
-            
-            $sqlContent = "-- Database Backup\n";
-            $sqlContent .= "-- Generated: " . now()->toDateTimeString() . "\n";
-            $sqlContent .= "-- Database: {$databaseName}\n\n";
-            $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
-
-            foreach ($tables as $table) {
-                $tableName = $table->$tablesKey;
-                
-                // الحصول على CREATE TABLE statement
-                $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
-                $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-                $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
-
-                // الحصول على البيانات
-                $rows = DB::table($tableName)->get();
-                if ($rows->count() > 0) {
-                    $sqlContent .= "LOCK TABLES `{$tableName}` WRITE;\n";
-                    
-                    // الحصول على أسماء الأعمدة من أول صف
-                    $firstRow = (array) $rows->first();
-                    $columns = array_map(function ($col) {
-                        return "`{$col}`";
-                    }, array_keys($firstRow));
-                    $columnsStr = implode(", ", $columns);
-                    
-                    $values = [];
-                    $chunkSize = 100;
-                    $currentChunk = 0;
-                    
-                    foreach ($rows as $row) {
-                        $rowArray = (array) $row;
-                        
-                        $valArray = array_map(function ($val) {
-                            if ($val === null) {
-                                return 'NULL';
-                            }
-                            return DB::getPdo()->quote($val);
-                        }, array_values($rowArray));
-                        
-                        $values[] = "(" . implode(", ", $valArray) . ")";
-                        $currentChunk++;
-                        
-                        // كتابة كل 100 صف
-                        if ($currentChunk >= $chunkSize) {
-                            $valuesStr = implode(",\n", $values);
-                            $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
-                            $values = [];
-                            $currentChunk = 0;
-                        }
+            $artifact = $this->backupEngine->produceDatabaseArtifact(
+                $backup,
+                ['compress' => false],
+                function (string $stage, int $progress, ?int $bytesProcessed, ?int $bytesTotal) use ($backup) {
+                    $data = [
+                        'stage' => $stage,
+                        'progress' => max(0, min(100, $progress)),
+                    ];
+                    if ($bytesProcessed !== null) {
+                        $data['bytes_processed'] = $bytesProcessed;
                     }
-                    
-                    // كتابة الصفوف المتبقية
-                    if (!empty($values)) {
-                        $valuesStr = implode(",\n", $values);
-                        $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
+                    if ($bytesTotal !== null) {
+                        $data['bytes_total'] = $bytesTotal;
                     }
-                    
-                    $sqlContent .= "UNLOCK TABLES;\n\n";
+                    $backup->update($data);
                 }
-            }
+            );
 
-            $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
+            $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح (' . ($artifact->metadata['source'] ?? 'unknown') . ')');
 
-            file_put_contents($path, $sqlContent);
-
-            if (!file_exists($path) || filesize($path) === 0) {
-                throw new \Exception('فشل في إنشاء ملف النسخة الاحتياطية - الملف فارغ أو غير موجود');
-            }
-
-            $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح');
-
-            return $path;
+            return $artifact->path;
         } catch (\Exception $e) {
             Log::error('Database backup failed: ' . $e->getMessage(), [
                 'backup_id' => $backup->id,
@@ -713,20 +648,22 @@ class BackupService
     public function downloadBackup(Backup $backup): BinaryFileResponse
     {
         $fileContent = $this->storageManager->retrieve($backup);
-        $tempFilePath = storage_path('app/temp/download_' . $backup->id . '_' . time() . '.' . $backup->compression_type);
-        
+        $extension = $backup->fileExtension();
+        $tempFilePath = storage_path('app/temp/download_' . $backup->id . '_' . time() . '.' . $extension);
+
         if (!is_dir(dirname($tempFilePath))) {
             mkdir(dirname($tempFilePath), 0755, true);
         }
-        
-        file_put_contents($tempFilePath, $fileContent);
-        $filePath = $tempFilePath;
 
-        if (!file_exists($filePath)) {
+        file_put_contents($tempFilePath, $fileContent);
+
+        if (!file_exists($tempFilePath)) {
             throw new \Exception('الملف غير موجود');
         }
 
-        return response()->download($filePath, $backup->name . '.' . $backup->compression_type);
+        return response()
+            ->download($tempFilePath, $backup->downloadFilename())
+            ->deleteFileAfterSend(true);
     }
 
     /**

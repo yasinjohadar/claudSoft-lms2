@@ -7,34 +7,21 @@
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">إضافة مكان تخزين</h5>
-            </div>
-            <div>
-                <a href="{{ route('backup-storage.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع
-                </a>
-            </div>
+        <div class="my-4 page-header-breadcrumb">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('backup-storage.index') }}">أماكن التخزين</a></li>
+                    <li class="breadcrumb-item active">إضافة</li>
+                </ol>
+            </nav>
         </div>
 
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-            </div>
-        @endif
+        @include('admin.components.alerts')
 
         @if ($errors->any())
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>
+                <i class="fe fe-alert-circle me-2"></i>
                 <strong>حدث خطأ:</strong>
                 <ul class="mb-0 mt-2">
                     @foreach ($errors->all() as $error)
@@ -45,10 +32,33 @@
             </div>
         @endif
 
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body">
+        <div class="group-show-hero dashboard-fade-in mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-plus-circle me-1"></i>
+                        مكان تخزين جديد
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">إضافة مكان تخزين</h2>
+                    <p class="group-show-hero__desc mb-0">أضف S3 أو IDrive أو محلياً واستخدم اختبار الاتصال قبل الحفظ.</p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="group-show-actions group-show-actions--single">
+                        <a href="{{ route('backup-storage.index') }}" class="group-show-action group-show-action--info">
+                            <span class="group-show-action__icon"><i class="fe fe-arrow-right"></i></span>
+                            <span class="group-show-action__text">رجوع لأماكن التخزين</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card custom-card group-show-members-card dashboard-fade-in mb-4">
+            <div class="card-header border-0 pb-0">
+                <h6 class="group-show-members-card__title mb-1">إعدادات الاتصال</h6>
+                <p class="fs-12 text-muted mb-0">اختر نوع التخزين ثم أدخل بيانات الاعتماد.</p>
+            </div>
+            <div class="card-body pt-3">
                         <form action="{{ route('backup-storage.store') }}" method="POST" id="storage-form">
                             @csrf
 
@@ -135,20 +145,18 @@
                                 </div>
                             </div>
 
-                            <div class="d-flex gap-2">
+                            <div class="d-flex flex-wrap gap-2">
                                 <button type="button" id="test-connection-btn" class="btn btn-info">
-                                    <i class="fas fa-plug me-1"></i> اختبار الاتصال
+                                    <i class="fe fe-zap me-1"></i> اختبار الاتصال
                                 </button>
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-1"></i> حفظ
+                                    <i class="fe fe-save me-1"></i> حفظ
                                 </button>
-                                <a href="{{ route('backup-storage.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('backup-storage.index') }}" class="btn btn-outline-secondary">
                                     إلغاء
                                 </a>
                             </div>
                         </form>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
