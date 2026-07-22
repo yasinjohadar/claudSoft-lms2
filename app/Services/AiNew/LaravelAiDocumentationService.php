@@ -10,6 +10,7 @@ use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
 use App\Services\Ai\AIDocumentationPageService;
+use App\Services\Ai\DocumentationAiResultNormalizer;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class LaravelAiDocumentationService
         private LaravelAiProviderManager $providerManager,
         private LaravelAiRequestLogger $logger,
         private LaravelAiPromptRunner $promptRunner,
+        private DocumentationAiResultNormalizer $resultNormalizer,
     ) {}
 
     /**
@@ -414,27 +416,31 @@ PROMPT;
     private function expandRefinePayload(array $structured, array $options): array
     {
         $updateExcerpt = (bool) ($options['update_excerpt'] ?? false);
-        $content = $this->normalizeGeneratedHtmlContent((string) ($structured['content'] ?? ''));
-        if ($content === '' && ! empty($structured['text'])) {
-            $parsed = json_decode((string) $structured['text'], true);
-            if (is_array($parsed) && ! empty($parsed['content'])) {
-                $content = $this->normalizeGeneratedHtmlContent((string) $parsed['content']);
-            }
-            if ($content === '') {
-                $content = $this->normalizeGeneratedHtmlContent((string) $structured['text']);
+        $unwrapped = $this->resultNormalizer->unwrapPayload($structured);
+        $content = trim((string) ($unwrapped['content'] ?? $unwrapped['html'] ?? ''));
+        $content = $this->resultNormalizer->normalizeHtmlString($content);
+
+        if (($content === '' || ! $this->resultNormalizer->isPlausibleHtml($content)) && ! empty($structured['text'])) {
+            $fromText = $this->resultNormalizer->unwrapPayload((string) $structured['text']);
+            $content = trim((string) ($fromText['content'] ?? $fromText['html'] ?? ''));
+            $content = $this->resultNormalizer->normalizeHtmlString($content);
+            if ($content === '' || ! $this->resultNormalizer->isPlausibleHtml($content)) {
+                $content = $this->resultNormalizer->extractSectionHtml((string) $structured['text']);
             }
         }
-        if ($content === '') {
+
+        if ($content === '' || ! $this->resultNormalizer->isPlausibleHtml($content)) {
             throw new \RuntimeException('لم يُرجع الموديل محتوى HTML صالحاً. حاول مجدداً أو قلّل حجم النص.');
         }
 
         $result = ['content' => $content];
 
         if ($updateExcerpt) {
-            $rawExcerpt = $structured['excerpt'] ?? null;
-            if ($rawExcerpt !== null && trim((string) $rawExcerpt) !== '') {
-                $result['excerpt'] = Str::limit(trim(strip_tags((string) $rawExcerpt)), 500);
+            $rawExcerpt = trim((string) ($unwrapped['excerpt'] ?? ($structured['excerpt'] ?? '')));
+            if ($rawExcerpt === '' || $this->resultNormalizer->looksLikeJsonBlob($rawExcerpt)) {
+                $rawExcerpt = $this->resultNormalizer->excerptFromHtml($content);
             }
+            $result['excerpt'] = Str::limit(strip_tags($rawExcerpt), 500);
         }
 
         return $result;
@@ -586,37 +592,23 @@ GUIDE;
      */
     private function expandWizardPayload(array $structured, string $topic, array $options): array
     {
-        $title = trim((string) ($structured['title'] ?? ''));
-        if ($title === '') {
-            $title = $topic;
-        }
-
-        $content = $this->normalizeGeneratedHtmlContent((string) ($structured['content'] ?? ''));
-        if ($content === '') {
-            throw new \RuntimeException('لم يُرجع الموديل محتوى HTML صالحاً. حاول مجدداً أو قلّل طول المحتوى المطلوب.');
-        }
-
-        $excerpt = trim((string) ($structured['excerpt'] ?? ''));
-        if ($excerpt === '') {
-            $excerpt = Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags($content)) ?: ''), 200);
-        }
+        $shaped = $this->resultNormalizer->assertWizardShape($structured, $topic);
 
         $slug = $this->normalizeSlugFromTitle(
-            isset($structured['slug']) ? trim((string) $structured['slug']) : null,
-            $title
+            $shaped['slug'] ?? (isset($structured['slug']) ? trim((string) $structured['slug']) : null),
+            $shaped['title']
         );
 
         $result = [
-            'title' => $title,
+            'title' => $shaped['title'],
             'slug' => $slug,
-            'excerpt' => $excerpt,
-            'content' => $content,
+            'excerpt' => $shaped['excerpt'],
+            'content' => $shaped['content'],
         ];
 
         if ($options['generate_meta'] ?? true) {
-            $plain = strip_tags($excerpt);
-            $result['meta_title'] = Str::limit($title, 60);
-            $result['meta_description'] = Str::limit($plain !== '' ? $plain : strip_tags($content), 160);
+            $result['meta_title'] = $shaped['meta_title'];
+            $result['meta_description'] = $shaped['meta_description'];
         }
 
         return $result;
@@ -624,23 +616,14 @@ GUIDE;
 
     private function normalizeGeneratedHtmlContent(string $content): string
     {
-        $value = trim($content);
-        if ($value === '') {
-            return '';
+        $normalized = $this->resultNormalizer->normalizeHtmlString($content);
+        if ($this->resultNormalizer->looksLikeJsonBlob($normalized)) {
+            $extracted = $this->resultNormalizer->extractSectionHtml($normalized);
+
+            return $extracted;
         }
 
-        if (($value[0] ?? '') === '"' && (substr($value, -1) === '"')) {
-            $decodedString = json_decode($value, true);
-            if (is_string($decodedString) && trim($decodedString) !== '') {
-                $value = trim($decodedString);
-            }
-        }
-
-        $value = str_replace(['\\/', '\\"'], ['/', '"'], $value);
-        $value = preg_replace('/\\\\r\\\\n|\\\\n|\\\\r/', "\n", $value) ?? $value;
-        $value = preg_replace('/\r\n|\r/', "\n", $value) ?? $value;
-
-        return trim($value);
+        return $normalized;
     }
 
     private function normalizeSlugFromTitle(?string $slug, string $title): string

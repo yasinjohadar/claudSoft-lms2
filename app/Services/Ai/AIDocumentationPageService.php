@@ -16,6 +16,13 @@ class AIDocumentationPageService
     /** الحد الأقصى لطول HTML المصدر عند التحسين (حماية من تجاوز سياق الموديل). */
     public const MAX_REFINE_SOURCE_CHARS = 180000;
 
+    private ?DocumentationAiResultNormalizer $resultNormalizer = null;
+
+    private function resultNormalizer(): DocumentationAiResultNormalizer
+    {
+        return $this->resultNormalizer ??= new DocumentationAiResultNormalizer;
+    }
+
     /**
      * إعادة صياغة وتحسين محتوى توثيق موجود (HTML).
      *
@@ -114,21 +121,25 @@ PROMPT;
         }
 
         $data = $this->parseJSONResponse($response);
-        $content = isset($data['content'])
-            ? $this->normalizeGeneratedHtmlContent((string) $data['content'])
-            : '';
+        $unwrapped = $this->resultNormalizer()->unwrapPayload(
+            $data !== [] ? $data : $response
+        );
 
-        if ($content === '') {
-            $content = $this->normalizeGeneratedHtmlContent($response);
-            if ($content === '') {
-                throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
-            }
+        $content = trim((string) ($unwrapped['content'] ?? $unwrapped['html'] ?? ''));
+        $content = $this->resultNormalizer()->normalizeHtmlString($content);
+
+        if ($content === '' || ! $this->resultNormalizer()->isPlausibleHtml($content)) {
+            throw new \Exception('لم يُستخرج محتوى HTML صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
         }
 
         $result = ['content' => $content];
 
-        if ($updateExcerpt && ! empty($data['excerpt'])) {
-            $result['excerpt'] = Str::limit(trim(strip_tags((string) $data['excerpt'])), 500);
+        if ($updateExcerpt) {
+            $excerpt = trim((string) ($unwrapped['excerpt'] ?? ''));
+            if ($excerpt === '' || $this->resultNormalizer()->looksLikeJsonBlob($excerpt)) {
+                $excerpt = $this->resultNormalizer()->excerptFromHtml($content);
+            }
+            $result['excerpt'] = Str::limit(strip_tags($excerpt), 500);
         }
 
         return $result;
@@ -230,15 +241,15 @@ PROMPT;
         }
 
         $data = $this->parseJSONResponse($response);
-        $content = isset($data['content'])
-            ? $this->normalizeGeneratedHtmlContent((string) $data['content'])
-            : '';
+        $unwrapped = $this->resultNormalizer()->unwrapPayload(
+            $data !== [] ? $data : $response
+        );
 
-        if ($content === '') {
-            $content = $this->normalizeGeneratedHtmlContent($response);
-            if ($content === '') {
-                throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
-            }
+        $content = trim((string) ($unwrapped['content'] ?? $unwrapped['html'] ?? ''));
+        $content = $this->resultNormalizer()->normalizeHtmlString($content);
+
+        if ($content === '' || ! $this->resultNormalizer()->isPlausibleHtml($content)) {
+            throw new \Exception('لم يُستخرج محتوى HTML صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
         }
 
         $result = [
@@ -246,8 +257,12 @@ PROMPT;
             'stats' => self::computeEnhanceStats($rawHtml, $content),
         ];
 
-        if ($updateExcerpt && ! empty($data['excerpt'])) {
-            $result['excerpt'] = Str::limit(trim(strip_tags((string) $data['excerpt'])), 500);
+        if ($updateExcerpt) {
+            $excerpt = trim((string) ($unwrapped['excerpt'] ?? ''));
+            if ($excerpt === '' || $this->resultNormalizer()->looksLikeJsonBlob($excerpt)) {
+                $excerpt = $this->resultNormalizer()->excerptFromHtml($content);
+            }
+            $result['excerpt'] = Str::limit(strip_tags($excerpt), 500);
         }
 
         return $result;
@@ -325,10 +340,19 @@ GUIDE;
                 $parent
             );
 
-            $title = $contentData['title'] ?? $topic;
-            $content = $contentData['content'] ?? '';
-            $excerpt = $contentData['excerpt'] ?? $this->generateExcerpt($content, $language);
-            $slug = $this->normalizeSlugFromTitle($contentData['slug'] ?? null, $title);
+            $shaped = $this->resultNormalizer()->assertWizardShape([
+                'title' => $contentData['title'] ?? null,
+                'slug' => $contentData['slug'] ?? null,
+                'excerpt' => $contentData['excerpt'] ?? null,
+                'content' => $contentData['content'] ?? ($contentData['html'] ?? null),
+                'meta_title' => $contentData['meta_title'] ?? null,
+                'meta_description' => $contentData['meta_description'] ?? null,
+            ], $topic);
+
+            $title = $shaped['title'];
+            $content = $shaped['content'];
+            $excerpt = $shaped['excerpt'];
+            $slug = $this->normalizeSlugFromTitle($shaped['slug'] ?? ($contentData['slug'] ?? null), $title);
 
             $result = [
                 'title' => $title,
@@ -339,8 +363,16 @@ GUIDE;
 
             if ($options['generate_meta'] ?? true) {
                 $meta = $this->generateMetaFields($title, $content, $topic, $model, $language);
-                $result['meta_title'] = $meta['meta_title'];
-                $result['meta_description'] = $meta['meta_description'];
+                $metaTitle = trim((string) ($meta['meta_title'] ?? ''));
+                $metaDesc = trim((string) ($meta['meta_description'] ?? ''));
+                if ($metaTitle === '' || $this->resultNormalizer()->looksLikeInstructionPrompt($metaTitle, $topic) || $this->resultNormalizer()->looksLikeJsonBlob($metaTitle)) {
+                    $metaTitle = $shaped['meta_title'];
+                }
+                if ($metaDesc === '' || $this->resultNormalizer()->looksLikeJsonBlob($metaDesc)) {
+                    $metaDesc = $shaped['meta_description'];
+                }
+                $result['meta_title'] = $metaTitle;
+                $result['meta_description'] = $metaDesc;
             }
 
             return $result;
@@ -422,26 +454,19 @@ GUIDE;
         }
 
         $data = $this->parseJSONResponse($response);
+        $unwrapped = $this->resultNormalizer()->unwrapPayload(
+            $data !== [] ? $data : $response
+        );
 
-        if (! isset($data['title']) || ! isset($data['content'])) {
-            $fallbackContent = $this->normalizeGeneratedHtmlContent($response);
-            if ($fallbackContent === '') {
-                throw new \Exception('لم يُستخرج محتوى صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
-            }
-
-            return [
-                'title' => $topic,
-                'content' => $fallbackContent,
-                'excerpt' => $this->generateExcerpt($fallbackContent, $language),
-            ];
+        if (empty($unwrapped['title']) || (empty($unwrapped['content']) && empty($unwrapped['html']))) {
+            throw new \Exception('لم يُستخرج عنوان ومحتوى صالحان من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
         }
 
-        $data['content'] = $this->normalizeGeneratedHtmlContent((string) $data['content']);
-        if ($data['content'] === '') {
-            throw new \Exception('تم استلام استجابة لكن دون HTML صالح للعرض. حاول مجدداً.');
+        try {
+            return $this->resultNormalizer()->assertWizardShape($unwrapped, $topic);
+        } catch (\RuntimeException $e) {
+            throw new \Exception($e->getMessage(), 0, $e);
         }
-
-        return $data;
     }
 
     /**
@@ -473,17 +498,25 @@ GUIDE;
                 'temperature' => 0.45,
             ]);
             $data = $this->parseJSONResponse($response);
+            $metaTitle = trim((string) ($data['meta_title'] ?? $title));
+            $metaDesc = trim((string) ($data['meta_description'] ?? ''));
+            if ($metaTitle === '' || $this->resultNormalizer()->looksLikeInstructionPrompt($metaTitle) || $this->resultNormalizer()->looksLikeJsonBlob($metaTitle)) {
+                $metaTitle = $title;
+            }
+            if ($metaDesc === '' || $this->resultNormalizer()->looksLikeJsonBlob($metaDesc)) {
+                $metaDesc = $this->resultNormalizer()->excerptFromHtml($content);
+            }
 
             return [
-                'meta_title' => Str::limit(trim($data['meta_title'] ?? $title), 255),
-                'meta_description' => Str::limit(trim($data['meta_description'] ?? strip_tags($content)), 500),
+                'meta_title' => Str::limit($metaTitle, 255),
+                'meta_description' => Str::limit($metaDesc, 500),
             ];
         } catch (\Exception $e) {
             Log::warning('Doc meta generation fallback: '.$e->getMessage());
 
             return [
                 'meta_title' => Str::limit($title, 60),
-                'meta_description' => Str::limit(strip_tags($content), 160),
+                'meta_description' => Str::limit($this->resultNormalizer()->excerptFromHtml($content), 160),
             ];
         }
     }
@@ -498,26 +531,8 @@ GUIDE;
 
     private function normalizeGeneratedHtmlContent(string $content): string
     {
-        $value = trim($content);
-        if ($value === '') {
-            return '';
-        }
-
-        // بعض المزوّدين يرجعون HTML داخل نص JSON escaped (مثل: \"<p>..<\/p>\n\")
-        if (($value[0] ?? '') === '"' && (substr($value, -1) === '"')) {
-            $decodedString = json_decode($value, true);
-            if (is_string($decodedString) && trim($decodedString) !== '') {
-                $value = trim($decodedString);
-            }
-        }
-
-        $value = str_replace(['\\/', '\\"'], ['/', '"'], $value);
-        $value = preg_replace('/\\\\r\\\\n|\\\\n|\\\\r/', "\n", $value) ?? $value;
-        $value = preg_replace('/\r\n|\r/', "\n", $value) ?? $value;
-
-        return trim($value);
+        return $this->resultNormalizer()->normalizeHtmlString($content);
     }
-
     private function normalizeSlugFromTitle(?string $slug, string $title): string
     {
         if ($slug !== null && trim($slug) !== '') {

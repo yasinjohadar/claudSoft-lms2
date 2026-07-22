@@ -13,6 +13,7 @@ use App\Models\LaravelAiModel;
 use App\Models\User;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
+use App\Services\Ai\DocumentationAiResultNormalizer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -32,6 +33,7 @@ class DocumentationAiPipelineService
         private LaravelAiDocumentationService $laravelDocs,
         private AIDocumentationPageService $legacyDocs,
         private AIModelService $legacyModelService,
+        private DocumentationAiResultNormalizer $resultNormalizer,
     ) {}
 
     public function run(DocumentationAiGeneration $generation): void
@@ -154,26 +156,36 @@ class DocumentationAiPipelineService
             throw new \RuntimeException('لم يُنتج محتوى HTML صالحاً بعد دمج الأقسام.');
         }
 
-        $title = trim((string) ($outline['title'] ?? '')) ?: $topic;
-        $excerpt = trim((string) ($outline['excerpt'] ?? ''));
-        if ($excerpt === '') {
-            $excerpt = Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags($content)) ?: ''), 200);
+        $outlineTitle = trim((string) ($outline['title'] ?? ''));
+        if ($outlineTitle === '' || $this->resultNormalizer->looksLikeInstructionPrompt($outlineTitle, $topic)) {
+            throw new \RuntimeException('عنوان الصفحة من المخطط غير صالح. أعد التوليد.');
         }
-        $slug = $this->normalizeSlug(
-            isset($outline['slug']) ? trim((string) $outline['slug']) : null,
-            $title
-        );
 
-        $result = [
-            'title' => $title,
-            'slug' => $slug,
+        $excerpt = trim((string) ($outline['excerpt'] ?? ''));
+        if ($excerpt === '' || $this->resultNormalizer->looksLikeJsonBlob($excerpt)) {
+            $excerpt = $this->resultNormalizer->excerptFromHtml($content);
+        }
+
+        $shaped = $this->resultNormalizer->assertWizardShape([
+            'title' => $outlineTitle,
+            'slug' => $outline['slug'] ?? null,
             'excerpt' => $excerpt,
             'content' => $content,
+        ], $topic);
+
+        $result = [
+            'title' => $shaped['title'],
+            'slug' => $this->normalizeSlug(
+                $shaped['slug'] ?? (isset($outline['slug']) ? trim((string) $outline['slug']) : null),
+                $shaped['title']
+            ),
+            'excerpt' => $shaped['excerpt'],
+            'content' => $shaped['content'],
         ];
 
         if ($payload['generate_meta'] ?? true) {
-            $result['meta_title'] = Str::limit($title, 60);
-            $result['meta_description'] = Str::limit($excerpt !== '' ? $excerpt : strip_tags($content), 160);
+            $result['meta_title'] = $shaped['meta_title'];
+            $result['meta_description'] = $shaped['meta_description'];
         }
 
         return $result;
@@ -265,17 +277,20 @@ class DocumentationAiPipelineService
             );
 
             $structured = $this->transformChunk($chunk, $options, $mode, $user, $laraModel);
-            $html = $this->normalizeHtml((string) ($structured['content'] ?? ''));
-            if ($html !== '') {
+            $html = $this->resultNormalizer->extractSectionHtml((string) ($structured['content'] ?? ''));
+            if ($html === '') {
+                $html = $this->normalizeHtml((string) ($structured['content'] ?? ''));
+            }
+            if ($html !== '' && $this->resultNormalizer->isPlausibleHtml($html)) {
                 $out[] = $html;
             } else {
-                $out[] = $chunk; // keep original on empty
+                $out[] = $chunk; // keep original on empty/invalid
             }
         }
 
         $generation->markProgress('assemble', 'دمج الأجزاء…', 92);
         $content = $this->normalizeHtml(implode("\n", $out));
-        if ($content === '') {
+        if ($content === '' || ! $this->resultNormalizer->isPlausibleHtml($content)) {
             throw new \RuntimeException('فشل دمج المحتوى بعد التقسيم.');
         }
 
@@ -399,7 +414,13 @@ PROMPT;
             (int) ((hrtime(true) - $started) / 1_000_000)
         );
 
-        $html = $this->normalizeHtml((string) ($structured['html'] ?? ''));
+        $html = $this->resultNormalizer->extractSectionHtml((string) ($structured['html'] ?? ''));
+        if ($html === '') {
+            // Fallback: normalize then extract
+            $html = $this->resultNormalizer->extractSectionHtml(
+                $this->normalizeHtml((string) ($structured['html'] ?? ''))
+            );
+        }
         if ($html === '') {
             throw new \RuntimeException('فشل توليد قسم: '.$heading);
         }
@@ -579,16 +600,7 @@ PROMPT;
 
     private function normalizeHtml(string $content): string
     {
-        $value = trim($content);
-        if ($value === '') {
-            return '';
-        }
-
-        $value = str_replace(['\\/', '\\"'], ['/', '"'], $value);
-        $value = preg_replace('/\\\\r\\\\n|\\\\n|\\\\r/', "\n", $value) ?? $value;
-        $value = preg_replace('/\r\n|\r/', "\n", $value) ?? $value;
-
-        return trim($value);
+        return $this->resultNormalizer->normalizeHtmlString($content);
     }
 
     private function normalizeSlug(?string $slug, string $title): string
