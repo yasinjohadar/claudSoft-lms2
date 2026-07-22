@@ -124,7 +124,7 @@
                                 <select id="doc-kind-filter" class="form-select form-select-sm">
                                     <option value="">كل الأنواع</option>
                                     <option value="section">قسم</option>
-                                    <option value="technology">تقنية</option>
+                                    <option value="technology" selected>تقنية</option>
                                 </select>
                             </div>
                             <div class="col-md-8">
@@ -438,7 +438,7 @@
         rememberCheckedPages();
 
         if (!results.length) {
-            pagesList.innerHTML = '<p class="text-muted mb-0 fs-12 text-center py-3">لا توجد صفحات في هذا التصنيف</p>';
+            pagesList.innerHTML = '<p class="text-muted mb-0 fs-12 text-center py-3">لا توجد صفحات متاحة (غير مستوردة مسبقاً) في هذا التصنيف</p>';
             return;
         }
 
@@ -611,7 +611,7 @@
         hideFormErrors();
         if (placementReference) placementReference.checked = true;
         toggleSectionField();
-        if (kindFilter) kindFilter.value = '';
+        if (kindFilter) kindFilter.value = 'technology';
         if (categoryFilter) categoryFilter.innerHTML = '<option value="">اختر التصنيف...</option>';
         if (searchInput) searchInput.value = '';
         updateSearchControls();
@@ -624,9 +624,13 @@
 
     modal.addEventListener('shown.bs.modal', function () {
         if (config.mode === 'course') {
+            if (kindFilter && !kindFilter.value) {
+                kindFilter.value = 'technology';
+            }
             loadCategories();
             loadLessonModules();
             updateSearchControls();
+            searchPages();
         }
     });
 

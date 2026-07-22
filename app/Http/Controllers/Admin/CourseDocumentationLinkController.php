@@ -55,9 +55,12 @@ class CourseDocumentationLinkController extends Controller
             ]);
         }
 
+        $alreadyLinkedIds = $this->alreadyLinkedPageIdsForCourse($course);
+
         $pages = DocumentationPage::query()
             ->published()
             ->with('category:id,name,slug,kind')
+            ->when($alreadyLinkedIds !== [], fn ($query) => $query->whereNotIn('id', $alreadyLinkedIds))
             ->when($categoryId, fn ($query) => $query->where('documentation_category_id', $categoryId))
             ->when(! $categoryId && $kind !== '', function ($query) use ($kind) {
                 $query->whereHas('category', fn ($cat) => $cat->where('kind', $kind));
@@ -80,6 +83,39 @@ class CourseDocumentationLinkController extends Controller
             ]);
 
         return response()->json(['results' => $pages]);
+    }
+
+    /**
+     * Pages already attached to this course (reference board or curriculum modules).
+     *
+     * @return list<int>
+     */
+    private function alreadyLinkedPageIdsForCourse(Course $course): array
+    {
+        $fromLinks = DocumentationPageLink::query()
+            ->where(function ($query) use ($course) {
+                $query->where(function ($inner) use ($course) {
+                    $inner->where('linkable_type', Course::class)
+                        ->where('linkable_id', $course->id);
+                })->orWhereHas('courseModule', function ($moduleQuery) use ($course) {
+                    $moduleQuery->where('course_id', $course->id);
+                });
+            })
+            ->pluck('documentation_page_id');
+
+        $fromModules = CourseModule::query()
+            ->where('course_id', $course->id)
+            ->where('module_type', 'documentation')
+            ->where('modulable_type', DocumentationPage::class)
+            ->pluck('modulable_id');
+
+        return $fromLinks
+            ->merge($fromModules)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function sections(Course $course): JsonResponse
