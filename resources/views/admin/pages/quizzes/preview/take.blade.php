@@ -664,6 +664,8 @@ totalQuestions = {{ $questions->count() }};
 currentQuestionIndex = 0;
 answeredQuestions = new Set();
 remainingTimeSeconds = {{ $remainingTime ?? 'null' }};
+var typingTimers = new Map();
+var blankTimers = new Map();
 
 window.totalQuestions = totalQuestions;
 window.currentQuestionIndex = currentQuestionIndex;
@@ -817,21 +819,29 @@ $(document).ready(function() {
             saveAnswer(questionId);
         });
 
-        // Auto-save for textareas with delay
-        let typingTimer;
+        // Auto-save for textareas with per-question debounce
         $('textarea.answer-input').on('input', function() {
-            clearTimeout(typingTimer);
             const questionId = $(this).data('question-id');
-            typingTimer = setTimeout(() => saveAnswer(questionId), 1000);
+            if (typingTimers.has(questionId)) {
+                clearTimeout(typingTimers.get(questionId));
+            }
+            typingTimers.set(questionId, setTimeout(function() {
+                typingTimers.delete(questionId);
+                saveAnswer(questionId);
+            }, 1000));
         });
 
-        // Auto-save for fill in blank inputs / selects
-        let blankTimer;
+        // Auto-save for fill in blank inputs / selects (per-question timers)
         $(document).on('input change', '.fill-blank-input', function() {
-            clearTimeout(blankTimer);
             const questionId = $(this).data('question-id');
+            if (blankTimers.has(questionId)) {
+                clearTimeout(blankTimers.get(questionId));
+            }
             const delay = $(this).is('select') ? 0 : 1000;
-            blankTimer = setTimeout(() => saveFillBlankAnswer(questionId), delay);
+            blankTimers.set(questionId, setTimeout(function() {
+                blankTimers.delete(questionId);
+                saveFillBlankAnswer(questionId);
+            }, delay));
         });
 
         // Initialize drag and drop
@@ -1172,119 +1182,124 @@ $(document).ready(function() {
     });
 }
 
-    // Initialize answered questions from saved responses
-    function initializeAnswers() {
-        console.log('=== Initializing Answers ===');
+    /**
+     * Evaluate whether a question currently has a complete answer in the DOM.
+     * Mutual exclusivity: first matching input type wins (else-if chain).
+     */
+    function evaluateQuestionAnswered(questionId) {
+        questionId = parseInt(questionId, 10);
+        if (isNaN(questionId)) {
+            return false;
+        }
 
+        const radioInputs = $(`input[type="radio"][name="question_${questionId}"]`);
+        if (radioInputs.length > 0) {
+            return radioInputs.filter(':checked').length > 0;
+        }
+
+        const checkboxInputs = $(`input[type="checkbox"][name="question_${questionId}[]"]`);
+        if (checkboxInputs.length > 0) {
+            return checkboxInputs.filter(':checked').length > 0;
+        }
+
+        const textareaInput = $(`textarea[name="question_${questionId}"]`);
+        if (textareaInput.length > 0) {
+            const value = textareaInput.val();
+            return !!(value && String(value).trim() !== '');
+        }
+
+        const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
+        if (numericalInput.length > 0) {
+            const value = numericalInput.val();
+            return value !== '' && value !== null && !isNaN(value);
+        }
+
+        const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
+        if (calculatedInput.length > 0) {
+            const value = calculatedInput.val();
+            return value !== '' && value !== null && !isNaN(value);
+        }
+
+        const matchingSelects = $(`select[name^="question_${questionId}["]`);
+        if (matchingSelects.length > 0) {
+            let allAnswered = true;
+            matchingSelects.each(function() {
+                if (!$(this).val()) {
+                    allAnswered = false;
+                }
+            });
+            return allAnswered;
+        }
+
+        const dropZones = $(`.drop-zone[data-question-id="${questionId}"]`);
+        if (dropZones.length > 0) {
+            let allDropped = true;
+            dropZones.each(function() {
+                const input = $(this).closest('.drop-zone-row').find('.drop-zone-input');
+                if (!input.val()) {
+                    allDropped = false;
+                }
+            });
+            return allDropped;
+        }
+
+        const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
+        if (fillBlankInputs.length > 0) {
+            let allFilled = true;
+            fillBlankInputs.each(function() {
+                if (!String($(this).val() || '').trim()) {
+                    allFilled = false;
+                }
+            });
+            return allFilled;
+        }
+
+        const orderingInput = $(`#ordering-input-${questionId}`);
+        if (orderingInput.length > 0) {
+            let order = [];
+            try {
+                order = JSON.parse(orderingInput.val() || '[]');
+            } catch (e) {
+                order = [];
+            }
+            if (!Array.isArray(order) || order.length === 0) {
+                order = collectOrderingOrder(questionId);
+                orderingInput.val(JSON.stringify(order));
+            }
+            return Array.isArray(order) && order.length > 0;
+        }
+
+        return false;
+    }
+
+    function resyncAnsweredQuestionsFromDom() {
+        answeredQuestions = new Set();
         $('.question-container').each(function() {
-            const questionId = parseInt($(this).data('question-id'));
-            console.log('Checking question ID:', questionId);
-
-            let hasAnswer = false;
-
-            // Check for radio buttons
-            const radioInputs = $(`input[type="radio"][name="question_${questionId}"]`);
-            if (radioInputs.length > 0) {
-                hasAnswer = radioInputs.filter(':checked').length > 0;
-                console.log('Question', questionId, '(radio) - has answer:', hasAnswer);
-            }
-
-            // Check for checkboxes
-            const checkboxInputs = $(`input[type="checkbox"][name="question_${questionId}[]"]`);
-            if (checkboxInputs.length > 0) {
-                hasAnswer = checkboxInputs.filter(':checked').length > 0;
-                console.log('Question', questionId, '(checkbox) - has answer:', hasAnswer);
-            }
-
-            // Check for textareas
-            const textareaInput = $(`textarea[name="question_${questionId}"]`);
-            if (textareaInput.length > 0) {
-                const value = textareaInput.val();
-                hasAnswer = value && value.trim() !== '';
-                console.log('Question', questionId, '(textarea) - has answer:', hasAnswer, '- value:', value);
-            }
-
-            // Check for numerical input
-            const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
-            if (numericalInput.length > 0) {
-                const value = numericalInput.val();
-                hasAnswer = value !== '' && value !== null && !isNaN(value);
-                console.log('Question', questionId, '(numerical) - has answer:', hasAnswer, '- value:', value);
-            }
-
-            // Check for calculated input
-            const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
-            if (calculatedInput.length > 0) {
-                const value = calculatedInput.val();
-                hasAnswer = value !== '' && value !== null && !isNaN(value);
-                console.log('Question', questionId, '(calculated) - has answer:', hasAnswer, '- value:', value);
-            }
-
-            // Check for matching selects
-            const matchingSelects = $(`select[name^="question_${questionId}["]`);
-            if (matchingSelects.length > 0) {
-                let allAnswered = true;
-                matchingSelects.each(function() {
-                    if (!$(this).val()) {
-                        allAnswered = false;
-                    }
-                });
-                hasAnswer = allAnswered;
-                console.log('Question', questionId, '(matching) - has answer:', hasAnswer);
-            }
-
-            // Check for drag and drop
-            const dropZones = $(`.drop-zone[data-question-id="${questionId}"]`);
-            if (dropZones.length > 0) {
-                let allDropped = true;
-                dropZones.each(function() {
-                    const input = $(this).closest('.drop-zone-row').find('.drop-zone-input');
-                    if (!input.val()) {
-                        allDropped = false;
-                    }
-                });
-                hasAnswer = allDropped;
-                console.log('Question', questionId, '(drag_drop) - has answer:', hasAnswer);
-            }
-
-            // Check for fill in blank inputs
-            const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
-            if (fillBlankInputs.length > 0) {
-                let allFilled = true;
-                fillBlankInputs.each(function() {
-                    if (!$(this).val().trim()) {
-                        allFilled = false;
-                    }
-                });
-                hasAnswer = allFilled;
-                console.log('Question', questionId, '(fill_blank) - has answer:', hasAnswer);
-            }
-
-            // Check for ordering
-            const orderingInput = $(`#ordering-input-${questionId}`);
-            if (orderingInput.length > 0) {
-                let order = [];
-                try {
-                    order = JSON.parse(orderingInput.val() || '[]');
-                } catch (e) {
-                    order = [];
-                }
-                if (!Array.isArray(order) || order.length === 0) {
-                    order = collectOrderingOrder(questionId);
-                    orderingInput.val(JSON.stringify(order));
-                }
-                hasAnswer = Array.isArray(order) && order.length > 0;
-                console.log('Question', questionId, '(ordering) - has answer:', hasAnswer);
-            }
-
-            if (hasAnswer) {
+            const questionId = parseInt($(this).data('question-id'), 10);
+            if (!isNaN(questionId) && evaluateQuestionAnswered(questionId)) {
                 answeredQuestions.add(questionId);
-                console.log('✓ Question', questionId, 'marked as answered');
             }
         });
+        updateProgress();
+        updateQuestionNavigation();
+    }
 
-        console.log('Total answered questions:', answeredQuestions.size);
-        console.log('Answered question IDs:', Array.from(answeredQuestions));
+    function flushPendingAnswerTimers() {
+        typingTimers.forEach(function(timerId, questionId) {
+            clearTimeout(timerId);
+            typingTimers.delete(questionId);
+            saveAnswer(questionId);
+        });
+        blankTimers.forEach(function(timerId, questionId) {
+            clearTimeout(timerId);
+            blankTimers.delete(questionId);
+            saveFillBlankAnswer(questionId);
+        });
+    }
+
+    // Initialize answered questions from saved responses / current DOM
+    function initializeAnswers() {
+        resyncAnsweredQuestionsFromDom();
     }
 
     // Save answer via AJAX
@@ -1295,55 +1310,42 @@ $(document).ready(function() {
         let answer = null;
         let hasValidAnswer = false;
 
-        // Check for radio buttons
-        const radioInput = $(`input[type="radio"][name="question_${questionId}"]:checked`);
-        if (radioInput.length > 0) {
-            answer = radioInput.val();
-            hasValidAnswer = true;
-            console.log('Radio answer:', answer);
-        }
-
-        // Check for checkboxes
-        const checkboxInputs = $(`input[type="checkbox"][name="question_${questionId}[]"]:checked`);
-        if (checkboxInputs.length > 0) {
+        const radioInputs = $(`input[type="radio"][name="question_${questionId}"]`);
+        if (radioInputs.length > 0) {
+            const radioInput = radioInputs.filter(':checked');
+            if (radioInput.length > 0) {
+                answer = radioInput.val();
+                hasValidAnswer = true;
+            }
+        } else if ($(`input[type="checkbox"][name="question_${questionId}[]"]`).length > 0) {
+            const checkboxInputs = $(`input[type="checkbox"][name="question_${questionId}[]"]:checked`);
             answer = checkboxInputs.map(function() {
                 return $(this).val();
             }).get();
             hasValidAnswer = answer.length > 0;
-            console.log('Checkbox answer:', answer);
-        }
-
-        // Check for textareas
-        const textareaInput = $(`textarea[name="question_${questionId}"]`);
-        if (textareaInput.length > 0) {
+        } else if ($(`textarea[name="question_${questionId}"]`).length > 0) {
+            const textareaInput = $(`textarea[name="question_${questionId}"]`);
             answer = textareaInput.val();
-            hasValidAnswer = answer && answer.trim() !== '';
-            console.log('Textarea answer:', answer, '- valid:', hasValidAnswer);
-        }
-
-        // Check for numerical input
-        const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
-        if (numericalInput.length > 0) {
+            hasValidAnswer = !!(answer && String(answer).trim() !== '');
+        } else if ($(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`).length > 0) {
+            const numericalInput = $(`input[type="number"][name="question_${questionId}"]#numerical_${questionId}`);
             answer = numericalInput.val();
             hasValidAnswer = answer !== '' && answer !== null && !isNaN(answer);
-            console.log('Numerical answer:', answer, '- valid:', hasValidAnswer);
-        }
-
-        // Check for calculated input
-        const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
-        if (calculatedInput.length > 0) {
+        } else if ($(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`).length > 0) {
+            const calculatedInput = $(`input[type="number"][name="question_${questionId}"]#calculated_${questionId}`);
             answer = calculatedInput.val();
             hasValidAnswer = answer !== '' && answer !== null && !isNaN(answer);
-            console.log('Calculated answer:', answer, '- valid:', hasValidAnswer);
-        }
-
-        // Check for matching selects
-        const matchingSelects = $(`select[name^="question_${questionId}["]`);
-        if (matchingSelects.length > 0) {
+        } else if ($(`select[name^="question_${questionId}["]`).length > 0) {
+            const matchingSelects = $(`select[name^="question_${questionId}["]`);
             answer = {};
             let allAnswered = true;
             matchingSelects.each(function() {
-                const optionId = $(this).attr('name').match(/\[(\d+)\]/)[1];
+                const nameMatch = $(this).attr('name').match(/\[(\d+)\]/);
+                if (!nameMatch) {
+                    allAnswered = false;
+                    return;
+                }
+                const optionId = nameMatch[1];
                 const val = $(this).val();
                 if (val) {
                     answer[optionId] = val;
@@ -1352,17 +1354,13 @@ $(document).ready(function() {
                 }
             });
             hasValidAnswer = allAnswered && Object.keys(answer).length > 0;
-            console.log('Matching answer:', answer, '- valid:', hasValidAnswer);
-        }
-
-        // Check for fill in blank inputs
-        const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
-        if (fillBlankInputs.length > 0) {
+        } else if ($(`.fill-blank-input[data-question-id="${questionId}"]`).length > 0) {
+            const fillBlankInputs = $(`.fill-blank-input[data-question-id="${questionId}"]`);
             answer = {};
             let allBlanksAnswered = true;
             fillBlankInputs.each(function() {
                 const blankIndex = $(this).data('blank-index');
-                const value = $(this).val().trim();
+                const value = String($(this).val() || '').trim();
                 if (value) {
                     answer[blankIndex] = value;
                 } else {
@@ -1370,19 +1368,15 @@ $(document).ready(function() {
                 }
             });
             hasValidAnswer = allBlanksAnswered && Object.keys(answer).length > 0;
-            console.log('Fill blank answer:', answer, '- valid:', hasValidAnswer);
         }
 
         // Update answered questions set
         if (hasValidAnswer) {
             answeredQuestions.add(questionId);
-            console.log('Question', questionId, 'added to answered set');
         } else {
             answeredQuestions.delete(questionId);
-            console.log('Question', questionId, 'removed from answered set');
         }
 
-        console.log('Current answered questions:', Array.from(answeredQuestions));
         updateProgress();
         updateQuestionNavigation();
 
@@ -1390,8 +1384,8 @@ $(document).ready(function() {
         if (hasValidAnswer) {
             return $.ajax({
                 url: "{{ route('quizzes.preview.save-answer', $attempt->id) }}",
-        method: 'POST',
-        data: {
+                method: 'POST',
+                data: {
                     _token: '{{ csrf_token() }}',
                     question_id: questionId,
                     answer: answer
@@ -1474,6 +1468,9 @@ $(document).ready(function() {
     const SUBMIT_SAVE_TIMEOUT_MS = 10000;
 
     function showSubmitConfirmation() {
+        flushPendingAnswerTimers();
+        resyncAnsweredQuestionsFromDom();
+
         const answeredCount = answeredQuestions.size;
         if (typeof window.applyQuizSubmitModalState === 'function') {
             window.applyQuizSubmitModalState(answeredCount, totalQuestions);
@@ -1488,6 +1485,9 @@ $(document).ready(function() {
 
     // Submit quiz
     function submitQuiz(autoSubmit = false) {
+        flushPendingAnswerTimers();
+        resyncAnsweredQuestionsFromDom();
+
         const answeredCount = answeredQuestions.size;
         const canSubmit = totalQuestions > 0 && answeredCount >= totalQuestions;
 
