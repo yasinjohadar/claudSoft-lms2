@@ -29,7 +29,7 @@ class DocumentationPdfExportService
             $detail = trim($e->getProcess()?->getErrorOutput() ?: $e->getMessage());
 
             throw new \RuntimeException(
-                'تعذّر تصدير PDF. تأكد من تثبيت Node.js وChrome (Puppeteer). '.Str::limit($detail, 300),
+                'تعذّر تصدير PDF. تأكد من تثبيت Node.js وChrome/Chromium ووجود حزمة puppeteer. '.Str::limit($detail, 300),
                 0,
                 $e
             );
@@ -46,8 +46,8 @@ class DocumentationPdfExportService
     {
         $page->loadMissing('category');
 
-        $categorySlug = Str::slug($page->category?->slug ?? 'docs');
-        $pageSlug = Str::slug($page->slug ?: 'page');
+        $categorySlug = Str::slug($page->category?->slug ?? 'docs') ?: 'docs';
+        $pageSlug = Str::slug($page->slug ?: 'page') ?: ('page-'.$page->id);
 
         return "{$categorySlug}-{$pageSlug}.pdf";
     }
@@ -99,10 +99,12 @@ class DocumentationPdfExportService
 
     /**
      * Measure rendered content height and emit a single continuous PDF page.
+     * Falls back to A4 when the page is taller than Chromium can reliably render.
      */
     protected function renderContinuousPdf(Browsershot $shot): string
     {
         $viewportWidth = (int) config('browsershot.pdf_viewport_width', 720);
+        $maxContinuous = (int) config('browsershot.pdf_max_continuous_height', 14000);
 
         try {
             $rawHeight = $shot->evaluate(
@@ -120,6 +122,14 @@ class DocumentationPdfExportService
 
         $minHeight = (int) config('browsershot.pdf_viewport_height', 2400);
         $pageHeight = max($contentHeight + 48, $minHeight, 900);
+
+        if ($pageHeight > $maxContinuous) {
+            return $shot
+                ->format('A4')
+                ->margins(0, 0, 0, 0)
+                ->showBackground()
+                ->pdf();
+        }
 
         // Prefer explicit pixel paper size (one continuous page) over A4 pagination.
         $shot->setOption('format', null);
@@ -186,7 +196,7 @@ class DocumentationPdfExportService
                     return $matches[0];
                 }
 
-                $mime = mime_content_type($path) ?: 'application/octet-stream';
+                $mime = @mime_content_type($path) ?: 'application/octet-stream';
                 $encoded = base64_encode((string) file_get_contents($path));
 
                 return ' src='.$quote.'data:'.$mime.';base64,'.$encoded.$quote;
@@ -249,7 +259,7 @@ class DocumentationPdfExportService
             $shot->setNpmBinary($npm);
         }
 
-        if ($chrome = config('browsershot.chrome_path')) {
+        if ($chrome = $this->resolveChromePath()) {
             $shot->setChromePath($chrome);
         }
 
@@ -257,12 +267,16 @@ class DocumentationPdfExportService
             $shot->noSandbox();
         }
 
-        $shot->setNodeModulePath(base_path('node_modules'));
+        $nodeModules = base_path('node_modules');
+
+        if (is_dir($nodeModules)) {
+            $shot->setNodeModulePath($nodeModules);
+        }
 
         $viewportWidth = (int) config('browsershot.pdf_viewport_width', 720);
         $viewportHeight = (int) config('browsershot.pdf_viewport_height', 2400);
 
-        return $shot
+        $shot = $shot
             ->windowSize($viewportWidth, $viewportHeight)
             ->writeOptionsToFile()
             ->showBackground()
@@ -270,7 +284,37 @@ class DocumentationPdfExportService
             ->margins(0, 0, 0, 0)
             ->timeout((int) config('browsershot.timeout', 120))
             ->emulateMedia('print')
-            ->setDelay((int) config('browsershot.pdf_browser_delay_ms', 2000))
-            ->waitUntilNetworkIdle(true);
+            ->setDelay((int) config('browsershot.pdf_browser_delay_ms', 1500));
+
+        if (config('browsershot.pdf_wait_until_network_idle')) {
+            $shot->waitUntilNetworkIdle(true);
+        }
+
+        return $shot;
+    }
+
+    protected function resolveChromePath(): ?string
+    {
+        $configured = trim((string) config('browsershot.chrome_path', ''));
+
+        if ($configured !== '' && (is_executable($configured) || is_file($configured))) {
+            return $configured;
+        }
+
+        $candidates = [
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/snap/bin/chromium',
+        ];
+
+        foreach ($candidates as $path) {
+            if (is_executable($path) || is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }

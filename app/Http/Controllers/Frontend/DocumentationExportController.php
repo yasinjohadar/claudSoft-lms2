@@ -52,7 +52,10 @@ class DocumentationExportController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            abort(500, $e->getMessage() ?: 'تعذّر تصدير PDF.');
+            return response()->view('frontend.docs.pdf-export-error', [
+                'message' => 'تعذّر إنشاء ملف PDF حالياً. قد تحتاج الخدمة لإعداد Chrome/Chromium على الخادم.',
+                'detail' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
     }
 

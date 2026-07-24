@@ -7,8 +7,9 @@ return [
     | Browsershot (PDF export for documentation pages)
     |--------------------------------------------------------------------------
     |
-    | Requires Node.js, npm, and Chromium/Chrome on the server.
+    | Requires Node.js, npm/puppeteer, and Chromium/Chrome on the server.
     | On Docker/Coolify: install chromium and set BROWSERSHOT_NO_SANDBOX=true.
+    | Keep puppeteer in package.json dependencies (not only devDependencies).
     |
     */
 
@@ -18,11 +19,27 @@ return [
 
     'chrome_path' => env('BROWSERSHOT_CHROME_PATH'),
 
-    'no_sandbox' => env('BROWSERSHOT_NO_SANDBOX', false),
+    /*
+    | Default true inside Docker / when unset in production-like hosts.
+    | Override explicitly with BROWSERSHOT_NO_SANDBOX=false if needed.
+    */
+    'no_sandbox' => filter_var(
+        env('BROWSERSHOT_NO_SANDBOX', file_exists('/.dockerenv') ? 'true' : 'false'),
+        FILTER_VALIDATE_BOOLEAN
+    ),
 
     'timeout' => (int) env('BROWSERSHOT_TIMEOUT', 120),
 
-    'pdf_browser_delay_ms' => (int) env('BROWSERSHOT_PDF_BROWSER_DELAY_MS', 2000),
+    'pdf_browser_delay_ms' => (int) env('BROWSERSHOT_PDF_BROWSER_DELAY_MS', 1500),
+
+    /*
+    | Waiting for network idle often hangs on CDN fonts/CSS in production.
+    | Prefer a fixed delay unless explicitly enabled.
+    */
+    'pdf_wait_until_network_idle' => filter_var(
+        env('BROWSERSHOT_PDF_WAIT_NETWORK_IDLE', false),
+        FILTER_VALIDATE_BOOLEAN
+    ),
 
     'pdf_signed_url_ttl_minutes' => (int) env('BROWSERSHOT_PDF_SIGNED_URL_TTL', 5),
 
@@ -37,6 +54,12 @@ return [
     'pdf_viewport_width' => (int) env('BROWSERSHOT_PDF_VIEWPORT_WIDTH', 720),
 
     'pdf_viewport_height' => (int) env('BROWSERSHOT_PDF_VIEWPORT_HEIGHT', 2400),
+
+    /*
+    | Chromium can fail on extremely tall single-page PDFs.
+    | Above this height we fall back to A4 multi-page output.
+    */
+    'pdf_max_continuous_height' => (int) env('BROWSERSHOT_PDF_MAX_CONTINUOUS_HEIGHT', 14000),
 
     'pdf_branding' => [
         'organization_name' => env('DOCS_PDF_ORG_NAME', 'أكاديمية كلاودسوفت'),
