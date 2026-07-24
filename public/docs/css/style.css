@@ -1761,7 +1761,8 @@ body.docs-pdf-export {
     background: #f8fafc !important;
     overflow: visible !important;
     width: 100% !important;
-    min-height: 100vh;
+    min-height: auto;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     -webkit-print-color-adjust: exact;
@@ -1770,61 +1771,146 @@ body.docs-pdf-export {
 
 html:has(body.docs-pdf-export) {
     background: #f8fafc !important;
+    height: auto !important;
 }
 
+/* صفحة واحدة مستمرة — بدون تقطيع A4 */
 @page {
-    size: A4;
-    margin: 16mm 10mm 12mm 10mm;
+    margin: 0;
     background: #f8fafc;
 }
 
-/* ترويسة ثابتة تتكرّر على كل صفحة PDF (بدون تداخل مع المحتوى) */
-body.docs-pdf-export .docs-pdf-running-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    height: 13mm;
-    padding: 1.5mm 0 0;
-    background: #f8fafc;
-    border-bottom: 1px solid #cbd5e1;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+/* ترويسة أعلى الملف (مرة واحدة في تدفق الصفحة) */
+body.docs-pdf-export .docs-pdf-doc-header {
     direction: rtl;
+    box-sizing: border-box;
+    margin: 0 !important;
+    padding: 28px 36px !important;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%) !important;
+    color: #f8fafc;
+    border-bottom: 3px solid #3b82f6;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-body.docs-pdf-export .docs-pdf-running-header__brand {
+body.docs-pdf-export .docs-pdf-doc-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
     min-width: 0;
-    line-height: 1.25;
+    line-height: 1.35;
     text-align: right;
 }
 
-body.docs-pdf-export .docs-pdf-running-header__name {
-    font-size: 9px;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-body.docs-pdf-export .docs-pdf-running-header__tagline {
-    font-size: 7px;
-    color: #64748b;
-}
-
-body.docs-pdf-export .docs-pdf-running-header__page {
+body.docs-pdf-export .docs-pdf-doc-header__logo {
     flex-shrink: 0;
-    font-size: 7px;
-    color: #94a3b8;
-    direction: rtl;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 4px;
+    box-sizing: border-box;
 }
 
-body.docs-pdf-export .docs-pdf-page-num::after {
-    content: counter(page);
+body.docs-pdf-export .docs-pdf-doc-header__text {
+    min-width: 0;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__tagline {
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-top: 3px;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__trainer {
+    font-size: 11px;
+    font-weight: 600;
+    color: #93c5fd;
+    margin-top: 4px;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__meta {
+    flex-shrink: 0;
+    text-align: left;
+    direction: ltr;
+}
+
+body.docs-pdf-export .docs-pdf-doc-header__site {
+    font-size: 12px;
+    color: #e2e8f0;
+}
+
+/* تذييل أسفل الملف بوسائل الاتصال */
+body.docs-pdf-export .docs-pdf-doc-footer {
+    direction: rtl;
+    box-sizing: border-box;
+    margin: 28px 0 0;
+    padding: 20px 36px 22px !important;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-top: 3px solid #3b82f6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 10px;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__brand strong {
+    font-size: 13px;
+    color: #ffffff;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__brand span {
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #cbd5e1;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.docs-pdf-export .docs-pdf-doc-footer__label {
+    font-weight: 700;
+    color: #93c5fd;
+}
+
+/* توافق مع الاسم القديم إن وُجد في كاش قديم */
+body.docs-pdf-export .docs-pdf-running-header {
+    display: none !important;
 }
 
 body.docs-pdf-export .container,
@@ -1832,12 +1918,13 @@ body.docs-pdf-export .docs-article-view {
     max-width: none !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 0 0 1.5rem !important;
+    padding: 18px 36px 12px !important;
     box-sizing: border-box;
 }
 
-body.docs-pdf-export header,
-body.docs-pdf-export .docs-article-view header {
+/* مقال التوثيق فقط — لا تشمل ترويسة الأكاديمية */
+body.docs-pdf-export .docs-article-view > header,
+body.docs-pdf-export .container > header {
     padding: 1.25rem 0 1rem !important;
     page-break-after: avoid;
     break-after: avoid;

@@ -12,7 +12,7 @@
 
 @push('docs-toolbar')
     @if($page->isPublished())
-        <a href="{{ route('frontend.docs.pdf', $page) }}"
+        <a href="{{ $page->pdfUrl() }}"
            class="docs-export-pdf-btn"
            target="_blank"
            rel="noopener"
@@ -45,8 +45,10 @@
             {!! $page->content !!}
         </section>
 
-        <footer>
-            <strong>{{ $category->name }}</strong> — {{ $page->title }}
-        </footer>
+        @unless($pdfExport ?? false)
+            <footer>
+                <strong>{{ $category->name }}</strong> — {{ $page->title }}
+            </footer>
+        @endunless
     </div>
 @endsection

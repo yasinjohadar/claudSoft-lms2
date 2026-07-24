@@ -41,6 +41,11 @@ return [
     'pdf_branding' => [
         'organization_name' => env('DOCS_PDF_ORG_NAME', 'أكاديمية كلاودسوفت'),
         'tagline' => env('DOCS_PDF_TAGLINE', 'تعليم البرمجة وتطوير البرمجيات'),
+        'website' => env('DOCS_PDF_WEBSITE', 'https://claudsoft.com'),
+        'logo_path' => env('DOCS_PDF_LOGO_PATH', 'frontend2/assets/images/logo.png'),
+        'address' => env('DOCS_PDF_ADDRESS'),
+        'phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('DOCS_PDF_PHONES', '905050580036'))))),
+        'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('DOCS_PDF_EMAILS', ''))))),
     ],
 
 ];

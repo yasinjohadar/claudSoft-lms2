@@ -73,7 +73,7 @@ class DocumentationPdfExportService
             $shot->setContentUrl($base);
         }
 
-        return $this->configureBrowsershot($shot)->pdf();
+        return $this->renderContinuousPdf($this->configureBrowsershot($shot));
     }
 
     protected function exportViaSignedUrl(DocumentationPage $page, bool $allowDraft): string
@@ -92,7 +92,46 @@ class DocumentationPdfExportService
             $url = $this->replaceUrlBase($url, rtrim((string) $internalBase, '/'));
         }
 
-        return $this->configureBrowsershot(Browsershot::url($url))->pdf();
+        return $this->renderContinuousPdf(
+            $this->configureBrowsershot(Browsershot::url($url))
+        );
+    }
+
+    /**
+     * Measure rendered content height and emit a single continuous PDF page.
+     */
+    protected function renderContinuousPdf(Browsershot $shot): string
+    {
+        $viewportWidth = (int) config('browsershot.pdf_viewport_width', 720);
+
+        try {
+            $rawHeight = $shot->evaluate(
+                'Math.ceil(Math.max('
+                .'document.body.scrollHeight,'
+                .'document.documentElement.scrollHeight,'
+                .'document.body.offsetHeight,'
+                .'document.documentElement.offsetHeight'
+                .'))'
+            );
+            $contentHeight = (int) preg_replace('/\D+/', '', (string) $rawHeight);
+        } catch (\Throwable) {
+            $contentHeight = 0;
+        }
+
+        $minHeight = (int) config('browsershot.pdf_viewport_height', 2400);
+        $pageHeight = max($contentHeight + 48, $minHeight, 900);
+
+        // Prefer explicit pixel paper size (one continuous page) over A4 pagination.
+        $shot->setOption('format', null);
+        $shot->setOption('width', $viewportWidth.'px');
+        $shot->setOption('height', $pageHeight.'px');
+        $shot->setOption('preferCSSPageSize', false);
+
+        if (method_exists($shot, 'paperSize')) {
+            $shot->paperSize($viewportWidth, $pageHeight, 'px');
+        }
+
+        return $shot->pdf();
     }
 
     protected function replaceUrlBase(string $url, string $base): string
@@ -228,7 +267,6 @@ class DocumentationPdfExportService
             ->writeOptionsToFile()
             ->showBackground()
             ->hideBrowserHeaderAndFooter()
-            ->format('A4')
             ->margins(0, 0, 0, 0)
             ->timeout((int) config('browsershot.timeout', 120))
             ->emulateMedia('print')

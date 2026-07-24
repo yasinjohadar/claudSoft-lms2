@@ -78,6 +78,11 @@ class DocumentationPage extends Model
         ]);
     }
 
+    public function pdfUrl(): string
+    {
+        return route('frontend.docs.pdf', $this);
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', 'published')

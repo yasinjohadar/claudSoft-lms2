@@ -97,6 +97,10 @@
 
     @yield('content')
 
+    @if($pdfExport ?? false)
+        @include('frontend.docs.partials.pdf-document-footer')
+    @endif
+
     {{-- تغليف أكواد pre فوراً بعد المحتوى قبل Prism لتقليل وميض التنسيق --}}
     <script>
         function detectCodeLanguage(codeEl, pre) {

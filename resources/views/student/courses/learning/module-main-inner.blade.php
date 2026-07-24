@@ -71,9 +71,15 @@
                             @if($docPage->excerpt)
                                 <p class="text-muted mb-3">{{ $docPage->excerpt }}</p>
                             @endif
-                            <a href="{{ $docPage->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-primary">
-                                <i class="fe fe-external-link me-2"></i>فتح صفحة التوثيق
-                            </a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ $docPage->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-primary">
+                                    <i class="fe fe-external-link me-2"></i>فتح صفحة التوثيق
+                                </a>
+                                @include('student.courses.learning.partials.documentation-pdf-export', [
+                                    'docPage' => $docPage,
+                                    'btnClass' => 'btn btn-outline-danger',
+                                ])
+                            </div>
                         </div>
                     </div>
                 @endif

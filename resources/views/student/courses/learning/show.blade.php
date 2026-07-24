@@ -158,11 +158,18 @@
                             @foreach($courseReferenceDocs as $link)
                                 @php $doc = $link->documentationPage; @endphp
                                 @if($doc)
-                                    <a href="{{ $doc->publicUrl() }}" target="_blank" rel="noopener"
-                                       class="nav-module d-flex align-items-center">
-                                        <i class="fas fa-book me-3"></i>
-                                        <span class="flex-grow-1">{{ $doc->title }}</span>
-                                    </a>
+                                    <div class="nav-module d-flex align-items-center gap-2">
+                                        <a href="{{ $doc->publicUrl() }}" target="_blank" rel="noopener"
+                                           class="d-flex align-items-center text-decoration-none flex-grow-1 min-w-0 text-body">
+                                            <i class="fas fa-book me-3"></i>
+                                            <span class="flex-grow-1 text-truncate">{{ $doc->title }}</span>
+                                        </a>
+                                        @include('student.courses.learning.partials.documentation-pdf-export', [
+                                            'docPage' => $doc,
+                                            'btnClass' => 'btn btn-sm btn-outline-danger',
+                                            'showIconOnly' => true,
+                                        ])
+                                    </div>
                                 @endif
                             @endforeach
                         </div>
