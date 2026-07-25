@@ -13,6 +13,7 @@ class CourseSection extends Model
     protected $fillable = [
         'course_id',
         'title',
+        'section_type',
         'description',
         'is_visible',
         'is_locked',
@@ -166,15 +167,140 @@ class CourseSection extends Model
         return !$this->is_locked;
     }
 
-    /**
-     * Get completion percentage for a student.
-     */
-    public function getCompletionPercentageFor(User $student): float
-    {
-        $completion = $this->completions()
-                           ->where('student_id', $student->id)
-                           ->first();
+    public const SECTION_TYPES = [
+        'video',
+        'quiz',
+        'lesson',
+        'simulator',
+        'assignment',
+        'default',
+    ];
 
-        return $completion ? $completion->completion_percentage : 0;
+    /**
+     * @return array<string, array{key: string, icon: string, label: string, tone: string}>
+     */
+    public static function visualPresets(): array
+    {
+        return [
+            'video' => [
+                'key' => 'video',
+                'icon' => 'fe-play-circle',
+                'label' => 'دروس فيديو',
+                'tone' => 'video',
+            ],
+            'quiz' => [
+                'key' => 'quiz',
+                'icon' => 'fe-help-circle',
+                'label' => 'اختبارات',
+                'tone' => 'quiz',
+            ],
+            'lesson' => [
+                'key' => 'lesson',
+                'icon' => 'fe-file-text',
+                'label' => 'شروحات نصية',
+                'tone' => 'lesson',
+            ],
+            'simulator' => [
+                'key' => 'simulator',
+                'icon' => 'fe-cpu',
+                'label' => 'محاكاة تنفيذ',
+                'tone' => 'simulator',
+            ],
+            'assignment' => [
+                'key' => 'assignment',
+                'icon' => 'fe-award',
+                'label' => 'واجبات وتحديات',
+                'tone' => 'assignment',
+            ],
+            'default' => [
+                'key' => 'default',
+                'icon' => 'fe-layers',
+                'label' => 'عام',
+                'tone' => 'default',
+            ],
+        ];
+    }
+
+    /**
+     * Visual icon/tone for admin UI — uses saved section_type first,
+     * then title keywords, then majority of module types.
+     *
+     * @return array{key: string, icon: string, label: string, tone: string}
+     */
+    public function visualPresentation(): array
+    {
+        $presets = self::visualPresets();
+        $savedType = trim((string) ($this->section_type ?? ''));
+
+        if ($savedType !== '' && isset($presets[$savedType])) {
+            return $presets[$savedType];
+        }
+
+        $fromTitle = $this->inferVisualKeyFromTitle((string) $this->title);
+
+        if ($fromTitle !== null) {
+            return $presets[$fromTitle];
+        }
+
+        $fromModules = $this->inferVisualKeyFromModules();
+
+        return $presets[$fromModules] ?? $presets['default'];
+    }
+
+    protected function inferVisualKeyFromTitle(string $title): ?string
+    {
+        $t = mb_strtolower(trim($title));
+
+        if ($t === '') {
+            return null;
+        }
+
+        // Order matters: more specific phrases first.
+        $rules = [
+            'simulator' => ['محاكاة', 'محاكيات', 'تنفيذ', 'simulator'],
+            'quiz' => ['اختبار', 'اختبارات', 'إختبار', 'إختبارات', 'امتحان', 'امتحانات', 'quiz'],
+            'assignment' => ['واجب', 'واجبات', 'تحدي', 'تحديات', 'مشروع', 'مشاريع', 'assignment', 'challenge'],
+            'video' => ['دروس شرح', 'دروس الفيديو', 'فيديو', 'فيديوهات', 'شرح مرئي', 'video'],
+            'lesson' => ['شروحات', 'شرح نص', 'نصي', 'نصية', 'ملحق', 'ملحقات', 'روابط', 'مقال', 'توثيق', 'lesson', 'resource'],
+        ];
+
+        foreach ($rules as $key => $needles) {
+            foreach ($needles as $needle) {
+                if (mb_strpos($t, mb_strtolower($needle)) !== false) {
+                    return $key;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function inferVisualKeyFromModules(): string
+    {
+        if (! $this->relationLoaded('modules')) {
+            $this->load('modules:id,section_id,module_type');
+        }
+
+        $counts = $this->modules
+            ->pluck('module_type')
+            ->filter()
+            ->countBy()
+            ->all();
+
+        if ($counts === []) {
+            return 'default';
+        }
+
+        arsort($counts);
+        $top = (string) array_key_first($counts);
+
+        return match ($top) {
+            'video' => 'video',
+            'quiz', 'question' => 'quiz',
+            'lesson', 'documentation', 'resource' => 'lesson',
+            'simulator' => 'simulator',
+            'assignment', 'challenge', 'programming_challenge' => 'assignment',
+            default => 'default',
+        };
     }
 }

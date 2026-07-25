@@ -589,6 +589,7 @@
                     <!-- Sections Accordion -->
                     <div class="accordion admin-course-sections-accordion" id="sectionsAccordion">
                     @forelse($course->sections()->orderBy('sort_order')->get() as $section)
+                        @php $sectionVisual = $section->visualPresentation(); @endphp
                         <div class="accordion-item admin-course-section-item" data-section-id="{{ $section->id }}">
                             <h2 class="accordion-header d-flex align-items-stretch" id="heading-{{ $section->id }}">
                                 <span class="admin-course-section-item__drag-handle"
@@ -603,7 +604,11 @@
                                         <div class="min-w-0 text-start">
                                             <span class="d-flex align-items-center gap-2 flex-wrap">
                                                 <span class="admin-course-section-item__order" data-order>{{ $loop->iteration }}</span>
-                                                <i class="fe fe-folder text-primary"></i>
+                                                <span class="admin-course-section-item__type-icon admin-course-section-item__type-icon--{{ $sectionVisual['tone'] }}"
+                                                      title="{{ $sectionVisual['label'] }}"
+                                                      aria-label="{{ $sectionVisual['label'] }}">
+                                                    <i class="fe {{ $sectionVisual['icon'] }}"></i>
+                                                </span>
                                                 <span class="fw-semibold">{{ $section->title }}</span>
                                                 <span id="section-restrictions-badge-{{ $section->id }}" class="group-show-chip group-show-chip--sm text-warning" title="هذا القسم له قيود وصول" style="display: {{ $section->accessRestrictions && $section->accessRestrictions->count() > 0 ? 'inline-flex' : 'none' }};">
                                                     <i class="fe fe-lock me-1"></i>قيود

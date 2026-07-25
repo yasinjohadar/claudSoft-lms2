@@ -55,6 +55,7 @@ class CourseSectionController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'section_type' => 'required|string|in:'.implode(',', CourseSection::SECTION_TYPES),
             'description' => 'nullable|string',
             'is_visible' => 'nullable|boolean',
             'is_locked' => 'nullable|boolean',
@@ -150,6 +151,7 @@ class CourseSectionController extends Controller
 
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
+                'section_type' => 'required|string|in:'.implode(',', CourseSection::SECTION_TYPES),
                 'description' => 'nullable|string',
                 'is_visible' => 'nullable|boolean',
                 'is_locked' => 'nullable|boolean',

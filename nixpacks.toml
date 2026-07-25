@@ -1,0 +1,30 @@
+# Coolify / Nixpacks — required for Spatie Browsershot PDF export
+# Installs system Chromium so PDF works the same as local.
+
+[phases.setup]
+aptPkgs = [
+  "chromium",
+  "chromium-sandbox",
+  "fonts-liberation",
+  "fonts-noto-core",
+  "fonts-noto-extra",
+  "fonts-dejavu-core",
+  "libnss3",
+  "libatk-bridge2.0-0",
+  "libgtk-3-0",
+  "libx11-xcb1",
+  "libxcomposite1",
+  "libxdamage1",
+  "libxrandr2",
+  "libgbm1",
+  "libasound2",
+  "libpangocairo-1.0-0",
+  "ca-certificates",
+]
+
+[variables]
+BROWSERSHOT_NO_SANDBOX = "true"
+BROWSERSHOT_CHROME_PATH = "/usr/bin/chromium"
+BROWSERSHOT_PDF_WAIT_NETWORK_IDLE = "false"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"

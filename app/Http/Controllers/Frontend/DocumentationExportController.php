@@ -53,8 +53,8 @@ class DocumentationExportController extends Controller
             report($e);
 
             return response()->view('frontend.docs.pdf-export-error', [
-                'message' => 'تعذّر إنشاء ملف PDF حالياً. قد تحتاج الخدمة لإعداد Chrome/Chromium على الخادم.',
-                'detail' => config('app.debug') ? $e->getMessage() : null,
+                'message' => 'تعذّر إنشاء ملف PDF على السيرفر. عادةً السبب عدم توفر Chrome/Chromium داخل الحاوية.',
+                'detail' => \Illuminate\Support\Str::limit($e->getMessage(), 500),
             ], 500);
         }
     }

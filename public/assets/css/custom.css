@@ -5823,6 +5823,205 @@ button.group-show-action {
     flex-shrink: 0;
 }
 
+.admin-course-section-item__type-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.55rem;
+    height: 2.55rem;
+    border-radius: 12px;
+    flex-shrink: 0;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.admin-course-section-item__type-icon--video {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.admin-course-section-item__type-icon--quiz {
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.14);
+}
+
+.admin-course-section-item__type-icon--lesson {
+    color: #0369a1;
+    background: rgba(14, 165, 233, 0.14);
+}
+
+.admin-course-section-item__type-icon--simulator {
+    color: #0f766e;
+    background: rgba(20, 184, 166, 0.14);
+}
+
+.admin-course-section-item__type-icon--assignment {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.16);
+}
+
+.admin-course-section-item__type-icon--default {
+    color: #475569;
+    background: rgba(100, 116, 139, 0.12);
+}
+
+.admin-section-type-option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 8.25rem;
+    padding: 1.15rem 0.75rem;
+    border: 1px solid var(--default-border, #e5e7eb);
+    border-radius: 16px;
+    background: var(--custom-bg-color, #f8fafc);
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease, background .15s ease;
+    text-align: center;
+    user-select: none;
+    height: 100%;
+}
+
+.admin-section-type-option:hover {
+    border-color: rgba(var(--primary-rgb), 0.35);
+    transform: translateY(-2px);
+    background: var(--custom-white, #fff);
+}
+
+.admin-section-type-option.is-selected {
+    border-color: rgba(var(--primary-rgb), 0.6);
+    background: var(--custom-white, #fff);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.14), 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.admin-section-type-option__input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-section-type-option__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 14px;
+    font-size: 1.75rem;
+}
+
+.admin-section-type-option__label {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: inherit;
+    line-height: 1.35;
+}
+
+.admin-section-type-option--video .admin-section-type-option__icon {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.admin-section-type-option--quiz .admin-section-type-option__icon {
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.14);
+}
+
+.admin-section-type-option--lesson .admin-section-type-option__icon {
+    color: #0369a1;
+    background: rgba(14, 165, 233, 0.14);
+}
+
+.admin-section-type-option--simulator .admin-section-type-option__icon {
+    color: #0f766e;
+    background: rgba(20, 184, 166, 0.14);
+}
+
+.admin-section-type-option--assignment .admin-section-type-option__icon {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.16);
+}
+
+.admin-section-type-option--default .admin-section-type-option__icon {
+    color: #475569;
+    background: rgba(100, 116, 139, 0.12);
+}
+
+.admin-section-form-page__toggle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.admin-section-form-page__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--default-border, #eef1f6);
+    border-radius: 14px;
+    background: var(--custom-bg-color, #f8fafc);
+    cursor: pointer;
+    margin: 0;
+}
+
+.admin-section-form-page__toggle-text {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.admin-section-form-page__toggle-text > i {
+    font-size: 1.1rem;
+    margin-top: 0.15rem;
+}
+
+.admin-section-form-page__toggle-text strong {
+    display: block;
+    font-size: 0.9rem;
+}
+
+.admin-section-form-page__toggle-text small {
+    display: block;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.admin-section-form-page__hero-type--video {
+    background: rgba(239, 68, 68, 0.14) !important;
+    color: #dc2626 !important;
+}
+
+.admin-section-form-page__hero-type--quiz {
+    background: rgba(139, 92, 246, 0.14) !important;
+    color: #7c3aed !important;
+}
+
+.admin-section-form-page__hero-type--lesson {
+    background: rgba(14, 165, 233, 0.14) !important;
+    color: #0369a1 !important;
+}
+
+.admin-section-form-page__hero-type--simulator {
+    background: rgba(20, 184, 166, 0.14) !important;
+    color: #0f766e !important;
+}
+
+.admin-section-form-page__hero-type--assignment {
+    background: rgba(245, 158, 11, 0.16) !important;
+    color: #b45309 !important;
+}
+
+.admin-section-form-page__hero-type--default {
+    background: rgba(100, 116, 139, 0.12) !important;
+    color: #475569 !important;
+}
+
 .admin-course-section-item .accordion-body {
     background: var(--custom-bg-color, #fafbfc);
     padding: 1rem 1.15rem 1.15rem;

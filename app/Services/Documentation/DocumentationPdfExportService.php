@@ -307,12 +307,22 @@ class DocumentationPdfExportService
             '/usr/bin/google-chrome',
             '/usr/bin/google-chrome-stable',
             '/snap/bin/chromium',
+            // Nixpacks / some Coolify images
+            '/usr/lib/chromium/chromium',
+            '/root/.cache/puppeteer/chrome',
         ];
 
         foreach ($candidates as $path) {
             if (is_executable($path) || is_file($path)) {
                 return $path;
             }
+        }
+
+        // Puppeteer-managed Chrome (when PUPPETEER_SKIP_CHROMIUM_DOWNLOAD is not set)
+        $puppeteerCache = getenv('HOME') ?: '/root';
+        $glob = glob($puppeteerCache.'/.cache/puppeteer/chrome/*/chrome-linux64/chrome');
+        if (is_array($glob) && $glob !== []) {
+            return $glob[0];
         }
 
         return null;
