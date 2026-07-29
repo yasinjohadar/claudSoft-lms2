@@ -267,7 +267,9 @@ class CourseController extends Controller
                             'description' => $modulable->description !== null ? (string) $modulable->description : null,
                             'content' => $modulable->content !== null ? (string) $modulable->content : null,
                             'reading_time' => isset($modulable->reading_time) ? (int) $modulable->reading_time : null,
-                            'video_url' => isset($modulable->video_url) ? (string) $modulable->video_url : null,
+                            'video_url' => $modulable instanceof \App\Models\Video
+                                ? ($modulable->getEmbedUrl() ?? (isset($modulable->video_url) ? (string) $modulable->video_url : null))
+                                : (isset($modulable->video_url) ? (string) $modulable->video_url : null),
                             'video_path' => isset($modulable->video_path) ? (string) $modulable->video_path : null,
                             'duration' => isset($modulable->duration) ? (int) $modulable->duration : null,
                             'thumbnail' => isset($modulable->thumbnail) ? (string) $modulable->thumbnail : null,
