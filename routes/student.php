@@ -202,6 +202,7 @@ Route::prefix('student')
         // ========== Programming Challenges Routes (Student) ==========
 
         Route::prefix('challenges')->name('student.challenges.')->group(function () {
+            Route::get('/csrf-token', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'csrfToken'])->name('csrf-token');
             Route::get('/', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'index'])->name('index');
             Route::post('/live-preview', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'storeLivePreview'])->name('live-preview.store');
             Route::get('/live-preview/{token}', [\App\Http\Controllers\Student\ProgrammingChallengeController::class, 'showLivePreview'])->name('live-preview.show');

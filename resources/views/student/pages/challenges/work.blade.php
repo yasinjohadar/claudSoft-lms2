@@ -47,6 +47,7 @@
                 'saveDraft' => route('student.challenges.save-draft', $challenge->id),
                 'submit' => route('student.challenges.submit', $challenge->id),
                 'run' => route('student.challenges.run', $challenge->id),
+                'csrf' => route('student.challenges.csrf-token'),
             ],
             'csrf' => csrf_token(),
             'autoSaveInterval' => $challenge->getDefaultSettings()['auto_save_interval'] ?? 30,

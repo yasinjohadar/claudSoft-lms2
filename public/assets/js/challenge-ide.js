@@ -372,19 +372,27 @@
 
         fetch(storeUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': config.csrf,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
+            headers: buildRequestHeaders(),
             credentials: 'same-origin',
             body: JSON.stringify({ html: html }),
         })
-            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (r) { return parseJsonResponse(r); })
+            .then(function (res) {
+                if (isCsrfFailure(res)) {
+                    return refreshCsrfToken().then(function () {
+                        return fetch(storeUrl, {
+                            method: 'POST',
+                            headers: buildRequestHeaders(),
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ html: html }),
+                        }).then(parseJsonResponse);
+                    });
+                }
+                return res;
+            })
             .then(function (res) {
                 if (!res.ok || !res.data.url) {
-                    throw new Error(res.data.message || 'فشل حفظ المعاينة');
+                    throw new Error(csrfFriendlyMessage(res) || 'فشل حفظ المعاينة');
                 }
                 win.location = res.data.url;
             })
@@ -428,18 +436,111 @@
         });
     }
 
-    function apiPost(url, body) {
+    function readCookie(name) {
+        const escaped = name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1');
+        const match = document.cookie.match(new RegExp('(?:^|; )' + escaped + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.getAttribute('content')) {
+            return meta.getAttribute('content');
+        }
+        return (config && config.csrf) || '';
+    }
+
+    function setCsrfToken(token) {
+        if (!token) return;
+        if (config) config.csrf = token;
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) meta.setAttribute('content', token);
+    }
+
+    function buildRequestHeaders() {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        const csrf = getCsrfToken();
+        if (csrf) headers['X-CSRF-TOKEN'] = csrf;
+        // Prefer cookie token — stays in sync with the active session longer than a page-load snapshot.
+        const xsrf = readCookie('XSRF-TOKEN');
+        if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+        return headers;
+    }
+
+    function parseJsonResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.indexOf('application/json') !== -1) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, status: response.status, data: data || {} };
+            });
+        }
+        return response.text().then(function (text) {
+            return {
+                ok: response.ok,
+                status: response.status,
+                data: { message: (text || response.statusText || '').slice(0, 240) },
+            };
+        });
+    }
+
+    function isCsrfFailure(res) {
+        if (!res) return false;
+        if (res.status === 419) return true;
+        const msg = String((res.data && res.data.message) || '');
+        return /csrf/i.test(msg) || /token mismatch/i.test(msg);
+    }
+
+    function csrfFriendlyMessage(res) {
+        if (isCsrfFailure(res)) {
+            return 'انتهت صلاحية الجلسة الأمنية. حدّث الصفحة ثم أعد المحاولة.';
+        }
+        return (res && res.data && res.data.message) || '';
+    }
+
+    function refreshCsrfToken() {
+        const url = (config && config.api && config.api.csrf) || '/student/challenges/csrf-token';
         return fetch(url, {
-            method: 'POST',
+            method: 'GET',
+            credentials: 'same-origin',
             headers: {
-                'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': config.csrf,
                 'X-Requested-With': 'XMLHttpRequest',
             },
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.token) setCsrfToken(data.token);
+            })
+            .catch(function () { /* keep previous token */ });
+    }
+
+    function apiPost(url, body, options) {
+        options = options || {};
+        const attempt = options._attempt || 0;
+
+        return fetch(url, {
+            method: 'POST',
+            headers: buildRequestHeaders(),
             credentials: 'same-origin',
             body: JSON.stringify(body),
-        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
+        })
+            .then(parseJsonResponse)
+            .then(function (res) {
+                if (isCsrfFailure(res) && attempt < 1) {
+                    return refreshCsrfToken().then(function () {
+                        return apiPost(url, body, { _attempt: attempt + 1 });
+                    });
+                }
+                if (isCsrfFailure(res)) {
+                    res.data = res.data || {};
+                    res.data.message = csrfFriendlyMessage(res);
+                }
+                return res;
+            });
     }
 
     function saveDraft() {
@@ -450,23 +551,28 @@
             module_id: config.moduleId,
         }).then(function (res) {
             if (res.ok && res.data.success) setSaveStatus('تم الحفظ', 'saved');
-            else setSaveStatus(res.data.message || 'خطأ في الحفظ', 'error');
+            else setSaveStatus(csrfFriendlyMessage(res) || res.data.message || 'خطأ في الحفظ', 'error');
         }).catch(function () { setSaveStatus('خطأ في الاتصال', 'error'); });
     }
 
     function submitChallenge() {
         if (!confirm('تسليم التحدي؟ لن تتمكن من التعديل بعد التسليم.')) return;
-        apiPost(config.api.submit, {
-            files: getFilesPayload(),
-            attempt_id: config.attemptId,
-            module_id: config.moduleId,
+        // Refresh CSRF right before submit — students often keep the IDE open a long time.
+        refreshCsrfToken().then(function () {
+            return apiPost(config.api.submit, {
+                files: getFilesPayload(),
+                attempt_id: config.attemptId,
+                module_id: config.moduleId,
+            });
         }).then(function (res) {
             if (res.ok && res.data.success) {
                 alert(res.data.message || 'تم التسليم بنجاح');
                 window.location.href = config.backUrl;
             } else {
-                alert(res.data.message || 'فشل التسليم');
+                alert(csrfFriendlyMessage(res) || res.data.message || 'فشل التسليم');
             }
+        }).catch(function () {
+            alert('تعذر الاتصال بالخادم. تحقق من الاتصال ثم أعد المحاولة.');
         });
     }
 

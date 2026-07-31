@@ -11,6 +11,7 @@ use App\Services\ProgrammingChallenge\ChallengeSubmissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Http\JsonResponse;
 
 class ProgrammingChallengeController extends Controller
 {
@@ -193,6 +194,16 @@ class ProgrammingChallengeController extends Controller
         }
 
         return redirect($workUrl);
+    }
+
+    /**
+     * Fresh CSRF token for long-lived challenge IDE sessions.
+     */
+    public function csrfToken(): JsonResponse
+    {
+        return response()->json([
+            'token' => csrf_token(),
+        ]);
     }
 
     protected function authorizeCourseAccess(CourseModule $module): void
