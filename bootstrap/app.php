@@ -13,6 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // طلبات /api/* يجب ألا تُحوَّل لصفحة login (خصوصاً مشغّل الفيديو HTML داخل iframe الديسكتوب)
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->is('api')) {
+                return null;
+            }
+
+            return '/login';
+        });
+
        $middleware->alias([
             'auth.query_token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
             'auth.token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
@@ -77,6 +86,10 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\StorageHelperServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request, \Throwable $e) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
+
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 $redirect = \App\Support\SessionExpiredRedirect::resolve($request);
