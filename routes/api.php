@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Student\Gamification\PointsApiController as Student
 use App\Http\Controllers\Api\Student\Gamification\ShopApiController as StudentShopApiController;
 use App\Http\Controllers\Api\Student\Gamification\StreakApiController as StudentStreakApiController;
 use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
+use App\Http\Controllers\Api\Student\ModulePlaybackApiController as StudentModulePlaybackApiController;
 use App\Http\Controllers\Api\Student\ModuleProgressApiController as StudentModuleProgressApiController;
 use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
 use App\Http\Controllers\Api\Student\NotificationHubController as StudentNotificationHubApiController;
@@ -135,6 +136,7 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::post('courses/{id}/enroll', [StudentCourseController::class, 'enroll'])->name('courses.enroll');
         Route::delete('courses/{id}/enroll', [StudentCourseController::class, 'unenroll'])->name('courses.unenroll');
 
+        Route::get('modules/{moduleId}/playback', [StudentModulePlaybackApiController::class, 'show'])->name('modules.playback');
         Route::post('modules/{moduleId}/mark-complete', [StudentModuleProgressApiController::class, 'markComplete'])->name('modules.mark-complete');
         Route::post('modules/{moduleId}/mark-incomplete', [StudentModuleProgressApiController::class, 'markIncomplete'])->name('modules.mark-incomplete');
 
