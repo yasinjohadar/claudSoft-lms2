@@ -72,6 +72,11 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('catalog/{id}', [StudentCourseController::class, 'catalogShow'])->name('catalog.show');
     });
 
+    // مشغّل فيديو HTML عبر تذكرة قصيرة (بدون Sanctum) — للـ iframe في الديسكتوب
+    Route::get('modules/{moduleId}/player-frame', [StudentModulePlaybackApiController::class, 'playerFrame'])
+        ->middleware('throttle:120,1')
+        ->name('modules.player-frame');
+
     Route::middleware(['auth.query_token', 'auth:sanctum', 'role:student'])->group(function () {
         Route::get('invoices/{id}/print', [StudentInvoiceApiController::class, 'printInvoice'])->name('invoices.print');
         Route::get('payments/{id}/print', [StudentInvoiceApiController::class, 'printPayment'])->name('payments.print');

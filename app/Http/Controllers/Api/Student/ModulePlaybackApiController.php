@@ -10,13 +10,14 @@ use App\Services\Video\BunnyStreamPlaybackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * تشغيل فيديو موقّع للتطبيقات (ديسكتوب/موبايل).
  *
- * الويب يضمّن من claudsoft.com فيعمل مع Bunny Allowed Domains.
- * الديسكتوب يعمل من localhost فيُرفض حتى مع token صحيح — لذلك نوفر
- * صفحة HTML على نطاق الـ API تضم iframe Bunny فقط (بدون واجهة التعلّم).
+ * الـ iframe لا يُرسل Bearer؛ و?token= Sanctum يفشل غالباً داخل iframe على نفس النطاق.
+ * لذلك نُصدر تذكرة قصيرة العمر (Cache) وصفحة HTML عامة تتحقق منها فقط.
  */
 class ModulePlaybackApiController extends Controller
 {
@@ -32,7 +33,6 @@ class ModulePlaybackApiController extends Controller
             return $resolved;
         }
 
-        // مشغّل HTML فقط — للتضمين من الديسكتوب عبر المسار المنشور أصلاً /playback
         if ($this->wantsHtmlPlayer($request)) {
             return $this->htmlPlayerResponse($resolved);
         }
@@ -44,9 +44,6 @@ class ModulePlaybackApiController extends Controller
         ]);
     }
 
-    /**
-     * صفحة مشغّل HTML للتضمين من الديسكتوب/WebView (?token= مدعوم).
-     */
     public function player(Request $request, int $moduleId): Response|JsonResponse
     {
         $resolved = $this->resolvePlayback($request, $moduleId);
@@ -56,6 +53,61 @@ class ModulePlaybackApiController extends Controller
         }
 
         return $this->htmlPlayerResponse($resolved);
+    }
+
+    /**
+     * مشغّل HTML عبر تذكرة قصيرة — بدون Sanctum (مناسب لـ iframe الديسكتوب).
+     */
+    public function playerFrame(Request $request, int $moduleId): Response|JsonResponse
+    {
+        $ticket = $request->query('ticket');
+        if (! is_string($ticket) || $ticket === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'تذكرة التشغيل مفقودة',
+                'data' => null,
+            ], 401);
+        }
+
+        $ticket = preg_replace('/[^a-zA-Z0-9]/', '', $ticket) ?? '';
+        if (strlen($ticket) < 32) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تذكرة التشغيل غير صالحة',
+                'data' => null,
+            ], 401);
+        }
+
+        $payload = Cache::get($this->ticketCacheKey($ticket));
+        if (! is_array($payload)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت تذكرة التشغيل أو غير صالحة. أعد فتح الدرس.',
+                'data' => null,
+            ], 401);
+        }
+
+        if ((int) ($payload['module_id'] ?? 0) !== $moduleId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تذكرة التشغيل غير متطابقة',
+                'data' => null,
+            ], 403);
+        }
+
+        $embedUrl = $payload['embed_url'] ?? null;
+        if (! is_string($embedUrl) || $embedUrl === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد رابط تشغيل',
+                'data' => null,
+            ], 404);
+        }
+
+        return $this->htmlPlayerResponse([
+            'embed_url' => $embedUrl,
+            'title' => $payload['title'] ?? 'فيديو',
+        ]);
     }
 
     private function wantsHtmlPlayer(Request $request): bool
@@ -189,6 +241,17 @@ HTML;
             ? (string) $module->title
             : ($modulable->title !== null ? (string) $modulable->title : null);
 
+        $ttl = max(60, (int) config('services.bunny_stream.embed_token_ttl', 7200));
+        $ticket = Str::random(64);
+        Cache::put($this->ticketCacheKey($ticket), [
+            'user_id' => (int) $user->id,
+            'module_id' => (int) $module->id,
+            'embed_url' => $embedUrl,
+            'title' => $title,
+        ], now()->addSeconds($ttl));
+
+        $playerUrl = url('/api/student/modules/'.$module->id.'/player-frame?ticket='.$ticket);
+
         return [
             'module_id' => (int) $module->id,
             'title' => $title,
@@ -196,13 +259,20 @@ HTML;
             'course_title' => $module->course?->title,
             'embed_url' => $embedUrl,
             'video_url' => $embedUrl,
-            'player_path' => '/student/modules/'.$module->id.'/player',
+            'player_url' => $playerUrl,
+            'player_path' => '/student/modules/'.$module->id.'/player-frame?ticket='.$ticket,
+            'ticket' => $ticket,
             'expires_at' => $expires,
             'is_bunny' => $isBunny,
             'token_auth_enabled' => $tokenAuthEnabled,
             'duration' => isset($modulable->duration) ? (int) $modulable->duration : null,
             'thumbnail' => isset($modulable->thumbnail) ? (string) $modulable->thumbnail : null,
         ];
+    }
+
+    private function ticketCacheKey(string $ticket): string
+    {
+        return 'student_video_player_ticket:'.$ticket;
     }
 
     private function urlHasBunnyToken(string $url): bool
