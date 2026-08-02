@@ -114,6 +114,31 @@
                     @if(!empty($waContext['wa_load_error']))
                         <div class="alert alert-danger py-2 mb-3">{{ $waContext['wa_load_error'] }}</div>
                     @endif
+
+                    @php $waGroupsLoaded = !empty($waContext['whatsapp_groups_loaded']); @endphp
+
+                    @unless($waGroupsLoaded)
+                        <div class="alert alert-light border py-3 mb-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <strong class="d-block mb-1">قائمة مجموعات واتساب غير محمّلة</strong>
+                                    <span class="fs-12 text-muted">لتسريع فتح الصفحة، لا تُجلب المجموعات تلقائياً. اضغط الزر عند الحاجة للمقارنة.</span>
+                                </div>
+                                <a
+                                    href="{{ route('courses.groups.membership-requests', array_merge(
+                                        [$course->id, $group->id],
+                                        request()->except(['page']),
+                                        ['load_wa_groups' => 1]
+                                    )) }}"
+                                    class="btn btn-outline-success"
+                                    id="loadWhatsappGroupsBtn"
+                                >
+                                    <i class="ri-download-cloud-2-line me-1"></i>جلب مجموعات واتساب
+                                </a>
+                            </div>
+                        </div>
+                    @endunless
+
                     <form method="GET" action="{{ route('courses.groups.membership-requests', [$course->id, $group->id]) }}" id="membershipWaGroupForm">
                         @if(request('search'))
                             <input type="hidden" name="search" value="{{ request('search') }}">
@@ -124,10 +149,13 @@
                         @if(request('wa_membership'))
                             <input type="hidden" name="wa_membership" value="{{ request('wa_membership') }}">
                         @endif
+                        @if($waGroupsLoaded)
+                            <input type="hidden" name="load_wa_groups" value="1">
+                        @endif
                         <div class="row g-3 align-items-end">
-                            <div class="col-md-8">
+                            <div class="col-md-{{ $waGroupsLoaded ? '6' : '8' }}">
                                 <label class="form-label">مجموعة WhatsApp</label>
-                                <select name="whatsapp_jid" class="form-select" id="membershipWhatsappJid">
+                                <select name="whatsapp_jid" class="form-select" id="membershipWhatsappJid" @disabled(! $waGroupsLoaded && $waSelectedJid === '')>
                                     <option value="">— بدون مقارنة —</option>
                                     @foreach($waContext['whatsapp_groups'] ?? [] as $wg)
                                         @php $wjid = $wg['id'] ?? $wg['jid'] ?? ''; @endphp
@@ -137,12 +165,30 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @unless($waGroupsLoaded)
+                                    <small class="text-muted">فعّل القائمة عبر «جلب مجموعات واتساب» أولاً.</small>
+                                @endunless
                             </div>
-                            <div class="col-md-4">
-                                <button type="submit" class="btn btn-success w-100">
+                            <div class="col-md-{{ $waGroupsLoaded ? '3' : '4' }}">
+                                <button type="submit" class="btn btn-success w-100" @disabled(! $waGroupsLoaded && $waSelectedJid === '')>
                                     <i class="ri-refresh-line me-1"></i>تحديث حالة الانضمام
                                 </button>
                             </div>
+                            @if($waGroupsLoaded)
+                                <div class="col-md-3">
+                                    <a
+                                        href="{{ route('courses.groups.membership-requests', array_merge(
+                                            [$course->id, $group->id],
+                                            request()->except(['page']),
+                                            ['load_wa_groups' => 1, 'refresh_wa_groups' => 1]
+                                        )) }}"
+                                        class="btn btn-outline-secondary w-100"
+                                        title="إعادة جلب القائمة من واتساب"
+                                    >
+                                        <i class="ri-refresh-line me-1"></i>إعادة جلب المجموعات
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     </form>
                     @if($waSelectedJid !== '' && !empty($waContext['wa_group_info']))

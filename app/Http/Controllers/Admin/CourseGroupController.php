@@ -207,13 +207,13 @@ class CourseGroupController extends Controller
             // The view should handle this case gracefully
 
             // Get statistics
-            $stats = [
+            $stats = array_merge([
                 'total_members' => $group->members_count ?? $group->getMembersCount(),
                 'available_slots' => $group->getAvailableSlots(),
                 'is_full' => $group->isFull(),
                 'leaders_count' => $group->leaders()->count(),
                 'regular_members_count' => $group->members()->where('role', 'member')->count(),
-            ];
+            ], $this->resolveGroupFinancialStats((int) $group->id));
 
             // Get all member student IDs first (for sessions query)
             $memberStudentIds = $group->members()->pluck('student_id')->toArray();
@@ -1388,13 +1388,13 @@ class CourseGroupController extends Controller
             $course = $group->courses->first();
 
             // Get statistics
-            $stats = [
+            $stats = array_merge([
                 'total_members' => $group->members_count ?? $group->getMembersCount(),
                 'available_slots' => $group->getAvailableSlots(),
                 'is_full' => $group->isFull(),
                 'leaders_count' => $group->leaders()->count(),
                 'regular_members_count' => $group->members()->where('role', 'member')->count(),
-            ];
+            ], $this->resolveGroupFinancialStats((int) $group->id));
 
             // Get paginated members with search and filters
             $membersQuery = $group->members()->with(['student.roles']);
@@ -1662,7 +1662,13 @@ class CourseGroupController extends Controller
             }
 
             $whatsappJid = trim((string) $request->input('whatsapp_jid', ''));
-            $waContext = $this->resolveMembershipWhatsAppContext($group, $whatsappJid);
+            // لا نجلب قائمة مجموعات واتساب عند فتح الصفحة — فقط عند طلب الأدمن (أو من كاش الجلسة)
+            $waContext = $this->resolveMembershipWhatsAppContext(
+                $group,
+                $whatsappJid,
+                $request->boolean('load_wa_groups'),
+                $request->boolean('refresh_wa_groups')
+            );
 
             if ($whatsappJid !== '' && empty($waContext['wa_load_error']) && ! empty($waContext['phone_index'])) {
                 $compareService = app(EvolutionGroupCompareService::class);
@@ -1836,13 +1842,18 @@ class CourseGroupController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function resolveMembershipWhatsAppContext(CourseGroup $group, ?string $whatsappJid): array
-    {
+    private function resolveMembershipWhatsAppContext(
+        CourseGroup $group,
+        ?string $whatsappJid,
+        bool $loadWhatsAppGroups = false,
+        bool $refreshWhatsAppGroups = false
+    ): array {
         $compareService = app(EvolutionGroupCompareService::class);
         $evolutionService = app(EvolutionService::class);
         $rotatingSendService = app(EvolutionRotatingSendService::class);
         $rotator = app(EvolutionInstanceRotator::class);
         $activeInstanceName = $evolutionService->activeInstanceName();
+        $sessionKey = 'admin_membership_wa_groups:'.($activeInstanceName !== '' ? $activeInstanceName : 'none');
 
         $registrationSettings = GroupRegistrationSetting::where('group_id', $group->id)->first();
         $defaultInviteMessage = "مرحباً {student_name} 👋\n\nيرجى الانضمام لمجموعة الواتساب الخاصة بـ {group_name} عبر الرابط:\n{group_link}";
@@ -1850,6 +1861,7 @@ class CourseGroupController extends Controller
         $context = [
             'whatsapp_groups' => [],
             'whatsapp_groups_error' => null,
+            'whatsapp_groups_loaded' => false,
             'evolution_instance_name' => $activeInstanceName,
             'evolution_rotation_enabled' => $rotatingSendService->isRotationActive(),
             'rotation_pool_count' => $rotator->poolCount(),
@@ -1868,10 +1880,25 @@ class CourseGroupController extends Controller
             'default_invite_message' => $defaultInviteMessage,
         ];
 
-        try {
-            $context['whatsapp_groups'] = $compareService->listWhatsAppGroups(false);
-        } catch (\Throwable $e) {
-            $context['whatsapp_groups_error'] = EvolutionApiException::resolveUserMessage($e);
+        // جلب قائمة كل المجموعات فقط عند طلب الأدمن، أو من كاش الجلسة بعد الجلب السابق
+        if ($refreshWhatsAppGroups) {
+            session()->forget($sessionKey);
+        }
+
+        $cachedGroups = session($sessionKey);
+        if (is_array($cachedGroups) && ! $refreshWhatsAppGroups) {
+            $context['whatsapp_groups'] = $cachedGroups;
+            $context['whatsapp_groups_loaded'] = true;
+        } elseif ($loadWhatsAppGroups || $refreshWhatsAppGroups) {
+            try {
+                $groups = $compareService->listWhatsAppGroups(false);
+                $context['whatsapp_groups'] = is_array($groups) ? $groups : [];
+                $context['whatsapp_groups_loaded'] = true;
+                session([$sessionKey => $context['whatsapp_groups']]);
+            } catch (\Throwable $e) {
+                $context['whatsapp_groups_error'] = EvolutionApiException::resolveUserMessage($e);
+                $context['whatsapp_groups_loaded'] = false;
+            }
         }
 
         if ($context['selected_jid'] === '') {
@@ -1882,6 +1909,19 @@ class CourseGroupController extends Controller
             $wa = $compareService->loadWhatsAppGroup($context['selected_jid']);
             $context['wa_group_info'] = $wa['group_info'];
             $context['phone_index'] = $wa['phone_index'];
+
+            // إن لم تُحمَّل القائمة بعد، اعرض المجموعة المختارة فقط في الـ select
+            if (! $context['whatsapp_groups_loaded'] && empty($context['whatsapp_groups'])) {
+                $context['whatsapp_groups'] = [[
+                    'id' => $context['selected_jid'],
+                    'jid' => $context['selected_jid'],
+                    'subject' => $wa['group_info']['subject'] ?? $wa['group_info']['name'] ?? $context['selected_jid'],
+                    'name' => $wa['group_info']['name'] ?? $wa['group_info']['subject'] ?? $context['selected_jid'],
+                    'size' => $wa['group_info']['size']
+                        ?? $wa['group_info']['participants_count']
+                        ?? '?',
+                ]];
+            }
         } catch (\Throwable $e) {
             $context['wa_load_error'] = EvolutionApiException::resolveUserMessage($e);
         }
@@ -2633,6 +2673,40 @@ class CourseGroupController extends Controller
         $perPage = (int) $request->get('per_page', 25);
 
         return in_array($perPage, $this->allowedMembersPerPage(), true) ? $perPage : 25;
+    }
+
+    /**
+     * Aggregate invoice/payment totals for invoices linked to this group's members.
+     *
+     * @return array{group_total_amount: float, group_paid_amount: float, group_remaining_amount: float}
+     */
+    private function resolveGroupFinancialStats(int $groupId): array
+    {
+        $groupInvoices = Invoice::query()
+            ->whereNotIn('status', ['cancelled', 'draft'])
+            ->whereHas('items', function ($q) use ($groupId) {
+                $q->where('itemable_type', CourseGroupMember::class)
+                    ->whereIn('itemable_id', function ($sub) use ($groupId) {
+                        $sub->select('id')
+                            ->from('course_group_members')
+                            ->where('group_id', $groupId);
+                    });
+            });
+
+        $totals = (clone $groupInvoices)
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount, COALESCE(SUM(remaining_amount), 0) as remaining_amount')
+            ->first();
+
+        $paidAmount = (float) Payment::query()
+            ->where('status', 'completed')
+            ->whereIn('invoice_id', (clone $groupInvoices)->select('invoices.id'))
+            ->sum('amount');
+
+        return [
+            'group_total_amount' => (float) ($totals->total_amount ?? 0),
+            'group_paid_amount' => $paidAmount,
+            'group_remaining_amount' => (float) ($totals->remaining_amount ?? 0),
+        ];
     }
 
     /**

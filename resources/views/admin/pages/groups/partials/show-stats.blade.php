@@ -53,6 +53,35 @@
             'countup' => false,
         ];
     }
+
+    $formatMoney = static fn (float $amount): string => '$' . number_format($amount, 2);
+
+    $kpiCards[] = [
+        'variant' => 'green',
+        'icon' => 'fe-check-circle',
+        'label' => 'المبلغ المدفوع',
+        'value' => $formatMoney((float) ($stats['group_paid_amount'] ?? 0)),
+        'sub' => 'إجمالي الدفعات المكتملة لهذه المجموعة',
+        'countup' => false,
+    ];
+
+    $kpiCards[] = [
+        'variant' => 'orange',
+        'icon' => 'fe-alert-circle',
+        'label' => 'المبلغ المتبقي',
+        'value' => $formatMoney((float) ($stats['group_remaining_amount'] ?? 0)),
+        'sub' => 'مجموع المتبقي على فواتير أعضاء المجموعة',
+        'countup' => false,
+    ];
+
+    $kpiCards[] = [
+        'variant' => 'blue',
+        'icon' => 'fe-layers',
+        'label' => 'المبلغ الإجمالي',
+        'value' => $formatMoney((float) ($stats['group_total_amount'] ?? 0)),
+        'sub' => 'إجمالي فواتير أعضاء هذه المجموعة',
+        'countup' => false,
+    ];
 @endphp
 
 <div class="row g-3 dashboard-fade-in mb-4">
