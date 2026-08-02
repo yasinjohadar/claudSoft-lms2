@@ -79,6 +79,8 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('courses/{courseId}/certificate', [StudentCourseProgressApiController::class, 'certificate'])->name('courses.certificate');
         Route::get('courses/{courseId}/progress-report', [StudentCourseProgressApiController::class, 'exportReport'])->name('courses.progress-report');
         Route::get('external-resources/{resource}/open', [StudentExternalResourceApiController::class, 'open'])->name('external-resources.open');
+        // صفحة HTML للمشغّل — تُضمَّن من الديسكتوب حتى يعمل Bunny Allowed Domains (Referer = claudsoft.com)
+        Route::get('modules/{moduleId}/player', [StudentModulePlaybackApiController::class, 'player'])->name('modules.player');
     });
 
     Route::middleware(['log.student.api', 'auth:sanctum', 'role:student', 'student.profile.complete'])->group(function () {

@@ -9,10 +9,14 @@ use App\Models\Video;
 use App\Services\Video\BunnyStreamPlaybackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 /**
- * رابط تشغيل موقّع لوحدة فيديو — للتطبيقات (ديسكتوب/موبايل).
- * نفس آلية توقيع الويب عبر BunnyStreamPlaybackService دون تعديل واجهة الويب.
+ * تشغيل فيديو موقّع للتطبيقات (ديسكتوب/موبايل).
+ *
+ * الويب يضمّن من claudsoft.com فيعمل مع Bunny Allowed Domains.
+ * الديسكتوب يعمل من localhost فيُرفض حتى مع token صحيح — لذلك نوفر
+ * صفحة HTML على نطاق الـ API تضم iframe Bunny (Referer = claudsoft.com).
  */
 class ModulePlaybackApiController extends Controller
 {
@@ -21,6 +25,82 @@ class ModulePlaybackApiController extends Controller
     ) {}
 
     public function show(Request $request, int $moduleId): JsonResponse
+    {
+        $resolved = $this->resolvePlayback($request, $moduleId);
+
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنشاء رابط التشغيل',
+            'data' => $resolved,
+        ]);
+    }
+
+    /**
+     * صفحة مشغّل HTML للتضمين من الديسكتوب/WebView (?token= مدعوم).
+     */
+    public function player(Request $request, int $moduleId): Response|JsonResponse
+    {
+        $resolved = $this->resolvePlayback($request, $moduleId);
+
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+
+        $embedUrl = (string) $resolved['embed_url'];
+        $title = e((string) ($resolved['title'] ?? 'فيديو'));
+        $safeEmbed = e($embedUrl);
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>{$title}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    src="{$safeEmbed}"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+    allowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+</body>
+</html>
+HTML;
+
+        $response = response($html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            // السماح بتضمين الصفحة من تطبيق الديسكتوب (localhost / tauri)
+            'Content-Security-Policy' => 'frame-ancestors *',
+        ]);
+
+        // ALLOWALL غير معياري — نحذف X-Frame-Options ونعتمد CSP فقط
+        $response->headers->remove('X-Frame-Options');
+
+        return $response;
+    }
+
+    /**
+     * @return array<string, mixed>|JsonResponse
+     */
+    private function resolvePlayback(Request $request, int $moduleId): array|JsonResponse
     {
         $user = $request->user();
 
@@ -83,24 +163,24 @@ class ModulePlaybackApiController extends Controller
         }
 
         $expires = $this->extractExpires($embedUrl);
+        $title = $module->title !== null
+            ? (string) $module->title
+            : ($modulable->title !== null ? (string) $modulable->title : null);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'تم إنشاء رابط التشغيل',
-            'data' => [
-                'module_id' => (int) $module->id,
-                'title' => $module->title !== null ? (string) $module->title : ($modulable->title !== null ? (string) $modulable->title : null),
-                'course_id' => (int) $module->course_id,
-                'course_title' => $module->course?->title,
-                'embed_url' => $embedUrl,
-                'video_url' => $embedUrl,
-                'expires_at' => $expires,
-                'is_bunny' => $isBunny,
-                'token_auth_enabled' => $tokenAuthEnabled,
-                'duration' => isset($modulable->duration) ? (int) $modulable->duration : null,
-                'thumbnail' => isset($modulable->thumbnail) ? (string) $modulable->thumbnail : null,
-            ],
-        ]);
+        return [
+            'module_id' => (int) $module->id,
+            'title' => $title,
+            'course_id' => (int) $module->course_id,
+            'course_title' => $module->course?->title,
+            'embed_url' => $embedUrl,
+            'video_url' => $embedUrl,
+            'player_path' => '/student/modules/'.$module->id.'/player',
+            'expires_at' => $expires,
+            'is_bunny' => $isBunny,
+            'token_auth_enabled' => $tokenAuthEnabled,
+            'duration' => isset($modulable->duration) ? (int) $modulable->duration : null,
+            'thumbnail' => isset($modulable->thumbnail) ? (string) $modulable->thumbnail : null,
+        ];
     }
 
     private function urlHasBunnyToken(string $url): bool
