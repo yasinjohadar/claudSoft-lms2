@@ -90,6 +90,19 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('api/*') || $request->expectsJson();
         });
 
+        // منع تحويل /api/* إلى HTML login عند فشل التوكن (مشغّل الديسكتوب يطلب Accept: text/html)
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->is('api')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                    'data' => null,
+                ], 401);
+            }
+
+            return null;
+        });
+
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson()) {
                 $redirect = \App\Support\SessionExpiredRedirect::resolve($request);
