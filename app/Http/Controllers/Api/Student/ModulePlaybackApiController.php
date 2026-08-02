@@ -16,7 +16,7 @@ use Illuminate\Http\Response;
  *
  * الويب يضمّن من claudsoft.com فيعمل مع Bunny Allowed Domains.
  * الديسكتوب يعمل من localhost فيُرفض حتى مع token صحيح — لذلك نوفر
- * صفحة HTML على نطاق الـ API تضم iframe Bunny (Referer = claudsoft.com).
+ * صفحة HTML على نطاق الـ API تضم iframe Bunny فقط (بدون واجهة التعلّم).
  */
 class ModulePlaybackApiController extends Controller
 {
@@ -24,12 +24,17 @@ class ModulePlaybackApiController extends Controller
         protected BunnyStreamPlaybackService $playback
     ) {}
 
-    public function show(Request $request, int $moduleId): JsonResponse
+    public function show(Request $request, int $moduleId): Response|JsonResponse
     {
         $resolved = $this->resolvePlayback($request, $moduleId);
 
         if ($resolved instanceof JsonResponse) {
             return $resolved;
+        }
+
+        // مشغّل HTML فقط — للتضمين من الديسكتوب عبر المسار المنشور أصلاً /playback
+        if ($this->wantsHtmlPlayer($request)) {
+            return $this->htmlPlayerResponse($resolved);
         }
 
         return response()->json([
@@ -50,6 +55,25 @@ class ModulePlaybackApiController extends Controller
             return $resolved;
         }
 
+        return $this->htmlPlayerResponse($resolved);
+    }
+
+    private function wantsHtmlPlayer(Request $request): bool
+    {
+        $format = strtolower((string) $request->query('format', ''));
+        if (in_array($format, ['html', 'player', 'embed'], true)) {
+            return true;
+        }
+
+        return $request->boolean('html')
+            || $request->prefers(['text/html', 'application/json']) === 'text/html';
+    }
+
+    /**
+     * @param  array<string, mixed>  $resolved
+     */
+    private function htmlPlayerResponse(array $resolved): Response
+    {
         $embedUrl = (string) $resolved['embed_url'];
         $title = e((string) ($resolved['title'] ?? 'فيديو'));
         $safeEmbed = e($embedUrl);
@@ -87,11 +111,9 @@ HTML;
 
         $response = response($html, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
-            // السماح بتضمين الصفحة من تطبيق الديسكتوب (localhost / tauri)
             'Content-Security-Policy' => 'frame-ancestors *',
         ]);
 
-        // ALLOWALL غير معياري — نحذف X-Frame-Options ونعتمد CSP فقط
         $response->headers->remove('X-Frame-Options');
 
         return $response;

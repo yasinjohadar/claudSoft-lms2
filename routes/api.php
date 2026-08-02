@@ -79,7 +79,8 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::get('courses/{courseId}/certificate', [StudentCourseProgressApiController::class, 'certificate'])->name('courses.certificate');
         Route::get('courses/{courseId}/progress-report', [StudentCourseProgressApiController::class, 'exportReport'])->name('courses.progress-report');
         Route::get('external-resources/{resource}/open', [StudentExternalResourceApiController::class, 'open'])->name('external-resources.open');
-        // صفحة HTML للمشغّل — تُضمَّن من الديسكتوب حتى يعمل Bunny Allowed Domains (Referer = claudsoft.com)
+        // تشغيل الفيديو للتطبيقات (?token=) — JSON أو HTML عبر ?format=html (فيديو فقط بدون واجهة التعلّم)
+        Route::get('modules/{moduleId}/playback', [StudentModulePlaybackApiController::class, 'show'])->name('modules.playback');
         Route::get('modules/{moduleId}/player', [StudentModulePlaybackApiController::class, 'player'])->name('modules.player');
     });
 
@@ -138,7 +139,6 @@ Route::prefix('student')->name('api.student.')->group(function () {
         Route::post('courses/{id}/enroll', [StudentCourseController::class, 'enroll'])->name('courses.enroll');
         Route::delete('courses/{id}/enroll', [StudentCourseController::class, 'unenroll'])->name('courses.unenroll');
 
-        Route::get('modules/{moduleId}/playback', [StudentModulePlaybackApiController::class, 'show'])->name('modules.playback');
         Route::post('modules/{moduleId}/mark-complete', [StudentModuleProgressApiController::class, 'markComplete'])->name('modules.mark-complete');
         Route::post('modules/{moduleId}/mark-incomplete', [StudentModuleProgressApiController::class, 'markIncomplete'])->name('modules.mark-incomplete');
 
