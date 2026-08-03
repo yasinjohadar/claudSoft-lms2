@@ -59,3 +59,32 @@ test('is course hidden uses hidden course ids', function () {
     expect($service->isCourseHiddenForStudent(55, $student))->toBeTrue()
         ->and($service->isCourseHiddenForStudent(99, $student))->toBeFalse();
 });
+
+test('hidden course ids merges pending gated and group pivot hidden courses', function () {
+    $service = Mockery::mock(StudentCourseVisibilityService::class)->makePartial();
+    $service->shouldReceive('pendingGatedHiddenCourseIds')->andReturn([10, 11]);
+    $service->shouldReceive('groupPivotHiddenCourseIds')->andReturn([11, 20]);
+
+    $student = new \App\Models\User;
+    $student->id = 1;
+
+    $ids = $service->hiddenCourseIds($student);
+
+    expect($ids)->toEqualCanonicalizing([10, 11, 20]);
+});
+
+test('hide reason prefers pending membership message over group pivot hide', function () {
+    $service = Mockery::mock(StudentCourseVisibilityService::class)->makePartial();
+    $service->shouldReceive('pendingGatedHiddenCourseIds')->andReturn([10]);
+    $service->shouldReceive('groupPivotHiddenCourseIds')->andReturn([10, 20]);
+
+    $student = new \App\Models\User;
+    $student->id = 1;
+
+    expect($service->hideReasonForCourse(10, $student))
+        ->toBe(StudentCourseVisibilityService::PENDING_MESSAGE)
+        ->and($service->hideReasonForCourse(20, $student))
+        ->toBe(StudentCourseVisibilityService::GROUP_COURSE_HIDDEN_MESSAGE)
+        ->and($service->hideReasonForCourse(99, $student))
+        ->toBeNull();
+});

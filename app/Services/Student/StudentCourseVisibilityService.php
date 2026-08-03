@@ -11,12 +11,15 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Hides courses belonging to groups where the student has a pending membership
- * request and the group setting hide_courses_until_membership_approved is on.
+ * Hides courses from students when:
+ * - they have a pending membership request on a group that gates courses until approval, or
+ * - they belong to a group where the course is linked with pivot is_visible = false.
  */
 class StudentCourseVisibilityService
 {
     public const PENDING_MESSAGE = 'طلبكم قيد المعالجة حالياً — الكورسات مخفية الآن ولن تظهر إلا بعد مراجعة طلب الانضمام والموافقة عليه من الإدارة.';
+
+    public const GROUP_COURSE_HIDDEN_MESSAGE = 'هذا الكورس مخفي عن مجموعتك حالياً ولا يمكن الوصول إليه.';
 
     /**
      * Pending membership requests for groups that gate course visibility.
@@ -36,11 +39,22 @@ class StudentCourseVisibilityService
     }
 
     /**
-     * Course IDs that must be hidden for this student (linked to gated pending groups).
+     * Course IDs that must be hidden for this student.
      *
      * @return list<int>
      */
     public function hiddenCourseIds(User $student): array
+    {
+        return array_values(array_unique(array_merge(
+            $this->pendingGatedHiddenCourseIds($student),
+            $this->groupPivotHiddenCourseIds($student),
+        )));
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function pendingGatedHiddenCourseIds(User $student): array
     {
         $groupIds = $this->pendingGatedMemberships($student)->pluck('group_id')->filter()->unique()->values();
 
@@ -51,6 +65,27 @@ class StudentCourseVisibilityService
         return DB::table('course_group_courses')
             ->whereIn('group_id', $groupIds->all())
             ->pluck('course_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Courses linked to the student's groups with pivot is_visible = false.
+     *
+     * @return list<int>
+     */
+    public function groupPivotHiddenCourseIds(User $student): array
+    {
+        return DB::table('course_group_courses')
+            ->join('course_group_members', 'course_group_members.group_id', '=', 'course_group_courses.group_id')
+            ->where('course_group_members.student_id', $student->id)
+            ->where(function ($query) {
+                $query->where('course_group_courses.is_visible', false)
+                    ->orWhere('course_group_courses.is_visible', 0);
+            })
+            ->pluck('course_group_courses.course_id')
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values()
@@ -105,5 +140,20 @@ class StudentCourseVisibilityService
         $courseId = $course instanceof Course ? (int) $course->id : (int) $course;
 
         return in_array($courseId, $this->hiddenCourseIds($student), true);
+    }
+
+    public function hideReasonForCourse(Course|int $course, User $student): ?string
+    {
+        $courseId = $course instanceof Course ? (int) $course->id : (int) $course;
+
+        if (in_array($courseId, $this->pendingGatedHiddenCourseIds($student), true)) {
+            return self::PENDING_MESSAGE;
+        }
+
+        if (in_array($courseId, $this->groupPivotHiddenCourseIds($student), true)) {
+            return self::GROUP_COURSE_HIDDEN_MESSAGE;
+        }
+
+        return null;
     }
 }

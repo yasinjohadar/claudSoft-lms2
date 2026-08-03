@@ -4,6 +4,7 @@ namespace App\Services\AiNew;
 
 use App\Models\LaravelAiModel;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Contracts\Agent;
@@ -15,13 +16,21 @@ use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use Laravel\Ai\Responses\StructuredTextResponse;
 use Laravel\Ai\Responses\TextResponse;
+use Prism\Prism\Exceptions\PrismRequestTooLargeException;
+use Throwable;
 
 /**
  * Runs Laravel AI text/structured requests using per-model max_tokens and temperature from laravel_ai_models.
  * The #[MaxTokens] attribute on agents is only a fallback when max_tokens is missing or invalid.
+ *
+ * When the provider rejects the request as too large / over token limits, retries with a stepped-down
+ * max_tokens so generation can continue using the model's configured limit as the starting point.
  */
 class LaravelAiPromptRunner
 {
+    /** @var list<int> */
+    private const TOKEN_STEP_DOWN = [65536, 32768, 16384, 12288, 8192, 6144, 4096, 3072, 2048];
+
     public function runStructured(
         LaravelAiModel $model,
         Agent&HasStructuredOutput $agent,
@@ -82,45 +91,74 @@ class LaravelAiPromptRunner
         ?int $preferMinTokens = null,
     ): TextResponse {
         $provider = Ai::textProviderFor($agent, $model->provider);
-        $options = $this->buildOptions($model, $agent, $preferMinTokens);
         $tools = $agent instanceof HasTools ? $agent->tools() : [];
-
-        return $provider->textGateway()->generateText(
-            $provider,
-            $model->model,
-            (string) $agent->instructions(),
-            [new UserMessage($prompt, [])],
-            $tools,
-            $schema,
-            $options,
-            $timeout,
-        );
-    }
-
-    private function buildOptions(LaravelAiModel $model, Agent $agent, ?int $preferMinTokens = null): TextGenerationOptions
-    {
         $base = TextGenerationOptions::forAgent($agent);
-        $maxTokens = $this->effectiveMaxTokens($model, $base->maxTokens, $preferMinTokens);
-        $temperature = $model->temperature !== null
-            ? (float) $model->temperature
-            : $base->temperature;
+        $preferred = $this->effectiveMaxTokens($model, $base->maxTokens, $preferMinTokens);
+        $attempts = $this->maxTokenAttempts($preferred);
 
-        return new TextGenerationOptions(
-            maxSteps: $base->maxSteps,
-            maxTokens: $maxTokens,
-            temperature: $temperature,
-            agent: $agent,
-        );
+        $last = null;
+        foreach ($attempts as $index => $maxTokens) {
+            $options = new TextGenerationOptions(
+                maxSteps: $base->maxSteps,
+                maxTokens: $maxTokens,
+                temperature: $model->temperature !== null
+                    ? (float) $model->temperature
+                    : $base->temperature,
+                agent: $agent,
+            );
+
+            try {
+                return $provider->textGateway()->generateText(
+                    $provider,
+                    $model->model,
+                    (string) $agent->instructions(),
+                    [new UserMessage($prompt, [])],
+                    $tools,
+                    $schema,
+                    $options,
+                    $timeout,
+                );
+            } catch (Throwable $e) {
+                $last = $e;
+                if (! $this->isRetryableTokenOrSizeError($e)) {
+                    throw $e;
+                }
+
+                $next = $attempts[$index + 1] ?? null;
+                Log::warning('Laravel AI request hit provider token/size limit — retrying with lower max_tokens', [
+                    'model_id' => $model->id,
+                    'provider' => $model->provider,
+                    'model' => $model->model,
+                    'attempted_max_tokens' => $maxTokens,
+                    'next_max_tokens' => $next,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($next === null) {
+                    break;
+                }
+            }
+        }
+
+        throw $last ?? new \RuntimeException('AI request failed after max_tokens retries.');
     }
 
-    private function effectiveMaxTokens(LaravelAiModel $model, ?int $agentDefault, ?int $preferMinTokens = null): int
+    /**
+     * Model DB max_tokens is authoritative. preferMinTokens only fills gaps when DB is unset/invalid,
+     * and never raises above the configured model limit.
+     */
+    public function effectiveMaxTokens(LaravelAiModel $model, ?int $agentDefault, ?int $preferMinTokens = null): int
     {
         $db = (int) ($model->max_tokens ?? 0);
         $fallback = $agentDefault ?? 4096;
-        $raw = $db > 0 ? $db : $fallback;
 
-        if ($preferMinTokens !== null && $preferMinTokens > 0) {
-            $raw = max($raw, $preferMinTokens);
+        if ($db > 0) {
+            $raw = $db;
+        } else {
+            $raw = $fallback;
+            if ($preferMinTokens !== null && $preferMinTokens > 0) {
+                $raw = max($raw, $preferMinTokens);
+            }
         }
 
         $ceiling = config('ai.application.completion_tokens_ceiling');
@@ -129,5 +167,40 @@ class LaravelAiPromptRunner
         }
 
         return max(1, $raw);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function maxTokenAttempts(int $preferred): array
+    {
+        $preferred = max(1, $preferred);
+        $attempts = [$preferred];
+
+        foreach (self::TOKEN_STEP_DOWN as $step) {
+            if ($step < $preferred) {
+                $attempts[] = $step;
+            }
+        }
+
+        return array_values(array_unique($attempts));
+    }
+
+    public function isRetryableTokenOrSizeError(Throwable $e): bool
+    {
+        if ($e instanceof PrismRequestTooLargeException) {
+            return true;
+        }
+
+        $msg = strtolower($e->getMessage());
+
+        return str_contains($msg, 'too large')
+            || str_contains($msg, 'max token')
+            || str_contains($msg, 'max_tokens')
+            || str_contains($msg, 'context length')
+            || str_contains($msg, 'context_length')
+            || str_contains($msg, 'token limit')
+            || str_contains($msg, 'maximum context')
+            || str_contains($msg, 'prompt is too long');
     }
 }

@@ -85,7 +85,7 @@ class CourseGroupController extends Controller
 
             $groups = $query->paginate($request->get('per_page', 15));
 
-            return view('admin.course-groups.index', compact('groups', 'course'));
+            return view('admin.pages.groups.index', compact('groups', 'course'));
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل المجموعات: '.$e->getMessage());
         }

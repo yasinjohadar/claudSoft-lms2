@@ -347,12 +347,14 @@ class DocumentationAiPipelineService
         $categoryLine = $category ? "القسم: {$category->name}. " : '';
         $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
 
-        $prompt = <<<PROMPT
+        $topicForPrompt = Str::limit(trim($topic), 1500);
+        $buildPrompt = function (int $target) use ($topicForPrompt, $categoryLine, $parentLine, $length, $tone, $langLine): string {
+            return <<<PROMPT
 خطط صفحة توثيق شاملة ثم قسّمها إلى أقسام.
 
-الموضوع: {$topic}
+الموضوع: {$topicForPrompt}
 {$categoryLine}{$parentLine}
-عدد الأقسام المستهدف تقريباً: {$sectionTarget}
+عدد الأقسام المستهدف تقريباً: {$target}
 طول المحتوى الإجمالي المستهدف: {$length}
 الأسلوب: {$tone}
 {$langLine}
@@ -360,13 +362,35 @@ class DocumentationAiPipelineService
 أعد: title, slug, excerpt, sections[{heading, brief}].
 كل brief جملة قصيرة توضّح ما سيُغطى في القسم فقط.
 PROMPT;
+        };
 
         $started = hrtime(true);
+        $prompt = $buildPrompt($sectionTarget);
 
-        /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
-        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
-            return $this->promptRunner->runStructured($model, new DocumentationOutlineAgent, $prompt, self::OUTLINE_TIMEOUT);
-        });
+        try {
+            /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
+            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
+                return $this->promptRunner->runStructured($model, new DocumentationOutlineAgent, $prompt, self::OUTLINE_TIMEOUT);
+            });
+        } catch (Throwable $e) {
+            if (! $this->promptRunner->isRetryableTokenOrSizeError($e)) {
+                throw $e;
+            }
+
+            // Keep generating: retry outline with a tighter prompt while still covering the topic.
+            $retryTarget = max(4, (int) floor($sectionTarget * 0.75));
+            Log::warning('Documentation AI outline hit provider size/token limit — retrying', [
+                'section_target' => $sectionTarget,
+                'retry_target' => $retryTarget,
+                'model_id' => $model->id,
+                'model_max_tokens' => $model->max_tokens,
+                'error' => $e->getMessage(),
+            ]);
+            $prompt = $buildPrompt($retryTarget);
+            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
+                return $this->promptRunner->runStructured($model, new DocumentationOutlineAgent, $prompt, self::OUTLINE_TIMEOUT);
+            });
+        }
 
         $structured = $response->toArray();
         $this->logger->logSuccess($model, $user, 'docs.outline', ['topic' => $topic], $structured, (int) ((hrtime(true) - $started) / 1_000_000));
@@ -390,24 +414,41 @@ PROMPT;
         LaravelAiModel $model,
         string $contentLength = 'medium',
     ): string {
-        $html = $this->requestSectionHtml(
-            $topic,
-            $outline,
-            $heading,
-            $brief,
-            $priorHeadings,
-            $options,
-            $user,
-            $model,
-            $contentLength,
-            compact: false,
-        );
+        $html = '';
+        $sizeError = false;
 
-        if ($html === '') {
-            Log::warning('Documentation AI section empty — retrying compact prompt', [
+        try {
+            $html = $this->requestSectionHtml(
+                $topic,
+                $outline,
+                $heading,
+                $brief,
+                $priorHeadings,
+                $options,
+                $user,
+                $model,
+                $contentLength,
+                compact: false,
+            );
+        } catch (Throwable $e) {
+            if (! $this->promptRunner->isRetryableTokenOrSizeError($e)) {
+                throw $e;
+            }
+            $sizeError = true;
+            Log::warning('Documentation AI section hit provider size/token limit — retrying compact', [
                 'heading' => $heading,
                 'content_length' => $contentLength,
+                'error' => $e->getMessage(),
             ]);
+        }
+
+        if ($html === '' || $sizeError) {
+            if (! $sizeError && $html === '') {
+                Log::warning('Documentation AI section empty — retrying compact prompt', [
+                    'heading' => $heading,
+                    'content_length' => $contentLength,
+                ]);
+            }
             $html = $this->requestSectionHtml(
                 $topic,
                 $outline,
@@ -423,7 +464,7 @@ PROMPT;
         }
 
         if ($html === '') {
-            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو قلّل حجم الأمثلة في الموضوع.');
+            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو راجع max_tokens للموديل.');
         }
 
         if (! str_contains($html, 'content-section')) {
@@ -478,7 +519,11 @@ PROMPT;
 لا تُرجع أقساماً أخرى. أعد الحقل html فقط.
 PROMPT;
 
+        // Prefer the model's configured max_tokens; only suggest a floor when DB limit is unset.
         $preferMinTokens = in_array($contentLength, ['medium', 'long'], true) ? 8192 : null;
+        if ($compact) {
+            $preferMinTokens = null;
+        }
         $started = hrtime(true);
 
         /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
@@ -717,13 +762,15 @@ GUIDE;
     private function friendlyError(Throwable $e): string
     {
         $msg = $e->getMessage();
-        if (str_contains(strtolower($msg), 'timeout')) {
-            return 'انتهت مهلة أحد مراحل التوليد. تمت إعادة المحاولة تلقائياً أو جرّب مجدداً — المحتوى الطويل يُقسَّم إلى أقسام.';
+        $lower = strtolower($msg);
+        if (str_contains($lower, 'timeout')) {
+            return 'انتهت مهلة أحد مراحل التوليد. أعد المحاولة — المحتوى الطويل يُقسَّم إلى أقسام ويُعاد تلقائياً عند الحاجة.';
         }
-        if (str_contains(strtolower($msg), 'too large')) {
-            return 'تجاوز الطلب حد الرموز عند المزود. سيتم الاعتماد على أقسام أصغر؛ أعد المحاولة.';
+        if ($this->promptRunner->isRetryableTokenOrSizeError($e)) {
+            return 'تعذّر إكمال الطلب ضمن حد الرموز المقبول عند المزود رغم استخدام max_tokens من الموديل وإعادة المحاولة تلقائياً. '
+                .'راجع قيمة max_tokens في لوحة الموديل (حد الإكمال وليس نافذة السياق) ثم أعد التوليد.';
         }
-        if (str_contains(strtolower($msg), 'api key')) {
+        if (str_contains($lower, 'api key')) {
             return 'مشكلة في API Key. تحقق من إعدادات الموديل.';
         }
 

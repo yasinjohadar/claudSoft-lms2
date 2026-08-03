@@ -88,12 +88,19 @@ class AccessControlService
             ];
         }
 
-        if (app(StudentCourseVisibilityService::class)->isCourseHiddenForStudent($course, $student)) {
+        $visibility = app(StudentCourseVisibilityService::class);
+        if ($visibility->isCourseHiddenForStudent($course, $student)) {
+            $reason = $visibility->hideReasonForCourse($course, $student)
+                ?? StudentCourseVisibilityService::GROUP_COURSE_HIDDEN_MESSAGE;
+            $isPending = $reason === StudentCourseVisibilityService::PENDING_MESSAGE;
+
             return [
                 'can_access' => false,
-                'reason' => StudentCourseVisibilityService::PENDING_MESSAGE,
-                'reason_en' => 'Your membership request is still under review',
-                'code' => 'MEMBERSHIP_PENDING_REVIEW',
+                'reason' => $reason,
+                'reason_en' => $isPending
+                    ? 'Your membership request is still under review'
+                    : 'This course is hidden for your group',
+                'code' => $isPending ? 'MEMBERSHIP_PENDING_REVIEW' : 'GROUP_COURSE_HIDDEN',
             ];
         }
 
