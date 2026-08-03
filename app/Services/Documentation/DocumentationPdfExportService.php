@@ -98,13 +98,21 @@ class DocumentationPdfExportService
     }
 
     /**
-     * Measure rendered content height and emit a single continuous PDF page.
-     * Falls back to A4 when the page is taller than Chromium can reliably render.
+     * Measure rendered content height and emit a single continuous PDF page
+     * sized exactly to that content — never paginated A4 output.
+     *
+     * If content height exceeds the safe single-page ceiling (see
+     * config('browsershot.pdf_safe_single_page_height') for how that ceiling
+     * was determined), the whole page is scaled down proportionally via
+     * Browsershot::scale() so it still fits on one page instead of being
+     * split or clipped. Width and height are scaled together — scaling only
+     * one axis would leave the shrunk content misaligned with blank space,
+     * since Puppeteer scales an already-laid-out page rather than reflowing it.
      */
     protected function renderContinuousPdf(Browsershot $shot): string
     {
         $viewportWidth = (int) config('browsershot.pdf_viewport_width', 720);
-        $maxContinuous = (int) config('browsershot.pdf_max_continuous_height', 14000);
+        $safeHeight = (int) config('browsershot.pdf_safe_single_page_height', 80000);
 
         try {
             $rawHeight = $shot->evaluate(
@@ -122,23 +130,22 @@ class DocumentationPdfExportService
 
         $minHeight = (int) config('browsershot.pdf_viewport_height', 2400);
         $pageHeight = max($contentHeight + 48, $minHeight, 900);
+        $pageWidth = $viewportWidth;
 
-        if ($pageHeight > $maxContinuous) {
-            return $shot
-                ->format('A4')
-                ->margins(0, 0, 0, 0)
-                ->showBackground()
-                ->pdf();
+        if ($pageHeight > $safeHeight) {
+            $scale = max(0.1, min(1.0, $safeHeight / $pageHeight));
+            $pageHeight = (int) round($pageHeight * $scale);
+            $pageWidth = (int) round($viewportWidth * $scale);
+            $shot->scale($scale);
         }
 
-        // Prefer explicit pixel paper size (one continuous page) over A4 pagination.
         $shot->setOption('format', null);
-        $shot->setOption('width', $viewportWidth.'px');
+        $shot->setOption('width', $pageWidth.'px');
         $shot->setOption('height', $pageHeight.'px');
         $shot->setOption('preferCSSPageSize', false);
 
         if (method_exists($shot, 'paperSize')) {
-            $shot->paperSize($viewportWidth, $pageHeight, 'px');
+            $shot->paperSize($pageWidth, $pageHeight, 'px');
         }
 
         return $shot->pdf();

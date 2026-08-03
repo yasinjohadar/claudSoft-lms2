@@ -56,10 +56,20 @@ return [
     'pdf_viewport_height' => (int) env('BROWSERSHOT_PDF_VIEWPORT_HEIGHT', 2400),
 
     /*
-    | Chromium can fail on extremely tall single-page PDFs.
-    | Above this height we fall back to A4 multi-page output.
+    | Hard safety ceiling before we scale the whole page down to keep it as a
+    | single continuous page. Empirically verified against the Chrome build
+    | bundled with this project's puppeteer version (binary-searched via
+    | Page.printToPDF): paper dimensions hard-fail above 65,535pt (~87,380px
+    | at 96dpi) per axis — a 16-bit limit internal to Chromium/Skia. This
+    | value must stay safely below that. Re-verify with the same binary
+    | search technique after any Chrome/puppeteer upgrade.
+    |
+    | Below this height: output is one page sized exactly to the content
+    | (unchanged from before). Above it: DocumentationPdfExportService
+    | shrinks the whole page proportionally via Browsershot::scale() so it
+    | still fits on ONE page — it never falls back to paginated A4 output.
     */
-    'pdf_max_continuous_height' => (int) env('BROWSERSHOT_PDF_MAX_CONTINUOUS_HEIGHT', 14000),
+    'pdf_safe_single_page_height' => (int) env('BROWSERSHOT_PDF_SAFE_SINGLE_PAGE_HEIGHT', 80000),
 
     'pdf_branding' => [
         'organization_name' => env('DOCS_PDF_ORG_NAME', 'أكاديمية كلاودسوفت'),
