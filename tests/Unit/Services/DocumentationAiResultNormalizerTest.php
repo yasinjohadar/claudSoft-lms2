@@ -85,3 +85,26 @@ test('looksLikeInstructionPrompt detects command-like titles', function () {
         'قم بإنشاء مرجع كامل وبالتفصيل عن tables في لغة CSS بالتفصيل مع كل الخصائص'
     ))->toBeFalse();
 });
+
+test('unwrapPayload recovers truncated json with html and dart code', function () {
+    $normalizer = new DocumentationAiResultNormalizer;
+    $html = '<section class="content-section"><h2 class="section-title">Loop</h2>'
+        .'<pre><code class="language-dart">for (final i in list) { print(i); }</code></pre>'
+        .'<div class="text-block">شرح مختصر عن التكرار.</div></section>';
+
+    $full = json_encode([
+        'title' => 'Loop in List',
+        'slug' => 'loop-in-list',
+        'excerpt' => 'مرجع',
+        'content' => $html,
+    ], JSON_UNESCAPED_UNICODE);
+
+    // Cut mid-string to simulate max_tokens truncation.
+    $truncated = mb_substr($full, 0, (int) (mb_strlen($full) * 0.65));
+
+    $out = $normalizer->unwrapPayload($truncated);
+
+    expect($out['title'] ?? null)->toBe('Loop in List');
+    expect($out['content'] ?? '')->toContain('content-section');
+    expect($out['content'] ?? '')->toContain('language-dart');
+});

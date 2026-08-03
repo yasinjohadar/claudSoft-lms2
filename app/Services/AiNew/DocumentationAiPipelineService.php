@@ -81,7 +81,22 @@ class DocumentationAiPipelineService
         }
 
         $engine = (string) ($payload['docs_engine'] ?? 'laravel_ai');
+        $contentLength = (string) ($payload['content_length'] ?? 'medium');
         $options = $this->wizardOptionsFromPayload($payload);
+
+        // Prefer outline+sections for medium/long whenever a Laravel AI model exists.
+        if (
+            in_array($contentLength, ['medium', 'long'], true)
+            && $engine !== 'laravel_ai'
+            && LaravelAiModel::query()->where('is_active', true)->exists()
+        ) {
+            Log::info('Documentation AI forcing laravel_ai pipeline for length', [
+                'uuid' => $generation->uuid,
+                'content_length' => $contentLength,
+                'was_engine' => $engine,
+            ]);
+            $engine = 'laravel_ai';
+        }
 
         if ($engine !== 'laravel_ai') {
             $generation->markProgress('legacy_generate', 'توليد الصفحة (محرك قديم)…', 20);
@@ -144,6 +159,7 @@ class DocumentationAiPipelineService
                 $options,
                 $user,
                 $laraModel,
+                $contentLength,
             );
             $htmlParts[] = $html;
             $priorHeadings[] = $heading;
@@ -372,6 +388,67 @@ PROMPT;
         array $options,
         ?User $user,
         LaravelAiModel $model,
+        string $contentLength = 'medium',
+    ): string {
+        $html = $this->requestSectionHtml(
+            $topic,
+            $outline,
+            $heading,
+            $brief,
+            $priorHeadings,
+            $options,
+            $user,
+            $model,
+            $contentLength,
+            compact: false,
+        );
+
+        if ($html === '') {
+            Log::warning('Documentation AI section empty — retrying compact prompt', [
+                'heading' => $heading,
+                'content_length' => $contentLength,
+            ]);
+            $html = $this->requestSectionHtml(
+                $topic,
+                $outline,
+                $heading,
+                $brief,
+                $priorHeadings,
+                $options,
+                $user,
+                $model,
+                $contentLength,
+                compact: true,
+            );
+        }
+
+        if ($html === '') {
+            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو قلّل حجم الأمثلة في الموضوع.');
+        }
+
+        if (! str_contains($html, 'content-section')) {
+            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array<string, mixed>  $options
+     */
+    private function requestSectionHtml(
+        string $topic,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        array $options,
+        ?User $user,
+        LaravelAiModel $model,
+        string $contentLength,
+        bool $compact,
     ): string {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
@@ -379,6 +456,9 @@ PROMPT;
         $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
         $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
         $styleGuide = $this->styleGuide();
+        $compactLine = $compact
+            ? "مهم: اجعل القسم أقصر. مثال كود واحد فقط، بدون تكرار، ركّز على الفكرة الأساسية."
+            : '';
 
         $prompt = <<<PROMPT
 اكتب قسماً واحداً فقط من صفحة توثيق.
@@ -390,6 +470,7 @@ PROMPT;
 أقسام سابقة (للتماسك، لا تكررها): {$prior}
 الأسلوب: {$tone}
 {$langLine}
+{$compactLine}
 
 {$styleGuide}
 
@@ -397,36 +478,35 @@ PROMPT;
 لا تُرجع أقساماً أخرى. أعد الحقل html فقط.
 PROMPT;
 
+        $preferMinTokens = in_array($contentLength, ['medium', 'long'], true) ? 8192 : null;
         $started = hrtime(true);
 
         /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
-        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
-            return $this->promptRunner->runStructured($model, new DocumentationSectionAgent, $prompt, self::SECTION_TIMEOUT);
+        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $preferMinTokens) {
+            return $this->promptRunner->runStructured(
+                $model,
+                new DocumentationSectionAgent,
+                $prompt,
+                self::SECTION_TIMEOUT,
+                $preferMinTokens,
+            );
         });
 
         $structured = $response->toArray();
         $this->logger->logSuccess(
             $model,
             $user,
-            'docs.section',
-            ['heading' => $heading],
+            'docs.section'.($compact ? '.retry' : ''),
+            ['heading' => $heading, 'compact' => $compact],
             ['html_len' => mb_strlen((string) ($structured['html'] ?? ''))],
             (int) ((hrtime(true) - $started) / 1_000_000)
         );
 
         $html = $this->resultNormalizer->extractSectionHtml((string) ($structured['html'] ?? ''));
         if ($html === '') {
-            // Fallback: normalize then extract
             $html = $this->resultNormalizer->extractSectionHtml(
                 $this->normalizeHtml((string) ($structured['html'] ?? ''))
             );
-        }
-        if ($html === '') {
-            throw new \RuntimeException('فشل توليد قسم: '.$heading);
-        }
-
-        if (! str_contains($html, 'content-section')) {
-            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
         }
 
         return $html;

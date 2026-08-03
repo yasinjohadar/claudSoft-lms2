@@ -144,6 +144,7 @@
                                             <option value="medium" selected>متوسط</option>
                                             <option value="long">طويل</option>
                                         </select>
+                                        <small class="text-muted d-block mt-1">الطويل/المتوسط يُقسَّم تلقائياً إلى أقسام لتفادي قطع الاستجابة.</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" for="tone">الأسلوب</label>
@@ -504,14 +505,19 @@ document.documentElement.classList.add('loaded');
                 const r = document.querySelector('input[name="docs_engine"]:checked');
                 if (r) engine = r.value;
             }
+            const contentLength = document.getElementById('content_length').value;
             const laravelEl = document.getElementById('laravel_ai_model_id');
             const legacyEl = document.getElementById('ai_model_id');
+            // Medium/long must use Laravel AI pipeline when a model dropdown exists.
+            if ((contentLength === 'medium' || contentLength === 'long') && laravelEl) {
+                engine = 'laravel_ai';
+            }
             const payload = {
                 topic: topic,
-                docs_engine: docsEngineChoiceAvailable ? engine : undefined,
+                docs_engine: engine,
                 ai_model_id: engine === 'legacy' ? (legacyEl ? (legacyEl.value || null) : null) : null,
                 laravel_ai_model_id: engine === 'laravel_ai' ? (laravelEl ? (laravelEl.value || null) : null) : null,
-                content_length: document.getElementById('content_length').value,
+                content_length: contentLength,
                 tone: document.getElementById('tone').value,
                 language: document.getElementById('language').value,
                 documentation_category_id: cat,

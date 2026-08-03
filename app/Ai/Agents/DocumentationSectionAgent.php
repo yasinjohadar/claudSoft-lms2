@@ -10,7 +10,7 @@ use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 use Stringable;
 
-#[MaxTokens(4096)]
+#[MaxTokens(8192)]
 #[Temperature(0.65)]
 class DocumentationSectionAgent implements Agent, HasStructuredOutput
 {

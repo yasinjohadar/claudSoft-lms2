@@ -292,6 +292,21 @@ class AIDocumentationPageController extends Controller
                 ! empty($validated['ai_model_id']) ? (int) $validated['ai_model_id'] : null,
             ) ? 'laravel_ai' : 'legacy';
 
+            // Medium/long pages must use outline+sections when Laravel AI is available.
+            $contentLength = (string) $validated['content_length'];
+            $hasLaravelAi = LaravelAiModel::query()->where('is_active', true)->exists();
+            if (in_array($contentLength, ['medium', 'long'], true) && $hasLaravelAi) {
+                $engine = 'laravel_ai';
+            }
+
+            Log::info('AI documentation generate engine resolved', [
+                'engine' => $engine,
+                'requested_engine' => $requestedEngine,
+                'content_length' => $contentLength,
+                'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+                'ai_model_id' => $validated['ai_model_id'] ?? null,
+            ]);
+
             if ($engine === 'laravel_ai' && ! empty($validated['laravel_ai_model_id'])) {
                 $laraModel = LaravelAiModel::query()
                     ->where('id', $validated['laravel_ai_model_id'])

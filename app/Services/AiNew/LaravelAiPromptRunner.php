@@ -27,9 +27,10 @@ class LaravelAiPromptRunner
         Agent&HasStructuredOutput $agent,
         string $prompt,
         int $timeout = 120,
+        ?int $preferMinTokens = null,
     ): StructuredAgentResponse {
         $schema = $agent->schema(new JsonSchemaTypeFactory);
-        $textResponse = $this->invokeGateway($model, $agent, $prompt, $schema, $timeout);
+        $textResponse = $this->invokeGateway($model, $agent, $prompt, $schema, $timeout, $preferMinTokens);
 
         if (! $textResponse instanceof StructuredTextResponse) {
             throw new \RuntimeException('Structured agent did not return structured output.');
@@ -53,8 +54,9 @@ class LaravelAiPromptRunner
         Agent $agent,
         string $prompt,
         int $timeout = 60,
+        ?int $preferMinTokens = null,
     ): AgentResponse {
-        $textResponse = $this->invokeGateway($model, $agent, $prompt, null, $timeout);
+        $textResponse = $this->invokeGateway($model, $agent, $prompt, null, $timeout, $preferMinTokens);
         $invocationId = (string) Str::uuid7();
 
         return (new AgentResponse(
@@ -77,9 +79,10 @@ class LaravelAiPromptRunner
         string $prompt,
         ?array $schema,
         int $timeout,
+        ?int $preferMinTokens = null,
     ): TextResponse {
         $provider = Ai::textProviderFor($agent, $model->provider);
-        $options = $this->buildOptions($model, $agent);
+        $options = $this->buildOptions($model, $agent, $preferMinTokens);
         $tools = $agent instanceof HasTools ? $agent->tools() : [];
 
         return $provider->textGateway()->generateText(
@@ -94,10 +97,10 @@ class LaravelAiPromptRunner
         );
     }
 
-    private function buildOptions(LaravelAiModel $model, Agent $agent): TextGenerationOptions
+    private function buildOptions(LaravelAiModel $model, Agent $agent, ?int $preferMinTokens = null): TextGenerationOptions
     {
         $base = TextGenerationOptions::forAgent($agent);
-        $maxTokens = $this->effectiveMaxTokens($model, $base->maxTokens);
+        $maxTokens = $this->effectiveMaxTokens($model, $base->maxTokens, $preferMinTokens);
         $temperature = $model->temperature !== null
             ? (float) $model->temperature
             : $base->temperature;
@@ -110,11 +113,15 @@ class LaravelAiPromptRunner
         );
     }
 
-    private function effectiveMaxTokens(LaravelAiModel $model, ?int $agentDefault): int
+    private function effectiveMaxTokens(LaravelAiModel $model, ?int $agentDefault, ?int $preferMinTokens = null): int
     {
         $db = (int) ($model->max_tokens ?? 0);
         $fallback = $agentDefault ?? 4096;
         $raw = $db > 0 ? $db : $fallback;
+
+        if ($preferMinTokens !== null && $preferMinTokens > 0) {
+            $raw = max($raw, $preferMinTokens);
+        }
 
         $ceiling = config('ai.application.completion_tokens_ceiling');
         if ($ceiling !== null && (int) $ceiling > 0) {

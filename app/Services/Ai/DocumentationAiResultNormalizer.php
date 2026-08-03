@@ -269,16 +269,78 @@ class DocumentationAiResultNormalizer
             // Try first { ... last }
             $start = strpos($value, '{');
             $end = strrpos($value, '}');
-            if ($start === false || $end === false || $end <= $start) {
-                return [];
+            $slice = null;
+            if ($start !== false && $end !== false && $end > $start) {
+                $slice = substr($value, $start, $end - $start + 1);
+                $decoded = json_decode($slice, true);
             }
-            $decoded = json_decode(substr($value, $start, $end - $start + 1), true);
+            if ((json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) && $start !== false) {
+                $openEnded = $end !== false && $end > $start ? $slice : substr($value, $start);
+                $repaired = $this->repairTruncatedJsonObject((string) $openEnded);
+                if ($repaired !== null) {
+                    $decoded = json_decode($repaired, true);
+                }
+            }
             if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
-                return [];
+                return $this->extractWizardFieldsFromBrokenJson($value);
             }
         }
 
         return $this->unwrapPayload($decoded);
+    }
+
+    private function repairTruncatedJsonObject(string $json): ?string
+    {
+        $json = trim($json);
+        if ($json === '' || ! str_starts_with($json, '{')) {
+            return null;
+        }
+
+        $quoteCount = preg_match_all('/(?<!\\\\)"/', $json) ?: 0;
+        if ($quoteCount % 2 === 1) {
+            $json .= '"';
+        }
+
+        $opens = substr_count($json, '{') - substr_count($json, '}');
+        $openArrays = substr_count($json, '[') - substr_count($json, ']');
+        $json = rtrim($json);
+        $json = preg_replace('/,\s*$/', '', $json) ?? $json;
+
+        if ($openArrays > 0) {
+            $json .= str_repeat(']', $openArrays);
+        }
+        if ($opens > 0) {
+            $json .= str_repeat('}', $opens);
+        }
+
+        return $json;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractWizardFieldsFromBrokenJson(string $response): array
+    {
+        $out = [];
+
+        if (preg_match('/"title"\s*:\s*"((?:\\\\.|[^"\\\\])*)"/u', $response, $m)) {
+            $title = trim(stripcslashes($m[1]));
+            if ($title !== '') {
+                $out['title'] = $title;
+            }
+        }
+
+        if (preg_match('/<(section|article|div|h[1-6]|main)\b[\s\S]{20,}/i', $response, $m)) {
+            $html = trim($m[0]);
+            if (preg_match('/^(.*<\/(?:section|article|div|p|ul|ol|table|pre|h[1-6])>)/is', $html, $closed)) {
+                $html = trim($closed[1]);
+            }
+            if ($this->isPlausibleHtml($html)) {
+                $out['content'] = $this->normalizeHtmlString($html);
+            }
+        }
+
+        return $out;
     }
 
     /**

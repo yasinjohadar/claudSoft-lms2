@@ -444,8 +444,16 @@ GUIDE;
 مهم: slug يجب أن يكون بسيطاً (أحرف عربية أو لاتينية وأرقام وشرطات) بدون مسافات.";
 
         $provider = AIProviderFactory::create($model);
+        $maxTokens = (int) ($model->max_tokens ?? 0);
+        if ($maxTokens < 8000) {
+            $maxTokens = max($maxTokens, 8000);
+        }
+        if ($maxTokens < 1) {
+            $maxTokens = 8000;
+        }
+
         $response = $provider->generateText($prompt, [
-            'max_tokens' => $model->max_tokens ?? 8000,
+            'max_tokens' => $maxTokens,
             'temperature' => $model->temperature ?? 0.65,
         ]);
 
@@ -459,7 +467,10 @@ GUIDE;
         );
 
         if (empty($unwrapped['title']) || (empty($unwrapped['content']) && empty($unwrapped['html']))) {
-            throw new \Exception('لم يُستخرج عنوان ومحتوى صالحان من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
+            throw new \Exception(
+                'لم يُستخرج عنوان ومحتوى صالحان من الاستجابة. غالباً قُطعت الاستجابة بسبب حد الرموز (max_tokens). '
+                .'جرّب طول «متوسط» أو «طويل» مع محرك Laravel AI (توليد بالأقسام)، أو ارفع max_tokens للموديل.'
+            );
         }
 
         try {
