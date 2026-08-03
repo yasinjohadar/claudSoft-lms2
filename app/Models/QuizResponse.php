@@ -597,6 +597,11 @@ class QuizResponse extends Model
 
     /**
      * Grade matching question.
+     *
+     * المقام (عدد الأزواج المطلوبة) يُؤخَذ من تعريف السؤال (خيارات is_correct=true)
+     * وليس من عدد الأزواج التي أجاب عنها الطالب فعلياً — حتى لا يُحتسب ترك بعض
+     * الأزواج بلا إجابة كأنه إجابة كاملة صحيحة (كان يمنح 100% سابقاً لو أجاب
+     * الطالب زوجاً واحداً فقط بشكل صحيح وترك الباقي فارغاً).
      */
     private function gradeMatching(): array
     {
@@ -606,62 +611,38 @@ class QuizResponse extends Model
 
         // Support both formats: 'pairs' (old) and 'answer' (new from QuestionModule format)
         $answerData = $this->response_data['answer'] ?? $this->response_data['pairs'] ?? $this->response_data;
-        
-        // If answer is an object/array with option IDs as keys, convert to pairs format
-        $pairs = [];
+
+        // بناء خريطة leftId => القيمة المُجابة، من أي من الصيغتين المدعومتين.
+        $submitted = [];
         if (is_array($answerData)) {
-            // Check if it's in the new format (option_id => feedback value)
-            $isNewFormat = false;
             foreach ($answerData as $key => $value) {
                 if (is_numeric($key) && is_string($value)) {
-                    $isNewFormat = true;
-                    // Convert to pairs: option_id => feedback
-                    $option = $this->question->options->find($key);
-                    if ($option) {
-                        $pairs[] = [
-                            'left' => $key,
-                            'right' => $value, // This is the feedback value
-                        ];
-                    }
-                } elseif (isset($value['left']) && isset($value['right'])) {
-                    // Already in pairs format
-                    $pairs[] = $value;
+                    $submitted[(int) $key] = $value;
+                } elseif (is_array($value) && isset($value['left']) && isset($value['right'])) {
+                    $submitted[(int) $value['left']] = $value['right'];
                 }
             }
         }
 
-        $correctPairs = 0;
-        $totalPairs = 0;
-
-        $options = $this->question->options;
-
-        foreach ($pairs as $pair) {
-            $leftId = $pair['left'] ?? null;
-            $rightValue = $pair['right'] ?? null;
-
-            if (!$leftId || !$rightValue) {
-                continue;
-            }
-
-            $totalPairs++;
-
-            // Find if this pair is correct
-            $option = $options->firstWhere('id', $leftId);
-
-            // Check if the right value matches the option's feedback
-            if ($option && $option->feedback == $rightValue) {
-                $correctPairs++;
-            }
-        }
+        $requiredOptions = $this->question->options()->where('is_correct', true)->get();
+        $totalPairs = $requiredOptions->count();
 
         if ($totalPairs === 0) {
             return [false, 0];
         }
 
+        $correctPairs = 0;
+        foreach ($requiredOptions as $option) {
+            $rightValue = $submitted[$option->id] ?? null;
+            if ($rightValue !== null && $option->feedback == $rightValue) {
+                $correctPairs++;
+            }
+        }
+
         $isFullyCorrect = $correctPairs === $totalPairs;
         $partialScore = ($correctPairs / $totalPairs) * $this->max_score;
 
-        return [$isFullyCorrect, $partialScore];
+        return [$isFullyCorrect, (float) $partialScore];
     }
 
     /**
@@ -871,6 +852,9 @@ class QuizResponse extends Model
 
     /**
      * Grade drag and drop question.
+     *
+     * نفس منطق gradeMatching(): المقام يُؤخَذ من عدد مناطق الإفلات المطلوبة في
+     * تعريف السؤال (is_correct=true)، وليس من عدد الأزواج التي أجاب عنها الطالب.
      */
     private function gradeDragDrop(): array
     {
@@ -881,40 +865,34 @@ class QuizResponse extends Model
         // Support both formats: 'answer' (new from QuestionModule format) and direct response_data
         $answerData = $this->response_data['answer'] ?? $this->response_data;
 
-        if (empty($answerData) || !is_array($answerData)) {
-            return [false, 0];
-        }
-
-        $correctPairs = 0;
-        $totalPairs = 0;
-
-        $options = $this->question->options;
-
-        // Format: option_id => feedback_value
-        foreach ($answerData as $optionId => $feedbackValue) {
-            if (!is_numeric($optionId)) {
-                continue;
-            }
-
-            $totalPairs++;
-
-            // Find the option
-            $option = $options->find($optionId);
-
-            // Check if the feedback value matches the option's feedback
-            if ($option && $option->feedback == $feedbackValue) {
-                $correctPairs++;
+        $submitted = [];
+        if (is_array($answerData)) {
+            foreach ($answerData as $optionId => $feedbackValue) {
+                if (is_numeric($optionId)) {
+                    $submitted[(int) $optionId] = $feedbackValue;
+                }
             }
         }
+
+        $requiredOptions = $this->question->options()->where('is_correct', true)->get();
+        $totalPairs = $requiredOptions->count();
 
         if ($totalPairs === 0) {
             return [false, 0];
         }
 
+        $correctPairs = 0;
+        foreach ($requiredOptions as $option) {
+            $feedbackValue = $submitted[$option->id] ?? null;
+            if ($feedbackValue !== null && $option->feedback == $feedbackValue) {
+                $correctPairs++;
+            }
+        }
+
         $isFullyCorrect = $correctPairs === $totalPairs;
         $partialScore = ($correctPairs / $totalPairs) * $this->max_score;
 
-        return [$isFullyCorrect, $partialScore];
+        return [$isFullyCorrect, (float) $partialScore];
     }
 
     /**
