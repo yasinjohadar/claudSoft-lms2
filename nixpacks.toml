@@ -3,6 +3,8 @@
 
 [phases.setup]
 aptPkgs = [
+  "nodejs",
+  "npm",
   "chromium",
   "chromium-sandbox",
   "fonts-liberation",
