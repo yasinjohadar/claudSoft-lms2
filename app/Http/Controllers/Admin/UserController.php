@@ -83,7 +83,7 @@ class UserController extends Controller
             $usersQuery->role($request->input('role'));
         }
 
-        // فلترة حسب نوع الحساب (فضي / ذهبي — اشتراك معسكر معتمد)
+        // فلترة حسب نوع الحساب (فضي / ذهبي — عضوية مجموعة معسكر مدفوعة)
         if (in_array($request->input('account_tier'), ['gold', 'silver'], true)) {
             $tierService->applyUserQueryTierFilter($usersQuery, $request->input('account_tier'));
         }

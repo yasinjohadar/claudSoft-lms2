@@ -10,8 +10,8 @@
             'label' => 'نوع الحساب',
             'value' => $isGoldAccount ? 'ذهبي' : 'فضي',
             'value_text' => true,
-            'sub' => $isGoldAccount ? 'مشترك في معسكرات تدريبية' : 'مجاني — اشترك للترقية',
-            'route' => $isGoldAccount ? 'student.training-camps.my-enrollments' : 'student.training-camps.index',
+            'sub' => $isGoldAccount ? 'منضم لمجموعة معسكر مدفوعة' : 'مجموعة عادية أو غير منضم',
+            'route' => 'student.groups.index',
         ],
         [
             'variant' => 'blue',

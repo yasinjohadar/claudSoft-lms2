@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\CampEnrollment;
 use App\Models\CourseEnrollment;
 use App\Models\QuestionModuleAttempt;
+use App\Services\Student\StudentAccountTierService;
 use App\Services\Student\StudentCourseVisibilityService;
 
 class StudentDashboardController extends Controller
 {
     public function __construct(
         private StudentCourseVisibilityService $courseVisibility,
+        private StudentAccountTierService $accountTierService,
     ) {}
 
     public function index()
@@ -70,7 +72,7 @@ class StudentDashboardController extends Controller
 
         $platformJoinedAt = $student->created_at;
 
-        $accountTier = $activeCampEnrollments->isNotEmpty() ? 'gold' : 'silver';
+        $accountTier = $this->accountTierService->resolve($student);
 
         return view('student.dashboard', compact(
             'questionModuleStats',

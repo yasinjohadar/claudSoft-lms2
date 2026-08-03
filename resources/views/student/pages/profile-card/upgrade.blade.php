@@ -20,8 +20,8 @@
                     هذه الميزة غير مفعّلة لفئتك من قبل الإدارة، أو تحتاج للترقية.
                 </p>
                 @if($accountTier === 'silver')
-                    <a href="{{ route('student.training-camps.index') }}" class="btn btn-primary">
-                        <i class="fe fe-award me-1"></i>استكشف المعسكرات للترقية
+                    <a href="{{ route('student.groups.index') }}" class="btn btn-primary">
+                        <i class="fe fe-award me-1"></i>استكشف المجموعات للترقية
                     </a>
                 @endif
             </div>

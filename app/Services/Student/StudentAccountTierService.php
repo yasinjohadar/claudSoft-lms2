@@ -2,9 +2,11 @@
 
 namespace App\Services\Student;
 
-use App\Models\CampEnrollment;
+use App\Models\CourseGroup;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 class StudentAccountTierService
 {
@@ -13,12 +15,17 @@ class StudentAccountTierService
         return $this->isGold($user) ? 'gold' : 'silver';
     }
 
+    /**
+     * Gold = member of at least one paid camp-classified group (is_camp).
+     * Silver = only ordinary groups, or not in any group.
+     */
     public function isGold(User $user): bool
     {
-        return CampEnrollment::query()
-            ->where('student_id', $user->id)
-            ->approved()
-            ->whereHas('camp')
+        return CourseGroup::query()
+            ->where('is_camp', true)
+            ->whereHas('students', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
             ->exists();
     }
 
@@ -36,15 +43,12 @@ class StudentAccountTierService
      */
     public function applyUserQueryTierFilter(Builder $query, string $tier): void
     {
-        $goldSubquery = CampEnrollment::query()
-            ->approved()
-            ->whereHas('camp')
-            ->select('student_id');
+        $goldStudentIds = $this->goldStudentIdsQuery();
 
         if ($tier === 'gold') {
-            $query->whereIn('id', $goldSubquery);
+            $query->whereIn('id', $goldStudentIds);
         } elseif ($tier === 'silver') {
-            $query->whereNotIn('id', $goldSubquery);
+            $query->whereNotIn('id', $goldStudentIds);
         }
     }
 
@@ -64,11 +68,9 @@ class StudentAccountTierService
             return [];
         }
 
-        $goldIds = CampEnrollment::query()
-            ->approved()
-            ->whereHas('camp')
-            ->whereIn('student_id', $userIds)
-            ->pluck('student_id')
+        $goldIds = $this->goldStudentIdsQuery()
+            ->whereIn('course_group_members.student_id', $userIds)
+            ->pluck('course_group_members.student_id')
             ->unique()
             ->flip()
             ->all();
@@ -79,5 +81,14 @@ class StudentAccountTierService
         }
 
         return $tiers;
+    }
+
+    private function goldStudentIdsQuery(): QueryBuilder
+    {
+        return DB::table('course_group_members')
+            ->join('course_groups', 'course_groups.id', '=', 'course_group_members.group_id')
+            ->where('course_groups.is_camp', true)
+            ->whereNull('course_groups.deleted_at')
+            ->select('course_group_members.student_id');
     }
 }
