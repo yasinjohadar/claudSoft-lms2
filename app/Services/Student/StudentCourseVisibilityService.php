@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Hides courses from students when:
  * - they have a pending membership request on a group that gates courses until approval, or
- * - they belong to a group where the course is linked with pivot is_visible = false.
+ * - every group they belong to that links the course has pivot is_visible = false
+ *   (if any membership group shows the course, it remains visible).
  */
 class StudentCourseVisibilityService
 {
@@ -72,24 +73,44 @@ class StudentCourseVisibilityService
     }
 
     /**
-     * Courses linked to the student's groups with pivot is_visible = false.
+     * Courses that are hidden in every group membership that links them for this student.
+     * If the student is also in another group where the same course is visible, it stays shown.
      *
      * @return list<int>
      */
     public function groupPivotHiddenCourseIds(User $student): array
     {
-        return DB::table('course_group_courses')
+        $membershipLinks = DB::table('course_group_courses')
             ->join('course_group_members', 'course_group_members.group_id', '=', 'course_group_courses.group_id')
             ->where('course_group_members.student_id', $student->id)
-            ->where(function ($query) {
-                $query->where('course_group_courses.is_visible', false)
-                    ->orWhere('course_group_courses.is_visible', 0);
-            })
-            ->pluck('course_group_courses.course_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+            ->select([
+                'course_group_courses.course_id',
+                'course_group_courses.is_visible',
+            ])
+            ->get();
+
+        if ($membershipLinks->isEmpty()) {
+            return [];
+        }
+
+        $visibleCourseIds = [];
+        $hiddenCourseIds = [];
+
+        foreach ($membershipLinks as $link) {
+            $courseId = (int) $link->course_id;
+            $isVisible = filter_var($link->is_visible, FILTER_VALIDATE_BOOLEAN);
+
+            if ($isVisible) {
+                $visibleCourseIds[$courseId] = true;
+            } else {
+                $hiddenCourseIds[$courseId] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            array_keys($hiddenCourseIds),
+            fn (int $courseId) => ! isset($visibleCourseIds[$courseId])
+        ));
     }
 
     /**

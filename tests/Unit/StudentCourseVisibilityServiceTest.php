@@ -88,3 +88,49 @@ test('hide reason prefers pending membership message over group pivot hide', fun
         ->and($service->hideReasonForCourse(99, $student))
         ->toBeNull();
 });
+
+test('group pivot hide keeps course when another membership group shows it', function () {
+    $studentId = 9001;
+    $courseShown = 9101;
+    $courseHiddenOnly = 9102;
+    $groupVisible = 9201;
+    $groupHidden = 9202;
+    $groupHiddenOnly = 9203;
+
+    Illuminate\Support\Facades\Schema::dropIfExists('course_group_members');
+    Illuminate\Support\Facades\Schema::dropIfExists('course_group_courses');
+
+    Illuminate\Support\Facades\Schema::create('course_group_courses', function ($table) {
+        $table->id();
+        $table->unsignedBigInteger('group_id');
+        $table->unsignedBigInteger('course_id');
+        $table->boolean('is_visible')->default(true);
+    });
+
+    Illuminate\Support\Facades\Schema::create('course_group_members', function ($table) {
+        $table->id();
+        $table->unsignedBigInteger('group_id');
+        $table->unsignedBigInteger('student_id');
+    });
+
+    Illuminate\Support\Facades\DB::table('course_group_courses')->insert([
+        ['group_id' => $groupVisible, 'course_id' => $courseShown, 'is_visible' => true],
+        ['group_id' => $groupHidden, 'course_id' => $courseShown, 'is_visible' => false],
+        ['group_id' => $groupHiddenOnly, 'course_id' => $courseHiddenOnly, 'is_visible' => false],
+    ]);
+
+    Illuminate\Support\Facades\DB::table('course_group_members')->insert([
+        ['group_id' => $groupVisible, 'student_id' => $studentId],
+        ['group_id' => $groupHidden, 'student_id' => $studentId],
+        ['group_id' => $groupHiddenOnly, 'student_id' => $studentId],
+    ]);
+
+    $service = new StudentCourseVisibilityService;
+    $student = new \App\Models\User;
+    $student->id = $studentId;
+
+    $hidden = $service->groupPivotHiddenCourseIds($student);
+
+    expect($hidden)->toEqualCanonicalizing([$courseHiddenOnly])
+        ->and($hidden)->not->toContain($courseShown);
+});
