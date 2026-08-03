@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\DocumentationAiGeneration;
+use App\Models\DocumentationAiSection;
 use App\Services\AiNew\DocumentationAiPipelineService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,9 +17,17 @@ class ProcessDocumentationAiJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    /**
+     * Safe to retry: the staged pipeline resumes from persisted sections instead
+     * of regenerating the whole page.
+     */
+    public int $tries = 3;
 
-    public int $timeout = 1800;
+    /** Must stay below the database queue retry_after (3700s) to avoid double-running. */
+    public int $timeout = 3600;
+
+    /** @var list<int> */
+    public array $backoff = [30, 120];
 
     public function __construct(public int $generationId) {}
 
@@ -35,7 +44,10 @@ class ProcessDocumentationAiJob implements ShouldQueue
     public function failed(?Throwable $exception): void
     {
         $generation = DocumentationAiGeneration::query()->find($this->generationId);
-        if (! $generation || $generation->status === DocumentationAiGeneration::STATUS_COMPLETED) {
+        if (! $generation || in_array($generation->status, [
+            DocumentationAiGeneration::STATUS_COMPLETED,
+            DocumentationAiGeneration::STATUS_PAUSED,
+        ], true)) {
             return;
         }
 
@@ -44,6 +56,20 @@ class ProcessDocumentationAiJob implements ShouldQueue
             'generation_id' => $this->generationId,
             'message' => $message,
         ]);
+
+        // Worker died mid-run (timeout / restart): keep finished sections resumable.
+        $hasWork = $generation->sections()
+            ->where('status', DocumentationAiSection::STATUS_DONE)
+            ->exists();
+
+        if ($hasWork) {
+            $generation->markPaused(
+                'توقّفت المهمة في الطابور ('.$message.'). الأقسام المكتملة محفوظة — اضغط «متابعة التوليد».'
+            );
+
+            return;
+        }
+
         $generation->markFailed($message);
     }
 }

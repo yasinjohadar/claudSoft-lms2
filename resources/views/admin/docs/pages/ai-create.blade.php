@@ -191,6 +191,25 @@
                                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="docAiProgressBar" role="progressbar" style="width: 0%"></div>
                                 </div>
                             </div>
+
+                            <div id="docAiResumeWrap" class="alert alert-warning mt-3 mb-0" style="display:none;">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="fe fe-pause-circle mt-1"></i>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold" id="docAiResumeTitle">التوليد متوقف مؤقتاً</div>
+                                        <div class="small text-muted mt-1" id="docAiResumeMsg"></div>
+                                        <div class="small mt-1" id="docAiResumeMissing"></div>
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button type="button" class="btn btn-sm btn-primary" id="docAiResumeBtn">
+                                                <i class="fe fe-play me-1"></i> متابعة التوليد
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="docAiPartialBtn">
+                                                <i class="fe fe-eye me-1"></i> عرض المحتوى الجزئي
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -326,6 +345,7 @@ document.documentElement.classList.add('loaded');
     const parentPages = @json($parentPagesJson);
     const STORAGE_KEY = 'docs_ai_generate_job_uuid';
     let activePoller = null;
+    let pausedUuid = null;
 
     function setProgress(job) {
         const wrap = document.getElementById('docAiProgressWrap');
@@ -349,6 +369,47 @@ document.documentElement.classList.add('loaded');
     function hideProgress() {
         const wrap = document.getElementById('docAiProgressWrap');
         if (wrap) wrap.style.display = 'none';
+    }
+
+    function hideResumePanel() {
+        const wrap = document.getElementById('docAiResumeWrap');
+        if (wrap) wrap.style.display = 'none';
+        pausedUuid = null;
+    }
+
+    /**
+     * Paused means every finished section is already stored server-side, so the
+     * only work left on continue is the missing sections.
+     */
+    function showResumePanel(job) {
+        pausedUuid = job.uuid;
+        const wrap = document.getElementById('docAiResumeWrap');
+        const msg = document.getElementById('docAiResumeMsg');
+        const missing = document.getElementById('docAiResumeMissing');
+        const title = document.getElementById('docAiResumeTitle');
+        const partialBtn = document.getElementById('docAiPartialBtn');
+        if (!wrap) return;
+
+        const s = job.sections || null;
+        if (title) {
+            title.textContent = s
+                ? 'تم توليد ' + s.done + ' من ' + s.planned + ' قسماً وحُفظت'
+                : 'التوليد متوقف مؤقتاً';
+        }
+        if (msg) msg.textContent = job.error_message || '';
+        if (missing) {
+            const headings = (s && s.failed_headings) ? s.failed_headings : [];
+            missing.textContent = headings.length
+                ? 'الأقسام الناقصة: ' + headings.join('، ')
+                : '';
+        }
+        if (partialBtn) {
+            partialBtn.style.display = job.partial_content_available ? '' : 'none';
+        }
+
+        wrap.style.display = '';
+        hideProgress();
+        resetGenerateBtn();
     }
 
     function applyGenerateResult(d) {
@@ -393,6 +454,7 @@ document.documentElement.classList.add('loaded');
                     Swal.fire({ icon: 'success', title: 'تم التوليد', text: 'راجع المحتوى ثم احفظ.', timer: 2800 });
                 }
             },
+            onPaused: showResumePanel,
             onError: function (msg) {
                 hideProgress();
                 resetGenerateBtn();
@@ -461,6 +523,7 @@ document.documentElement.classList.add('loaded');
                     Swal.fire({ icon: 'success', title: 'تم التوليد', text: 'اكتملت المهمة أثناء غيابك — راجع المحتوى.', timer: 3200 });
                 }
             },
+            onPaused: showResumePanel,
             onError: function (msg) {
                 hideProgress();
                 resetGenerateBtn();
@@ -471,6 +534,64 @@ document.documentElement.classList.add('loaded');
         });
 
         // slug handled in separate DOMContentLoaded below
+
+        const resumeBtn = document.getElementById('docAiResumeBtn');
+        if (resumeBtn) {
+            resumeBtn.addEventListener('click', function () {
+                if (!pausedUuid) return;
+                resumeBtn.disabled = true;
+                window.DocAiJobPoller.resume(pausedUuid)
+                    .then(function (data) {
+                        const uuid = (data.job && data.job.uuid) ? data.job.uuid : pausedUuid;
+                        hideResumePanel();
+                        const btn = document.getElementById('generateBtn');
+                        if (btn) {
+                            btn.disabled = true;
+                            const btnText = btn.querySelector('.btn-text');
+                            const spinner = btn.querySelector('.loading-spinner');
+                            if (btnText) btnText.textContent = 'جاري التوليد...';
+                            if (spinner) spinner.classList.add('active');
+                        }
+                        setProgress({ progress: 1, stage_label: 'استئناف التوليد…', status: 'queued' });
+                        startPolling(uuid);
+                    })
+                    .catch(function (err) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'error', title: 'خطأ', text: err.message || 'تعذّر استئناف التوليد' });
+                        } else {
+                            alert(err.message || 'تعذّر استئناف التوليد');
+                        }
+                    })
+                    .finally(function () {
+                        resumeBtn.disabled = false;
+                    });
+            });
+        }
+
+        const partialBtn = document.getElementById('docAiPartialBtn');
+        if (partialBtn) {
+            partialBtn.addEventListener('click', function () {
+                if (!pausedUuid) return;
+                partialBtn.disabled = true;
+                window.DocAiJobPoller.partial(pausedUuid)
+                    .then(function (result) {
+                        applyGenerateResult(result || {});
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'info', title: 'محتوى جزئي', text: 'طُبِّقت الأقسام المكتملة على النموذج — لا يزال بإمكانك متابعة التوليد لإكمال الباقي.', timer: 3500 });
+                        }
+                    })
+                    .catch(function (err) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'error', title: 'خطأ', text: err.message || 'تعذّر جلب المحتوى الجزئي' });
+                        } else {
+                            alert(err.message || 'تعذّر جلب المحتوى الجزئي');
+                        }
+                    })
+                    .finally(function () {
+                        partialBtn.disabled = false;
+                    });
+            });
+        }
 
         document.getElementById('generateBtn').addEventListener('click', function () {
             const topic = document.getElementById('topic').value.trim();

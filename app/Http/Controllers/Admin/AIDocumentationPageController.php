@@ -10,6 +10,7 @@ use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
 use App\Models\DocumentationAiGeneration;
+use App\Models\DocumentationAiSection;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
 use App\Services\AiNew\DocumentationAiJobStarter;
@@ -356,9 +357,93 @@ class AIDocumentationPageController extends Controller
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
+        // The worker died without reporting: stop the UI from polling forever.
+        if ($generation->isStale()) {
+            $generation->markPaused(
+                'توقّفت عملية التوليد دون استجابة من الخادم. الأقسام المكتملة محفوظة — اضغط «متابعة التوليد».'
+            );
+        }
+
         return response()->json([
             'success' => true,
             'job' => $generation->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+    }
+
+    /**
+     * Continue a paused/failed staged generation: only the sections that are not
+     * done yet are regenerated, the outline and finished sections are reused.
+     */
+    public function jobResume(string $uuid)
+    {
+        $generation = DocumentationAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if (! $generation->isResumable()) {
+            return response()->json([
+                'success' => false,
+                'message' => $generation->status === DocumentationAiGeneration::STATUS_COMPLETED
+                    ? 'اكتمل التوليد بالفعل.'
+                    : 'لا يوجد تقدم محفوظ لمتابعته. ابدأ توليداً جديداً.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $generation->update([
+            'status' => DocumentationAiGeneration::STATUS_QUEUED,
+            'stage' => 'resuming',
+            'stage_label' => 'استئناف التوليد…',
+            'error_message' => null,
+            'finished_at' => null,
+            'heartbeat_at' => now(),
+        ]);
+
+        $this->jobStarter->dispatch($generation);
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->fresh()->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Assemble whatever sections finished so the admin can keep partial work
+     * without waiting for the missing sections.
+     */
+    public function jobPartial(string $uuid)
+    {
+        $generation = DocumentationAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $done = $generation->sections()
+            ->where('status', DocumentationAiSection::STATUS_DONE)
+            ->orderBy('position')
+            ->pluck('html')
+            ->filter()
+            ->values();
+
+        if ($done->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا توجد أقسام مكتملة بعد.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $outline = $generation->partial_result['outline'] ?? [];
+        $content = $done->implode("\n");
+
+        return response()->json([
+            'success' => true,
+            'result' => [
+                'title' => is_array($outline) ? trim((string) ($outline['title'] ?? '')) : '',
+                'slug' => is_array($outline) ? trim((string) ($outline['slug'] ?? '')) : '',
+                'excerpt' => is_array($outline) ? trim((string) ($outline['excerpt'] ?? '')) : '',
+                'content' => $content,
+            ],
+            'sections' => $generation->sectionSummary(),
         ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
     }
 

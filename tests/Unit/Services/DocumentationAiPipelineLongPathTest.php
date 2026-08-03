@@ -3,10 +3,12 @@
 use App\Models\AIModel;
 use App\Models\DocumentationAiGeneration;
 use App\Models\User;
+use App\Services\Ai\AiErrorClassifier;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
 use App\Services\Ai\DocumentationAiResultNormalizer;
 use App\Services\AiNew\DocumentationAiPipelineService;
+use App\Services\AiNew\DocumentationStagedGenerator;
 use App\Services\AiNew\LaravelAiDocumentationService;
 use App\Services\AiNew\LaravelAiPromptRunner;
 use App\Services\AiNew\LaravelAiProviderManager;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\Schema;
 uses(Tests\TestCase::class);
 
 beforeEach(function () {
+    Schema::dropIfExists('documentation_ai_sections');
     Schema::dropIfExists('documentation_ai_generations');
     Schema::dropIfExists('ai_models');
     Schema::dropIfExists('activity_log');
@@ -70,7 +73,23 @@ beforeEach(function () {
         $table->text('error_message')->nullable();
         $table->timestamp('started_at')->nullable();
         $table->timestamp('finished_at')->nullable();
+        $table->timestamp('heartbeat_at')->nullable();
         $table->timestamps();
+    });
+
+    Schema::create('documentation_ai_sections', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('generation_id')->constrained('documentation_ai_generations')->cascadeOnDelete();
+        $table->unsignedSmallInteger('position');
+        $table->string('heading');
+        $table->text('brief')->nullable();
+        $table->string('status', 16)->default('pending');
+        $table->longText('html')->nullable();
+        $table->unsignedTinyInteger('attempts')->default(0);
+        $table->text('last_error')->nullable();
+        $table->timestamps();
+        $table->unique(['generation_id', 'position']);
+        $table->index(['generation_id', 'status']);
     });
 });
 
@@ -97,6 +116,7 @@ test('long generate with legacy engine uses staged outline and skips one-shot', 
 
     $legacyDocs = Mockery::mock(AIDocumentationPageService::class);
     $legacyDocs->shouldNotReceive('generateDocumentationPage');
+    $legacyDocs->shouldReceive('tokensForStage')->andReturn(2048);
     $legacyDocs->shouldReceive('generateDocumentationOutline')
         ->once()
         ->andReturn([
@@ -115,14 +135,18 @@ test('long generate with legacy engine uses staged outline and skips one-shot', 
     $legacyModelService = Mockery::mock(AIModelService::class);
     $legacyModelService->shouldReceive('getDefaultModel')->andReturn($legacyModel);
 
+    $promptRunner = Mockery::mock(LaravelAiPromptRunner::class);
+    $promptRunner->shouldReceive('isRetryableTokenOrSizeError')->andReturn(false);
+
     $pipeline = new DocumentationAiPipelineService(
         Mockery::mock(LaravelAiProviderManager::class),
-        Mockery::mock(LaravelAiPromptRunner::class),
+        $promptRunner,
         Mockery::mock(LaravelAiRequestLogger::class),
         Mockery::mock(LaravelAiDocumentationService::class),
         $legacyDocs,
         $legacyModelService,
         new DocumentationAiResultNormalizer,
+        new DocumentationStagedGenerator(new DocumentationAiResultNormalizer, new AiErrorClassifier),
     );
 
     $generation = DocumentationAiGeneration::query()->create([

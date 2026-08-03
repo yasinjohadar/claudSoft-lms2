@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Exceptions\Ai\AiProviderException;
 use App\Models\AIModel;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
@@ -18,9 +19,16 @@ class AIDocumentationPageService
 
     private ?DocumentationAiResultNormalizer $resultNormalizer = null;
 
+    private ?AiErrorClassifier $errorClassifier = null;
+
     private function resultNormalizer(): DocumentationAiResultNormalizer
     {
         return $this->resultNormalizer ??= new DocumentationAiResultNormalizer;
+    }
+
+    private function errorClassifier(): AiErrorClassifier
+    {
+        return $this->errorClassifier ??= new AiErrorClassifier;
     }
 
     /**
@@ -405,6 +413,7 @@ GUIDE;
         AIModel $model,
         array $options,
         int $sectionTarget,
+        ?int $maxTokens = null,
     ): array {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
@@ -444,15 +453,12 @@ GUIDE;
 مهم: brief جملة قصيرة فقط. لا تكتب HTML هنا.
 PROMPT;
 
-        $provider = AIProviderFactory::create($model);
-        $response = $provider->generateText($prompt, [
-            'max_tokens' => $this->tokensForStage($model, 4096),
-            'temperature' => $model->temperature ?? 0.55,
-        ]);
-
-        if (empty($response)) {
-            throw new \Exception('لم يتم استلام مخطط الأقسام من موديل AI.');
-        }
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'outline'),
+            $model->temperature ?? 0.55,
+        );
 
         $data = $this->parseJSONResponse($response);
         if ($data === []) {
@@ -461,7 +467,10 @@ PROMPT;
 
         $sections = $data['sections'] ?? null;
         if (! is_array($sections) || count($sections) < 2) {
-            throw new \Exception('فشل بناء مخطط الأقسام من الموديل القديم. حاول مجدداً.');
+            throw new AiProviderException(
+                'فشل بناء مخطط الأقسام من الموديل. غالباً قُطعت الاستجابة قبل اكتمال قائمة الأقسام.',
+                AiProviderException::KIND_TOO_LARGE,
+            );
         }
 
         return [
@@ -488,10 +497,11 @@ PROMPT;
         AIModel $model,
         array $options = [],
         bool $compact = false,
+        ?int $maxTokens = null,
+        bool $plain = false,
     ): string {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
-        $contentLength = $options['content_length'] ?? 'medium';
         $pageTitle = trim((string) ($outline['title'] ?? '')) ?: $topic;
         $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
         $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
@@ -499,6 +509,12 @@ PROMPT;
         $compactLine = $compact
             ? 'مهم: اجعل القسم أقصر. مثال كود واحد فقط، بدون تكرار، ركّز على الفكرة الأساسية.'
             : '';
+
+        // The JSON envelope doubles the failure surface (escaping + truncation), so the
+        // last rungs of the retry ladder ask for bare HTML instead.
+        $outputRule = $plain
+            ? "أعد HTML فقط بدون JSON وبدون علامات markdown. ابدأ مباشرة بـ <section."
+            : "أعد JSON فقط:\n{\"html\":\"<section class=\\\"content-section\\\">...</section>\"}";
 
         $prompt = <<<PROMPT
 اكتب قسماً واحداً فقط من صفحة توثيق.
@@ -518,28 +534,23 @@ PROMPT;
 لفّ القسم بـ <section class="content-section"> وابدأ بـ <h2 class="section-title">{$heading}</h2>
 لا تُرجع أقساماً أخرى.
 
-أعد JSON فقط:
-{"html":"<section class=\"content-section\">...</section>"}
+{$outputRule}
 PROMPT;
 
-        $minTokens = $compact ? 4096 : (in_array($contentLength, ['medium', 'long'], true) ? 8192 : 4096);
-        $provider = AIProviderFactory::create($model);
-        $response = $provider->generateText($prompt, [
-            'max_tokens' => $this->tokensForStage($model, $minTokens),
-            'temperature' => $model->temperature ?? 0.65,
-        ]);
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'section'),
+            $model->temperature ?? 0.65,
+        );
 
-        if (empty($response)) {
-            return '';
-        }
-
-        $data = $this->parseJSONResponse($response);
+        $data = $plain ? [] : $this->parseJSONResponse($response);
         $rawHtml = '';
         if (is_array($data) && $data !== []) {
             $rawHtml = (string) ($data['html'] ?? $data['content'] ?? '');
         }
         if ($rawHtml === '') {
-            $rawHtml = is_string($response) ? $response : '';
+            $rawHtml = $response;
         }
 
         $html = $this->resultNormalizer()->extractSectionHtml($rawHtml);
@@ -549,19 +560,60 @@ PROMPT;
             );
         }
 
+        if ($html === '') {
+            throw new AiProviderException(
+                'استجابة القسم لا تحتوي HTML صالحاً (غالباً قُطعت بسبب حد الرموز).',
+                AiProviderException::KIND_TOO_LARGE,
+            );
+        }
+
         return $html;
     }
 
-    private function tokensForStage(AIModel $model, int $preferMin): int
+    /**
+     * Single provider round-trip that turns the legacy "empty string + getLastError()"
+     * convention into a classified exception the staged generator can act on.
+     */
+    private function callProvider(AIModel $model, string $prompt, int $maxTokens, float $temperature): string
     {
-        $db = (int) ($model->max_tokens ?? 0);
-        $raw = $db > 0 ? $db : $preferMin;
-        // Prefer at least stage minimum when DB limit is unset/low, but do not invent above DB when set.
-        if ($db <= 0) {
-            $raw = max($preferMin, 2048);
+        $provider = AIProviderFactory::create($model);
+
+        try {
+            $response = $provider->generateText($prompt, [
+                'max_tokens' => $maxTokens,
+                'temperature' => $temperature,
+            ]);
+        } catch (AiProviderException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw $this->errorClassifier()->fromThrowable($e);
         }
 
-        return max(1, $raw);
+        if (trim((string) $response) === '') {
+            throw $this->errorClassifier()->toException($provider->getLastError());
+        }
+
+        return $response;
+    }
+
+    /**
+     * Cap per-stage completion tokens. Sending the model's full ceiling for a single
+     * section is what triggers provider 413/429 rejections on long pages.
+     */
+    public function tokensForStage(AIModel $model, string $stage, bool $compact = false): int
+    {
+        $cap = match ($stage) {
+            'outline' => (int) config('ai.docs.outline_max_tokens', 2048),
+            default => (int) config('ai.docs.section_max_tokens', 4096),
+        };
+        if ($compact) {
+            $cap = (int) max(1024, floor($cap * 0.6));
+        }
+
+        $db = (int) ($model->max_tokens ?? 0);
+        $effective = $db > 0 ? min($db, $cap) : $cap;
+
+        return max(256, $effective);
     }
 
     /**

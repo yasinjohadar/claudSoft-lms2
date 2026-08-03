@@ -1133,6 +1133,8 @@ Route::prefix('admin')
             Route::post('ai-pages/generate', [AIDocumentationPageController::class, 'generate'])->name('ai-pages.generate');
             Route::post('ai-pages/refine', [AIDocumentationPageController::class, 'refine'])->name('ai-pages.refine');
             Route::get('ai-pages/jobs/{uuid}', [AIDocumentationPageController::class, 'jobStatus'])->name('ai-pages.jobs.show');
+            Route::post('ai-pages/jobs/{uuid}/resume', [AIDocumentationPageController::class, 'jobResume'])->name('ai-pages.jobs.resume');
+            Route::get('ai-pages/jobs/{uuid}/partial', [AIDocumentationPageController::class, 'jobPartial'])->name('ai-pages.jobs.partial');
             Route::post('ai-pages', [AIDocumentationPageController::class, 'store'])->name('ai-pages.store');
 
             Route::resource('pages', DocumentationPageController::class)

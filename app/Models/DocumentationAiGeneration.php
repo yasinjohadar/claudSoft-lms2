@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class DocumentationAiGeneration extends Model
@@ -18,11 +19,17 @@ class DocumentationAiGeneration extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    /** Stopped mid-way with finished sections preserved; can be continued. */
+    public const STATUS_PAUSED = 'paused';
+
     public const OPERATION_GENERATE = 'generate';
 
     public const OPERATION_REFINE = 'refine';
 
     public const OPERATION_ENHANCE = 'enhance';
+
+    /** A running job without a heartbeat for this long is considered dead. */
+    public const STALE_HEARTBEAT_MINUTES = 10;
 
     protected $table = 'documentation_ai_generations';
 
@@ -39,6 +46,7 @@ class DocumentationAiGeneration extends Model
         'result',
         'error_message',
         'started_at',
+        'heartbeat_at',
         'finished_at',
     ];
 
@@ -48,6 +56,7 @@ class DocumentationAiGeneration extends Model
         'result' => 'array',
         'progress' => 'integer',
         'started_at' => 'datetime',
+        'heartbeat_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
 
@@ -65,6 +74,11 @@ class DocumentationAiGeneration extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function sections(): HasMany
+    {
+        return $this->hasMany(DocumentationAiSection::class, 'generation_id')->orderBy('position');
+    }
+
     public function markRunning(string $stage, string $stageLabel, int $progress): void
     {
         $this->update([
@@ -73,6 +87,7 @@ class DocumentationAiGeneration extends Model
             'stage_label' => $stageLabel,
             'progress' => max(0, min(100, $progress)),
             'started_at' => $this->started_at ?? now(),
+            'heartbeat_at' => now(),
             'error_message' => null,
         ]);
     }
@@ -84,11 +99,18 @@ class DocumentationAiGeneration extends Model
             'stage' => $stage,
             'stage_label' => $stageLabel,
             'progress' => max(0, min(100, $progress)),
+            'heartbeat_at' => now(),
         ];
         if ($partial !== null) {
-            $data['partial_result'] = $partial;
+            $data['partial_result'] = array_merge($this->partial_result ?? [], $partial);
         }
         $this->update($data);
+    }
+
+    /** Cheap keep-alive between long provider calls. */
+    public function touchHeartbeat(): void
+    {
+        $this->forceFill(['heartbeat_at' => now()])->saveQuietly();
     }
 
     public function markCompleted(array $result): void
@@ -104,6 +126,21 @@ class DocumentationAiGeneration extends Model
         ]);
     }
 
+    /**
+     * Stop without discarding work: finished sections stay in the database and
+     * the job can be continued later from the admin UI.
+     */
+    public function markPaused(string $message): void
+    {
+        $this->update([
+            'status' => self::STATUS_PAUSED,
+            'stage' => 'paused',
+            'stage_label' => 'متوقف مؤقتاً — بانتظار المتابعة',
+            'error_message' => $message,
+            'finished_at' => now(),
+        ]);
+    }
+
     public function markFailed(string $message): void
     {
         $this->update([
@@ -115,8 +152,56 @@ class DocumentationAiGeneration extends Model
         ]);
     }
 
+    public function isStaged(): bool
+    {
+        return $this->sections()->exists();
+    }
+
+    /**
+     * @return array{planned: int, done: int, failed: int, remaining: int, failed_headings: list<string>}
+     */
+    public function sectionSummary(): array
+    {
+        /** @var \Illuminate\Support\Collection<int, DocumentationAiSection> $sections */
+        $sections = $this->relationLoaded('sections') ? $this->sections : $this->sections()->get();
+
+        $done = $sections->where('status', DocumentationAiSection::STATUS_DONE)->count();
+        $failed = $sections->where('status', DocumentationAiSection::STATUS_FAILED);
+
+        return [
+            'planned' => $sections->count(),
+            'done' => $done,
+            'failed' => $failed->count(),
+            'remaining' => max(0, $sections->count() - $done),
+            'failed_headings' => $failed->pluck('heading')->filter()->values()->all(),
+        ];
+    }
+
+    public function isResumable(): bool
+    {
+        if (! in_array($this->status, [self::STATUS_PAUSED, self::STATUS_FAILED], true)) {
+            return false;
+        }
+
+        return $this->sections()->where('status', '!=', DocumentationAiSection::STATUS_DONE)->exists();
+    }
+
+    /** Running but the worker stopped writing heartbeats (process killed / crashed). */
+    public function isStale(): bool
+    {
+        if ($this->status !== self::STATUS_RUNNING) {
+            return false;
+        }
+
+        $last = $this->heartbeat_at ?? $this->started_at ?? $this->updated_at;
+
+        return $last !== null && $last->lt(now()->subMinutes(self::STALE_HEARTBEAT_MINUTES));
+    }
+
     public function toStatusPayload(): array
     {
+        $summary = $this->isStaged() ? $this->sectionSummary() : null;
+
         return [
             'uuid' => $this->uuid,
             'operation' => $this->operation,
@@ -127,6 +212,9 @@ class DocumentationAiGeneration extends Model
             'result' => $this->status === self::STATUS_COMPLETED ? $this->result : null,
             'partial_result' => $this->partial_result,
             'error_message' => $this->error_message,
+            'sections' => $summary,
+            'resumable' => $this->isResumable(),
+            'partial_content_available' => $summary !== null && $summary['done'] > 0,
             'queue_hint' => $this->status === self::STATUS_QUEUED
                 && config('queue.default') !== 'sync',
         ];

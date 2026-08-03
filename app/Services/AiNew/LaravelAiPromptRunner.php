@@ -37,9 +37,10 @@ class LaravelAiPromptRunner
         string $prompt,
         int $timeout = 120,
         ?int $preferMinTokens = null,
+        ?int $maxTokensCap = null,
     ): StructuredAgentResponse {
         $schema = $agent->schema(new JsonSchemaTypeFactory);
-        $textResponse = $this->invokeGateway($model, $agent, $prompt, $schema, $timeout, $preferMinTokens);
+        $textResponse = $this->invokeGateway($model, $agent, $prompt, $schema, $timeout, $preferMinTokens, $maxTokensCap);
 
         if (! $textResponse instanceof StructuredTextResponse) {
             throw new \RuntimeException('Structured agent did not return structured output.');
@@ -89,11 +90,12 @@ class LaravelAiPromptRunner
         ?array $schema,
         int $timeout,
         ?int $preferMinTokens = null,
+        ?int $maxTokensCap = null,
     ): TextResponse {
         $provider = Ai::textProviderFor($agent, $model->provider);
         $tools = $agent instanceof HasTools ? $agent->tools() : [];
         $base = TextGenerationOptions::forAgent($agent);
-        $preferred = $this->effectiveMaxTokens($model, $base->maxTokens, $preferMinTokens);
+        $preferred = $this->effectiveMaxTokens($model, $base->maxTokens, $preferMinTokens, $maxTokensCap);
         $attempts = $this->maxTokenAttempts($preferred);
 
         $last = null;
@@ -145,10 +147,15 @@ class LaravelAiPromptRunner
 
     /**
      * Model DB max_tokens is authoritative. preferMinTokens only fills gaps when DB is unset/invalid,
-     * and never raises above the configured model limit.
+     * and never raises above the configured model limit. maxTokensCap is a hard per-call budget
+     * (staged documentation sections) and always wins when lower.
      */
-    public function effectiveMaxTokens(LaravelAiModel $model, ?int $agentDefault, ?int $preferMinTokens = null): int
-    {
+    public function effectiveMaxTokens(
+        LaravelAiModel $model,
+        ?int $agentDefault,
+        ?int $preferMinTokens = null,
+        ?int $maxTokensCap = null,
+    ): int {
         $db = (int) ($model->max_tokens ?? 0);
         $fallback = $agentDefault ?? 4096;
 
@@ -159,6 +166,10 @@ class LaravelAiPromptRunner
             if ($preferMinTokens !== null && $preferMinTokens > 0) {
                 $raw = max($raw, $preferMinTokens);
             }
+        }
+
+        if ($maxTokensCap !== null && $maxTokensCap > 0) {
+            $raw = min($raw, $maxTokensCap);
         }
 
         $ceiling = config('ai.application.completion_tokens_ceiling');

@@ -47,6 +47,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Documentation staged generation
+    |--------------------------------------------------------------------------
+    |
+    | Long pages are written one section at a time. Each call must stay well
+    | under the provider's per-request and per-minute token budgets: asking for
+    | the model's full max_tokens on every section is what produces 413/429
+    | rejections mid-run. Sections are persisted as they finish, so a paused run
+    | can be continued without regenerating anything.
+    |
+    */
+    'docs' => [
+        'outline_max_tokens' => (int) env('AI_DOCS_OUTLINE_MAX_TOKENS', 2048),
+        'section_max_tokens' => (int) env('AI_DOCS_SECTION_MAX_TOKENS', 4096),
+        'section_delay_ms' => (int) env('AI_DOCS_SECTION_DELAY_MS', 1200),
+        'section_attempts' => (int) env('AI_DOCS_SECTION_ATTEMPTS', 4),
+        'outline_attempts' => (int) env('AI_DOCS_OUTLINE_ATTEMPTS', 3),
+        'retry_backoff' => (bool) env('AI_DOCS_RETRY_BACKOFF', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | HTTP client (Laravel AI / Prism uses Illuminate Http / Guzzle)
     |--------------------------------------------------------------------------
     |

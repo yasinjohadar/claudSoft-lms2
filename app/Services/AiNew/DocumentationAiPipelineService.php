@@ -5,6 +5,8 @@ namespace App\Services\AiNew;
 use App\Ai\Agents\DocumentationOutlineAgent;
 use App\Ai\Agents\DocumentationRefineContentAgent;
 use App\Ai\Agents\DocumentationSectionAgent;
+use App\Exceptions\Ai\AiProviderException;
+use App\Exceptions\Ai\ResumableIncompleteException;
 use App\Models\AIModel;
 use App\Models\DocumentationAiGeneration;
 use App\Models\DocumentationCategory;
@@ -34,6 +36,7 @@ class DocumentationAiPipelineService
         private AIDocumentationPageService $legacyDocs,
         private AIModelService $legacyModelService,
         private DocumentationAiResultNormalizer $resultNormalizer,
+        private DocumentationStagedGenerator $stagedGenerator,
     ) {}
 
     public function run(DocumentationAiGeneration $generation): void
@@ -59,12 +62,29 @@ class DocumentationAiPipelineService
             };
 
             $generation->markCompleted($result);
+        } catch (ResumableIncompleteException $e) {
+            // Finished sections are already persisted; stop instead of throwing the work away.
+            Log::warning('Documentation AI paused with resumable progress', [
+                'uuid' => $generation->uuid,
+                'done' => $e->done,
+                'planned' => $e->planned,
+                'failed_headings' => $e->failedHeadings,
+            ]);
+            $generation->markPaused($e->getMessage());
         } catch (Throwable $e) {
             Log::error('Documentation AI pipeline failed', [
                 'uuid' => $generation->uuid,
                 'operation' => $generation->operation,
                 'message' => $e->getMessage(),
             ]);
+
+            // Keep partial work reachable when the run had already produced sections.
+            if ($generation->sections()->where('status', \App\Models\DocumentationAiSection::STATUS_DONE)->exists()) {
+                $generation->markPaused($this->friendlyError($e).' — الأقسام المكتملة محفوظة، اضغط «متابعة التوليد».');
+
+                return;
+            }
+
             $generation->markFailed($this->friendlyError($e));
         }
     }
@@ -128,170 +148,79 @@ class DocumentationAiPipelineService
         $legacyModel = null;
         if ($useLaravelAi) {
             $laraModel = $this->resolveLaravelModel($payload);
+            $outlineTokens = (int) config('ai.docs.outline_max_tokens', 2048);
+            $sectionTokens = (int) config('ai.docs.section_max_tokens', 4096);
+            if ((int) ($laraModel->max_tokens ?? 0) > 0) {
+                $outlineTokens = min($outlineTokens, (int) $laraModel->max_tokens);
+                $sectionTokens = min($sectionTokens, (int) $laraModel->max_tokens);
+            }
         } else {
             $legacyModel = $this->resolveLegacyModel($payload);
+            $outlineTokens = $this->legacyDocs->tokensForStage($legacyModel, 'outline');
+            $sectionTokens = $this->legacyDocs->tokensForStage($legacyModel, 'section');
         }
 
-        $generation->markProgress('outline', 'بناء مخطط الأقسام…', 8);
-        $outline = $useLaravelAi
-            ? $this->generateOutline($topic, $options, $sectionTarget, $user, $laraModel)
-            : $this->legacyDocs->generateDocumentationOutline($topic, $legacyModel, $options, $sectionTarget);
-
-        $sections = $outline['sections'] ?? [];
-        if (! is_array($sections) || count($sections) < 2) {
-            throw new \RuntimeException('فشل بناء مخطط الأقسام. حاول مجدداً.');
-        }
-
-        $sections = array_values(array_slice($sections, 0, $sectionTarget + 2));
-        $total = count($sections);
-        $htmlParts = [];
-        $priorHeadings = [];
-
-        $generation->markProgress('outline', 'تم المخطط — بدء كتابة الأقسام', 15, [
-            'title' => $outline['title'] ?? null,
-            'sections_planned' => $total,
-        ]);
-
-        foreach ($sections as $index => $section) {
-            $heading = trim((string) ($section['heading'] ?? ''));
-            $brief = trim((string) ($section['brief'] ?? ''));
-            if ($heading === '') {
-                continue;
+        $outlineWriter = function (int $target, int $maxTokens) use (
+            $useLaravelAi, $topic, $options, $user, $laraModel, $legacyModel
+        ): array {
+            if ($useLaravelAi) {
+                return $this->generateOutline($topic, $options, $target, $user, $laraModel, $maxTokens);
             }
 
-            $pct = 15 + (int) floor((($index + 1) / max(1, $total)) * 70);
-            $generation->markProgress(
-                'section_'.($index + 1),
-                'كتابة القسم '.($index + 1).' من '.$total.'…',
-                $pct,
-                [
-                    'title' => $outline['title'] ?? null,
-                    'sections_done' => $index,
-                    'sections_planned' => $total,
-                    'current_heading' => $heading,
-                ]
-            );
+            return $this->legacyDocs->generateDocumentationOutline($topic, $legacyModel, $options, $target, $maxTokens);
+        };
+
+        $sectionWriter = function (DocumentationSectionAttempt $attempt) use (
+            $useLaravelAi, $topic, $generation, $options, $user, $laraModel, $legacyModel, $contentLength
+        ): string {
+            $outline = $generation->partial_result['outline'] ?? [];
 
             if ($useLaravelAi) {
-                $html = $this->generateSectionHtml(
+                return $this->requestSectionHtml(
                     $topic,
-                    $outline,
-                    $heading,
-                    $brief,
-                    $priorHeadings,
+                    is_array($outline) ? $outline : [],
+                    $attempt->heading,
+                    $attempt->brief,
+                    $attempt->priorHeadings,
                     $options,
                     $user,
                     $laraModel,
                     $contentLength,
-                );
-            } else {
-                $html = $this->generateLegacySectionHtml(
-                    $topic,
-                    $outline,
-                    $heading,
-                    $brief,
-                    $priorHeadings,
-                    $options,
-                    $legacyModel,
+                    $attempt->compact,
+                    $attempt->maxTokens,
                 );
             }
 
-            $htmlParts[] = $html;
-            $priorHeadings[] = $heading;
-        }
+            return $this->legacyDocs->generateDocumentationSectionHtml(
+                $topic,
+                is_array($outline) ? $outline : [],
+                $attempt->heading,
+                $attempt->brief,
+                $attempt->priorHeadings,
+                $legacyModel,
+                $options,
+                $attempt->compact,
+                $attempt->maxTokens,
+                $attempt->plain,
+            );
+        };
 
-        $generation->markProgress('assemble', 'دمج الأقسام…', 90);
+        $result = $this->stagedGenerator->generate(
+            $generation,
+            $topic,
+            $options,
+            $sectionTarget,
+            $outlineTokens,
+            $sectionTokens,
+            $outlineWriter,
+            $sectionWriter,
+        );
 
-        $content = $this->normalizeHtml(implode("\n", array_filter($htmlParts)));
-        if ($content === '') {
-            throw new \RuntimeException('لم يُنتج محتوى HTML صالحاً بعد دمج الأقسام.');
-        }
-
-        $outlineTitle = trim((string) ($outline['title'] ?? ''));
-        if ($outlineTitle === '' || $this->resultNormalizer->looksLikeInstructionPrompt($outlineTitle, $topic)) {
-            throw new \RuntimeException('عنوان الصفحة من المخطط غير صالح. أعد التوليد.');
-        }
-
-        $excerpt = trim((string) ($outline['excerpt'] ?? ''));
-        if ($excerpt === '' || $this->resultNormalizer->looksLikeJsonBlob($excerpt)) {
-            $excerpt = $this->resultNormalizer->excerptFromHtml($content);
-        }
-
-        $shaped = $this->resultNormalizer->assertWizardShape([
-            'title' => $outlineTitle,
-            'slug' => $outline['slug'] ?? null,
-            'excerpt' => $excerpt,
-            'content' => $content,
-        ], $topic);
-
-        $result = [
-            'title' => $shaped['title'],
-            'slug' => $this->normalizeSlug(
-                $shaped['slug'] ?? (isset($outline['slug']) ? trim((string) $outline['slug']) : null),
-                $shaped['title']
-            ),
-            'excerpt' => $shaped['excerpt'],
-            'content' => $shaped['content'],
-        ];
-
-        if ($payload['generate_meta'] ?? true) {
-            $result['meta_title'] = $shaped['meta_title'];
-            $result['meta_description'] = $shaped['meta_description'];
+        if (! ($payload['generate_meta'] ?? true)) {
+            unset($result['meta_title'], $result['meta_description']);
         }
 
         return $result;
-    }
-
-    /**
-     * @param  array<string, mixed>  $outline
-     * @param  list<string>  $priorHeadings
-     * @param  array<string, mixed>  $options
-     */
-    private function generateLegacySectionHtml(
-        string $topic,
-        array $outline,
-        string $heading,
-        string $brief,
-        array $priorHeadings,
-        array $options,
-        AIModel $model,
-    ): string {
-        $html = $this->legacyDocs->generateDocumentationSectionHtml(
-            $topic,
-            $outline,
-            $heading,
-            $brief,
-            $priorHeadings,
-            $model,
-            $options,
-            compact: false,
-        );
-
-        if ($html === '') {
-            Log::warning('Documentation AI legacy section empty — retrying compact prompt', [
-                'heading' => $heading,
-            ]);
-            $html = $this->legacyDocs->generateDocumentationSectionHtml(
-                $topic,
-                $outline,
-                $heading,
-                $brief,
-                $priorHeadings,
-                $model,
-                $options,
-                compact: true,
-            );
-        }
-
-        if ($html === '') {
-            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو راجع max_tokens للموديل.');
-        }
-
-        if (! str_contains($html, 'content-section')) {
-            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
-        }
-
-        return $html;
     }
 
     /**
@@ -418,6 +347,7 @@ class DocumentationAiPipelineService
         int $sectionTarget,
         ?User $user,
         LaravelAiModel $model,
+        ?int $maxTokens = null,
     ): array {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
@@ -454,111 +384,22 @@ PROMPT;
         $started = hrtime(true);
         $prompt = $buildPrompt($sectionTarget);
 
-        try {
-            /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
-            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
-                return $this->promptRunner->runStructured($model, new DocumentationOutlineAgent, $prompt, self::OUTLINE_TIMEOUT);
-            });
-        } catch (Throwable $e) {
-            if (! $this->promptRunner->isRetryableTokenOrSizeError($e)) {
-                throw $e;
-            }
-
-            // Keep generating: retry outline with a tighter prompt while still covering the topic.
-            $retryTarget = max(4, (int) floor($sectionTarget * 0.75));
-            Log::warning('Documentation AI outline hit provider size/token limit — retrying', [
-                'section_target' => $sectionTarget,
-                'retry_target' => $retryTarget,
-                'model_id' => $model->id,
-                'model_max_tokens' => $model->max_tokens,
-                'error' => $e->getMessage(),
-            ]);
-            $prompt = $buildPrompt($retryTarget);
-            $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
-                return $this->promptRunner->runStructured($model, new DocumentationOutlineAgent, $prompt, self::OUTLINE_TIMEOUT);
-            });
-        }
+        /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
+        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
+            return $this->promptRunner->runStructured(
+                $model,
+                new DocumentationOutlineAgent,
+                $prompt,
+                self::OUTLINE_TIMEOUT,
+                null,
+                $maxTokens,
+            );
+        });
 
         $structured = $response->toArray();
         $this->logger->logSuccess($model, $user, 'docs.outline', ['topic' => $topic], $structured, (int) ((hrtime(true) - $started) / 1_000_000));
 
         return $structured;
-    }
-
-    /**
-     * @param  array<string, mixed>  $outline
-     * @param  list<string>  $priorHeadings
-     * @param  array<string, mixed>  $options
-     */
-    private function generateSectionHtml(
-        string $topic,
-        array $outline,
-        string $heading,
-        string $brief,
-        array $priorHeadings,
-        array $options,
-        ?User $user,
-        LaravelAiModel $model,
-        string $contentLength = 'medium',
-    ): string {
-        $html = '';
-        $sizeError = false;
-
-        try {
-            $html = $this->requestSectionHtml(
-                $topic,
-                $outline,
-                $heading,
-                $brief,
-                $priorHeadings,
-                $options,
-                $user,
-                $model,
-                $contentLength,
-                compact: false,
-            );
-        } catch (Throwable $e) {
-            if (! $this->promptRunner->isRetryableTokenOrSizeError($e)) {
-                throw $e;
-            }
-            $sizeError = true;
-            Log::warning('Documentation AI section hit provider size/token limit — retrying compact', [
-                'heading' => $heading,
-                'content_length' => $contentLength,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        if ($html === '' || $sizeError) {
-            if (! $sizeError && $html === '') {
-                Log::warning('Documentation AI section empty — retrying compact prompt', [
-                    'heading' => $heading,
-                    'content_length' => $contentLength,
-                ]);
-            }
-            $html = $this->requestSectionHtml(
-                $topic,
-                $outline,
-                $heading,
-                $brief,
-                $priorHeadings,
-                $options,
-                $user,
-                $model,
-                $contentLength,
-                compact: true,
-            );
-        }
-
-        if ($html === '') {
-            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو راجع max_tokens للموديل.');
-        }
-
-        if (! str_contains($html, 'content-section')) {
-            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
-        }
-
-        return $html;
     }
 
     /**
@@ -577,6 +418,7 @@ PROMPT;
         LaravelAiModel $model,
         string $contentLength,
         bool $compact,
+        ?int $maxTokens = null,
     ): string {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
@@ -606,21 +448,17 @@ PROMPT;
 لا تُرجع أقساماً أخرى. أعد الحقل html فقط.
 PROMPT;
 
-        // Prefer the model's configured max_tokens; only suggest a floor when DB limit is unset.
-        $preferMinTokens = in_array($contentLength, ['medium', 'long'], true) ? 8192 : null;
-        if ($compact) {
-            $preferMinTokens = null;
-        }
         $started = hrtime(true);
 
         /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
-        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $preferMinTokens) {
+        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
             return $this->promptRunner->runStructured(
                 $model,
                 new DocumentationSectionAgent,
                 $prompt,
                 self::SECTION_TIMEOUT,
-                $preferMinTokens,
+                null,
+                $maxTokens,
             );
         });
 
@@ -850,6 +688,16 @@ GUIDE;
     {
         $msg = $e->getMessage();
         $lower = strtolower($msg);
+
+        if ($e instanceof AiProviderException) {
+            return match ($e->kind) {
+                AiProviderException::KIND_AUTH => 'المزود رفض الطلب (مفتاح API أو الرصيد). راجع إعدادات الموديل ثم تابع التوليد — لن تُفقد الأقسام المكتملة. التفاصيل: '.$msg,
+                AiProviderException::KIND_RATE_LIMIT => 'المزود يطبّق حد معدل على الطلبات. جرّب لاحقاً أو خفّض AI_DOCS_SECTION_MAX_TOKENS وارفع AI_DOCS_SECTION_DELAY_MS. التفاصيل: '.$msg,
+                AiProviderException::KIND_TOO_LARGE => 'الطلب تجاوز حد الحجم عند المزود رغم تقليل max_tokens تلقائياً. خفّض AI_DOCS_SECTION_MAX_TOKENS ثم تابع التوليد. التفاصيل: '.$msg,
+                default => 'فشل الاتصال بالمزود: '.$msg,
+            };
+        }
+
         if (str_contains($lower, 'timeout')) {
             return 'انتهت مهلة أحد مراحل التوليد. أعد المحاولة — المحتوى الطويل يُقسَّم إلى أقسام ويُعاد تلقائياً عند الحاجة.';
         }

@@ -2,9 +2,58 @@
 <script>
 window.DocAiJobPoller = (function () {
     const statusUrlTemplate = @json(route('admin.docs.ai-pages.jobs.show', ['uuid' => '__UUID__']));
+    const resumeUrlTemplate = @json(route('admin.docs.ai-pages.jobs.resume', ['uuid' => '__UUID__']));
+    const partialUrlTemplate = @json(route('admin.docs.ai-pages.jobs.partial', ['uuid' => '__UUID__']));
 
     function statusUrl(uuid) {
         return statusUrlTemplate.replace('__UUID__', encodeURIComponent(uuid));
+    }
+
+    function resumeUrl(uuid) {
+        return resumeUrlTemplate.replace('__UUID__', encodeURIComponent(uuid));
+    }
+
+    function partialUrl(uuid) {
+        return partialUrlTemplate.replace('__UUID__', encodeURIComponent(uuid));
+    }
+
+    function csrfToken() {
+        const el = document.querySelector('meta[name="csrf-token"]');
+        return el ? el.getAttribute('content') : '';
+    }
+
+    /** Continue a paused job: only missing sections are regenerated. */
+    function resume(uuid) {
+        return fetch(resumeUrl(uuid), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken()
+            },
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return r.json().then(function (data) {
+                if (!r.ok || !data.success) {
+                    throw new Error(data.message || 'تعذّر استئناف التوليد');
+                }
+                return data;
+            });
+        });
+    }
+
+    /** Fetch the sections that already finished, without waiting for the rest. */
+    function partial(uuid) {
+        return fetch(partialUrl(uuid), {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return r.json().then(function (data) {
+                if (!r.ok || !data.success) {
+                    throw new Error(data.message || 'لا توجد أقسام مكتملة');
+                }
+                return data.result || {};
+            });
+        });
     }
 
     /**
@@ -61,9 +110,26 @@ window.DocAiJobPoller = (function () {
                         return;
                     }
 
+                    // Stopped with saved progress: keep the uuid so «متابعة» can continue it.
+                    if (job.status === 'paused') {
+                        stopped = true;
+                        if (typeof opts.onPaused === 'function') {
+                            opts.onPaused(job);
+                        } else if (typeof opts.onError === 'function') {
+                            opts.onError(job.error_message || 'توقفت المهمة مؤقتاً');
+                        }
+                        return;
+                    }
+
                     if (job.status === 'failed' || job.status === 'cancelled') {
                         stopped = true;
-                        finishStorage();
+                        if (!job.resumable) {
+                            finishStorage();
+                        }
+                        if (job.resumable && typeof opts.onPaused === 'function') {
+                            opts.onPaused(job);
+                            return;
+                        }
                         if (typeof opts.onError === 'function') {
                             opts.onError(job.error_message || 'فشلت المهمة');
                         }
@@ -105,6 +171,12 @@ window.DocAiJobPoller = (function () {
         return poll(Object.assign({ uuid: uuid, storageKey: storageKey }, handlers));
     }
 
-    return { poll: poll, resumeIfAny: resumeIfAny, statusUrl: statusUrl };
+    return {
+        poll: poll,
+        resumeIfAny: resumeIfAny,
+        statusUrl: statusUrl,
+        resume: resume,
+        partial: partial
+    };
 })();
 </script>
