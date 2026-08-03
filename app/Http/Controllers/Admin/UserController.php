@@ -43,11 +43,63 @@ class UserController extends Controller
         // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
         $this->middleware('auth');
 
-        $this->middleware('permission:user-list')->only('index');
+        $this->middleware('permission:user-list')->only(['index', 'quickSearch']);
         $this->middleware('permission:user-create')->only(['create', 'store']);
         $this->middleware('permission:user-edit')->only(['edit', 'update', 'updatePassword']);
         $this->middleware('permission:user-delete')->only('destroy');
         $this->middleware('permission:user-show')->only('show');
+    }
+
+    /**
+     * Navbar quick search: name / email / phone → link to profile.
+     */
+    public function quickSearch(Request $request, AdminUserListQueryService $listQuery): JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+            ]);
+        }
+
+        $usersQuery = User::query()->select([
+            'id',
+            'name',
+            'name_ar',
+            'email',
+            'phone',
+            'full_phone',
+            'avatar',
+            'photo',
+            'student_id',
+        ]);
+        $listQuery->applyNavbarSearch($usersQuery, $q);
+
+        $users = $usersQuery
+            ->limit(12)
+            ->get()
+            ->map(function (User $user) {
+                $displayName = trim((string) ($user->name_ar ?: $user->name)) ?: 'بدون اسم';
+                $phone = $user->full_phone ?: $user->phone;
+                $avatar = $user->avatar ?: $user->photo;
+
+                return [
+                    'id' => $user->id,
+                    'name' => $displayName,
+                    'email' => $user->email,
+                    'phone' => $phone,
+                    'student_id' => $user->student_id,
+                    'avatar_url' => $avatar ? asset('storage/'.$avatar) : null,
+                    'profile_url' => route('users.show', $user->id),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
     }
 
     /**

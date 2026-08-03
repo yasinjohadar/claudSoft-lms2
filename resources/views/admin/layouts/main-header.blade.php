@@ -27,8 +27,10 @@
                         <a aria-label="Hide Sidebar" class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
                             <i class="header-icon fe fe-align-left"></i>
                         </a>
-                        <div class="main-header-center d-none d-lg-block">
-                            <input class="form-control" placeholder="إكتب للبحث..." type="search"> <button class="btn"><i class="fa fa-search d-none d-md-block"></i></button>
+                        <div class="main-header-center d-none d-lg-block position-relative" id="adminHeaderUserSearch">
+                            <input class="form-control" id="adminHeaderUserSearchInput" placeholder="بحث بالاسم أو البريد أو الهاتف..." type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="adminHeaderUserSearchResults">
+                            <button class="btn" type="button" id="adminHeaderUserSearchBtn" aria-label="بحث"><i class="fa fa-search d-none d-md-block"></i></button>
+                            <div id="adminHeaderUserSearchResults" class="admin-header-user-search-results" role="listbox" hidden></div>
                         </div>
                         <!-- End::header-link -->
                     </div>
@@ -48,11 +50,12 @@
                         <!-- End::header-link|dropdown-toggle -->
                         <ul class="main-header-dropdown dropdown-menu dropdown-menu-end Search-element-dropdown" data-popper-placement="none">
                             <li>
-                                <div class="input-group w-100 p-2">
-                                    <input type="text" class="form-control" placeholder="Search....">
-                                    <div class="btn btn-primary">
+                                <div class="input-group w-100 p-2 position-relative" id="adminHeaderUserSearchMobile">
+                                    <input type="text" class="form-control" id="adminHeaderUserSearchInputMobile" placeholder="بحث بالاسم أو البريد أو الهاتف..." autocomplete="off">
+                                    <div class="btn btn-primary" id="adminHeaderUserSearchBtnMobile">
                                         <i class="fa fa-search" aria-hidden="true"></i>
                                     </div>
+                                    <div id="adminHeaderUserSearchResultsMobile" class="admin-header-user-search-results admin-header-user-search-results--mobile" role="listbox" hidden></div>
                                 </div>
                             </li>
                         </ul>
@@ -315,3 +318,210 @@
 
         </header>
         <!-- /app-header -->
+
+        @auth
+        <style>
+            .admin-header-user-search-results {
+                position: absolute;
+                top: calc(100% + 6px);
+                inset-inline: 0;
+                z-index: 1080;
+                max-height: 360px;
+                overflow-y: auto;
+                background: var(--custom-white, #fff);
+                border: 1px solid rgba(0, 0, 0, .08);
+                border-radius: 12px;
+                box-shadow: 0 12px 28px rgba(15, 23, 42, .12);
+                text-align: start;
+            }
+            .admin-header-user-search-results--mobile {
+                position: absolute;
+                top: calc(100% - 2px);
+                inset-inline: 8px;
+                width: auto;
+            }
+            .admin-header-user-search-item {
+                display: flex;
+                align-items: center;
+                gap: .75rem;
+                padding: .7rem .9rem;
+                color: inherit;
+                text-decoration: none;
+                border-bottom: 1px solid rgba(0, 0, 0, .05);
+                transition: background .15s ease;
+            }
+            .admin-header-user-search-item:last-child { border-bottom: 0; }
+            .admin-header-user-search-item:hover,
+            .admin-header-user-search-item:focus {
+                background: rgba(99, 102, 241, .08);
+                color: inherit;
+            }
+            .admin-header-user-search-avatar {
+                width: 38px;
+                height: 38px;
+                border-radius: 50%;
+                object-fit: cover;
+                flex-shrink: 0;
+                background: #eef2ff;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                color: #4f46e5;
+            }
+            .admin-header-user-search-meta { min-width: 0; flex: 1; }
+            .admin-header-user-search-name {
+                font-weight: 600;
+                font-size: .92rem;
+                margin: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .admin-header-user-search-sub {
+                margin: 0;
+                font-size: .78rem;
+                color: #6b7280;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .admin-header-user-search-empty,
+            .admin-header-user-search-loading {
+                padding: 1rem;
+                text-align: center;
+                color: #6b7280;
+                font-size: .85rem;
+            }
+            [data-theme-mode="dark"] .admin-header-user-search-results {
+                background: #1f2937;
+                border-color: rgba(255, 255, 255, .08);
+            }
+            [data-theme-mode="dark"] .admin-header-user-search-sub,
+            [data-theme-mode="dark"] .admin-header-user-search-empty,
+            [data-theme-mode="dark"] .admin-header-user-search-loading {
+                color: #9ca3af;
+            }
+        </style>
+        <script>
+        (function () {
+            const searchUrl = @json(route('admin.users.quick-search'));
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function renderResults(container, users, query) {
+                if (!container) return;
+                if (!users.length) {
+                    container.innerHTML = '<div class="admin-header-user-search-empty">لا توجد نتائج لـ «' + escapeHtml(query) + '»</div>';
+                    container.hidden = false;
+                    return;
+                }
+
+                container.innerHTML = users.map(function (user) {
+                    const initial = (user.name || '?').trim().charAt(0);
+                    const avatar = user.avatar_url
+                        ? '<img class="admin-header-user-search-avatar" src="' + escapeHtml(user.avatar_url) + '" alt="">'
+                        : '<span class="admin-header-user-search-avatar">' + escapeHtml(initial) + '</span>';
+                    const phoneLine = user.phone ? ' · ' + escapeHtml(user.phone) : '';
+                    const studentLine = user.student_id ? '<div class="admin-header-user-search-sub">' + escapeHtml(user.student_id) + '</div>' : '';
+                    return '<a class="admin-header-user-search-item" role="option" href="' + escapeHtml(user.profile_url) + '">'
+                        + avatar
+                        + '<div class="admin-header-user-search-meta">'
+                        + '<p class="admin-header-user-search-name">' + escapeHtml(user.name) + '</p>'
+                        + '<p class="admin-header-user-search-sub">' + escapeHtml(user.email || '') + phoneLine + '</p>'
+                        + studentLine
+                        + '</div></a>';
+                }).join('');
+                container.hidden = false;
+            }
+
+            function bindSearch(input, results, button) {
+                if (!input || !results) return;
+                let timer = null;
+                let controller = null;
+
+                const hide = () => { results.hidden = true; input.setAttribute('aria-expanded', 'false'); };
+                const showLoading = () => {
+                    results.innerHTML = '<div class="admin-header-user-search-loading">جاري البحث…</div>';
+                    results.hidden = false;
+                    input.setAttribute('aria-expanded', 'true');
+                };
+
+                const runSearch = () => {
+                    const q = (input.value || '').trim();
+                    if (q.length < 2) {
+                        hide();
+                        return;
+                    }
+                    showLoading();
+                    if (controller) controller.abort();
+                    controller = new AbortController();
+
+                    fetch(searchUrl + '?q=' + encodeURIComponent(q), {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrf
+                        },
+                        signal: controller.signal
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (json) {
+                            renderResults(results, (json && json.data) ? json.data : [], q);
+                            input.setAttribute('aria-expanded', 'true');
+                        })
+                        .catch(function (err) {
+                            if (err && err.name === 'AbortError') return;
+                            results.innerHTML = '<div class="admin-header-user-search-empty">تعذر تنفيذ البحث</div>';
+                            results.hidden = false;
+                        });
+                };
+
+                input.addEventListener('input', function () {
+                    clearTimeout(timer);
+                    timer = setTimeout(runSearch, 280);
+                });
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        clearTimeout(timer);
+                        runSearch();
+                    }
+                    if (e.key === 'Escape') hide();
+                });
+                if (button) button.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    clearTimeout(timer);
+                    runSearch();
+                });
+                document.addEventListener('click', function (e) {
+                    if (!input.closest('.main-header-center')?.contains(e.target)
+                        && !input.closest('#adminHeaderUserSearchMobile')?.contains(e.target)) {
+                        hide();
+                    }
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                bindSearch(
+                    document.getElementById('adminHeaderUserSearchInput'),
+                    document.getElementById('adminHeaderUserSearchResults'),
+                    document.getElementById('adminHeaderUserSearchBtn')
+                );
+                bindSearch(
+                    document.getElementById('adminHeaderUserSearchInputMobile'),
+                    document.getElementById('adminHeaderUserSearchResultsMobile'),
+                    document.getElementById('adminHeaderUserSearchBtnMobile')
+                );
+            });
+        })();
+        </script>
+        @endauth

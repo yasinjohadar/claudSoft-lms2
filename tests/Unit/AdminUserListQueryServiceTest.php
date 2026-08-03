@@ -2,6 +2,8 @@
 
 use App\Services\Admin\AdminUserListQueryService;
 
+uses(Tests\TestCase::class);
+
 function invokeSearchHelper(AdminUserListQueryService $service, string $method, string $value): bool
 {
     $ref = new ReflectionMethod($service, $method);
@@ -51,4 +53,29 @@ test('does not confuse student serial with phone search', function () {
 
     expect(invokeSearchHelper($service, 'isStudentSerialSearch', 'STD-2026-00001'))->toBeTrue()
         ->and(invokeSearchHelper($service, 'isPhoneSearch', 'STD-2026-00001'))->toBeTrue();
+});
+
+test('navbar search sql targets arabic name english name email and phone', function () {
+    $service = new AdminUserListQueryService;
+    $query = \App\Models\User::query();
+
+    $service->applyNavbarSearch($query, 'ياسين');
+    $sql = strtolower($query->toSql());
+
+    expect($sql)->toContain('name')
+        ->and($sql)->toContain('name_ar')
+        ->and($sql)->toContain('email');
+});
+
+test('navbar search includes precise phone digit matching for numeric queries', function () {
+    $service = new AdminUserListQueryService;
+    $query = \App\Models\User::query();
+
+    $service->applyNavbarSearch($query, '905519665883');
+    $sql = strtolower($query->toSql());
+    $bindings = $query->getBindings();
+
+    expect($sql)->toContain('phone')
+        ->and($sql)->toContain('full_phone')
+        ->and($bindings)->toContain('905519665883');
 });

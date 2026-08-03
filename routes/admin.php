@@ -173,6 +173,7 @@ Route::prefix('admin')
             Route::get('/download-errors/{session}', [BulkUserImportController::class, 'downloadErrors'])->name('errors');
         });
 
+        Route::get('users/quick-search', [UserController::class, 'quickSearch'])->name('admin.users.quick-search');
         Route::get('users/{user}/admin-notes', [UserController::class, 'adminNotesFragment'])->name('admin.users.admin-notes');
         Route::delete('users/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
         Route::resource('users', UserController::class);

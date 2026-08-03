@@ -47,6 +47,134 @@ class AdminUserListQueryService
     }
 
     /**
+     * Navbar autocomplete: precise match across English/Arabic name, email, and phone.
+     * Prefers exact then prefix matches; always searches all four identity fields.
+     *
+     * @param  Builder<\App\Models\User>  $query
+     */
+    public function applyNavbarSearch(Builder $query, ?string $search): void
+    {
+        $search = trim((string) $search);
+        if ($search === '') {
+            return;
+        }
+
+        if ($this->isStudentSerialSearch($search)) {
+            $this->applyStudentSerialSearch($query, $search);
+
+            return;
+        }
+
+        $normalized = mb_strtolower($search);
+        $escaped = $this->escapeLike($search);
+        $escapedLower = $this->escapeLike($normalized);
+        $prefix = $escaped.'%';
+        $prefixLower = $escapedLower.'%';
+        $contains = '%'.$escaped.'%';
+        $containsLower = '%'.$escapedLower.'%';
+        $digits = WapiPhoneNormalizer::normalize($search);
+
+        $query->where(function (Builder $q) use (
+            $search,
+            $normalized,
+            $prefix,
+            $prefixLower,
+            $contains,
+            $containsLower,
+            $digits
+        ) {
+            // English + Arabic names: exact, prefix, then contains
+            $q->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
+                ->orWhereRaw('TRIM(COALESCE(name_ar, "")) = ?', [$search])
+                ->orWhereRaw('LOWER(TRIM(COALESCE(name_ar, ""))) = ?', [$normalized])
+                ->orWhere('name', 'like', $prefix)
+                ->orWhere('name_ar', 'like', $prefix)
+                ->orWhereRaw('LOWER(COALESCE(name, "")) LIKE ?', [$prefixLower])
+                ->orWhereRaw('LOWER(COALESCE(name_ar, "")) LIKE ?', [$prefixLower])
+                ->orWhere('name', 'like', $contains)
+                ->orWhere('name_ar', 'like', $contains)
+                ->orWhereRaw('LOWER(COALESCE(name, "")) LIKE ?', [$containsLower])
+                ->orWhereRaw('LOWER(COALESCE(name_ar, "")) LIKE ?', [$containsLower]);
+
+            // Email: exact, then prefix, then contains (local-part friendly)
+            $q->orWhereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$normalized])
+                ->orWhereRaw('LOWER(COALESCE(email, "")) LIKE ?', [$prefixLower])
+                ->orWhereRaw('LOWER(COALESCE(email, "")) LIKE ?', [$containsLower]);
+
+            // Phone: precise digit matching whenever enough digits are present
+            if (strlen($digits) >= 3) {
+                $q->orWhere(function (Builder $phoneQ) use ($search, $digits) {
+                    $this->appendPrecisePhoneConditions($phoneQ, $search, $digits);
+                });
+            }
+
+            if (ctype_digit($search)) {
+                $q->orWhere('id', (int) $search);
+            }
+
+            $q->orWhereRaw('UPPER(TRIM(COALESCE(student_id, ""))) = ?', [mb_strtoupper($search)])
+                ->orWhere('student_id', 'like', $prefix)
+                ->orWhere('student_id', 'like', $contains);
+        });
+
+        // Rank: exact email/name/phone → prefix → contains
+        $query->orderByRaw(
+            'CASE
+                WHEN LOWER(TRIM(COALESCE(email, ""))) = ? THEN 0
+                WHEN LOWER(TRIM(COALESCE(name, ""))) = ? OR TRIM(COALESCE(name_ar, "")) = ? THEN 1
+                WHEN ? <> "" AND (
+                    '.$this->digitsOnlyColumn('full_phone').' = ?
+                    OR '.$this->digitsOnlyColumn('phone').' = ?
+                    OR '.$this->digitsOnlyColumn('CONCAT(COALESCE(country_code, ""), COALESCE(phone, ""))').' = ?
+                ) THEN 1
+                WHEN LOWER(COALESCE(email, "")) LIKE ? THEN 2
+                WHEN LOWER(COALESCE(name, "")) LIKE ? OR LOWER(COALESCE(name_ar, "")) LIKE ? THEN 3
+                ELSE 4
+            END ASC',
+            [
+                $normalized,
+                $normalized,
+                $search,
+                $digits,
+                $digits,
+                $digits,
+                $digits,
+                $prefixLower,
+                $prefixLower,
+                $prefixLower,
+            ]
+        )->orderBy('name');
+    }
+
+    private function appendPrecisePhoneConditions(Builder $phoneQ, string $search, string $digits): void
+    {
+        $digitColumnPhone = $this->digitsOnlyColumn('phone');
+        $digitColumnFull = $this->digitsOnlyColumn('full_phone');
+        $digitColumnCombined = $this->digitsOnlyColumn('CONCAT(COALESCE(country_code, ""), COALESCE(phone, ""))');
+
+        // Exact digit match
+        $phoneQ->whereRaw("{$digitColumnPhone} = ?", [$digits])
+            ->orWhereRaw("{$digitColumnFull} = ?", [$digits])
+            ->orWhereRaw("{$digitColumnCombined} = ?", [$digits])
+            ->orWhere('phone', $search)
+            ->orWhere('full_phone', $search);
+
+        // Prefix / suffix for partial but precise lookup (min 3–4 digits)
+        if (strlen($digits) >= 3) {
+            $phoneQ->orWhereRaw("{$digitColumnPhone} LIKE ?", [$digits.'%'])
+                ->orWhereRaw("{$digitColumnFull} LIKE ?", [$digits.'%'])
+                ->orWhereRaw("{$digitColumnCombined} LIKE ?", [$digits.'%']);
+        }
+
+        if (strlen($digits) >= 4) {
+            $suffix = substr($digits, -min(9, strlen($digits)));
+            $phoneQ->orWhereRaw("{$digitColumnPhone} LIKE ?", ['%'.$suffix])
+                ->orWhereRaw("{$digitColumnFull} LIKE ?", ['%'.$suffix])
+                ->orWhereRaw("{$digitColumnCombined} LIKE ?", ['%'.$suffix]);
+        }
+    }
+
+    /**
      * @param  Builder<\App\Models\User>  $query
      */
     private function applyStudentSerialSearch(Builder $query, string $search): void
