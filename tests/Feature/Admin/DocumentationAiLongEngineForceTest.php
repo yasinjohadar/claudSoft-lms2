@@ -23,7 +23,7 @@ class DocumentationAiLongEngineForceTest extends TestCase
         }
     }
 
-    public function test_generate_forces_laravel_ai_engine_for_long_when_laravel_model_exists(): void
+    public function test_generate_respects_legacy_engine_for_long_even_when_laravel_model_exists(): void
     {
         $role = Role::findOrCreate('admin', 'web');
         $user = User::factory()->create();
@@ -61,7 +61,7 @@ class DocumentationAiLongEngineForceTest extends TestCase
             ->withArgs(function ($authUser, $operation, $payload) use ($user) {
                 return $authUser->is($user)
                     && $operation === DocumentationAiGeneration::OPERATION_GENERATE
-                    && ($payload['docs_engine'] ?? null) === 'laravel_ai'
+                    && ($payload['docs_engine'] ?? null) === 'legacy'
                     && ($payload['content_length'] ?? null) === 'long';
             })
             ->andReturn($generation);

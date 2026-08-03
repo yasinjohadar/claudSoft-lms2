@@ -144,7 +144,7 @@
                                             <option value="medium" selected>متوسط</option>
                                             <option value="long">طويل</option>
                                         </select>
-                                        <small class="text-muted d-block mt-1">الطويل/المتوسط يُقسَّم تلقائياً إلى أقسام ويستخدم حدّ <code>max_tokens</code> من موديل Laravel AI SDK.</small>
+                                        <small class="text-muted d-block mt-1">الطويل/المتوسط يُولَّد على مراحل (مخطط ثم أقسام ثم تجميع) عبر الموديل المختار.</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" for="tone">الأسلوب</label>
@@ -414,19 +414,6 @@ document.documentElement.classList.add('loaded');
         if (wG) wG.style.display = laravelChecked ? 'none' : '';
     }
 
-    function ensureLaravelAiForLongContent() {
-        const lengthEl = document.getElementById('content_length');
-        const laravelEl = document.getElementById('laravel_ai_model_id');
-        if (!lengthEl || !laravelEl) return;
-        const length = lengthEl.value;
-        if (length !== 'medium' && length !== 'long') return;
-        const laravelRadio = document.getElementById('docs_engine_laravel_ai');
-        if (laravelRadio && !laravelRadio.checked) {
-            laravelRadio.checked = true;
-            syncDocsEngineModelVisibility();
-        }
-    }
-
     function refreshParentOptions() {
         const catId = document.getElementById('doc_category_id').value;
         const sel = document.getElementById('doc_parent_id');
@@ -449,11 +436,9 @@ document.documentElement.classList.add('loaded');
         refreshParentOptions();
         document.getElementById('doc_category_id').addEventListener('change', refreshParentOptions);
         syncDocsEngineModelVisibility();
-        ensureLaravelAiForLongContent();
         document.querySelectorAll('input[name="docs_engine"]').forEach(function (el) {
             el.addEventListener('change', syncDocsEngineModelVisibility);
         });
-        document.getElementById('content_length')?.addEventListener('change', ensureLaravelAiForLongContent);
 
         // Resume unfinished job after leave/return
         window.DocAiJobPoller.resumeIfAny(STORAGE_KEY, {
@@ -523,11 +508,6 @@ document.documentElement.classList.add('loaded');
             const contentLength = document.getElementById('content_length').value;
             const laravelEl = document.getElementById('laravel_ai_model_id');
             const legacyEl = document.getElementById('ai_model_id');
-            // Medium/long must use Laravel AI pipeline (and its model max_tokens).
-            if ((contentLength === 'medium' || contentLength === 'long') && laravelEl) {
-                engine = 'laravel_ai';
-                ensureLaravelAiForLongContent();
-            }
             const payload = {
                 topic: topic,
                 docs_engine: engine,

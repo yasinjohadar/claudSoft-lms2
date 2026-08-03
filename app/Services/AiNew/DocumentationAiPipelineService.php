@@ -80,40 +80,62 @@ class DocumentationAiPipelineService
             throw new \InvalidArgumentException('الموضوع مطلوب.');
         }
 
-        $engine = (string) ($payload['docs_engine'] ?? 'laravel_ai');
+        $engine = (string) ($payload['docs_engine'] ?? 'legacy');
         $contentLength = (string) ($payload['content_length'] ?? 'medium');
         $options = $this->wizardOptionsFromPayload($payload);
+        $useStaged = in_array($contentLength, ['medium', 'long'], true);
 
-        // Prefer outline+sections for medium/long whenever a Laravel AI model exists.
-        if (
-            in_array($contentLength, ['medium', 'long'], true)
-            && $engine !== 'laravel_ai'
-            && LaravelAiModel::query()->where('is_active', true)->exists()
-        ) {
-            Log::info('Documentation AI forcing laravel_ai pipeline for length', [
-                'uuid' => $generation->uuid,
-                'content_length' => $contentLength,
-                'was_engine' => $engine,
-            ]);
-            $engine = 'laravel_ai';
-        }
+        Log::info('Documentation AI generate path', [
+            'uuid' => $generation->uuid,
+            'engine' => $engine,
+            'content_length' => $contentLength,
+            'staged' => $useStaged || $engine === 'laravel_ai',
+        ]);
 
+        // Legacy short: one-shot. Medium/long: staged outline+sections on legacy models.
         if ($engine !== 'laravel_ai') {
-            $generation->markProgress('legacy_generate', 'توليد الصفحة (محرك قديم)…', 20);
-            $model = $this->resolveLegacyModel($payload);
-            $result = $this->legacyDocs->generateDocumentationPage($topic, $model, $options);
-            $generation->markProgress('legacy_generate', 'اكتمل التوليد', 95, ['title' => $result['title'] ?? null]);
+            if (! $useStaged) {
+                $generation->markProgress('legacy_generate', 'توليد الصفحة (محرك قديم)…', 20);
+                $model = $this->resolveLegacyModel($payload);
+                $result = $this->legacyDocs->generateDocumentationPage($topic, $model, $options);
+                $generation->markProgress('legacy_generate', 'اكتمل التوليد', 95, ['title' => $result['title'] ?? null]);
 
-            return $result;
+                return $result;
+            }
+
+            return $this->runStagedGenerate($generation, $topic, $options, $contentLength, useLaravelAi: false);
         }
 
-        $laraModel = $this->resolveLaravelModel($payload);
-        $user = User::query()->find($generation->user_id);
+        return $this->runStagedGenerate($generation, $topic, $options, $contentLength, useLaravelAi: true);
+    }
 
-        $sectionTarget = $this->sectionCountForLength((string) ($payload['content_length'] ?? 'medium'));
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private function runStagedGenerate(
+        DocumentationAiGeneration $generation,
+        string $topic,
+        array $options,
+        string $contentLength,
+        bool $useLaravelAi,
+    ): array {
+        $payload = $generation->payload;
+        $user = User::query()->find($generation->user_id);
+        $sectionTarget = $this->sectionCountForLength($contentLength);
+
+        $laraModel = null;
+        $legacyModel = null;
+        if ($useLaravelAi) {
+            $laraModel = $this->resolveLaravelModel($payload);
+        } else {
+            $legacyModel = $this->resolveLegacyModel($payload);
+        }
 
         $generation->markProgress('outline', 'بناء مخطط الأقسام…', 8);
-        $outline = $this->generateOutline($topic, $options, $sectionTarget, $user, $laraModel);
+        $outline = $useLaravelAi
+            ? $this->generateOutline($topic, $options, $sectionTarget, $user, $laraModel)
+            : $this->legacyDocs->generateDocumentationOutline($topic, $legacyModel, $options, $sectionTarget);
 
         $sections = $outline['sections'] ?? [];
         if (! is_array($sections) || count($sections) < 2) {
@@ -150,17 +172,30 @@ class DocumentationAiPipelineService
                 ]
             );
 
-            $html = $this->generateSectionHtml(
-                $topic,
-                $outline,
-                $heading,
-                $brief,
-                $priorHeadings,
-                $options,
-                $user,
-                $laraModel,
-                $contentLength,
-            );
+            if ($useLaravelAi) {
+                $html = $this->generateSectionHtml(
+                    $topic,
+                    $outline,
+                    $heading,
+                    $brief,
+                    $priorHeadings,
+                    $options,
+                    $user,
+                    $laraModel,
+                    $contentLength,
+                );
+            } else {
+                $html = $this->generateLegacySectionHtml(
+                    $topic,
+                    $outline,
+                    $heading,
+                    $brief,
+                    $priorHeadings,
+                    $options,
+                    $legacyModel,
+                );
+            }
+
             $htmlParts[] = $html;
             $priorHeadings[] = $heading;
         }
@@ -205,6 +240,58 @@ class DocumentationAiPipelineService
         }
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array<string, mixed>  $options
+     */
+    private function generateLegacySectionHtml(
+        string $topic,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        array $options,
+        AIModel $model,
+    ): string {
+        $html = $this->legacyDocs->generateDocumentationSectionHtml(
+            $topic,
+            $outline,
+            $heading,
+            $brief,
+            $priorHeadings,
+            $model,
+            $options,
+            compact: false,
+        );
+
+        if ($html === '') {
+            Log::warning('Documentation AI legacy section empty — retrying compact prompt', [
+                'heading' => $heading,
+            ]);
+            $html = $this->legacyDocs->generateDocumentationSectionHtml(
+                $topic,
+                $outline,
+                $heading,
+                $brief,
+                $priorHeadings,
+                $model,
+                $options,
+                compact: true,
+            );
+        }
+
+        if ($html === '') {
+            throw new \RuntimeException('فشل توليد قسم: '.$heading.' — أعد المحاولة أو راجع max_tokens للموديل.');
+        }
+
+        if (! str_contains($html, 'content-section')) {
+            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
+        }
+
+        return $html;
     }
 
     /**

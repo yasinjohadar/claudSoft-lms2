@@ -389,6 +389,182 @@ GUIDE;
     }
 
     /**
+     * Plan a documentation page as an outline (for staged medium/long generation).
+     *
+     * @param  array{
+     *   content_length?: string,
+     *   tone?: string,
+     *   language?: string,
+     *   category?: DocumentationCategory|null,
+     *   parent?: DocumentationPage|null
+     * }  $options
+     * @return array{title?: string, slug?: string, excerpt?: string, sections?: list<array{heading?: string, brief?: string}>}
+     */
+    public function generateDocumentationOutline(
+        string $topic,
+        AIModel $model,
+        array $options,
+        int $sectionTarget,
+    ): array {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $length = $options['content_length'] ?? 'medium';
+        /** @var DocumentationCategory|null $category */
+        $category = $options['category'] ?? null;
+        /** @var DocumentationPage|null $parent */
+        $parent = $options['parent'] ?? null;
+
+        $langLine = $language === 'en'
+            ? 'Plan the page in English.'
+            : 'خطط الصفحة بالعربية.';
+        $categoryLine = $category ? "القسم: {$category->name}. " : '';
+        $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
+        $topicForPrompt = Str::limit(trim($topic), 1500);
+
+        $prompt = <<<PROMPT
+خطط صفحة توثيق شاملة ثم قسّمها إلى أقسام.
+
+الموضوع: {$topicForPrompt}
+{$categoryLine}{$parentLine}
+عدد الأقسام المستهدف تقريباً: {$sectionTarget}
+طول المحتوى الإجمالي المستهدف: {$length}
+الأسلوب: {$tone}
+{$langLine}
+
+أعد النتيجة كـ JSON فقط بهذا الشكل:
+{
+  "title": "عنوان الصفحة",
+  "slug": "slug-simple",
+  "excerpt": "ملخص قصير بدون HTML",
+  "sections": [
+    {"heading": "عنوان القسم", "brief": "جملة قصيرة عما سيغطيه القسم"}
+  ]
+}
+
+مهم: brief جملة قصيرة فقط. لا تكتب HTML هنا.
+PROMPT;
+
+        $provider = AIProviderFactory::create($model);
+        $response = $provider->generateText($prompt, [
+            'max_tokens' => $this->tokensForStage($model, 4096),
+            'temperature' => $model->temperature ?? 0.55,
+        ]);
+
+        if (empty($response)) {
+            throw new \Exception('لم يتم استلام مخطط الأقسام من موديل AI.');
+        }
+
+        $data = $this->parseJSONResponse($response);
+        if ($data === []) {
+            $data = $this->resultNormalizer()->unwrapPayload($response);
+        }
+
+        $sections = $data['sections'] ?? null;
+        if (! is_array($sections) || count($sections) < 2) {
+            throw new \Exception('فشل بناء مخطط الأقسام من الموديل القديم. حاول مجدداً.');
+        }
+
+        return [
+            'title' => trim((string) ($data['title'] ?? '')),
+            'slug' => trim((string) ($data['slug'] ?? '')),
+            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
+            'sections' => array_values($sections),
+        ];
+    }
+
+    /**
+     * Generate one documentation section as HTML (legacy staged path).
+     *
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array{tone?: string, language?: string, content_length?: string}  $options
+     */
+    public function generateDocumentationSectionHtml(
+        string $topic,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        AIModel $model,
+        array $options = [],
+        bool $compact = false,
+    ): string {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $contentLength = $options['content_length'] ?? 'medium';
+        $pageTitle = trim((string) ($outline['title'] ?? '')) ?: $topic;
+        $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
+        $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
+        $styleGuide = $this->documentationStyleGuideBlock();
+        $compactLine = $compact
+            ? 'مهم: اجعل القسم أقصر. مثال كود واحد فقط، بدون تكرار، ركّز على الفكرة الأساسية.'
+            : '';
+
+        $prompt = <<<PROMPT
+اكتب قسماً واحداً فقط من صفحة توثيق.
+
+موضوع الصفحة: {$topic}
+عنوان الصفحة: {$pageTitle}
+القسم الحالي: {$heading}
+ملخص القسم: {$brief}
+أقسام سابقة (للتماسك، لا تكررها): {$prior}
+الأسلوب: {$tone}
+{$langLine}
+{$compactLine}
+
+استخدم HTML فقط وفق الدليل:
+{$styleGuide}
+
+لفّ القسم بـ <section class="content-section"> وابدأ بـ <h2 class="section-title">{$heading}</h2>
+لا تُرجع أقساماً أخرى.
+
+أعد JSON فقط:
+{"html":"<section class=\"content-section\">...</section>"}
+PROMPT;
+
+        $minTokens = $compact ? 4096 : (in_array($contentLength, ['medium', 'long'], true) ? 8192 : 4096);
+        $provider = AIProviderFactory::create($model);
+        $response = $provider->generateText($prompt, [
+            'max_tokens' => $this->tokensForStage($model, $minTokens),
+            'temperature' => $model->temperature ?? 0.65,
+        ]);
+
+        if (empty($response)) {
+            return '';
+        }
+
+        $data = $this->parseJSONResponse($response);
+        $rawHtml = '';
+        if (is_array($data) && $data !== []) {
+            $rawHtml = (string) ($data['html'] ?? $data['content'] ?? '');
+        }
+        if ($rawHtml === '') {
+            $rawHtml = is_string($response) ? $response : '';
+        }
+
+        $html = $this->resultNormalizer()->extractSectionHtml($rawHtml);
+        if ($html === '') {
+            $html = $this->resultNormalizer()->extractSectionHtml(
+                $this->normalizeGeneratedHtmlContent($rawHtml)
+            );
+        }
+
+        return $html;
+    }
+
+    private function tokensForStage(AIModel $model, int $preferMin): int
+    {
+        $db = (int) ($model->max_tokens ?? 0);
+        $raw = $db > 0 ? $db : $preferMin;
+        // Prefer at least stage minimum when DB limit is unset/low, but do not invent above DB when set.
+        if ($db <= 0) {
+            $raw = max($preferMin, 2048);
+        }
+
+        return max(1, $raw);
+    }
+
+    /**
      * @return array{title?: string, content?: string, excerpt?: string, slug?: string}
      */
     private function generateContent(
@@ -469,7 +645,7 @@ GUIDE;
         if (empty($unwrapped['title']) || (empty($unwrapped['content']) && empty($unwrapped['html']))) {
             throw new \Exception(
                 'لم يُستخرج عنوان ومحتوى صالحان من الاستجابة. غالباً قُطعت الاستجابة بسبب حد الرموز (max_tokens). '
-                .'جرّب طول «متوسط» أو «طويل» مع محرك Laravel AI (توليد بالأقسام)، أو ارفع max_tokens للموديل.'
+                .'جرّب طول «متوسط» أو «طويل» (توليد بالأقسام على مراحل)، أو ارفع max_tokens للموديل.'
             );
         }
 

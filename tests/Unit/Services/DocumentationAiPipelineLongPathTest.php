@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\AIModel;
 use App\Models\DocumentationAiGeneration;
-use App\Models\LaravelAiModel;
 use App\Models\User;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
@@ -13,15 +13,12 @@ use App\Services\AiNew\LaravelAiProviderManager;
 use App\Services\AiNew\LaravelAiRequestLogger;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Laravel\Ai\Responses\Data\Meta;
-use Laravel\Ai\Responses\Data\Usage;
-use Laravel\Ai\Responses\StructuredAgentResponse;
 
 uses(Tests\TestCase::class);
 
 beforeEach(function () {
     Schema::dropIfExists('documentation_ai_generations');
-    Schema::dropIfExists('laravel_ai_models');
+    Schema::dropIfExists('ai_models');
     Schema::dropIfExists('activity_log');
     Schema::dropIfExists('users');
 
@@ -45,19 +42,16 @@ beforeEach(function () {
         $table->timestamps();
     });
 
-    Schema::create('laravel_ai_models', function (Blueprint $table) {
+    Schema::create('ai_models', function (Blueprint $table) {
         $table->id();
         $table->string('name');
         $table->string('provider')->nullable();
-        $table->string('model')->nullable();
-        $table->text('api_key')->nullable();
-        $table->string('base_url')->nullable();
+        $table->string('model_key')->nullable();
         $table->boolean('is_active')->default(true);
-        $table->unsignedInteger('priority')->default(0);
-        $table->json('capabilities')->nullable();
-        $table->unsignedInteger('max_tokens')->default(16000);
-        $table->decimal('temperature', 4, 2)->default(0.70);
-        $table->unsignedBigInteger('created_by')->nullable();
+        $table->boolean('is_default')->default(false);
+        $table->integer('priority')->default(0);
+        $table->integer('max_tokens')->default(8000);
+        $table->decimal('temperature', 3, 2)->default(0.7);
         $table->timestamps();
     });
 
@@ -80,54 +74,32 @@ beforeEach(function () {
     });
 });
 
-function structuredResponse(array $structured): StructuredAgentResponse
-{
-    return new StructuredAgentResponse(
-        'test-invocation',
-        $structured,
-        json_encode($structured, JSON_UNESCAPED_UNICODE),
-        new Usage,
-        new Meta('openai', 'gpt-test'),
-    );
-}
-
-test('long generate with active laravel ai skips legacy one-shot and uses outline pipeline', function () {
+test('long generate with legacy engine uses staged outline and skips one-shot', function () {
     $user = User::query()->create([
         'name' => 'Admin',
         'email' => 'docs-ai-'.uniqid().'@test.local',
         'password' => bcrypt('password'),
     ]);
 
-    $laraModel = LaravelAiModel::query()->create([
-        'name' => 'Test Laravel AI',
+    $legacyModel = AIModel::query()->create([
+        'name' => 'Legacy GPT',
         'provider' => 'openai',
-        'model' => 'gpt-4o',
+        'model_key' => 'gpt-3.5-turbo',
         'is_active' => true,
+        'is_default' => true,
         'priority' => 1,
-        'max_tokens' => 16000,
-        'capabilities' => ['docs.refine'],
+        'max_tokens' => 8000,
     ]);
-    $laraModel->setRawApiKeyForTesting('sk-test');
-    $laraModel->save();
-
-    $legacyDocs = Mockery::mock(AIDocumentationPageService::class);
-    $legacyDocs->shouldNotReceive('generateDocumentationPage');
-
-    $providerManager = Mockery::mock(LaravelAiProviderManager::class);
-    $providerManager->shouldReceive('runWithModel')
-        ->andReturnUsing(fn ($model, $callback) => $callback());
 
     $sectionHtml = '<section class="content-section"><h2 class="section-title">مقدمة</h2>'
         .'<div class="text-block">نص قسم كافٍ للاختبار مع مثال Dart.</div>'
         .'<pre><code class="language-dart">for (final x in list) { print(x); }</code></pre></section>';
 
-    $promptRunner = Mockery::mock(LaravelAiPromptRunner::class);
-    $promptRunner->shouldReceive('runStructured')
+    $legacyDocs = Mockery::mock(AIDocumentationPageService::class);
+    $legacyDocs->shouldNotReceive('generateDocumentationPage');
+    $legacyDocs->shouldReceive('generateDocumentationOutline')
         ->once()
-        ->withArgs(function ($model, $agent) {
-            return $agent instanceof \App\Ai\Agents\DocumentationOutlineAgent;
-        })
-        ->andReturn(structuredResponse([
+        ->andReturn([
             'title' => 'Loop in List في Dart',
             'slug' => 'loop-in-list-dart',
             'excerpt' => 'مرجع عملي لحلقات القوائم في Dart',
@@ -135,25 +107,21 @@ test('long generate with active laravel ai skips legacy one-shot and uses outlin
                 ['heading' => 'مقدمة', 'brief' => 'تعريف'],
                 ['heading' => 'أمثلة', 'brief' => 'أمثلة كود'],
             ],
-        ]));
-
-    $promptRunner->shouldReceive('runStructured')
+        ]);
+    $legacyDocs->shouldReceive('generateDocumentationSectionHtml')
         ->twice()
-        ->withArgs(function ($model, $agent) {
-            return $agent instanceof \App\Ai\Agents\DocumentationSectionAgent;
-        })
-        ->andReturn(structuredResponse(['html' => $sectionHtml]));
+        ->andReturn($sectionHtml);
 
-    $logger = Mockery::mock(LaravelAiRequestLogger::class);
-    $logger->shouldReceive('logSuccess')->andReturn(new \App\Models\LaravelAiLog);
+    $legacyModelService = Mockery::mock(AIModelService::class);
+    $legacyModelService->shouldReceive('getDefaultModel')->andReturn($legacyModel);
 
     $pipeline = new DocumentationAiPipelineService(
-        $providerManager,
-        $promptRunner,
-        $logger,
+        Mockery::mock(LaravelAiProviderManager::class),
+        Mockery::mock(LaravelAiPromptRunner::class),
+        Mockery::mock(LaravelAiRequestLogger::class),
         Mockery::mock(LaravelAiDocumentationService::class),
         $legacyDocs,
-        Mockery::mock(AIModelService::class),
+        $legacyModelService,
         new DocumentationAiResultNormalizer,
     );
 
@@ -166,12 +134,11 @@ test('long generate with active laravel ai skips legacy one-shot and uses outlin
         'stage_label' => 'في الطابور…',
         'payload' => [
             'topic' => 'Loop in List في لغة Dart مع أمثلة',
-            // Intentionally request legacy — pipeline must force laravel_ai for long.
             'docs_engine' => 'legacy',
             'content_length' => 'long',
             'tone' => 'technical',
             'language' => 'ar',
-            'laravel_ai_model_id' => $laraModel->id,
+            'ai_model_id' => $legacyModel->id,
             'generate_meta' => true,
         ],
     ]);
