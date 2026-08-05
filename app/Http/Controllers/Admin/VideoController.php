@@ -112,7 +112,7 @@ class VideoController extends Controller
             }
 
             return view('admin.pages.videos.create', compact('videoTypes', 'courses', 'section', 'course', 'sectionId', 'courseId'))
-                + ['bunnyLibraries' => $this->activeBunnyLibraries()];
+                ->with('bunnyLibraries', $this->activeBunnyLibraries());
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل نموذج الإنشاء: ' . $e->getMessage());
         }
@@ -311,7 +311,7 @@ class VideoController extends Controller
             $videoTypes = ['upload', 'youtube', 'vimeo', 'external'];
 
             return view('admin.pages.videos.edit', compact('video', 'videoTypes'))
-                + ['bunnyLibraries' => $this->activeBunnyLibraries()];
+                ->with('bunnyLibraries', $this->activeBunnyLibraries());
         } catch (\Exception $e) {
             return redirect()
                 ->route('videos.index')
