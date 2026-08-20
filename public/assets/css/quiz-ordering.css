@@ -1,0 +1,190 @@
+/**
+ * أسئلة الترتيب (ordering) — تغذية بصرية للتحريك + تقوية التخطيط.
+ * ملف مشترك بين: لوحة الطالب (الاختبارات، وحدات الأسئلة) ومعاينة الأدمن.
+ */
+
+/* ── 1) تقوية التخطيط: نص طويل لا يجب أن يدفع الأسهم خارج الشاشة ───────── */
+.ordering-item {
+    position: relative;
+}
+
+.ordering-item > .d-flex {
+    min-width: 0;
+}
+
+.ordering-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.ordering-number,
+.ordering-controls {
+    flex-shrink: 0;
+}
+
+.ordering-controls .btn {
+    min-width: 2.25rem;
+}
+
+/* ── 2) أسهم الحدود: مرئية كغير متاحة لكن قابلة للنقر لإظهار السبب ────── */
+.ordering-move-up[aria-disabled="true"],
+.ordering-move-down[aria-disabled="true"] {
+    opacity: 0.42;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.ordering-move-up[aria-disabled="true"]:hover,
+.ordering-move-down[aria-disabled="true"]:hover {
+    background-color: transparent;
+    color: var(--bs-primary, #0d6efd);
+}
+
+/* ── 3) علامة التحريك: العنصر الذي تحرك للتو ──────────────────────────── */
+.ordering-item.ordering-item--moved {
+    border-color: rgba(25, 135, 84, 0.75) !important;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.22);
+    background-color: rgba(25, 135, 84, 0.09) !important;
+}
+
+.ordering-item.ordering-item--shifted {
+    border-color: rgba(13, 110, 253, 0.45) !important;
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+.ordering-number.ordering-number--moved {
+    background: rgba(25, 135, 84, 0.2) !important;
+    border-color: rgba(25, 135, 84, 0.5) !important;
+    color: #146c43 !important;
+    animation: orderingNumberPop 0.5s ease;
+}
+
+@keyframes orderingNumberPop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.28); }
+    100% { transform: scale(1); }
+}
+
+/* شريحة عائمة فوق العنصر: تُوضع أعلى الحافة جهة الأسهم حتى لا تحجب نص الخيار */
+.ordering-move-flag {
+    position: absolute;
+    top: -0.85rem;
+    inset-inline-end: 0.75rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.55rem;
+    border-radius: 999px;
+    background: #198754;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+    box-shadow: 0 0.25rem 0.6rem rgba(25, 135, 84, 0.35);
+    pointer-events: none;
+    animation: orderingFlagIn 0.28s ease;
+}
+
+.ordering-move-flag.is-leaving {
+    opacity: 0;
+    transform: translateY(-0.35rem);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+@keyframes orderingFlagIn {
+    from { opacity: 0; transform: translateY(0.4rem) scale(0.9); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 4) نقر على سهم غير متاح: رجّة قصيرة ─────────────────────────────── */
+.ordering-item.ordering-item--edge {
+    animation: orderingEdgeShake 0.36s ease;
+}
+
+@keyframes orderingEdgeShake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(0.35rem); }
+    75%      { transform: translateX(-0.35rem); }
+}
+
+/* ── 5) سطر الحالة أسفل القائمة: آخر حركة + حالة الحفظ ───────────────── */
+.ordering-feedback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    margin-top: 0.65rem;
+    min-height: 1.6rem;
+    font-size: 0.85rem;
+}
+
+.ordering-feedback__move,
+.ordering-feedback__save {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.ordering-feedback__move {
+    font-weight: 700;
+    color: #146c43;
+}
+
+.ordering-feedback__move.is-hint {
+    font-weight: 500;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.ordering-feedback__move:empty,
+.ordering-feedback__save:empty {
+    display: none;
+}
+
+.ordering-feedback__save {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.ordering-feedback__save.is-saved {
+    color: #146c43;
+}
+
+.ordering-feedback__save.is-error {
+    color: var(--bs-danger, #dc3545);
+    font-weight: 700;
+}
+
+.ordering-feedback .spinner-border-sm {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-width: 0.12em;
+}
+
+/* ── 6) الوضع الداكن ─────────────────────────────────────────────────── */
+[data-bs-theme="dark"] .ordering-item.ordering-item--moved,
+[data-theme-mode="dark"] .ordering-item.ordering-item--moved {
+    background-color: rgba(25, 135, 84, 0.2) !important;
+}
+
+[data-bs-theme="dark"] .ordering-number.ordering-number--moved,
+[data-theme-mode="dark"] .ordering-number.ordering-number--moved {
+    color: #75d6a4 !important;
+}
+
+[data-bs-theme="dark"] .ordering-feedback__move,
+[data-theme-mode="dark"] .ordering-feedback__move,
+[data-bs-theme="dark"] .ordering-feedback__save.is-saved,
+[data-theme-mode="dark"] .ordering-feedback__save.is-saved {
+    color: #75d6a4;
+}
+
+/* ── 7) احترام تقليل الحركة ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .ordering-move-flag,
+    .ordering-number.ordering-number--moved,
+    .ordering-item.ordering-item--edge {
+        animation: none;
+    }
+}

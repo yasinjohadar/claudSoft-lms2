@@ -798,29 +798,28 @@ $(document).ready(function() {
         window.totalQuestions = totalQuestions;
     }
 
-    try {
-        if (domQuestionCount === 0) {
-            return;
-        }
+    // ملاحظة: ممنوع استخدام return هنا — أي خروج مبكر كان يتخطى ربط أحداث
+    // السحب/الترتيب في نهاية هذه الدالة فتصبح أسهم الترتيب ميتة تماماً.
+    if (domQuestionCount > 0) {
+        try {
+            if (!ensureActiveQuestionVisible()) {
+                showQuizLoadError();
+            } else {
+                goToQuestion(currentQuestionIndex);
 
-        if (!ensureActiveQuestionVisible()) {
-            showQuizLoadError();
-            return;
-        }
-
-        goToQuestion(currentQuestionIndex);
-
-        initializeAnswers();
-        updateProgress();
-        updateQuestionNavigation();
-    } catch (error) {
-        console.error('Error initializing quiz:', error);
-        if (!ensureActiveQuestionVisible()) {
-            showQuizLoadError();
-        }
-    } finally {
-        if (window.QuizTakeTimer) {
-            window.QuizTakeTimer.start();
+                initializeAnswers();
+                updateProgress();
+                updateQuestionNavigation();
+            }
+        } catch (error) {
+            console.error('Error initializing quiz:', error);
+            if (!ensureActiveQuestionVisible()) {
+                showQuizLoadError();
+            }
+        } finally {
+            if (window.QuizTakeTimer) {
+                window.QuizTakeTimer.start();
+            }
         }
     }
 
@@ -855,11 +854,18 @@ $(document).ready(function() {
             }, delay));
         });
 
-        // Initialize drag and drop
-        initDragAndDrop();
+        // الترتيب أولاً: ربطه لا يجب أن يتأثر بخطأ في تهيئة السحب والإفلات
+        try {
+            initOrdering();
+        } catch (error) {
+            console.error('Error initializing ordering:', error);
+        }
 
-        // Initialize ordering
-        initOrdering();
+        try {
+            initDragAndDrop();
+        } catch (error) {
+            console.error('Error initializing drag and drop:', error);
+        }
     });
 
     // Drag and Drop functionality
@@ -1075,123 +1081,51 @@ $(document).ready(function() {
         }
     }
 
-    // Ordering functionality — up/down buttons (no drag)
+    /**
+     * أسئلة الترتيب: المنطق المشترك في public/assets/js/quiz-ordering.js
+     * (تحريك + علامة بصرية واضحة + نطق للقارئ الشاشي + تسلسل الحفظ).
+     * هنا فقط ربط الحفظ وتحديث التقدم الخاص بهذه الصفحة.
+     */
     function initOrdering() {
-        if (window.__quizOrderingBound) {
-            return;
-        }
-        window.__quizOrderingBound = true;
-
-        $(document).on('click', '.ordering-move-up', function (e) {
-            e.preventDefault();
-            if ($(this).prop('disabled')) {
-                return;
-            }
-            const $item = $(this).closest('.ordering-item');
-            moveOrderingItem($item.data('question-id'), $item, 'up');
-        });
-
-        $(document).on('click', '.ordering-move-down', function (e) {
-            e.preventDefault();
-            if ($(this).prop('disabled')) {
-                return;
-            }
-            const $item = $(this).closest('.ordering-item');
-            moveOrderingItem($item.data('question-id'), $item, 'down');
-        });
-
-        seedOrderingAnswersFromDom();
-    }
-
-    function moveOrderingItem(questionId, $item, direction) {
-        const $list = $(`#ordering-list-${questionId}`);
-        if (!$list.length || !$item.length) {
+        if (!window.QuizOrdering) {
+            console.error('QuizOrdering script missing — ordering arrows will not work');
             return;
         }
 
-        if (direction === 'up') {
-            const $prev = $item.prev('.ordering-item');
-            if ($prev.length) {
-                $item.insertBefore($prev);
+        window.QuizOrdering.init({
+            save: function (questionId, order) {
+                return $.ajax({
+                    url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        question_id: questionId,
+                        answer: order
+                    }
+                });
+            },
+            onChange: function (questionId, order) {
+                const numericId = parseInt(questionId, 10);
+                if (isNaN(numericId)) {
+                    return;
+                }
+
+                if (order.length > 0) {
+                    answeredQuestions.add(numericId);
+                } else {
+                    answeredQuestions.delete(numericId);
+                }
+
+                updateProgress();
+                updateQuestionNavigation();
             }
-        } else {
-            const $next = $item.next('.ordering-item');
-            if ($next.length) {
-                $item.insertAfter($next);
-            }
-        }
-
-        updateOrderingNumbers($list);
-        refreshOrderingControls($list);
-        saveOrderingAnswer(questionId);
-    }
-
-    function refreshOrderingControls($list) {
-        const $items = $list.find('.ordering-item');
-        const last = $items.length - 1;
-        $items.each(function (index) {
-            $(this).find('.ordering-move-up').prop('disabled', index === 0);
-            $(this).find('.ordering-move-down').prop('disabled', index === last);
-        });
-    }
-
-    function updateOrderingNumbers(list) {
-        list.find('.ordering-item').each(function (index) {
-            $(this).find('.ordering-number').text(index + 1);
         });
     }
 
     function collectOrderingOrder(questionId) {
-        const order = [];
-        $(`#ordering-list-${questionId} .ordering-item`).each(function () {
-            order.push($(this).data('item-id'));
-        });
-        return order;
+        return window.QuizOrdering ? window.QuizOrdering.getOrder(questionId) : [];
     }
 
-    function seedOrderingAnswersFromDom() {
-        $('.ordering-container').each(function () {
-            const questionId = $(this).data('question-id');
-            const order = collectOrderingOrder(questionId);
-            if (order.length === 0) {
-                return;
-            }
-            $(`#ordering-input-${questionId}`).val(JSON.stringify(order));
-            saveOrderingAnswer(questionId);
-        });
-    }
-
-    function saveOrderingAnswer(questionId) {
-        const order = collectOrderingOrder(questionId);
-
-        // Update hidden input
-        $(`#ordering-input-${questionId}`).val(JSON.stringify(order));
-
-        // Update answered questions
-        if (order.length > 0) {
-            answeredQuestions.add(parseInt(questionId));
-        }
-
-        updateProgress();
-        updateQuestionNavigation();
-
-        // Send AJAX request
-    $.ajax({
-            url: "{{ route('student.quizzes.save-answer', $attempt->id) }}",
-        method: 'POST',
-        data: {
-                _token: '{{ csrf_token() }}',
-                question_id: questionId,
-                answer: order
-        },
-        success: function(response) {
-                console.log('Ordering answer saved:', response);
-            },
-            error: function(xhr) {
-                console.error('Error saving answer:', xhr);
-        }
-    });
-}
 
     /**
      * Evaluate whether a question currently has a complete answer in the DOM.
@@ -1306,6 +1240,9 @@ $(document).ready(function() {
             blankTimers.delete(questionId);
             saveFillBlankAnswer(questionId);
         });
+        if (window.QuizOrdering) {
+            window.QuizOrdering.flushAll();
+        }
     }
 
     // Initialize answered questions from saved responses / current DOM
@@ -1379,6 +1316,11 @@ $(document).ready(function() {
                 }
             });
             hasValidAnswer = allBlanksAnswered && Object.keys(answer).length > 0;
+        } else if ($(`#ordering-input-${questionId}`).length > 0) {
+            // بدون هذا الفرع كان سؤال الترتيب يُحذف من answeredQuestions قبل
+            // التسليم ولا يُحفظ ترتيبه الأخير على السيرفر.
+            answer = collectOrderingOrder(questionId);
+            hasValidAnswer = Array.isArray(answer) && answer.length > 0;
         }
 
         // Update answered questions set
