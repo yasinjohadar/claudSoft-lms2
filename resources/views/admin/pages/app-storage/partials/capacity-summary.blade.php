@@ -3,6 +3,7 @@
     $local = $capacitySummary['local'] ?? [];
     $cloud = $capacitySummary['cloud'] ?? [];
     $scannedAt = $capacitySummary['scanned_at'] ?? null;
+    $server = $capacitySummary['server'] ?? null;
     $returnUrl = $returnUrl ?? url()->current();
     $query = request()->query();
     if ($query !== []) {
@@ -75,9 +76,69 @@
             </div>
         </div>
     </div>
+
+    @if($server && !empty($server['paths']))
+        <div class="capacity-server mt-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <h6 class="mb-0 fw-bold">
+                    <i class="fas fa-server me-1 text-secondary"></i>
+                    أكبر مستهلكي المساحة على السيرفر
+                </h6>
+                @if(!empty($server['disk_free']))
+                    <span class="small text-muted">
+                        القرص: {{ $formatBytes($server['disk_free']) }} حرة
+                        @if(!empty($server['disk_total'])) من {{ $formatBytes($server['disk_total']) }} @endif
+                    </span>
+                @endif
+            </div>
+
+            <p class="small text-muted mb-2">
+                ترحيل الملفات للسحابة يخفّض «ملفات عامة (محتوى)» فقط. إن كان الحجم الأكبر في
+                السجلات أو أصول القالب فالترحيل لن يصغّر المشروع.
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 capacity-server-table">
+                    <tbody>
+                        @foreach($server['paths'] as $row)
+                            @php $isBig = $row['bytes'] >= 100 * 1024 * 1024; @endphp
+                            <tr class="{{ $isBig ? 'table-warning' : '' }}">
+                                <td class="fw-semibold" style="width:16rem">
+                                    {{ $row['label'] }}
+                                    @if($isBig)
+                                        <i class="fas fa-triangle-exclamation text-warning ms-1"></i>
+                                    @endif
+                                </td>
+                                <td style="width:7rem" class="text-nowrap">{{ $formatBytes($row['bytes']) }}</td>
+                                <td style="width:7rem" class="text-nowrap text-muted small">
+                                    {{ $row['exists'] ? number_format($row['files']).' ملف' : 'غير موجود' }}
+                                </td>
+                                <td class="small text-muted">{{ $row['hint'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="fw-bold">الإجمالي</td>
+                            <td class="fw-bold text-nowrap">{{ $formatBytes($server['total_bytes'] ?? 0) }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    @endif
 </div>
 
 <style>
+    .storage-capacity-banner .capacity-server {
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1rem;
+    }
+    .storage-capacity-banner .capacity-server-table td {
+        padding-block: .4rem;
+    }
+
     .storage-capacity-banner .capacity-box {
         display: flex;
         gap: 1rem;

@@ -1,0 +1,33 @@
+; تشغيل مجدول Laravel بشكل دائم على Linux (لا يتوقف بعد التحديث أو إعادة تشغيل السيرفر)
+; بدون هذا (أو بدون cron مكافئ) لن تعمل أي نسخة احتياطية مجدولة إطلاقاً —
+; زر «تشغيل الآن» فقط هو ما يعمل.
+;
+; الاستخدام:
+;   1. انسخ هذا الملف إلى السيرفر: مثلاً /etc/supervisor/conf.d/laravel-scheduler.conf
+;   2. عدّل المسارات والأسطر المعلّمة أدناه (command, user)
+;   3. نفّذ: sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start laravel-scheduler
+;   4. تأكد: sudo supervisorctl status laravel-scheduler   → يجب أن تكون RUNNING
+
+[program:laravel-scheduler]
+process_name=%(program_name)s
+command=php /var/www/html/artisan schedule:work
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/html/storage/logs/scheduler.log
+stopwaitsecs=60
+
+; عدّل المسارات أعلاه:
+;   command: استبدل /var/www/html بمسار مشروعك (مثلاً /home/user/public_html)
+;   user: المستخدم الذي يشغّل ويب سيرفرك (مثلاً www-data أو nginx أو اسم مستخدمك)
+;   stdout_logfile: مسار سجل المجدول داخل المشروع
+;
+; ملاحظات:
+;   - schedule:work يبقى عملية واحدة تستدعي schedule:run كل دقيقة. إن كنت تفضّل cron
+;     فاستخدمه بدلاً من هذا الملف (راجع docs/backup-scheduler-runbook.md) — لا تفعّل الاثنين معاً.
+;   - المجدول يُنشئ صفوف النسخ ويدفعها إلى الطابور فقط. لا بد أيضاً من تشغيل
+;     laravel-queue-worker وإلا بقيت النسخ في حالة pending إلى الأبد.

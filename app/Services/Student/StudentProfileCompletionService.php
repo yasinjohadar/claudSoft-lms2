@@ -17,6 +17,7 @@ class StudentProfileCompletionService
         'student.profile.update',
         'student.profile.upload-photo',
         'student.profile.delete-photo',
+        'student.profile.password',
         'student.profile.change-password',
         'logout',
         'admin.stop-impersonate',

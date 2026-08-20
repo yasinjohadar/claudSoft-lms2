@@ -6,7 +6,7 @@
 
 [program:laravel-queue-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --timeout=3600 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -20,3 +20,10 @@ stopwaitsecs=3600
 ;   command: استبدل /var/www/html بمسار مشروعك (مثلاً /home/user/public_html أو /var/www/your-app)
 ;   user: المستخدم الذي يشغّل ويب سيرفرك (مثلاً www-data أو nginx أو اسم مستخدمك)
 ;   stdout_logfile: مسار سجل الطابور داخل المشروع
+;
+; ملاحظات مهمة:
+;   - --timeout=3600 إلزامي: مهام النسخ الاحتياطي تعرّف $timeout = 3600 (config/backup.php)
+;     والافتراضي بدونه 60 ثانية فقط، فيقتل العامل نسخة قاعدة البيانات في منتصفها
+;     وتظهر MaxAttemptsExceededException. يجب أن تبقى القيمة أقل من DB_QUEUE_RETRY_AFTER (3700).
+;   - هذا الملف يشغّل الطابور فقط. لا بد أيضاً من deploy/supervisor-scheduler.conf.example
+;     وإلا لن تُنشأ أي نسخة مجدولة أصلاً.

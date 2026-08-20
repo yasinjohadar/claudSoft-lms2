@@ -64,6 +64,21 @@ ls -la bootstrap/cache/ | head -5
 echo "🗄️  تشغيل Migrations..."
 php artisan migrate --force
 
+# 8.1 اعادة تشغيل عمال الطابور ليلتقطوا الكود الجديد
+echo "[queue] اعادة تشغيل عمال الطابور..."
+php artisan queue:restart
+
+# 8.2 فحص ان المجدول يعمل (بدونه لا تعمل اي نسخة احتياطية مجدولة)
+echo "[scheduler] فحص المجدول..."
+if crontab -l 2>/dev/null | grep -q "schedule:run"; then
+    echo "OK - المجدول مفعل عبر cron"
+elif command -v supervisorctl >/dev/null 2>&1 && supervisorctl status 2>/dev/null | grep -q "laravel-scheduler.*RUNNING"; then
+    echo "OK - المجدول مفعل عبر supervisor"
+else
+    echo "WARNING - لا يوجد مجدول يعمل. النسخ الاحتياطية المجدولة لن تعمل!"
+    echo "          راجع docs/backup-scheduler-runbook.md لتفعيله."
+fi
+
 # 9. فحص Routes (اختياري - لإزالة التعليق إذا لزم الأمر)
 # echo "🔍 فحص Routes..."
 # php artisan route:list --name=student.question-module.start
@@ -85,6 +100,9 @@ echo "  - تحقق من Permissions (storage و bootstrap/cache)"
 echo "  - تحقق من الـ Logs: tail -f storage/logs/laravel.log"
 echo "  - تحقق من Routes: php artisan route:list --name=student.question-module"
 echo "  - اختبر الموقع"
+echo "  - تحقق من المجدول: supervisorctl status laravel-scheduler (أو crontab -l)"
+echo "  - تحقق من الطابور: supervisorctl status laravel-queue-worker"
+echo "  - تحقق من آخر نسخة احتياطية: /admin/backup-schedules"
 echo ""
 echo "🔧 في حالة وجود مشاكل:"
 echo "  - افحص الـ Logs: tail -50 storage/logs/laravel.log"

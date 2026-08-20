@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
+use App\Services\Auth\PasswordCredentialDeliveryService;
 use App\Services\Auth\PhoneOtpService;
 use App\Enums\OtpPurpose;
 use App\Http\Requests\Student\ChangePasswordRequest;
 use App\Models\Nationality;
+use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Student\StudentProfileCompletionService;
 use App\Services\Student\StudentProfilePhotoService;
+use App\Support\InternationalPhoneDigits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -187,6 +190,23 @@ class StudentProfileController extends Controller
     }
 
     /**
+     * Show the standalone change password page.
+     */
+    public function editPassword(PasswordCredentialDeliveryService $credentialDelivery)
+    {
+        $student = auth()->user();
+        $profileLocked = $this->profileCompletion->isLockedFor($student);
+        $whatsappAvailable = $credentialDelivery->isWhatsAppAvailable()
+            && InternationalPhoneDigits::forUser($student) !== null;
+
+        return view('student.pages.profile.change-password', compact(
+            'student',
+            'profileLocked',
+            'whatsappAvailable'
+        ));
+    }
+
+    /**
      * Change the student's password.
      */
     public function changePassword(ChangePasswordRequest $request)
@@ -194,26 +214,70 @@ class StudentProfileController extends Controller
         try {
             $student = auth()->user();
 
-            if (! Hash::check($request->current_password, $student->password)) {
-                return redirect()->back()
-                    ->with('error', 'كلمة المرور الحالية غير صحيحة')
-                    ->withInput();
-            }
+            // The current password is not asked for — students forget it too often,
+            // and the session is already authenticated.
+            $newPassword = (string) $request->new_password;
 
-            $student->password = Hash::make($request->new_password);
+            $student->password = Hash::make($newPassword);
             $student->save();
+
+            $successMessage = 'تم تغيير كلمة المرور بنجاح' . $this->deliverNewCredentials($request, $student, $newPassword);
 
             if ($this->profileCompletion->isLockedFor($student)) {
                 return redirect()->route('student.profile.edit')
-                    ->with('success', 'تم تغيير كلمة المرور بنجاح');
+                    ->with('success', $successMessage);
             }
 
             return redirect()->route('student.profile.index')
-                ->with('success', 'تم تغيير كلمة المرور بنجاح');
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
-            return redirect()->back()
+            return redirect()->route('student.profile.password')
                 ->with('error', 'حدث خطأ أثناء تغيير كلمة المرور: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Send the new login credentials (name, email, password) to the student, plus a
+     * standalone password message — same delivery the admin panel uses on reset.
+     * Never blocks the password change itself.
+     */
+    private function deliverNewCredentials(
+        ChangePasswordRequest $request,
+        User $student,
+        #[\SensitiveParameter] string $newPassword,
+    ): string {
+        if (! $request->boolean('send_credentials')) {
+            return '';
+        }
+
+        try {
+            $result = app(PasswordCredentialDeliveryService::class)->deliver(
+                $student,
+                $newPassword,
+                PasswordCredentialDeliveryService::CONTEXT_STUDENT_SELF_CHANGE
+            );
+
+            $channels = [];
+            if ($result['email_sent']) {
+                $channels[] = 'البريد';
+            }
+            if ($result['whatsapp_sent']) {
+                $channels[] = 'الواتساب';
+            }
+
+            if ($channels !== []) {
+                return ' وتم إرسال بيانات الدخول الجديدة عبر ' . implode(' و', $channels) . '.';
+            }
+
+            return ' لكن تعذّر إرسال بيانات الدخول عبر البريد أو الواتساب.';
+        } catch (\Throwable $e) {
+            Log::error('StudentProfileController: Credential delivery failed after self password change', [
+                'student_id' => $student->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ' لكن تعذّر إرسال بيانات الدخول.';
         }
     }
 

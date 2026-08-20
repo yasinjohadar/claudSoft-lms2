@@ -6,8 +6,11 @@
 
 @section('content')
 @php
-    $currentStorageConfigId = null;
-    if ($schedule->storage_drivers && count($schedule->storage_drivers) > 0) {
+    // الوجهة المثبّتة على الجدولة هي المصدر الموثوق. الجدولات القديمة لا تحملها،
+    // فنرجع عندها إلى أول إعداد نشط بنفس السائق (تخمين، وقد يخطئ مع وجود إعدادين).
+    $currentStorageConfigId = $schedule->storage_config_id;
+
+    if (! $currentStorageConfigId && $schedule->storage_drivers && count($schedule->storage_drivers) > 0) {
         $firstDriver = $schedule->storage_drivers[0];
         $config = \App\Models\AppStorageConfig::where('driver', $firstDriver)
             ->where('is_active', true)
@@ -91,6 +94,9 @@
                             <label for="time" class="form-label">الوقت <span class="text-danger">*</span></label>
                             <input type="time" class="form-control @error('time') is-invalid @enderror" id="time" name="time" value="{{ old('time', $schedule->time) }}" required>
                         </div>
+                        @include('admin.pages.backup-schedules.partials.timezone-field', [
+                            'selectedTimezone' => $schedule->timezone,
+                        ])
                         <div class="col-md-6" id="day_of_month_field" style="display: {{ $schedule->frequency === 'monthly' ? 'block' : 'none' }};">
                             <label for="day_of_month" class="form-label">يوم الشهر</label>
                             <input type="number" class="form-control" id="day_of_month" name="day_of_month" value="{{ old('day_of_month', $schedule->day_of_month) }}" min="1" max="31">

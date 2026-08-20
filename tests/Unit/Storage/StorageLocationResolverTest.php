@@ -95,4 +95,54 @@ class StorageLocationResolverTest extends TestCase
         $this->assertSame('blog/images/normalized.jpg', $result['path']);
         $this->assertSame(StorageLocationResolver::STATUS_MISSING, $result['status']);
     }
+
+    public function test_classifies_elsewhere_when_file_lives_outside_the_disk_chain(): void
+    {
+        // القرص مربوط بـ iDrive، لكن الملف ما يزال على R2 من ربط قديم.
+        $chained = new AppStorageConfig(['name' => 'iDrive', 'driver' => 's3', 'is_active' => true]);
+        $chained->id = 20;
+        $other = new AppStorageConfig(['name' => 'R2', 'driver' => 'cloudflare_r2', 'is_active' => true]);
+        $other->id = 21;
+
+        $manager = Mockery::mock(AppStorageManager::class);
+        $manager->shouldReceive('resolveFailoverStorages')->with('blog_images')->andReturn(collect([$chained]));
+        $manager->shouldReceive('existsOnConfig')
+            ->andReturnUsing(fn (AppStorageConfig $c) => $c->id === 21);
+        $manager->shouldReceive('getFileSizeOnConfig')->andReturn(99);
+        $manager->shouldReceive('legacyPublicExists')->andReturn(false);
+
+        $resolver = new class($manager) extends StorageLocationResolver {
+            protected function allActiveStorages(): Collection
+            {
+                $other = new AppStorageConfig(['name' => 'R2', 'driver' => 'cloudflare_r2', 'is_active' => true]);
+                $other->id = 21;
+
+                return collect([$other]);
+            }
+        };
+
+        $result = $resolver->resolve('blog_images', 'blog/images/old.jpg');
+
+        // قبل الإصلاح كان هذا يُبلَّغ عنه "missing"
+        $this->assertSame(StorageLocationResolver::STATUS_ELSEWHERE, $result['status']);
+        $this->assertTrue($result['found']);
+        $this->assertSame('R2', $result['storage_name']);
+    }
+
+    public function test_still_reports_missing_when_no_store_has_the_file(): void
+    {
+        $chained = new AppStorageConfig(['name' => 'iDrive', 'driver' => 's3', 'is_active' => true]);
+        $chained->id = 30;
+
+        $manager = Mockery::mock(AppStorageManager::class);
+        $manager->shouldReceive('resolveFailoverStorages')->andReturn(collect([$chained]));
+        $manager->shouldReceive('existsOnConfig')->andReturn(false);
+        $manager->shouldReceive('legacyPublicExists')->andReturn(false);
+
+        $resolver = new StorageLocationResolver($manager);
+        $result = $resolver->resolve('blog_images', 'blog/images/gone.jpg');
+
+        $this->assertSame(StorageLocationResolver::STATUS_MISSING, $result['status']);
+        $this->assertFalse($result['found']);
+    }
 }

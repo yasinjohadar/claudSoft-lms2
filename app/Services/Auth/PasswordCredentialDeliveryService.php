@@ -26,6 +26,8 @@ class PasswordCredentialDeliveryService
 
     public const CONTEXT_ADMIN_RESET = 'admin_reset';
 
+    public const CONTEXT_STUDENT_SELF_CHANGE = 'student_self_change';
+
     private const WHATSAPP_MAX_ATTEMPTS = 3;
 
     private const LAST_STICKY_CACHE_KEY = 'evolution_pwd_cred_last_instance';

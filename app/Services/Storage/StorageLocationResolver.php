@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use App\Models\AppStorageConfig;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class StorageLocationResolver
 {
@@ -14,6 +15,20 @@ class StorageLocationResolver
     public const STATUS_BOTH = 'both';
 
     public const STATUS_MISSING = 'missing';
+
+    /** موجود، لكن على مخزن خارج سلسلة القرص المنطقي (بقايا ربط قديم). */
+    public const STATUS_ELSEWHERE = 'elsewhere';
+
+    /**
+     * سرد مُخزَّن مؤقتاً لكل (config, prefix) — يحوّل فحص كل ملف من طلب شبكة
+     * إلى بحث في الذاكرة. يملؤه primeListings() قبل مسح دفعة كبيرة.
+     *
+     * @var array<int, array<string, array<string, bool>>>
+     */
+    protected array $listingCache = [];
+
+    /** @var Collection<int, AppStorageConfig>|null */
+    protected ?Collection $allActiveStorages = null;
 
     public function __construct(
         protected AppStorageManager $storageManager,
@@ -40,14 +55,16 @@ class StorageLocationResolver
         }
 
         $hits = [];
+        $chainIds = $this->chainStorageIds($logicalDisk);
 
         foreach ($this->storagesToProbe($logicalDisk) as $config) {
-            if ($this->storageManager->existsOnConfig($config, $path)) {
+            if ($this->existsOn($config, $path)) {
                 $hits[$this->hitKey($config)] = [
                     'storage_config_id' => $config->id,
                     'storage_name' => $config->name,
                     'driver' => $config->driver,
                     'is_cloud' => $this->isCloudDriver($config->driver),
+                    'in_chain' => in_array($config->id, $chainIds, true),
                     'size' => $this->storageManager->getFileSizeOnConfig($config, $path),
                 ];
             }
@@ -59,6 +76,7 @@ class StorageLocationResolver
                 'storage_name' => 'Laravel public disk',
                 'driver' => 'local',
                 'is_cloud' => false,
+                'in_chain' => true,
                 'size' => $this->storageManager->legacyPublicSize($path),
             ];
         }
@@ -67,8 +85,12 @@ class StorageLocationResolver
         $cloudHits = array_values(array_filter($locations, fn (array $hit) => $hit['is_cloud']));
         $localHits = array_values(array_filter($locations, fn (array $hit) => ! $hit['is_cloud']));
 
+        $inChain = array_values(array_filter($locations, fn (array $hit) => $hit['in_chain'] ?? true));
+
         $status = match (true) {
             $locations === [] => self::STATUS_MISSING,
+            // وُجد فقط على مخزن لا تشير إليه خريطة هذا القرص — كان يُبلَّغ عنه «مفقود» خطأً
+            $inChain === [] => self::STATUS_ELSEWHERE,
             $cloudHits !== [] && $localHits === [] => self::STATUS_CLOUD_ONLY,
             $cloudHits === [] && $localHits !== [] => self::STATUS_LOCAL_ONLY,
             default => self::STATUS_BOTH,
@@ -93,27 +115,113 @@ class StorageLocationResolver
         return in_array($driver, config('storage_inventory.cloud_drivers', []), true);
     }
 
+    /**
+     * سلسلة القرص المنطقي أولاً، ثم **كل** مخزن نشط آخر.
+     *
+     * السلوك السابق كان يتوقف عند السلسلة، وبما أن fallback_storage_ids فارغ في
+     * كل صفوف storage_disk_mappings فإن أي ملف رُفع أيام كان القرص مربوطاً بمخزن
+     * آخر (R2 أو Google Drive) كان يُصنَّف «مفقود» رغم وجوده.
+     */
     protected function storagesToProbe(string $logicalDisk): Collection
     {
-        $chain = $this->storageManager->resolveFailoverStorages($logicalDisk);
+        $chain = $this->storageManager->resolveFailoverStorages($logicalDisk)->unique('id')->values();
 
-        if ($chain->isNotEmpty()) {
-            return $chain->unique('id')->values();
+        return $chain->merge($this->allActiveStorages())->unique('id')->values();
+    }
+
+    /**
+     * @return Collection<int, AppStorageConfig>
+     */
+    protected function allActiveStorages(): Collection
+    {
+        if ($this->allActiveStorages !== null) {
+            return $this->allActiveStorages;
         }
 
-        $cloud = AppStorageConfig::query()
-            ->where('is_active', true)
-            ->whereIn('driver', config('storage_inventory.cloud_drivers', ['s3']))
-            ->orderByDesc('priority')
-            ->get();
+        try {
+            return $this->allActiveStorages = AppStorageConfig::query()
+                ->where('is_active', true)
+                ->orderByDesc('priority')
+                ->get();
+        } catch (\Throwable $e) {
+            // قاعدة البيانات غير متاحة (اختبارات وحدة، أو قبل الترحيلات) —
+            // نكتفي بسلسلة القرص كما كان السلوك سابقاً.
+            Log::debug('allActiveStorages failed: '.$e->getMessage());
 
-        $local = AppStorageConfig::query()
-            ->where('is_active', true)
-            ->where('driver', 'local')
-            ->orderByDesc('priority')
-            ->get();
+            return $this->allActiveStorages = collect();
+        }
+    }
 
-        return $cloud->merge($local)->unique('id')->values();
+    /**
+     * @return array<int, int>
+     */
+    protected function chainStorageIds(string $logicalDisk): array
+    {
+        return $this->storageManager
+            ->resolveFailoverStorages($logicalDisk)
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * سرد البادئات المطلوبة مرة واحدة لكل مخزن بدل فحص كل ملف على حدة.
+     *
+     * طلب exists() واحد يكلّف ~0.4 ثانية، بينما سرد بادئة كاملة يكلّف جزءاً من
+     * الثانية مهما بلغ عدد ملفاتها — الفرق حاسم عند آلاف الملفات.
+     *
+     * @param  array<int, string>  $prefixes
+     */
+    public function primeListings(string $logicalDisk, array $prefixes): void
+    {
+        $prefixes = array_values(array_unique(array_filter(array_map(
+            fn ($p) => trim((string) $p, '/'),
+            $prefixes
+        ), fn ($p) => $p !== '')));
+
+        if ($prefixes === []) {
+            return;
+        }
+
+        foreach ($this->storagesToProbe($logicalDisk) as $config) {
+            foreach ($prefixes as $prefix) {
+                if (isset($this->listingCache[$config->id][$prefix])) {
+                    continue;
+                }
+
+                try {
+                    $files = $this->storageManager
+                        ->getFilesystemForConfig($config)
+                        ->allFiles($prefix);
+
+                    $this->listingCache[$config->id][$prefix] = array_fill_keys(
+                        array_map(fn ($f) => ltrim((string) $f, '/'), $files),
+                        true
+                    );
+                } catch (\Throwable $e) {
+                    // بادئة غير موجودة أو مخزن لا يدعم السرد — نترك الفحص للمسار الاحتياطي
+                    Log::debug("primeListings failed: {$config->name} / {$prefix} - ".$e->getMessage());
+                }
+            }
+        }
+    }
+
+    public function forgetListings(): void
+    {
+        $this->listingCache = [];
+    }
+
+    /**
+     * يستعمل السرد المُخزَّن إن كان يغطي هذا المسار، وإلا يسأل الشبكة.
+     */
+    protected function existsOn(AppStorageConfig $config, string $path): bool
+    {
+        foreach ($this->listingCache[$config->id] ?? [] as $prefix => $paths) {
+            if (str_starts_with($path, $prefix.'/') || $path === $prefix) {
+                return isset($paths[$path]);
+            }
+        }
+
+        return $this->storageManager->existsOnConfig($config, $path);
     }
 
     protected function shouldProbeLegacyPublic(string $logicalDisk): bool

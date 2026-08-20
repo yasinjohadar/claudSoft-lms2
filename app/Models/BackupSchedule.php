@@ -15,9 +15,11 @@ class BackupSchedule extends Model
         'backup_type',
         'frequency',
         'time',
+        'timezone',
         'days_of_week',
         'day_of_month',
         'storage_drivers',
+        'storage_config_id',
         'compression_types',
         'retention_days',
         'is_active',
@@ -54,7 +56,6 @@ class BackupSchedule extends Model
         'daily' => 'يومي',
         'weekly' => 'أسبوعي',
         'monthly' => 'شهري',
-        'custom' => 'مخصص',
     ];
 
     /**
@@ -71,6 +72,42 @@ class BackupSchedule extends Model
     public function backups()
     {
         return $this->hasMany(Backup::class, 'schedule_id');
+    }
+
+    /**
+     * وجهة التخزين المختارة لهذه الجدولة
+     */
+    public function storageConfig()
+    {
+        return $this->belongsTo(AppStorageConfig::class, 'storage_config_id');
+    }
+
+    /**
+     * التوقيت الذي يُفسَّر به حقل time.
+     * فارغ = توقيت التطبيق (توافقاً مع الجدولات المنشأة قبل إضافة الحقل).
+     */
+    public function scheduleTimezone(): string
+    {
+        $tz = trim((string) ($this->timezone ?? ''));
+
+        return $tz !== '' ? $tz : (string) config('app.timezone', 'UTC');
+    }
+
+    /**
+     * الآن، بتوقيت الجدولة
+     */
+    private function nowInScheduleTimezone(): Carbon
+    {
+        return now()->setTimezone($this->scheduleTimezone());
+    }
+
+    /**
+     * تحويل لحظة محسوبة بتوقيت الجدولة إلى توقيت التطبيق قبل التخزين،
+     * لأن shouldRun() تقارنها بـ now() بتوقيت التطبيق.
+     */
+    private function toAppTimezone(Carbon $moment): Carbon
+    {
+        return $moment->setTimezone((string) config('app.timezone', 'UTC'));
     }
 
     /**
@@ -107,13 +144,14 @@ class BackupSchedule extends Model
      */
     private function nextDailyOccurrence(): Carbon
     {
-        $candidate = now()->copy()->setTimeFromTimeString((string) $this->time);
+        $now = $this->nowInScheduleTimezone();
+        $candidate = $now->copy()->setTimeFromTimeString((string) $this->time);
 
-        if ($candidate->lte(now())) {
+        if ($candidate->lte($now)) {
             $candidate->addDay();
         }
 
-        return $candidate;
+        return $this->toAppTimezone($candidate);
     }
 
     /**
@@ -121,11 +159,13 @@ class BackupSchedule extends Model
      */
     private function calculateNextWeeklyRun(): Carbon
     {
-        $now = now();
+        $now = $this->nowInScheduleTimezone();
         $daysOfWeek = collect($this->days_of_week ?? [])->map(fn ($d) => (int) $d)->sort()->values();
 
         if ($daysOfWeek->isEmpty()) {
-            return $now->copy()->addWeek()->setTimeFromTimeString((string) $this->time);
+            return $this->toAppTimezone(
+                $now->copy()->addWeek()->setTimeFromTimeString((string) $this->time)
+            );
         }
 
         $currentDay = $now->dayOfWeek;
@@ -134,19 +174,23 @@ class BackupSchedule extends Model
         if ($daysOfWeek->contains($currentDay)) {
             $todayAt = $now->copy()->setTimeFromTimeString((string) $this->time);
             if ($todayAt->gt($now)) {
-                return $todayAt;
+                return $this->toAppTimezone($todayAt);
             }
         }
 
         foreach ($daysOfWeek as $day) {
             if ($day > $currentDay) {
-                return $now->copy()->next($this->getDayName($day))->setTimeFromTimeString((string) $this->time);
+                return $this->toAppTimezone(
+                    $now->copy()->next($this->getDayName($day))->setTimeFromTimeString((string) $this->time)
+                );
             }
         }
 
         $firstDay = $daysOfWeek->first();
 
-        return $now->copy()->next($this->getDayName($firstDay))->setTimeFromTimeString((string) $this->time);
+        return $this->toAppTimezone(
+            $now->copy()->next($this->getDayName($firstDay))->setTimeFromTimeString((string) $this->time)
+        );
     }
 
     /**
@@ -154,17 +198,27 @@ class BackupSchedule extends Model
      */
     private function calculateNextMonthlyRun(): Carbon
     {
-        $time = Carbon::parse($this->time);
-        $now = now();
-        $dayOfMonth = $this->day_of_month ?? 1;
+        $now = $this->nowInScheduleTimezone();
+        $dayOfMonth = (int) ($this->day_of_month ?? 1);
 
-        $nextRun = $now->copy()->day($dayOfMonth)->setTimeFromTimeString($this->time);
+        $nextRun = $this->monthlyOccurrence($now, $dayOfMonth);
 
-        if ($nextRun->isPast()) {
-            $nextRun->addMonth();
+        if ($nextRun->lte($now)) {
+            $nextRun = $this->monthlyOccurrence($now->copy()->addMonthNoOverflow(), $dayOfMonth);
         }
 
-        return $nextRun;
+        return $this->toAppTimezone($nextRun);
+    }
+
+    /**
+     * اليوم المطلوب من شهر $reference. يوم 31 في شهر من 30 يوماً يُثبَّت على آخر
+     * يوم فيه بدل أن ينزلق إلى الشهر التالي كما كان يفعل day() سابقاً.
+     */
+    private function monthlyOccurrence(Carbon $reference, int $dayOfMonth): Carbon
+    {
+        $day = min(max($dayOfMonth, 1), $reference->daysInMonth);
+
+        return $reference->copy()->day($day)->setTimeFromTimeString((string) $this->time);
     }
 
     /**

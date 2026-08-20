@@ -11,6 +11,7 @@ return [
         [
             'key' => 'blog_posts',
             'label' => 'المدونة',
+            'migration_safe' => true,
             'model' => \App\Models\BlogPost::class,
             'column' => 'featured_image',
             'disk' => 'blog_images',
@@ -21,6 +22,7 @@ return [
         [
             'key' => 'courses',
             'label' => 'الكورسات',
+            'migration_safe' => true,
             'model' => \App\Models\Course::class,
             'column' => 'image',
             'disk' => 'course_images',
@@ -31,6 +33,8 @@ return [
         [
             'key' => 'frontend_courses',
             'label' => 'كورسات الواجهة',
+            'migration_safe' => true,
+            'unsafe_reason' => "الصورة المصغّرة آمنة، لكن og_image يُبنى بـ url('storage/...') في FrontendCourse::getOgImageAttribute.",
             'model' => \App\Models\FrontendCourse::class,
             'column' => 'thumbnail',
             'disk' => 'course_thumbnails',
@@ -41,6 +45,7 @@ return [
         [
             'key' => 'student_gifts',
             'label' => 'هدايا الطلاب — صور',
+            'migration_safe' => true,
             'model' => \App\Models\StudentGift::class,
             'column' => 'image_path',
             'disk' => 'gift_images',
@@ -51,6 +56,7 @@ return [
         [
             'key' => 'student_gifts_previews',
             'label' => 'هدايا الطلاب — معاينة',
+            'migration_safe' => true,
             'model' => \App\Models\StudentGift::class,
             'column' => 'preview_file_path',
             'disk' => 'public',
@@ -61,6 +67,7 @@ return [
         [
             'key' => 'student_gifts_downloads',
             'label' => 'هدايا الطلاب — تنزيل',
+            'migration_safe' => true,
             'model' => \App\Models\StudentGift::class,
             'column' => 'download_file_path',
             'disk' => 'public',
@@ -71,6 +78,8 @@ return [
         [
             'key' => 'users',
             'label' => 'صور المستخدمين',
+            'migration_safe' => false,
+            'unsafe_reason' => "17 قالباً يعرض صورة المستخدم بـ asset('storage/...') بدل student_profile_photo_url().",
             'model' => \App\Models\User::class,
             'column' => 'photo',
             'disk' => 'public',
@@ -82,6 +91,8 @@ return [
         [
             'key' => 'profile_photos',
             'label' => 'صور الملف الشخصي',
+            'migration_safe' => false,
+            'unsafe_reason' => "17 قالباً يعرض صورة المستخدم بـ asset('storage/...') بدل student_profile_photo_url().",
             'model' => \App\Models\User::class,
             'column' => 'photo',
             'disk' => 'public',
@@ -93,6 +104,7 @@ return [
         [
             'key' => 'payments',
             'label' => 'إيصالات الدفع',
+            'migration_safe' => true,
             'model' => \App\Models\Payment::class,
             'column' => 'receipt_path',
             'disk' => 'payment_receipts',
@@ -104,6 +116,7 @@ return [
         [
             'key' => 'group_registrations',
             'label' => 'وصول انتساب المجموعات',
+            'migration_safe' => true,
             'model' => \App\Models\GroupRegistration::class,
             'column' => 'membership_receipt_path',
             'disk' => 'payment_receipts',
@@ -115,6 +128,8 @@ return [
         [
             'key' => 'resources',
             'label' => 'الموارد التعليمية',
+            'migration_safe' => false,
+            'unsafe_reason' => "لا يوجد accessor للرابط، والقوالب تستخدم asset('storage/...') مباشرة.",
             'model' => \App\Models\Resource::class,
             'column' => 'file_path',
             'disk' => 'public',
@@ -125,6 +140,8 @@ return [
         [
             'key' => 'videos',
             'label' => 'الفيديوهات',
+            'migration_safe' => false,
+            'unsafe_reason' => "لا يوجد accessor للرابط؛ 7 قوالب تستخدم asset('storage/...').",
             'model' => \App\Models\Video::class,
             'column' => 'video_path',
             'disk' => 'public',
@@ -135,6 +152,8 @@ return [
         [
             'key' => 'video_thumbnails',
             'label' => 'صور مصغرة للفيديو',
+            'migration_safe' => false,
+            'unsafe_reason' => "لا يوجد accessor للرابط؛ القوالب تستخدم asset('storage/...').",
             'model' => \App\Models\Video::class,
             'column' => 'thumbnail',
             'disk' => 'public',
@@ -145,6 +164,8 @@ return [
         [
             'key' => 'certificates_pdf',
             'label' => 'شهادات PDF',
+            'migration_safe' => false,
+            'unsafe_reason' => "CertificateService يكتب ويقرأ عبر storage_path() مباشرة، خارج طبقة الأقراص.",
             'model' => \App\Models\Certificate::class,
             'column' => 'pdf_path',
             'disk' => 'public',
@@ -155,6 +176,8 @@ return [
         [
             'key' => 'certificates_qr',
             'label' => 'QR الشهادات',
+            'migration_safe' => false,
+            'unsafe_reason' => "CertificateService يكتب ويقرأ عبر storage_path() مباشرة، خارج طبقة الأقراص.",
             'model' => \App\Models\Certificate::class,
             'column' => 'qr_code_path',
             'disk' => 'public',
@@ -196,6 +219,7 @@ return [
         'local_only' => 'محلي فقط',
         'both' => 'نسختان (محلي + سحابة)',
         'missing' => 'مفقود',
+        'elsewhere' => 'على مخزن آخر',
     ],
 
     'cloud_drivers' => [

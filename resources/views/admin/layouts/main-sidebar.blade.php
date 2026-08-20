@@ -1048,11 +1048,11 @@
                                         <li class="slide {{ request()->routeIs('backup-schedules.*') ? 'active' : '' }}">
                                             <a href="{{ route('backup-schedules.index') }}" class="side-menu__item {{ request()->routeIs('backup-schedules.*') ? 'active' : '' }}">الجدولة</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">
-                                            <a href="{{ route('app-storage.configs.index') }}" class="side-menu__item {{ request()->routeIs('app-storage.configs.*') ? 'active' : '' }}">إعدادات التخزين</a>
+                                        <li class="slide {{ request()->routeIs('backup-storage.index') || request()->routeIs('backup-storage.create') || request()->routeIs('backup-storage.edit') ? 'active' : '' }}">
+                                            <a href="{{ route('backup-storage.index') }}" class="side-menu__item {{ request()->routeIs('backup-storage.index') || request()->routeIs('backup-storage.create') || request()->routeIs('backup-storage.edit') ? 'active' : '' }}">وجهات تخزين النسخ</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">
-                                            <a href="{{ route('app-storage.analytics') }}" class="side-menu__item {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">إحصائيات التخزين</a>
+                                        <li class="slide {{ request()->routeIs('backup-storage.analytics') ? 'active' : '' }}">
+                                            <a href="{{ route('backup-storage.analytics') }}" class="side-menu__item {{ request()->routeIs('backup-storage.analytics') ? 'active' : '' }}">إحصائيات تخزين النسخ</a>
                                         </li>
                                     </ul>
                                 </li>
@@ -1068,6 +1068,18 @@
                                         </li>
                                         <li class="slide {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">
                                             <a href="{{ route('app-storage.analytics') }}" class="side-menu__item {{ request()->routeIs('app-storage.analytics') ? 'active' : '' }}">الإحصائيات</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('app-storage.inventory.index') ? 'active' : '' }}">
+                                            <a href="{{ route('app-storage.inventory.index') }}" class="side-menu__item {{ request()->routeIs('app-storage.inventory.index') ? 'active' : '' }}">جرد الملفات والترحيل</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('app-storage.inventory.local-files') ? 'active' : '' }}">
+                                            <a href="{{ route('app-storage.inventory.local-files') }}" class="side-menu__item {{ request()->routeIs('app-storage.inventory.local-files') ? 'active' : '' }}">النسخ المحلية</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('app-storage.inventory.cloud-files') ? 'active' : '' }}">
+                                            <a href="{{ route('app-storage.inventory.cloud-files') }}" class="side-menu__item {{ request()->routeIs('app-storage.inventory.cloud-files') ? 'active' : '' }}">استعراض السحابة</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('app-storage.inventory.browse-local') ? 'active' : '' }}">
+                                            <a href="{{ route('app-storage.inventory.browse-local') }}" class="side-menu__item {{ request()->routeIs('app-storage.inventory.browse-local') ? 'active' : '' }}">استعراض المحلي</a>
                                         </li>
                                         <li class="slide {{ request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">
                                             <a href="{{ route('storage-disk-mappings.index') }}" class="side-menu__item {{ request()->routeIs('storage-disk-mappings.*') ? 'active' : '' }}">ربط الأقراص</a>

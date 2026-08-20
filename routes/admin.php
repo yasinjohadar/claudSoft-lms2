@@ -1525,7 +1525,6 @@ Route::prefix('admin')
             Route::get('/', [BackupScheduleController::class, 'index'])->name('index');
             Route::get('/create', [BackupScheduleController::class, 'create'])->name('create');
             Route::post('/', [BackupScheduleController::class, 'store'])->name('store');
-            Route::get('/{schedule}', [BackupScheduleController::class, 'show'])->name('show');
             Route::get('/{schedule}/edit', [BackupScheduleController::class, 'edit'])->name('edit');
             Route::put('/{schedule}', [BackupScheduleController::class, 'update'])->name('update');
             Route::delete('/{schedule}', [BackupScheduleController::class, 'destroy'])->name('destroy');
@@ -1550,7 +1549,6 @@ Route::prefix('admin')
             Route::get('/configs', [AppStorageController::class, 'index'])->name('configs.index');
             Route::get('/configs/create', [AppStorageController::class, 'create'])->name('configs.create');
             Route::post('/configs', [AppStorageController::class, 'store'])->name('configs.store');
-            Route::get('/configs/{config}', [AppStorageController::class, 'show'])->name('configs.show');
             Route::get('/configs/{config}/edit', [AppStorageController::class, 'edit'])->name('configs.edit');
             Route::put('/configs/{config}', [AppStorageController::class, 'update'])->name('configs.update');
             Route::delete('/configs/{config}', [AppStorageController::class, 'destroy'])->name('configs.destroy');

@@ -22,12 +22,18 @@ class StorageInventoryService
             $references = $this->catalog->collectReferences($sourceKey, $disk);
         }
 
+        // سرد كل بادئة مرة واحدة لكل مخزن قبل الحلقة، فيصبح تصنيف كل ملف بحثاً في
+        // الذاكرة بدل طلب شبكة مستقل. بدون هذا يستغرق مسح آلاف الملفات ساعات.
+        $this->primeListingsFor($references);
+
         $items = [];
 
         foreach ($references as $reference) {
             $location = $this->locationResolver->resolve($reference['disk'], $reference['path']);
             $items[] = $this->enrichItem(array_merge($reference, $location));
         }
+
+        $this->locationResolver->forgetListings();
 
         $result = [
             'items' => $items,
@@ -42,6 +48,43 @@ class StorageInventoryService
         );
 
         return $result;
+    }
+
+    /**
+     * يجمع بادئات المسارات لكل قرص منطقي ويطلب سردها دفعة واحدة.
+     *
+     * @param  iterable<int, array<string, mixed>>  $references
+     */
+    protected function primeListingsFor(iterable $references): void
+    {
+        $prefixesByDisk = [];
+
+        foreach ($references as $reference) {
+            $disk = $reference['disk'] ?? null;
+            $path = trim((string) ($reference['path'] ?? ''), '/');
+
+            if (! $disk || $path === '') {
+                continue;
+            }
+
+            // نستخدم path_prefix المعرّف في config/storage_inventory.php لأن السرد
+            // تكراري (allFiles) فتكفي مكالمة واحدة لكل مصدر مهما تشعّبت مجلداته
+            // الفرعية (payments/receipts/2026/38/... مثلاً). وإلا نرجع للمجلد الحاوي.
+            $prefix = trim((string) ($reference['path_prefix'] ?? ''), '/');
+
+            if ($prefix === '') {
+                if (! str_contains($path, '/')) {
+                    continue;
+                }
+                $prefix = dirname($path);
+            }
+
+            $prefixesByDisk[$disk][$prefix] = true;
+        }
+
+        foreach ($prefixesByDisk as $disk => $prefixes) {
+            $this->locationResolver->primeListings($disk, array_keys($prefixes));
+        }
     }
 
     /**
@@ -96,6 +139,7 @@ class StorageInventoryService
             'local_only' => 0,
             'both' => 0,
             'missing' => 0,
+            'elsewhere' => 0,
             'local_only_bytes' => 0,
             'both_bytes' => 0,
             'total_bytes' => 0,

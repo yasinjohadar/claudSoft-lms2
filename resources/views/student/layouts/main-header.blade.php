@@ -540,6 +540,11 @@
                                 </a>
                             </li>
                             <li>
+                                <a class="dropdown-item d-flex border-block-end" href="{{ route('student.profile.password') }}">
+                                    <i class="bx bx-key fs-18 me-2 op-7"></i>تغيير كلمة المرور
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item d-flex border-block-end" href="{{ route('student.telegram.link') }}">
                                     <i class="fe fe-send fs-18 me-2 op-7"></i>
                                     {{ ($studentTelegram['linked'] ?? false) ? 'Telegram — مرتبط' : 'ربط Telegram' }}

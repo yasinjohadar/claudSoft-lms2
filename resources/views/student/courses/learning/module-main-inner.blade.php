@@ -57,31 +57,10 @@
 
                 <!-- Documentation page -->
                 @if($module->module_type == 'documentation' && $module->modulable)
-                    @php /** @var \App\Models\DocumentationPage $docPage */ $docPage = $module->modulable; @endphp
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fe fe-book me-2"></i>{{ $docPage->title ?? $module->title }}
-                            </h5>
-                            @if($docPage->category)
-                                <span class="badge bg-primary-transparent text-primary">{{ $docPage->category->name }}</span>
-                            @endif
-                        </div>
-                        <div class="card-body">
-                            @if($docPage->excerpt)
-                                <p class="text-muted mb-3">{{ $docPage->excerpt }}</p>
-                            @endif
-                            <div class="d-flex flex-wrap gap-2">
-                                <a href="{{ $docPage->publicUrl() }}" target="_blank" rel="noopener" class="btn btn-primary">
-                                    <i class="fe fe-external-link me-2"></i>فتح صفحة التوثيق
-                                </a>
-                                @include('student.courses.learning.partials.documentation-pdf-export', [
-                                    'docPage' => $docPage,
-                                    'btnClass' => 'btn btn-outline-danger',
-                                ])
-                            </div>
-                        </div>
-                    </div>
+                    @include('student.courses.learning.partials.documentation-panel', [
+                        'docPage' => $module->modulable,
+                        'module' => $module,
+                    ])
                 @endif
 
                 <!-- Interactive lesson simulator -->

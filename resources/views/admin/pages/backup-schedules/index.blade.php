@@ -20,6 +20,38 @@
 
         @include('admin.components.alerts')
 
+        @php
+            // جدولة نشطة فات موعدها بأكثر من ساعة = المجدول متوقف على الأرجح
+            $overdueSchedules = $schedules->filter(function ($s) {
+                return $s->is_active
+                    && $s->next_run_at
+                    && $s->next_run_at->lt(now()->subHour());
+            });
+        @endphp
+
+        @if($overdueSchedules->isNotEmpty())
+            <div class="alert alert-danger border-0 mb-4" role="alert">
+                <h6 class="alert-heading mb-2">
+                    <i class="fe fe-alert-triangle me-1"></i>
+                    المجدول متوقف على الأرجح — {{ $overdueSchedules->count() }} جدولة فات موعدها
+                </h6>
+                <ul class="mb-2 ps-3">
+                    @foreach($overdueSchedules as $late)
+                        <li>
+                            <strong>{{ $late->name }}</strong> —
+                            كان موعدها {{ $late->next_run_at->format('Y-m-d H:i') }}
+                            (متأخرة {{ $late->next_run_at->diffForHumans(now(), ['syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }})
+                        </li>
+                    @endforeach
+                </ul>
+                <hr class="my-2">
+                <span class="d-block small">
+                    تحقق على السيرفر: <code>supervisorctl status laravel-scheduler</code> أو <code>crontab -l | grep schedule:run</code>.
+                    التفاصيل في <code>docs/backup-scheduler-runbook.md</code>.
+                </span>
+            </div>
+        @endif
+
         <div class="alert alert-info border-0 mb-4" role="alert">
             <strong>للتشغيل التلقائي:</strong>
             يلزم تشغيل <code>php artisan schedule:work</code> مع <code>php artisan queue:work --timeout=3600</code>
@@ -107,6 +139,7 @@
                                 <th>التكرار</th>
                                 <th>الوقت</th>
                                 <th>الحالة</th>
+                                <th>آخر تشغيل</th>
                                 <th>التشغيل التالي</th>
                                 <th>الإجراءات</th>
                             </tr>
@@ -120,7 +153,10 @@
                                         <span class="badge bg-info-transparent text-info">{{ \App\Models\BackupSchedule::BACKUP_TYPES[$schedule->backup_type] ?? $schedule->backup_type }}</span>
                                     </td>
                                     <td>{{ \App\Models\BackupSchedule::FREQUENCIES[$schedule->frequency] ?? $schedule->frequency }}</td>
-                                    <td>{{ $schedule->time }}</td>
+                                    <td>
+                                        {{ \Illuminate\Support\Str::of((string) $schedule->time)->substr(0, 5) }}
+                                        <small class="d-block text-muted">{{ $schedule->scheduleTimezone() }}</small>
+                                    </td>
                                     <td>
                                         @if($schedule->is_active)
                                             <span class="badge bg-success">نشط</span>
@@ -128,7 +164,20 @@
                                             <span class="badge bg-secondary">متوقف</span>
                                         @endif
                                     </td>
-                                    <td>{{ $schedule->next_run_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                                    <td>
+                                        @if($schedule->last_run_at)
+                                            {{ $schedule->last_run_at->format('Y-m-d H:i') }}
+                                            <small class="d-block text-muted">{{ $schedule->last_run_at->diffForHumans() }}</small>
+                                        @else
+                                            <span class="text-muted">لم تعمل بعد</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $schedule->next_run_at?->format('Y-m-d H:i') ?? '—' }}
+                                        @if($schedule->is_active && $schedule->next_run_at && $schedule->next_run_at->lt(now()->subHour()))
+                                            <span class="badge bg-danger d-block mt-1">متأخرة</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="d-flex gap-1 justify-content-center flex-wrap">
                                             <a href="{{ route('backup-schedules.edit', $schedule->id) }}" class="btn btn-sm btn-info" title="تعديل">
@@ -158,7 +207,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-muted py-4">لا توجد جداول بعد.</td>
+                                    <td colspan="9" class="text-muted py-4">لا توجد جداول بعد.</td>
                                 </tr>
                             @endforelse
                         </tbody>

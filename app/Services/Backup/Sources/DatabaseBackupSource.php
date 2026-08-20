@@ -10,6 +10,9 @@ use Symfony\Component\Process\Process;
 
 class DatabaseBackupSource implements BackupSourceInterface
 {
+    /** أقل مساحة حرة مطلوبة قبل بدء الـ dump، لكل قرص معني. */
+    private const MIN_FREE_BYTES = 512 * 1024 * 1024;
+
     public function isAvailable(): bool
     {
         return $this->resolveBinary() !== null;
@@ -61,23 +64,31 @@ class DatabaseBackupSource implements BackupSourceInterface
         $timeout = (int) config('backup.dump_timeout', 3600);
         $process = new Process($args);
         $process->setTimeout($timeout);
-        // Critical: without this, Symfony buffers the entire dump in RAM (~hundreds of MB)
-        // which on Windows often fails with errno=28 when C: is nearly full.
+        // يمنع تجميع الـ dump كاملاً في ذاكرة PHP.
+        // تنبيه: لا يمنع هذا تفريغ Symfony للمخرجات في ملف مؤقت على Windows —
+        // فـ Process.php يبني WindowsPipes متى مُرِّر callback بغضّ النظر عن
+        // disableOutput()، وتلك الملفات تُكتب في sys_get_temp_dir() لا في $tmpDir.
+        // لذلك نفحص مساحة القرصين معاً أدناه. على Linux تُستخدم أنابيب حقيقية بلا ملفات.
         $process->disableOutput();
         // mysqldump / MySQL client may write temp files to TMP/TEMP — keep them on the project disk.
+        // ملاحظة: هذا يؤثر على بيئة العملية الابنة فقط، لا على sys_get_temp_dir() في PHP نفسه.
         $process->setEnv([
             'TMP' => $tmpDir,
             'TEMP' => $tmpDir,
             'TMPDIR' => $tmpDir,
         ]);
 
-        $freeBytes = @disk_free_space($tmpDir);
-        if ($freeBytes !== false && $freeBytes < 512 * 1024 * 1024) {
-            throw new \RuntimeException(
-                'مساحة القرص غير كافية لملف النسخة المؤقت ('
-                . round($freeBytes / (1024 * 1024))
-                . ' MB متاحة). حرّر مساحة ثم أعد المحاولة.'
-            );
+        foreach ($this->diskSpaceTargets($tmpDir) as $label => $dir) {
+            $freeBytes = @disk_free_space($dir);
+            if ($freeBytes !== false && $freeBytes < self::MIN_FREE_BYTES) {
+                throw new \RuntimeException(sprintf(
+                    'مساحة القرص غير كافية في %s (%s): %d MB متاحة والمطلوب %d MB على الأقل. حرّر مساحة ثم أعد المحاولة.',
+                    $label,
+                    $dir,
+                    (int) round($freeBytes / (1024 * 1024)),
+                    (int) round(self::MIN_FREE_BYTES / (1024 * 1024))
+                ));
+            }
         }
 
         $gzPath = $sqlPath . '.gz';
@@ -141,7 +152,17 @@ class DatabaseBackupSource implements BackupSourceInterface
 
         if (!$process->isSuccessful()) {
             @unlink($writeTarget);
-            $detail = trim($stderr) !== '' ? trim($stderr) : ('exit code ' . $process->getExitCode());
+            $exitCode = $process->getExitCode();
+            $detail = trim($stderr) !== '' ? trim($stderr) : ('exit code ' . $exitCode);
+
+            // 5 = EX_EOF في mysqldump، أي فشل الكتابة إلى المخرجات. السبب الأشيع
+            // امتلاء القرص الذي تُكتب عليه المخرجات (أو ملف Symfony المؤقت على Windows)،
+            // و«exit code 5» وحده لا يقول ذلك للأدمن.
+            if ($exitCode === 5) {
+                $detail .= ' — فشل في كتابة مخرجات mysqldump، غالباً لامتلاء القرص. '
+                    . $this->diskSpaceSummary($tmpDir);
+            }
+
             throw new \RuntimeException('mysqldump failed: ' . $detail);
         }
 
@@ -159,6 +180,47 @@ class DatabaseBackupSource implements BackupSourceInterface
             mimeType: $compress ? 'application/gzip' : 'application/sql',
             metadata: ['source' => 'mysqldump', 'binary' => basename($binary), 'stream_compressed' => $compress],
         );
+    }
+
+    /**
+     * الأقراص التي يجب أن تتوفر فيها مساحة قبل بدء الـ dump.
+     *
+     * @return array<string, string> label => directory
+     */
+    private function diskSpaceTargets(string $tmpDir): array
+    {
+        $targets = ['مجلد النسخ المؤقت' => $tmpDir];
+
+        // على Windows تُفرَّغ مخرجات العملية في ملف داخل sys_get_temp_dir()،
+        // وهو غالباً على قرص آخر (C:) غير قرص المشروع.
+        $systemTmp = sys_get_temp_dir();
+        if (\DIRECTORY_SEPARATOR === '\\' && $systemTmp !== '' && ! $this->sameVolume($systemTmp, $tmpDir)) {
+            $targets['مجلد temp النظام'] = $systemTmp;
+        }
+
+        return $targets;
+    }
+
+    private function sameVolume(string $a, string $b): bool
+    {
+        return strtoupper(substr($a, 0, 2)) === strtoupper(substr($b, 0, 2));
+    }
+
+    /**
+     * ملخّص المساحة الحرة لكل قرص معني — يُضاف إلى رسالة الخطأ.
+     */
+    private function diskSpaceSummary(string $tmpDir): string
+    {
+        $parts = [];
+
+        foreach ($this->diskSpaceTargets($tmpDir) as $label => $dir) {
+            $free = @disk_free_space($dir);
+            $parts[] = $free === false
+                ? sprintf('%s (%s): المساحة غير معروفة', $label, $dir)
+                : sprintf('%s (%s): %d MB حرة', $label, $dir, (int) round($free / (1024 * 1024)));
+        }
+
+        return implode(' — ', $parts);
     }
 
     public function resolveBinary(): ?string

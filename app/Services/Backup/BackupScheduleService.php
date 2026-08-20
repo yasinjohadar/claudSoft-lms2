@@ -54,11 +54,21 @@ class BackupScheduleService
         $compressionTypes = $schedule->compression_types ?? ['zip'];
         $backups = collect();
 
-        foreach ($storageDrivers as $driver) {
-            $storageConfig = \App\Models\AppStorageConfig::where('driver', $driver)
+        // الوجهة المختارة صراحة في الجدولة. الجدولات القديمة لا تحملها،
+        // فنرجع عندها إلى البحث بالسائق كما كان سابقاً.
+        $pinnedConfig = $schedule->storage_config_id
+            ? \App\Models\AppStorageConfig::where('id', $schedule->storage_config_id)
                 ->where('is_active', true)
-                ->orderByDesc('priority')
-                ->first();
+                ->first()
+            : null;
+
+        foreach ($storageDrivers as $driver) {
+            $storageConfig = $pinnedConfig && $pinnedConfig->driver === $driver
+                ? $pinnedConfig
+                : \App\Models\AppStorageConfig::where('driver', $driver)
+                    ->where('is_active', true)
+                    ->orderByDesc('priority')
+                    ->first();
 
             if (!$storageConfig) {
                 \Log::warning("Storage config not found for driver: {$driver} in schedule {$schedule->id}");
@@ -141,8 +151,16 @@ class BackupScheduleService
                     $this->executeSchedule($schedule);
                     $count++;
                 } catch (\Exception $e) {
+                    // تقديم موعد التشغيل التالي حتى عند الفشل، وإلا أعاد المحاولة
+                    // كل دقيقة إلى الأبد وملأ السجل بنفس الخطأ.
+                    $schedule->update([
+                        'last_run_at' => now(),
+                        'next_run_at' => $schedule->calculateNextRun(),
+                    ]);
+
                     \Log::error('Error executing backup schedule: ' . $e->getMessage(), [
                         'schedule_id' => $schedule->id,
+                        'next_run_at' => $schedule->next_run_at?->toDateTimeString(),
                     ]);
                 }
             }

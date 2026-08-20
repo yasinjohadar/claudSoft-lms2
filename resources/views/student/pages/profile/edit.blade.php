@@ -207,47 +207,6 @@
                         </form>
                     </div>
                 </div>
-
-                <div class="card custom-card student-quizzes-panel mt-4" id="password-section">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center gap-2 mb-4">
-                            <span class="avatar avatar-sm bg-warning-transparent">
-                                <i class="fe fe-shield text-warning"></i>
-                            </span>
-                            <div>
-                                <h6 class="card-title mb-0">الأمان</h6>
-                                <p class="text-muted fs-12 mb-0">تغيير كلمة المرور</p>
-                            </div>
-                        </div>
-
-                        <form action="{{ route('student.profile.change-password') }}" method="POST">
-                            @csrf
-                            @method('PUT')
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="student-profile-form-label">كلمة المرور الحالية <span class="text-danger">*</span></label>
-                                    <input type="password" class="form-control @error('current_password') is-invalid @enderror" name="current_password" required autocomplete="current-password">
-                                    @error('current_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="student-profile-form-label">كلمة المرور الجديدة <span class="text-danger">*</span></label>
-                                    <input type="password" class="form-control @error('new_password') is-invalid @enderror" name="new_password" required autocomplete="new-password">
-                                    <div class="student-profile-form-hint">8 أحرف على الأقل، حروف كبيرة وصغيرة، أرقام ورموز</div>
-                                    @error('new_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="student-profile-form-label">تأكيد كلمة المرور <span class="text-danger">*</span></label>
-                                    <input type="password" class="form-control" name="new_password_confirmation" required autocomplete="new-password">
-                                </div>
-                            </div>
-                            <div class="student-profile-edit-actions">
-                                <button type="submit" class="btn btn-warning rounded-pill px-4">
-                                    <i class="fe fe-key me-1"></i>تغيير كلمة المرور
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </div>
 
             <div class="col-xl-4 order-1 order-xl-2">

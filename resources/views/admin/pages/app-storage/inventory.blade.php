@@ -45,6 +45,7 @@
     .inv-page .inv-stat.is-local .value { color: #b45309; }
     .inv-page .inv-stat.is-both .value { color: #0369a1; }
     .inv-page .inv-stat.is-missing .value { color: #b91c1c; }
+    .inv-page .inv-stat.is-elsewhere .value { color: #6d28d9; }
     .inv-page .inv-flow {
         display: grid;
         grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -136,6 +137,8 @@
     .inv-page .badge-soft-warning { background: #ffedd5; color: #9a3412; }
     .inv-page .badge-soft-info { background: #e0f2fe; color: #075985; }
     .inv-page .badge-soft-danger { background: #fee2e2; color: #991b1b; }
+    .inv-page .badge-soft-purple { background: #ede9fe; color: #5b21b6; }
+    .inv-page .badge-unsafe { background: #fef3c7; color: #92400e; font-weight: 600; }
 </style>
 @stop
 
@@ -175,6 +178,35 @@
                 </div>
             </div>
         </div>
+
+        @php
+            $unsafeSources = collect(config('storage_inventory.sources', []))
+                ->filter(fn ($src) => ($src['migration_safe'] ?? true) === false);
+        @endphp
+        @if($unsafeSources->isNotEmpty())
+            <div class="alert alert-warning border-0">
+                <h6 class="alert-heading mb-2">
+                    <i class="fas fa-triangle-exclamation me-1"></i>
+                    فئات غير آمنة للترحيل ({{ $unsafeSources->count() }})
+                </h6>
+                <p class="mb-2 small">
+                    هذه الفئات تبني روابط ملفاتها يدوياً في القوالب بدل مساعدات التخزين، فترحيلها
+                    ينقل الملف بنجاح ثم <strong>يكسر عرضه</strong>. الترحيل الجماعي يتخطاها تلقائياً.
+                </p>
+                <ul class="mb-0 ps-3 small">
+                    @foreach($unsafeSources as $src)
+                        <li><strong>{{ $src['label'] }}</strong> — {{ $src['unsafe_reason'] ?? '' }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if(session('storage_unsafe_skipped') && (session('storage_unsafe_skipped')['skipped'] ?? 0) > 0)
+            <div class="alert alert-info border-0">
+                تم تخطي <strong>{{ session('storage_unsafe_skipped')['skipped'] }}</strong> ملف من فئات غير آمنة:
+                {{ implode('، ', session('storage_unsafe_skipped')['labels'] ?? []) }}
+            </div>
+        @endif
 
         <div class="inv-note">
             <strong>لماذا تظهر «نسختان»؟</strong>
@@ -236,12 +268,25 @@
                 </a>
             </div>
             <div class="col-6 col-md-4 col-xl-2">
-                <div class="inv-stat is-missing">
-                    <div class="label">مفقود</div>
-                    <div class="value">{{ $summary['missing'] }}</div>
-                    <div class="meta">مسجّل بدون ملف</div>
-                </div>
+                <a href="{{ route('app-storage.inventory.index', array_merge(request()->only(['disk','source']), ['status' => 'missing'])) }}" class="text-decoration-none d-block">
+                    <div class="inv-stat is-missing">
+                        <div class="label">مفقود</div>
+                        <div class="value">{{ $summary['missing'] }}</div>
+                        <div class="meta">مسجّل بدون ملف · عرض ←</div>
+                    </div>
+                </a>
             </div>
+            @if(($summary['elsewhere'] ?? 0) > 0)
+                <div class="col-6 col-md-4 col-xl-2">
+                    <a href="{{ route('app-storage.inventory.index', array_merge(request()->only(['disk','source']), ['status' => 'elsewhere'])) }}" class="text-decoration-none d-block">
+                        <div class="inv-stat is-elsewhere">
+                            <div class="label">على مخزن آخر</div>
+                            <div class="value">{{ $summary['elsewhere'] }}</div>
+                            <div class="meta">خارج ربط القرص · عرض ←</div>
+                        </div>
+                    </a>
+                </div>
+            @endif
             <div class="col-6 col-md-4 col-xl-2">
                 <div class="inv-stat">
                     <div class="label">قابل للترحيل</div>
@@ -674,6 +719,7 @@
                             <tr>
                                 <th style="width:2.5rem"><input type="checkbox" id="select-all-files" title="تحديد الكل القابل للترحيل"></th>
                                 <th>المصدر</th>
+                                <th>الترحيل</th>
                                 <th>#</th>
                                 <th>القرص</th>
                                 <th>المسار</th>
@@ -686,14 +732,35 @@
                         </thead>
                         <tbody>
                             @forelse($items as $index => $item)
-                                @php $st = $item['status'] ?? 'missing'; @endphp
+                                @php
+                                    $st = $item['status'] ?? 'missing';
+                                    $srcCfg = collect(config('storage_inventory.sources'))
+                                        ->firstWhere('key', $item['source_key'] ?? null) ?? [];
+                                    $migrationSafe = $srcCfg['migration_safe'] ?? true;
+                                    $unsafeReason = $srcCfg['unsafe_reason'] ?? null;
+                                @endphp
                                 <tr>
                                     <td>
-                                        @if(in_array($st, ['local_only', 'both'], true))
+                                        @if(in_array($st, ['local_only', 'both'], true) && $migrationSafe)
                                             <input type="checkbox" class="file-checkbox" value="{{ $item['path'] }}">
                                         @endif
                                     </td>
                                     <td class="text-start ps-3">{{ $item['source_label'] ?? '' }}</td>
+                                    <td>
+                                        @if($migrationSafe)
+                                            <span class="badge badge-soft-success">آمن</span>
+                                            @if($unsafeReason)
+                                                <i class="fas fa-info-circle text-muted ms-1"
+                                                   data-bs-toggle="tooltip" title="{{ $unsafeReason }}"></i>
+                                            @endif
+                                        @else
+                                            <span class="badge badge-unsafe"
+                                                  data-bs-toggle="tooltip"
+                                                  title="{{ $unsafeReason ?? 'ترحيل هذه الفئة سيكسر عرض ملفاتها.' }}">
+                                                غير آمن
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td>{{ $item['entity_id'] ?? '—' }}</td>
                                     <td><code class="small">{{ $item['disk'] ?? '' }}</code></td>
                                     <td class="text-start"><small class="text-break">{{ $item['path'] ?? '' }}</small></td>
@@ -702,6 +769,7 @@
                                             'cloud_only' => 'badge-soft-success',
                                             'local_only' => 'badge-soft-warning',
                                             'both' => 'badge-soft-info',
+                                            'elsewhere' => 'badge-soft-purple',
                                             default => 'badge-soft-danger',
                                         } }}">{{ $item['status_label'] ?? ($statusLabels[$st] ?? $st) }}</span>
                                     </td>
@@ -733,7 +801,7 @@
                                     </td>
                                 </tr>
                                 <tr class="collapse" id="loc-detail-{{ $index }}">
-                                    <td colspan="10" class="text-start bg-light">
+                                    <td colspan="11" class="text-start bg-light">
                                         <div class="p-3 small">
                                             <strong class="d-block mb-2">كل مواقع التخزين المكتشفة:</strong>
                                             @if(empty($item['locations']))
@@ -758,7 +826,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10">
+                                    <td colspan="11">
                                         <div class="inv-empty">
                                             <div class="icon"><i class="fas fa-folder-open"></i></div>
                                             @if(!$hasScan)
@@ -876,5 +944,13 @@ setInterval(function () {
         });
 }, 3000);
 @endif
+
+    // تفعيل التلميحات لشارات «آمن / غير آمن»
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.bootstrap && bootstrap.Tooltip) {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                .forEach(function (el) { new bootstrap.Tooltip(el); });
+        }
+    });
 </script>
 @stop

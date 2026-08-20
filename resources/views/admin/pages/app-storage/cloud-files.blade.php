@@ -134,6 +134,22 @@
                                 <i class="fas fa-sync-alt me-1"></i> تحديث
                             </button>
                         </div>
+                        <input type="hidden" name="path" value="{{ $filters['path'] ?? '' }}">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="unreferenced" name="unreferenced" value="1"
+                                       @checked($unreferencedOnly ?? false)
+                                       onchange="this.form.submit()">
+                                <label class="form-check-label small" for="unreferenced">
+                                    عرض غير المشار إليها فقط (ملفات يتيمة)
+                                </label>
+                            </div>
+                            <div class="form-text small">
+                                ملفات موجودة على المخزن ولا يشير إليها أي سجل في قاعدة البيانات — مساحة مدفوعة بلا فائدة.
+                                العرض للاطلاع والتصدير فقط، بلا حذف.
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -152,6 +168,16 @@
                             </a>
                         @endforeach
                     </div>
+                </div>
+            @endif
+
+            @if($unreferencedOnly ?? false)
+                <div class="alert alert-warning border-0">
+                    <i class="fas fa-filter me-1"></i>
+                    التصفية مفعّلة: <strong>{{ $unreferencedCount ?? 0 }}</strong> ملف يتيم في هذا المستوى.
+                    المجلدات لا تخضع للتصفية.
+                    <a href="{{ route('app-storage.inventory.cloud-files', array_filter(['config' => $filters['config'] ?? null, 'path' => $filters['path'] ?? null])) }}"
+                       class="alert-link ms-2">إلغاء التصفية</a>
                 </div>
             @endif
 

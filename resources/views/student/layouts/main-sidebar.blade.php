@@ -428,7 +428,7 @@
                                     <a href="javascript:void(0);">حسابي</a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.profile.edit') }}" class="side-menu__item student-sidebar-profile-link {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
+                                    <a href="{{ ($studentProfileLocked ?? false) ? route('student.profile.edit') : route('student.profile.index') }}" class="side-menu__item student-sidebar-profile-link {{ request()->routeIs('student.profile.*') ? 'active' : '' }}">
                                         <i class="fe fe-user student-submenu__icon"></i>
                                         <span>{{ ($studentProfileLocked ?? false) ? 'إكمال الملف الشخصي' : 'ملفي الشخصي' }}</span>
                                     </a>

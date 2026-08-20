@@ -196,17 +196,16 @@ protected $commands = [
 ];
 ```
 
-**أو في دالة `schedule` (إذا كانت مجدولة):**
+**المهام المجدولة** — في هذا المشروع تُسجَّل في `routes/console.php` (لا يوجد `app/Console/Kernel.php` في Laravel 11+):
 ```php
-protected function schedule(Schedule $schedule)
-{
-    // تشغيل النسخ الاحتياطية المجدولة كل دقيقة
-    $schedule->command('backups:run-scheduled')->everyMinute();
-    
-    // تنظيف النسخ المنتهية الصلاحية يومياً
-    $schedule->command('backups:cleanup-expired')->daily();
-}
+// أسماء الأوامر الصحيحة: backup:* بالمفرد، عدا backups:mark-stuck-failed
+Schedule::command('backup:run-scheduled')->everyMinute()->withoutOverlapping()->runInBackground();
+Schedule::command('backup:cleanup-expired')->daily()->withoutOverlapping()->runInBackground();
+Schedule::command('backups:mark-stuck-failed')->hourly()->withoutOverlapping()->runInBackground();
 ```
+
+> تسجيل المهام وحده لا يكفي — لا بد من تشغيل المجدول نفسه على السيرفر.
+> راجع [docs/backup-scheduler-runbook.md](docs/backup-scheduler-runbook.md).
 
 ### 4. إضافة القائمة الجانبية (Sidebar Menu)
 

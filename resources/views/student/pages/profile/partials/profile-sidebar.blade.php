@@ -58,7 +58,7 @@
             </div>
         </div>
 
-        <a href="{{ route('student.profile.edit') }}#password-section" class="btn btn-warning rounded-pill w-100">
+        <a href="{{ route('student.profile.password') }}" class="btn btn-warning rounded-pill w-100">
             <i class="fe fe-key me-1"></i>تغيير كلمة المرور
         </a>
     </div>

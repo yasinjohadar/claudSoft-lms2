@@ -39,6 +39,10 @@ return [
     'job_timeout' => (int) env('BACKUP_JOB_TIMEOUT', 3600),
     'always_queue' => (bool) env('BACKUP_ALWAYS_QUEUE', false),
     'schedule_dispatch_sync' => (bool) env('BACKUP_SCHEDULE_DISPATCH_SYNC', false),
+    // يقرأه BackupNotificationService لإرسال إشعار عند نجاح/فشل النسخة.
+    // كان المفتاح غائباً فكانت إشعارات webhook معطّلة صامتاً.
+    'webhook_url' => env('BACKUP_WEBHOOK_URL'),
+
     'stuck_running_minutes' => (int) env('BACKUP_STUCK_RUNNING_MINUTES', 120),
 
 ];

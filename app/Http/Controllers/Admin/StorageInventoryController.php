@@ -117,6 +117,19 @@ class StorageInventoryController extends Controller
             return back()->with('warning', 'لا توجد ملفات مطابقة للترحيل.');
         }
 
+        // استبعاد الفئات التي تُبنى روابطها يدوياً بـ asset('storage/...') —
+        // ترحيلها ينقل الملف بنجاح ثم يكسر عرضه في الموقع.
+        $unsafeCheck = $this->excludeUnsafeSources($items, $request->boolean('allow_unsafe'));
+        $items = $unsafeCheck['items'];
+
+        if ($items === []) {
+            return back()->with('error', sprintf(
+                'كل الملفات المحددة (%d) من فئات غير آمنة للترحيل: %s. عالج روابطها أولاً.',
+                $unsafeCheck['skipped'],
+                implode('، ', $unsafeCheck['labels'])
+            ));
+        }
+
         if ($request->boolean('dry_run')) {
             $preview = $this->migrationService->dryRun($items);
 
@@ -129,7 +142,8 @@ class StorageInventoryController extends Controller
                     $preview['warning_count'] ?? 0,
                     $this->inventoryService->formatBytes((int) $preview['total_bytes'])
                 ))
-                ->with('storage_dry_run', $preview);
+                ->with('storage_dry_run', $preview)
+                ->with('storage_unsafe_skipped', $unsafeCheck);
         }
 
         $deleteLocal = $request->boolean('delete_local');
@@ -137,7 +151,10 @@ class StorageInventoryController extends Controller
         if ($request->boolean('use_queue')) {
             $migrationId = $this->migrationService->startQueuedMigration($items, $deleteLocal);
 
-            return back()->with('success', "تم إرسال {$migrationId} إلى قائمة الانتظار لـ ".count($items).' ملف.');
+            return back()
+                ->with('success', "تم إرسال {$migrationId} إلى قائمة الانتظار لـ ".count($items).' ملف.'
+                    .$this->unsafeSuffix($unsafeCheck))
+                ->with('storage_unsafe_skipped', $unsafeCheck);
         }
 
         $results = $this->migrationService->migrateSync($items, $deleteLocal);
@@ -148,8 +165,68 @@ class StorageInventoryController extends Controller
                 $results['migrated'],
                 $results['skipped'],
                 $results['failed']
-            ))
-            ->with('storage_migrate', $results);
+            ).$this->unsafeSuffix($unsafeCheck))
+            ->with('storage_migrate', $results)
+            ->with('storage_unsafe_skipped', $unsafeCheck);
+    }
+
+    /**
+     * يفصل الملفات التابعة لمصادر معلَّمة migration_safe = false.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{items: array<int, array<string, mixed>>, skipped: int, labels: array<int, string>}
+     */
+    protected function excludeUnsafeSources(array $items, bool $allowUnsafe = false): array
+    {
+        if ($allowUnsafe) {
+            return ['items' => $items, 'skipped' => 0, 'labels' => []];
+        }
+
+        $unsafeKeys = collect(config('storage_inventory.sources', []))
+            ->filter(fn (array $source) => ($source['migration_safe'] ?? true) === false)
+            ->keyBy('key')
+            ->map(fn (array $source) => $source['label'] ?? $source['key']);
+
+        if ($unsafeKeys->isEmpty()) {
+            return ['items' => $items, 'skipped' => 0, 'labels' => []];
+        }
+
+        $kept = [];
+        $skippedLabels = [];
+
+        foreach ($items as $item) {
+            $key = $item['source_key'] ?? null;
+
+            if ($key !== null && $unsafeKeys->has($key)) {
+                $skippedLabels[$unsafeKeys->get($key)] = true;
+
+                continue;
+            }
+
+            $kept[] = $item;
+        }
+
+        return [
+            'items' => $kept,
+            'skipped' => count($items) - count($kept),
+            'labels' => array_keys($skippedLabels),
+        ];
+    }
+
+    /**
+     * @param  array{skipped: int, labels: array<int, string>}  $unsafeCheck
+     */
+    protected function unsafeSuffix(array $unsafeCheck): string
+    {
+        if (($unsafeCheck['skipped'] ?? 0) < 1) {
+            return '';
+        }
+
+        return sprintf(
+            ' وتم تخطي %d ملف من فئات غير آمنة للترحيل (%s).',
+            $unsafeCheck['skipped'],
+            implode('، ', $unsafeCheck['labels'])
+        );
     }
 
     public function verify(Request $request): RedirectResponse
@@ -561,7 +638,26 @@ class StorageInventoryController extends Controller
             }
         }
 
+        // «غير المشار إليها فقط»: ملفات موجودة على المخزن ولا يشير إليها أي سجل —
+        // مساحة مدفوعة بلا فائدة. تُعرض للاطلاع والتصدير فقط، بلا أي إجراء حذف.
+        $unreferencedOnly = $request->boolean('unreferenced');
+        $unreferencedCount = 0;
+
+        if ($listing !== null && $unreferencedOnly) {
+            $referenced = $this->referencedPathSet();
+
+            $files = array_values(array_filter(
+                $listing['files'] ?? [],
+                fn (array $file) => ! isset($referenced[ltrim((string) ($file['path'] ?? ''), '/')])
+            ));
+
+            $unreferencedCount = count($files);
+            $listing['files'] = $files;
+        }
+
         return view('admin.pages.app-storage.cloud-files', [
+            'unreferencedOnly' => $unreferencedOnly,
+            'unreferencedCount' => $unreferencedCount,
             'configs' => $configs,
             'selectedConfig' => $selectedConfig,
             'listing' => $listing,
@@ -574,6 +670,26 @@ class StorageInventoryController extends Controller
             'inventoryService' => $this->inventoryService,
             'capacitySummary' => $this->capacityService->getCachedSummary(),
         ]);
+    }
+
+    /**
+     * كل المسارات المشار إليها في قاعدة البيانات، كمجموعة مفاتيح للبحث السريع.
+     *
+     * @return array<string, bool>
+     */
+    protected function referencedPathSet(): array
+    {
+        $paths = [];
+
+        foreach ($this->catalogService->collectReferences() as $reference) {
+            $path = ltrim(trim((string) ($reference['path'] ?? '')), '/');
+
+            if ($path !== '') {
+                $paths[$path] = true;
+            }
+        }
+
+        return $paths;
     }
 
     public function browseLocal(Request $request): View

@@ -88,6 +88,9 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                        @include('admin.pages.backup-schedules.partials.timezone-field', [
+                            'selectedTimezone' => null,
+                        ])
                         <div class="col-md-6" id="day_of_month_field" style="display: none;">
                             <label for="day_of_month" class="form-label">يوم الشهر</label>
                             <input type="number" class="form-control" id="day_of_month" name="day_of_month" value="{{ old('day_of_month', 1) }}" min="1" max="31">

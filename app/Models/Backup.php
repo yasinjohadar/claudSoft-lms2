@@ -141,7 +141,10 @@ class Backup extends Model
      */
     public function scopeExpired($query)
     {
-        return $query->where('expires_at', '<=', now());
+        // النسخ قيد التنفيذ (pending/running) لا تُعتبر منتهية الصلاحية مهما مضى
+        // على expires_at، وإلا حذفها التنظيف اليومي وهي تُكتب.
+        return $query->where('expires_at', '<=', now())
+                     ->whereIn('status', ['completed', 'failed']);
     }
 
     /**
