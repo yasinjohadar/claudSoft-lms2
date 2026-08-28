@@ -1276,6 +1276,138 @@ class CourseGroupController extends Controller
     }
 
     /**
+     * Shared query builder for the paid/free groups list pages.
+     * Unlike allGroups(), the camp type here is forced server-side and not client-controlled.
+     */
+    private function groupsQueryForType(Request $request, bool $isCamp)
+    {
+        $query = CourseGroup::with(['courses', 'visibilityRequirements.requiredGroup'])
+            ->withCount('members')
+            ->where('is_camp', $isCamp);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('courses', function ($cq) use ($search) {
+                        $cq->where('title', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('course_id')) {
+            $query->whereHas('courses', function ($q) use ($request) {
+                $q->where('courses.id', $request->course_id);
+            });
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        $allowedSorts = ['created_at', 'name', 'members_count', 'price'];
+        $sortBy = in_array($request->get('sort'), $allowedSorts, true)
+            ? $request->get('sort')
+            : 'created_at';
+        $sortOrder = $request->get('order') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortOrder);
+
+        return $query;
+    }
+
+    private function memberCountForType(bool $isCamp): int
+    {
+        return DB::table('course_group_members')
+            ->join('course_groups', 'course_groups.id', '=', 'course_group_members.group_id')
+            ->where('course_groups.is_camp', $isCamp)
+            ->whereNull('course_groups.deleted_at')
+            ->count();
+    }
+
+    /**
+     * Display only paid (camp-classified) groups — a dedicated, independent page.
+     */
+    public function paidGroups(Request $request)
+    {
+        try {
+            $groups = $this->groupsQueryForType($request, true)->paginate(20)->withQueryString();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->view('admin.pages.groups.partials.all-groups-table', compact('groups'));
+            }
+
+            $courses = \App\Models\Course::select('id', 'title')->orderBy('title')->get();
+
+            $totalGroups = CourseGroup::where('is_camp', true)->count();
+            $activeGroups = CourseGroup::where('is_camp', true)->where('is_active', true)->count();
+            $totalMembers = $this->memberCountForType(true);
+            $otherTypeGroups = CourseGroup::where('is_camp', false)->count();
+
+            return view('admin.pages.groups.paid', compact(
+                'groups',
+                'courses',
+                'totalGroups',
+                'activeGroups',
+                'totalMembers',
+                'otherTypeGroups'
+            ));
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحميل المجموعات المدفوعة: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()
+                ->route('admin.dashboard')
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعات المدفوعة: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Display only free (non-camp) groups — a dedicated, independent page.
+     */
+    public function freeGroups(Request $request)
+    {
+        try {
+            $groups = $this->groupsQueryForType($request, false)->paginate(20)->withQueryString();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->view('admin.pages.groups.partials.all-groups-table', compact('groups'));
+            }
+
+            $courses = \App\Models\Course::select('id', 'title')->orderBy('title')->get();
+
+            $totalGroups = CourseGroup::where('is_camp', false)->count();
+            $activeGroups = CourseGroup::where('is_camp', false)->where('is_active', true)->count();
+            $totalMembers = $this->memberCountForType(false);
+            $otherTypeGroups = CourseGroup::where('is_camp', true)->count();
+
+            return view('admin.pages.groups.free', compact(
+                'groups',
+                'courses',
+                'totalGroups',
+                'activeGroups',
+                'totalMembers',
+                'otherTypeGroups'
+            ));
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحميل المجموعات المجانية: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()
+                ->route('admin.dashboard')
+                ->with('error', 'حدث خطأ أثناء تحميل المجموعات المجانية: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Show page to select course for creating a new group.
      */
     public function selectCourse()

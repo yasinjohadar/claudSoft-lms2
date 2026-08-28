@@ -49,6 +49,8 @@
                                 'enrollments.all',
                                 'training-camps.*',
                                 'groups.all',
+                                'groups.paid',
+                                'groups.free',
                                 'admin.group-registrations.*',
                                 'admin.group-registration-settings.*'
                             );
@@ -324,6 +326,18 @@
                                 <li class="slide {{ request()->routeIs('groups.all') ? 'active' : '' }}">
                                     <a href="{{ route('groups.all') }}" class="side-menu__item {{ request()->routeIs('groups.all') ? 'active' : '' }}">
                                         <i class="fas fa-users-cog me-2"></i>المجموعات
+                                    </a>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('groups.paid') ? 'active' : '' }}">
+                                    <a href="{{ route('groups.paid') }}" class="side-menu__item {{ request()->routeIs('groups.paid') ? 'active' : '' }}">
+                                        <i class="fas fa-flag me-2"></i>المجموعات المدفوعة
+                                    </a>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('groups.free') ? 'active' : '' }}">
+                                    <a href="{{ route('groups.free') }}" class="side-menu__item {{ request()->routeIs('groups.free') ? 'active' : '' }}">
+                                        <i class="fas fa-layer-group me-2"></i>المجموعات المجانية
                                     </a>
                                 </li>
 

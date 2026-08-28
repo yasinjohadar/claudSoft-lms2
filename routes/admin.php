@@ -425,6 +425,8 @@ Route::prefix('admin')
             Route::put('/', [GroupRegistrationSettingController::class, 'update'])->name('update');
         });
         Route::get('all-groups', [CourseGroupController::class, 'allGroups'])->name('groups.all');
+        Route::get('all-groups/paid', [CourseGroupController::class, 'paidGroups'])->name('groups.paid');
+        Route::get('all-groups/free', [CourseGroupController::class, 'freeGroups'])->name('groups.free');
         Route::delete('groups/{id}/delete', [CourseGroupController::class, 'deleteGroup'])->name('groups.delete');
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
 
