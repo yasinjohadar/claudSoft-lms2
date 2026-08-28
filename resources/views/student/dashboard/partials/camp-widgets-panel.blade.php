@@ -1,4 +1,4 @@
-@if (($activeCampEnrollments ?? collect())->isNotEmpty())
+@if (($activeCampMemberships ?? collect())->isNotEmpty())
 <div class="card custom-card admin-shortcuts-panel dashboard-fade-in mt-2">
     <div class="card-header border-0 pb-2">
         <div class="d-flex align-items-start gap-2">
@@ -12,17 +12,16 @@
         </div>
     </div>
     @php
-        $campCount = $activeCampEnrollments->count();
+        $campCount = $activeCampMemberships->count();
         $campColumnClass = $campCount >= 3
-            ? 'col-xl-4 col-lg-4 col-md-4 col-sm-12'
-            : 'col-xl-6 col-lg-6 col-md-6 col-sm-12';
+            ? 'col-xl-3 col-lg-4 col-md-6 col-sm-12'
+            : 'col-xl-4 col-lg-4 col-md-6 col-sm-12';
     @endphp
     <div class="card-body pt-2">
         <div class="row g-3">
-            @foreach ($activeCampEnrollments as $campIndex => $enrollment)
+            @foreach ($activeCampMemberships as $campIndex => $membership)
                 @include('student.dashboard.partials.camp-countdown-widget', [
-                    'enrollment' => $enrollment,
-                    'platformJoinedAt' => $platformJoinedAt,
+                    'membership' => $membership,
                     'columnClass' => $campColumnClass,
                     'staggerDelay' => $campIndex * 35,
                 ])

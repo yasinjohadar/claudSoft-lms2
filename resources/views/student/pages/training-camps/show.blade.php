@@ -23,6 +23,10 @@
         $seatPercent = $trainingCamp->max_members
             ? min(100, round(($trainingCamp->current_participants / max(1, $trainingCamp->max_members)) * 100))
             : 0;
+
+        $campDaysRemaining = ($trainingCamp->end_date && ! $trainingCamp->hasEnded())
+            ? max(0, (int) now()->startOfDay()->diffInDays($trainingCamp->end_date->copy()->startOfDay(), false))
+            : null;
     @endphp
 
     <div class="main-content app-content student-training-camp-show-page">
@@ -71,12 +75,27 @@
                             @endif
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            @if($trainingCamp->start_date || $trainingCamp->end_date)
-                                <span class="group-show-chip group-show-chip--sm">
-                                    <i class="fe fe-calendar me-1"></i>
-                                    {{ $trainingCamp->start_date?->format('Y-m-d') ?? '—' }}
-                                    —
-                                    {{ $trainingCamp->end_date?->format('Y-m-d') ?? '—' }}
+                            @if($trainingCamp->start_date)
+                                <span class="group-show-chip fw-bold">
+                                    <i class="fe fe-play-circle me-1"></i>
+                                    بداية المعسكر: {{ $trainingCamp->start_date->format('Y-m-d') }}
+                                </span>
+                            @endif
+                            @if($trainingCamp->end_date)
+                                <span class="group-show-chip fw-bold">
+                                    <i class="fe fe-flag me-1"></i>
+                                    نهاية المعسكر: {{ $trainingCamp->end_date->format('Y-m-d') }}
+                                </span>
+                            @endif
+                            @if($campDaysRemaining !== null)
+                                <span class="group-show-chip fw-bold" style="background: rgba(220,53,69,0.12); color:#dc3545; border-color: rgba(220,53,69,0.25);">
+                                    <i class="fe fe-clock me-1"></i>
+                                    متبقي {{ $campDaysRemaining }} {{ $campDaysRemaining === 1 ? 'يوم' : 'أيام' }}
+                                </span>
+                            @elseif($trainingCamp->hasEnded())
+                                <span class="group-show-chip fw-bold" style="background: rgba(108,117,125,0.12); color:#6c757d; border-color: rgba(108,117,125,0.22);">
+                                    <i class="fe fe-x-circle me-1"></i>
+                                    انتهى المعسكر
                                 </span>
                             @endif
                         </div>
@@ -130,31 +149,14 @@
 
                             @if($trainingCamp->terms)
                                 <div class="mb-4">
-                                    <h6 class="text-muted fs-13 fw-semibold mb-2">شروط المعسكر</h6>
-                                    <div class="student-group-details-content">
+                                    <h6 class="text-danger fs-15 fw-bold mb-2 d-flex align-items-center gap-2">
+                                        <i class="fe fe-alert-triangle"></i>شروط المعسكر
+                                    </h6>
+                                    <div class="border border-danger-subtle rounded p-3 bg-danger-transparent student-group-details-content">
                                         {!! $trainingCamp->terms !!}
                                     </div>
                                 </div>
                             @endif
-
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="dashboard-stat-row p-3 h-100">
-                                        <span class="d-flex align-items-center gap-2 text-muted fs-13 mb-1">
-                                            <i class="fe fe-calendar"></i>تاريخ البداية
-                                        </span>
-                                        <strong>{{ $trainingCamp->start_date?->format('Y-m-d') ?? 'غير محدد' }}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="dashboard-stat-row p-3 h-100">
-                                        <span class="d-flex align-items-center gap-2 text-muted fs-13 mb-1">
-                                            <i class="fe fe-calendar"></i>تاريخ النهاية
-                                        </span>
-                                        <strong>{{ $trainingCamp->end_date?->format('Y-m-d') ?? 'غير محدد' }}</strong>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -244,8 +246,10 @@
 
                                         <div class="mb-3">
                                             @if($trainingCamp->terms)
-                                                <div class="border rounded p-3 mb-3 bg-light student-group-details-content" style="max-height: 220px; overflow-y: auto;">
-                                                    <h6 class="fs-12 fw-semibold text-muted mb-2">شروط المعسكر</h6>
+                                                <h6 class="text-danger fs-14 fw-bold mb-2 d-flex align-items-center gap-2">
+                                                    <i class="fe fe-alert-triangle"></i>شروط المعسكر
+                                                </h6>
+                                                <div class="border border-danger-subtle rounded p-3 mb-3 bg-danger-transparent student-group-details-content" style="max-height: 220px; overflow-y: auto;">
                                                     {!! $trainingCamp->terms !!}
                                                 </div>
                                             @endif

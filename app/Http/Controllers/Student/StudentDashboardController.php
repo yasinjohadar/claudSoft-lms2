@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Models\CampEnrollment;
 use App\Models\CourseEnrollment;
+use App\Models\CourseGroupMember;
 use App\Models\QuestionModuleAttempt;
 use App\Services\Student\StudentAccountTierService;
 use App\Services\Student\StudentCourseVisibilityService;
@@ -58,19 +58,16 @@ class StudentDashboardController extends Controller
 
         $pendingMembershipNotices = $this->courseVisibility->pendingNotices($student);
 
-        $activeCampEnrollments = CampEnrollment::query()
+        $activeCampMemberships = CourseGroupMember::query()
             ->where('student_id', $student->id)
-            ->approved()
-            ->whereHas('camp')
-            ->with('camp')
+            ->whereHas('group', fn ($q) => $q->where('is_camp', true))
+            ->with('group')
             ->get()
-            ->sortBy(fn ($enrollment) => [
-                $enrollment->camp->hasEnded() ? 1 : 0,
-                $enrollment->camp->end_date,
+            ->sortBy(fn ($member) => [
+                $member->group->hasEnded() ? 1 : 0,
+                $member->group->end_date?->timestamp ?? PHP_INT_MAX,
             ])
             ->values();
-
-        $platformJoinedAt = $student->created_at;
 
         $accountTier = $this->accountTierService->resolve($student);
 
@@ -79,8 +76,7 @@ class StudentDashboardController extends Controller
             'courseStats',
             'inProgressCourses',
             'pendingMembershipNotices',
-            'activeCampEnrollments',
-            'platformJoinedAt',
+            'activeCampMemberships',
             'accountTier',
         ));
     }

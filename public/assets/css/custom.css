@@ -7820,7 +7820,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     border: 1px solid var(--default-border, #eef1f6);
     border-radius: 14px;
     background: var(--custom-white, #fff);
-    padding: 0.85rem 0.9rem;
+    padding: 0.6rem 0.7rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
     position: relative;
@@ -7872,7 +7872,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     display: flex;
     align-items: center;
     gap: 0.55rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
     position: relative;
     z-index: 1;
 }
@@ -7910,7 +7910,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 .student-portal .student-dashboard-page .student-camp-widget__body {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     position: relative;
     z-index: 1;
 }
@@ -7924,8 +7924,8 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 }
 
 .student-portal .student-dashboard-page .student-camp-widget__countdown-ring {
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -7947,7 +7947,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 }
 
 .student-portal .student-dashboard-page .student-camp-widget__countdown-value {
-    font-size: 1.35rem;
+    font-size: 1.15rem;
     font-weight: 800;
     line-height: 1;
     color: rgb(var(--primary-rgb));
@@ -7960,6 +7960,10 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 
 .student-portal .student-dashboard-page .student-camp-widget--secondary .student-camp-widget__countdown-value {
     color: rgb(var(--secondary-rgb));
+}
+
+.student-portal .student-dashboard-page .student-camp-widget__countdown-value--danger {
+    color: #dc3545 !important;
 }
 
 .student-portal .student-dashboard-page .student-camp-widget__countdown-label {
