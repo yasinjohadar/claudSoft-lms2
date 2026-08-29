@@ -43,7 +43,10 @@ class WhatsAppAutoReplyDoctor extends Command
             ['whatsapp_provider', $settings['whatsapp_provider'] ?? '—'],
             ['auto_reply_use_ai', var_export((bool) ($settings['auto_reply_use_ai'] ?? false), true)],
             ['instance الرد (المستخدم)', $support ?: '— غير محدد —'],
-            ['instance موجود؟', EvolutionInstance::where('instance_name', $support)->exists() ? 'نعم' : 'لا ✗'],
+            ['instance موجود؟', ($inst = EvolutionInstance::where('instance_name', $support)->first()) ? 'نعم' : 'لا ✗'],
+            ['حالة الاتصال', $inst
+                ? ($inst->connection_status === 'open' ? 'open ✔' : $inst->connection_status.' ✗ — أعد ربط الرقم')
+                : '—'],
             ['debounce / cooldown', ($settings['auto_reply_debounce_seconds'] ?? '?').'ث / '.($settings['auto_reply_contact_cooldown'] ?? '?').'ث'],
         ]);
 
@@ -130,6 +133,21 @@ class WhatsAppAutoReplyDoctor extends Command
         $this->info('=== أحداث Webhook ===');
         $this->line('  آخر حدث: '.($lastEvent?->created_at?->diffForHumans() ?? '— لا يوجد —'));
         $this->line('  غير معالَجة: '.$unprocessed.($unprocessed > 0 ? '  ← العامل لا يعالجها' : ''));
+
+        // توزيع آخر الأحداث حسب النوع: يميّز «لا يصل شيء» عن «تصل أحداث بلا رسائل»
+        $recent = WhatsAppWebhookEvent::orderByDesc('id')->limit(20)->get();
+        $types = [];
+        foreach ($recent as $ev) {
+            $types[(string) data_get($ev->payload, 'event', '?')] = ($types[(string) data_get($ev->payload, 'event', '?')] ?? 0) + 1;
+        }
+        if ($types) {
+            $this->line('  أنواع آخر 20 حدثاً: '.collect($types)->map(fn ($c, $t) => "$t($c)")->implode('، '));
+        }
+
+        if ($lastEvent && $lastEvent->created_at?->lt(now()->subMinutes(10))) {
+            $this->error('  ⚠ لم يصل أي حدث منذ أكثر من 10 دقائق — Evolution لا يُرسل إلى المنصة.');
+            $this->line('     تحقق من: اتصال الـ instance، وتسجيل الـ webhook، ومطابقة مفتاح الترويسة.');
+        }
 
         $messages = WhatsAppMessage::with('contact')
             ->where('direction', WhatsAppMessage::DIRECTION_INBOUND)
