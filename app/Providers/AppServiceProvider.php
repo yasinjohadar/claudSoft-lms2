@@ -133,9 +133,6 @@ class AppServiceProvider extends ServiceProvider
             // Silently fail if table doesn't exist yet (migration not run)
         }
 
-        // WhatsApp Event Listeners
-        Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
-
         Notification::extend('whatsapp', function ($app) {
             return $app->make(WhatsAppChannel::class);
         });

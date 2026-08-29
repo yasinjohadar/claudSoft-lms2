@@ -59,7 +59,15 @@ class WhatsAppAutoReplyService
         Cache::put($bufferKey, $buffer, now()->addMinutes(10));
 
         $debounceSeconds = max(1, (int) ($settings['auto_reply_debounce_seconds'] ?? 8));
-        $runAt = now()->addSeconds($debounceSeconds);
+
+        // التأخير الابتدائي (محاكاة السلوك البشري) يُطوى في جدولة الوظيفة بدل sleep()
+        // داخل العامل: نفس السلوك أمام الطالب، لكن بلا حجز العامل ولا استهلاك المهلة.
+        $initialDelay = $this->humanizer->randomInitialDelaySeconds(
+            (int) ($settings['auto_reply_initial_delay_min'] ?? 2),
+            (int) ($settings['auto_reply_initial_delay_max'] ?? 5),
+        );
+
+        $runAt = now()->addSeconds($debounceSeconds + max(0, $initialDelay));
         Cache::put($runAtKey, $runAt->timestamp, $runAt->copy()->addMinutes(10));
 
         ProcessWhatsAppAutoReplyJob::dispatch($contactId)
@@ -70,6 +78,7 @@ class WhatsAppAutoReplyService
             'contact_id' => $contactId,
             'message_id' => $message->id,
             'debounce_seconds' => $debounceSeconds,
+            'initial_delay' => $initialDelay,
             'instance' => $buffer['instance'] ?: null,
         ]);
     }
@@ -88,26 +97,30 @@ class WhatsAppAutoReplyService
 
     /**
      * Process debounced messages for a contact (called from job).
+     *
+     * قابلة لإعادة المحاولة بأمان: الذاكرة المؤقتة لا تُمسح إلا عند نجاح كامل أو
+     * عند قرار تخطٍّ نهائي. فإن فشل الإرسال في المنتصف تبقى الأجزاء المولَّدة وموضع
+     * آخر جزء نجح محفوظَين، فتُكمل المحاولة التالية من حيث توقفت — بلا استدعاء ثانٍ
+     * للذكاء الاصطناعي وبلا إعادة إرسال ما وصل للطالب فعلاً.
      */
     public function processContact(int $contactId): void
     {
         $settings = $this->settingsService->getAutoReplySettings();
         $bufferKey = self::BUFFER_PREFIX.$contactId;
-        $runAtKey = self::RUN_AT_PREFIX.$contactId;
 
-        $buffer = Cache::pull($bufferKey, ['message_ids' => [], 'instance' => '', 'reply_jid' => '']);
-        Cache::forget($runAtKey);
+        // Cache::get لا pull — القراءة المُتلِفة كانت تُضيّع الرد نهائياً عند أول فشل إرسال
+        $buffer = Cache::get($bufferKey, ['message_ids' => [], 'instance' => '', 'reply_jid' => '']);
 
         $messageIds = array_values(array_unique(array_filter($buffer['message_ids'] ?? [])));
         if ($messageIds === []) {
+            $this->finishAutoReply($contactId);
+
             return;
         }
 
         $cooldownKey = self::COOLDOWN_PREFIX.$contactId;
         if (Cache::has($cooldownKey)) {
-            Log::channel('whatsapp')->info('AutoReply: skipped — contact cooldown active', [
-                'contact_id' => $contactId,
-            ]);
+            $this->finishAutoReply($contactId, 'contact cooldown active');
 
             return;
         }
@@ -120,11 +133,15 @@ class WhatsAppAutoReplyService
             ->get();
 
         if ($messages->isEmpty()) {
+            $this->finishAutoReply($contactId, 'no inbound messages found');
+
             return;
         }
 
         $first = $messages->first();
         if (! $this->passesInboundGate($first, $settings)) {
+            $this->finishAutoReply($contactId, 'inbound gate rejected');
+
             return;
         }
 
@@ -138,6 +155,7 @@ class WhatsAppAutoReplyService
                 'instance' => $instanceName,
                 'configured' => $supportInstance,
             ]);
+            $this->finishAutoReply($contactId, 'instance mismatch at send');
 
             return;
         }
@@ -145,61 +163,76 @@ class WhatsAppAutoReplyService
 
         $contact = $first->contact;
         if (! $contact) {
+            $this->finishAutoReply($contactId, 'contact missing');
+
             return;
         }
 
         $recipient = ($buffer['reply_jid'] ?? '') ?: $this->resolveReplyJid($first) ?: $contact->wa_id;
-
-        $incomingBodies = $messages
-            ->pluck('body')
-            ->map(fn ($b) => trim((string) $b))
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($incomingBodies === []) {
-            return;
-        }
-
-        $initialDelay = $this->humanizer->randomInitialDelaySeconds(
-            (int) ($settings['auto_reply_initial_delay_min'] ?? 2),
-            (int) ($settings['auto_reply_initial_delay_max'] ?? 5),
-        );
-        if ($initialDelay > 0) {
-            sleep($initialDelay);
-        }
-
-        $useAi = (bool) ($settings['auto_reply_use_ai'] ?? false);
-        $replyText = $useAi
-            ? $this->aiGenerator->generate($settings, $incomingBodies)
-            : ($settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.');
-
-        if ($replyText === null || trim($replyText) === '') {
-            $replyText = $settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.';
-        }
-
-        $chunks = $this->humanizer->splitIntoChunks(
-            $replyText,
-            (int) ($settings['auto_reply_chunk_max_chars'] ?? 350),
-            (int) ($settings['auto_reply_max_chunks'] ?? 3),
-        );
-
-        if ($chunks === []) {
-            return;
-        }
 
         if (! WhatsAppRecipientNormalizer::isReplyableRecipient($recipient)) {
             Log::channel('whatsapp')->warning('AutoReply: skipped — non-replyable recipient', [
                 'recipient' => $recipient,
                 'contact_wa_id' => $contact->wa_id,
             ]);
+            $this->finishAutoReply($contactId, 'non-replyable recipient');
 
             return;
         }
 
+        $useAi = (bool) ($settings['auto_reply_use_ai'] ?? false);
+
+        // استئناف: أجزاء مولَّدة في محاولة سابقة تُستخدم كما هي بدل استدعاء الـ AI ثانية
+        $chunks = $buffer['chunks'] ?? null;
+        $sentIndex = (int) ($buffer['sent_index'] ?? 0);
+
+        if (! is_array($chunks) || $chunks === []) {
+            $incomingBodies = $messages
+                ->pluck('body')
+                ->map(fn ($b) => trim((string) $b))
+                ->filter()
+                ->values()
+                ->all();
+
+            if ($incomingBodies === []) {
+                $this->finishAutoReply($contactId, 'empty incoming bodies');
+
+                return;
+            }
+
+            $replyText = $useAi
+                ? $this->aiGenerator->generate($settings, $incomingBodies)
+                : ($settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.');
+
+            if ($replyText === null || trim($replyText) === '') {
+                $replyText = $settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.';
+            }
+
+            $chunks = $this->humanizer->splitIntoChunks(
+                $replyText,
+                (int) ($settings['auto_reply_chunk_max_chars'] ?? 350),
+                (int) ($settings['auto_reply_max_chunks'] ?? 3),
+            );
+
+            if ($chunks === []) {
+                $this->finishAutoReply($contactId, 'empty reply chunks');
+
+                return;
+            }
+
+            $sentIndex = 0;
+            $buffer['chunks'] = $chunks;
+            $buffer['sent_index'] = 0;
+            Cache::put($bufferKey, $buffer, now()->addMinutes(10));
+        }
+
         $typingMs = $this->humanizer->typingDelayMs((int) ($settings['auto_reply_typing_duration'] ?? 3));
 
-        foreach ($chunks as $chunk) {
+        foreach ($chunks as $index => $chunk) {
+            if ($index < $sentIndex) {
+                continue; // وصل للطالب في محاولة سابقة — لا يُعاد إرساله
+            }
+
             try {
                 if ($instanceName !== '' && ($settings['whatsapp_provider'] ?? '') === 'evolution') {
                     $this->presenceService->sendComposing($instanceName, $recipient, $typingMs);
@@ -217,14 +250,19 @@ class WhatsAppAutoReplyService
                     true,
                     $instanceName !== '' ? $instanceName : null,
                 );
+
+                $buffer['sent_index'] = $index + 1;
+                Cache::put($bufferKey, $buffer, now()->addMinutes(10));
             } catch (\Throwable $e) {
                 Log::channel('whatsapp')->error('AutoReply: send chunk failed', [
                     'contact_id' => $contactId,
                     'recipient' => $recipient,
                     'instance' => $instanceName,
+                    'chunk_index' => $index,
                     'error' => $e->getMessage(),
                 ]);
 
+                // الذاكرة تبقى عمداً حتى تُكمل إعادة المحاولة من هذا الجزء بالذات
                 throw $e;
             }
         }
@@ -232,13 +270,38 @@ class WhatsAppAutoReplyService
         $cooldownSeconds = max(1, (int) ($settings['auto_reply_contact_cooldown'] ?? 45));
         Cache::put($cooldownKey, 1, now()->addSeconds($cooldownSeconds));
 
+        $this->finishAutoReply($contactId);
+
         Log::channel('whatsapp')->info('AutoReply: sent', [
             'contact_id' => $contactId,
             'instance' => $instanceName,
             'chunks' => count($chunks),
             'used_ai' => $useAi,
-            'initial_delay' => $initialDelay,
         ]);
+    }
+
+    /**
+     * ينهي دورة الرد: يمسح الذاكرة المؤقتة ومفتاح التوقيت.
+     * كل خروج من processContact يمرّ من هنا فلا تبقى ذاكرة معلّقة تمنع رداً لاحقاً.
+     */
+    protected function finishAutoReply(int $contactId, ?string $skipReason = null): void
+    {
+        Cache::forget(self::BUFFER_PREFIX.$contactId);
+        Cache::forget(self::RUN_AT_PREFIX.$contactId);
+
+        if ($skipReason !== null) {
+            Log::channel('whatsapp')->info('AutoReply: skipped — '.$skipReason, [
+                'contact_id' => $contactId,
+            ]);
+        }
+    }
+
+    /**
+     * تُستدعى من الوظيفة بعد استنفاد كل المحاولات لتحرير الذاكرة المؤقتة.
+     */
+    public function abandonAutoReply(int $contactId): void
+    {
+        $this->finishAutoReply($contactId, 'job exhausted all retries');
     }
 
     /**

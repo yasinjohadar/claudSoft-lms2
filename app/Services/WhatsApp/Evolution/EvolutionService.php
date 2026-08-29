@@ -342,7 +342,8 @@ class EvolutionService
     {
         $instance = $instanceName ?: $this->activeInstanceName();
 
-        return $this->webhookBaseUrl() . '/api/webhooks/evolution/' . urlencode($instance);
+        // rawurlencode لا urlencode: المسافة يجب أن تصير %20 لا + (والراوت يقبل [^/]+)
+        return $this->webhookBaseUrl() . '/api/webhooks/evolution/' . rawurlencode($instance);
     }
 
     public function defaultWebhookEvents(): array

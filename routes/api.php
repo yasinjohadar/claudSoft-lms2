@@ -257,7 +257,9 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
         ->middleware(['throttle:120,1'])
         ->group(function () {
             Route::post('/{instance?}', [\App\Http\Controllers\Api\EvolutionWebhookController::class, 'handle'])
-                ->where('instance', '[a-zA-Z0-9_-]+')
+                // [^/]+ لا [a-zA-Z0-9_-]+ : أسماء instances قد تحوي مسافات ونقاطاً.
+                // الاسم يُستخدم كنصّ فقط ويُطابَق لاحقاً مع evolution_instances.
+                ->where('instance', '[^/]+')
                 ->name('handle');
         });
 

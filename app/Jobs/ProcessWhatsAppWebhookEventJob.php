@@ -18,14 +18,18 @@ class ProcessWhatsAppWebhookEventJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = 'whatsapp';
-
     public int $tries = 3;
     public int $backoff = 5;
 
     public function __construct(
         public WhatsAppWebhookEvent $webhookEvent
-    ) {}
+    ) {
+        // الطابور يُضبط هنا لا بخاصية `public string $queue`: تريت Queueable
+        // يعرّف $queue بلا نوع وبقيمة ابتدائية null، وإعادة تعريفها في الصنف بنوع
+        // أو بقيمة مختلفة تجعل تركيب الصنف فاشلاً (Fatal) في PHP 8 — فلم تكن
+        // هذه الوظيفة قابلة للتحميل أصلاً، وكان كل استدعاء webhook ينهار.
+        $this->onQueue('whatsapp');
+    }
 
     /**
      * Execute the job.

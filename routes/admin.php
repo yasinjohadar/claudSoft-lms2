@@ -1476,6 +1476,7 @@ Route::prefix('admin')
             Route::get('webhook', [EvolutionWebhookAdminController::class, 'index'])->name('webhook.index');
             Route::post('webhook/url', [EvolutionWebhookAdminController::class, 'saveUrl'])->name('webhook.save-url');
             Route::post('webhook/activate', [EvolutionWebhookAdminController::class, 'activate'])->name('webhook.activate');
+            Route::get('webhook/diagnose', [EvolutionWebhookAdminController::class, 'diagnose'])->name('webhook.diagnose');
         });
 
         // ========== Activity Log (Audit Trail) ==========

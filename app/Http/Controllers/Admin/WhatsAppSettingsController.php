@@ -12,6 +12,7 @@ use App\Services\WhatsApp\AutoReply\WhatsAppAutoReplyService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppSettingsController extends Controller
@@ -73,7 +74,14 @@ class WhatsAppSettingsController extends Controller
             'auto_reply_use_ai' => 'nullable',
             'auto_reply_ai_model_id' => 'nullable|integer|exists:ai_models,id',
             'auto_reply_ai_system_prompt' => 'nullable|string|max:4000',
-            'auto_reply_evolution_instance' => 'nullable|string|max:150',
+            // exists: يمنع حفظ اسم instance غير موجود — وهو ما جعل الرد التلقائي
+            // يستهدف "ClaudSoft New" غير الموجود فتُرفض كل الرسائل بـ instance mismatch
+            'auto_reply_evolution_instance' => [
+                'nullable',
+                'string',
+                'max:150',
+                Rule::exists('evolution_instances', 'instance_name'),
+            ],
             'auto_reply_faq_context' => 'nullable|string|max:8000',
             'auto_reply_initial_delay_min' => 'nullable|integer|min:0|max:30',
             'auto_reply_initial_delay_max' => 'nullable|integer|min:0|max:60',
@@ -112,6 +120,7 @@ class WhatsAppSettingsController extends Controller
             'timeout.integer' => 'المهلة الزمنية يجب أن تكون رقماً',
             'timeout.min' => 'المهلة الزمنية يجب أن تكون على الأقل ثانية واحدة',
             'timeout.max' => 'المهلة الزمنية يجب أن تكون أقل من 300 ثانية',
+            'auto_reply_evolution_instance.exists' => 'الـ Instance المختار للرد التلقائي غير موجود. اختر واحداً من القائمة.',
         ]);
 
         try {

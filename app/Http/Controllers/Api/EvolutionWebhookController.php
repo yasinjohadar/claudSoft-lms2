@@ -32,7 +32,7 @@ class EvolutionWebhookController extends Controller
 
         try {
             $payload = $request->json()->all();
-            $instanceName = $instance ?: (string) ($payload['instance'] ?? '');
+            $instanceName = $this->resolveInstanceName($instance, $payload);
 
             // Instance from the webhook URL is authoritative (Evolution body may omit or differ).
             if ($instanceName !== '') {
@@ -94,11 +94,54 @@ class EvolutionWebhookController extends Controller
             }
         }
 
+        // سابقاً كان يُقبل أي طلب حين لا مفتاح ولا سرّ — أي أن بإمكان أي جهة
+        // تزوير رسائل واردة ودفع النظام للإرسال. الآن يُرفض إلا في بيئة التطوير.
         if ($apiKey === '' && $webhookSecret === '') {
-            return true;
+            if (app()->environment('local', 'testing')) {
+                return true;
+            }
+
+            Log::channel('whatsapp')->warning(
+                'Evolution webhook rejected: no api key or webhook secret configured'
+            );
+
+            return false;
         }
 
         return false;
+    }
+
+    /**
+     * يحلّ اسم الـ instance من المسار بشكل دفاعي.
+     *
+     * التسجيلات القديمة تستخدم urlencode (مسافة = +) والجديدة rawurlencode (مسافة = %20)،
+     * ولاحظ أن Laravel يفكّ %20 تلقائياً قبل وصول القيمة هنا. نجرّب الصيغ بالترتيب
+     * ونعتمد أولى الصيغ التي تطابق instance مسجَّلاً فعلاً، وإلا نعود لجسم الطلب.
+     */
+    protected function resolveInstanceName(?string $instance, array $payload): string
+    {
+        $candidates = [];
+
+        if (is_string($instance) && $instance !== '') {
+            $candidates[] = $instance;
+            $candidates[] = rawurldecode($instance);
+            $candidates[] = str_replace('+', ' ', $instance);
+        }
+
+        $fromPayload = trim((string) ($payload['instance'] ?? ''));
+        if ($fromPayload !== '') {
+            $candidates[] = $fromPayload;
+        }
+
+        $candidates = array_values(array_unique(array_filter($candidates, static fn ($c) => trim((string) $c) !== '')));
+
+        foreach ($candidates as $candidate) {
+            if (EvolutionInstance::where('instance_name', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        return (string) ($candidates[0] ?? '');
     }
 
     protected function generateEventId(array $payload, string $instanceName): string
