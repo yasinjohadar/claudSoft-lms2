@@ -48,12 +48,56 @@ class WhatsAppAutoReplyDoctor extends Command
         $this->newLine();
         $this->info('=== الطابور ===');
         if (config('queue.default') === 'database') {
-            $this->line('  وظائف منتظرة: '.DB::table('jobs')->count());
+            $this->line('  وظائف منتظرة (الإجمالي): '.DB::table('jobs')->count());
             $this->line('  وظائف فاشلة (24س): '.DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->count());
-            $oldest = DB::table('jobs')->orderBy('id')->first();
-            if ($oldest) {
-                $this->warn('  أقدم وظيفة منتظرة منذ: '.date('Y-m-d H:i:s', (int) $oldest->available_at)
-                    .' — إن كانت قديمة فالعامل لا يستهلك الطابور (أعد تشغيله بعد كل نشر).');
+
+            // التفصيل حسب اسم الطابور: يكشف ما إن كان العامل يستهلك طابوراً دون آخر
+            $rows = [];
+            foreach (DB::table('jobs')->selectRaw('queue, COUNT(*) c, MIN(available_at) oldest, MAX(attempts) max_attempts')
+                ->groupBy('queue')->orderByDesc('c')->get() as $q) {
+                $rows[] = [
+                    $q->queue,
+                    $q->c,
+                    date('Y-m-d H:i:s', (int) $q->oldest),
+                    $q->max_attempts,
+                ];
+            }
+            if ($rows) {
+                $this->newLine();
+                $this->table(['الطابور', 'عدد', 'أقدم وظيفة', 'أقصى محاولات'], $rows);
+
+                foreach ($rows as [$queue, $count, $oldest, $attempts]) {
+                    if ((int) $attempts > 0) {
+                        $this->error('  طابور «'.$queue.'»: وظائف بلغت '.$attempts.' محاولة ولم تُنهَ — '
+                            .'العامل يلتقطها ثم يموت قبل إتمامها (خطأ قاتل أو نفاد ذاكرة).');
+                    }
+                }
+
+                // تفصيل المتراكم حسب صنف الوظيفة: تشغيل العامل سيُنفّذها كلها دفعة
+                // واحدة، وقد يكون فيها رسائل بريد قديمة لا يصحّ إرسالها الآن.
+                $classes = [];
+                foreach (DB::table('jobs')->select('payload')->limit(3000)->get() as $j) {
+                    $name = data_get(json_decode($j->payload, true), 'displayName', 'unknown');
+                    $classes[$name] = ($classes[$name] ?? 0) + 1;
+                }
+                arsort($classes);
+                if ($classes) {
+                    $this->newLine();
+                    $this->line('  أصناف الوظائف المتراكمة (الأعلى أولاً):');
+                    foreach (array_slice($classes, 0, 8, true) as $name => $count) {
+                        $this->line(sprintf('    %-55s %d', $name, $count));
+                    }
+                    $this->warn('  ⚠ تشغيل العامل سيُنفّذ هذه كلها فوراً — راجعها قبل التشغيل.');
+                }
+
+                $whatsappPending = collect($rows)->firstWhere(0, 'whatsapp');
+                if ($whatsappPending) {
+                    $this->error('  وظائف واتساب منتظرة: '.$whatsappPending[1]
+                        .' ← لا عامل يستهلك طابور «whatsapp».');
+                    $this->line('     تأكد أن أمر supervisor يحوي: --queue=whatsapp,default');
+                } else {
+                    $this->info('  لا وظائف واتساب منتظرة — الطابور يُستهلك أو لم تُجدول وظائف.');
+                }
             }
         } else {
             $this->line('  اتصال الطابور: '.config('queue.default'));
