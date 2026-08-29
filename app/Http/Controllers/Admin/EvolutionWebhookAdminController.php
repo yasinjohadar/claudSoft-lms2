@@ -29,7 +29,9 @@ class EvolutionWebhookAdminController extends Controller
 
         try {
             if ($instance !== '') {
-                $webhook = $this->evolutionService->client()->getWebhook($instance);
+                // clientFor لا client: الـ instance قد يملك رابطاً ومفتاحاً خاصَّين به،
+                // واستخدام المفتاح العام معه يرجع Unauthorized رغم أنه متصل ويعمل.
+                $webhook = $this->evolutionService->clientFor(null, $instance)->getWebhook($instance);
             }
         } catch (\Throwable $e) {
             $error = $e->getMessage();
@@ -110,7 +112,10 @@ class EvolutionWebhookAdminController extends Controller
         $settings = $this->evolutionService->getSettings();
 
         try {
-            $this->evolutionService->client()->setWebhook($instance, [
+            // clientFor لا client: يحترم بيانات اعتماد الـ instance الخاصة إن وُجدت.
+            // ملاحظة: الترويسة تبقى بالمفتاح العام لأن verifyRequest في نقطة الاستقبال
+            // تقارن معه هو، لا مع مفتاح الـ instance.
+            $this->evolutionService->clientFor(null, $instance)->setWebhook($instance, [
                 'enabled' => true,
                 'url' => $webhookUrl,
                 'webhookByEvents' => false,
@@ -200,7 +205,8 @@ class EvolutionWebhookAdminController extends Controller
         // 4) التسجيل الفعلي على Evolution
         $registeredUrl = null;
         try {
-            $webhook = $this->evolutionService->client()->getWebhook($instance);
+            // clientFor: يستخدم مفتاح الـ instance الخاص إن وُجد بدل المفتاح العام
+            $webhook = $this->evolutionService->clientFor(null, $instance)->getWebhook($instance);
             $registeredUrl = data_get($webhook, 'url') ?? data_get($webhook, 'webhook.url');
             $enabled = (bool) (data_get($webhook, 'enabled') ?? data_get($webhook, 'webhook.enabled'));
             $events = (array) (data_get($webhook, 'events') ?? data_get($webhook, 'webhook.events') ?? []);
@@ -217,8 +223,13 @@ class EvolutionWebhookAdminController extends Controller
             $add('حدث MESSAGES_UPSERT مفعَّل', $hasUpsert, implode(', ', array_slice($events, 0, 8)) ?: '—',
                 $hasUpsert ? null : 'بدونه لا تصل الرسائل الواردة إطلاقاً — أعد التفعيل.');
         } catch (\Throwable $e) {
+            $usesOwnCreds = $record && $record->hasCustomCredentials();
             $add('قراءة إعداد Webhook من Evolution', false, $e->getMessage(),
-                'تحقق من رابط Evolution ومفتاح API في إعدادات Evolution.');
+                str_contains(mb_strtolower($e->getMessage()), 'unauthor')
+                    ? ($usesOwnCreds
+                        ? 'مفتاح API الخاص بهذا الـ Instance غير صحيح — عدّله من صفحة الـ Instances.'
+                        : 'مفتاح Evolution API العام غير صحيح — عدّله من إعدادات Evolution.')
+                    : 'تحقق من رابط Evolution ومفتاح API.');
         }
 
         // 5) هل يستجيب الرابط فعلاً؟ (هذا ما يكشف عطل الـ 404)
