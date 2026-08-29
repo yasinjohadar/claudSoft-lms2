@@ -13,13 +13,13 @@ class NotificationHubFallbackCopy
     public static function titleTemplate(string $eventKey, array $data): string
     {
         if ($eventKey === 'student.activity.tracked' && ! empty($data['activity_key'])) {
-            $act = config('notification_hub.activity_fallbacks.'.$data['activity_key']);
+            $act = self::activityFallback((string) $data['activity_key']);
             if (is_array($act) && ! empty($act['title'])) {
                 return (string) $act['title'];
             }
         }
 
-        $ev = config('notification_hub.event_fallbacks.'.$eventKey);
+        $ev = self::eventFallback($eventKey);
         if (is_array($ev) && ! empty($ev['title'])) {
             return (string) $ev['title'];
         }
@@ -30,18 +30,38 @@ class NotificationHubFallbackCopy
     public static function bodyTemplate(string $eventKey, array $data): string
     {
         if ($eventKey === 'student.activity.tracked' && ! empty($data['activity_key'])) {
-            $act = config('notification_hub.activity_fallbacks.'.$data['activity_key']);
+            $act = self::activityFallback((string) $data['activity_key']);
             if (is_array($act) && ! empty($act['body'])) {
                 return (string) $act['body'];
             }
         }
 
-        $ev = config('notification_hub.event_fallbacks.'.$eventKey);
+        $ev = self::eventFallback($eventKey);
         if (is_array($ev) && ! empty($ev['body'])) {
             return (string) $ev['body'];
         }
 
         return 'لديك تحديث جديد على المنصة.';
+    }
+
+    /**
+     * Event keys are dot-namespaced (e.g. "student.lesson.completed"), so a plain
+     * config('notification_hub.event_fallbacks.'.$eventKey) lookup can never reach them —
+     * Laravel's dot-notation resolver treats every dot as a nesting level. Fetch the
+     * whole map once and index into it with a literal array key instead.
+     */
+    private static function eventFallback(string $eventKey): ?array
+    {
+        $all = config('notification_hub.event_fallbacks', []);
+
+        return is_array($all[$eventKey] ?? null) ? $all[$eventKey] : null;
+    }
+
+    private static function activityFallback(string $activityKey): ?array
+    {
+        $all = config('notification_hub.activity_fallbacks', []);
+
+        return is_array($all[$activityKey] ?? null) ? $all[$activityKey] : null;
     }
 
     /**

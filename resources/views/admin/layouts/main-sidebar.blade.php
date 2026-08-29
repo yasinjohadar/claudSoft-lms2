@@ -374,9 +374,24 @@
                                         <i class="fas fa-file-invoice-dollar me-2"></i>الفواتير
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('payments.*') ? 'active' : '' }}">
-                                    <a href="{{ route('payments.index') }}" class="side-menu__item {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                <li class="slide {{ request()->routeIs('payments.index') ? 'active' : '' }}">
+                                    <a href="{{ route('payments.index') }}" class="side-menu__item {{ request()->routeIs('payments.index') ? 'active' : '' }}">
                                         <i class="fas fa-money-bill-wave me-2"></i>المدفوعات
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('payments.completed') ? 'active' : '' }}">
+                                    <a href="{{ route('payments.completed') }}" class="side-menu__item {{ request()->routeIs('payments.completed') ? 'active' : '' }}">
+                                        <i class="fas fa-check-circle me-2"></i>الدفعات المكتملة
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('payments.pending-review') ? 'active' : '' }}">
+                                    <a href="{{ route('payments.pending-review') }}" class="side-menu__item {{ request()->routeIs('payments.pending-review') ? 'active' : '' }}">
+                                        <i class="fas fa-upload me-2"></i>بانتظار المراجعة
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('payments.unpaid') ? 'active' : '' }}">
+                                    <a href="{{ route('payments.unpaid') }}" class="side-menu__item {{ request()->routeIs('payments.unpaid') ? 'active' : '' }}">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>غير مسدد
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('admin.settings.payment-whatsapp-message.*') ? 'active' : '' }}">

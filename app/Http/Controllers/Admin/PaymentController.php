@@ -58,6 +58,76 @@ class PaymentController extends Controller
         ));
     }
 
+    /**
+     * Dedicated page: only completed payments.
+     */
+    public function completed(Request $request)
+    {
+        $request->merge(['status' => 'completed']);
+
+        return $this->renderFilteredIndex($request, 'admin.pages.payments.completed');
+    }
+
+    /**
+     * Dedicated page: only student-submitted payments awaiting admin review.
+     */
+    public function pendingReview(Request $request)
+    {
+        $request->merge(['status' => 'pending_review']);
+
+        return $this->renderFilteredIndex($request, 'admin.pages.payments.pending-review');
+    }
+
+    /**
+     * Dedicated page: only payments on invoices that are not yet fully paid.
+     */
+    public function unpaid(Request $request)
+    {
+        $request->merge(['payment_status' => 'unpaid']);
+
+        return $this->renderFilteredIndex($request, 'admin.pages.payments.unpaid');
+    }
+
+    /**
+     * Shared renderer for the completed/pending-review/unpaid pages. The forced
+     * filter is applied by the caller via $request->merge() before this runs, so
+     * it always wins over any client-supplied query string for that dimension.
+     */
+    private function renderFilteredIndex(Request $request, string $view)
+    {
+        $query = $this->buildPaymentsQuery($request);
+        $stats = $this->computePaymentStats($request);
+        $payments = $query->paginate(20)->withQueryString();
+
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
+        $camps = TrainingCamp::query()->orderBy('name')->get(['id', 'name']);
+        $campGroups = CourseGroup::query()
+            ->where('is_camp', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $globalPendingReviewCount = Payment::where('status', 'pending')
+            ->whereNotNull('receipt_path')
+            ->count();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => view('admin.pages.payments.partials.stats', compact('stats'))->render(),
+                'table' => view('admin.pages.payments.partials.table', compact('payments'))->render(),
+                'pagination' => $payments->hasPages() ? $payments->links()->render() : '',
+                'count' => $payments->total(),
+            ]);
+        }
+
+        return view($view, compact(
+            'payments',
+            'paymentMethods',
+            'camps',
+            'campGroups',
+            'stats',
+            'globalPendingReviewCount'
+        ));
+    }
+
     private function buildPaymentsQuery(Request $request)
     {
         $query = Payment::with([

@@ -61,6 +61,10 @@ return [
             'title' => 'نشاط في التعلم',
             'body' => 'تم تسجيل نشاطك على المنصة.',
         ],
+        'student.lesson.available' => [
+            'title' => 'درس جديد متاح',
+            'body' => 'أصبح درس «{{lesson_title}}» متاحاً الآن ضمن كورس «{{course_title}}».',
+        ],
         'admin.custom' => [
             'title' => '{{title}}',
             'body' => '{{body}}',
@@ -120,6 +124,7 @@ return [
         'student.assignment.graded' => 'تقييم واجب',
         'student.assignment.submitted' => 'تسليم واجب',
         'student.assignment.available' => 'واجب جديد',
+        'student.lesson.available' => 'درس متاح',
         'project.team.join_requested' => 'طلب انضمام',
         'project.team.join_approved' => 'قبول انضمام',
         'project.team.join_rejected' => 'رفض انضمام',

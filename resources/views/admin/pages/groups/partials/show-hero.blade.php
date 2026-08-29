@@ -74,6 +74,16 @@
                         <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                         <span class="group-show-action__text">تعديل</span>
                     </a>
+                    <a href="{{ route('groups.lessons', $group->id) }}"
+                       class="group-show-action group-show-action--info">
+                        <span class="group-show-action__icon"><i class="fe fe-lock"></i></span>
+                        <span class="group-show-action__text">دروس المجموعة</span>
+                    </a>
+                    <a href="{{ route('groups.notifications', $group->id) }}"
+                       class="group-show-action group-show-action--warning">
+                        <span class="group-show-action__icon"><i class="fe fe-bell"></i></span>
+                        <span class="group-show-action__text">إشعارات المجموعة</span>
+                    </a>
                 @else
                     @php $firstCourse = $group->courses->first(); @endphp
                     @if($firstCourse)
@@ -92,6 +102,16 @@
                        class="group-show-action group-show-action--primary">
                         <span class="group-show-action__icon"><i class="fe fe-edit-2"></i></span>
                         <span class="group-show-action__text">تعديل</span>
+                    </a>
+                    <a href="{{ route('groups.lessons', $group->id) }}"
+                       class="group-show-action group-show-action--info">
+                        <span class="group-show-action__icon"><i class="fe fe-lock"></i></span>
+                        <span class="group-show-action__text">دروس المجموعة</span>
+                    </a>
+                    <a href="{{ route('groups.notifications', $group->id) }}"
+                       class="group-show-action group-show-action--warning">
+                        <span class="group-show-action__icon"><i class="fe fe-bell"></i></span>
+                        <span class="group-show-action__text">إشعارات المجموعة</span>
                     </a>
                 @endif
                 <form action="{{ route('groups.delete', $group->id) }}" method="POST" class="d-inline"

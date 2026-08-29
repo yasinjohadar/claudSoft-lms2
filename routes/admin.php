@@ -73,6 +73,8 @@ use App\Http\Controllers\Admin\Gamification\ShopCategoryController as AdminShopC
 use App\Http\Controllers\Admin\Gamification\ShopItemController as AdminShopItemController;
 use App\Http\Controllers\Admin\Gamification\SocialActivityController as AdminSocialActivityController;
 use App\Http\Controllers\Admin\GoogleSettingController;
+use App\Http\Controllers\Admin\GroupLessonAccessController;
+use App\Http\Controllers\Admin\GroupNotificationController;
 use App\Http\Controllers\Admin\GroupRegistrationController;
 use App\Http\Controllers\Admin\GroupRegistrationSettingController;
 use App\Http\Controllers\Admin\ImpersonationController;
@@ -239,6 +241,11 @@ Route::prefix('admin')
         Route::post('invoices/{id}/send-whatsapp', [InvoiceController::class, 'sendPdfViaWhatsApp'])->name('invoices.send-whatsapp');
 
         // Payments routes
+        // Must be registered before the resource route below, so these static
+        // segments aren't swallowed by the payments/{payment} show route.
+        Route::get('payments/completed', [PaymentController::class, 'completed'])->name('payments.completed');
+        Route::get('payments/pending-review', [PaymentController::class, 'pendingReview'])->name('payments.pending-review');
+        Route::get('payments/unpaid', [PaymentController::class, 'unpaid'])->name('payments.unpaid');
         Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show']);
         Route::post('payments/{id}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
         Route::post('payments/{id}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
@@ -428,6 +435,12 @@ Route::prefix('admin')
         Route::get('all-groups/paid', [CourseGroupController::class, 'paidGroups'])->name('groups.paid');
         Route::get('all-groups/free', [CourseGroupController::class, 'freeGroups'])->name('groups.free');
         Route::delete('groups/{id}/delete', [CourseGroupController::class, 'deleteGroup'])->name('groups.delete');
+        Route::get('groups/{group}/lessons', [GroupLessonAccessController::class, 'index'])->name('groups.lessons');
+        Route::post('groups/{group}/lessons/{module}/toggle', [GroupLessonAccessController::class, 'toggle'])->name('groups.lessons.toggle');
+        Route::get('groups/{group}/notifications', [GroupNotificationController::class, 'index'])->name('groups.notifications');
+        Route::post('groups/{group}/notifications', [GroupNotificationController::class, 'store'])->name('groups.notifications.store');
+        Route::get('groups/{group}/notifications/{notification}', [GroupNotificationController::class, 'show'])->name('groups.notifications.show');
+        Route::delete('groups/{group}/notifications/{notification}', [GroupNotificationController::class, 'destroy'])->name('groups.notifications.destroy');
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
 
         // ========== Assignments Routes ==========

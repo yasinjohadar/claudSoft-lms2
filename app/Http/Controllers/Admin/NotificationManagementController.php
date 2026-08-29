@@ -156,7 +156,7 @@ class NotificationManagementController extends Controller
     public function sendToGroup(Request $request)
     {
         $validated = $request->validate([
-            'group_id' => 'required|exists:groups,id',
+            'group_id' => 'required|exists:course_groups,id',
             'type' => 'required|string|max:50',
             'title' => 'required|string|max:255',
             'message' => 'required|string',

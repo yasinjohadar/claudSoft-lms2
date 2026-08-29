@@ -236,6 +236,16 @@ class NotificationHubService
     ): void {
         $data = $databasePayload['data'] ?? [];
 
+        $metadata = [
+            'event_key' => $eventKey,
+            'notification_id' => $notificationId,
+            'source' => 'notification_hub',
+        ];
+
+        if (! empty($data['group_notification_id'])) {
+            $metadata['group_notification_id'] = (string) $data['group_notification_id'];
+        }
+
         GamificationNotification::create([
             'user_id' => $user->id,
             'type' => (string) ($data['type'] ?? $eventKey),
@@ -243,11 +253,7 @@ class NotificationHubService
             'message' => (string) ($databasePayload['body'] ?? ''),
             'icon' => $data['icon'] ?? '🔔',
             'action_url' => $data['action_url'] ?? null,
-            'metadata' => [
-                'event_key' => $eventKey,
-                'notification_id' => $notificationId,
-                'source' => 'notification_hub',
-            ],
+            'metadata' => $metadata,
             'is_read' => false,
         ]);
     }
