@@ -234,6 +234,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 html += '</ul>';
 
+                // ==== النشاط الحديث: يحدد أين تتوقف السلسلة فعلياً ====
+                var a = data.activity || {};
+                html += '<div class="mt-3 border rounded p-2 small">';
+                html += '<div class="fw-semibold mb-2"><i class="ri-pulse-line me-1"></i>النشاط الحديث</div>';
+                html += '<div class="text-muted">آخر حدث Webhook: <strong>' + (a.last_event_at || '—') + '</strong>';
+                if (a.unprocessed_events > 0) {
+                    html += ' — <span class="text-danger">' + a.unprocessed_events + ' حدث لم يُعالَج</span>';
+                }
+                html += '</div>';
+
+                if (a.pending_jobs !== null && a.pending_jobs !== undefined) {
+                    html += '<div class="text-muted">وظائف منتظرة: <strong>' + a.pending_jobs + '</strong>'
+                          + ' — فشلت خلال 24 ساعة: <strong>' + (a.failed_jobs || 0) + '</strong></div>';
+                }
+
+                if (a.worker_stale_hint) {
+                    html += '<div class="alert alert-warning py-2 my-2 mb-0">'
+                          + '<i class="ri-alert-line me-1"></i>' + a.worker_stale_hint + '</div>';
+                }
+
+                if ((a.last_inbound || []).length) {
+                    html += '<div class="mt-2 fw-semibold">آخر الرسائل الواردة</div>';
+                    html += '<table class="table table-sm mb-0 mt-1"><tbody>';
+                    a.last_inbound.forEach(function (m) {
+                        html += '<tr>'
+                              + '<td class="text-nowrap text-muted">' + (m.at || '') + '</td>'
+                              + '<td dir="ltr">' + (m.from || '') + '</td>'
+                              + '<td>' + (m.body || '') + '</td>'
+                              + '<td class="text-nowrap">' + (m.replied
+                                    ? '<span class="text-success">تم الرد (' + (m.reply_status || '') + ')</span>'
+                                    : '<span class="text-danger">بلا رد</span>') + '</td>'
+                              + '</tr>';
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<div class="text-danger mt-2">لا توجد رسائل واردة محفوظة إطلاقاً — '
+                          + 'الأحداث لا تُعالَج أو لا تصل رسائل نصية.</div>';
+                }
+                html += '</div>';
+
                 diagBox.innerHTML = html;
             })
             .catch(function (e) {

@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AIModel;
 use App\Models\EvolutionInstance;
+use App\Models\WhatsAppMessage;
+use App\Models\WhatsAppWebhookEvent;
 use App\Services\QueueWorkerService;
 use App\Services\WhatsApp\Evolution\EvolutionService;
 use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 
@@ -290,6 +293,69 @@ class EvolutionWebhookAdminController extends Controller
             'expected_url' => $expectedUrl,
             'failed_count' => $failed,
             'steps' => $steps,
+            'activity' => $this->recentActivity(),
         ]);
+    }
+
+    /**
+     * لقطة عن النشاط الحديث: تحدّد أين تتوقف السلسلة فعلياً حين تكون كل
+     * الفحوص خضراء ومع ذلك لا يصل رد — وهو ما لا يظهر من الإعدادات وحدها.
+     */
+    protected function recentActivity(): array
+    {
+        $out = [
+            'last_event_at' => null,
+            'unprocessed_events' => 0,
+            'last_inbound' => [],
+            'pending_jobs' => null,
+            'failed_jobs' => null,
+            'worker_stale_hint' => null,
+        ];
+
+        try {
+            $lastEvent = WhatsAppWebhookEvent::orderByDesc('id')->first();
+            $out['last_event_at'] = $lastEvent?->created_at?->diffForHumans();
+            $out['unprocessed_events'] = WhatsAppWebhookEvent::whereNull('processed_at')->count();
+
+            // آخر الرسائل الواردة، ومعها هل تلاها رد صادر لنفس جهة الاتصال
+            $inbound = WhatsAppMessage::with('contact')
+                ->where('direction', WhatsAppMessage::DIRECTION_INBOUND)
+                ->orderByDesc('id')
+                ->limit(5)
+                ->get();
+
+            foreach ($inbound as $msg) {
+                $reply = WhatsAppMessage::where('contact_id', $msg->contact_id)
+                    ->where('direction', WhatsAppMessage::DIRECTION_OUTBOUND)
+                    ->where('id', '>', $msg->id)
+                    ->orderBy('id')
+                    ->first();
+
+                $out['last_inbound'][] = [
+                    'at' => optional($msg->created_at)->format('Y-m-d H:i:s'),
+                    'from' => $msg->contact?->wa_id ?? '—',
+                    'body' => mb_substr((string) $msg->body, 0, 70),
+                    'replied' => (bool) $reply,
+                    'reply_status' => $reply?->status,
+                ];
+            }
+
+            if (config('queue.default') === 'database') {
+                $out['pending_jobs'] = (int) DB::table('jobs')->count();
+                $out['failed_jobs'] = (int) DB::table('failed_jobs')
+                    ->where('failed_at', '>=', now()->subDay())->count();
+            }
+
+            // أشيع سبب لتوقف الردود رغم أن كل شيء يبدو سليماً
+            if (($out['pending_jobs'] ?? 0) > 0) {
+                $out['worker_stale_hint'] = 'توجد وظائف منتظرة في الطابور ولم تُنفَّذ. '
+                    .'إن كان العامل يعمل فهو غالباً يشغّل نسخة قديمة من الكود — '
+                    .'نفّذ php artisan queue:restart بعد كل نشر.';
+            }
+        } catch (\Throwable $e) {
+            $out['error'] = $e->getMessage();
+        }
+
+        return $out;
     }
 }
