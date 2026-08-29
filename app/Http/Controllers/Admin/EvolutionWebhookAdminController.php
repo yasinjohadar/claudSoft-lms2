@@ -52,6 +52,8 @@ class EvolutionWebhookAdminController extends Controller
             'usesCustomWebhookBaseUrl' => $webhookBaseUrl !== '',
             // instance الرد التلقائي قد يختلف عن النشط — نعرضه لتحذير الأدمن
             'autoReplyInstance' => trim((string) ($this->settingsService->getSettings()['auto_reply_evolution_instance'] ?? '')),
+            // رابط خادم Evolution — يُعرض للتفريق بينه وبين رابط المنصة (خلط شائع)
+            'evolutionBaseUrl' => rtrim((string) ($settings['evolution_base_url'] ?? ''), '/'),
         ]);
     }
 

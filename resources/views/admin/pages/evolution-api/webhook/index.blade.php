@@ -5,7 +5,9 @@
     $evoTitle = 'Webhook';
     $evoSubtitle = 'ربط Evolution API بمنصة LMS لاستقبال الرسائل والأحداث';
     $evoBreadcrumb = 'Webhook';
-    $webhookPathSuffix = $instance ? '/api/webhooks/evolution/' . urlencode($instance) : '/api/webhooks/evolution/{instance}';
+    // rawurlencode لا urlencode: المسافة يجب أن تظهر %20 لا + ، مطابقةً لما يبنيه
+    // EvolutionService::webhookUrl() فعلياً — وإلا عرضت المعاينة رابطاً مختلفاً عن المُسجَّل.
+    $webhookPathSuffix = $instance ? '/api/webhooks/evolution/' . rawurlencode($instance) : '/api/webhooks/evolution/{instance}';
 @endphp
 
 @section('evo-content')
@@ -28,7 +30,7 @@
                 <form method="POST" action="{{ route('admin.evolution-api.webhook.save-url') }}" class="mb-4">
                     @csrf
                     <label class="form-label fw-semibold" for="evolution_webhook_base_url">
-                        رابط المنصة العام (Webhook)
+                        رابط منصة LMS العام (وجهة الـ Webhook)
                     </label>
                     <input type="url"
                            name="evolution_webhook_base_url"
@@ -38,9 +40,24 @@
                            placeholder="{{ $appUrl }}"
                            dir="ltr">
                     <small class="text-muted d-block mt-2">
-                        أدخل الرابط العام الذي يصل إليه Evolution (الإنتاج، ngrok، Cloudflare Tunnel…).
-                        اتركه فارغاً لاستخدام <code>APP_URL</code> الحالي: <code>{{ $appUrl }}</code>
+                        رابط <strong>هذه المنصة</strong> (لوحة التحكم التي تتصفحها الآن) كما يراها الإنترنت —
+                        فـ Evolution يرسل إليها الرسائل الواردة. للإنتاج، أو ngrok / Cloudflare Tunnel أثناء التطوير.
+                        اتركه فارغاً لاستخدام <code>APP_URL</code>: <code>{{ $appUrl }}</code>
                     </small>
+                    <div class="alert alert-info small mt-2 mb-0 py-2">
+                        <i class="ri-information-line me-1"></i>
+                        <strong>ليس</strong> رابط خادم Evolution
+                        (<code dir="ltr">{{ $evolutionBaseUrl ?: 'غير محدد' }}</code>) — ذاك يُضبط من
+                        <a href="{{ route('admin.evolution-api.settings.index') }}">إعدادات Evolution</a>.
+                        الاتجاه هنا معاكس: من Evolution ← إلى المنصة.
+                    </div>
+                    @if(!empty($evolutionBaseUrl) && rtrim((string) ($webhookBaseUrl ?? ''), '/') === rtrim($evolutionBaseUrl, '/'))
+                        <div class="alert alert-danger small mt-2 mb-0 py-2">
+                            <i class="ri-error-warning-line me-1"></i>
+                            <strong>القيمة الحالية تساوي رابط خادم Evolution.</strong>
+                            هذا يجعل Evolution يرسل الأحداث إلى نفسه فتضيع (404). ضع رابط منصة LMS بدلاً منها.
+                        </div>
+                    @endif
                     @error('evolution_webhook_base_url')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
