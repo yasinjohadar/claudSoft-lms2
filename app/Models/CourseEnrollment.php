@@ -123,6 +123,15 @@ class CourseEnrollment extends Model
     }
 
     /**
+     * Can the student open the course content?
+     * التسجيل المكتمل يبقى قابلاً للمراجعة (وضع المراجعة) وليس فقط النشط.
+     */
+    public function canAccessContent(): bool
+    {
+        return in_array($this->enrollment_status, ['active', 'completed'], true);
+    }
+
+    /**
      * Check if enrollment is suspended.
      */
     public function isSuspended(): bool

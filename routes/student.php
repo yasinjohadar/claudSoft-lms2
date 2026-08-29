@@ -48,7 +48,9 @@ Route::prefix('student/learn')
     ->middleware(['auth.query_token', 'auth.web_or_sanctum', 'role:student', 'student.profile.complete'])
     ->name('student.learn.')
     ->group(function () {
-        Route::get('/courses/{courseId}', [CourseLearningController::class, 'show'])->name('course');
+        // ملغاة نهائياً — صفحة "نظرة عامة على الكورس" القديمة.
+        // الاسم محفوظ لأن روابط قديمة/إشعارات قد تستخدمه، ويحوّل مباشرة لصفحة الدرس.
+        Route::get('/courses/{courseId}', fn ($courseId) => redirect()->route('student.learn.continue', $courseId))->name('course');
         Route::get('/courses/{courseId}/continue', [CourseController::class, 'learn'])->name('continue');
         Route::get('/modules/{moduleId}', [CourseLearningController::class, 'showModule'])->name('module');
         Route::post('/modules/{moduleId}/mark-complete', [CourseLearningController::class, 'markAsComplete'])->name('module.mark-complete');
@@ -118,8 +120,8 @@ Route::prefix('student')
             // Route::get('/', [CourseController::class, 'index'])->name('index');
             Route::get('/', fn () => redirect()->route('student.courses.my-courses'))->name('index');
             Route::get('/my-courses', [CourseController::class, 'myCourses'])->name('my-courses'); // My enrolled courses
-            // معطّل مؤقتاً — يوجّه مباشرة لصفحة تعلّم الكورس بدل صفحة المعاينة
-            Route::get('/{id}/preview', fn ($id) => redirect()->route('student.learn.course', $id))->name('show');
+            // معطّل مؤقتاً — يوجّه مباشرة لصفحة الدرس (استئناف التعلّم) بدل صفحة المعاينة
+            Route::get('/{id}/preview', fn ($id) => redirect()->route('student.learn.continue', $id))->name('show');
             Route::post('/{id}/enroll', [CourseController::class, 'enroll'])->name('enroll'); // Enroll in course
             Route::delete('/{id}/unenroll', [CourseController::class, 'unenroll'])->name('unenroll'); // Unenroll from course
             Route::post('/{course}/share', [CourseController::class, 'share'])->name('share');

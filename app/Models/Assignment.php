@@ -80,7 +80,7 @@ class Assignment extends Model
         $isEnrolled = CourseEnrollment::query()
             ->where('student_id', $studentId)
             ->where('course_id', $this->course_id)
-            ->where('enrollment_status', 'active')
+            ->whereIn('enrollment_status', ['active', 'completed'])
             ->exists();
 
         if (! $isEnrolled) {
@@ -101,7 +101,7 @@ class Assignment extends Model
     {
         $enrolledCourseIds = CourseEnrollment::query()
             ->where('student_id', $studentId)
-            ->where('enrollment_status', 'active')
+            ->whereIn('enrollment_status', ['active', 'completed'])
             ->pluck('course_id');
 
         return $query

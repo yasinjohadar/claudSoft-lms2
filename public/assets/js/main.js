@@ -37,7 +37,9 @@
             }
             document.querySelector('html').style.setProperty('--primary-rgb', localStorage.primaryRGB);
         }
-        if (localStorage.bodyBgRGB && localStorage.bodylightRGB) {
+        // الوضع المختلط له الأولوية على خلفية داكنة محفوظة من إعداد سابق،
+        // وإلا فُرض الوضع الداكن الكامل وبدا المختلط وكأنه لا يعمل
+        if (localStorage.bodyBgRGB && localStorage.bodylightRGB && !localStorage.valexMixedTheme) {
             if (document.querySelector('.theme-container-background')) {
                 document.querySelector('.theme-container-background').value = localStorage.bodyBgRGB;
             }
@@ -51,7 +53,7 @@
             html.setAttribute('data-menu-styles', 'dark');
             html.setAttribute('data-header-styles', 'dark');
         }
-        if (localStorage.valexdarktheme) {
+        if (localStorage.valexdarktheme && !localStorage.valexMixedTheme) {
             let html = document.querySelector('html');
             html.setAttribute('data-theme-mode', 'dark');
         }

@@ -24,103 +24,6 @@ use Illuminate\Support\Facades\DB;
 class CourseLearningController extends Controller
 {
     /**
-     * Show learning page for a course (sidebar + content).
-     */
-    public function show($courseId)
-    {
-        try {
-            $student = auth()->user();
-            $accessControl = new AccessControlService;
-            $course = Course::with([
-                'sections' => function ($q) {
-                    $q->visible()->orderBy('sort_order');
-                },
-                'sections.modules' => function ($q) {
-                    $q->visible()->orderBy('sort_order');
-                },
-                'sections.modules.modulable',
-            ])->findOrFail($courseId);
-
-            // Check if student is enrolled
-            $enrollment = CourseEnrollment::where('course_id', $courseId)
-                ->where('student_id', $student->id)
-                ->first();
-
-            if (! $enrollment || ! $enrollment->isActive()) {
-                return redirect()
-                    ->route('student.courses.my-courses')
-                    ->with('error', 'أنت غير مسجل في هذا الكورس');
-            }
-
-            $courseAccess = $accessControl->canAccessCourse($course, $student);
-            if (! ($courseAccess['can_access'] ?? false)) {
-                return redirect()
-                    ->route('student.courses.my-courses')
-                    ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
-            }
-
-            $accessibleSections = collect();
-            foreach ($course->sections as $section) {
-                $sectionAccess = $accessControl->canAccessSection($section, $student);
-                if (! ($sectionAccess['can_access'] ?? false)) {
-                    continue;
-                }
-
-                $accessibleModules = $section->modules->filter(function ($module) use ($accessControl, $student) {
-                    $moduleAccess = $accessControl->canAccessModule($module, $student);
-
-                    if (! (bool) ($moduleAccess['can_access'] ?? false)) {
-                        return false;
-                    }
-
-                    return $this->isAssignmentModuleVisibleToStudent($module, (int) $student->id);
-                })->values();
-
-                $section->setRelation('modules', $accessibleModules);
-
-                if ($accessibleModules->isNotEmpty()) {
-                    $accessibleSections->push($section);
-                }
-            }
-
-            $course->setRelation('sections', $accessibleSections->values());
-
-            // Update last accessed
-            $enrollment->touchLastAccessed();
-
-            // Get first module to display
-            $currentModule = null;
-            if ($course->sections->count() > 0) {
-                $firstSection = $course->sections->first();
-                if ($firstSection->modules->count() > 0) {
-                    $currentModule = $firstSection->modules->first();
-                }
-            }
-
-            // Get completion data for all modules
-            $completedModules = $this->completedModuleIdsForStudent(
-                $student->id,
-                (int) $courseId
-            );
-
-            $courseReferenceDocs = $this->referenceDocumentationForCourse($course->id);
-
-            return view('student.courses.learning.show', compact(
-                'course',
-                'enrollment',
-                'currentModule',
-                'completedModules',
-                'courseReferenceDocs'
-            ));
-
-        } catch (\Exception $e) {
-            return redirect()
-                ->route('student.courses.my-courses')
-                ->with('error', 'حدث خطأ أثناء تحميل الكورس: '.$e->getMessage());
-        }
-    }
-
-    /**
      * Show specific module content.
      */
     public function showModule($moduleId)
@@ -246,7 +149,7 @@ class CourseLearningController extends Controller
 
         if (! $this->isAssignmentModuleVisibleToStudent($module, (int) $student->id)) {
             return redirect()
-                ->route('student.courses.learn', $module->course_id)
+                ->route('student.courses.show', $module->course_id)
                 ->with('error', 'هذا الواجب مخصص لمجموعة أخرى ولا يظهر لحسابك.');
         }
 
@@ -377,7 +280,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (! $enrollment || ! $enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 DB::rollBack();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -482,7 +385,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (! $enrollment || ! $enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 DB::rollBack();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -621,7 +524,7 @@ class CourseLearningController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (! $enrollment || ! $enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 return redirect()
                     ->back()
                     ->with('error', 'أنت غير مسجل في هذا الكورس');

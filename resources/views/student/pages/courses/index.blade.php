@@ -321,7 +321,7 @@
                                                 $titleEnrollment = auth()->user()->courseEnrollments()->where('course_id', $course->id)->first();
                                             @endphp
                                             @if($titleEnrollment && $titleEnrollment->enrollment_status == 'active')
-                                                <a href="{{ route('student.learn.course', $course->id) }}"
+                                                <a href="{{ route('student.learn.continue', $course->id) }}"
                                                    class="text-dark text-decoration-none">
                                                     {{ $course->title }}
                                                 </a>
@@ -381,7 +381,7 @@
 
                                             @if($enrollment)
                                                 @if($enrollment->enrollment_status == 'active')
-                                                    <a href="{{ route('student.learn.course', $course->id) }}"
+                                                    <a href="{{ route('student.learn.continue', $course->id) }}"
                                                        class="btn btn-success btn-sm">
                                                         <i class="fas fa-play me-1"></i>متابعة التعلم
                                                     </a>

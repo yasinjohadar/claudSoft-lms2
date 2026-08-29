@@ -32,7 +32,7 @@ class StudentModuleProgressApiService
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (! $enrollment || ! $enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 DB::rollBack();
 
                 return [
@@ -131,7 +131,7 @@ class StudentModuleProgressApiService
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (! $enrollment || ! $enrollment->isActive()) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 DB::rollBack();
 
                 return [

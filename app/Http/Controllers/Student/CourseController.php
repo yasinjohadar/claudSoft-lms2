@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\Assignment;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseEnrollment;
@@ -387,46 +388,73 @@ class CourseController extends Controller
     public function learn($id)
     {
         try {
-            $course = Course::with(['sections.modules'])->findOrFail($id);
             $student = auth()->user();
+            $accessControl = new AccessControlService;
+
+            $course = Course::with([
+                'sections' => fn ($q) => $q->visible()->orderBy('sort_order'),
+                'sections.modules' => fn ($q) => $q->visible()->orderBy('sort_order'),
+                'sections.modules.modulable',
+            ])->findOrFail($id);
 
             $enrollment = CourseEnrollment::where('course_id', $course->id)
                 ->where('student_id', $student->id)
-                ->where('enrollment_status', 'active')
                 ->first();
 
-            if (!$enrollment) {
+            if (! $enrollment || ! $enrollment->canAccessContent()) {
                 return redirect()
-                    ->route('student.courses.show', $course->id)
-                    ->with('error', 'يجب التسجيل في الكورس أولاً');
+                    ->route('student.courses.my-courses')
+                    ->with('error', 'أنت غير مسجل في هذا الكورس');
+            }
+
+            $courseAccess = $accessControl->canAccessCourse($course, $student);
+            if (! ($courseAccess['can_access'] ?? false)) {
+                return redirect()
+                    ->route('student.courses.my-courses')
+                    ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
             }
 
             // Update last accessed
             $enrollment->touchLastAccessed();
 
-            // Find next incomplete module
-            $nextModule = null;
+            // الدروس المتاحة فعلياً للطالب بالترتيب
+            $accessibleModules = collect();
             foreach ($course->sections as $section) {
+                if (! ($accessControl->canAccessSection($section, $student)['can_access'] ?? false)) {
+                    continue;
+                }
+
                 foreach ($section->modules as $module) {
-                    if (!$module->isCompletedBy($student)) {
-                        $nextModule = $module;
-                        break 2;
+                    if (! ($accessControl->canAccessModule($module, $student)['can_access'] ?? false)) {
+                        continue;
                     }
+
+                    // واجب مخصص لمجموعة أخرى لا يظهر لهذا الطالب
+                    if ($module->module_type === 'assignment'
+                        && $module->modulable instanceof Assignment
+                        && ! $module->modulable->isVisibleToStudent((int) $student->id)) {
+                        continue;
+                    }
+
+                    $accessibleModules->push($module);
                 }
             }
 
-            if ($nextModule) {
-                return redirect()->route('student.learn.module', $nextModule->id);
+            if ($accessibleModules->isEmpty()) {
+                return redirect()
+                    ->route('student.courses.my-courses')
+                    ->with('error', 'لا يوجد محتوى متاح في هذا الكورس حالياً');
             }
 
-            // All modules completed
-            return redirect()
-                ->route('student.courses.show', $course->id)
-                ->with('success', 'تهانينا! لقد أكملت جميع وحدات الكورس');
+            // استئناف: أول درس غير مكتمل، وإن اكتملت كلها نفتح أول درس (وضع المراجعة)
+            $targetModule = $accessibleModules->first(fn ($module) => ! $module->isCompletedBy($student))
+                ?? $accessibleModules->first();
+
+            return redirect()->route('student.learn.module', $targetModule->id);
         } catch (\Exception $e) {
             return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+                ->route('student.courses.my-courses')
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 

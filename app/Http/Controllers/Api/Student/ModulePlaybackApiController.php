@@ -195,7 +195,7 @@ HTML;
             ->where('student_id', $user->id)
             ->first();
 
-        if (! $enrollment || ! $enrollment->isActive()) {
+        if (! $enrollment || ! $enrollment->canAccessContent()) {
             return response()->json([
                 'success' => false,
                 'message' => 'أنت غير مسجل في هذا الكورس',

@@ -625,7 +625,7 @@
     <!-- Action Buttons -->
     <div class="card mt-4">
         <div class="card-body text-center">
-            <a href="{{ route('student.learn.course', $attempt->questionModule->courseModules->first()->course_id ?? '#') }}"
+            <a href="{{ route('student.learn.continue', $attempt->questionModule->courseModules->first()->course_id ?? '#') }}"
                class="btn btn-primary btn-lg">
                 <i class="fas fa-arrow-right me-2"></i>العودة إلى الكورس
             </a>

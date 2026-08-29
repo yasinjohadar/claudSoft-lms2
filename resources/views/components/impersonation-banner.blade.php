@@ -8,15 +8,33 @@
             <strong class="impersonation-bar__user">{{ auth()->user()->name }}</strong>
             <span class="impersonation-bar__meta">الأدمن: {{ $originalUser->name }}</span>
         </div>
-        <form action="{{ route('admin.stop-impersonate') }}" method="POST" class="impersonation-bar__actions">
-            @csrf
-            <button type="submit" class="impersonation-bar__btn">
-                <i class="fe fe-log-out"></i>
-                العودة لحساب الأدمن
+        <div class="impersonation-bar__actions">
+            <form action="{{ route('admin.stop-impersonate') }}" method="POST" class="impersonation-bar__form">
+                @csrf
+                <button type="submit" class="impersonation-bar__btn">
+                    <i class="fe fe-log-out"></i>
+                    العودة لحساب الأدمن
+                </button>
+            </form>
+            <button type="button"
+                    class="impersonation-bar__close"
+                    data-impersonation-hide
+                    title="إخفاء الشريط"
+                    aria-label="إخفاء شريط وضع المشاهدة">
+                <i class="fe fe-x" aria-hidden="true"></i>
             </button>
-        </form>
+        </div>
     </div>
 </div>
+
+<button type="button"
+        class="impersonation-bar__restore"
+        data-impersonation-show
+        title="إظهار شريط وضع المشاهدة"
+        aria-label="إظهار شريط وضع المشاهدة"
+        hidden>
+    <i class="fe fe-eye" aria-hidden="true"></i>
+</button>
 
 <style>
 .impersonation-bar {
@@ -76,7 +94,70 @@
 }
 
 .impersonation-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     margin: 0;
+}
+
+.impersonation-bar__form {
+    margin: 0;
+}
+
+.impersonation-bar__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    padding: 0;
+    border: 1px solid rgba(226, 232, 240, 0.22);
+    background: transparent;
+    color: #cbd5e1;
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.impersonation-bar__close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(226, 232, 240, 0.45);
+    color: #fff;
+}
+
+/* زر إعادة إظهار الشريط بعد إغلاقه */
+.impersonation-bar__restore {
+    position: fixed;
+    inset-block-start: 0.6rem;
+    inset-inline-start: 0.6rem;
+    z-index: 1056;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.55;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.impersonation-bar__restore:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.impersonation-bar__restore[hidden] {
+    display: none !important;
 }
 
 .impersonation-bar__btn {
@@ -101,8 +182,63 @@
     color: #fff;
 }
 
+.impersonation-bar[hidden] {
+    display: none !important;
+}
+
 [data-theme-mode="dark"] .impersonation-bar {
     background: #020617;
 }
+
+[data-theme-mode="dark"] .impersonation-bar__restore {
+    background: #020617;
+}
 </style>
+
+<script>
+(function () {
+    var STORAGE_KEY = 'impersonationBarHidden';
+    var bar = document.querySelector('.impersonation-bar');
+    var restoreBtn = document.querySelector('[data-impersonation-show]');
+    var hideBtn = document.querySelector('[data-impersonation-hide]');
+
+    if (!bar || !restoreBtn || !hideBtn) {
+        return;
+    }
+
+    function readState() {
+        try {
+            return sessionStorage.getItem(STORAGE_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function writeState(hidden) {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, hidden ? '1' : '0');
+        } catch (e) {
+            /* الوضع الخاص قد يمنع التخزين — نتجاهل */
+        }
+    }
+
+    function apply(hidden) {
+        bar.hidden = hidden;
+        restoreBtn.hidden = !hidden;
+    }
+
+    hideBtn.addEventListener('click', function () {
+        apply(true);
+        writeState(true);
+    });
+
+    restoreBtn.addEventListener('click', function () {
+        apply(false);
+        writeState(false);
+    });
+
+    // يبقى مخفياً أثناء التنقل بين الصفحات ضمن نفس الجلسة
+    apply(readState());
+})();
+</script>
 @endif

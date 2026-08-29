@@ -48,7 +48,7 @@
 @stack('chart-scripts')
 
 <!-- Custom-Switcher JS -->
-<script src="{{ asset('assets/js/custom-switcher.min.js') }}"></script>
+<script src="{{ asset_v('assets/js/custom-switcher.min.js') }}"></script>
 
 <script>
     (function () {
@@ -140,7 +140,7 @@
 </script>
 
 <!-- Custom JS -->
-<script src="{{ asset('assets/js/custom.js') }}"></script>
+<script src="{{ asset_v('assets/js/custom.js') }}"></script>
 
 <script>
     (function () {

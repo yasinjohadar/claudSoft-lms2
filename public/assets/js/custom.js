@@ -258,6 +258,7 @@
       document.querySelector("#switcher-background1").checked = false;
       document.querySelector("#switcher-background").checked = false;
       localStorage.removeItem("valexdarktheme");
+      localStorage.removeItem("valexMixedTheme");
       localStorage.removeItem("valexMenu");
       localStorage.removeItem("valexHeader");
       localStorage.removeItem("bodylightRGB");
@@ -286,6 +287,8 @@
       document.querySelector("#switcher-background1").checked = false;
       document.querySelector("#switcher-background").checked = false;
       localStorage.setItem("valexdarktheme", "true");
+      // بدونه يعيد main.js فرض الوضع المختلط عند التحميل التالي
+      localStorage.removeItem("valexMixedTheme");
       localStorage.setItem("valexMenu", "dark");
       localStorage.setItem("valexHeader", "dark");
       localStorage.removeItem("bodylightRGB");

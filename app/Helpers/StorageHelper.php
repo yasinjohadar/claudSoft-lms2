@@ -599,3 +599,22 @@ if (!function_exists('cloud_file_url')) {
         return app(\App\Services\Storage\StorageHelperService::class)->getFileUrl($disk, ltrim($path, '/'));
     }
 }
+
+if (!function_exists('asset_v')) {
+    /**
+     * رابط أصل ثابت مع بصمة إصدار مبنية على وقت تعديل الملف.
+     * ضروري لأن ملفات assets تُخدَّم بكاش طويل (max-age) وبدون ETag،
+     * فبدون البصمة تبقى المتصفحات على النسخة القديمة بعد كل نشر.
+     */
+    function asset_v(string $path): string
+    {
+        $url = asset($path);
+        $file = public_path($path);
+
+        if (is_file($file)) {
+            $url .= (str_contains($url, '?') ? '&' : '?').'v='.filemtime($file);
+        }
+
+        return $url;
+    }
+}

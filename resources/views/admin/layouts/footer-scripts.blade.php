@@ -48,13 +48,13 @@
 @stack('dashboard-scripts')
 
 <!-- Main JS (Theme initialization - must load first) -->
-<script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset_v('assets/js/main.js') }}"></script>
 
 <!-- Custom-Switcher JS -->
-<script src="{{ asset('assets/js/custom-switcher.min.js') }}" defer></script>
+<script src="{{ asset_v('assets/js/custom-switcher.min.js') }}" defer></script>
 
 <!-- Custom JS -->
-<script src="{{ asset('assets/js/custom.js') }}" defer></script>
+<script src="{{ asset_v('assets/js/custom.js') }}" defer></script>
 
 <!-- Show page after all resources load -->
 <script>

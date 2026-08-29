@@ -89,7 +89,7 @@ class CourseNotificationListener
                 return;
             }
 
-            $actionUrl = $courseId ? route('student.learn.course', ['courseId' => $courseId]) : null;
+            $actionUrl = $courseId ? route('student.learn.continue', ['courseId' => $courseId]) : null;
 
             // إرسال إشعار إتمام الدرس
             $this->notificationService->send(
