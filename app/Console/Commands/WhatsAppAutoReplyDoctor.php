@@ -50,10 +50,12 @@ class WhatsAppAutoReplyDoctor extends Command
         $this->newLine();
         $this->info('=== الطابور ===');
         $this->line('  الاتصال المُعتمَد حالياً: '.config('queue.default'));
+        $this->line('  طابور وظائف واتساب: '.config('whatsapp.queue', 'whatsapp')
+            .'  ← يجب أن يستمع له العامل');
 
         // أطوال طوابير Redis (حين يكون هو الاتصال المُعتمَد)
         if (config('queue.default') === 'redis') {
-            foreach (['whatsapp', 'default'] as $q) {
+            foreach (array_unique([config('whatsapp.queue', 'whatsapp'), 'default']) as $q) {
                 try {
                     $this->line('  redis / '.$q.': '.Queue::connection('redis')->size($q).' وظيفة');
                 } catch (\Throwable $e) {

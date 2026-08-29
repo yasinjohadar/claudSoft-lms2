@@ -55,7 +55,7 @@ class EvolutionWebhookController extends Controller
                 ['payload' => $payload]
             );
 
-            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent)->onQueue('whatsapp');
+            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent)->onQueue(config('whatsapp.queue', 'whatsapp'));
 
             Log::channel('whatsapp')->info('Evolution webhook queued', [
                 'event_id' => $eventId,

@@ -97,7 +97,7 @@ class WhatsAppWebhookController extends Controller
             );
 
             // Dispatch job to process event
-            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent)->onQueue('whatsapp');
+            ProcessWhatsAppWebhookEventJob::dispatch($webhookEvent)->onQueue(config('whatsapp.queue', 'whatsapp'));
 
             Log::channel('whatsapp')->info('Webhook event received and queued', [
                 'event_id' => $eventId,

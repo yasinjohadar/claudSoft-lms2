@@ -35,7 +35,7 @@ class ProcessWhatsAppAutoReplyJob implements ShouldQueue
         // الطابور يُضبط هنا لا بخاصية `public string $queue`: تريت Queueable
         // يعرّف $queue بلا نوع وبقيمة ابتدائية null، وإعادة تعريفها في الصنف بنوع
         // أو بقيمة مختلفة تجعل تركيب الصنف فاشلاً (Fatal) في PHP 8.
-        $this->onQueue('whatsapp');
+        $this->onQueue(config('whatsapp.queue', 'whatsapp'));
     }
 
     /**

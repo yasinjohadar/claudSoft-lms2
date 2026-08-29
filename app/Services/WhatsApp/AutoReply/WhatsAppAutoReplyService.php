@@ -72,7 +72,7 @@ class WhatsAppAutoReplyService
 
         ProcessWhatsAppAutoReplyJob::dispatch($contactId)
             ->delay($runAt)
-            ->onQueue('whatsapp');
+            ->onQueue(config('whatsapp.queue', 'whatsapp'));
 
         Log::channel('whatsapp')->info('AutoReply: debounced job scheduled', [
             'contact_id' => $contactId,

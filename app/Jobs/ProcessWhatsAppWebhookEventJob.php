@@ -28,7 +28,7 @@ class ProcessWhatsAppWebhookEventJob implements ShouldQueue
         // يعرّف $queue بلا نوع وبقيمة ابتدائية null، وإعادة تعريفها في الصنف بنوع
         // أو بقيمة مختلفة تجعل تركيب الصنف فاشلاً (Fatal) في PHP 8 — فلم تكن
         // هذه الوظيفة قابلة للتحميل أصلاً، وكان كل استدعاء webhook ينهار.
-        $this->onQueue('whatsapp');
+        $this->onQueue(config('whatsapp.queue', 'whatsapp'));
     }
 
     /**

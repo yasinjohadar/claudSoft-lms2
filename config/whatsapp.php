@@ -39,6 +39,18 @@ return [
     'evolution_connect_timeout' => env('EVOLUTION_API_CONNECT_TIMEOUT', 30),
 
     'retry_attempts' => env('WHATSAPP_RETRY_ATTEMPTS', 3),
+
+    /*
+    | اسم الطابور الذي تُرسَل إليه وظائف واتساب.
+    |
+    | الافتراضي طابور مستقل ('whatsapp') ليأخذ الأولوية على الوظائف الثقيلة،
+    | وهو يتطلب أن يستمع العامل له: queue:work --queue=whatsapp,default
+    |
+    | إن تعذّر تعديل إعداد العامل (لا صلاحية root مثلاً) اضبط WHATSAPP_QUEUE=default
+    | فتذهب وظائف واتساب إلى الطابور الافتراضي الذي يقرأه أي عامل، على حساب
+    | مزاحمتها لبقية الوظائف في الانتظار.
+    */
+    'queue' => env('WHATSAPP_QUEUE', 'whatsapp'),
 ];
 
 
