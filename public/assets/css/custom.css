@@ -7497,6 +7497,15 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     text-overflow: ellipsis;
 }
 
+/* يتبع لون السايدبار نفسه (data-menu-styles) لا لون المحتوى العام (data-theme-mode) —
+   حتى يبقى مقروءاً في وضع مختلط حيث يختلف الوضعان عن بعضهما */
+[data-menu-styles=dark] .student-portal .main-sidebar-header .student-sidebar-brand__title {
+    color: #fff;
+}
+[data-menu-styles=light] .student-portal .main-sidebar-header .student-sidebar-brand__title {
+    color: #222528;
+}
+
 @media (min-width: 992px) {
     [data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .student-portal .student-sidebar-brand__title,
     [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .student-portal .student-sidebar-brand__title,
@@ -8186,6 +8195,10 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
 
 .student-portal .student-theme-switcher__grid--2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.student-portal .student-theme-switcher__grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .student-portal .student-theme-option {
@@ -10303,6 +10316,15 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* يتبع لون السايدبار نفسه (data-menu-styles) لا لون المحتوى العام (data-theme-mode) —
+   حتى يبقى مقروءاً في وضع Mixed حيث يختلف الوضعان عن بعضهما */
+[data-menu-styles=dark] .admin-portal .main-sidebar-header .admin-sidebar-brand__title {
+    color: #fff;
+}
+[data-menu-styles=light] .admin-portal .main-sidebar-header .admin-sidebar-brand__title {
+    color: #222528;
 }
 
 @media (min-width: 992px) {

@@ -36,6 +36,14 @@
                                     <input class="form-check-input" type="radio" name="theme-style" id="switcher-dark-theme">
                                 </div>
                             </div>
+                            <div class="col-4">
+                                <div class="form-check switch-select">
+                                    <label class="form-check-label" for="switcher-mixed-theme">
+                                        Mixed
+                                    </label>
+                                    <input class="form-check-input" type="radio" name="theme-style" id="switcher-mixed-theme">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="">

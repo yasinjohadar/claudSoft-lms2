@@ -15,7 +15,7 @@
                 <i class="fe fe-sun"></i>
                 وضع العرض
             </h6>
-            <div class="student-theme-switcher__grid student-theme-switcher__grid--2">
+            <div class="student-theme-switcher__grid student-theme-switcher__grid--3">
                 <label class="student-theme-option">
                     <input class="visually-hidden" type="radio" name="theme-style" id="switcher-light-theme" checked>
                     <span class="student-theme-option__icon"><i class="fe fe-sun"></i></span>
@@ -25,6 +25,11 @@
                     <input class="visually-hidden" type="radio" name="theme-style" id="switcher-dark-theme">
                     <span class="student-theme-option__icon"><i class="fe fe-moon"></i></span>
                     <span class="student-theme-option__text">داكن</span>
+                </label>
+                <label class="student-theme-option">
+                    <input class="visually-hidden" type="radio" name="theme-style" id="switcher-mixed-theme">
+                    <span class="student-theme-option__icon"><i class="fe fe-layout"></i></span>
+                    <span class="student-theme-option__text">مختلط</span>
                 </label>
             </div>
         </section>

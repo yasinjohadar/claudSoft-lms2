@@ -5,6 +5,11 @@
         document.querySelector("html").setAttribute("data-menu-styles", "dark")
         document.querySelector("html").setAttribute("data-header-styles", "dark")
     }
+    if (localStorage.getItem("valexMixedTheme")) {
+        document.querySelector("html").setAttribute("data-theme-mode", "light")
+        document.querySelector("html").setAttribute("data-menu-styles", "dark")
+        document.querySelector("html").setAttribute("data-header-styles", "light")
+    }
     if (localStorage.valexrtl) {
         let html = document.querySelector('html');
         html.setAttribute("dir", "rtl");

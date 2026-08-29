@@ -23,6 +23,12 @@
                 document.documentElement.setAttribute("data-menu-styles", "dark");
                 document.documentElement.setAttribute("data-header-styles", "dark");
             }
+            // Apply mixed mode (dark sidebar + light header/content) immediately
+            if (localStorage.getItem("valexMixedTheme")) {
+                document.documentElement.setAttribute("data-theme-mode", "light");
+                document.documentElement.setAttribute("data-menu-styles", "dark");
+                document.documentElement.setAttribute("data-header-styles", "light");
+            }
             // Set loader background color based on theme
             const isDark = localStorage.getItem("valexdarktheme");
             document.documentElement.style.setProperty('--loader-bg', isDark ? '#0d0d0d' : '#fff');
