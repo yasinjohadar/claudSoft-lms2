@@ -11,6 +11,8 @@ use App\Support\WhatsAppRecipientNormalizer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * يشخّص سبب عدم وصول الرد التلقائي بفحص آخر رسالة واردة حقيقية،
@@ -47,8 +49,25 @@ class WhatsAppAutoReplyDoctor extends Command
 
         $this->newLine();
         $this->info('=== الطابور ===');
-        if (config('queue.default') === 'database') {
-            $this->line('  وظائف منتظرة (الإجمالي): '.DB::table('jobs')->count());
+        $this->line('  الاتصال المُعتمَد حالياً: '.config('queue.default'));
+
+        // أطوال طوابير Redis (حين يكون هو الاتصال المُعتمَد)
+        if (config('queue.default') === 'redis') {
+            foreach (['whatsapp', 'default'] as $q) {
+                try {
+                    $this->line('  redis / '.$q.': '.Queue::connection('redis')->size($q).' وظيفة');
+                } catch (\Throwable $e) {
+                    $this->error('  تعذّر قراءة طابور redis/'.$q.': '.$e->getMessage());
+                }
+            }
+        }
+
+        // جدول jobs يُفحص دائماً: بعد التحويل إلى redis تبقى وظائف قديمة عالقة
+        // في قاعدة البيانات بلا مستهلك، ولا يراها أحد إن لم نعرضها هنا.
+        if (Schema::hasTable('jobs') && DB::table('jobs')->exists()) {
+            $this->newLine();
+            $this->warn('  ⚠ متبقٍ في جدول jobs بقاعدة البيانات (لا يستهلكه أحد إن كان الاتصال redis):');
+            $this->line('  الإجمالي: '.DB::table('jobs')->count());
             $this->line('  وظائف فاشلة (24س): '.DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->count());
 
             // التفصيل حسب اسم الطابور: يكشف ما إن كان العامل يستهلك طابوراً دون آخر
@@ -92,15 +111,15 @@ class WhatsAppAutoReplyDoctor extends Command
 
                 $whatsappPending = collect($rows)->firstWhere(0, 'whatsapp');
                 if ($whatsappPending) {
-                    $this->error('  وظائف واتساب منتظرة: '.$whatsappPending[1]
-                        .' ← لا عامل يستهلك طابور «whatsapp».');
-                    $this->line('     تأكد أن أمر supervisor يحوي: --queue=whatsapp,default');
-                } else {
-                    $this->info('  لا وظائف واتساب منتظرة — الطابور يُستهلك أو لم تُجدول وظائف.');
+                    $this->error('  وظائف واتساب منتظرة في قاعدة البيانات: '.$whatsappPending[1]);
                 }
+
+                $this->newLine();
+                $this->comment('  لتفريغها (تعمل مهما كان QUEUE_CONNECTION لأن الاتصال محدَّد صراحةً):');
+                $this->line('    php artisan queue:work database --queue=whatsapp,default --stop-when-empty');
             }
         } else {
-            $this->line('  اتصال الطابور: '.config('queue.default'));
+            $this->info('  جدول jobs فارغ — لا وظائف عالقة في قاعدة البيانات.');
         }
 
         $lastEvent = WhatsAppWebhookEvent::orderByDesc('id')->first();
