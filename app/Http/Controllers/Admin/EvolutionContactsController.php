@@ -21,7 +21,7 @@ class EvolutionContactsController extends Controller
         $instance = $this->evolutionService->activeInstanceName();
 
         try {
-            $response = $this->evolutionService->client()->findContacts($instance);
+            $response = $this->evolutionService->clientFor(null, $instance)->findContacts($instance);
             $contacts = is_array($response) ? $response : [];
         } catch (\Throwable $e) {
             $error = $e->getMessage();
@@ -33,7 +33,7 @@ class EvolutionContactsController extends Controller
     public function sync(): RedirectResponse
     {
         $instance = $this->evolutionService->activeInstanceName();
-        $response = $this->evolutionService->client()->findContacts($instance);
+        $response = $this->evolutionService->clientFor(null, $instance)->findContacts($instance);
         $list = is_array($response) ? $response : [];
 
         $count = 0;

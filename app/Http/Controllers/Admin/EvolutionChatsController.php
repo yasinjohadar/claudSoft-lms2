@@ -19,7 +19,7 @@ class EvolutionChatsController extends Controller
         $instance = $this->evolutionService->activeInstanceName();
 
         try {
-            $response = $this->evolutionService->client()->findChats($instance);
+            $response = $this->evolutionService->clientFor(null, $instance)->findChats($instance);
             $chats = is_array($response) ? $response : [];
         } catch (\Throwable $e) {
             $error = $e->getMessage();

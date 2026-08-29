@@ -121,11 +121,14 @@ class EvolutionSendController extends Controller
         }
 
         $payload['number'] = $validated['to'];
-        $client = $this->evolutionService->client();
 
         try {
             $result = $this->rotatingSendService->sendWithRotation(
-                function (string $instanceName) use ($client, $type, $payload) {
+                function (string $instanceName) use ($type, $payload) {
+                    // العميل يُبنى داخل الحلقة: التدوير يختار instance مختلفاً كل محاولة،
+                    // وبناؤه مرة واحدة بالمفتاح العام يفشل مع instances لها مفاتيح خاصة.
+                    $client = $this->evolutionService->clientFor(null, $instanceName);
+
                     return match ($type) {
                         'buttons' => $client->sendButtons($instanceName, $payload),
                         'list' => $client->sendList($instanceName, $payload),
