@@ -15,12 +15,14 @@ class GroupNotification extends Model
         'title',
         'message',
         'type',
+        'is_message',
         'action_url',
         'recipients_count',
     ];
 
     protected $casts = [
         'recipients_count' => 'integer',
+        'is_message' => 'boolean',
     ];
 
     public function group()

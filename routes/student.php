@@ -16,6 +16,7 @@ use App\Http\Controllers\Student\Gamification\FriendshipController as StudentFri
 use App\Http\Controllers\Student\Gamification\InventoryController as StudentInventoryController;
 use App\Http\Controllers\Student\Gamification\LeaderboardController as StudentLeaderboardController;
 use App\Http\Controllers\Student\Gamification\LevelController as StudentLevelController;
+use App\Http\Controllers\Student\Gamification\MessageController as StudentMessageController;
 use App\Http\Controllers\Student\Gamification\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Student\Gamification\PointsController as StudentPointsController;
 use App\Http\Controllers\Student\Gamification\ShopController as StudentShopController;
@@ -117,7 +118,8 @@ Route::prefix('student')
             // Route::get('/', [CourseController::class, 'index'])->name('index');
             Route::get('/', fn () => redirect()->route('student.courses.my-courses'))->name('index');
             Route::get('/my-courses', [CourseController::class, 'myCourses'])->name('my-courses'); // My enrolled courses
-            Route::get('/{id}/preview', [CourseController::class, 'show'])->name('show'); // Preview course before enrollment
+            // معطّل مؤقتاً — يوجّه مباشرة لصفحة تعلّم الكورس بدل صفحة المعاينة
+            Route::get('/{id}/preview', fn ($id) => redirect()->route('student.learn.course', $id))->name('show');
             Route::post('/{id}/enroll', [CourseController::class, 'enroll'])->name('enroll'); // Enroll in course
             Route::delete('/{id}/unenroll', [CourseController::class, 'unenroll'])->name('unenroll'); // Unenroll from course
             Route::post('/{course}/share', [CourseController::class, 'share'])->name('share');
@@ -392,6 +394,11 @@ Route::prefix('student')
                 Route::get('/my-report', [StudentNotificationController::class, 'myReport'])->name('my-report');
                 Route::get('/preferences', [StudentNotificationController::class, 'getPreferences'])->name('get-preferences');
                 Route::post('/preferences', [StudentNotificationController::class, 'updatePreferences'])->name('update-preferences');
+            });
+
+            // Messages — subset of the notifications above, flagged explicitly by an admin as a "message"
+            Route::prefix('messages')->name('messages.')->group(function () {
+                Route::get('/', [StudentMessageController::class, 'index'])->name('index');
             });
         });
 

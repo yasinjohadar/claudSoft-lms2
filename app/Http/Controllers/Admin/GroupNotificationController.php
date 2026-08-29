@@ -39,8 +39,11 @@ class GroupNotificationController extends Controller
             'title' => 'required|string|max:255',
             'message' => 'required|string|max:2000',
             'type' => ['required', Rule::in(['success', 'info', 'warning', 'error'])],
+            'is_message' => 'nullable|boolean',
             'action_url' => 'nullable|url|max:500',
         ]);
+
+        $isMessage = $request->boolean('is_message');
 
         $students = $group->students()->get();
 
@@ -57,6 +60,7 @@ class GroupNotificationController extends Controller
             'title' => $validated['title'],
             'message' => $validated['message'],
             'type' => $validated['type'],
+            'is_message' => $isMessage,
             'action_url' => $validated['action_url'] ?? null,
             'recipients_count' => $students->count(),
         ]);
@@ -66,6 +70,7 @@ class GroupNotificationController extends Controller
                 'title' => $validated['title'],
                 'body' => $validated['message'],
                 'type' => $validated['type'],
+                'is_message' => $isMessage,
                 'action_url' => $validated['action_url'] ?? null,
                 'student_name' => $student->name,
                 'group_name' => $group->name,

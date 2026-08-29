@@ -83,9 +83,9 @@
                     <!-- Start::header-element -->
                     <div class="header-element messages-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown" id="adminMessagesDropdown">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
-                            <span class="pulse-danger"></span>
+                            <span class="badge bg-danger rounded-pill header-icon-badge" id="admin-message-badge" style="display: none;">0</span>
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <!-- Start::main-header-dropdown -->
@@ -93,23 +93,88 @@
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الرسائل</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
                                 </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 رسائل جديدة</p>
+                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12" id="admin-message-subtitle">لديك 0 رسائل خلال آخر 7 أيام</p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-cart-items-scroll">
+                            <ul class="list-unstyled mb-0" id="header-messages-scroll" style="max-height: 350px; overflow-y: auto;">
                                 <li class="dropdown-item text-center py-3">
-                                    <p class="text-muted mb-0">لا توجد رسائل جديدة</p>
+                                    <p class="text-muted mb-0">لا توجد رسائل بعد</p>
                                 </li>
                             </ul>
                             <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
+                                <a href="{{ route('admin.messages.index') }}" class="text-primary fs-13">عرض الكل</a>
                             </div>
                         </div>
                         <!-- End::main-header-dropdown -->
                     </div>
                     <!-- End::header-element -->
+
+                    @push('scripts')
+                    <script>
+                    (function () {
+                        const latestMessagesUrl = @json(route('admin.messages.latest'));
+
+                        function updateMessageBadge(count) {
+                            const badge = document.getElementById('admin-message-badge');
+                            const subtitle = document.getElementById('admin-message-subtitle');
+                            if (!badge || !subtitle) return;
+                            if (count > 0) {
+                                badge.style.display = '';
+                                badge.textContent = count > 99 ? '99+' : String(count);
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                            subtitle.textContent = 'لديك ' + count + ' رسالة خلال آخر 7 أيام';
+                        }
+
+                        function renderMessages(items) {
+                            const container = document.getElementById('header-messages-scroll');
+                            if (!container) return;
+                            if (!items.length) {
+                                container.innerHTML = '<li class="dropdown-item text-center py-3"><p class="text-muted mb-0">لا توجد رسائل بعد</p></li>';
+                                return;
+                            }
+                            container.innerHTML = items.map(function (m) {
+                                const safeUrl = (m.url || '#').replace(/'/g, "\\'");
+                                return '<li class="dropdown-item border-bottom" style="cursor:pointer" data-msg-url="' + safeUrl + '">' +
+                                    '<div class="d-flex align-items-start p-2">' +
+                                    '<div class="flex-grow-1">' +
+                                    '<h6 class="mb-1 fs-13">' + (m.title || 'رسالة') + '</h6>' +
+                                    '<p class="mb-1 fs-12 text-muted">' + (m.group_name || '') + '</p>' +
+                                    '<small class="text-muted fs-11">' + (m.time_ago || '') + '</small>' +
+                                    '</div></div></li>';
+                            }).join('');
+
+                            container.querySelectorAll('[data-msg-url]').forEach(function (el) {
+                                el.addEventListener('click', function () {
+                                    window.location.href = el.getAttribute('data-msg-url') || '#';
+                                });
+                            });
+                        }
+
+                        function loadMessages() {
+                            fetch(latestMessagesUrl, { headers: { 'Accept': 'application/json' } })
+                                .then(function (r) { return r.json(); })
+                                .then(function (data) {
+                                    if (!data.success) return;
+                                    updateMessageBadge(data.recent_count || 0);
+                                    renderMessages(data.messages || []);
+                                })
+                                .catch(function () {});
+                        }
+
+                        document.getElementById('adminMessagesDropdown')?.addEventListener('click', loadMessages);
+
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', loadMessages);
+                        } else {
+                            loadMessages();
+                        }
+                        setInterval(loadMessages, 60000);
+                    })();
+                    </script>
+                    @endpush
 
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">

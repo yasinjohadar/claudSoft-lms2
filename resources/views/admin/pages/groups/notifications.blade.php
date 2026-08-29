@@ -84,6 +84,17 @@
                                     <i class="fe fe-send me-1"></i>إرسال للمجموعة
                                 </button>
                             </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="notif-is-message" name="is_message">
+                                    <label class="form-check-label" for="notif-is-message">
+                                        اعتبر هذا رسالة
+                                    </label>
+                                    <small class="d-block text-muted">
+                                        عند التفعيل، تظهر لدى الطالب ضمن قسم «الرسائل» المخصَّص بدل الإشعارات العادية.
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -207,6 +218,7 @@
             title: document.getElementById('notif-title').value,
             message: document.getElementById('notif-message').value,
             type: document.getElementById('notif-type').value,
+            is_message: document.getElementById('notif-is-message').checked,
             action_url: document.getElementById('notif-action-url').value || null,
         };
 

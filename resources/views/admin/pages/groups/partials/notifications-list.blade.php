@@ -39,6 +39,11 @@
                         </td>
                         <td>
                             <span class="badge {{ $style['badge'] }}">{{ $style['label'] }}</span>
+                            @if($notification->is_message)
+                                <span class="badge bg-primary-transparent text-primary">
+                                    <i class="fe fe-mail me-1"></i>رسالة
+                                </span>
+                            @endif
                         </td>
                         <td>{{ $notification->created_at->format('Y-m-d H:i') }}</td>
                         <td>

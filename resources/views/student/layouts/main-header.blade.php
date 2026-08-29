@@ -95,33 +95,121 @@
                     <!-- Start::header-element -->
                     <div class="header-element messages-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle position-relative" data-bs-auto-close="outside" data-bs-toggle="dropdown">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
-                            <span class="pulse-danger"></span>
+                            @php
+                                $unreadMessagesCount = Auth::user()->gamificationNotifications()->messages()->unread()->count();
+                            @endphp
+                            @if($unreadMessagesCount > 0)
+                                <span id="message-badge" class="badge bg-danger rounded-pill student-notif-count-badge">{{ $unreadMessagesCount > 99 ? '99+' : $unreadMessagesCount }}</span>
+                            @endif
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <!-- Start::main-header-dropdown -->
-                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none">
+                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none" style="width: 400px;">
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الرسائل</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
                                 </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 رسائل جديدة</p>
+                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12">
+                                    لديك <span id="message-unread-count">{{ $unreadMessagesCount }}</span> رسالة غير مقروءة
+                                </p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-cart-items-scroll">
-                                <li class="dropdown-item text-center py-3">
-                                    <p class="text-muted mb-0">لا توجد رسائل جديدة</p>
-                                </li>
+                            <ul class="list-unstyled mb-0" id="header-messages-scroll" style="max-height: 350px; overflow-y: auto;">
+                                @php
+                                    $headerMessages = Auth::user()->gamificationNotifications()
+                                        ->messages()
+                                        ->orderBy('created_at', 'desc')
+                                        ->limit(10)
+                                        ->get();
+                                @endphp
+
+                                @forelse($headerMessages as $message)
+                                    <li class="dropdown-item {{ !$message->is_read ? 'unread-notification' : '' }} cursor-pointer border-bottom"
+                                        onclick="markMessageAsReadAndRedirect({{ $message->id }}, '{{ $message->action_url ?? '#' }}')">
+                                        <div class="d-flex align-items-start p-2">
+                                            <div class="me-3 flex-shrink-0">
+                                                {!! $message->icon_html !!}
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <h6 class="mb-0 fs-13 fw-semibold">{{ $message->title }}</h6>
+                                                    @if(!$message->is_read)
+                                                        <span class="badge bg-primary rounded-pill" style="font-size: 8px; padding: 2px 6px;">جديد</span>
+                                                    @endif
+                                                </div>
+                                                <p class="mb-1 fs-12 text-muted">{{ Str::limit($message->message, 60) }}</p>
+                                                <small class="text-muted fs-11">
+                                                    <i class="far fa-clock me-1"></i>{{ $message->time_ago }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </li>
+                                @empty
+                                    <li class="dropdown-item text-center py-4">
+                                        <i class="fas fa-envelope-open fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">لا توجد رسائل</p>
+                                    </li>
+                                @endforelse
                             </ul>
-                            <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
+                            <div class="text-center dropdown-footer border-top py-2">
+                                <a href="{{ route('gamification.messages.index') }}" class="text-primary fs-13 fw-semibold">
+                                    <i class="fas fa-arrow-left me-1"></i> عرض كل الرسائل
+                                </a>
                             </div>
                         </div>
                         <!-- End::main-header-dropdown -->
                     </div>
                     <!-- End::header-element -->
+
+                    {{-- أنماط شارة الرسائل في public/assets/css/custom.css --}}
+
+                    @push('scripts')
+                    <script>
+                    function removeStudentMessageBadgeUi() {
+                        var badge = document.getElementById('message-badge');
+                        if (badge) {
+                            badge.remove();
+                        }
+                    }
+                    function markMessageAsReadAndRedirect(messageId, actionUrl) {
+                        fetch(`/student/gamification/notifications/${messageId}/mark-as-read`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const unreadCountElement = document.getElementById('message-unread-count');
+                                if (unreadCountElement) {
+                                    const currentCount = parseInt(unreadCountElement.textContent);
+                                    const newCount = Math.max(0, currentCount - 1);
+                                    unreadCountElement.textContent = newCount;
+
+                                    const badge = document.getElementById('message-badge');
+                                    if (newCount > 0) {
+                                        if (badge) {
+                                            badge.textContent = newCount > 99 ? '99+' : newCount;
+                                        }
+                                    } else {
+                                        removeStudentMessageBadgeUi();
+                                    }
+                                }
+
+                                if (actionUrl && actionUrl !== '#') {
+                                    window.location.href = actionUrl;
+                                }
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                    }
+                    </script>
+                    @endpush
 
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">

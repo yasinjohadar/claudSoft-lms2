@@ -57,6 +57,7 @@
                             $financeActive = request()->routeIs('invoices.*', 'payments.*', 'admin.settings.payment-whatsapp-message.*');
                             $communicationActive = request()->routeIs(
                                 'admin.notifications.*',
+                                'admin.messages.*',
                                 'admin.reminders.*',
                                 'admin.calendar.*'
                             );
@@ -499,6 +500,12 @@
                                             <a href="{{ route('admin.notifications.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">الإحصائيات</a>
                                         </li>
                                     </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.messages.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.messages.index') }}" class="side-menu__item {{ request()->routeIs('admin.messages.*') ? 'active' : '' }}">
+                                        <i class="fas fa-envelope me-2"></i>الرسائل
+                                    </a>
                                 </li>
 
                                 <li class="slide has-sub {{ request()->routeIs('admin.reminders.*') ? 'open active' : '' }}">

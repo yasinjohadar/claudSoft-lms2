@@ -80,6 +80,14 @@ class GamificationNotification extends Model
     }
 
     /**
+     * Scope: الرسائل فقط (إشعارات مجموعة مُعلَّمة صراحةً كرسالة من الأدمن)
+     */
+    public function scopeMessages($query)
+    {
+        return $query->where('metadata->is_message', true);
+    }
+
+    /**
      * Accessor: الوقت منذ الإرسال
      */
     public function getTimeAgoAttribute(): string

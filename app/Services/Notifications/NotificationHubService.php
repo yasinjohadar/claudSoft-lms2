@@ -246,6 +246,10 @@ class NotificationHubService
             $metadata['group_notification_id'] = (string) $data['group_notification_id'];
         }
 
+        if (! empty($data['is_message'])) {
+            $metadata['is_message'] = true;
+        }
+
         GamificationNotification::create([
             'user_id' => $user->id,
             'type' => (string) ($data['type'] ?? $eventKey),

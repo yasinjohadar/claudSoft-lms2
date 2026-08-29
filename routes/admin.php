@@ -127,6 +127,7 @@ use App\Http\Controllers\Admin\StudentWorkController;
 use App\Http\Controllers\Admin\TrainingCampController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminHeaderNotificationController;
+use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\UserDeviceController;
 use App\Http\Controllers\Admin\DeviceSecuritySettingsController;
 use App\Http\Controllers\Admin\UserSendEmailController;
@@ -441,6 +442,8 @@ Route::prefix('admin')
         Route::post('groups/{group}/notifications', [GroupNotificationController::class, 'store'])->name('groups.notifications.store');
         Route::get('groups/{group}/notifications/{notification}', [GroupNotificationController::class, 'show'])->name('groups.notifications.show');
         Route::delete('groups/{group}/notifications/{notification}', [GroupNotificationController::class, 'destroy'])->name('groups.notifications.destroy');
+        Route::get('messages', [AdminMessageController::class, 'index'])->name('admin.messages.index');
+        Route::get('messages/latest', [AdminMessageController::class, 'latest'])->name('admin.messages.latest');
         Route::get('all-lessons', [LessonController::class, 'allLessons'])->name('lessons.all');
 
         // ========== Assignments Routes ==========
