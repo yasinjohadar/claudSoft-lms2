@@ -5,6 +5,9 @@
      *
      * الثيمات المتاحة: blue · green · orange · purple · gold · silver
      * الذهبي/الفضي مخصّصان لبطاقة «نوع الحساب» — والذهبي يحمل لمعة متحركة.
+     *
+     * أربع بطاقات لا خمس: الخمس كانت تضيق على الشاشات المتوسطة فتُبتر
+     * العناوين. «متوسط درجات الاختبارات» متاح ضمن صفحة إحصائيات الاختبارات.
      */
     $tier = $accountTier ?? 'silver';
     $isGoldAccount = $tier === 'gold';
@@ -16,7 +19,8 @@
             'title' => 'نوع الحساب',
             'value' => $isGoldAccount ? 'ذهبي' : 'فضي',
             'value_text' => true,
-            'subtext' => $isGoldAccount ? 'منضم لمجموعة معسكر مدفوعة' : 'مجموعة عادية أو غير منضم',
+            // نصوص قصيرة: السطر الوصفي مقصور على سطر واحد داخل البطاقة
+            'subtext' => $isGoldAccount ? 'معسكر مدفوع' : 'مجموعة عادية',
             'route' => 'student.groups.index',
         ],
         [
@@ -26,15 +30,6 @@
             'value' => $courseStats['total_courses'] ?? 0,
             'subtext' => ($courseStats['completed'] ?? 0) . ' مكتملة',
             'route' => 'student.courses.my-courses',
-        ],
-        [
-            'theme' => 'purple',
-            'icon' => 'ri-award-line',
-            'title' => 'متوسط درجات الاختبارات',
-            'value' => $questionModuleStats['average_score'] ?? 0,
-            'subtext' => 'من المحاولات المكتملة',
-            'route' => 'student.question-module.stats.index',
-            'suffix' => '%',
         ],
         [
             'theme' => 'green',
@@ -55,4 +50,4 @@
     ];
 @endphp
 
-<x-stat-widgets :items="$statWidgets" cols="col" rowClass="row row-cols-xl-5 row-cols-lg-2 row-cols-md-2 row-cols-1 g-3 mb-4" />
+<x-stat-widgets :items="$statWidgets" />

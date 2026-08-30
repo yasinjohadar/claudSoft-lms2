@@ -152,16 +152,24 @@
     color: #fff;
 }
 
+/*
+ * العنوان يلتف على سطرين بدل البتر بثلاث نقاط.
+ * كان white-space:nowrap + ellipsis فتظهر عناوين مثل «إجمالي المحاولات»
+ * مبتورة إلى «إجمالي المحا…» على الشاشات المتوسطة — والعنوان المبتور
+ * أسوأ من سطرين. الارتفاع الأدنى يمنع تفاوت ارتفاع البطاقات في الصف.
+ */
 .hr-stat-widgets .stat-card-content .stat-label {
-    display: block;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     font-size: 0.9rem;
     font-weight: 700;
+    line-height: 1.35;
+    min-height: 2.7em;
     opacity: 0.95;
     margin-bottom: 0.45rem;
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .hr-stat-widgets .stat-card-content .stat-value {
@@ -188,8 +196,16 @@
     transform-origin: left center;
 }
 
+/*
+ * سطر وصفي واحد لا أكثر: نصّ طويل داخل بطاقة ضيّقة كان يلتف إلى أربعة
+ * أسطر فيضاعف ارتفاع البطاقة ويكسر محاذاة الصف كله.
+ */
 .hr-stat-widgets .stat-card-content .stat-subtext {
-    display: inline-block;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
     font-size: 0.76rem;
     font-weight: 600 !important;
     opacity: 0.9;
