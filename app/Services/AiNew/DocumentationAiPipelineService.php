@@ -4,25 +4,30 @@ namespace App\Services\AiNew;
 
 use App\Ai\Agents\DocumentationOutlineAgent;
 use App\Ai\Agents\DocumentationRefineContentAgent;
-use App\Ai\Agents\DocumentationSectionAgent;
+use App\Ai\Agents\DocumentationSectionPlainAgent;
 use App\Exceptions\Ai\AiProviderException;
 use App\Exceptions\Ai\ResumableIncompleteException;
 use App\Models\AIModel;
 use App\Models\DocumentationAiGeneration;
+use App\Models\DocumentationAiSection;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
 use App\Models\User;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
+use App\Services\Ai\AIProviderService;
 use App\Services\Ai\DocumentationAiResultNormalizer;
+use App\Services\Ai\DocumentationHtmlRepairer;
+use App\Services\Ai\DocumentationHtmlStyleGuide;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Ai\Responses\StructuredAgentResponse;
 use Throwable;
 
 class DocumentationAiPipelineService
 {
-    private const SECTION_TIMEOUT = 180;
+    private const SECTION_TIMEOUT = 240;
 
     private const OUTLINE_TIMEOUT = 120;
 
@@ -37,6 +42,7 @@ class DocumentationAiPipelineService
         private AIModelService $legacyModelService,
         private DocumentationAiResultNormalizer $resultNormalizer,
         private DocumentationStagedGenerator $stagedGenerator,
+        private DocumentationHtmlRepairer $repairer = new DocumentationHtmlRepairer,
     ) {}
 
     public function run(DocumentationAiGeneration $generation): void
@@ -79,7 +85,7 @@ class DocumentationAiPipelineService
             ]);
 
             // Keep partial work reachable when the run had already produced sections.
-            if ($generation->sections()->where('status', \App\Models\DocumentationAiSection::STATUS_DONE)->exists()) {
+            if ($generation->sections()->where('status', DocumentationAiSection::STATUS_DONE)->exists()) {
                 $generation->markPaused($this->friendlyError($e).' — الأقسام المكتملة محفوظة، اضغط «متابعة التوليد».');
 
                 return;
@@ -148,8 +154,10 @@ class DocumentationAiPipelineService
         $legacyModel = null;
         if ($useLaravelAi) {
             $laraModel = $this->resolveLaravelModel($payload);
-            $outlineTokens = (int) config('ai.docs.outline_max_tokens', 2048);
-            $sectionTokens = (int) config('ai.docs.section_max_tokens', 4096);
+            $outlineTokens = (int) config('ai.docs.outline_max_tokens', 3072);
+            // Same length-aware ceiling the legacy engine uses, so a long page gets
+            // room to be comprehensive instead of being truncated into stubs.
+            $sectionTokens = self::sectionTokenCeiling($contentLength);
             if ((int) ($laraModel->max_tokens ?? 0) > 0) {
                 $outlineTokens = min($outlineTokens, (int) $laraModel->max_tokens);
                 $sectionTokens = min($sectionTokens, (int) $laraModel->max_tokens);
@@ -157,7 +165,7 @@ class DocumentationAiPipelineService
         } else {
             $legacyModel = $this->resolveLegacyModel($payload);
             $outlineTokens = $this->legacyDocs->tokensForStage($legacyModel, 'outline');
-            $sectionTokens = $this->legacyDocs->tokensForStage($legacyModel, 'section');
+            $sectionTokens = $this->legacyDocs->tokensForStage($legacyModel, 'section', false, $contentLength);
         }
 
         $outlineWriter = function (int $target, int $maxTokens) use (
@@ -188,6 +196,7 @@ class DocumentationAiPipelineService
                     $contentLength,
                     $attempt->compact,
                     $attempt->maxTokens,
+                    $attempt->laterHeadings,
                 );
             }
 
@@ -201,7 +210,7 @@ class DocumentationAiPipelineService
                 $options,
                 $attempt->compact,
                 $attempt->maxTokens,
-                $attempt->plain,
+                $attempt->laterHeadings,
             );
         };
 
@@ -321,7 +330,9 @@ class DocumentationAiPipelineService
         }
 
         $generation->markProgress('assemble', 'دمج الأجزاء…', 92);
-        $content = $this->normalizeHtml(implode("\n", $out));
+        // Chunks are joined the same way staged sections are, so they need the
+        // same balancing pass before anything can render them.
+        $content = $this->repairer->repairDocument($this->normalizeHtml(implode("\n", $out)));
         if ($content === '' || ! $this->resultNormalizer->isPlausibleHtml($content)) {
             throw new \RuntimeException('فشل دمج المحتوى بعد التقسيم.');
         }
@@ -364,17 +375,22 @@ class DocumentationAiPipelineService
         $categoryLine = $category ? "القسم: {$category->name}. " : '';
         $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
 
+        // "medium"/"long" means nothing to the model on its own; spell out the size.
+        $pageBudget = DocumentationHtmlStyleGuide::pageBudget((string) $length);
+
         $topicForPrompt = Str::limit(trim($topic), 1500);
-        $buildPrompt = function (int $target) use ($topicForPrompt, $categoryLine, $parentLine, $length, $tone, $langLine): string {
+        $buildPrompt = function (int $target) use ($topicForPrompt, $categoryLine, $parentLine, $pageBudget, $tone, $langLine): string {
             return <<<PROMPT
 خطط صفحة توثيق شاملة ثم قسّمها إلى أقسام.
 
 الموضوع: {$topicForPrompt}
 {$categoryLine}{$parentLine}
 عدد الأقسام المستهدف تقريباً: {$target}
-طول المحتوى الإجمالي المستهدف: {$length}
+طول المحتوى الإجمالي المستهدف: {$pageBudget}
 الأسلوب: {$tone}
 {$langLine}
+
+غطِّ الموضوع بالكامل: المقدمة والأساسيات، الاستخدام العملي، الحالات المتقدمة، الأخطاء الشائعة، وأفضل الممارسات. لا تكرر أقساماً بنفس المعنى.
 
 أعد: title, slug, excerpt, sections[{heading, brief}].
 كل brief جملة قصيرة توضّح ما سيُغطى في القسم فقط.
@@ -384,7 +400,7 @@ PROMPT;
         $started = hrtime(true);
         $prompt = $buildPrompt($sectionTarget);
 
-        /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
+        /** @var StructuredAgentResponse $response */
         $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
             return $this->promptRunner->runStructured(
                 $model,
@@ -406,6 +422,7 @@ PROMPT;
      * @param  array<string, mixed>  $outline
      * @param  list<string>  $priorHeadings
      * @param  array<string, mixed>  $options
+     * @param  list<string>  $laterHeadings
      */
     private function requestSectionHtml(
         string $topic,
@@ -419,16 +436,18 @@ PROMPT;
         string $contentLength,
         bool $compact,
         ?int $maxTokens = null,
+        array $laterHeadings = [],
     ): string {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
         $pageTitle = trim((string) ($outline['title'] ?? '')) ?: $topic;
         $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
         $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
+        $laterLine = $laterHeadings === []
+            ? ''
+            : 'أقسام لاحقة (لا تتناولها هنا): '.implode(' | ', $laterHeadings);
         $styleGuide = $this->styleGuide();
-        $compactLine = $compact
-            ? "مهم: اجعل القسم أقصر. مثال كود واحد فقط، بدون تكرار، ركّز على الفكرة الأساسية."
-            : '';
+        $budgetLine = DocumentationHtmlStyleGuide::sectionBudget($contentLength, $compact);
 
         $prompt = <<<PROMPT
 اكتب قسماً واحداً فقط من صفحة توثيق.
@@ -438,23 +457,26 @@ PROMPT;
 القسم الحالي: {$heading}
 ملخص القسم: {$brief}
 أقسام سابقة (للتماسك، لا تكررها): {$prior}
+{$laterLine}
 الأسلوب: {$tone}
 {$langLine}
-{$compactLine}
+{$budgetLine}
 
 {$styleGuide}
 
 لفّ القسم بـ <section class="content-section"> وابدأ بـ <h2 class="section-title">{$heading}</h2>
-لا تُرجع أقساماً أخرى. أعد الحقل html فقط.
+لا تُرجع أقساماً أخرى.
+أعد HTML فقط: ابدأ مباشرة بـ <section وانتهِ بـ </section>، بدون JSON وبدون markdown وبدون أي شرح.
 PROMPT;
 
         $started = hrtime(true);
 
-        /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
+        // Plain text, not structured output: making the model escape HTML inside a
+        // JSON string is what collapsed code samples onto a single line.
         $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
-            return $this->promptRunner->runStructured(
+            return $this->promptRunner->runPlain(
                 $model,
-                new DocumentationSectionAgent,
+                new DocumentationSectionPlainAgent,
                 $prompt,
                 self::SECTION_TIMEOUT,
                 null,
@@ -462,21 +484,19 @@ PROMPT;
             );
         });
 
-        $structured = $response->toArray();
+        $raw = (string) $response->text;
         $this->logger->logSuccess(
             $model,
             $user,
             'docs.section'.($compact ? '.retry' : ''),
             ['heading' => $heading, 'compact' => $compact],
-            ['html_len' => mb_strlen((string) ($structured['html'] ?? ''))],
+            ['html_len' => mb_strlen($raw)],
             (int) ((hrtime(true) - $started) / 1_000_000)
         );
 
-        $html = $this->resultNormalizer->extractSectionHtml((string) ($structured['html'] ?? ''));
+        $html = $this->resultNormalizer->extractSectionHtml($raw);
         if ($html === '') {
-            $html = $this->resultNormalizer->extractSectionHtml(
-                $this->normalizeHtml((string) ($structured['html'] ?? ''))
-            );
+            $html = $this->resultNormalizer->extractSectionHtml($this->normalizeHtml($raw));
         }
 
         return $html;
@@ -518,7 +538,7 @@ PROMPT;
 
         $started = hrtime(true);
 
-        /** @var \Laravel\Ai\Responses\StructuredAgentResponse $response */
+        /** @var StructuredAgentResponse $response */
         $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt) {
             return $this->promptRunner->runStructured($model, new DocumentationRefineContentAgent, $prompt, self::CHUNK_TIMEOUT);
         });
@@ -571,11 +591,28 @@ PROMPT;
         return $chunks;
     }
 
+    /**
+     * Upper bound on completion tokens for one section.
+     *
+     * Mirrors AIDocumentationPageService::tokensForStage() so both engines give a
+     * long page the same room; a flat 4096 is what truncated sections mid-tag.
+     */
+    public static function sectionTokenCeiling(string $contentLength): int
+    {
+        $cap = (int) config('ai.docs.section_max_tokens', 8192);
+
+        return match ($contentLength) {
+            'short' => min($cap, 4096),
+            'long' => $cap,
+            default => min($cap, 6144),
+        };
+    }
+
     private function sectionCountForLength(string $length): int
     {
         return match ($length) {
             'short' => 4,
-            'long' => 12,
+            'long' => 13,
             default => 7,
         };
     }
@@ -672,21 +709,14 @@ PROMPT;
 
     private function styleGuide(): string
     {
-        return <<<'GUIDE'
-استخدم HTML فقط:
-- <section class="content-section">...</section>
-- <h2 class="section-title">...</h2> و <h3 class="subsection-title"> عند الحاجة
-- <div class="text-block">...</div>
-- تنبيهات: <div class="info-box info|warning|success|error"><div class="info-box-title">...</div><p>...</p></div>
-- جداول: <table class="styled-table">...
-- أكواد: <pre><code class="language-php">...</code></pre>
-- قوائم: <ul class="styled-list"><li>...</li></ul>
-GUIDE;
+        return DocumentationHtmlStyleGuide::block();
     }
 
     private function friendlyError(Throwable $e): string
     {
-        $msg = $e->getMessage();
+        // Providers now tag their errors with [HTTP nnn] so the classifier can read
+        // past the Arabic wording; the admin does not need to see the marker.
+        $msg = AIProviderService::stripDiagnostics($e->getMessage());
         $lower = strtolower($msg);
 
         if ($e instanceof AiProviderException) {

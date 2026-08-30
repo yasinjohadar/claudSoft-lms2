@@ -3,8 +3,8 @@
 use App\Models\AIModel;
 use App\Models\DocumentationAiGeneration;
 use App\Models\User;
-use App\Services\Ai\AiErrorClassifier;
 use App\Services\Ai\AIDocumentationPageService;
+use App\Services\Ai\AiErrorClassifier;
 use App\Services\Ai\AIModelService;
 use App\Services\Ai\DocumentationAiResultNormalizer;
 use App\Services\AiNew\DocumentationAiPipelineService;
@@ -15,8 +15,9 @@ use App\Services\AiNew\LaravelAiProviderManager;
 use App\Services\AiNew\LaravelAiRequestLogger;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
     Schema::dropIfExists('documentation_ai_sections');
@@ -111,7 +112,7 @@ test('long generate with legacy engine uses staged outline and skips one-shot', 
     ]);
 
     $sectionHtml = '<section class="content-section"><h2 class="section-title">مقدمة</h2>'
-        .'<div class="text-block">نص قسم كافٍ للاختبار مع مثال Dart.</div>'
+        .'<div class="text-block">'.str_repeat('نص قسم كافٍ للاختبار مع مثال Dart وشرح مفصّل للفكرة. ', 20).'</div>'
         .'<pre><code class="language-dart">for (final x in list) { print(x); }</code></pre></section>';
 
     $legacyDocs = Mockery::mock(AIDocumentationPageService::class);

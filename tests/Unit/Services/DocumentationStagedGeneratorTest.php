@@ -12,8 +12,9 @@ use App\Services\Ai\DocumentationAiResultNormalizer;
 use App\Services\AiNew\DocumentationStagedGenerator;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
     Schema::dropIfExists('documentation_ai_sections');
@@ -117,6 +118,20 @@ function stagedGeneration(): DocumentationAiGeneration
 }
 
 /**
+ * A section body long enough to clear DocumentationSectionValidator, so these
+ * tests exercise the retry ladder rather than the quality floor.
+ */
+function fakeSectionHtml(string $heading, string $marker = 'generated'): string
+{
+    $paragraph = str_repeat('نص توضيحي كافٍ لتجاوز الحد الأدنى لطول القسم في المدقق. ', 12);
+
+    return '<section class="content-section">'
+        .'<h2 class="section-title">'.$heading.'</h2>'
+        .'<div class="text-block"><p>'.$marker.' '.$heading.'</p><p>'.$paragraph.'</p></div>'
+        .'</section>';
+}
+
+/**
  * @return array{title: string, slug: string, excerpt: string, sections: list<array{heading: string, brief: string}>}
  */
 function outlineWithSections(int $count): array
@@ -148,7 +163,7 @@ test('resume only regenerates sections that were not already done', function () 
             'heading' => $section['heading'],
             'brief' => $section['brief'],
             'status' => $i < 5 ? DocumentationAiSection::STATUS_DONE : DocumentationAiSection::STATUS_PENDING,
-            'html' => $i < 5 ? '<section class="content-section"><h2 class="section-title">'.$section['heading'].'</h2><p>pre-existing</p></section>' : null,
+            'html' => $i < 5 ? fakeSectionHtml($section['heading'], 'pre-existing') : null,
         ]);
     }
 
@@ -156,7 +171,7 @@ test('resume only regenerates sections that were not already done', function () 
     $sectionWriter = function ($attempt) use (&$calls) {
         $calls[] = $attempt->heading;
 
-        return '<p>generated '.$attempt->heading.'</p>';
+        return fakeSectionHtml($attempt->heading);
     };
     $outlineWriter = fn (int $target, int $tokens) => $outline;
 
@@ -188,7 +203,7 @@ test('a section exhausting its retry ladder pauses the generation without losing
             throw new AiProviderException('simulated permanent failure', AiProviderException::KIND_TOO_LARGE);
         }
 
-        return '<p>generated '.$attempt->heading.'</p>';
+        return fakeSectionHtml($attempt->heading);
     };
 
     $caught = null;
@@ -225,7 +240,7 @@ test('a retryable rate limit error is retried instead of failing the section imm
             }
         }
 
-        return '<p>generated '.$attempt->heading.'</p>';
+        return fakeSectionHtml($attempt->heading);
     };
 
     $result = stagedGenerator()->generate($generation, 'topic', ['language' => 'ar'], 2, 2048, 4096, $outlineWriter, $sectionWriter);
@@ -247,7 +262,7 @@ test('a fatal auth error aborts the whole generation immediately instead of burn
             throw new AiProviderException('invalid api key', AiProviderException::KIND_AUTH);
         }
 
-        return '<p>generated '.$attempt->heading.'</p>';
+        return fakeSectionHtml($attempt->heading);
     };
 
     expect(fn () => stagedGenerator()->generate($generation, 'topic', ['language' => 'ar'], 5, 2048, 4096, $outlineWriter, $sectionWriter))
@@ -261,11 +276,16 @@ test('a model with a large configured limit never receives more than the section
     $model = new AIModel(['max_tokens' => 10000]);
     $service = new AIDocumentationPageService;
 
-    expect($service->tokensForStage($model, 'section'))
-        ->toBe((int) config('ai.docs.section_max_tokens', 4096))
+    // The section cap is length-aware now: a long page gets the full ceiling,
+    // a medium one less, and the model's own limit never wins over either.
+    expect($service->tokensForStage($model, 'section', false, 'long'))
+        ->toBe((int) config('ai.docs.section_max_tokens', 8192))
         ->toBeLessThan(10000);
 
+    expect($service->tokensForStage($model, 'section', false, 'medium'))
+        ->toBeLessThan($service->tokensForStage($model, 'section', false, 'long'));
+
     expect($service->tokensForStage($model, 'outline'))
-        ->toBe((int) config('ai.docs.outline_max_tokens', 2048))
+        ->toBe((int) config('ai.docs.outline_max_tokens', 3072))
         ->toBeLessThan(10000);
 });

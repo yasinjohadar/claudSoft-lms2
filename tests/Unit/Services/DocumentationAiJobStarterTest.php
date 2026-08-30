@@ -1,10 +1,13 @@
 <?php
 
 use App\Models\DocumentationAiGeneration;
+use App\Models\User;
+use App\Services\AiNew\DocumentationAiPipelineService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
     Schema::dropIfExists('documentation_ai_sections');
@@ -67,9 +70,9 @@ beforeEach(function () {
     });
 });
 
-function makeJobStarterUser(): \App\Models\User
+function makeJobStarterUser(): User
 {
-    return \App\Models\User::query()->create([
+    return User::query()->create([
         'name' => 'Tester',
         'email' => 'docs-ai-jobstarter-'.uniqid().'@test.local',
         'password' => bcrypt('password'),
@@ -119,7 +122,7 @@ test('documentation ai generation status payload returns result when completed',
 });
 
 test('section count mapping for content length targets long pages via more sections', function () {
-    $service = new ReflectionClass(\App\Services\AiNew\DocumentationAiPipelineService::class);
+    $service = new ReflectionClass(DocumentationAiPipelineService::class);
     $method = $service->getMethod('sectionCountForLength');
     $method->setAccessible(true);
 
@@ -127,5 +130,5 @@ test('section count mapping for content length targets long pages via more secti
 
     expect($method->invoke($instance, 'short'))->toBe(4);
     expect($method->invoke($instance, 'medium'))->toBe(7);
-    expect($method->invoke($instance, 'long'))->toBe(12);
+    expect($method->invoke($instance, 'long'))->toBe(13);
 });

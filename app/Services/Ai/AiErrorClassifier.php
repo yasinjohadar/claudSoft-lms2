@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Exceptions\Ai\AiProviderException;
+use Illuminate\Http\Client\ConnectionException;
 use Throwable;
 
 /**
@@ -25,6 +26,9 @@ class AiErrorClassifier
             'invalid api key', 'incorrect api key', 'unauthorized', 'unauthenticated',
             'insufficient', 'credit', 'quota exceeded', 'billing', 'payment required',
             'access denied', 'forbidden', 'api key',
+            // Providers localise their messages before the classifier ever sees them
+            // (see getFriendlyErrorMessage() on each provider service).
+            'api key غير صحيح', 'منتهي الصلاحية', 'رصيد', 'غير كافٍ', 'غير كاف',
         ]) || $this->hasStatus($text, [401, 402, 403])) {
             return AiProviderException::KIND_AUTH;
         }
@@ -40,6 +44,7 @@ class AiErrorClassifier
         if ($this->matches($text, [
             'rate limit', 'rate_limit', 'too many requests', 'tpm', 'rpm',
             'try again in', 'please slow down', 'overloaded', 'capacity',
+            'تم تجاوز حد الاستخدام', 'حد الاستخدام',
         ]) || $this->hasStatus($text, [429])) {
             return AiProviderException::KIND_RATE_LIMIT;
         }
@@ -76,9 +81,11 @@ class AiErrorClassifier
     {
         $text = trim((string) $message);
         $kind = $this->classify($text);
+        // classify() needed the [HTTP nnn] marker; the human reading the error does not.
+        $clean = AIProviderService::stripDiagnostics($text);
 
         return new AiProviderException(
-            $text !== '' ? $text : 'لم يتم استلام استجابة من موديل AI.',
+            $clean !== '' ? $clean : 'لم يتم استلام استجابة من موديل AI.',
             $kind,
             $this->retryAfterSeconds($text),
             $previous,
@@ -92,7 +99,7 @@ class AiErrorClassifier
         }
 
         $message = $e->getMessage();
-        if ($e instanceof \Illuminate\Http\Client\ConnectionException || str_contains(mb_strtolower($message), 'timeout')) {
+        if ($e instanceof ConnectionException || str_contains(mb_strtolower($message), 'timeout')) {
             return new AiProviderException($message, AiProviderException::KIND_TRANSIENT, null, $e);
         }
 

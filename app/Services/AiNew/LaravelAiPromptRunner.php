@@ -65,8 +65,9 @@ class LaravelAiPromptRunner
         string $prompt,
         int $timeout = 60,
         ?int $preferMinTokens = null,
+        ?int $maxTokensCap = null,
     ): AgentResponse {
-        $textResponse = $this->invokeGateway($model, $agent, $prompt, null, $timeout, $preferMinTokens);
+        $textResponse = $this->invokeGateway($model, $agent, $prompt, null, $timeout, $preferMinTokens, $maxTokensCap);
         $invocationId = (string) Str::uuid7();
 
         return (new AgentResponse(

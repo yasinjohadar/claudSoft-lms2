@@ -1497,7 +1497,9 @@ footer strong {
     margin: 1rem 0;
 }
 
-/* pre بدون لف code-block (يُلفّه JS) */
+/* pre بدون لف code-block (يُلفّه JS)
+   يجب أن يكون الكود LTR ومحافظاً على الأسطر حتى قبل عمل JS أو عند تعذّر تحميله،
+   وإلا ظهر داخل صفحة dir="rtl" بمحاذاة معكوسة وأسطر مدموجة. */
 .docs-content pre:not(.code-block pre) {
     margin: 1rem 0;
     background: #0d1117;
@@ -1505,6 +1507,10 @@ footer strong {
     border-radius: 12px;
     padding: 1.25rem 1.5rem;
     overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    white-space: pre;
+    tab-size: 4;
 }
 
 /* ─── إصلاح محتوى المحرّر / AI: إزالة الخلفيات المضمنة ─── */

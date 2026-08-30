@@ -21,6 +21,8 @@ class AIDocumentationPageService
 
     private ?AiErrorClassifier $errorClassifier = null;
 
+    private ?DocumentationHtmlRepairer $repairer = null;
+
     private function resultNormalizer(): DocumentationAiResultNormalizer
     {
         return $this->resultNormalizer ??= new DocumentationAiResultNormalizer;
@@ -29,6 +31,11 @@ class AIDocumentationPageService
     private function errorClassifier(): AiErrorClassifier
     {
         return $this->errorClassifier ??= new AiErrorClassifier;
+    }
+
+    private function repairer(): DocumentationHtmlRepairer
+    {
+        return $this->repairer ??= new DocumentationHtmlRepairer;
     }
 
     /**
@@ -134,7 +141,9 @@ PROMPT;
         );
 
         $content = trim((string) ($unwrapped['content'] ?? $unwrapped['html'] ?? ''));
-        $content = $this->resultNormalizer()->normalizeHtmlString($content);
+        $content = $this->repairer()->repairDocument(
+            $this->resultNormalizer()->normalizeHtmlString($content)
+        );
 
         if ($content === '' || ! $this->resultNormalizer()->isPlausibleHtml($content)) {
             throw new \Exception('لم يُستخرج محتوى HTML صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
@@ -254,7 +263,9 @@ PROMPT;
         );
 
         $content = trim((string) ($unwrapped['content'] ?? $unwrapped['html'] ?? ''));
-        $content = $this->resultNormalizer()->normalizeHtmlString($content);
+        $content = $this->repairer()->repairDocument(
+            $this->resultNormalizer()->normalizeHtmlString($content)
+        );
 
         if ($content === '' || ! $this->resultNormalizer()->isPlausibleHtml($content)) {
             throw new \Exception('لم يُستخرج محتوى HTML صالح من الاستجابة. حاول مجدداً أو قلّل حجم النص.');
@@ -302,15 +313,7 @@ PROMPT;
 
     private function documentationStyleGuideBlock(): string
     {
-        return <<<'GUIDE'
-- لفّ كل قسم رئيسي بـ: <section class="content-section"> ... </section>
-- عناوين فرعية: <h2 class="section-title">النص</h2> وعند الحاجة <h3 class="subsection-title">...</h3>
-- فقرات توضيحية: <div class="text-block">...</div>
-- تنبيهات: <div class="info-box info|warning|success|error"><div class="info-box-title">عنوان</div><p>...</p></div>
-- جداول: <table class="styled-table"><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>
-- أكواد: <pre><code class="language-php">...</code></pre> (أو language-bash, language-json, language-html حسب الحاجة) بدون div code-block
-- قوائم عند الحاجة: <ul class="styled-list"><li>...</li></ul>
-GUIDE;
+        return DocumentationHtmlStyleGuide::block();
     }
 
     /**
@@ -358,7 +361,7 @@ GUIDE;
             ], $topic);
 
             $title = $shaped['title'];
-            $content = $shaped['content'];
+            $content = $this->repairer()->repairDocument($shaped['content']);
             $excerpt = $shaped['excerpt'];
             $slug = $this->normalizeSlugFromTitle($shaped['slug'] ?? ($contentData['slug'] ?? null), $title);
 
@@ -428,6 +431,8 @@ GUIDE;
             : 'خطط الصفحة بالعربية.';
         $categoryLine = $category ? "القسم: {$category->name}. " : '';
         $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
+        // "medium"/"long" means nothing to the model on its own; spell out the size.
+        $pageBudget = DocumentationHtmlStyleGuide::pageBudget((string) $length);
         $topicForPrompt = Str::limit(trim($topic), 1500);
 
         $prompt = <<<PROMPT
@@ -436,9 +441,11 @@ GUIDE;
 الموضوع: {$topicForPrompt}
 {$categoryLine}{$parentLine}
 عدد الأقسام المستهدف تقريباً: {$sectionTarget}
-طول المحتوى الإجمالي المستهدف: {$length}
+طول المحتوى الإجمالي المستهدف: {$pageBudget}
 الأسلوب: {$tone}
 {$langLine}
+
+غطِّ الموضوع بالكامل: المقدمة والأساسيات، الاستخدام العملي، الحالات المتقدمة، الأخطاء الشائعة، وأفضل الممارسات. لا تكرر أقساماً بنفس المعنى.
 
 أعد النتيجة كـ JSON فقط بهذا الشكل:
 {
@@ -487,6 +494,7 @@ PROMPT;
      * @param  array<string, mixed>  $outline
      * @param  list<string>  $priorHeadings
      * @param  array{tone?: string, language?: string, content_length?: string}  $options
+     * @param  list<string>  $laterHeadings
      */
     public function generateDocumentationSectionHtml(
         string $topic,
@@ -498,7 +506,7 @@ PROMPT;
         array $options = [],
         bool $compact = false,
         ?int $maxTokens = null,
-        bool $plain = false,
+        array $laterHeadings = [],
     ): string {
         $language = $options['language'] ?? 'ar';
         $tone = $options['tone'] ?? 'professional';
@@ -506,15 +514,16 @@ PROMPT;
         $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
         $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
         $styleGuide = $this->documentationStyleGuideBlock();
-        $compactLine = $compact
-            ? 'مهم: اجعل القسم أقصر. مثال كود واحد فقط، بدون تكرار، ركّز على الفكرة الأساسية.'
-            : '';
+        $contentLength = (string) ($options['content_length'] ?? 'medium');
+        $budgetLine = DocumentationHtmlStyleGuide::sectionBudget($contentLength, $compact);
+        $laterLine = $laterHeadings === []
+            ? ''
+            : 'أقسام لاحقة (لا تتناولها هنا): '.implode(' | ', $laterHeadings);
 
-        // The JSON envelope doubles the failure surface (escaping + truncation), so the
-        // last rungs of the retry ladder ask for bare HTML instead.
-        $outputRule = $plain
-            ? "أعد HTML فقط بدون JSON وبدون علامات markdown. ابدأ مباشرة بـ <section."
-            : "أعد JSON فقط:\n{\"html\":\"<section class=\\\"content-section\\\">...</section>\"}";
+        // Never a JSON envelope: asking a model to escape HTML inside a JSON
+        // string is what made it write whole programs on a single line.
+        $outputRule = "أعد HTML فقط. ابدأ مباشرة بـ <section class=\"content-section\"> وانتهِ بـ </section>.\n"
+            .'ممنوع JSON، ممنوع علامات markdown، ممنوع أي شرح قبل أو بعد HTML.';
 
         $prompt = <<<PROMPT
 اكتب قسماً واحداً فقط من صفحة توثيق.
@@ -524,9 +533,10 @@ PROMPT;
 القسم الحالي: {$heading}
 ملخص القسم: {$brief}
 أقسام سابقة (للتماسك، لا تكررها): {$prior}
+{$laterLine}
 الأسلوب: {$tone}
 {$langLine}
-{$compactLine}
+{$budgetLine}
 
 استخدم HTML فقط وفق الدليل:
 {$styleGuide}
@@ -540,18 +550,11 @@ PROMPT;
         $response = $this->callProvider(
             $model,
             $prompt,
-            $maxTokens ?? $this->tokensForStage($model, 'section'),
+            $maxTokens ?? $this->tokensForStage($model, 'section', $compact, $contentLength),
             $model->temperature ?? 0.65,
         );
 
-        $data = $plain ? [] : $this->parseJSONResponse($response);
-        $rawHtml = '';
-        if (is_array($data) && $data !== []) {
-            $rawHtml = (string) ($data['html'] ?? $data['content'] ?? '');
-        }
-        if ($rawHtml === '') {
-            $rawHtml = $response;
-        }
+        $rawHtml = $response;
 
         $html = $this->resultNormalizer()->extractSectionHtml($rawHtml);
         if ($html === '') {
@@ -597,14 +600,27 @@ PROMPT;
     }
 
     /**
-     * Cap per-stage completion tokens. Sending the model's full ceiling for a single
-     * section is what triggers provider 413/429 rejections on long pages.
+     * Cap per-stage completion tokens.
+     *
+     * The cap sits on top of the model's own max_tokens and is sized by how long
+     * the page is meant to be. A flat 4096 for every model truncated long sections
+     * mid-tag — which is what drove the retry ladder down to its compact rungs and
+     * produced pages that were both short and malformed.
      */
-    public function tokensForStage(AIModel $model, string $stage, bool $compact = false): int
-    {
+    public function tokensForStage(
+        AIModel $model,
+        string $stage,
+        bool $compact = false,
+        string $contentLength = 'medium',
+    ): int {
+        $sectionCap = (int) config('ai.docs.section_max_tokens', 8192);
         $cap = match ($stage) {
-            'outline' => (int) config('ai.docs.outline_max_tokens', 2048),
-            default => (int) config('ai.docs.section_max_tokens', 4096),
+            'outline' => (int) config('ai.docs.outline_max_tokens', 3072),
+            default => match ($contentLength) {
+                'short' => min($sectionCap, 4096),
+                'long' => $sectionCap,
+                default => min($sectionCap, 6144),
+            },
         };
         if ($compact) {
             $cap = (int) max(1024, floor($cap * 0.6));
@@ -628,12 +644,6 @@ PROMPT;
         ?DocumentationCategory $category,
         ?DocumentationPage $parent
     ): array {
-        $lengthMap = [
-            'short' => '500-800 كلمة تقريباً',
-            'medium' => '1000-1500 كلمة تقريباً',
-            'long' => '2000-3000 كلمة تقريباً',
-        ];
-
         $toneMap = [
             'professional' => 'احترافي وواضح',
             'friendly' => 'ودود ومبسّط',
@@ -646,6 +656,7 @@ PROMPT;
             ? 'Write the page in clear English unless the topic requires Arabic terms.'
             : 'اكتب الصفحة بالعربية الفصحى الواضحة.';
 
+        $pageBudget = DocumentationHtmlStyleGuide::pageBudget($contentLength);
         $categoryLine = $category ? "القسم/المجلد: {$category->name}. " : '';
         $parentLine = $parent ? "هذه الصفحة فرع من صفحة بعنوان: «{$parent->title}» — اربط المحتوى بسياقها. " : '';
 
@@ -655,7 +666,7 @@ PROMPT;
 
 الموضوع أو المطلوب: {$topic}
 {$categoryLine}{$parentLine}
-الطول المستهدف: {$lengthMap[$contentLength]}
+الطول المستهدف: {$pageBudget}
 الأسلوب: {$toneMap[$tone]}
 {$langLine}
 
@@ -772,6 +783,7 @@ PROMPT;
     {
         return $this->resultNormalizer()->normalizeHtmlString($content);
     }
+
     private function normalizeSlugFromTitle(?string $slug, string $title): string
     {
         if ($slug !== null && trim($slug) !== '') {

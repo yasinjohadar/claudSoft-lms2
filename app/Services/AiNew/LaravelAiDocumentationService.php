@@ -11,6 +11,7 @@ use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\DocumentationAiResultNormalizer;
+use App\Services\Ai\DocumentationHtmlStyleGuide;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -574,15 +575,7 @@ PROMPT;
 
     private function documentationStyleGuideBlock(): string
     {
-        return <<<'GUIDE'
-- لفّ كل قسم رئيسي بـ: <section class="content-section"> ... </section>
-- عناوين فرعية: <h2 class="section-title">النص</h2> وعند الحاجة <h3 class="subsection-title">...</h3>
-- فقرات توضيحية: <div class="text-block">...</div>
-- تنبيهات: <div class="info-box info|warning|success|error"><div class="info-box-title">عنوان</div><p>...</p></div>
-- جداول: <table class="styled-table"><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>
-- أكواد: <pre><code class="language-php">...</code></pre> (أو language-bash, language-json, language-html حسب الحاجة) بدون div code-block
-- قوائم عند الحاجة: <ul class="styled-list"><li>...</li></ul>
-GUIDE;
+        return DocumentationHtmlStyleGuide::block();
     }
 
     /**

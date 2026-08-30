@@ -117,6 +117,13 @@
                 'ruby': 'Ruby', 'go': 'Go', 'rust': 'Rust', 'swift': 'Swift', 'kotlin': 'Kotlin',
                 'yaml': 'YAML', 'markdown': 'Markdown', 'text': 'Text', 'plaintext': 'Text'
             };
+            // An explicit language- class is the author's answer; sniffing over the
+            // top of it re-tagged language-html blocks containing the word
+            // "function" as JavaScript and highlighted them wrongly.
+            if (lang) {
+                return languageNames[lang] || lang.replace(/-/g, ' ').toUpperCase();
+            }
+
             var detectedLang = '';
             if (/\b(const|let|var|function|=>|console\.log|document\.|window\.)\b/.test(sample)) {
                 detectedLang = 'javascript';

@@ -10,6 +10,7 @@ use App\Models\AIModel;
 abstract class AIProviderService
 {
     protected AIModel $model;
+
     protected ?string $lastError = null;
 
     public function __construct(AIModel $model)
@@ -27,10 +28,24 @@ abstract class AIProviderService
 
     /**
      * تعيين آخر خطأ
+     *
+     * Providers translate their errors to Arabic before anyone sees them, which
+     * leaves AiErrorClassifier unable to tell a 429 from a 401. Appending the raw
+     * status keeps the message readable and the classification reliable.
      */
-    protected function setLastError(string $error): void
+    protected function setLastError(string $error, ?int $statusCode = null): void
     {
+        if ($statusCode !== null && $statusCode > 0 && ! preg_match('/\[HTTP \d+\]/', $error)) {
+            $error = rtrim($error).' [HTTP '.$statusCode.']';
+        }
+
         $this->lastError = $error;
+    }
+
+    /** Drop the diagnostic suffix added by setLastError() before showing a message to a user. */
+    public static function stripDiagnostics(?string $error): string
+    {
+        return trim((string) preg_replace('/\s*\[HTTP \d+\]\s*$/', '', (string) $error));
     }
 
     /**
@@ -85,4 +100,3 @@ abstract class AIProviderService
         return $this->model->api_endpoint;
     }
 }
-

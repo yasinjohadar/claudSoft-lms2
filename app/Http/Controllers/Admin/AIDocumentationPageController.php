@@ -6,13 +6,14 @@ use App\Http\Controllers\Admin\Concerns\CleansUtf8AiResponse;
 use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveDocumentationPageRequest;
+use App\Models\DocumentationAiGeneration;
+use App\Models\DocumentationAiSection;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
-use App\Models\DocumentationAiGeneration;
-use App\Models\DocumentationAiSection;
 use App\Services\Ai\AIDocumentationPageService;
 use App\Services\Ai\AIModelService;
+use App\Services\Ai\DocumentationHtmlRepairer;
 use App\Services\AiNew\DocumentationAiJobStarter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,7 @@ class AIDocumentationPageController extends Controller
         private AIDocumentationPageService $docService,
         private AIModelService $modelService,
         private DocumentationAiJobStarter $jobStarter,
+        private DocumentationHtmlRepairer $repairer = new DocumentationHtmlRepairer,
     ) {}
 
     public function create(Request $request)
@@ -433,7 +435,9 @@ class AIDocumentationPageController extends Controller
         }
 
         $outline = $generation->partial_result['outline'] ?? [];
-        $content = $done->implode("\n");
+        // Partial assemblies get the same balancing as a finished run, so a page
+        // saved from here cannot carry an unclosed section into the editor.
+        $content = $this->repairer->repairDocument($done->implode("\n"));
 
         return response()->json([
             'success' => true,
@@ -451,6 +455,12 @@ class AIDocumentationPageController extends Controller
     {
         $validated = $request->validated();
         $validated['updated_by'] = Auth::id();
+        if (! empty($validated['content'])) {
+            $repaired = $this->repairer->repairDocument((string) $validated['content']);
+            if ($repaired !== '') {
+                $validated['content'] = $repaired;
+            }
+        }
         $validated['is_indexable'] = $request->boolean('is_indexable', true);
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 

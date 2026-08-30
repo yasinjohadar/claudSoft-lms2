@@ -8,6 +8,9 @@ use App\Models\DocumentationAiGeneration;
 use App\Models\DocumentationAiSection;
 use App\Services\Ai\AiErrorClassifier;
 use App\Services\Ai\DocumentationAiResultNormalizer;
+use App\Services\Ai\DocumentationHtmlRepairer;
+use App\Services\Ai\DocumentationSectionValidator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -22,11 +25,13 @@ use Throwable;
 class DocumentationStagedGenerator
 {
     /** Seconds to wait before each retry when the provider does not tell us. */
-    private const BACKOFF_SECONDS = [3, 8, 20, 45];
+    private const BACKOFF_SECONDS = [2, 5, 12, 30];
 
     public function __construct(
         private DocumentationAiResultNormalizer $resultNormalizer,
         private AiErrorClassifier $classifier,
+        private DocumentationHtmlRepairer $repairer = new DocumentationHtmlRepairer,
+        private DocumentationSectionValidator $validator = new DocumentationSectionValidator,
     ) {}
 
     /**
@@ -45,10 +50,12 @@ class DocumentationStagedGenerator
         callable $outlineWriter,
         callable $sectionWriter,
     ): array {
+        $contentLength = (string) ($options['content_length'] ?? 'medium');
+
         $outline = $this->ensureOutline($generation, $topic, $sectionTarget, $outlineTokens, $outlineWriter);
         $sections = $this->ensureSectionRows($generation, $outline, $sectionTarget);
 
-        $this->writeSections($generation, $sections, $sectionTokens, $sectionWriter);
+        $this->writeSections($generation, $sections, $sectionTokens, $sectionWriter, $contentLength);
 
         return $this->assemble($generation, $topic, $outline);
     }
@@ -141,7 +148,7 @@ class DocumentationStagedGenerator
 
     /**
      * @param  array<string, mixed>  $outline
-     * @return \Illuminate\Support\Collection<int, DocumentationAiSection>
+     * @return Collection<int, DocumentationAiSection>
      */
     private function ensureSectionRows(
         DocumentationAiGeneration $generation,
@@ -178,7 +185,7 @@ class DocumentationStagedGenerator
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, DocumentationAiSection>  $sections
+     * @param  Collection<int, DocumentationAiSection>  $sections
      * @param  callable(DocumentationSectionAttempt): string  $sectionWriter
      */
     private function writeSections(
@@ -186,9 +193,11 @@ class DocumentationStagedGenerator
         $sections,
         int $sectionTokens,
         callable $sectionWriter,
+        string $contentLength = 'medium',
     ): void {
         $total = $sections->count();
-        $delayMs = max(0, (int) config('ai.docs.section_delay_ms', 1200));
+        $delayMs = max(0, (int) config('ai.docs.section_delay_ms', 300));
+        $allHeadings = $sections->pluck('heading')->filter()->values()->all();
         $priorHeadings = [];
         $index = 0;
 
@@ -217,7 +226,19 @@ class DocumentationStagedGenerator
                 usleep($delayMs * 1000);
             }
 
-            $this->writeOneSection($generation, $section, $priorHeadings, $sectionTokens, $sectionWriter);
+            // Everything after this heading, so the section does not wander into
+            // material a later section is meant to cover.
+            $laterHeadings = array_values(array_slice($allHeadings, $index));
+
+            $this->writeOneSection(
+                $generation,
+                $section,
+                $priorHeadings,
+                $sectionTokens,
+                $sectionWriter,
+                $contentLength,
+                $laterHeadings,
+            );
 
             if ($section->isDone()) {
                 $priorHeadings[] = $section->heading;
@@ -226,7 +247,16 @@ class DocumentationStagedGenerator
     }
 
     /**
+     * Write one section, retrying it as many times as the failure warrants.
+     *
+     * The rung only steps down when the request itself was the problem — too big,
+     * or an answer that came back truncated or unusable. A rate limit or a network
+     * blip is answered by waiting and asking again for the *same* thing: the old
+     * code stepped down on every error, so a busy provider silently turned a long
+     * page into a series of 600-character stubs.
+     *
      * @param  list<string>  $priorHeadings
+     * @param  list<string>  $laterHeadings
      * @param  callable(DocumentationSectionAttempt): string  $sectionWriter
      */
     private function writeOneSection(
@@ -235,13 +265,23 @@ class DocumentationStagedGenerator
         array $priorHeadings,
         int $sectionTokens,
         callable $sectionWriter,
+        string $contentLength = 'medium',
+        array $laterHeadings = [],
     ): void {
         $ladder = $this->attemptLadder($sectionTokens);
         $attemptsUsed = (int) $section->attempts;
+        $waitBudget = max(0, (int) config('ai.docs.rate_limit_retries', 2));
+
+        $rung = 0;
+        $waitsUsed = 0;
+        $callNumber = 0;
+        $qualityRetried = false;
         $last = null;
 
-        foreach ($ladder as $rung => $step) {
+        while ($rung < count($ladder)) {
+            $step = $ladder[$rung];
             $attemptsUsed++;
+            $callNumber++;
             $started = hrtime(true);
 
             try {
@@ -249,13 +289,13 @@ class DocumentationStagedGenerator
                     heading: $section->heading,
                     brief: (string) $section->brief,
                     priorHeadings: $priorHeadings,
-                    attempt: $rung + 1,
+                    attempt: $callNumber,
                     maxTokens: $step['tokens'],
                     compact: $step['compact'],
-                    plain: $step['plain'],
+                    laterHeadings: $laterHeadings,
                 ));
 
-                $html = $this->wrapSection($html, $section->heading);
+                $html = $this->repairer->repairSection($html, $section->heading);
                 if ($html === '') {
                     throw new AiProviderException(
                         'استجابة القسم فارغة بعد التنظيف.',
@@ -263,16 +303,45 @@ class DocumentationStagedGenerator
                     );
                 }
 
+                $reject = $this->validator->rejectionReason($html, $contentLength, $step['compact']);
+                if ($reject !== null && ! $qualityRetried) {
+                    // Ask again at the SAME size. Stepping down here would be
+                    // backwards: the next rung asks for a shorter section, which is
+                    // the opposite of what a thin answer needs.
+                    $qualityRetried = true;
+
+                    Log::warning('docs.section', [
+                        'generation_id' => $generation->id,
+                        'position' => $section->position,
+                        'heading' => $section->heading,
+                        'attempt' => $callNumber,
+                        'rung' => $rung + 1,
+                        'max_tokens' => $step['tokens'],
+                        'outcome' => 'rejected',
+                        'reject_reason' => $reject,
+                        'retry_action' => 'retry_same_rung',
+                        'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
+                    ]);
+
+                    $section->update(['attempts' => $attemptsUsed]);
+
+                    continue;
+                }
+
+                // Second look was no better: a mediocre section still beats a
+                // missing one, so keep it and record why it was let through.
                 $section->markDone($html, $attemptsUsed);
 
                 Log::info('docs.section', [
                     'generation_id' => $generation->id,
                     'position' => $section->position,
                     'heading' => $section->heading,
-                    'attempt' => $rung + 1,
+                    'attempt' => $callNumber,
+                    'rung' => $rung + 1,
                     'max_tokens' => $step['tokens'],
                     'html_len' => mb_strlen($html),
                     'outcome' => 'ok',
+                    'accepted_with' => $reject,
                     'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
                 ]);
 
@@ -281,33 +350,48 @@ class DocumentationStagedGenerator
                 $error = $this->classifier->fromThrowable($e);
                 $last = $error;
 
+                // Waiting fixes a rate limit or a blip; a smaller request does not.
+                $waitInstead = ! $error->needsSmallerRequest() && ! $error->isFatal();
+                $canWait = $waitInstead && $waitsUsed < $waitBudget;
+
                 Log::warning('docs.section', [
                     'generation_id' => $generation->id,
                     'position' => $section->position,
                     'heading' => $section->heading,
-                    'attempt' => $rung + 1,
+                    'attempt' => $callNumber,
+                    'rung' => $rung + 1,
                     'max_tokens' => $step['tokens'],
                     'outcome' => 'error',
                     'error_kind' => $error->kind,
                     'error' => $error->getMessage(),
+                    'retry_action' => $error->isFatal() ? 'abort' : ($canWait ? 'wait_same_rung' : 'step_down'),
                     'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
                 ]);
 
-                $section->update(['attempts' => $attemptsUsed, 'last_error' => mb_substr($error->getMessage(), 0, 2000)]);
+                $section->update([
+                    'attempts' => $attemptsUsed,
+                    'last_error' => mb_substr($error->getMessage(), 0, 2000),
+                ]);
 
                 // Bad key or exhausted credit: stop before burning the remaining sections.
                 if ($error->isFatal()) {
                     throw $error;
                 }
 
+                if ($canWait) {
+                    $this->pause($generation, $error->retryAfterSeconds ?? self::BACKOFF_SECONDS[$waitsUsed] ?? 20);
+                    $waitsUsed++;
+
+                    continue;
+                }
+
                 if ($rung === count($ladder) - 1) {
                     break;
                 }
 
-                // Oversized requests are fixed by the next (smaller) rung, not by waiting.
-                if (! $error->needsSmallerRequest()) {
-                    $this->pause($generation, $error->retryAfterSeconds ?? self::BACKOFF_SECONDS[$rung] ?? 20);
-                }
+                // New rung, new wait budget: the next size may be rate limited too.
+                $rung++;
+                $waitsUsed = 0;
             }
         }
 
@@ -318,19 +402,22 @@ class DocumentationStagedGenerator
     }
 
     /**
-     * Escalating fallbacks: full section, then shorter, then bare HTML without the
-     * JSON envelope that truncation tends to break.
+     * Escalating fallbacks: the full section, then progressively smaller requests.
      *
-     * @return list<array{tokens: int, compact: bool, plain: bool}>
+     * Every rung asks for bare HTML — the JSON envelope that used to wrap the last
+     * rungs is gone, because escaping HTML inside a JSON string is what made models
+     * write whole programs on a single line.
+     *
+     * @return list<array{tokens: int, compact: bool}>
      */
     public function attemptLadder(int $baseTokens): array
     {
         $base = max(768, $baseTokens);
         $shape = [
-            ['factor' => 1.0, 'compact' => false, 'plain' => false],
-            ['factor' => 0.75, 'compact' => false, 'plain' => false],
-            ['factor' => 0.6, 'compact' => true, 'plain' => false],
-            ['factor' => 0.45, 'compact' => true, 'plain' => true],
+            ['factor' => 1.0, 'compact' => false],
+            ['factor' => 0.75, 'compact' => false],
+            ['factor' => 0.6, 'compact' => true],
+            ['factor' => 0.45, 'compact' => true],
         ];
 
         $wanted = max(1, min(count($shape), (int) config('ai.docs.section_attempts', 4)));
@@ -339,7 +426,6 @@ class DocumentationStagedGenerator
             $ladder[] = [
                 'tokens' => max(768, (int) floor($base * $step['factor'])),
                 'compact' => $step['compact'],
-                'plain' => $step['plain'],
             ];
         }
 
@@ -379,8 +465,10 @@ class DocumentationStagedGenerator
 
         $generation->markProgress('assemble', 'دمج الأقسام…', 92);
 
-        $content = $this->resultNormalizer->normalizeHtmlString(
-            $done->pluck('html')->filter()->implode("\n")
+        $content = $this->repairer->repairDocument(
+            $this->resultNormalizer->normalizeHtmlString(
+                $done->pluck('html')->filter()->implode("\n")
+            )
         );
         if ($content === '') {
             throw new \RuntimeException('لم يُنتج محتوى HTML صالحاً بعد دمج الأقسام.');
@@ -434,20 +522,6 @@ class DocumentationStagedGenerator
         $fromTopic = preg_replace('/^(قم\s+ب|أنشئ|اكتب|إنشاء|Create\s+|Write\s+|Generate\s+|Please\s+)\S*\s*/ui', '', $fromTopic) ?: $fromTopic;
 
         return mb_substr(trim($fromTopic) !== '' ? trim($fromTopic) : 'صفحة توثيق', 0, 70);
-    }
-
-    private function wrapSection(string $html, string $heading): string
-    {
-        $html = trim($html);
-        if ($html === '') {
-            return '';
-        }
-
-        if (! str_contains($html, 'content-section')) {
-            $html = '<section class="content-section"><h2 class="section-title">'.e($heading).'</h2>'.$html.'</section>';
-        }
-
-        return $html;
     }
 
     private function normalizeSlug(?string $slug, string $title): string

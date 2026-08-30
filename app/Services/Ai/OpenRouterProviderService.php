@@ -2,22 +2,21 @@
 
 namespace App\Services\Ai;
 
-use App\Models\AIModel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * OpenRouter Provider Service
- * 
+ *
  * يوفر وصولاً موحداً لعدة موديلات AI من خلال OpenRouter API
  * بما في ذلك موديلات مجانية من Google, Meta, Microsoft, وغيرها
- * 
+ *
  * @see https://openrouter.ai/docs
  */
 class OpenRouterProviderService extends AIProviderService
 {
     private const BASE_URL = 'https://openrouter.ai/api/v1';
-    
+
     /**
      * الموديلات المجانية المتاحة (محدثة)
      */
@@ -50,7 +49,7 @@ class OpenRouterProviderService extends AIProviderService
 
         try {
             $apiKey = $this->getApiKey();
-            if (!$apiKey) {
+            if (! $apiKey) {
                 return [
                     'success' => false,
                     'error' => 'API Key غير موجود. احصل على API Key مجاني من openrouter.ai',
@@ -58,17 +57,17 @@ class OpenRouterProviderService extends AIProviderService
             }
 
             Log::info('OpenRouter API Request', [
-                'url' => $url . $endpoint,
+                'url' => $url.$endpoint,
                 'model' => $this->model->model_key,
                 'is_free' => $this->isFreeModel(),
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . trim($apiKey),
+                'Authorization' => 'Bearer '.trim($apiKey),
                 'Content-Type' => 'application/json',
                 'HTTP-Referer' => config('app.url', 'http://localhost'),
                 'X-Title' => config('app.name', 'Laravel App'),
-            ])->withoutVerifying()->timeout(180)->post($url . $endpoint, $payload);
+            ])->withoutVerifying()->timeout(180)->post($url.$endpoint, $payload);
 
             Log::info('OpenRouter API Response', [
                 'status' => $response->status(),
@@ -77,7 +76,7 @@ class OpenRouterProviderService extends AIProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return [
                     'success' => true,
                     'content' => $data['choices'][0]['message']['content'] ?? '',
@@ -91,7 +90,7 @@ class OpenRouterProviderService extends AIProviderService
             $errorData = $response->json();
             $errorMessage = $errorData['error']['message'] ?? 'Unknown error';
             $errorCode = $errorData['error']['code'] ?? $response->status();
-            
+
             Log::error('OpenRouter API Error', [
                 'status' => $response->status(),
                 'error' => $errorMessage,
@@ -109,12 +108,13 @@ class OpenRouterProviderService extends AIProviderService
                 'raw_error' => $errorMessage,
             ];
         } catch (\Exception $e) {
-            Log::error('OpenRouter API Exception: ' . $e->getMessage(), [
+            Log::error('OpenRouter API Exception: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return [
                 'success' => false,
-                'error' => 'خطأ في الاتصال: ' . $e->getMessage(),
+                'error' => 'خطأ في الاتصال: '.$e->getMessage(),
             ];
         }
     }
@@ -125,16 +125,17 @@ class OpenRouterProviderService extends AIProviderService
     public function generateText(string $prompt, array $options = []): string
     {
         $messages = [
-            ['role' => 'user', 'content' => $prompt]
+            ['role' => 'user', 'content' => $prompt],
         ];
 
         $result = $this->chat($messages, $options);
-        
-        if (!$result['success']) {
-            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص');
+
+        if (! $result['success']) {
+            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص', $result['status_code'] ?? null);
+
             return '';
         }
-        
+
         return $result['content'] ?? '';
     }
 
@@ -154,12 +155,13 @@ class OpenRouterProviderService extends AIProviderService
     {
         try {
             $result = $this->chat([
-                ['role' => 'user', 'content' => 'Say "OK" only.']
+                ['role' => 'user', 'content' => 'Say "OK" only.'],
             ], ['max_tokens' => 10]);
 
             return $result['success'] ?? false;
         } catch (\Exception $e) {
-            Log::error('OpenRouter test connection failed: ' . $e->getMessage());
+            Log::error('OpenRouter test connection failed: '.$e->getMessage());
+
             return false;
         }
     }
@@ -169,7 +171,7 @@ class OpenRouterProviderService extends AIProviderService
      */
     public function isFreeModel(): bool
     {
-        return in_array($this->model->model_key, self::FREE_MODELS) 
+        return in_array($this->model->model_key, self::FREE_MODELS)
             || str_ends_with($this->model->model_key, ':free');
     }
 
@@ -180,13 +182,13 @@ class OpenRouterProviderService extends AIProviderService
     {
         try {
             $apiKey = $this->getApiKey();
-            if (!$apiKey) {
+            if (! $apiKey) {
                 return [];
             }
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . trim($apiKey),
-            ])->timeout(30)->get(self::BASE_URL . '/models');
+                'Authorization' => 'Bearer '.trim($apiKey),
+            ])->timeout(30)->get(self::BASE_URL.'/models');
 
             if ($response->successful()) {
                 return $response->json()['data'] ?? [];
@@ -194,7 +196,8 @@ class OpenRouterProviderService extends AIProviderService
 
             return [];
         } catch (\Exception $e) {
-            Log::error('Failed to get OpenRouter models: ' . $e->getMessage());
+            Log::error('Failed to get OpenRouter models: '.$e->getMessage());
+
             return [];
         }
     }
@@ -206,13 +209,13 @@ class OpenRouterProviderService extends AIProviderService
     {
         try {
             $apiKey = $this->getApiKey();
-            if (!$apiKey) {
+            if (! $apiKey) {
                 return [];
             }
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . trim($apiKey),
-            ])->timeout(30)->get(self::BASE_URL . '/auth/key');
+                'Authorization' => 'Bearer '.trim($apiKey),
+            ])->timeout(30)->get(self::BASE_URL.'/auth/key');
 
             if ($response->successful()) {
                 return $response->json()['data'] ?? [];
@@ -220,7 +223,8 @@ class OpenRouterProviderService extends AIProviderService
 
             return [];
         } catch (\Exception $e) {
-            Log::error('Failed to get OpenRouter usage info: ' . $e->getMessage());
+            Log::error('Failed to get OpenRouter usage info: '.$e->getMessage());
+
             return [];
         }
     }
@@ -230,8 +234,8 @@ class OpenRouterProviderService extends AIProviderService
      */
     private function getFriendlyErrorMessage(int $statusCode, string $rawMessage): string
     {
-        return match($statusCode) {
-            400 => 'طلب غير صحيح: ' . $rawMessage,
+        return match ($statusCode) {
+            400 => 'طلب غير صحيح: '.$rawMessage,
             401 => 'API Key غير صحيح. تأكد من نسخ API Key بشكل صحيح من openrouter.ai',
             402 => 'رصيدك منتهي. أضف رصيداً في openrouter.ai أو استخدم موديل مجاني (:free)',
             403 => 'الوصول مرفوض. تحقق من صلاحيات API Key.',
@@ -239,8 +243,7 @@ class OpenRouterProviderService extends AIProviderService
             408 => 'انتهت مهلة الطلب. جرّب مرة أخرى.',
             429 => 'تم تجاوز حد الطلبات. انتظر قليلاً ثم جرّب مرة أخرى.',
             500, 502, 503 => 'خطأ في خادم OpenRouter. جرّب مرة أخرى لاحقاً.',
-            default => 'خطأ غير متوقع: ' . $rawMessage . " (رمز: {$statusCode})",
+            default => 'خطأ غير متوقع: '.$rawMessage." (رمز: {$statusCode})",
         };
     }
 }
-

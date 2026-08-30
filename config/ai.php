@@ -50,19 +50,27 @@ return [
     | Documentation staged generation
     |--------------------------------------------------------------------------
     |
-    | Long pages are written one section at a time. Each call must stay well
-    | under the provider's per-request and per-minute token budgets: asking for
-    | the model's full max_tokens on every section is what produces 413/429
-    | rejections mid-run. Sections are persisted as they finish, so a paused run
-    | can be continued without regenerating anything.
+    | Long pages are written one section at a time. Sections are persisted as
+    | they finish, so a paused run can be continued without regenerating
+    | anything.
+    |
+    | section_max_tokens is an upper bound, not a target: the effective budget is
+    | min(model max_tokens, cap-for-this-content-length). Setting it too low is
+    | what truncates sections mid-tag and forces the retry ladder down to its
+    | "compact" rungs, which is how long pages ended up short and malformed.
+    |
+    | rate_limit_retries: how many times one rung repeats itself after a rate
+    | limit or transient failure. Those are answered by waiting, never by asking
+    | the model for a shorter section.
     |
     */
     'docs' => [
-        'outline_max_tokens' => (int) env('AI_DOCS_OUTLINE_MAX_TOKENS', 2048),
-        'section_max_tokens' => (int) env('AI_DOCS_SECTION_MAX_TOKENS', 4096),
-        'section_delay_ms' => (int) env('AI_DOCS_SECTION_DELAY_MS', 1200),
+        'outline_max_tokens' => (int) env('AI_DOCS_OUTLINE_MAX_TOKENS', 3072),
+        'section_max_tokens' => (int) env('AI_DOCS_SECTION_MAX_TOKENS', 8192),
+        'section_delay_ms' => (int) env('AI_DOCS_SECTION_DELAY_MS', 300),
         'section_attempts' => (int) env('AI_DOCS_SECTION_ATTEMPTS', 4),
         'outline_attempts' => (int) env('AI_DOCS_OUTLINE_ATTEMPTS', 3),
+        'rate_limit_retries' => (int) env('AI_DOCS_RATE_LIMIT_RETRIES', 2),
         'retry_backoff' => (bool) env('AI_DOCS_RETRY_BACKOFF', true),
     ],
 

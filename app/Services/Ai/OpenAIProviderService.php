@@ -2,7 +2,6 @@
 
 namespace App\Services\Ai;
 
-use App\Models\AIModel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,9 +15,10 @@ class OpenAIProviderService extends AIProviderService
         $endpoint = $this->getApiEndpoint() ?? '/chat/completions';
 
         $apiKey = $this->getApiKey();
-        if (!$apiKey) {
+        if (! $apiKey) {
             $error = 'API Key غير موجود. يرجى إدخال API Key في حقل "مفتاح API" وحفظ النموذج أولاً.';
             $this->setLastError($error);
+
             return [
                 'success' => false,
                 'error' => $error,
@@ -33,8 +33,8 @@ class OpenAIProviderService extends AIProviderService
         ];
 
         try {
-            $fullUrl = $url . $endpoint;
-            
+            $fullUrl = $url.$endpoint;
+
             Log::info('OpenAI API Request', [
                 'url' => $fullUrl,
                 'model' => $this->model->model_key,
@@ -42,7 +42,7 @@ class OpenAIProviderService extends AIProviderService
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . trim($apiKey),
+                'Authorization' => 'Bearer '.trim($apiKey),
                 'Content-Type' => 'application/json',
             ])->withoutVerifying()->timeout(180)->post($fullUrl, $payload);
 
@@ -53,7 +53,7 @@ class OpenAIProviderService extends AIProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return [
                     'success' => true,
                     'content' => $data['choices'][0]['message']['content'] ?? '',
@@ -69,7 +69,7 @@ class OpenAIProviderService extends AIProviderService
             $errorMessage = $errorData['error']['message'] ?? 'خطأ غير معروف';
             $errorType = $errorData['error']['type'] ?? null;
             $errorCode = $errorData['error']['code'] ?? null;
-            
+
             Log::error('OpenAI API Error', [
                 'status' => $response->status(),
                 'error' => $errorMessage,
@@ -80,7 +80,7 @@ class OpenAIProviderService extends AIProviderService
             // رسائل خطأ واضحة بالعربية
             $friendlyMessage = $this->getFriendlyErrorMessage($response->status(), $errorMessage, $errorType);
 
-            $this->setLastError($friendlyMessage);
+            $this->setLastError($friendlyMessage, $response->status());
 
             return [
                 'success' => false,
@@ -89,13 +89,13 @@ class OpenAIProviderService extends AIProviderService
                 'raw_error' => $errorMessage,
             ];
         } catch (\Exception $e) {
-            Log::error('OpenAI API Exception: ' . $e->getMessage(), [
+            Log::error('OpenAI API Exception: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-            
-            $error = 'خطأ في الاتصال: ' . $e->getMessage();
+
+            $error = 'خطأ في الاتصال: '.$e->getMessage();
             $this->setLastError($error);
-            
+
             return [
                 'success' => false,
                 'error' => $error,
@@ -120,25 +120,26 @@ class OpenAIProviderService extends AIProviderService
         } elseif ($errorType === 'insufficient_quota') {
             return 'رصيد OpenAI غير كافٍ. يرجى إضافة رصيد إلى حسابك من OpenAI Platform.';
         } elseif ($errorType === 'invalid_request_error') {
-            return 'طلب غير صحيح: ' . $errorMessage;
+            return 'طلب غير صحيح: '.$errorMessage;
         }
 
-        return 'خطأ من OpenAI: ' . $errorMessage;
+        return 'خطأ من OpenAI: '.$errorMessage;
     }
 
     public function generateText(string $prompt, array $options = []): string
     {
         $messages = [
-            ['role' => 'user', 'content' => $prompt]
+            ['role' => 'user', 'content' => $prompt],
         ];
 
         $result = $this->chat($messages, $options);
-        
-        if (!$result['success']) {
-            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص');
+
+        if (! $result['success']) {
+            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص', $result['status_code'] ?? null);
+
             return '';
         }
-        
+
         return $result['content'] ?? '';
     }
 
@@ -153,15 +154,15 @@ class OpenAIProviderService extends AIProviderService
     {
         try {
             $result = $this->chat([
-                ['role' => 'user', 'content' => 'Say "OK" only.']
+                ['role' => 'user', 'content' => 'Say "OK" only.'],
             ], ['max_tokens' => 10]);
 
             return $result['success'] ?? false;
         } catch (\Exception $e) {
-            Log::error('OpenAI test connection failed: ' . $e->getMessage());
-            $this->setLastError('فشل اختبار الاتصال: ' . $e->getMessage());
+            Log::error('OpenAI test connection failed: '.$e->getMessage());
+            $this->setLastError('فشل اختبار الاتصال: '.$e->getMessage());
+
             return false;
         }
     }
 }
-
