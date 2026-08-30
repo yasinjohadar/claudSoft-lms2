@@ -101,6 +101,9 @@
                     el.textContent = formatNumber(target * eased, decimals) + suffix;
                     if (progress < 1) {
                         requestAnimationFrame(step);
+                    } else {
+                        // نبضة ختامية لودجات لوحة التحكم (portal-kpi.css)
+                        el.classList.add('stat-value-done');
                     }
                 }
 

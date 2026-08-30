@@ -18,15 +18,19 @@
             el.dataset.countupAnimated = 'true';
 
             const target = parseFloat(el.dataset.countup || '0');
+            const suffix = el.dataset.countupSuffix || '';
             const duration = 900;
             const start = performance.now();
 
             const step = function (now) {
                 const progress = Math.min((now - start) / duration, 1);
                 const eased = 1 - Math.pow(1 - progress, 3);
-                el.textContent = formatNumber(target * eased);
+                el.textContent = formatNumber(target * eased) + suffix;
                 if (progress < 1) {
                     requestAnimationFrame(step);
+                } else {
+                    // نبضة ختامية لودجات لوحة التحكم (portal-kpi.css)
+                    el.classList.add('stat-value-done');
                 }
             };
 
