@@ -38,34 +38,4 @@
     ];
 @endphp
 
-<div class="row g-3 mb-4 hr-stat-widgets">
-    @foreach ($statWidgets as $index => $widget)
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-            <div class="dashboard-stat-link" style="--card-delay: {{ $index * 0.1 }}s">
-                <div class="dashboard-stat-card dashboard-stat-{{ $widget['theme'] }}">
-                    <div class="stat-card-shine"></div>
-                    <div class="stat-card-mesh"></div>
-                    <div class="stat-card-bubble stat-card-bubble-1"></div>
-                    <div class="stat-card-bubble stat-card-bubble-2"></div>
-                    <div class="stat-card-bubble stat-card-bubble-3"></div>
-                    <div class="stat-card-glow"></div>
-                    <div class="stat-card-body">
-                        <div class="stat-card-content">
-                            <span class="stat-label">{{ $widget['title'] }}</span>
-                            <span class="stat-value"
-                                  data-countup="{{ $widget['value'] }}"
-                                  @if(!empty($widget['suffix'])) data-countup-suffix="{{ $widget['suffix'] }}" @endif>0</span>
-                            <span class="stat-subtext">{{ $widget['subtext'] }}</span>
-                        </div>
-                        <div class="stat-icon-wrap">
-                            <span class="stat-icon-ring"></span>
-                            <span class="stat-icon-circle">
-                                <i class="{{ $widget['icon'] }}"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endforeach
-</div>
+<x-stat-widgets :items="$statWidgets" />
