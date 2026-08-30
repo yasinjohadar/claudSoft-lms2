@@ -127,6 +127,10 @@ class WhatsAppAutoReplyDoctor extends Command
             $this->info('  جدول jobs فارغ — لا وظائف عالقة في قاعدة البيانات.');
         }
 
+        $this->newLine();
+        $this->info('=== ميزانية التأخير ===');
+        $this->renderDelayBudget($settings, $all);
+
         $lastEvent = WhatsAppWebhookEvent::orderByDesc('id')->first();
         $unprocessed = WhatsAppWebhookEvent::whereNull('processed_at')->count();
         $this->newLine();
@@ -200,6 +204,73 @@ class WhatsAppAutoReplyDoctor extends Command
         $this->comment('تلميح: بعد كل نشر نفّذ php artisan queue:restart — عمال supervisor يبقون على الكود القديم في الذاكرة.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * يفكّك زمن الرد المتوقَّع إلى مكوّناته، ويقيس الزمن الفعلي من آخر ردّ حقيقي.
+     * التأخير هنا تراكمي: كل إعداد يضيف ثوانيه، ولا يظهر أثره إلا مجموعاً.
+     */
+    protected function renderDelayBudget(array $settings, array $all): void
+    {
+        $debounce = (int) ($settings['auto_reply_debounce_seconds'] ?? 8);
+        $initMin = (int) ($settings['auto_reply_initial_delay_min'] ?? 2);
+        $initMax = (int) ($settings['auto_reply_initial_delay_max'] ?? 5);
+        $typing = (int) ($settings['auto_reply_typing_duration'] ?? 3);
+        $chunks = (int) ($settings['auto_reply_max_chunks'] ?? 3);
+
+        $randomOn = filter_var($all['random_delay_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $minDelay = (int) ($all['min_delay'] ?? 1);
+        $maxDelay = (int) ($all['max_delay'] ?? 3);
+        $between = (int) ($all['delay_between_messages'] ?? 5);
+        $perSend = $randomOn ? (($minDelay + $maxDelay) / 2) : $between;
+
+        $rows = [
+            ['تجميع الرسائل (debounce)', $debounce.'ث', 'auto_reply_debounce_seconds'],
+            ['تأخير بشري ابتدائي', $initMin.'–'.$initMax.'ث', 'auto_reply_initial_delay_min/max'],
+            ['مؤشّر «يكتب» × '.$chunks.' أجزاء', ($typing * $chunks).'ث', 'auto_reply_typing_duration'],
+            ['فاصل الإرسال × '.$chunks.' أجزاء', round($perSend * $chunks, 1).'ث', $randomOn ? 'min_delay/max_delay' : 'delay_between_messages'],
+            ['توليد رد الذكاء الاصطناعي', '~2–8ث', 'حسب النموذج'],
+        ];
+        $this->table(['المكوّن', 'الزمن', 'الإعداد'], $rows);
+
+        $min = $debounce + $initMin + ($typing * $chunks) + ($perSend * $chunks) + 2;
+        $max = $debounce + $initMax + ($typing * $chunks) + ($perSend * $chunks) + 8;
+        $this->line('  المتوقَّع إجمالاً: ~'.round($min).'–'.round($max).'ث  (+ زمن انتظار الطابور)');
+
+        if (config('whatsapp.queue', 'whatsapp') === 'default') {
+            $this->warn('  ⚠ وظائف واتساب على طابور «default» المشترك — تنتظر خلف كل وظيفة أخرى.');
+            $this->line('     أفردها بطابور خاص (WHATSAPP_QUEUE=whatsapp + عامل يستمع له) لتقليل الانتظار.');
+        }
+
+        // القياس الفعلي: أول رد صادر بعد كل رسالة واردة أُجيبت
+        $latencies = [];
+        $inbound = WhatsAppMessage::where('direction', WhatsAppMessage::DIRECTION_INBOUND)
+            ->orderByDesc('id')->limit(20)->get();
+        foreach ($inbound as $m) {
+            $reply = WhatsAppMessage::where('contact_id', $m->contact_id)
+                ->where('direction', WhatsAppMessage::DIRECTION_OUTBOUND)
+                ->where('id', '>', $m->id)
+                ->orderBy('id')->first();
+            if ($reply && $m->created_at && $reply->created_at) {
+                $diff = $reply->created_at->diffInSeconds($m->created_at);
+                if ($diff >= 0 && $diff < 3600) {
+                    $latencies[] = $diff;
+                }
+            }
+        }
+
+        if ($latencies) {
+            sort($latencies);
+            $this->line('  المقيس فعلياً (آخر '.count($latencies).' رد): '
+                .'أدنى '.$latencies[0].'ث — '
+                .'وسيط '.$latencies[intdiv(count($latencies), 2)].'ث — '
+                .'أقصى '.end($latencies).'ث');
+
+            $median = $latencies[intdiv(count($latencies), 2)];
+            if ($median > $max) {
+                $this->error('  ← الوسيط أعلى بكثير من المتوقَّع: الفارق زمن انتظار في الطابور، لا إعدادات التأخير.');
+            }
+        }
     }
 
     /**
