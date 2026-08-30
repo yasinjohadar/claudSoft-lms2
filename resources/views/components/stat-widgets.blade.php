@@ -1,6 +1,7 @@
 @props([
     // مصفوفة البطاقات. مفاتيح كل عنصر:
-    //   theme     مطلوب  blue|green|orange|purple
+    //   theme     مطلوب  blue|green|orange|purple|gold|silver
+    //                    (gold يحمل لمعة متحركة — خُصّص لبطاقة «نوع الحساب»)
     //   icon      مطلوب  صنف أيقونة Remix مثل ri-book-open-line
     //   title     مطلوب  العنوان الصغير أعلى الرقم
     //   value     مطلوب  الرقم (أو نص إن كان value_text)

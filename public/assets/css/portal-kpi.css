@@ -364,3 +364,129 @@
     40% { transform: scale(1.12); }
     100% { transform: scale(1); }
 }
+
+/* ==========================================================================
+   ثيم ذهبي — لبطاقة «نوع الحساب: ذهبي»
+
+   يختلف عن بقية الثيمات في أنه لا يكتفي بتدرّج ثابت: الذهب يُقرأ ذهباً
+   بفضل حركة الضوء عليه، لا بلونه وحده. لذلك:
+     • تدرّج متعدّد المحطات يحاكي انعكاس المعدن (داكن → لامع → داكن)
+     • لمعة دائمة (gold-sheen) تعبر البطاقة كل 4 ثوانٍ بلا تفاعل
+     • إطار داخلي فاتح يوحي بحافة مصقولة
+     • النص بظل داكن خفيف ليبقى مقروءاً فوق الأصفر الفاتح
+   ========================================================================== */
+
+.hr-stat-widgets .dashboard-stat-gold {
+    background: linear-gradient(
+        135deg,
+        #8a6410 0%,
+        #b8860b 18%,
+        #d4a418 34%,
+        #f5d76e 50%,
+        #ffe9a8 58%,
+        #f0c74e 68%,
+        #c9971a 84%,
+        #9a7213 100%
+    );
+    background-size: 220% 220%;
+    box-shadow:
+        0 10px 36px rgba(184, 134, 11, 0.5),
+        inset 0 0 0 1px rgba(255, 245, 200, 0.45);
+}
+
+/* لمعة تعبر البطاقة تلقائياً — ما يجعلها تبدو معدناً لا لوناً */
+.hr-stat-widgets .dashboard-stat-gold::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.55) 49%,
+        rgba(255, 255, 255, 0.75) 51%,
+        rgba(255, 255, 255, 0.55) 53%,
+        transparent 62%
+    );
+    transform: translateX(-120%);
+    animation: gold-sheen 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.hr-stat-widgets .dashboard-stat-link:hover .dashboard-stat-gold {
+    box-shadow:
+        0 20px 50px rgba(184, 134, 11, 0.6),
+        inset 0 0 0 1px rgba(255, 250, 220, 0.6);
+}
+
+/* الفقاعات والشبكة أوضح قليلاً هنا: تلتقط الضوء كحبيبات معدنية */
+.hr-stat-widgets .dashboard-stat-gold .stat-card-bubble,
+.hr-stat-widgets .dashboard-stat-gold .stat-card-glow {
+    background: rgba(255, 250, 225, 0.28);
+}
+
+/* الأصفر الفاتح يبتلع النص الأبيض — ظل داكن خفيف يعيد التباين */
+.hr-stat-widgets .dashboard-stat-gold .stat-label,
+.hr-stat-widgets .dashboard-stat-gold .stat-value,
+.hr-stat-widgets .dashboard-stat-gold .stat-subtext {
+    text-shadow: 0 1px 3px rgba(90, 62, 0, 0.55);
+}
+
+.hr-stat-widgets .dashboard-stat-gold .stat-subtext {
+    background: rgba(90, 62, 0, 0.22);
+}
+
+.hr-stat-widgets .dashboard-stat-gold .stat-icon-circle {
+    background: rgba(255, 250, 225, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(255, 250, 220, 0.5);
+}
+
+.hr-stat-widgets .dashboard-stat-gold .stat-icon-ring {
+    border-color: rgba(255, 250, 225, 0.55);
+}
+
+@keyframes gold-sheen {
+    0%   { transform: translateX(-120%); }
+    /* التوقّف الطويل بين المرورين مقصود: لمعة متواصلة تُلهي بدل أن تلفت */
+    45%  { transform: translateX(120%); }
+    100% { transform: translateX(120%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hr-stat-widgets .dashboard-stat-gold::after {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+/* ثيم فضّي — الحالة المقابلة لبطاقة «نوع الحساب».
+   بلا لمعة متحركة: الفضّي حالة افتراضية ولا يجدر به أن ينافس الذهبي بصرياً. */
+.hr-stat-widgets .dashboard-stat-silver {
+    background: linear-gradient(
+        135deg,
+        #64748b 0%,
+        #94a3b8 30%,
+        #cbd5e1 52%,
+        #94a3b8 74%,
+        #6b7a8f 100%
+    );
+    box-shadow:
+        0 10px 36px rgba(100, 116, 139, 0.45),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.hr-stat-widgets .dashboard-stat-link:hover .dashboard-stat-silver {
+    box-shadow:
+        0 20px 50px rgba(100, 116, 139, 0.55),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.hr-stat-widgets .dashboard-stat-silver .stat-label,
+.hr-stat-widgets .dashboard-stat-silver .stat-value,
+.hr-stat-widgets .dashboard-stat-silver .stat-subtext {
+    text-shadow: 0 1px 3px rgba(30, 41, 59, 0.5);
+}
+
+.hr-stat-widgets .dashboard-stat-silver .stat-subtext {
+    background: rgba(30, 41, 59, 0.22);
+}

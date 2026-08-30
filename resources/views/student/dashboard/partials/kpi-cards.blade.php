@@ -3,15 +3,15 @@
      * نفس ودجات لوحة الأدمن بالضبط (نمط Hr-System).
      * الغلاف .hr-stat-widgets إلزامي — انظر التعليق في portal-kpi.css
      *
-     * الثيمات المتاحة: blue · green · orange · purple
-     * نوع الحساب يستخدم purple للذهبي و blue للفضي لعدم وجود ثيم ذهبي.
+     * الثيمات المتاحة: blue · green · orange · purple · gold · silver
+     * الذهبي/الفضي مخصّصان لبطاقة «نوع الحساب» — والذهبي يحمل لمعة متحركة.
      */
     $tier = $accountTier ?? 'silver';
     $isGoldAccount = $tier === 'gold';
 
     $statWidgets = [
         [
-            'theme' => $isGoldAccount ? 'orange' : 'blue',
+            'theme' => $isGoldAccount ? 'gold' : 'silver',
             'icon' => $isGoldAccount ? 'ri-vip-crown-fill' : 'ri-medal-fill',
             'title' => 'نوع الحساب',
             'value' => $isGoldAccount ? 'ذهبي' : 'فضي',
