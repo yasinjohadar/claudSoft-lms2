@@ -36,8 +36,8 @@
 <!-- Custom Css -->
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}?v={{ @filemtime(public_path('assets/css/custom.css')) ?: '1' }}">
 
-<!-- هيدر الإدارة: شريط البحث وأيقونات الأدوات وزرّ طيّ القائمة -->
-<link rel="stylesheet" href="{{ asset('assets/css/admin-header.css') }}?v={{ @filemtime(public_path('assets/css/admin-header.css')) ?: '1' }}">
+<!-- هيدر البوابات: شريط البحث وأيقونات الأدوات وزرّ طيّ القائمة -->
+<link rel="stylesheet" href="{{ asset('assets/css/portal-header.css') }}?v={{ @filemtime(public_path('assets/css/portal-header.css')) ?: '1' }}">
 
 @yield('styles')
 @yield('css')
