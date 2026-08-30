@@ -8124,47 +8124,50 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
 }
 
-/* Student theme switcher (إعدادات العرض) */
-.student-portal #switcher-canvas.student-theme-switcher {
+/* لوحة «إعدادات العرض» — مشتركة بين لوحتَي الطالب والأدمن.
+   الأصناف تحمل بادئة student- لأسباب تاريخية، لكن نطاقها :is() يشمل
+   البوابتين بدل تكرار ~40 قاعدة. لا تُعِد البادئة إلى .student-portal وحدها
+   وإلا فقدت لوحة الأدمن تنسيقها بالكامل. */
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher {
     width: min(22rem, 92vw);
     border: none;
     box-shadow: -8px 0 40px rgba(0, 0, 0, 0.12);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .offcanvas-header,
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__header {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .offcanvas-header,
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__header {
     padding: 1.35rem 1.5rem 0.85rem;
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--primary-rgb), 0.02) 100%);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .offcanvas-header .offcanvas-title,
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__header .offcanvas-title {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .offcanvas-header .offcanvas-title,
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__header .offcanvas-title {
     font-weight: 800;
     font-size: 1.05rem;
     color: var(--default-text-color);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__subtitle {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__subtitle {
     font-size: 0.78rem;
     color: var(--text-muted);
 }
 
 /* تجاوز #switcher-canvas .offcanvas-body { padding: 0 } في styles.css */
-.student-portal #switcher-canvas.student-theme-switcher .offcanvas-body,
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__body {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .offcanvas-body,
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__body {
     padding: 0.75rem 1.5rem 1.25rem;
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__section {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__section {
     padding: 0.85rem 0.15rem;
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__section:last-of-type {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__section:last-of-type {
     border-bottom: none;
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__label {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__label {
     display: flex;
     align-items: center;
     gap: 0.45rem;
@@ -8176,7 +8179,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     letter-spacing: 0;
 }
 
-.student-portal .student-theme-switcher__label i {
+:is(.student-portal, .admin-portal) .student-theme-switcher__label i {
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 8px;
@@ -8188,20 +8191,20 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     background: rgba(var(--primary-rgb), 0.1);
 }
 
-.student-portal .student-theme-switcher__grid {
+:is(.student-portal, .admin-portal) .student-theme-switcher__grid {
     display: grid;
     gap: 0.55rem;
 }
 
-.student-portal .student-theme-switcher__grid--2 {
+:is(.student-portal, .admin-portal) .student-theme-switcher__grid--2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.student-portal .student-theme-switcher__grid--3 {
+:is(.student-portal, .admin-portal) .student-theme-switcher__grid--3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.student-portal .student-theme-option {
+:is(.student-portal, .admin-portal) .student-theme-option {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -8217,18 +8220,18 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     text-align: center;
 }
 
-.student-portal .student-theme-option:hover {
+:is(.student-portal, .admin-portal) .student-theme-option:hover {
     border-color: rgba(var(--primary-rgb), 0.35);
     background: rgba(var(--primary-rgb), 0.03);
 }
 
-.student-portal .student-theme-option:has(input:checked) {
+:is(.student-portal, .admin-portal) .student-theme-option:has(input:checked) {
     border-color: rgb(var(--primary-rgb));
     background: rgba(var(--primary-rgb), 0.08);
     box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.15);
 }
 
-.student-portal .student-theme-option__icon {
+:is(.student-portal, .admin-portal) .student-theme-option__icon {
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 10px;
@@ -8241,25 +8244,25 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     transition: background 0.2s ease, color 0.2s ease;
 }
 
-.student-portal .student-theme-option:has(input:checked) .student-theme-option__icon {
+:is(.student-portal, .admin-portal) .student-theme-option:has(input:checked) .student-theme-option__icon {
     background: rgb(var(--primary-rgb));
     color: #fff;
 }
 
-.student-portal .student-theme-option__text {
+:is(.student-portal, .admin-portal) .student-theme-option__text {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--default-text-color);
 }
 
-.student-portal .student-theme-switcher__swatches {
+:is(.student-portal, .admin-portal) .student-theme-switcher__swatches {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.55rem;
 }
 
-.student-portal .student-theme-swatch {
+:is(.student-portal, .admin-portal) .student-theme-swatch {
     position: relative;
     width: 2.15rem;
     height: 2.15rem;
@@ -8269,7 +8272,7 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     flex-shrink: 0;
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-input {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-input {
     width: 100%;
     height: 100%;
     margin: 0;
@@ -8281,41 +8284,41 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     background-image: none;
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-1 {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-1 {
     background-color: rgb(58, 88, 146);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-2 {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-2 {
     background-color: rgb(15, 171, 189);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-3 {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-3 {
     background-color: rgb(170, 82, 216);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-4 {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-4 {
     background-color: rgb(68, 166, 62);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-5 {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-primary-5 {
     background-color: rgb(244, 86, 86);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-swatch .color-input:hover {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-swatch .color-input:hover {
     transform: scale(1.08);
 }
 
-.student-portal .student-theme-swatch .color-input:checked {
+:is(.student-portal, .admin-portal) .student-theme-swatch .color-input:checked {
     border-color: var(--custom-white, #fff);
     box-shadow: 0 0 0 2px rgb(var(--primary-rgb));
     transform: scale(1.05);
 }
 
-.student-portal .student-theme-swatch .color-input:checked::before {
+:is(.student-portal, .admin-portal) .student-theme-swatch .color-input:checked::before {
     font-size: 1rem;
 }
 
-.student-portal .student-theme-swatch--picker {
+:is(.student-portal, .admin-portal) .student-theme-swatch--picker {
     width: 2.15rem;
     height: 2.15rem;
     border-radius: 50%;
@@ -8324,39 +8327,39 @@ html[data-icon-overlay="open"] .student-portal .student-header-sidebar-toggle__w
     background: rgba(var(--primary-rgb), 0.04);
 }
 
-.student-portal .student-theme-swatch--picker .pickr-container-primary,
-.student-portal .student-theme-swatch--picker .theme-container-primary {
+:is(.student-portal, .admin-portal) .student-theme-swatch--picker .pickr-container-primary,
+:is(.student-portal, .admin-portal) .student-theme-swatch--picker .theme-container-primary {
     width: 100%;
     height: 100%;
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__footer {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__footer {
     padding: 1rem 1.5rem 1.35rem;
     border-top: 1px solid rgba(var(--primary-rgb), 0.08);
     background: var(--custom-white, #fff);
 }
 
-.student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__footer .btn {
+:is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__footer .btn {
     font-weight: 600;
     font-size: 0.85rem;
     padding-block: 0.65rem;
 }
 
-[data-theme-mode="dark"] .student-portal #switcher-canvas.student-theme-switcher {
+[data-theme-mode="dark"] :is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher {
     box-shadow: -8px 0 40px rgba(0, 0, 0, 0.45);
 }
 
-[data-theme-mode="dark"] .student-portal #switcher-canvas.student-theme-switcher .student-theme-option {
+[data-theme-mode="dark"] :is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-option {
     background: rgba(255, 255, 255, 0.03);
     border-color: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme-mode="dark"] .student-portal #switcher-canvas.student-theme-switcher .student-theme-switcher__footer {
+[data-theme-mode="dark"] :is(.student-portal, .admin-portal) #switcher-canvas.student-theme-switcher .student-theme-switcher__footer {
     background: var(--custom-white);
 }
 
 /* Sidebar layout toggle (كاملة / مصغّرة) — course pages */
-.student-portal .student-sidebar-layout-toggle {
+:is(.student-portal, .admin-portal) .student-sidebar-layout-toggle {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
