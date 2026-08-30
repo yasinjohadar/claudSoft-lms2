@@ -134,4 +134,7 @@
 })();
 </script>
 @include('student.partials.student-id-copy-script')
+
+{{-- موجة النقر على بطاقات الاختصارات (نفس ملف لوحة الأدمن) --}}
+<script src="{{ asset('assets/js/admin-dashboard.js') }}?v={{ @filemtime(public_path('assets/js/admin-dashboard.js')) ?: '1' }}" defer></script>
 @endpush

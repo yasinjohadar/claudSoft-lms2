@@ -55,7 +55,33 @@
         }
     }
 
+    /**
+     * موجة عند النقر على بطاقة اختصار (portal-shortcuts.css).
+     * مفوَّضة على المستند بدل ربط كل بطاقة، فتعمل مع أي بطاقة تُضاف لاحقاً.
+     */
+    function initShortcutRipple() {
+        document.addEventListener('click', function (e) {
+            const card = e.target.closest('.shortcut-card');
+            if (!card) {
+                return;
+            }
+
+            const rect = card.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const ripple = document.createElement('span');
+            ripple.className = 'shortcut-ripple';
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+            ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+            card.appendChild(ripple);
+            ripple.addEventListener('animationend', function () {
+                ripple.remove();
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         initCountUp();
+        initShortcutRipple();
     });
 })();

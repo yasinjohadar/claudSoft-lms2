@@ -35,6 +35,9 @@
 <!-- Custom Css -->
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}?v={{ @filemtime(public_path('assets/css/custom.css')) ?: '1' }}">
 
+<!-- بطاقات الاختصارات السريعة -->
+<link rel="stylesheet" href="{{ asset('assets/css/portal-shortcuts.css') }}?v={{ @filemtime(public_path('assets/css/portal-shortcuts.css')) ?: '1' }}">
+
 <!-- ودجات إحصاء لوحة التحكم -->
 <link rel="stylesheet" href="{{ asset('assets/css/portal-kpi.css') }}?v={{ @filemtime(public_path('assets/css/portal-kpi.css')) ?: '1' }}">
 
