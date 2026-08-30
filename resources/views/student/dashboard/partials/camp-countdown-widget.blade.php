@@ -1,20 +1,26 @@
 @php
+    /*
+     * بطاقة معسكر بنمط ودجات الإحصاء (Hr-System): خلفية متدرّجة + الطبقات
+     * الزخرفية نفسها، لكن بمحتوى خاص (عدّاد أيام + تواريخ) عبر .camp-card__*
+     *
+     * الثيم يتبع حالة المعسكر: جارٍ = أخضر، قادم = أزرق، منتهٍ = فضّي.
+     */
     $group = $membership->group;
     $hasEndDate = $group->end_date !== null;
     $daysRemaining = $hasEndDate
         ? max(0, (int) now()->startOfDay()->diffInDays($group->end_date->copy()->startOfDay(), false))
         : null;
 
-    $statusClass = 'primary';
+    $theme = 'blue';
     $statusLabel = 'قادم';
     $countdownLabel = 'يوم متبقي';
 
     if ($group->hasEnded()) {
-        $statusClass = 'secondary';
+        $theme = 'silver';
         $statusLabel = 'منتهي';
         $countdownLabel = 'انتهى';
     } elseif ($group->isOngoing()) {
-        $statusClass = 'success';
+        $theme = 'green';
         $statusLabel = 'جاري';
         $countdownLabel = $daysRemaining === null ? 'مستمر' : ($daysRemaining === 0 ? 'ينتهي اليوم' : 'يوم متبقي');
     } elseif ($daysRemaining === 0) {
@@ -24,44 +30,43 @@
     $formatDate = fn ($date) => $date?->locale('ar')->translatedFormat('j F Y') ?? '—';
 @endphp
 
-<div class="{{ $columnClass ?? 'col-xl-6 col-lg-6 col-md-6 col-sm-12' }} dashboard-stagger-item" style="--stagger-delay: {{ $staggerDelay ?? 0 }}ms">
+<div class="{{ $columnClass ?? 'col-xl-6 col-lg-6 col-md-6 col-sm-12' }}">
     <a href="{{ route('student.training-camps.show', $group->id) }}"
-       class="student-camp-widget student-camp-widget--{{ $statusClass }} text-decoration-none d-block h-100">
-        <div class="student-camp-widget__header">
-            <span class="student-camp-widget__icon bg-{{ $statusClass }}-transparent">
-                <i class="fe fe-flag text-{{ $statusClass }}"></i>
-            </span>
-            <div class="student-camp-widget__title-wrap">
-                <span class="student-camp-widget__title">{{ $group->name }}</span>
-                <span class="badge bg-{{ $statusClass }}-transparent text-{{ $statusClass }} fs-10">
-                    <i class="fe fe-clock me-1"></i>{{ $statusLabel }}
-                </span>
-            </div>
-            <span class="student-camp-widget__link ms-auto">
-                <i class="fe fe-arrow-left"></i>
-            </span>
-        </div>
+       class="dashboard-stat-link"
+       style="--card-delay: {{ ($staggerDelay ?? 0) / 1000 }}s">
+        <div class="dashboard-stat-card dashboard-stat-{{ $theme }}">
+            <div class="stat-card-shine"></div>
+            <div class="stat-card-mesh"></div>
+            <div class="stat-card-bubble stat-card-bubble-1"></div>
+            <div class="stat-card-bubble stat-card-bubble-2"></div>
+            <div class="stat-card-bubble stat-card-bubble-3"></div>
+            <div class="stat-card-glow"></div>
 
-        <div class="student-camp-widget__body">
-            <div class="student-camp-widget__countdown-wrap">
-                <div class="student-camp-widget__countdown-ring">
-                    <span class="student-camp-widget__countdown-value student-camp-widget__countdown-value--danger">{{ $daysRemaining ?? 0 }}</span>
+            <div class="camp-card__body">
+                <div class="camp-card__head">
+                    <span class="camp-card__name">{{ $group->name }}</span>
+                    <span class="camp-card__status">{{ $statusLabel }}</span>
+                    <span class="camp-card__arrow"><i class="ri-arrow-left-line"></i></span>
                 </div>
-                <span class="student-camp-widget__countdown-label">{{ $countdownLabel }}</span>
-            </div>
 
-            <ul class="student-camp-widget__dates list-unstyled mb-0">
-                <li>
-                    <i class="fe fe-play-circle text-muted"></i>
-                    <span class="text-muted">بداية المعسكر:</span>
-                    <span>{{ $formatDate($group->start_date) }}</span>
-                </li>
-                <li>
-                    <i class="fe fe-flag text-muted"></i>
-                    <span class="text-muted">نهاية المعسكر:</span>
-                    <span>{{ $hasEndDate ? $formatDate($group->end_date) : 'بلا تاريخ نهاية' }}</span>
-                </li>
-            </ul>
+                <div class="camp-card__main">
+                    <div class="camp-card__countdown">
+                        <span class="camp-card__days">{{ $daysRemaining !== null ? $daysRemaining : '—' }}</span>
+                        <span class="camp-card__days-label">{{ $countdownLabel }}</span>
+                    </div>
+
+                    <div class="camp-card__dates">
+                        <span class="camp-card__date">
+                            <i class="ri-play-circle-line"></i>
+                            البداية: <strong>{{ $formatDate($group->start_date) }}</strong>
+                        </span>
+                        <span class="camp-card__date">
+                            <i class="ri-flag-line"></i>
+                            النهاية: <strong>{{ $hasEndDate ? $formatDate($group->end_date) : 'بلا تاريخ نهاية' }}</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
     </a>
 </div>
