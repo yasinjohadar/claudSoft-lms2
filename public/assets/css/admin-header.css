@@ -1,0 +1,954 @@
+/* ==========================================================================
+   هيدر الإدارة — شريط البحث وأيقونات الأدوات
+
+   يبني فوق قالب Ynex ولا يستبدله. القالب يضبط في styles.min.css:
+     .main-header-center .form-control  → height 40px, border-radius 20px, width 350px
+     .main-header-center .btn           → position absolute, inset-inline-end 5px
+     .main-header-container .header-link-icon → 1.5rem، وfill/color = --header-prime-color
+   وكلها تُعاد هنا بنطاق .admin-portal فقط، فبوابة الموظف تبقى كما هي.
+
+   الوضع الليلي/النهاري: الألوان من رموز القالب (--header-prime-color،
+   --default-border، --default-text-color، --primary-rgb) فتقلب تلقائياً،
+   مع تجاوزات صريحة لحالات الهيدر الملوّن/الداكن حيث لا تكفي الرموز.
+   ========================================================================== */
+
+/* ==========================================================================
+   1) شريط البحث
+   ========================================================================== */
+
+.admin-portal .hr-search {
+    position: relative;
+}
+
+/*
+ * الانحناء 3px بطلب صريح (كان 20px في القالب).
+ * !important ضروري: قاعدة القالب .main-header-center .form-control
+ * لها نفس درجة التخصيص تقريباً وتأتي من ملف قد يُحمّل بعد هذا.
+ */
+.admin-portal .hr-search .hr-search__input {
+    border-radius: 3px !important;
+    height: 40px;
+    padding-inline: 1.15rem 2.75rem;
+    border: 1px solid var(--default-border);
+    background: var(--default-body-bg-color);
+    color: var(--default-text-color);
+    /* width ينتقل بسلاسة عند التركيز — انظر :focus أدناه */
+    transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.22s ease,
+                background 0.22s ease,
+                box-shadow 0.22s ease;
+}
+
+.admin-portal .hr-search .hr-search__input::placeholder {
+    color: var(--text-muted);
+    transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* التمرير: تلميح خفيف قبل التركيز */
+.admin-portal .hr-search:hover .hr-search__input:not(:focus) {
+    border-color: rgba(var(--primary-rgb), 0.35);
+}
+
+/*
+ * التركيز — الحركة التفاعلية:
+ *   1. الحقل يتّسع من 350px إلى 420px
+ *   2. حلقة رقيقة بلون الواجهة حول الحدود
+ *   3. النائب ينزلق قليلاً ويخفت
+ *   4. خط سفلي بلون الواجهة يمتد من الصفر (انظر __underline)
+ *   5. أيقونة البحث تكبر وتتلوّن
+ */
+.admin-portal .hr-search .hr-search__input:focus {
+    width: 420px;
+    border-color: rgb(var(--primary-rgb));
+    background: var(--custom-white);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.14);
+    outline: 0;
+}
+
+.admin-portal .hr-search .hr-search__input:focus::placeholder {
+    opacity: 0.55;
+    transform: translateX(-4px);
+}
+
+/* زرّ الأيقونة — القالب يضعه absolute؛ نضبط الأبعاد والألوان فقط */
+.admin-portal .hr-search .hr-search__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0;
+    padding-inline: 0.75rem;
+    border: 0 !important;
+    background-color: transparent;
+    color: var(--text-muted);
+    transition: color 0.22s ease;
+}
+
+.admin-portal .hr-search .hr-search__icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    transition: transform 0.28s cubic-bezier(0.34, 1.5, 0.64, 1), color 0.22s ease;
+}
+
+.admin-portal .hr-search:focus-within .hr-search__btn,
+.admin-portal .hr-search .hr-search__btn:hover {
+    color: rgb(var(--primary-rgb));
+}
+
+.admin-portal .hr-search:focus-within .hr-search__icon {
+    transform: scale(1.12) rotate(-8deg);
+}
+
+.admin-portal .hr-search .hr-search__btn:active .hr-search__icon {
+    transform: scale(0.92);
+}
+
+/*
+ * الخط السفلي: يمتد من المنتصف إلى الطرفين عند التركيز.
+ * inset-inline-start:0 مع width يتبع الحقل — لا يمكن ربطه بعرض الحقل
+ * المتغيّر إلا بجعله ابن الحاوية بعرض 420px عند التركيز.
+ */
+.admin-portal .hr-search .hr-search__underline {
+    position: absolute;
+    inset-block-end: -1px;
+    inset-inline-start: 0;
+    width: 350px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(var(--primary-rgb));
+    transform: scaleX(0);
+    transform-origin: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.22s ease,
+                width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-portal .hr-search:focus-within .hr-search__underline {
+    width: 420px;
+    transform: scaleX(1);
+    opacity: 1;
+}
+
+/* الهيدر الداكن/الملوّن: الحقل الشفاف يحتاج حدوداً أوضح */
+[data-header-styles="dark"] .admin-portal .hr-search .hr-search__input,
+[data-header-styles="color"] .admin-portal .hr-search .hr-search__input,
+[data-header-styles="gradient"] .admin-portal .hr-search .hr-search__input {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+[data-header-styles="dark"] .admin-portal .hr-search .hr-search__input::placeholder,
+[data-header-styles="color"] .admin-portal .hr-search .hr-search__input::placeholder,
+[data-header-styles="gradient"] .admin-portal .hr-search .hr-search__input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+[data-header-styles="dark"] .admin-portal .hr-search .hr-search__input:focus,
+[data-header-styles="color"] .admin-portal .hr-search .hr-search__input:focus,
+[data-header-styles="gradient"] .admin-portal .hr-search .hr-search__input:focus {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+}
+
+[data-header-styles="dark"] .admin-portal .hr-search .hr-search__btn,
+[data-header-styles="color"] .admin-portal .hr-search .hr-search__btn,
+[data-header-styles="gradient"] .admin-portal .hr-search .hr-search__btn {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+[data-header-styles="dark"] .admin-portal .hr-search:focus-within .hr-search__btn,
+[data-header-styles="color"] .admin-portal .hr-search:focus-within .hr-search__btn,
+[data-header-styles="gradient"] .admin-portal .hr-search:focus-within .hr-search__btn {
+    color: #fff;
+}
+
+[data-header-styles="dark"] .admin-portal .hr-search .hr-search__underline,
+[data-header-styles="color"] .admin-portal .hr-search .hr-search__underline,
+[data-header-styles="gradient"] .admin-portal .hr-search .hr-search__underline {
+    background: #fff;
+}
+
+/* على الشاشات الأصغر لا يوجد مجال للتوسّع */
+@media (max-width: 1400px) {
+    .admin-portal .hr-search .hr-search__input:focus {
+        width: 350px;
+    }
+
+    .admin-portal .hr-search:focus-within .hr-search__underline {
+        width: 350px;
+    }
+}
+
+/* ==========================================================================
+   2) أيقونات أدوات الهيدر
+   ========================================================================== */
+
+/*
+ * الأيقونات الجديدة خطّية (stroke) لا مصمتة (fill). قاعدة القالب
+ * .main-header-container .header-link-icon تضبط fill إلى --header-prime-color،
+ * وهذا يملأ المسارات المفتوحة فتظهر ككتل سوداء. لذلك fill: none إجباري.
+ */
+.admin-portal .main-header-container .header-link-icon.hr-hicon,
+.admin-portal .main-header-container .header-link:hover .header-link-icon.hr-hicon,
+.admin-portal .main-header-container .header-link.show .header-link-icon.hr-hicon {
+    fill: none !important;
+    stroke: currentColor;
+}
+
+.admin-portal .main-header-container .header-link-icon.hr-hicon {
+    width: 1.375rem;
+    height: 1.375rem;
+    padding: 0;
+    border-radius: 0;
+    opacity: 1;
+    transition: transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1), color 0.2s ease;
+}
+
+/*
+ * كل أداة تصبح زرّاً دائرياً: خلفية شفافة تظهر عند التمرير.
+ * نُبقي حشو القالب (.8rem .65rem) للتباعد الخارجي، ونرسم الدائرة بـ
+ * ::before حتى لا نغيّر أبعاد العنصر ولا نُزيح بقية الأدوات.
+ */
+.admin-portal .main-header-container .header-element .header-link {
+    position: relative;
+    isolation: isolate;
+    border-radius: 50%;
+}
+
+/*
+ * التمركز بـ inset:0 + margin:auto لا بـ translate: يعمل في RTL و LTR
+ * بلا حساب اتجاه، لأن inset-inline-start يقلب معنى النسبة بين الاتجاهين.
+ */
+.admin-portal .main-header-container .header-element .header-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: auto;
+    border-radius: 50%;
+    background: rgba(var(--primary-rgb), 0.12);
+    opacity: 0;
+    scale: 0.6;
+    z-index: -1;
+    transition: opacity 0.22s ease, scale 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.admin-portal .main-header-container .header-element .header-link:hover::before,
+.admin-portal .main-header-container .header-element .header-link.show::before {
+    opacity: 1;
+    scale: 1;
+}
+
+.admin-portal .main-header-container .header-element .header-link:hover .header-link-icon.hr-hicon {
+    color: rgb(var(--primary-rgb));
+    transform: translateY(-1px);
+}
+
+.admin-portal .main-header-container .header-element .header-link:active .header-link-icon.hr-hicon {
+    transform: scale(0.9);
+}
+
+.admin-portal .main-header-container .header-element .header-link.show .header-link-icon.hr-hicon {
+    color: rgb(var(--primary-rgb));
+}
+
+.admin-portal .main-header-container .header-element .header-link:focus-visible {
+    outline: 2px solid rgba(var(--primary-rgb), 0.55);
+    outline-offset: -2px;
+}
+
+/*
+ * القالب يُدوّر أيقونة إعدادات العرض بلا توقّف
+ * (.switcher-icon .header-link-icon { animation: spin 3s infinite linear }).
+ * نُوقفها ونجعل الدوران استجابةً للتمرير فقط.
+ */
+.admin-portal .switcher-icon .header-link-icon {
+    animation: none !important;
+}
+
+.admin-portal .switcher-icon:hover .header-link-icon.hr-hicon {
+    transform: rotate(90deg);
+}
+
+/* الجرس يرتجّ عند التمرير */
+@keyframes hr-bell-swing {
+    0%, 100% { transform: rotate(0deg); }
+    20%      { transform: rotate(-12deg); }
+    45%      { transform: rotate(9deg); }
+    70%      { transform: rotate(-5deg); }
+}
+
+.admin-portal .notifications-dropdown .header-link:hover .header-link-icon.hr-hicon {
+    transform: none;
+    transform-origin: top center;
+    animation: hr-bell-swing 0.6s ease;
+}
+
+/* صورة الملف الشخصي: حلقة تظهر عند التمرير */
+.admin-portal .headerProfile-dropdown .header-link img {
+    border: 2px solid transparent;
+    transition: border-color 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.admin-portal .headerProfile-dropdown .header-link:hover img,
+.admin-portal .headerProfile-dropdown .header-link.show img {
+    border-color: rgb(var(--primary-rgb));
+    transform: scale(1.04);
+}
+
+/* الهيدر الداكن/الملوّن: الحلقة الشفافة بلون الواجهة لا تُرى */
+[data-header-styles="dark"] .admin-portal .main-header-container .header-element .header-link::before,
+[data-header-styles="color"] .admin-portal .main-header-container .header-element .header-link::before,
+[data-header-styles="gradient"] .admin-portal .main-header-container .header-element .header-link::before {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+[data-header-styles="dark"] .admin-portal .main-header-container .header-element .header-link:hover .header-link-icon.hr-hicon,
+[data-header-styles="color"] .admin-portal .main-header-container .header-element .header-link:hover .header-link-icon.hr-hicon,
+[data-header-styles="gradient"] .admin-portal .main-header-container .header-element .header-link:hover .header-link-icon.hr-hicon,
+[data-header-styles="dark"] .admin-portal .main-header-container .header-element .header-link.show .header-link-icon.hr-hicon,
+[data-header-styles="color"] .admin-portal .main-header-container .header-element .header-link.show .header-link-icon.hr-hicon,
+[data-header-styles="gradient"] .admin-portal .main-header-container .header-element .header-link.show .header-link-icon.hr-hicon {
+    color: #fff;
+}
+
+/* احترام تفضيل تقليل الحركة */
+@media (prefers-reduced-motion: reduce) {
+    .admin-portal .hr-search .hr-search__input,
+    .admin-portal .hr-search .hr-search__icon,
+    .admin-portal .hr-search .hr-search__underline,
+    .admin-portal .main-header-container .header-link-icon.hr-hicon,
+    .admin-portal .main-header-container .header-element .header-link::before,
+    .admin-portal .headerProfile-dropdown .header-link img {
+        transition: none;
+        animation: none !important;
+    }
+
+    .admin-portal .hr-search .hr-search__input:focus {
+        width: 350px;
+    }
+
+    .admin-portal .main-header-container .header-element .header-link:hover .header-link-icon.hr-hicon,
+    .admin-portal .switcher-icon:hover .header-link-icon.hr-hicon {
+        transform: none;
+    }
+}
+
+/* ==========================================================================
+   3) لوحة نتائج البحث
+   ========================================================================== */
+
+.admin-portal .hr-search__panel {
+    position: absolute;
+    inset-block-start: calc(100% + 6px);
+    inset-inline-start: 0;
+    z-index: 1050;
+    width: 420px;
+    max-width: calc(100vw - 2rem);
+    max-height: 26rem;
+    overflow-y: auto;
+    padding: 0.375rem;
+    border: 1px solid var(--default-border);
+    border-radius: 3px;
+    background: var(--custom-white);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+    /* الظهور: انزلاق قصير لأعلى مع تلاشٍ */
+    animation: hr-search-panel-in 0.18s ease-out;
+}
+
+@keyframes hr-search-panel-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* عنوان المجموعة (الموظفون / المستخدمون) */
+.admin-portal .hr-search__group {
+    margin: 0.375rem 0.5rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+}
+
+.admin-portal .hr-search__group:first-child {
+    margin-block-start: 0.125rem;
+}
+
+/* عنصر نتيجة */
+.admin-portal .hr-search__item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: 3px;
+    text-decoration: none !important;
+    color: var(--default-text-color);
+    transition: background 0.15s ease;
+}
+
+.admin-portal .hr-search__item:hover,
+.admin-portal .hr-search__item.is-active {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.admin-portal .hr-search__item.is-active {
+    box-shadow: inset 2px 0 0 0 rgb(var(--primary-rgb));
+}
+
+.admin-portal .hr-search__avatar {
+    flex: 0 0 auto;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* بديل الصورة الغائبة: الحرف الأول من الاسم */
+.admin-portal .hr-search__avatar--letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(var(--primary-rgb));
+    background: rgba(var(--primary-rgb), 0.14);
+}
+
+.admin-portal .hr-search__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.admin-portal .hr-search__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--default-text-color);
+}
+
+/* البيانات الوصفية قد تطول (رقم · مسمّى · قسم) فنقصّها بنقاط */
+.admin-portal .hr-search__meta {
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-portal .hr-search__badge {
+    flex: 0 0 auto;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.625rem;
+    font-weight: 700;
+}
+
+.admin-portal .hr-search__badge--employee {
+    color: #0e7490;
+    background: rgba(6, 182, 212, 0.14);
+}
+
+.admin-portal .hr-search__badge--user {
+    color: #6d28d9;
+    background: rgba(139, 92, 246, 0.14);
+}
+
+[data-theme-mode="dark"] .admin-portal .hr-search__badge--employee {
+    color: #67e8f9;
+    background: rgba(6, 182, 212, 0.2);
+}
+
+[data-theme-mode="dark"] .admin-portal .hr-search__badge--user {
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.22);
+}
+
+/* رسالة (لا نتائج / خطأ / اكتب حرفين) */
+.admin-portal .hr-search__note {
+    margin: 0;
+    padding: 1.125rem 0.75rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.admin-portal .hr-search__note--error {
+    color: rgb(var(--danger-rgb));
+}
+
+/* مؤشّر التحميل: ثلاث نقاط تنبض تتابعاً */
+.admin-portal .hr-search__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 1.25rem 0.75rem;
+}
+
+.admin-portal .hr-search__loading span {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: rgb(var(--primary-rgb));
+    animation: hr-search-dot 1s ease-in-out infinite;
+}
+
+.admin-portal .hr-search__loading span:nth-child(2) { animation-delay: 0.15s; }
+.admin-portal .hr-search__loading span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes hr-search-dot {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.75); }
+    40%           { opacity: 1;    transform: scale(1); }
+}
+
+/*
+ * نسخة الجوّال: اللوحة داخل قائمة Bootstrap المنسدلة، فتأخذ عرض الحاوية
+ * لا 420px، ولا تحتاج ظلاً فوق ظلّ القائمة.
+ */
+.admin-portal .hr-search--compact .hr-search__panel {
+    position: static;
+    width: 100%;
+    margin-block-start: 0.375rem;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    animation: none;
+}
+
+/* الهيدر الداكن لا يؤثّر على اللوحة: خلفيتها من --custom-white دائماً */
+@media (prefers-reduced-motion: reduce) {
+    .admin-portal .hr-search__panel,
+    .admin-portal .hr-search__loading span {
+        animation: none;
+    }
+
+    .admin-portal .hr-search__item {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   لوحة الهيدر الجانبية (نشطون الآن + الإدارة)
+
+   استبدلت ثلاثة تبويبات قالب مزيّفة بالكامل (Chat / Notifications / Friends
+   بأسماء وصور وهمية من القالب الأصلي) بتبويبين ببيانات حقيقية — انظر تعليق
+   الرأس في admin/layouts/offcanvas-sidebar.blade.php للتفصيل.
+
+   كل الألوان من رموز القالب (--custom-white، --default-border،
+   --default-text-color، --text-muted، --primary-rgb) فتتبع الوضع
+   الليلي/النهاري تلقائياً بلا أي قاعدة dark منفصلة.
+   ========================================================================== */
+
+.admin-portal .hr-panel {
+    width: 22rem;
+}
+
+.admin-portal .hr-panel__header {
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid var(--default-border);
+}
+
+.admin-portal .hr-panel__header h5 {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--default-text-color);
+}
+
+/* شريط التبويبين */
+.admin-portal .hr-panel__tabs {
+    display: flex;
+    padding: 0.5rem;
+    gap: 0.375rem;
+    border-bottom: 1px solid var(--default-border);
+}
+
+.admin-portal .hr-panel__tabs .nav-link {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: 0;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-portal .hr-panel__tabs .nav-link i {
+    font-size: 1rem;
+}
+
+.admin-portal .hr-panel__tabs .nav-link:hover {
+    background: rgba(var(--primary-rgb), 0.08);
+    color: var(--default-text-color);
+}
+
+.admin-portal .hr-panel__tabs .nav-link.active {
+    background: rgb(var(--primary-rgb));
+    color: #fff;
+}
+
+.admin-portal .hr-panel__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    padding-inline: 0.3rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.admin-portal .hr-panel__tabs .nav-link:not(.active) .hr-panel__count {
+    background: rgb(var(--primary-rgb));
+    color: #fff;
+}
+
+/* قائمة الأشخاص */
+.admin-portal .hr-panel__list {
+    max-height: calc(100vh - 12rem);
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.admin-portal .hr-panel__person {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.65rem;
+    border-radius: 10px;
+    text-decoration: none !important;
+    color: var(--default-text-color);
+    transition: background 0.15s ease;
+}
+
+.admin-portal .hr-panel__person:hover {
+    background: rgba(var(--primary-rgb), 0.08);
+}
+
+.admin-portal .hr-panel__avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    display: inline-flex;
+}
+
+.admin-portal .hr-panel__avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.admin-portal .hr-panel__avatar--letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgb(var(--primary-rgb));
+    background: rgba(var(--primary-rgb), 0.14);
+}
+
+/* نقطة الحضور الآن — نفس درجة اللون الأخضر المستخدمة لحالة "نشط" في الجداول */
+.admin-portal .hr-panel__online-dot {
+    position: absolute;
+    inset-inline-end: -2px;
+    inset-block-end: -2px;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid var(--custom-white);
+}
+
+.admin-portal .hr-panel__person-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.admin-portal .hr-panel__person-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--default-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-portal .hr-panel__person-subtitle {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-portal .hr-panel__live-badge {
+    flex-shrink: 0;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #16a34a;
+    background: rgba(34, 197, 94, 0.14);
+}
+
+[data-theme-mode="dark"] .admin-portal .hr-panel__live-badge {
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.2);
+}
+
+/* حالة فارغة / رسالة خطأ */
+.admin-portal .hr-panel__empty {
+    margin: 0;
+    padding: 2rem 1rem;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+/* هيكل التحميل (skeleton) — نابض بدل دوران، أهدأ لقائمة قصيرة */
+.admin-portal .hr-panel__skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.65rem;
+}
+
+.admin-portal .hr-panel__skeleton-avatar {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(var(--primary-rgb), 0.12);
+    animation: hr-panel-pulse 1.4s ease-in-out infinite;
+}
+
+.admin-portal .hr-panel__skeleton-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1 1 auto;
+}
+
+.admin-portal .hr-panel__skeleton-lines span {
+    display: block;
+    height: 0.55rem;
+    border-radius: 4px;
+    background: rgba(var(--primary-rgb), 0.1);
+    animation: hr-panel-pulse 1.4s ease-in-out infinite;
+}
+
+.admin-portal .hr-panel__skeleton-lines span:first-child {
+    width: 55%;
+}
+
+.admin-portal .hr-panel__skeleton-lines span:last-child {
+    width: 35%;
+}
+
+@keyframes hr-panel-pulse {
+    0%, 100% { opacity: 0.6; }
+    50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-portal .hr-panel__skeleton-avatar,
+    .admin-portal .hr-panel__skeleton-lines span {
+        animation: none;
+    }
+}
+
+/* جوّال: اللوحة تمتلئ العرض بدل عرض ثابت 22rem */
+@media (max-width: 400px) {
+    .admin-portal .hr-panel {
+        width: 100vw;
+    }
+}
+
+/* ==========================================================================
+   4) زرّ طيّ الشريط الجانبي (hr-navtoggle)
+   منقول من مشروع Hr-System — نفس لغة التصميم.
+   ========================================================================== */
+
+   ========================================================================== */
+
+/*
+ * .sidemenu-toggle إجباري: defaultmenu.min.js يقرأه بـ querySelector ثم
+ * يستدعي addEventListener بدون فحص null. أما أصناف القالب
+ * animated-arrow / hor-toggle / horizontal-navtoggle فأُزيلت — كانت
+ * للتخطيط الأفقي فقط (CSS بحت، لا يقرأها أي JS) وهذا النظام عمودي دائماً.
+ */
+.admin-portal .hr-navtoggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.admin-portal .hr-navtoggle__box {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    width: 2.375rem;
+    height: 2.375rem;
+    padding: 0.6875rem 0.625rem;
+    border: 1px solid rgba(var(--primary-rgb), 0.16);
+    border-radius: 0.75rem;
+    background: rgba(var(--primary-rgb), 0.08);
+    box-sizing: border-box;
+    transition: background 0.25s ease, border-color 0.25s ease,
+                transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1),
+                box-shadow 0.25s ease;
+}
+
+.admin-portal .hr-navtoggle__bar {
+    display: block;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(var(--primary-rgb));
+    /* التأخير المتدرّج يجعل الأشرطة تتحرّك تتابعاً لا معاً */
+    transition: width 0.28s cubic-bezier(0.34, 1.4, 0.64, 1),
+                background 0.25s ease;
+}
+
+/* الشريط الأوسط أقصر — هو ما يعطي الأيقونة شخصيتها */
+.admin-portal .hr-navtoggle__bar:nth-child(1) { width: 100%; transition-delay: 0s; }
+.admin-portal .hr-navtoggle__bar:nth-child(2) { width: 58%; transition-delay: 0.04s; }
+.admin-portal .hr-navtoggle__bar:nth-child(3) { width: 78%; transition-delay: 0.08s; }
+
+/* التمرير: الأشرطة تستوي بالكامل + الزرّ يرتفع قليلاً */
+.admin-portal .hr-navtoggle:hover .hr-navtoggle__box {
+    border-color: rgba(var(--primary-rgb), 0.32);
+    background: rgba(var(--primary-rgb), 0.14);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.18);
+}
+
+.admin-portal .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(2),
+.admin-portal .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(3) {
+    width: 100%;
+}
+
+.admin-portal .hr-navtoggle:active .hr-navtoggle__box {
+    transform: translateY(0) scale(0.96);
+    box-shadow: none;
+}
+
+.admin-portal .hr-navtoggle:focus-visible .hr-navtoggle__box {
+    outline: 2px solid rgba(var(--primary-rgb), 0.55);
+    outline-offset: 2px;
+}
+
+/*
+ * حالة «الشريط مطويّ»: الزرّ يمتلئ باللون الأساسي والأشرطة تبيضّ، مع
+ * قلب تدرّج الأطوال (58%/78% يتبادلان) فيبدو التدرّج معكوس الاتجاه —
+ * إشارة واضحة للحالة عبر انتقال width القائم أصلاً، بلا هندسة دوران هشّة.
+ *
+ * تُطابَق data-toggled وحدها بلا data-vertical-style: القالب يضبط أحدهما
+ * فقط في بعض المسارات، والقيم أعلاه فريدة لحالة الطيّ على أي حال.
+ */
+[data-toggled="icon-overlay-close"] .admin-portal .hr-navtoggle__box,
+[data-toggled="close-menu-close"] .admin-portal .hr-navtoggle__box,
+[data-toggled="icon-text-close"] .admin-portal .hr-navtoggle__box,
+[data-toggled="double-menu-close"] .admin-portal .hr-navtoggle__box,
+[data-toggled="icon-click-closed"] .admin-portal .hr-navtoggle__box,
+[data-toggled="icon-hover-closed"] .admin-portal .hr-navtoggle__box,
+[data-toggled="detached-close"] .admin-portal .hr-navtoggle__box {
+    border-color: transparent;
+    background: rgb(var(--primary-rgb));
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+}
+
+[data-toggled="icon-overlay-close"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="close-menu-close"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="icon-text-close"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="double-menu-close"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="icon-click-closed"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="icon-hover-closed"] .admin-portal .hr-navtoggle__bar,
+[data-toggled="detached-close"] .admin-portal .hr-navtoggle__bar {
+    background: #fff;
+}
+
+[data-toggled="icon-overlay-close"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="close-menu-close"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="icon-text-close"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="double-menu-close"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="icon-click-closed"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="icon-hover-closed"] .admin-portal .hr-navtoggle__bar:nth-child(2),
+[data-toggled="detached-close"] .admin-portal .hr-navtoggle__bar:nth-child(2) {
+    width: 78%;
+}
+
+[data-toggled="icon-overlay-close"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="close-menu-close"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="icon-text-close"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="double-menu-close"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="icon-click-closed"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="icon-hover-closed"] .admin-portal .hr-navtoggle__bar:nth-child(3),
+[data-toggled="detached-close"] .admin-portal .hr-navtoggle__bar:nth-child(3) {
+    width: 58%;
+}
+
+/* الهيدر الداكن: الزرّ الخفيف يذوب فيه، فنرفع تباينه */
+[data-header-styles="dark"] .admin-portal .hr-navtoggle__box,
+[data-header-styles="color"] .admin-portal .hr-navtoggle__box,
+[data-header-styles="gradient"] .admin-portal .hr-navtoggle__box {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+[data-header-styles="dark"] .admin-portal .hr-navtoggle__bar,
+[data-header-styles="color"] .admin-portal .hr-navtoggle__bar,
+[data-header-styles="gradient"] .admin-portal .hr-navtoggle__bar {
+    background: #fff;
+}
+
+[data-header-styles="dark"] .admin-portal .hr-navtoggle:hover .hr-navtoggle__box,
+[data-header-styles="color"] .admin-portal .hr-navtoggle:hover .hr-navtoggle__box,
+[data-header-styles="gradient"] .admin-portal .hr-navtoggle:hover .hr-navtoggle__box {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* احترام تفضيل تقليل الحركة في النظام */
+@media (prefers-reduced-motion: reduce) {
+    .admin-portal .hr-navtoggle__box,
+    .admin-portal .hr-navtoggle__bar,
+    .admin-portal .app-sidebar .main-sidebar-header .hr-brand__title {
+        transition: none;
+    }
+
+    .admin-portal .hr-navtoggle:hover .hr-navtoggle__box,
+    .admin-portal .hr-navtoggle:active .hr-navtoggle__box {
+        transform: none;
+    }
+}
