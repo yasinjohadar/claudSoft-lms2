@@ -57,6 +57,11 @@ class WhatsAppSettingsController extends Controller
             'auto_reply_ai_model_id' => $request->input('auto_reply_ai_model_id') ?: null,
         ]);
 
+        // التبويب النشط يُقرأ من الطلب ويُعاد في الجلسة ليبقى مفتوحاً بعد الحفظ.
+        // لا يُضاف إلى قواعد validate: updateSettings() يكتب كل مفتاح يصله،
+        // فتسجيله هناك يُنشئ صفاً وهمياً في system_settings.
+        $activeTab = preg_replace('/[^a-z0-9_\-]/', '', (string) $request->input('active_tab', 'general')) ?: 'general';
+
         $validated = $request->validate([
             'whatsapp_enabled' => 'nullable',
             'whatsapp_provider' => 'required|string|in:custom_api,whatsapp_web,evolution',
@@ -173,12 +178,14 @@ class WhatsAppSettingsController extends Controller
             $this->settingsService->updateSettings($validated);
 
             return redirect()->route('admin.whatsapp-settings.index')
-                ->with('success', 'تم حفظ الإعدادات بنجاح.');
+                ->with('success', 'تم حفظ الإعدادات بنجاح.')
+                ->with('active_tab', $activeTab);
         } catch (\Exception $e) {
             Log::error('Error updating WhatsApp settings: '.$e->getMessage());
 
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء حفظ الإعدادات: '.$e->getMessage())
+                ->with('active_tab', $activeTab)
                 ->withInput();
         }
     }

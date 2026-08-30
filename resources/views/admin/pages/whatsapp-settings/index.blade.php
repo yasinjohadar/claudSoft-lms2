@@ -43,6 +43,87 @@
         @php
             $savedProvider = $settings['whatsapp_provider'] ?? 'evolution';
             $activeProvider = $savedProvider === 'meta' ? 'evolution' : $savedProvider;
+
+            /*
+            | مصدر الحقيقة للتبويبات. مفتاح 'fields' يربط كل حقل بتبويبه، وهو ما
+            | يسمح بفتح التبويب الصحيح تلقائياً عند فشل التحقق. أي حقل جديد يُضاف
+            | إلى partial لا بد أن يُسجَّل هنا أيضاً وإلا لن يُكشف خطؤه.
+            */
+            $tabs = [
+                'general' => [
+                    'label' => 'عام',
+                    'icon' => 'ri-settings-3-line',
+                    'fields' => ['whatsapp_enabled', 'whatsapp_provider', 'study_report_delivery'],
+                ],
+                'provider' => [
+                    'label' => 'المزود',
+                    'icon' => 'ri-plug-line',
+                    'fields' => [
+                        'custom_api_url', 'custom_api_method', 'custom_api_key', 'custom_api_headers',
+                        'custom_api_preflight_enabled', 'custom_api_preflight_url',
+                        'whatsapp_web_service_url', 'whatsapp_web_api_token',
+                    ],
+                ],
+                'webhook' => [
+                    'label' => 'Webhook',
+                    'icon' => 'ri-webhook-line',
+                    'fields' => [
+                        'webhook_path', 'default_from', 'strict_signature',
+                        'api_version', 'phone_number_id', 'waba_id', 'access_token', 'verify_token', 'app_secret',
+                    ],
+                ],
+                'auto-reply' => [
+                    'label' => 'الرد التلقائي',
+                    'icon' => 'ri-reply-line',
+                    'fields' => [
+                        'auto_reply', 'auto_reply_message', 'auto_reply_use_ai', 'auto_reply_ai_model_id',
+                        'auto_reply_ai_system_prompt', 'auto_reply_evolution_instance', 'auto_reply_faq_context',
+                        'auto_reply_initial_delay_min', 'auto_reply_initial_delay_max', 'auto_reply_typing_duration',
+                        'auto_reply_max_chunks', 'auto_reply_chunk_max_chars', 'auto_reply_contact_cooldown',
+                        'auto_reply_debounce_seconds', 'auto_reply_test_phone',
+                    ],
+                ],
+                'delays' => [
+                    'label' => 'الفواصل الزمنية',
+                    'icon' => 'ri-time-line',
+                    'fields' => [
+                        'delay_between_messages', 'delay_between_broadcasts', 'max_messages_per_minute',
+                        'random_delay_enabled', 'min_delay', 'max_delay',
+                    ],
+                ],
+                'queue' => [
+                    'label' => 'عامل الطابور',
+                    'icon' => 'ri-play-circle-line',
+                    'fields' => [],
+                ],
+                'advanced' => [
+                    'label' => 'متقدم',
+                    'icon' => 'ri-settings-4-line',
+                    'fields' => ['timeout'],
+                ],
+                'messages-log' => [
+                    'label' => 'سجل الرسائل',
+                    'icon' => 'ri-file-list-3-line',
+                    'link' => 'admin.whatsapp-messages.index',
+                ],
+            ];
+
+            // خريطة الأخطاء لكل تبويب + أول تبويب فيه خطأ بالترتيب البصري
+            $tabHasError = [];
+            $errorTab = null;
+            foreach ($tabs as $key => $tab) {
+                $has = false;
+                foreach ($tab['fields'] ?? [] as $field) {
+                    if ($errors->has($field)) { $has = true; break; }
+                }
+                $tabHasError[$key] = $has;
+                if ($has && $errorTab === null) { $errorTab = $key; }
+            }
+
+            $activeTab = $errorTab ?: (session('active_tab') ?: old('active_tab', 'general'));
+            if (! array_key_exists($activeTab, $tabs) || isset($tabs[$activeTab]['link'])) {
+                $activeTab = 'general';
+            }
         @endphp
 
         <!-- Settings Form -->
@@ -50,626 +131,46 @@
             <div class="col-xl-12">
                 <div class="card custom-card">
                     <div class="card-header">
-                        <div class="card-title">
-                            <i class="ri-whatsapp-line me-2"></i>إعدادات WhatsApp
-                        </div>
+                        @include('admin.pages.whatsapp-settings.partials.tabs-nav')
                     </div>
                     <div class="card-body">
                         <form action="{{ route('admin.whatsapp-settings.update') }}" method="POST" id="whatsapp-settings-form">
                             @csrf
                             @method('POST')
+                            <input type="hidden" name="active_tab" id="active_tab" value="{{ $activeTab }}">
 
-                            <!-- General Settings -->
-                            <div class="card border mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-settings-3-line me-2"></i>الإعدادات العامة
-                                    </h5>
+                            {{--
+                                ⚠ تبويبات Bootstrap تُخفي بـ display:none لا بـ disabled، فكل الحقول
+                                في كل التبويبات تُرسَل مع هذا النموذج الواحد — وهذا مطلوب: نموذج واحد
+                                يحفظ كل الإعدادات، وزر «اختبار الاتصال» يرسل new FormData(form) كاملاً.
+                                لا تضف disabled ولا تستبدل tab-pane بـ d-none، ولا تضع required على
+                                حقل قد يكون داخل تبويب مخفي (المتصفح يرفض الإرسال بصمت).
+                            --}}
+                            <div class="tab-content pt-3">
+                                <div class="tab-pane fade {{ $activeTab === 'general' ? 'show active' : '' }}" id="tab-general" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-general')
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">تفعيل WhatsApp <span class="text-danger">*</span></label>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="whatsapp_enabled" 
-                                                       id="whatsapp_enabled"
-                                                       value="1"
-                                                       {{ ($settings['whatsapp_enabled'] ?? false) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="whatsapp_enabled">
-                                                    تفعيل خدمة WhatsApp
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">المرسل الافتراضي للرسائل (المزود) <span class="text-danger">*</span></label>
-                                            <select class="form-select" name="whatsapp_provider" id="whatsapp_provider" required onchange="handleProviderChange(this.value)">
-                                                <option value="evolution" {{ $activeProvider === 'evolution' ? 'selected' : '' }}>Evolution API</option>
-                                                <option value="whatsapp_web" {{ $activeProvider === 'whatsapp_web' ? 'selected' : '' }}>WhatsApp Web (QR Code)</option>
-                                                <option value="custom_api" {{ $activeProvider === 'custom_api' ? 'selected' : '' }}>Custom API</option>
-                                            </select>
-                                            <small class="text-muted d-block mt-1">يُستخدم هذا المزود لإرسال جميع رسائل واتساب (ترحيب، إشعارات، إرسال جماعي، إلخ).</small>
-                                            @error('whatsapp_provider')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            @if($activeProvider === 'whatsapp_web')
-                                                <div class="d-flex gap-2">
-                                                    <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-primary">
-                                                        <i class="ri-settings-3-line me-2"></i>إعدادات WhatsApp Web
-                                                    </a>
-                                                    <a href="{{ route('admin.whatsapp-web.connect') }}" class="btn btn-outline-primary">
-                                                        <i class="ri-qr-code-line me-2"></i>ربط WhatsApp Web
-                                                    </a>
-                                                </div>
-                                            @elseif($activeProvider === 'evolution')
-                                                <div class="d-flex gap-2">
-                                                    <a href="{{ route('admin.evolution-api.settings.index') }}" class="btn btn-success">
-                                                        <i class="ri-settings-3-line me-2"></i>إعدادات Evolution API
-                                                    </a>
-                                                    <a href="{{ route('admin.evolution-api.instances.index') }}" class="btn btn-outline-success">
-                                                        <i class="ri-smartphone-line me-2"></i>Instances
-                                                    </a>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        <div class="col-12 mb-3">
-                                            <hr class="my-2">
-                                            <label class="form-label fw-semibold">إشعارات تقارير الدراسة (AI)</label>
-                                            <select name="study_report_delivery" class="form-select" style="max-width: 28rem;">
-                                                <option value="both" {{ ($settings['study_report_delivery'] ?? 'both') === 'both' ? 'selected' : '' }}>البريد وواتساب معاً (افتراضي)</option>
-                                                <option value="email" {{ ($settings['study_report_delivery'] ?? '') === 'email' ? 'selected' : '' }}>البريد الإلكتروني فقط</option>
-                                                <option value="whatsapp" {{ ($settings['study_report_delivery'] ?? '') === 'whatsapp' ? 'selected' : '' }}>واتساب فقط — يُضاف البريد تلقائياً إن لم يتوفر رقم للطالب</option>
-                                            </select>
-                                            <small class="text-muted d-block mt-1">تُرسل عند إصدار تقرير دراسة جديد للطالب (قاعدة الإشعارات + البريد و/أو واتساب حسب الاختيار).</small>
-                                            <div class="alert alert-info small mt-2 mb-0">
-                                                <strong>Evolution API</strong> هو المزود الموصى به حالياً. للنص الحر والإرسال الجماعي استخدم Evolution أو WhatsApp Web.
-                                                <br><strong>رقم الطالب:</strong> يُشتق من كود الدولة والهاتف في الملف الشخصي. <strong>عامل الطابور</strong> مطلوب لتسليم رسائل واتساب.
-                                            </div>
-                                        </div>
-                                        <script>
-                                            function handleProviderChange(provider) {
-                                                var customApiSettings = document.getElementById('custom-api-settings');
-                                                var whatsappWebSettings = document.getElementById('whatsapp-web-settings');
-                                                var evolutionHint = document.getElementById('evolution-hint');
-                                                var customApiUrl = document.getElementById('custom_api_url');
-
-                                                if (customApiSettings) customApiSettings.style.display = 'none';
-                                                if (whatsappWebSettings) whatsappWebSettings.style.display = 'none';
-                                                if (evolutionHint) evolutionHint.style.display = 'none';
-                                                if (customApiUrl) customApiUrl.required = false;
-
-                                                if (provider === 'custom_api') {
-                                                    if (customApiSettings) customApiSettings.style.display = 'block';
-                                                    if (customApiUrl) customApiUrl.required = true;
-                                                } else if (provider === 'whatsapp_web') {
-                                                    if (whatsappWebSettings) whatsappWebSettings.style.display = 'block';
-                                                } else if (provider === 'evolution') {
-                                                    if (evolutionHint) evolutionHint.style.display = 'block';
-                                                }
-                                            }
-                                        </script>
-                                    </div>
+                                <div class="tab-pane fade {{ $activeTab === 'provider' ? 'show active' : '' }}" id="tab-provider" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-provider')
+                                </div>
+                                <div class="tab-pane fade {{ $activeTab === 'webhook' ? 'show active' : '' }}" id="tab-webhook" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-webhook')
+                                </div>
+                                <div class="tab-pane fade {{ $activeTab === 'auto-reply' ? 'show active' : '' }}" id="tab-auto-reply" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-auto-reply')
+                                </div>
+                                <div class="tab-pane fade {{ $activeTab === 'delays' ? 'show active' : '' }}" id="tab-delays" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.delay-settings')
+                                </div>
+                                <div class="tab-pane fade {{ $activeTab === 'queue' ? 'show active' : '' }}" id="tab-queue" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-queue-worker')
+                                </div>
+                                <div class="tab-pane fade {{ $activeTab === 'advanced' ? 'show active' : '' }}" id="tab-advanced" role="tabpanel">
+                                    @include('admin.pages.whatsapp-settings.partials.tab-advanced')
                                 </div>
                             </div>
 
-                            <div class="card border mb-4" id="evolution-hint" style="display: {{ $activeProvider === 'evolution' ? 'block' : 'none' }};">
-                                <div class="card-body">
-                                    <p class="mb-2">إعدادات Evolution API في صفحة مستقلة. بعد اختيار هذا المزود، اضبط URL و API Key و Instance من:</p>
-                                    <a href="{{ route('admin.evolution-api.settings.index') }}" class="btn btn-success btn-sm">فتح إعدادات Evolution API</a>
-                                </div>
-                            </div>
-
-                            <!-- Custom API Settings -->
-                            <div class="card border mb-4" id="custom-api-settings" style="display: {{ $activeProvider === 'custom_api' ? 'block' : 'none' }};">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-code-s-slash-line me-2"></i>إعدادات Custom API
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">API URL <span class="text-danger">*</span></label>
-                                            <input type="url" 
-                                                   class="form-control" 
-                                                   name="custom_api_url" 
-                                                   id="custom_api_url"
-                                                   value="{{ old('custom_api_url', $settings['custom_api_url'] ?? '') }}"
-                                                   placeholder="https://api.example.com/send">
-                                            @error('custom_api_url')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">HTTP Method</label>
-                                            <select class="form-select" name="custom_api_method" id="custom_api_method">
-                                                <option value="POST" {{ ($settings['custom_api_method'] ?? 'POST') == 'POST' ? 'selected' : '' }}>POST</option>
-                                                <option value="GET" {{ ($settings['custom_api_method'] ?? '') == 'GET' ? 'selected' : '' }}>GET</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">API Key</label>
-                                            <input type="password" 
-                                                   class="form-control" 
-                                                   name="custom_api_key" 
-                                                   id="custom_api_key"
-                                                   value=""
-                                                   placeholder="اتركه فارغاً للحفاظ على القيمة الحالية">
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <label class="form-label">Custom Headers (JSON)</label>
-                                            <textarea class="form-control" 
-                                                      name="custom_api_headers" 
-                                                      id="custom_api_headers"
-                                                      rows="4"
-                                                      placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'>{{ old('custom_api_headers', is_array($settings['custom_api_headers'] ?? []) ? json_encode($settings['custom_api_headers'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : ($settings['custom_api_headers'] ?? '{}')) }}</textarea>
-                                            <small class="text-muted">أدخل headers كـ JSON object</small>
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <div class="form-check form-switch mt-4">
-                                                <input class="form-check-input" type="checkbox"
-                                                       name="custom_api_preflight_enabled"
-                                                       id="custom_api_preflight_enabled"
-                                                       value="1"
-                                                       {{ ($settings['custom_api_preflight_enabled'] ?? false) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="custom_api_preflight_enabled">
-                                                    تفعيل فحص الرقم قبل الإرسال
-                                                </label>
-                                            </div>
-                                            <small class="text-muted">يمنع الإرسال إذا الرقم غير موجود على واتساب (عند توفر endpoint).</small>
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Preflight Check URL</label>
-                                            <input type="url"
-                                                   class="form-control"
-                                                   name="custom_api_preflight_url"
-                                                   id="custom_api_preflight_url"
-                                                   value="{{ old('custom_api_preflight_url', $settings['custom_api_preflight_url'] ?? '') }}"
-                                                   placeholder="https://wasenderapi.com/api/check-number">
-                                            @error('custom_api_preflight_url')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Webhook Settings -->
-                            <div class="card border mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-webhook-line me-2"></i>إعدادات Webhook
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Webhook Path</label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="webhook_path" 
-                                                   id="webhook_path"
-                                                   value="{{ old('webhook_path', $settings['webhook_path'] ?? '/api/webhooks/whatsapp') }}"
-                                                   placeholder="/api/webhooks/whatsapp">
-                                            <small class="text-muted">مسار Webhook في تطبيقك</small>
-                                            @error('webhook_path')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Default From</label>
-                                            <input type="text" 
-                                                   class="form-control" 
-                                                   name="default_from" 
-                                                   id="default_from"
-                                                   value="{{ old('default_from', $settings['default_from'] ?? '') }}"
-                                                   placeholder="رقم الهاتف الافتراضي">
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="strict_signature" 
-                                                       id="strict_signature"
-                                                       value="1"
-                                                       {{ ($settings['strict_signature'] ?? true) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="strict_signature">
-                                                    <strong>تفعيل التحقق الصارم من التوقيع الرقمي</strong>
-                                                </label>
-                                            </div>
-                                            <small class="text-muted">يُنصح بتركه مفعّل للأمان</small>
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <div class="alert alert-info mb-0">
-                                                <i class="ri-information-line me-2"></i>
-                                                <strong>Webhook URL:</strong> 
-                                                <code>{{ url($settings['webhook_path'] ?? '/api/webhooks/whatsapp') }}</code>
-                                                <br>
-                                                استخدم هذا الرابط عند إعداد Webhook في Meta Developer Console
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Auto Reply Settings -->
-                            <div class="card border mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-reply-line me-2"></i>إعدادات الرد التلقائي
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info small mb-3">
-                                        <i class="ri-information-line me-1"></i>
-                                        <strong>Evolution API:</strong> يعمل الرد التلقائي على المحادثات <strong>الفردية</strong> الواردة عبر Webhook
-                                        (<code>MESSAGES_UPSERT</code>). تأكد من:
-                                        <ul class="mb-0 mt-1">
-                                            <li>تفعيل WhatsApp + اختيار Evolution كمزود</li>
-                                            <li>ضبط Webhook من <a href="{{ route('admin.evolution-api.webhook.index') }}">لوحة Evolution → Webhook</a></li>
-                                            <li>تشغيل <code>php artisan queue:work --queue=whatsapp,default</code> (معالجة Webhook + الرد التلقائي)</li>
-                                        </ul>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-12 mb-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="auto_reply" 
-                                                       id="auto_reply"
-                                                       value="1"
-                                                       {{ ($settings['auto_reply'] ?? false) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="auto_reply">
-                                                    <strong>تفعيل الرد التلقائي</strong>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Instance الدعم (Evolution)</label>
-                                            <select class="form-select" name="auto_reply_evolution_instance" id="auto_reply_evolution_instance">
-                                                <option value="">— اختر رقم/Instance الدعم —</option>
-                                                @foreach($evolutionInstances ?? [] as $inst)
-                                                    <option value="{{ $inst->instance_name }}" {{ ($settings['auto_reply_evolution_instance'] ?? '') === $inst->instance_name ? 'selected' : '' }}>
-                                                        {{ $inst->instance_name }}
-                                                        @if($inst->phone_number) ({{ $inst->phone_number }}) @endif
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <small class="text-muted">الرد التلقائي يعمل فقط على هذا الرقم. إن تُرك فارغاً يُستخدم Instance الافتراضي من إعدادات Evolution. <a href="{{ route('admin.evolution-api.instances.index') }}">إدارة Instances</a></small>
-                                            @error('auto_reply_evolution_instance')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <label class="form-label">أسئلة شائعة (FAQ) للذكاء الاصطناعي</label>
-                                            <textarea class="form-control" name="auto_reply_faq_context" id="auto_reply_faq_context" rows="6" placeholder="مثال:&#10;س: كيف أسجّل في كورس؟&#10;ج: من الموقع الرسمي للأكاديمية...">{{ old('auto_reply_faq_context', $settings['auto_reply_faq_context'] ?? '') }}</textarea>
-                                            <small class="text-muted">معلومات عامة عن الأكاديمية — بدون بيانات شخصية للطلاب.</small>
-                                            @error('auto_reply_faq_context')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-12 mb-2">
-                                            <h6 class="fw-semibold text-muted"><i class="ri-time-line me-1"></i>محاكاة السلوك البشري</h6>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">تأخير قراءة (من — ث)</label>
-                                            <input type="number" class="form-control" name="auto_reply_initial_delay_min" min="0" max="30" value="{{ old('auto_reply_initial_delay_min', $settings['auto_reply_initial_delay_min'] ?? 2) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">تأخير قراءة (إلى — ث)</label>
-                                            <input type="number" class="form-control" name="auto_reply_initial_delay_max" min="0" max="60" value="{{ old('auto_reply_initial_delay_max', $settings['auto_reply_initial_delay_max'] ?? 5) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">مدة «يكتب...» (ث)</label>
-                                            <input type="number" class="form-control" name="auto_reply_typing_duration" min="1" max="15" value="{{ old('auto_reply_typing_duration', $settings['auto_reply_typing_duration'] ?? 3) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">Debounce (ث)</label>
-                                            <input type="number" class="form-control" name="auto_reply_debounce_seconds" min="1" max="60" value="{{ old('auto_reply_debounce_seconds', $settings['auto_reply_debounce_seconds'] ?? 8) }}">
-                                            <small class="text-muted">انتظار رسائل متتابعة</small>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">Cooldown للرقم (ث)</label>
-                                            <input type="number" class="form-control" name="auto_reply_contact_cooldown" min="10" max="600" value="{{ old('auto_reply_contact_cooldown', $settings['auto_reply_contact_cooldown'] ?? 45) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">أقصى أجزاء للرد</label>
-                                            <input type="number" class="form-control" name="auto_reply_max_chunks" min="1" max="5" value="{{ old('auto_reply_max_chunks', $settings['auto_reply_max_chunks'] ?? 3) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">حد أحرف/جزء</label>
-                                            <input type="number" class="form-control" name="auto_reply_chunk_max_chars" min="100" max="1000" value="{{ old('auto_reply_chunk_max_chars', $settings['auto_reply_chunk_max_chars'] ?? 350) }}">
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <label class="form-label">رقم اختبار</label>
-                                            <input type="text" class="form-control" name="auto_reply_test_phone" dir="ltr" placeholder="9665..." value="{{ old('auto_reply_test_phone', $settings['auto_reply_test_phone'] ?? '') }}">
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <div class="card border bg-light">
-                                                <div class="card-body">
-                                                    <h6 class="fw-semibold mb-3"><i class="ri-flask-line me-1"></i>فحص الرد التلقائي</h6>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">سؤال تجريبي</label>
-                                                        <textarea class="form-control" id="auto_reply_test_question" rows="2" placeholder="مثال: ما مواعيد الدعم الفني؟"></textarea>
-                                                    </div>
-                                                    <div class="d-flex flex-wrap gap-2 mb-3">
-                                                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn_auto_reply_preview">
-                                                            <i class="ri-eye-line me-1"></i>معاينة الرد
-                                                        </button>
-                                                        <button type="button" class="btn btn-outline-success btn-sm" id="btn_auto_reply_test_send">
-                                                            <i class="ri-send-plane-line me-1"></i>اختبار إرسال
-                                                        </button>
-                                                    </div>
-                                                    <div id="auto_reply_preview_result" class="d-none">
-                                                        <label class="form-label small text-muted">الرد الكامل</label>
-                                                        <pre class="bg-white border rounded p-2 small mb-2" id="auto_reply_preview_reply"></pre>
-                                                        <label class="form-label small text-muted">الأجزاء المرسلة</label>
-                                                        <ul class="small mb-0" id="auto_reply_preview_chunks"></ul>
-                                                    </div>
-                                                    <div id="auto_reply_test_status" class="small text-muted"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-12 mb-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox"
-                                                       name="auto_reply_use_ai"
-                                                       id="auto_reply_use_ai"
-                                                       value="1"
-                                                       {{ ($settings['auto_reply_use_ai'] ?? false) ? 'checked' : '' }}
-                                                       onchange="toggleAutoReplyAiFields(this.checked)">
-                                                <label class="form-check-label" for="auto_reply_use_ai">
-                                                    <strong>استخدام الذكاء الاصطناعي للرد التلقائي</strong>
-                                                </label>
-                                            </div>
-                                            <small class="text-muted">عند التفعيل، سيتم توليد الرد تلقائياً باستخدام أحد موديلات الذكاء الاصطناعي في النظام بدلاً من رسالة ثابتة.</small>
-                                        </div>
-
-                                        <div id="auto_reply_ai_fields" class="row" style="display: {{ ($settings['auto_reply_use_ai'] ?? false) ? 'flex' : 'none' }};">
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">موديل الذكاء الاصطناعي</label>
-                                                <select class="form-select" name="auto_reply_ai_model_id" id="auto_reply_ai_model_id">
-                                                    <option value="">— اختر الموديل (أو الافتراضي) —</option>
-                                                    @foreach($aiModels ?? [] as $model)
-                                                        <option value="{{ $model->id }}" {{ (string)($settings['auto_reply_ai_model_id'] ?? '') === (string)$model->id ? 'selected' : '' }}>
-                                                            {{ $model->name }} ({{ $model->provider }})
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <small class="text-muted">إن لم تختر موديلاً، يُستخدم أفضل موديل متاح للدردشة.</small>
-                                                @error('auto_reply_ai_model_id')
-                                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-12 mb-3">
-                                                <label class="form-label">رسالة النظام (اختياري)</label>
-                                                <textarea class="form-control" 
-                                                          name="auto_reply_ai_system_prompt" 
-                                                          id="auto_reply_ai_system_prompt"
-                                                          rows="4"
-                                                          placeholder="أنت مساعد ودود يرد على رسائل الواتساب نيابة عن منصة تعليمية. أجب بشكل مختصر ومهذب بالعربية.">{{ old('auto_reply_ai_system_prompt', $settings['auto_reply_ai_system_prompt'] ?? '') }}</textarea>
-                                                <small class="text-muted">تحدد سلوك الرد التلقائي. اتركه فارغاً لاستخدام الوصف الافتراضي.</small>
-                                                @error('auto_reply_ai_system_prompt')
-                                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-12 mb-3" id="auto_reply_fixed_message_wrap">
-                                            <label class="form-label">رسالة الرد التلقائي <span id="auto_reply_message_label_extra" class="text-muted">(تُستخدم عند عدم تفعيل الذكاء الاصطناعي أو عند فشل التوليد)</span></label>
-                                            <textarea class="form-control" 
-                                                      name="auto_reply_message" 
-                                                      id="auto_reply_message"
-                                                      rows="3"
-                                                      placeholder="شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.">{{ old('auto_reply_message', $settings['auto_reply_message'] ?? 'شكراً لك، تم استلام رسالتك. سنرد عليك قريباً.') }}</textarea>
-                                            @error('auto_reply_message')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <script>
-                                function toggleAutoReplyAiFields(useAi) {
-                                    var el = document.getElementById('auto_reply_ai_fields');
-                                    var labelExtra = document.getElementById('auto_reply_message_label_extra');
-                                    if (el) el.style.display = useAi ? 'flex' : 'none';
-                                    if (labelExtra) labelExtra.textContent = useAi ? '(تُستخدم عند عدم تفعيل الذكاء الاصطناعي أو عند فشل التوليد)' : '';
-                                }
-                                document.addEventListener('DOMContentLoaded', function() {
-                                    var cb = document.getElementById('auto_reply_use_ai');
-                                    if (cb) toggleAutoReplyAiFields(cb.checked);
-
-                                    var previewBtn = document.getElementById('btn_auto_reply_preview');
-                                    var testSendBtn = document.getElementById('btn_auto_reply_test_send');
-                                    var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-                                    if (previewBtn) {
-                                        previewBtn.addEventListener('click', function() {
-                                            var question = document.getElementById('auto_reply_test_question')?.value?.trim();
-                                            var statusEl = document.getElementById('auto_reply_test_status');
-                                            if (!question) {
-                                                if (statusEl) statusEl.textContent = 'أدخل سؤالاً تجريبياً.';
-                                                return;
-                                            }
-                                            previewBtn.disabled = true;
-                                            if (statusEl) statusEl.textContent = 'جاري توليد المعاينة...';
-                                            fetch('{{ route('admin.whatsapp-settings.auto-reply.preview') }}', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'X-CSRF-TOKEN': csrf,
-                                                    'Accept': 'application/json',
-                                                },
-                                                body: JSON.stringify({ question: question }),
-                                            })
-                                            .then(function(r) { return r.json(); })
-                                            .then(function(data) {
-                                                previewBtn.disabled = false;
-                                                if (!data.success) {
-                                                    if (statusEl) statusEl.textContent = data.message || 'فشلت المعاينة';
-                                                    return;
-                                                }
-                                                var box = document.getElementById('auto_reply_preview_result');
-                                                var replyEl = document.getElementById('auto_reply_preview_reply');
-                                                var chunksEl = document.getElementById('auto_reply_preview_chunks');
-                                                if (box) box.classList.remove('d-none');
-                                                if (replyEl) replyEl.textContent = data.reply || '';
-                                                if (chunksEl) {
-                                                    chunksEl.innerHTML = '';
-                                                    (data.chunks || []).forEach(function(c, i) {
-                                                        var li = document.createElement('li');
-                                                        li.textContent = (i + 1) + '. ' + c;
-                                                        chunksEl.appendChild(li);
-                                                    });
-                                                }
-                                                if (statusEl) statusEl.textContent = 'تمت المعاينة.';
-                                            })
-                                            .catch(function() {
-                                                previewBtn.disabled = false;
-                                                if (statusEl) statusEl.textContent = 'خطأ في الاتصال.';
-                                            });
-                                        });
-                                    }
-
-                                    if (testSendBtn) {
-                                        testSendBtn.addEventListener('click', function() {
-                                            var question = document.getElementById('auto_reply_test_question')?.value?.trim();
-                                            var phone = document.querySelector('[name="auto_reply_test_phone"]')?.value?.trim();
-                                            var statusEl = document.getElementById('auto_reply_test_status');
-                                            if (!question) {
-                                                if (statusEl) statusEl.textContent = 'أدخل سؤالاً تجريبياً.';
-                                                return;
-                                            }
-                                            testSendBtn.disabled = true;
-                                            if (statusEl) statusEl.textContent = 'جاري الإرسال التجريبي (قد يستغرق وقتاً)...';
-                                            fetch('{{ route('admin.whatsapp-settings.auto-reply.test-send') }}', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'X-CSRF-TOKEN': csrf,
-                                                    'Accept': 'application/json',
-                                                },
-                                                body: JSON.stringify({ question: question, test_phone: phone }),
-                                            })
-                                            .then(function(r) { return r.json(); })
-                                            .then(function(data) {
-                                                testSendBtn.disabled = false;
-                                                if (statusEl) statusEl.textContent = data.message || (data.success ? 'تم.' : 'فشل.');
-                                            })
-                                            .catch(function() {
-                                                testSendBtn.disabled = false;
-                                                if (statusEl) statusEl.textContent = 'خطأ في الاتصال.';
-                                            });
-                                        });
-                                    }
-                                });
-                            </script>
-
-                            @include('admin.pages.whatsapp-settings.partials.delay-settings')
-
-                            <!-- Queue Worker (عامل الطابور) -->
-                            <div class="card border mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-play-circle-line me-2"></i>عامل الطابور (Queue Worker)
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <p class="text-muted small mb-3">مطلوب للرد التلقائي والإرسال الجماعي. يجب أن يعمل على نفس السيرفر الذي يشغّل Laravel.</p>
-                                    <div class="alert alert-info small mb-3">
-                                        <strong>على Linux أونلاين:</strong> زر التشغيل قد يتوقف الطابور بعد تحديث الصفحة. لتشغيله بشكل دائم استخدم <strong>Supervisor</strong> — انظر ملف <code>QUEUE_WORKER_LINUX.md</code> في المشروع أو مجلد <code>deploy/</code> لملف إعداد Supervisor.
-                                    </div>
-                                    <div class="d-flex flex-wrap align-items-center gap-3">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span id="queue-worker-status-badge" class="badge {{ ($queueWorkerStatus['running'] ?? false) ? 'bg-success' : 'bg-secondary' }} fs-6">
-                                                {{ ($queueWorkerStatus['running'] ?? false) ? 'يعمل' : 'متوقف' }}
-                                            </span>
-                                            @if(!empty($queueWorkerStatus['pid'] ?? null))
-                                                <span class="text-muted small">(PID: {{ $queueWorkerStatus['pid'] }})</span>
-                                            @endif
-                                        </div>
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-success" id="queue-worker-start-btn" {{ ($queueWorkerStatus['running'] ?? false) ? 'disabled' : '' }}>
-                                                <i class="ri-play-line me-1"></i>تشغيل
-                                            </button>
-                                            <button type="button" class="btn btn-danger" id="queue-worker-stop-btn" {{ ($queueWorkerStatus['running'] ?? false) ? '' : 'disabled' }}>
-                                                <i class="ri-stop-line me-1"></i>إيقاف
-                                            </button>
-                                        </div>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="queue-worker-refresh-btn">
-                                            <i class="ri-refresh-line me-1"></i>تحديث الحالة
-                                        </button>
-                                    </div>
-                                    <div id="queue-worker-message" class="mt-2 small text-muted"></div>
-                                </div>
-                            </div>
-
-                            <!-- WhatsApp Web Info -->
-                            <div class="card border mb-4" id="whatsapp-web-settings" style="display: {{ $activeProvider === 'whatsapp_web' ? 'block' : 'none' }};">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-qr-code-line me-2"></i>WhatsApp Web
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info">
-                                        <i class="ri-information-line me-2"></i>
-                                        <strong>ملاحظة:</strong> لإعداد WhatsApp Web، يرجى الانتقال إلى صفحة الإعدادات المخصصة.
-                                        <div class="mt-2">
-                                            <a href="{{ route('admin.whatsapp-web-settings.index') }}" class="btn btn-sm btn-primary">
-                                                <i class="ri-settings-3-line me-1"></i>فتح إعدادات WhatsApp Web
-                                            </a>
-                                            <a href="{{ route('admin.whatsapp-web.connect') }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="ri-qr-code-line me-1"></i>ربط WhatsApp Web
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                            <!-- Advanced Settings -->
-                            <div class="card border mb-4">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0">
-                                        <i class="ri-settings-4-line me-2"></i>إعدادات متقدمة
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Timeout (بالثواني)</label>
-                                            <input type="number" 
-                                                   class="form-control" 
-                                                   name="timeout" 
-                                                   id="timeout"
-                                                   value="{{ old('timeout', $settings['timeout'] ?? 30) }}"
-                                                   min="1"
-                                                   max="300"
-                                                   placeholder="30">
-                                            <small class="text-muted">المهلة الزمنية لانتظار استجابة API</small>
-                                            @error('timeout')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <hr class="my-4">
 
                             <!-- Action Buttons -->
                             <div class="d-flex justify-content-between">
@@ -688,6 +189,7 @@
     </div>
 </div>
 <!-- End::app-content -->
+
 
 <!-- Test Connection Modal -->
 <div class="modal fade" id="testConnectionModal" tabindex="-1" aria-labelledby="testConnectionModalLabel" aria-hidden="true">
@@ -710,6 +212,60 @@
 
 @section('scripts')
 <script>
+/* ==== تبويبات الصفحة ==== */
+(function () {
+    // إن فتح الخادم تبويباً بسببِ خطأ تحقق، لا نسمح للـ hash بإخفائه
+    const HAS_ERROR_TAB = @json($errorTab !== null);
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const nav = document.getElementById('whatsappSettingsTabs');
+        const activeInput = document.getElementById('active_tab');
+        if (!nav) return;
+
+        // حفظ التبويب النشط ليبقى مفتوحاً بعد الحفظ، وتحديث الـ hash بلا قفزة تمرير
+        nav.addEventListener('shown.bs.tab', function (e) {
+            const key = e.target?.dataset?.tabKey;
+            if (!key) return;
+            if (activeInput) activeInput.value = key;
+            try {
+                history.replaceState(null, '', '#tab-' + key);
+            } catch (_) { /* بعض المتصفحات تمنع replaceState */ }
+        });
+
+        /*
+         * موجّه الـ hash: يقبل أي مرساة داخل الصفحة لا #tab-* فقط، فيفتح التبويب
+         * الحاوي لها. هذا ما يُبقي الروابط القديمة مثل #delay-settings تعمل
+         * (تستخدمها صفحات whatsapp-web-settings و whatsapp-messages/send و
+         * evolution-api/groups/compare) بعد نقل المحتوى داخل تبويبات.
+         */
+        function openTabFromHash() {
+            if (HAS_ERROR_TAB || !location.hash || location.hash.length < 2) return;
+
+            let el = null;
+            try {
+                el = document.querySelector(location.hash);
+            } catch (_) {
+                return; // hash غير صالح كمُحدِّد CSS
+            }
+            if (!el) return;
+
+            const pane = el.closest('.tab-pane');
+            if (!pane) return;
+
+            const btn = document.querySelector('[data-bs-target="#' + pane.id + '"]');
+            if (btn && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                bootstrap.Tab.getOrCreateInstance(btn).show();
+            }
+            if (el !== pane) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        openTabFromHash();
+        window.addEventListener('hashchange', openTabFromHash);
+    });
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('whatsapp_provider');
     const customApiSettings = document.getElementById('custom-api-settings');
@@ -773,21 +329,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const provider = providerSelect.value;
-        const customApiUrl = document.getElementById('custom_api_url');
 
         if (customApiSettings) customApiSettings.style.display = 'none';
         if (whatsappWebSettings) whatsappWebSettings.style.display = 'none';
         if (evolutionHint) evolutionHint.style.display = 'none';
-        if (customApiUrl) customApiUrl.required = false;
+
+        // ملاحظة: لا نضع required على #custom_api_url — الحقل داخل تبويب قد يكون
+        // مخفياً (display:none)، والمتصفح يرفض إرسال النموذج بخطأ في الكونسول فقط
+        // ("not focusable") فيبدو زر الحفظ معطّلاً. التحقق يتم في الخادم عبر
+        // required_if:whatsapp_provider,custom_api ويُفتح تبويب المزود تلقائياً.
 
         if (provider === 'custom_api') {
             if (customApiSettings) customApiSettings.style.display = 'block';
-            if (customApiUrl) customApiUrl.required = true;
         } else if (provider === 'whatsapp_web') {
             if (whatsappWebSettings) whatsappWebSettings.style.display = 'block';
         } else if (provider === 'evolution') {
             if (evolutionHint) evolutionHint.style.display = 'block';
         }
+
+        // شارة اسم المزود على تبويب «المزود» + العنوان داخله
+        const badge = document.getElementById('provider-tab-badge');
+        const label = providerSelect.options[providerSelect.selectedIndex]?.text || '';
+        if (badge) badge.textContent = label;
+        const currentLabel = document.getElementById('provider-current-label');
+        if (currentLabel) currentLabel.textContent = label;
     }
 
     // Initial call after DOM is fully loaded
@@ -993,7 +558,103 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     })();
 
-console.log('WhatsApp settings script loaded');
+/* ==== الرد التلقائي: إظهار حقول الذكاء الاصطناعي + أداة الفحص ==== */
+// دالة عامة عمداً: مربوطة عبر onchange في partials/tab-auto-reply.blade.php
+function toggleAutoReplyAiFields(useAi) {
+    var el = document.getElementById('auto_reply_ai_fields');
+    var labelExtra = document.getElementById('auto_reply_message_label_extra');
+    if (el) el.style.display = useAi ? 'flex' : 'none';
+    if (labelExtra) labelExtra.textContent = useAi ? '(تُستخدم عند عدم تفعيل الذكاء الاصطناعي أو عند فشل التوليد)' : '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var cb = document.getElementById('auto_reply_use_ai');
+    if (cb) toggleAutoReplyAiFields(cb.checked);
+
+    var previewBtn = document.getElementById('btn_auto_reply_preview');
+    var testSendBtn = document.getElementById('btn_auto_reply_test_send');
+    var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            var question = document.getElementById('auto_reply_test_question')?.value?.trim();
+            var statusEl = document.getElementById('auto_reply_test_status');
+            if (!question) {
+                if (statusEl) statusEl.textContent = 'أدخل سؤالاً تجريبياً.';
+                return;
+            }
+            previewBtn.disabled = true;
+            if (statusEl) statusEl.textContent = 'جاري توليد المعاينة...';
+            fetch('{{ route('admin.whatsapp-settings.auto-reply.preview') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ question: question }),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                previewBtn.disabled = false;
+                if (!data.success) {
+                    if (statusEl) statusEl.textContent = data.message || 'فشلت المعاينة';
+                    return;
+                }
+                var box = document.getElementById('auto_reply_preview_result');
+                var replyEl = document.getElementById('auto_reply_preview_reply');
+                var chunksEl = document.getElementById('auto_reply_preview_chunks');
+                if (box) box.classList.remove('d-none');
+                if (replyEl) replyEl.textContent = data.reply || '';
+                if (chunksEl) {
+                    chunksEl.innerHTML = '';
+                    (data.chunks || []).forEach(function(c, i) {
+                        var li = document.createElement('li');
+                        li.textContent = (i + 1) + '. ' + c;
+                        chunksEl.appendChild(li);
+                    });
+                }
+                if (statusEl) statusEl.textContent = 'تمت المعاينة.';
+            })
+            .catch(function() {
+                previewBtn.disabled = false;
+                if (statusEl) statusEl.textContent = 'خطأ في الاتصال.';
+            });
+        });
+    }
+
+    if (testSendBtn) {
+        testSendBtn.addEventListener('click', function() {
+            var question = document.getElementById('auto_reply_test_question')?.value?.trim();
+            var phone = document.querySelector('[name="auto_reply_test_phone"]')?.value?.trim();
+            var statusEl = document.getElementById('auto_reply_test_status');
+            if (!question) {
+                if (statusEl) statusEl.textContent = 'أدخل سؤالاً تجريبياً.';
+                return;
+            }
+            testSendBtn.disabled = true;
+            if (statusEl) statusEl.textContent = 'جاري الإرسال التجريبي (قد يستغرق وقتاً)...';
+            fetch('{{ route('admin.whatsapp-settings.auto-reply.test-send') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ question: question, test_phone: phone }),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                testSendBtn.disabled = false;
+                if (statusEl) statusEl.textContent = data.message || (data.success ? 'تم.' : 'فشل.');
+            })
+            .catch(function() {
+                testSendBtn.disabled = false;
+                if (statusEl) statusEl.textContent = 'خطأ في الاتصال.';
+            });
+        });
+    }
+});
 </script>
 @endsection
 
