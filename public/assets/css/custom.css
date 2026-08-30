@@ -13,13 +13,41 @@ a {
  * Ø´Ø§Ø±Ø© Ø¹Ø¯Ø¯ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª ÙÙŠ Ù‡ÙŠØ¯Ø± Ø§Ù„Ø·Ø§Ù„Ø¨
  * ØªÙØ­Ù…Ù‘ÙŽÙ„ Ù‡Ù†Ø§ Ù„Ø£Ù† @push('styles') Ø¯Ø§Ø®Ù„ main-header ÙŠÙÙ†ÙÙ‘ÙŽØ° Ø¨Ø¹Ø¯ @stack('styles') ÙÙŠ head ÙÙ„Ø§ ÙŠÙØ·Ø¨Ù‘ÙŽÙ‚.
  */
+/*
+ * الإشعار غير المقروء: الخلفية مشتقّة من اللون الأساسي بشفافية بدل لون ثابت.
+ *
+ * كانت #f8f9fa صريحة بلا نسخة للوضع الليلي، فتظهر بطاقة شبه بيضاء بينما
+ * يبقى لون النص فاتحاً (من رموز الثيم الداكن) — نص فاتح على خلفية فاتحة
+ * أي إشعارات غير مقروءة تكاد لا تُقرأ. الاشتقاق من --primary-rgb يقلب
+ * تلقائياً مع الوضعين ويتبع اللون الأساسي الذي يختاره المستخدم.
+ *
+ * border-inline-start لا border-right: الواجهة عربية (RTL) والحدّ يجب أن
+ * يكون في بداية السطر لا في يمينه الثابت.
+ */
 .main-header-notification .unread-notification {
-    background-color: #f8f9fa;
-    border-right: 3px solid #667eea;
+    background-color: rgba(var(--primary-rgb), 0.06);
+    border-inline-start: 3px solid rgb(var(--primary-rgb));
 }
 
 .main-header-notification .unread-notification:hover {
-    background-color: #e9ecef;
+    background-color: rgba(var(--primary-rgb), 0.12);
+}
+
+[data-theme-mode="dark"] .main-header-notification .unread-notification {
+    background-color: rgba(var(--primary-rgb), 0.16);
+}
+
+[data-theme-mode="dark"] .main-header-notification .unread-notification:hover {
+    background-color: rgba(var(--primary-rgb), 0.24);
+}
+
+/* نصّ الإشعار يتبع رموز الثيم بدل أن يرث لوناً ثابتاً من القالب */
+.main-header-notification .dropdown-item h6 {
+    color: var(--default-text-color);
+}
+
+.main-header-notification .dropdown-item .text-muted {
+    color: var(--text-muted) !important;
 }
 
 .main-header-notification .cursor-pointer {
