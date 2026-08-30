@@ -130,7 +130,12 @@
                 var eased = 1 - Math.pow(1 - progress, 3);
                 var value = formatNumber(target * eased);
                 el.textContent = isPercent ? value + '%' : value;
-                if (progress < 1) requestAnimationFrame(step);
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    // نبضة ختامية لودجات الإحصاء (portal-kpi.css)
+                    el.classList.add('stat-value-done');
+                }
             }
 
             requestAnimationFrame(step);

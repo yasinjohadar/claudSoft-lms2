@@ -1,46 +1,68 @@
 @php
-    $statCards = [
+    /*
+     * نفس ودجات لوحة الطالب الرئيسية (نمط Hr-System).
+     * الغلاف .hr-stat-widgets إلزامي — انظر التعليق في portal-kpi.css
+     *
+     * الثيمات المتاحة: blue · green · orange · purple
+     */
+    $statWidgets = [
         [
-            'variant' => 'blue',
-            'icon' => 'fe-book',
-            'label' => 'إجمالي الكورسات',
+            'theme' => 'blue',
+            'icon' => 'ri-book-open-line',
+            'title' => 'إجمالي الكورسات',
             'value' => $stats['total_courses'],
+            'subtext' => 'الكورسات المسجّلة',
         ],
         [
-            'variant' => 'green',
-            'icon' => 'fe-play',
-            'label' => 'كورسات نشطة',
+            'theme' => 'green',
+            'icon' => 'ri-play-circle-line',
+            'title' => 'كورسات نشطة',
             'value' => $stats['active_courses'],
+            'subtext' => 'قيد الدراسة حالياً',
         ],
         [
-            'variant' => 'cyan',
-            'icon' => 'fe-check-circle',
-            'label' => 'كورسات مكتملة',
+            'theme' => 'purple',
+            'icon' => 'ri-checkbox-circle-line',
+            'title' => 'كورسات مكتملة',
             'value' => $stats['completed_courses'],
+            'subtext' => 'أنهيتها بالكامل',
         ],
         [
-            'variant' => 'orange',
-            'icon' => 'fe-trending-up',
-            'label' => 'متوسط التقدم',
+            'theme' => 'orange',
+            'icon' => 'ri-line-chart-line',
+            'title' => 'متوسط التقدم',
             'value' => round($stats['average_progress']),
             'suffix' => '%',
+            'subtext' => 'عبر كل كورساتك',
         ],
     ];
 @endphp
 
-<div class="row g-3 mb-4 student-my-courses-stats">
-    @foreach ($statCards as $index => $card)
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 student-my-courses-stagger" style="--stagger-delay: {{ $index * 60 }}ms">
-            <div class="card admin-stats-card admin-stats-card--{{ $card['variant'] }}">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="admin-stats-card__icon-wrap">
-                        <i class="fe {{ $card['icon'] }} admin-stats-card__icon"></i>
-                    </div>
-                    <div class="admin-stats-card__content flex-fill min-w-0">
-                        <p class="admin-stats-card__label mb-1">{{ $card['label'] }}</p>
-                        <h3 class="admin-stats-card__value mb-0"
-                            data-countup="{{ $card['value'] }}"
-                            @if(!empty($card['suffix'])) data-countup-suffix="{{ $card['suffix'] }}" @endif>0</h3>
+<div class="row g-3 mb-4 hr-stat-widgets">
+    @foreach ($statWidgets as $index => $widget)
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+            <div class="dashboard-stat-link" style="--card-delay: {{ $index * 0.1 }}s">
+                <div class="dashboard-stat-card dashboard-stat-{{ $widget['theme'] }}">
+                    <div class="stat-card-shine"></div>
+                    <div class="stat-card-mesh"></div>
+                    <div class="stat-card-bubble stat-card-bubble-1"></div>
+                    <div class="stat-card-bubble stat-card-bubble-2"></div>
+                    <div class="stat-card-bubble stat-card-bubble-3"></div>
+                    <div class="stat-card-glow"></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-content">
+                            <span class="stat-label">{{ $widget['title'] }}</span>
+                            <span class="stat-value"
+                                  data-countup="{{ $widget['value'] }}"
+                                  @if(!empty($widget['suffix'])) data-countup-suffix="{{ $widget['suffix'] }}" @endif>0</span>
+                            <span class="stat-subtext">{{ $widget['subtext'] }}</span>
+                        </div>
+                        <div class="stat-icon-wrap">
+                            <span class="stat-icon-ring"></span>
+                            <span class="stat-icon-circle">
+                                <i class="{{ $widget['icon'] }}"></i>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
