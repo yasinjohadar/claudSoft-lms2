@@ -146,12 +146,12 @@
             @endforeach
         </div>
 
-        <form action="{{ route('admin.meta-pixel-settings.update') }}" method="POST">
-            @csrf
-            @method('PUT')
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <form action="{{ route('admin.meta-pixel-settings.update') }}" method="POST">
+                    @csrf
+                    @method('PUT')
 
-            <div class="row g-4">
-                <div class="col-lg-7">
                     <div class="meta-form-section">
                         <div class="meta-form-section__title">
                             <span class="meta-form-section__icon"><i class="fe fe-target"></i></span>
@@ -244,9 +244,10 @@
                             <i class="fe fe-save me-1"></i>حفظ الإعدادات
                         </button>
                     </div>
-                </div>
+                </form>
+            </div>
 
-                <div class="col-lg-5">
+            <div class="col-lg-5">
                     <div class="meta-guide-box mb-3">
                         <h6 class="fw-bold mb-3"><i class="fe fe-book-open me-1 text-primary"></i>دليل الإعداد السريع</h6>
                         <ol>
@@ -288,7 +289,6 @@
                     </div>
                 </div>
             </div>
-        </form>
     </div>
 </div>
 @stop
