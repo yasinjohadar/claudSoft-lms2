@@ -192,23 +192,31 @@ class MetaPixelService
         return $eventId;
     }
 
-    public function sendTestEvent(string $eventName = 'Lead'): array
+    public function sendTestEvent(string $eventName = 'Lead', ?Request $request = null): array
     {
         $eventId = self::generateEventId();
 
-        return $this->capiClient->send($this->settings, [
-            [
-                'event_name' => $eventName,
-                'event_time' => time(),
-                'event_id' => $eventId,
-                'action_source' => 'website',
-                'event_source_url' => url('/'),
-                'custom_data' => [
-                    'content_name' => 'Meta Pixel Test Event',
-                    'content_category' => 'test',
-                ],
+        $payload = [
+            'event_name' => $eventName,
+            'event_time' => time(),
+            'event_id' => $eventId,
+            'action_source' => 'website',
+            'event_source_url' => url('/'),
+            'custom_data' => [
+                'content_name' => 'Meta Pixel Test Event',
+                'content_category' => 'test',
             ],
-        ]);
+        ];
+
+        if ($request) {
+            $userData = $this->buildUserData($request);
+
+            if ($userData !== []) {
+                $payload['user_data'] = $userData;
+            }
+        }
+
+        return $this->capiClient->send($this->settings, [$payload]);
     }
 
     protected function buildServerEventPayload(

@@ -64,9 +64,9 @@ class MetaPixelSettingController extends Controller
             ->with('success', 'تم تحديث إعدادات Facebook Pixel بنجاح');
     }
 
-    public function testCapi(MetaPixelService $metaPixel)
+    public function testCapi(Request $request, MetaPixelService $metaPixel)
     {
-        $result = $metaPixel->sendTestEvent('Lead');
+        $result = $metaPixel->sendTestEvent('Lead', $request);
 
         return back()->with(
             $result['success'] ? 'success' : 'error',
