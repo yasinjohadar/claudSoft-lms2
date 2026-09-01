@@ -13,7 +13,10 @@
     if (localStorage.valexrtl) {
         let html = document.querySelector('html');
         html.setAttribute("dir", "rtl");
-        document.querySelector("#style")?.setAttribute("href", "../assets/libs/bootstrap/css/bootstrap.rtl.min.css");
+        // Absolute, not "../assets/...": a relative path resolves against the current
+        // URL, so on nested routes (e.g. /admin/groups/33/lessons) it 404s and the RTL
+        // stylesheet silently never loads.
+        document.querySelector("#style")?.setAttribute("href", "/assets/libs/bootstrap/css/bootstrap.rtl.min.css");
     }
     if (localStorage.getItem("valexlayout") == "horizontal") {
         document.querySelector("html").setAttribute("data-nav-layout", "horizontal")

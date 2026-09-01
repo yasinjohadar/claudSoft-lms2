@@ -438,6 +438,7 @@ Route::prefix('admin')
         Route::delete('groups/{id}/delete', [CourseGroupController::class, 'deleteGroup'])->name('groups.delete');
         Route::get('groups/{group}/lessons', [GroupLessonAccessController::class, 'index'])->name('groups.lessons');
         Route::post('groups/{group}/lessons/{module}/toggle', [GroupLessonAccessController::class, 'toggle'])->name('groups.lessons.toggle');
+        Route::post('groups/{group}/lessons/sections/{section}/toggle', [GroupLessonAccessController::class, 'toggleSection'])->name('groups.lessons.sections.toggle');
         Route::get('groups/{group}/notifications', [GroupNotificationController::class, 'index'])->name('groups.notifications');
         Route::post('groups/{group}/notifications', [GroupNotificationController::class, 'store'])->name('groups.notifications.store');
         Route::get('groups/{group}/notifications/{notification}', [GroupNotificationController::class, 'show'])->name('groups.notifications.show');

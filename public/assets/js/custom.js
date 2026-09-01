@@ -387,13 +387,20 @@
   /* header dropdowns scroll */
     
 
+  // These two elements only exist on layouts that render the header dropdowns.
+  // Without the guards SimpleBar throws "Invalid value used as weak map key" on
+  // every other page, and that uncaught error aborts the rest of this script.
   var myHeadernotification = document.getElementById(
     "header-notification-scroll"
   );
-  new SimpleBar(myHeadernotification, { autoHide: true });
+  if (myHeadernotification) {
+    new SimpleBar(myHeadernotification, { autoHide: true });
+  }
 
   var myHeaderCart = document.getElementById("header-cart-items-scroll");
-  new SimpleBar(myHeaderCart, { autoHide: true });
+  if (myHeaderCart) {
+    new SimpleBar(myHeaderCart, { autoHide: true });
+  }
   /* header dropdowns scroll */
 })();
 
