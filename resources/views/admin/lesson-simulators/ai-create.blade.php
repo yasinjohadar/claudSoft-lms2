@@ -4,17 +4,35 @@
     توليد محاكاة بالذكاء الاصطناعي
 @stop
 
+@section('styles')
+@include('admin.docs.pages.partials.ai-page-styles')
+@endsection
+
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h5 class="page-title fs-21 mb-0">توليد محاكاة HTML/CSS/JS بالذكاء الاصطناعي</h5>
-                <p class="text-muted small mb-0">ولّد المحاكاة، راجعها، ثم احفظها — أو استخدم Queue للمواضيع الطويلة.</p>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="{{ route('admin.lesson-simulators.create') }}" class="btn btn-outline-secondary btn-sm">إنشاء يدوي</a>
-                <a href="{{ route('admin.lesson-simulators.index') }}" class="btn btn-secondary btn-sm">رجوع</a>
+        <div class="group-show-hero dashboard-fade-in doc-ai-animate mb-4">
+            <div class="row align-items-start g-3">
+                <div class="col-lg-8">
+                    <span class="group-show-hero__eyebrow">
+                        <i class="fe fe-zap me-1"></i>
+                        توليد بالذكاء الاصطناعي
+                    </span>
+                    <h2 class="group-show-hero__title mb-2">توليد محاكاة HTML/CSS/JS بالذكاء الاصطناعي</h2>
+                    <p class="group-show-hero__desc mb-2">
+                        يخطط أولاً ثم يولّد <strong>HTML وCSS وJS</strong> على مراحل متتابعة — راجع النتيجة ثم احفظها، أو استخدم Queue للمواضيع الطويلة.
+                    </p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('admin.lesson-simulators.create') }}" class="btn btn-outline-primary">
+                            <i class="fe fe-edit-3 me-1"></i>إنشاء يدوي
+                        </a>
+                        <a href="{{ route('admin.lesson-simulators.index') }}" class="btn btn-light border">
+                            <i class="fe fe-list me-1"></i>رجوع
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 

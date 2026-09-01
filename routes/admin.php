@@ -621,6 +621,8 @@ Route::prefix('admin')
             Route::get('/ai/{lessonSimulator}/review', [LessonSimulatorAiController::class, 'review'])->name('ai.review');
             Route::get('/ai/{lessonSimulator}/status', [LessonSimulatorAiController::class, 'status'])->name('ai.status');
             Route::post('/ai/{lessonSimulator}/regenerate', [LessonSimulatorAiController::class, 'regenerate'])->name('ai.regenerate');
+            Route::post('/ai/{lessonSimulator}/resume', [LessonSimulatorAiController::class, 'resume'])->name('ai.resume');
+            Route::post('/ai/{lessonSimulator}/cancel', [LessonSimulatorAiController::class, 'cancel'])->name('ai.cancel');
 
             Route::post('/preview-bundle', [LessonSimulatorController::class, 'previewBundle'])->name('preview-bundle');
             Route::get('/global-assets', [LessonSimulatorController::class, 'globalAssets'])->name('global-assets');
@@ -1150,6 +1152,7 @@ Route::prefix('admin')
             Route::get('ai-pages/enhance', [AIDocumentationPageController::class, 'enhance'])->name('ai-pages.enhance');
             Route::post('ai-pages/generate', [AIDocumentationPageController::class, 'generate'])->name('ai-pages.generate');
             Route::post('ai-pages/refine', [AIDocumentationPageController::class, 'refine'])->name('ai-pages.refine');
+            Route::post('ai-pages/structure', [AIDocumentationPageController::class, 'structureContent'])->name('ai-pages.structure');
             Route::get('ai-pages/jobs/{uuid}', [AIDocumentationPageController::class, 'jobStatus'])->name('ai-pages.jobs.show');
             Route::post('ai-pages/jobs/{uuid}/resume', [AIDocumentationPageController::class, 'jobResume'])->name('ai-pages.jobs.resume');
             Route::get('ai-pages/jobs/{uuid}/partial', [AIDocumentationPageController::class, 'jobPartial'])->name('ai-pages.jobs.partial');

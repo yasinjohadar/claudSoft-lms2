@@ -574,6 +574,200 @@ PROMPT;
     }
 
     /**
+     * Outline stage for the "structure raw content" operation (legacy engine) —
+     * same shape as generateDocumentationOutline(), but plans the page from
+     * raw/unorganized material instead of a short topic string.
+     *
+     * @param  array{
+     *   content_length?: string,
+     *   tone?: string,
+     *   language?: string,
+     *   category?: DocumentationCategory|null,
+     *   parent?: DocumentationPage|null
+     * }  $options
+     * @return array{title?: string, slug?: string, excerpt?: string, sections?: list<array{heading?: string, brief?: string}>}
+     */
+    public function generateDocumentationOutlineFromRawContent(
+        string $rawContent,
+        AIModel $model,
+        array $options,
+        int $sectionTarget,
+        ?int $maxTokens = null,
+    ): array {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $length = $options['content_length'] ?? 'medium';
+        /** @var DocumentationCategory|null $category */
+        $category = $options['category'] ?? null;
+        /** @var DocumentationPage|null $parent */
+        $parent = $options['parent'] ?? null;
+
+        $langLine = $language === 'en'
+            ? 'Plan the page in English.'
+            : 'خطط الصفحة بالعربية.';
+        $categoryLine = $category ? "القسم: {$category->name}. " : '';
+        $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
+        $pageBudget = DocumentationHtmlStyleGuide::pageBudget((string) $length);
+        $material = Str::limit(trim($rawContent), 12000);
+
+        $prompt = <<<PROMPT
+فيما يلي محتوى خام غير منظم (قد يكون نصاً حراً، أو Markdown، أو JSON) حول موضوع ما. اقرأه جيداً ثم خطط له كصفحة توثيق احترافية مقسّمة إلى أقسام.
+
+{$categoryLine}{$parentLine}
+عدد الأقسام المستهدف تقريباً: {$sectionTarget}
+طول المحتوى الإجمالي المستهدف: {$pageBudget}
+الأسلوب: {$tone}
+{$langLine}
+
+قواعد صارمة:
+1. حافظ على كل المعلومات الحقيقية الموجودة في المحتوى الخام، ولا تُسقط أي فكرة مهمة منه.
+2. نظّم المحتوى في أقسام منطقية متماسكة تغطيه بالكامل، ولا تكرر أقساماً بنفس المعنى.
+3. لا تخترع معلومات أو حقائق غير موجودة أصلاً أو غير مستنتجة بوضوح من المصدر.
+4. سيُصحَّح لاحقاً كل قسم من الأخطاء الإملائية والرموز الزائدة — ركّز هنا على تخطيط الهيكل فقط.
+
+المحتوى الخام:
+<<<RAW_CONTENT>>>
+{$material}
+<<<END_RAW_CONTENT>>>
+
+أعد النتيجة كـ JSON فقط بهذا الشكل:
+{
+  "title": "عنوان الصفحة",
+  "slug": "slug-simple",
+  "excerpt": "ملخص قصير بدون HTML",
+  "sections": [
+    {"heading": "عنوان القسم", "brief": "جملة قصيرة عما سيغطيه القسم"}
+  ]
+}
+
+مهم: brief جملة قصيرة فقط. لا تكتب HTML هنا.
+PROMPT;
+
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'outline'),
+            $model->temperature ?? 0.55,
+        );
+
+        $data = $this->parseJSONResponse($response);
+        if ($data === []) {
+            $data = $this->resultNormalizer()->unwrapPayload($response);
+        }
+
+        $sections = $data['sections'] ?? null;
+        if (! is_array($sections) || count($sections) < 2) {
+            throw new AiProviderException(
+                'فشل بناء مخطط الأقسام من الموديل. غالباً قُطعت الاستجابة قبل اكتمال قائمة الأقسام.',
+                AiProviderException::KIND_TOO_LARGE,
+            );
+        }
+
+        return [
+            'title' => trim((string) ($data['title'] ?? '')),
+            'slug' => trim((string) ($data['slug'] ?? '')),
+            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
+            'sections' => array_values($sections),
+        ];
+    }
+
+    /**
+     * Section stage for the "structure raw content" operation (legacy engine) —
+     * same shape as generateDocumentationSectionHtml(), but extracts/cleans each
+     * section's HTML from the raw material instead of writing from general
+     * knowledge about a topic.
+     *
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array{tone?: string, language?: string, content_length?: string}  $options
+     * @param  list<string>  $laterHeadings
+     */
+    public function generateDocumentationSectionHtmlFromRawContent(
+        string $rawContent,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        AIModel $model,
+        array $options = [],
+        bool $compact = false,
+        ?int $maxTokens = null,
+        array $laterHeadings = [],
+    ): string {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $pageTitle = trim((string) ($outline['title'] ?? ''));
+        $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
+        $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
+        $styleGuide = $this->documentationStyleGuideBlock();
+        $contentLength = (string) ($options['content_length'] ?? 'medium');
+        $budgetLine = DocumentationHtmlStyleGuide::sectionBudget($contentLength, $compact);
+        $laterLine = $laterHeadings === []
+            ? ''
+            : 'أقسام لاحقة (لا تتناولها هنا): '.implode(' | ', $laterHeadings);
+        $material = Str::limit(trim($rawContent), 12000);
+
+        $outputRule = "أعد HTML فقط. ابدأ مباشرة بـ <section class=\"content-section\"> وانتهِ بـ </section>.\n"
+            .'ممنوع JSON، ممنوع علامات markdown، ممنوع أي شرح قبل أو بعد HTML.';
+
+        $prompt = <<<PROMPT
+اكتب قسماً واحداً فقط من صفحة توثيق، بالاعتماد على المحتوى الخام أدناه فقط.
+
+عنوان الصفحة: {$pageTitle}
+القسم الحالي: {$heading}
+ملخص القسم: {$brief}
+أقسام سابقة (للتماسك، لا تكررها): {$prior}
+{$laterLine}
+الأسلوب: {$tone}
+{$langLine}
+{$budgetLine}
+
+استخدم HTML فقط وفق الدليل:
+{$styleGuide}
+
+قواعد صارمة:
+- استخرج ونظّم فقط ما يخص هذا القسم من المحتوى الخام أدناه.
+- صحّح الأخطاء الإملائية والمصطلحات غير المتسقة، واحذف أي رموز أو علامات زائدة لا معنى لها (بقايا تنسيق Markdown أو JSON، تكرار غير مفيد، أكواد غريبة).
+- أضف فقط جمل ربط قصيرة إذا لزم الأمر لتماسك القسم، دون اختراع معلومات غير موجودة أصلاً في المصدر.
+
+المحتوى الخام:
+<<<RAW_CONTENT>>>
+{$material}
+<<<END_RAW_CONTENT>>>
+
+لفّ القسم بـ <section class="content-section"> وابدأ بـ <h2 class="section-title">{$heading}</h2>
+لا تُرجع أقساماً أخرى.
+
+{$outputRule}
+PROMPT;
+
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'section', $compact, $contentLength),
+            $model->temperature ?? 0.65,
+        );
+
+        $rawHtml = $response;
+
+        $html = $this->resultNormalizer()->extractSectionHtml($rawHtml);
+        if ($html === '') {
+            $html = $this->resultNormalizer()->extractSectionHtml(
+                $this->normalizeGeneratedHtmlContent($rawHtml)
+            );
+        }
+
+        if ($html === '') {
+            throw new AiProviderException(
+                'استجابة القسم لا تحتوي HTML صالحاً (غالباً قُطعت بسبب حد الرموز).',
+                AiProviderException::KIND_TOO_LARGE,
+            );
+        }
+
+        return $html;
+    }
+
+    /**
      * Single provider round-trip that turns the legacy "empty string + getLastError()"
      * convention into a classified exception the staged generator can act on.
      */

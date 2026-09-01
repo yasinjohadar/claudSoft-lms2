@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-class DocumentationAiGeneration extends Model
+class SimulatorAiGeneration extends Model
 {
     public const STATUS_QUEUED = 'queued';
 
@@ -19,25 +19,22 @@ class DocumentationAiGeneration extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
-    /** Stopped mid-way with finished sections preserved; can be continued. */
+    /** Stopped mid-way with finished phases preserved; can be continued. */
     public const STATUS_PAUSED = 'paused';
 
     public const OPERATION_GENERATE = 'generate';
 
     public const OPERATION_REFINE = 'refine';
 
-    public const OPERATION_ENHANCE = 'enhance';
-
-    public const OPERATION_STRUCTURE = 'structure';
-
     /** A running job without a heartbeat for this long is considered dead. */
     public const STALE_HEARTBEAT_MINUTES = 10;
 
-    protected $table = 'documentation_ai_generations';
+    protected $table = 'simulator_ai_generations';
 
     protected $fillable = [
         'uuid',
         'user_id',
+        'lesson_simulator_id',
         'operation',
         'status',
         'progress',
@@ -76,9 +73,14 @@ class DocumentationAiGeneration extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function sections(): HasMany
+    public function simulator(): BelongsTo
     {
-        return $this->hasMany(DocumentationAiSection::class, 'generation_id')->orderBy('position');
+        return $this->belongsTo(LessonSimulator::class, 'lesson_simulator_id');
+    }
+
+    public function phases(): HasMany
+    {
+        return $this->hasMany(SimulatorAiPhase::class, 'generation_id')->orderBy('position');
     }
 
     public function markRunning(string $stage, string $stageLabel, int $progress): void
@@ -129,7 +131,7 @@ class DocumentationAiGeneration extends Model
     }
 
     /**
-     * Stop without discarding work: finished sections stay in the database and
+     * Stop without discarding work: finished phases stay in the database and
      * the job can be continued later from the admin UI.
      */
     public function markPaused(string $message): void
@@ -154,38 +156,55 @@ class DocumentationAiGeneration extends Model
         ]);
     }
 
+    public function markCancelled(string $message = 'تم إيقاف التوليد.'): void
+    {
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+            'stage' => 'cancelled',
+            'stage_label' => 'أُوقِف',
+            'error_message' => $message,
+            'finished_at' => now(),
+        ]);
+    }
+
+    /** Checked between attempts so a cancel request is honored at the next safe point. */
+    public function isCancelled(): bool
+    {
+        return $this->fresh(['status'])?->status === self::STATUS_CANCELLED;
+    }
+
     public function isStaged(): bool
     {
-        return $this->sections()->exists();
+        return $this->phases()->exists();
     }
 
     /**
-     * @return array{planned: int, done: int, failed: int, remaining: int, failed_headings: list<string>}
+     * @return array{planned: int, done: int, failed: int, remaining: int, failed_phases: list<string>}
      */
-    public function sectionSummary(): array
+    public function phaseSummary(): array
     {
-        /** @var \Illuminate\Support\Collection<int, DocumentationAiSection> $sections */
-        $sections = $this->relationLoaded('sections') ? $this->sections : $this->sections()->get();
+        /** @var \Illuminate\Support\Collection<int, SimulatorAiPhase> $phases */
+        $phases = $this->relationLoaded('phases') ? $this->phases : $this->phases()->get();
 
-        $done = $sections->where('status', DocumentationAiSection::STATUS_DONE)->count();
-        $failed = $sections->where('status', DocumentationAiSection::STATUS_FAILED);
+        $done = $phases->where('status', SimulatorAiPhase::STATUS_DONE)->count();
+        $failed = $phases->where('status', SimulatorAiPhase::STATUS_FAILED);
 
         return [
-            'planned' => $sections->count(),
+            'planned' => $phases->count(),
             'done' => $done,
             'failed' => $failed->count(),
-            'remaining' => max(0, $sections->count() - $done),
-            'failed_headings' => $failed->pluck('heading')->filter()->values()->all(),
+            'remaining' => max(0, $phases->count() - $done),
+            'failed_phases' => $failed->pluck('label')->filter()->values()->all(),
         ];
     }
 
     public function isResumable(): bool
     {
-        if (! in_array($this->status, [self::STATUS_PAUSED, self::STATUS_FAILED], true)) {
+        if (! in_array($this->status, [self::STATUS_PAUSED, self::STATUS_FAILED, self::STATUS_CANCELLED], true)) {
             return false;
         }
 
-        return $this->sections()->where('status', '!=', DocumentationAiSection::STATUS_DONE)->exists();
+        return $this->phases()->where('status', '!=', SimulatorAiPhase::STATUS_DONE)->exists();
     }
 
     /** Running but the worker stopped writing heartbeats (process killed / crashed). */
@@ -202,7 +221,7 @@ class DocumentationAiGeneration extends Model
 
     public function toStatusPayload(): array
     {
-        $summary = $this->isStaged() ? $this->sectionSummary() : null;
+        $summary = $this->isStaged() ? $this->phaseSummary() : null;
 
         return [
             'uuid' => $this->uuid,
@@ -214,7 +233,7 @@ class DocumentationAiGeneration extends Model
             'result' => $this->status === self::STATUS_COMPLETED ? $this->result : null,
             'partial_result' => $this->partial_result,
             'error_message' => $this->error_message,
-            'sections' => $summary,
+            'phases' => $summary,
             'resumable' => $this->isResumable(),
             'partial_content_available' => $summary !== null && $summary['done'] > 0,
             'queue_hint' => $this->status === self::STATUS_QUEUED

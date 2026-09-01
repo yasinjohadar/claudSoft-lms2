@@ -189,6 +189,225 @@ Apply the editor instructions and return the three complete updated files.
 PROMPT;
     }
 
+    /**
+     * Plan stage for the staged bundle pipeline: reads the topic and decides
+     * title/description/archetype/output language/direction plus the elements,
+     * interactions and coverage checklist the html/css/js phases must satisfy.
+     *
+     * @param  array{
+     *     simulation_details?: string,
+     *     primary_language?: string,
+     *     level?: string,
+     *     archetype?: string,
+     *     output_language?: string
+     * }  $options
+     */
+    public function buildPlanPrompt(string $topicDescription, array $options = []): string
+    {
+        $simulationDetails = trim($options['simulation_details'] ?? '');
+        $primaryLanguage = $options['primary_language'] ?? 'php';
+        $level = $options['level'] ?? 'beginner';
+        $archetype = $options['archetype'] ?? 'auto';
+        $outputLanguage = trim($options['output_language'] ?? '') ?: 'العربية';
+        $primaryLangLabel = config('simulator.primary_languages')[$primaryLanguage] ?? $primaryLanguage;
+
+        $archetypeLine = $archetype === 'auto'
+            ? 'Choose the better fit yourself: "playground" (live controls + preview) or "stepper" (guided step-by-step walkthrough).'
+            : "Use archetype \"{$archetype}\".";
+
+        $detailsBlock = $simulationDetails !== ''
+            ? "Additional requirements from the admin:\n{$simulationDetails}"
+            : 'Infer sensible controls, scenarios and depth from the topic yourself.';
+
+        return <<<PROMPT
+You are an expert instructional designer planning an interactive lesson simulator (a single self-contained HTML+CSS+JS page). The topic can be about ANYTHING — a programming concept, a science process, a historical event, a business workflow, a language-learning drill, anything — not only programming.
+
+=== TOPIC ===
+Subject: {$topicDescription}
+Relevant stack/language (if the topic is code-related): {$primaryLangLabel} ({$primaryLanguage})
+Difficulty level: {$level}
+Output language for all on-page text: {$outputLanguage}
+{$archetypeLine}
+
+{$detailsBlock}
+
+=== COMPREHENSIVE COVERAGE (required) ===
+- Research the topic deeply and identify ALL important concepts, sub-topics, terms and mechanics a learner needs.
+- key_elements: every distinct UI control/element the page needs (inputs, buttons, panels, visual areas) — be specific, not generic.
+- interactions: every distinct behavior the JavaScript must implement (what happens on each control, what updates, what is computed) — this list is later used to check the generated JavaScript is not a stub.
+- coverage_checklist: every sub-concept/scenario the simulator must actually demonstrate, so nothing important about the topic is skipped.
+
+=== OUTPUT ===
+Decide and return:
+- title: short page title in the output language.
+- description: one or two sentences describing what the simulator teaches, in the output language.
+- archetype: "playground" or "stepper".
+- lang_code: the correct HTML lang= code for "{$outputLanguage}" (e.g. ar, en, fr, es, de, tr…).
+- text_direction: "rtl" if "{$outputLanguage}" is a right-to-left language (e.g. Arabic, Hebrew, Persian, Urdu), otherwise "ltr".
+- key_elements: list of strings.
+- interactions: list of strings.
+- coverage_checklist: list of strings.
+PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @param  array{primary_language?: string, output_language?: string}  $options
+     */
+    public function buildHtmlPhasePrompt(array $plan, array $options = [], ?string $validationFeedback = null): string
+    {
+        $archetype = $plan['archetype'] ?? 'playground';
+        $langCode = $plan['lang_code'] ?? 'ar';
+        $dir = $plan['text_direction'] ?? 'rtl';
+
+        $skeletonFile = $archetype === 'stepper' ? 'stepper.skeleton.html' : 'playground.skeleton.html';
+        $skeletonPath = resource_path('simulator-templates/'.$skeletonFile);
+        $skeleton = File::exists($skeletonPath) ? File::get($skeletonPath) : '';
+        $skeleton = str_replace(
+            ['__BUNDLE_ASSETS__', '<!-- SHARED_KIT_CSS -->', '<!-- SHARED_KIT_THEME_JS -->'],
+            [SimulatorKit::PLACEHOLDER_BUNDLE_ASSETS, SimulatorKit::sharedCssLinks(), SimulatorKit::themeManagerScript()],
+            $skeleton
+        );
+
+        $archetypeRules = $archetype === 'stepper'
+            ? <<<'RULE'
+ARCHETYPE: Code/Process Stepper
+- Left: scenario buttons (one per item in coverage_checklist, or grouped sensibly)
+- Center: main visualization/trace area for the active step
+- Right: state/output panel
+- Toolbar: Run all, Step, Reset
+RULE
+            : <<<'RULE'
+ARCHETYPE: Playground
+- Controls panel: inputs/sliders/selects covering key_elements
+- Live preview/visualization panel updates in real time
+- Optional output/code panel when relevant to the topic
+RULE;
+
+        $kit = SimulatorKit::PLACEHOLDER_KIT;
+        $assets = SimulatorKit::PLACEHOLDER_BUNDLE_ASSETS;
+        $global = SimulatorKit::PLACEHOLDER_GLOBAL;
+
+        $keyElements = $this->formatList($plan['key_elements'] ?? []);
+        $feedbackBlock = $this->validationFeedbackBlock($validationFeedback, 'HTML');
+
+        return <<<PROMPT
+You are an expert front-end educator. Write ONLY the HTML file (index.html) for an interactive lesson simulator. Output the raw HTML only — no markdown fences, no commentary before or after.
+
+=== PLAN ===
+Title: {$plan['title']}
+Description: {$plan['description']}
+Key elements to include: {$keyElements}
+
+{$archetypeRules}
+
+=== REQUIRED RULES ===
+1. lang="{$langCode}" dir="{$dir}" on <html>, data-theme="light"
+2. html and body: margin:0; padding:0; width:100%; min-height:100vh — full viewport, no white margins
+3. Root container MUST use class "sim-app" with min-height:100vh
+4. Google Fonts ONLY via <link href="https://fonts.googleapis.com/..."> (never a <script> tag for fonts)
+5. Link shared kit CSS using exact placeholder paths (copy from skeleton): href="{$kit}/css/tokens.css" (and base, components, theme-system, utilities)
+6. Link page CSS: href="{$assets}/page.css" OR global placeholder href="{$global}/page.css" via __GLOBAL_ASSETS__
+7. Theme script: defer src="{$kit}/js/theme-manager.js"
+8. Page script: defer src="{$assets}/simulator.js" OR __GLOBAL_ASSETS__/simulator.js
+9. All labels, headings and buttons in the output language ({$langCode})
+10. Include <button type="button" class="theme-toggle" aria-label="toggle theme"></button>
+11. Script src is allowed ONLY from: {$kit}, {$assets}, __GLOBAL_ASSETS__ placeholders, OR a trusted CDN — https://cdnjs.cloudflare.com/... or https://cdn.jsdelivr.net/... — and ONLY when the topic genuinely needs a real library (charting, 3D, code highlighting, etc.). Always pin an exact version in the URL (never "latest"). Do not use any other external host.
+{$feedbackBlock}
+
+=== SKELETON REFERENCE (follow this structure) ===
+{$skeleton}
+
+Generate the complete, working HTML file now.
+PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    public function buildCssPhasePrompt(array $plan, string $html, array $options = [], ?string $validationFeedback = null): string
+    {
+        $htmlExcerpt = $this->excerptForPrompt($html, 24000);
+        $feedbackBlock = $this->validationFeedbackBlock($validationFeedback, 'CSS');
+
+        return <<<PROMPT
+You are an expert front-end educator. Write ONLY the CSS file (page.css) styling the HTML below for an interactive lesson simulator. Output raw CSS only — no markdown fences, no commentary.
+
+=== PLAN ===
+Title: {$plan['title']}
+Description: {$plan['description']}
+
+=== RULES ===
+- Style every element actually present in the HTML below — sim-header, sim-main/sim-layout, panels, controls — a polished, professional look.
+- html, body {margin:0; padding:0; width:100%; min-height:100vh;}
+- .sim-app {min-height:100vh; width:100%;}
+- Responsive: stack columns on mobile.
+- Do NOT redefine CSS variables already defined by the shared kit's tokens.css.
+- Add whatever ADDITIONAL rules specific elements need — this is the only styling file, so keep the design fully self-contained here. Do not hold back on polish.
+- If the HTML links a CDN library's stylesheet, do not redeclare that library's own classes — only style your own sim-* classes around it.
+{$feedbackBlock}
+
+=== HTML TO STYLE ===
+```html
+{$htmlExcerpt}
+```
+
+Generate the complete CSS file now.
+PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    public function buildJsPhasePrompt(array $plan, string $html, string $css, array $options = [], ?string $validationFeedback = null): string
+    {
+        $htmlExcerpt = $this->excerptForPrompt($html, 24000);
+        $cssExcerpt = $this->excerptForPrompt($css, 12000);
+        $interactions = $this->formatList($plan['interactions'] ?? []);
+        $checklist = $this->formatList($plan['coverage_checklist'] ?? []);
+        $feedbackBlock = $this->validationFeedbackBlock($validationFeedback, 'JavaScript');
+
+        return <<<PROMPT
+You are an expert front-end educator. Write ONLY the JavaScript file (simulator.js) implementing the interactivity for the HTML+CSS below. Output raw JavaScript only — no markdown fences, no commentary.
+
+=== PLAN ===
+Title: {$plan['title']}
+Description: {$plan['description']}
+Interactions this script MUST implement: {$interactions}
+Coverage checklist the simulator must actually demonstrate: {$checklist}
+
+=== RULES ===
+- No eval(), no document.write().
+- External library scripts are allowed only from the same trusted CDNs already referenced in the HTML (if any) — do not add new external script loads from JavaScript itself.
+- Use addEventListener, clear named functions, DOMContentLoaded init.
+- Implement EVERY interaction listed above — a script that only wires a couple of controls and leaves the rest inert is not acceptable.
+- Match element ids/classes exactly as they appear in the HTML below.
+{$feedbackBlock}
+
+=== HTML ===
+```html
+{$htmlExcerpt}
+```
+
+=== CSS ===
+```css
+{$cssExcerpt}
+```
+
+Generate the complete JavaScript file now.
+PROMPT;
+    }
+
+    private function validationFeedbackBlock(?string $feedback, string $fileLabel): string
+    {
+        $feedback = trim((string) $feedback);
+        if ($feedback === '') {
+            return '';
+        }
+
+        return "\n=== FIX REQUIRED ===\nThe previous {$fileLabel} attempt failed validation for these reasons — fix them in this attempt:\n{$feedback}\n";
+    }
+
     private function excerptForPrompt(string $text, int $limit): string
     {
         if (mb_strlen($text) <= $limit) {

@@ -80,6 +80,9 @@ class SimulatorBundleSanitizer
         ) ?? $html;
     }
 
+    /** Same trusted hosts the validator allows — keep these two in sync. */
+    private const ALLOWED_CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
+
     private function isAllowedScriptSrc(string $src): bool
     {
         if (str_contains($src, SimulatorKit::PLACEHOLDER_KIT)) {
@@ -93,6 +96,12 @@ class SimulatorBundleSanitizer
         }
         if (preg_match('#/assets/(page\.css|simulator\.js)$#i', $src)) {
             return true;
+        }
+
+        $host = parse_url($src, PHP_URL_HOST);
+        if ($host !== null && in_array(strtolower($host), self::ALLOWED_CDN_HOSTS, true)) {
+            // Require a pinned version segment, matching the validator's rule.
+            return (bool) preg_match('#(?:@|/)\d+\.\d+(?:\.\d+)?(?:[/@]|$)#', $src);
         }
 
         return false;

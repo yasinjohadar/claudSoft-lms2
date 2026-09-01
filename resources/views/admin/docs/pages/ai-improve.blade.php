@@ -150,7 +150,16 @@
                                     </div>
                                 </div>
 
-                                <div class="form-check mb-3">
+                                <div id="doc_structure_length_wrap" class="mb-3" style="display:none;">
+                                    <label class="form-label" for="content_length">الطول المستهدف</label>
+                                    <select id="content_length" class="form-select">
+                                        <option value="short">قصير</option>
+                                        <option value="medium" selected>متوسط</option>
+                                        <option value="long">طويل</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-check mb-3" id="doc_update_excerpt_wrap">
                                     <input class="form-check-input" type="checkbox" id="update_excerpt">
                                     <label class="form-check-label" for="update_excerpt">طلب مقتطف (excerpt) مقترح</label>
                                 </div>
@@ -193,12 +202,31 @@
                         <div class="card-header doc-ai-panel__header border-0">
                             <h6 class="doc-ai-panel__title mb-1">
                                 <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--content"><i class="fe fe-code"></i></span>
-                                المصدر (HTML)
+                                <span id="doc_source_title">المصدر (HTML)</span>
                             </h6>
-                            <p class="doc-ai-hint mb-0">المحتوى الكامل للصفحة — يُعاد صياغته دفعة واحدة.</p>
+                            <p class="doc-ai-hint mb-2" id="doc_source_hint">المحتوى الكامل للصفحة — يُعاد صياغته دفعة واحدة.</p>
+                            <div class="doc-ai-engine-pills">
+                                <div class="doc-ai-engine-pill">
+                                    <input type="radio" name="doc_input_mode" id="doc_mode_html" value="html" checked>
+                                    <label for="doc_mode_html"><i class="fe fe-code"></i>HTML جاهز</label>
+                                </div>
+                                <div class="doc-ai-engine-pill">
+                                    <input type="radio" name="doc_input_mode" id="doc_mode_raw" value="raw">
+                                    <label for="doc_mode_raw"><i class="fe fe-file-text"></i>محتوى خام (نص، Markdown، JSON)</label>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body pt-2">
                             <textarea id="doc_source" class="form-control" rows="14">{{ old('source', $prefillPage?->content ?? '') }}</textarea>
+                            <div id="doc_raw_wrap" style="display:none;">
+                                <div class="d-flex justify-content-end mb-2">
+                                    <button type="button" class="btn btn-sm btn-light border" id="doc_raw_import_btn">
+                                        <i class="fe fe-upload me-1"></i>استيراد من ملف (.md, .json, .txt)
+                                    </button>
+                                    <input type="file" id="doc_raw_file_input" accept=".md,.markdown,.json,.txt,text/plain,application/json" style="display:none;">
+                                </div>
+                                <textarea id="doc_raw_content" class="form-control" rows="14" placeholder="الصق هنا نصاً حراً غير منظم، أو Markdown، أو JSON — سيقوم الذكاء الاصطناعي بتنظيمه وتنسيقه كصفحة توثيق."></textarea>
+                            </div>
                         </div>
                     </div>
 
@@ -364,6 +392,7 @@ document.documentElement.classList.add('loaded');
     const useLaravelAiEngineDefault = @json(!empty($useLaravelAiEngine));
     const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
     const refineUrl = @json(route('admin.docs.ai-pages.refine'));
+    const structureUrl = @json(route('admin.docs.ai-pages.structure'));
     const csrf = @json(csrf_token());
     const parentPages = @json($parentPagesJson);
     const initialParentId = @json(old('parent_id', $prefillPage?->parent_id));
@@ -418,6 +447,60 @@ document.documentElement.classList.add('loaded');
         });
     });
 
+    function currentInputMode() {
+        const r = document.querySelector('input[name="doc_input_mode"]:checked');
+        return r ? r.value : 'html';
+    }
+
+    function setInputMode(mode) {
+        const isRaw = mode === 'raw';
+        const sourceEd = (typeof tinymce !== 'undefined') ? tinymce.get('doc_source') : null;
+        if (sourceEd) {
+            sourceEd.getContainer().style.display = isRaw ? 'none' : '';
+        } else {
+            document.getElementById('doc_source').style.display = isRaw ? 'none' : '';
+        }
+        document.getElementById('doc_raw_wrap').style.display = isRaw ? '' : 'none';
+        document.getElementById('doc_structure_length_wrap').style.display = isRaw ? '' : 'none';
+        document.getElementById('doc_update_excerpt_wrap').style.display = isRaw ? 'none' : '';
+        document.getElementById('doc_source_title').textContent = isRaw ? 'المحتوى الخام' : 'المصدر (HTML)';
+        document.getElementById('doc_source_hint').textContent = isRaw
+            ? 'نص حر غير منظم، أو Markdown، أو JSON — يُنظَّم وينسَّق كصفحة توثيق جديدة.'
+            : 'المحتوى الكامل للصفحة — يُعاد صياغته دفعة واحدة.';
+        const btnText = document.querySelector('#refineBtn .btn-text');
+        if (btnText) btnText.textContent = isRaw ? 'تنظيم المحتوى وتنسيقه' : 'تحسين المحتوى';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('input[name="doc_input_mode"]').forEach(function (el) {
+            el.addEventListener('change', function () { setInputMode(this.value); });
+        });
+        setInputMode(currentInputMode());
+
+        const importBtn = document.getElementById('doc_raw_import_btn');
+        const fileInput = document.getElementById('doc_raw_file_input');
+        if (importBtn && fileInput) {
+            importBtn.addEventListener('click', function () { fileInput.click(); });
+            fileInput.addEventListener('change', function () {
+                const file = this.files && this.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('doc_raw_content').value = String(e.target.result || '');
+                };
+                reader.onerror = function () {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذرت قراءة الملف' });
+                    } else {
+                        alert('تعذرت قراءة الملف');
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+                fileInput.value = '';
+            });
+        }
+    });
+
     function slugify(t) {
         if (!t) return '';
         return t.toString().trim()
@@ -462,8 +545,12 @@ document.documentElement.classList.add('loaded');
     });
 
     document.getElementById('refineBtn').addEventListener('click', function () {
-        const sourceHtml = getEditorHtml('doc_source');
-        if (!sourceHtml || !sourceHtml.trim()) {
+        const mode = currentInputMode();
+        const isRaw = mode === 'raw';
+
+        const sourceHtml = isRaw ? '' : getEditorHtml('doc_source');
+        const rawContent = isRaw ? document.getElementById('doc_raw_content').value.trim() : '';
+        if (!isRaw && (!sourceHtml || !sourceHtml.trim())) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'أدخل محتوى في منطقة المصدر أولاً' });
             } else {
@@ -471,12 +558,22 @@ document.documentElement.classList.add('loaded');
             }
             return;
         }
+        if (isRaw && !rawContent) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'أدخل أو استورد محتوى خاماً أولاً' });
+            } else {
+                alert('أدخل أو استورد محتوى خاماً أولاً');
+            }
+            return;
+        }
 
         const btn = this;
         const btnText = btn.querySelector('.btn-text');
         const spinner = btn.querySelector('.loading-spinner');
+        const busyLabel = isRaw ? 'جاري التنظيم...' : 'جاري التحسين...';
+        const idleLabel = isRaw ? 'تنظيم المحتوى وتنسيقه' : 'تحسين المحتوى';
         btn.disabled = true;
-        btnText.textContent = 'جاري التحسين...';
+        btnText.textContent = busyLabel;
         spinner.classList.add('active');
 
         document.getElementById('excerptWrap').style.display = 'none';
@@ -489,7 +586,20 @@ document.documentElement.classList.add('loaded');
         }
         const laravelEl = document.getElementById('laravel_ai_model_id');
         const legacyEl = document.getElementById('ai_model_id');
-        const payload = {
+        const url = isRaw ? structureUrl : refineUrl;
+        const payload = isRaw ? {
+            raw_content: rawContent,
+            content_length: document.getElementById('content_length').value,
+            user_notes: document.getElementById('user_notes').value.trim() || null,
+            docs_engine: docsEngineChoiceAvailable ? engine : undefined,
+            ai_model_id: engine === 'legacy' ? (legacyEl ? (legacyEl.value || null) : null) : null,
+            laravel_ai_model_id: engine === 'laravel_ai' ? (laravelEl ? (laravelEl.value || null) : null) : null,
+            tone: document.getElementById('tone').value,
+            language: document.getElementById('language').value,
+            documentation_category_id: document.getElementById('doc_category_id').value || null,
+            parent_id: document.getElementById('doc_parent_id').value || null,
+            _token: csrf
+        } : {
             source_html: sourceHtml,
             user_notes: document.getElementById('user_notes').value.trim() || null,
             docs_engine: docsEngineChoiceAvailable ? engine : undefined,
@@ -501,7 +611,7 @@ document.documentElement.classList.add('loaded');
             _token: csrf
         };
 
-        fetch(refineUrl, {
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -522,6 +632,25 @@ document.documentElement.classList.add('loaded');
                         se.value = data.excerpt;
                     }
                 }
+                // Only structure/generate results carry these — refine/enhance don't.
+                // Fill them in when the admin hasn't typed anything yet.
+                var titleEl = document.getElementById('doc_title');
+                if (data.title && titleEl && !titleEl.value.trim()) {
+                    titleEl.value = data.title;
+                    titleEl.dispatchEvent(new Event('input'));
+                }
+                var slugEl = document.getElementById('doc_slug');
+                if (data.slug && slugEl && !slugEl.value.trim()) {
+                    slugEl.value = data.slug;
+                }
+                var metaTitleEl = document.querySelector('input[name="meta_title"]');
+                if (data.meta_title && metaTitleEl && !metaTitleEl.value.trim()) {
+                    metaTitleEl.value = data.meta_title;
+                }
+                var metaDescEl = document.querySelector('textarea[name="meta_description"]');
+                if (data.meta_description && metaDescEl && !metaDescEl.value.trim()) {
+                    metaDescEl.value = data.meta_description;
+                }
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({ icon: 'success', title: 'تم', text: 'راجع النتيجة ثم احفظ لتحديث التوثيق.', timer: 2500 });
                 }
@@ -529,7 +658,7 @@ document.documentElement.classList.add('loaded');
 
             function resetRefineBtn() {
                 btn.disabled = false;
-                btnText.textContent = 'تحسين المحتوى';
+                btnText.textContent = idleLabel;
                 spinner.classList.remove('active');
                 var wrap = document.getElementById('docAiProgressWrap');
                 if (wrap) wrap.style.display = 'none';
@@ -551,7 +680,7 @@ document.documentElement.classList.add('loaded');
             if (res.body.success && res.body.job && res.body.job.uuid) {
                 window.DocAiJobPoller.poll({
                     uuid: res.body.job.uuid,
-                    storageKey: 'docs_ai_refine_job_uuid',
+                    storageKey: isRaw ? 'docs_ai_structure_job_uuid' : 'docs_ai_refine_job_uuid',
                     onProgress: setProgress,
                     onComplete: function (result) {
                         applyRefineData(result || {});
@@ -560,9 +689,9 @@ document.documentElement.classList.add('loaded');
                     onError: function (msg) {
                         resetRefineBtn();
                         if (typeof Swal !== 'undefined') {
-                            Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشل التحسين' });
+                            Swal.fire({ icon: 'error', title: 'خطأ', text: msg || 'فشلت العملية' });
                         } else {
-                            alert(msg || 'فشل التحسين');
+                            alert(msg || 'فشلت العملية');
                         }
                     }
                 });
@@ -574,7 +703,7 @@ document.documentElement.classList.add('loaded');
                 resetRefineBtn();
             } else {
                 resetRefineBtn();
-                const msg = res.body.message || 'فشل التحسين';
+                const msg = res.body.message || 'فشلت العملية';
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({ icon: 'error', title: 'خطأ', text: msg });
                 } else {
@@ -584,7 +713,7 @@ document.documentElement.classList.add('loaded');
         })
         .catch(function () {
             btn.disabled = false;
-            btnText.textContent = 'تحسين المحتوى';
+            btnText.textContent = idleLabel;
             spinner.classList.remove('active');
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر بدء المهمة' });

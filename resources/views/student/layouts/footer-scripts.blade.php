@@ -17,16 +17,15 @@
 <!-- Scroll To Top -->
 
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="{{ asset('assets/libs/jquery/jquery.min.js') }}"></script>
 
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('assets/libs/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 <!-- Popper JS -->
 <script src="{{ asset('assets/libs/@popperjs/core/umd/popper.min.js') }}"></script>
-{{-- <script src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script> --}}
 <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ asset('assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 
 <!-- Defaultmenu JS -->

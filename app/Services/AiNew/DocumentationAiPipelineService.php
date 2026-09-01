@@ -64,6 +64,7 @@ class DocumentationAiPipelineService
                 DocumentationAiGeneration::OPERATION_GENERATE => $this->runGenerate($generation),
                 DocumentationAiGeneration::OPERATION_REFINE => $this->runTransform($generation, 'refine'),
                 DocumentationAiGeneration::OPERATION_ENHANCE => $this->runTransform($generation, 'enhance'),
+                DocumentationAiGeneration::OPERATION_STRUCTURE => $this->runStructure($generation),
                 default => throw new \InvalidArgumentException('عملية غير معروفة: '.$generation->operation),
             };
 
@@ -230,6 +231,108 @@ class DocumentationAiPipelineService
         }
 
         return $result;
+    }
+
+    /**
+     * Structure raw/unorganized material (free text, Markdown, or JSON) into a
+     * documentation page, reusing the same outline+sections staged pipeline as
+     * runStagedGenerate() — only the prompts differ (they carry the raw material
+     * instead of a short topic).
+     *
+     * @return array<string, mixed>
+     */
+    private function runStructure(DocumentationAiGeneration $generation): array
+    {
+        $payload = $generation->payload;
+        $rawContent = trim((string) ($payload['raw_content'] ?? ''));
+        if ($rawContent === '') {
+            throw new \InvalidArgumentException('المحتوى الخام مطلوب.');
+        }
+
+        $engine = (string) ($payload['docs_engine'] ?? 'legacy');
+        $contentLength = (string) ($payload['content_length'] ?? 'medium');
+        $options = $this->wizardOptionsFromPayload($payload);
+        $sectionTarget = $this->sectionCountForLength($contentLength);
+        $useLaravelAi = $engine === 'laravel_ai';
+
+        // A short label derived from the raw material, used only as a title
+        // fallback seed if the outline's own title comes back unusable.
+        $topicLabel = Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags($rawContent)) ?: ''), 200);
+
+        $user = User::query()->find($generation->user_id);
+
+        $laraModel = null;
+        $legacyModel = null;
+        if ($useLaravelAi) {
+            $laraModel = $this->resolveLaravelModel($payload);
+            $outlineTokens = (int) config('ai.docs.outline_max_tokens', 3072);
+            $sectionTokens = self::sectionTokenCeiling($contentLength);
+            if ((int) ($laraModel->max_tokens ?? 0) > 0) {
+                $outlineTokens = min($outlineTokens, (int) $laraModel->max_tokens);
+                $sectionTokens = min($sectionTokens, (int) $laraModel->max_tokens);
+            }
+        } else {
+            $legacyModel = $this->resolveLegacyModel($payload);
+            $outlineTokens = $this->legacyDocs->tokensForStage($legacyModel, 'outline');
+            $sectionTokens = $this->legacyDocs->tokensForStage($legacyModel, 'section', false, $contentLength);
+        }
+
+        $outlineWriter = function (int $target, int $maxTokens) use (
+            $useLaravelAi, $rawContent, $options, $user, $laraModel, $legacyModel
+        ): array {
+            if ($useLaravelAi) {
+                return $this->generateOutlineFromRawContent($rawContent, $options, $target, $user, $laraModel, $maxTokens);
+            }
+
+            return $this->legacyDocs->generateDocumentationOutlineFromRawContent($rawContent, $legacyModel, $options, $target, $maxTokens);
+        };
+
+        $sectionWriter = function (DocumentationSectionAttempt $attempt) use (
+            $useLaravelAi, $rawContent, $generation, $options, $user, $laraModel, $legacyModel, $contentLength
+        ): string {
+            $outline = $generation->partial_result['outline'] ?? [];
+
+            if ($useLaravelAi) {
+                return $this->requestSectionHtmlFromRawContent(
+                    $rawContent,
+                    is_array($outline) ? $outline : [],
+                    $attempt->heading,
+                    $attempt->brief,
+                    $attempt->priorHeadings,
+                    $options,
+                    $user,
+                    $laraModel,
+                    $contentLength,
+                    $attempt->compact,
+                    $attempt->maxTokens,
+                    $attempt->laterHeadings,
+                );
+            }
+
+            return $this->legacyDocs->generateDocumentationSectionHtmlFromRawContent(
+                $rawContent,
+                is_array($outline) ? $outline : [],
+                $attempt->heading,
+                $attempt->brief,
+                $attempt->priorHeadings,
+                $legacyModel,
+                $options,
+                $attempt->compact,
+                $attempt->maxTokens,
+                $attempt->laterHeadings,
+            );
+        };
+
+        return $this->stagedGenerator->generate(
+            $generation,
+            $topicLabel,
+            $options,
+            $sectionTarget,
+            $outlineTokens,
+            $sectionTokens,
+            $outlineWriter,
+            $sectionWriter,
+        );
     }
 
     /**
@@ -489,6 +592,186 @@ PROMPT;
             $model,
             $user,
             'docs.section'.($compact ? '.retry' : ''),
+            ['heading' => $heading, 'compact' => $compact],
+            ['html_len' => mb_strlen($raw)],
+            (int) ((hrtime(true) - $started) / 1_000_000)
+        );
+
+        $html = $this->resultNormalizer->extractSectionHtml($raw);
+        if ($html === '') {
+            $html = $this->resultNormalizer->extractSectionHtml($this->normalizeHtml($raw));
+        }
+
+        return $html;
+    }
+
+    /**
+     * Outline stage for the "structure raw content" operation — same shape as
+     * generateOutline(), but plans the page from raw/unorganized material instead
+     * of a short topic string.
+     *
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private function generateOutlineFromRawContent(
+        string $rawContent,
+        array $options,
+        int $sectionTarget,
+        ?User $user,
+        LaravelAiModel $model,
+        ?int $maxTokens = null,
+    ): array {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $length = $options['content_length'] ?? 'medium';
+        /** @var DocumentationCategory|null $category */
+        $category = $options['category'] ?? null;
+        /** @var DocumentationPage|null $parent */
+        $parent = $options['parent'] ?? null;
+
+        $langLine = $language === 'en'
+            ? 'Plan the page in English.'
+            : 'خطط الصفحة بالعربية.';
+
+        $categoryLine = $category ? "القسم: {$category->name}. " : '';
+        $parentLine = $parent ? "فرع من: «{$parent->title}». " : '';
+        $pageBudget = DocumentationHtmlStyleGuide::pageBudget((string) $length);
+        $material = Str::limit(trim($rawContent), 12000);
+
+        $prompt = <<<PROMPT
+فيما يلي محتوى خام غير منظم (قد يكون نصاً حراً، أو Markdown، أو JSON) حول موضوع ما. اقرأه جيداً ثم خطط له كصفحة توثيق احترافية مقسّمة إلى أقسام.
+
+{$categoryLine}{$parentLine}
+عدد الأقسام المستهدف تقريباً: {$sectionTarget}
+طول المحتوى الإجمالي المستهدف: {$pageBudget}
+الأسلوب: {$tone}
+{$langLine}
+
+قواعد صارمة:
+1. حافظ على كل المعلومات الحقيقية الموجودة في المحتوى الخام، ولا تُسقط أي فكرة مهمة منه.
+2. نظّم المحتوى في أقسام منطقية متماسكة تغطيه بالكامل، ولا تكرر أقساماً بنفس المعنى.
+3. لا تخترع معلومات أو حقائق غير موجودة أصلاً أو غير مستنتجة بوضوح من المصدر.
+4. سيُصحَّح لاحقاً كل قسم من الأخطاء الإملائية والرموز الزائدة — ركّز هنا على تخطيط الهيكل فقط.
+
+المحتوى الخام:
+<<<RAW_CONTENT>>>
+{$material}
+<<<END_RAW_CONTENT>>>
+
+أعد: title, slug, excerpt, sections[{heading, brief}].
+كل brief جملة قصيرة توضّح ما سيُغطى في القسم فقط، مبنية على المحتوى الخام أعلاه.
+PROMPT;
+
+        $started = hrtime(true);
+
+        /** @var StructuredAgentResponse $response */
+        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
+            return $this->promptRunner->runStructured(
+                $model,
+                new DocumentationOutlineAgent,
+                $prompt,
+                self::OUTLINE_TIMEOUT,
+                null,
+                $maxTokens,
+            );
+        });
+
+        $structured = $response->toArray();
+        $this->logger->logSuccess(
+            $model,
+            $user,
+            'docs.structure.outline',
+            ['raw_content_len' => mb_strlen($rawContent)],
+            $structured,
+            (int) ((hrtime(true) - $started) / 1_000_000)
+        );
+
+        return $structured;
+    }
+
+    /**
+     * Section stage for the "structure raw content" operation — same shape as
+     * requestSectionHtml(), but extracts/cleans each section's HTML from the raw
+     * material instead of writing from general knowledge about a topic.
+     *
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array<string, mixed>  $options
+     * @param  list<string>  $laterHeadings
+     */
+    private function requestSectionHtmlFromRawContent(
+        string $rawContent,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        array $options,
+        ?User $user,
+        LaravelAiModel $model,
+        string $contentLength,
+        bool $compact,
+        ?int $maxTokens = null,
+        array $laterHeadings = [],
+    ): string {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $pageTitle = trim((string) ($outline['title'] ?? ''));
+        $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
+        $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
+        $laterLine = $laterHeadings === []
+            ? ''
+            : 'أقسام لاحقة (لا تتناولها هنا): '.implode(' | ', $laterHeadings);
+        $styleGuide = $this->styleGuide();
+        $budgetLine = DocumentationHtmlStyleGuide::sectionBudget($contentLength, $compact);
+        $material = Str::limit(trim($rawContent), 12000);
+
+        $prompt = <<<PROMPT
+اكتب قسماً واحداً فقط من صفحة توثيق، بالاعتماد على المحتوى الخام أدناه فقط.
+
+عنوان الصفحة: {$pageTitle}
+القسم الحالي: {$heading}
+ملخص القسم: {$brief}
+أقسام سابقة (للتماسك، لا تكررها): {$prior}
+{$laterLine}
+الأسلوب: {$tone}
+{$langLine}
+{$budgetLine}
+
+{$styleGuide}
+
+قواعد صارمة:
+- استخرج ونظّم فقط ما يخص هذا القسم من المحتوى الخام أدناه.
+- صحّح الأخطاء الإملائية والمصطلحات غير المتسقة، واحذف أي رموز أو علامات زائدة لا معنى لها (بقايا تنسيق Markdown أو JSON، تكرار غير مفيد، أكواد غريبة).
+- أضف فقط جمل ربط قصيرة إذا لزم الأمر لتماسك القسم، دون اختراع معلومات غير موجودة أصلاً في المصدر.
+
+المحتوى الخام:
+<<<RAW_CONTENT>>>
+{$material}
+<<<END_RAW_CONTENT>>>
+
+لفّ القسم بـ <section class="content-section"> وابدأ بـ <h2 class="section-title">{$heading}</h2>
+لا تُرجع أقساماً أخرى.
+أعد HTML فقط: ابدأ مباشرة بـ <section وانتهِ بـ </section>، بدون JSON وبدون markdown وبدون أي شرح.
+PROMPT;
+
+        $started = hrtime(true);
+
+        $response = $this->providerManager->runWithModel($model, function () use ($model, $prompt, $maxTokens) {
+            return $this->promptRunner->runPlain(
+                $model,
+                new DocumentationSectionPlainAgent,
+                $prompt,
+                self::SECTION_TIMEOUT,
+                null,
+                $maxTokens,
+            );
+        });
+
+        $raw = (string) $response->text;
+        $this->logger->logSuccess(
+            $model,
+            $user,
+            'docs.structure.section'.($compact ? '.retry' : ''),
             ['heading' => $heading, 'compact' => $compact],
             ['html_len' => mb_strlen($raw)],
             (int) ((hrtime(true) - $started) / 1_000_000)

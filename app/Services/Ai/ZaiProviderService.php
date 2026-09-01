@@ -106,6 +106,8 @@ class ZaiProviderService extends AIProviderService
                     }
 
                     $content = $data['choices'][0]['message']['content'] ?? '';
+                    $reasoningContent = $data['choices'][0]['message']['reasoning_content'] ?? '';
+                    $finishReason = $data['choices'][0]['finish_reason'] ?? null;
 
                     // التحقق من ترميز المحتوى المستخرج
                     if (! empty($content) && ! mb_check_encoding($content, 'UTF-8')) {
@@ -116,7 +118,30 @@ class ZaiProviderService extends AIProviderService
                         'content_length' => strlen($content),
                         'content_preview' => mb_substr($content, 0, 500),
                         'encoding_valid' => mb_check_encoding($content, 'UTF-8'),
+                        'finish_reason' => $finishReason,
+                        'reasoning_content_length' => strlen($reasoningContent),
                     ]);
+
+                    // "Thinking" models (e.g. GLM-5.x) can burn the entire max_tokens
+                    // budget on hidden reasoning_content and hit the cap before writing
+                    // any real answer — content comes back empty with finish_reason
+                    // "length", which looks identical to a generic empty response but
+                    // needs a distinct, actionable error instead of a blind same-size retry.
+                    if (trim($content) === '' && $finishReason === 'length' && trim($reasoningContent) !== '') {
+                        // Include the literal "max_tokens" keyword so AiErrorClassifier
+                        // tags this too_large (fail fast through the retry ladder, no
+                        // artificial backoff wait) instead of transient (which would wait
+                        // and retry the identical request — and fail the same way again).
+                        $error = 'max_tokens ('.$payload['max_tokens'].') استُهلك بالكامل في "التفكير الداخلي" للموديل دون كتابة إجابة فعلية '
+                            .'— قلّص الطلب (اختصر تفاصيل الخطة) أو ارفع حد الرموز الأقصى لهذا الموديل من إعداداته، '
+                            .'أو استخدم موديلاً بلا وضع تفكير موسّع.';
+                        $this->setLastError($error);
+
+                        return [
+                            'success' => false,
+                            'error' => $error,
+                        ];
+                    }
 
                     return [
                         'success' => true,

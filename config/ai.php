@@ -72,6 +72,22 @@ return [
         'outline_attempts' => (int) env('AI_DOCS_OUTLINE_ATTEMPTS', 3),
         'rate_limit_retries' => (int) env('AI_DOCS_RATE_LIMIT_RETRIES', 2),
         'retry_backoff' => (bool) env('AI_DOCS_RETRY_BACKOFF', true),
+        'structure_max_chars' => (int) env('AI_DOCS_STRUCTURE_MAX_CHARS', 100000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Staged simulator generation (plan -> html -> css -> js)
+    |--------------------------------------------------------------------------
+    */
+    'simulator' => [
+        'plan_max_tokens' => (int) env('AI_SIMULATOR_PLAN_MAX_TOKENS', 3072),
+        'phase_max_tokens' => (int) env('AI_SIMULATOR_PHASE_MAX_TOKENS', 16384),
+        'phase_delay_ms' => (int) env('AI_SIMULATOR_PHASE_DELAY_MS', 300),
+        'phase_attempts' => (int) env('AI_SIMULATOR_PHASE_ATTEMPTS', 4),
+        'plan_attempts' => (int) env('AI_SIMULATOR_PLAN_ATTEMPTS', 3),
+        'rate_limit_retries' => (int) env('AI_SIMULATOR_RATE_LIMIT_RETRIES', 2),
+        'retry_backoff' => (bool) env('AI_SIMULATOR_RETRY_BACKOFF', true),
     ],
 
     /*

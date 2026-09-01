@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
-use App\Jobs\GenerateLessonSimulatorJob;
 use App\Models\AIModel;
 use App\Models\Course;
 use App\Models\LaravelAiModel;
 use App\Models\LessonSimulator;
+use App\Models\SimulatorAiGeneration;
 use App\Services\Ai\AIModelService;
+use App\Services\Simulator\SimulatorAiJobStarter;
+use App\Services\Simulator\SimulatorAiPipelineService;
 use App\Services\Simulator\SimulatorBundleStorage;
-use App\Services\Simulator\SimulatorGenerationService;
 use App\Services\Simulator\SimulatorCategoryTree;
 use App\Services\Simulator\SimulatorTopicRegistry;
 use App\Support\SimulatorAiWizard;
@@ -28,7 +29,8 @@ class LessonSimulatorAiController extends Controller
     use UsesLaravelAiSdkForWizards;
 
     public function __construct(
-        private SimulatorGenerationService $generationService,
+        private SimulatorAiJobStarter $jobStarter,
+        private SimulatorAiPipelineService $pipeline,
         private SimulatorBundleStorage $bundleStorage,
     ) {}
 
@@ -42,25 +44,50 @@ class LessonSimulatorAiController extends Controller
         ]));
     }
 
+    /** "توليد الآن" — runs the staged pipeline inline within the request. */
     public function generateSync(Request $request): JsonResponse
     {
         $validated = $this->validateGenerationRequest($request);
 
         try {
-            [$topicKey, $options, $engine, $modelId] = $this->resolveGenerationContext($validated);
+            $payload = $this->generationPayload($validated);
 
-            $result = $this->generationService->generateHtmlBundle($topicKey, $options);
+            $generation = SimulatorAiGeneration::query()->create([
+                'user_id' => Auth::id(),
+                'operation' => SimulatorAiGeneration::OPERATION_GENERATE,
+                'status' => SimulatorAiGeneration::STATUS_QUEUED,
+                'progress' => 0,
+                'stage' => 'queued',
+                'stage_label' => 'في الطابور…',
+                'payload' => $payload,
+            ]);
+
+            $this->pipeline->run($generation);
+            $generation->refresh();
+
+            if ($generation->status !== SimulatorAiGeneration::STATUS_COMPLETED) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $generation->error_message ?: 'تعذّر إكمال التوليد.',
+                ], 422);
+            }
+
+            $result = $generation->result;
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'title' => $result['title'],
-                    'description' => $validated['topic_description'],
-                    'topic_key' => $topicKey,
-                    'html' => $result['bundle']['html'],
-                    'css' => $result['bundle']['css'],
-                    'js' => $result['bundle']['js'],
-                    'meta' => $result['meta'],
+                    'title' => $result['title'] ?? '',
+                    'description' => $result['description'] ?? $validated['topic_description'],
+                    'topic_key' => $payload['topic_key'],
+                    'html' => $result['bundle']['html'] ?? '',
+                    'css' => $result['bundle']['css'] ?? '',
+                    'js' => $result['bundle']['js'] ?? '',
+                    'meta' => [
+                        'archetype' => $result['archetype'] ?? null,
+                        'lang_code' => $result['lang_code'] ?? null,
+                        'text_direction' => $result['text_direction'] ?? null,
+                    ],
                 ],
             ], 200, [], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
@@ -73,36 +100,55 @@ class LessonSimulatorAiController extends Controller
         }
     }
 
+    /** "تطبيق التعديلات" — runs the refine operation inline within the request. */
     public function refineBundle(Request $request): JsonResponse
     {
         $validated = $this->validateRefineRequest($request);
 
-        $bundle = [
-            'html' => $validated['bundle_html'],
-            'css' => $validated['bundle_css'] ?? '',
-            'js' => $validated['bundle_js'] ?? '',
-        ];
-
         try {
-            [, $options] = $this->resolveEngineContext($validated);
+            $engine = $this->resolveEngine($validated['simulators_engine'] ?? null);
+            $this->assertActiveModel($engine, $validated);
 
-            $options['title'] = $validated['title'] ?? '';
-            $options['topic_key'] = 'custom.refine';
+            $payload = [
+                'bundle_html' => $validated['bundle_html'],
+                'bundle_css' => $validated['bundle_css'] ?? '',
+                'bundle_js' => $validated['bundle_js'] ?? '',
+                'instructions' => $validated['instructions'],
+                'title' => $validated['title'] ?? '',
+                'engine' => $engine,
+                'ai_model_id' => $validated['ai_model_id'] ?? null,
+                'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+            ];
 
-            $result = $this->generationService->refineHtmlBundle(
-                $bundle,
-                $validated['instructions'],
-                $options,
-            );
+            $generation = SimulatorAiGeneration::query()->create([
+                'user_id' => Auth::id(),
+                'operation' => SimulatorAiGeneration::OPERATION_REFINE,
+                'status' => SimulatorAiGeneration::STATUS_QUEUED,
+                'progress' => 0,
+                'stage' => 'queued',
+                'stage_label' => 'في الطابور…',
+                'payload' => $payload,
+            ]);
+
+            $this->pipeline->run($generation);
+            $generation->refresh();
+
+            if ($generation->status !== SimulatorAiGeneration::STATUS_COMPLETED) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $generation->error_message ?: 'تعذّر تطبيق التعديلات.',
+                ], 422);
+            }
+
+            $result = $generation->result;
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'title' => $result['title'],
-                    'html' => $result['bundle']['html'],
-                    'css' => $result['bundle']['css'],
-                    'js' => $result['bundle']['js'],
-                    'meta' => $result['meta'],
+                    'title' => $result['title'] ?? '',
+                    'html' => $result['bundle']['html'] ?? '',
+                    'css' => $result['bundle']['css'] ?? '',
+                    'js' => $result['bundle']['js'] ?? '',
                 ],
             ], 200, [], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
@@ -115,47 +161,31 @@ class LessonSimulatorAiController extends Controller
         }
     }
 
+    /** "توليد في الخلفية" — creates the draft simulator and queues the staged pipeline. */
     public function storeAsync(Request $request): RedirectResponse
     {
         $validated = $this->validateGenerationRequest($request);
 
         try {
-            [$topicKey, $options, $engine, $modelId] = $this->resolveGenerationContext($validated);
-
+            $payload = $this->generationPayload($validated);
             $title = Str::limit(trim($validated['topic_description']), 255);
 
             $simulator = LessonSimulator::create([
                 'title' => $title,
                 'slug' => LessonSimulator::uniqueSlug($title),
                 'description' => $validated['topic_description'],
-                'topic_key' => $topicKey,
+                'topic_key' => $payload['topic_key'],
                 'simulator_category_id' => $validated['simulator_category_id'] ?? null,
                 'render_mode' => 'html_bundle',
                 'spec_json' => ['meta' => [], 'sections' => []],
                 'spec_version' => config('simulator.spec_version', '1.0'),
                 'status' => 'draft',
-                'languages' => array_values(array_unique(array_merge(
-                    [$validated['primary_language']],
-                    $options['languages'] ?? []
-                ))),
-                'ai_generation_meta' => [
-                    'status' => 'pending',
-                    'engine' => $engine,
-                    'topic_description' => $validated['topic_description'],
-                    'simulation_details' => $validated['simulation_details'] ?? null,
-                    'archetype' => $options['archetype'] ?? null,
-                    'queued_at' => now()->toIso8601String(),
-                ],
+                'languages' => [$validated['primary_language']],
+                'ai_generation_meta' => ['status' => 'pending'],
                 'created_by' => Auth::id(),
             ]);
 
-            GenerateLessonSimulatorJob::dispatch(
-                $simulator,
-                $topicKey,
-                $options,
-                $engine,
-                $modelId,
-            );
+            $this->jobStarter->start(Auth::user(), SimulatorAiGeneration::OPERATION_GENERATE, $payload, $simulator->id);
 
             return redirect()
                 ->route('admin.lesson-simulators.ai.review', $simulator)
@@ -178,11 +208,11 @@ class LessonSimulatorAiController extends Controller
                 ->with('warning', 'هذه المحاكاة ليست من نوع HTML bundle.');
         }
 
-        $meta = $lessonSimulator->ai_generation_meta ?? [];
-        $status = $meta['status'] ?? null;
+        $generation = $this->latestGeneration($lessonSimulator);
+        $status = $generation?->status;
 
         $bundle = ['html' => '', 'css' => '', 'js' => ''];
-        if ($status === 'completed' && $lessonSimulator->hasPlayableContent()) {
+        if ($status === SimulatorAiGeneration::STATUS_COMPLETED && $lessonSimulator->hasPlayableContent()) {
             $bundle = $this->bundleStorage->load($lessonSimulator->slug) ?? $bundle;
         }
 
@@ -191,7 +221,7 @@ class LessonSimulatorAiController extends Controller
             [
                 'simulator' => $lessonSimulator->load('courses'),
                 'generationStatus' => $status,
-                'generationMeta' => $meta,
+                'generationPayload' => $generation?->toStatusPayload(),
                 'bundle' => $bundle,
                 'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
                 'statuses' => LessonSimulator::STATUSES,
@@ -202,19 +232,29 @@ class LessonSimulatorAiController extends Controller
 
     public function status(LessonSimulator $lessonSimulator): JsonResponse
     {
-        $meta = $lessonSimulator->ai_generation_meta ?? [];
-        $status = $meta['status'] ?? 'unknown';
+        $generation = $this->latestGeneration($lessonSimulator);
 
-        $payload = [
-            'success' => true,
-            'status' => $status,
-            'meta' => $meta,
+        if (! $generation) {
+            return response()->json([
+                'success' => true,
+                'status' => 'unknown',
+                'has_content' => $lessonSimulator->hasPlayableContent(),
+                'review_url' => route('admin.lesson-simulators.ai.review', $lessonSimulator),
+                'edit_url' => route('admin.lesson-simulators.edit', $lessonSimulator),
+            ], 200, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        if ($generation->isStale()) {
+            $generation->markPaused('توقّفت عملية التوليد دون استجابة من الخادم. الملفات المكتملة محفوظة — اضغط «متابعة التوليد».');
+        }
+
+        $payload = array_merge($generation->toStatusPayload(), [
             'has_content' => $lessonSimulator->hasPlayableContent(),
             'review_url' => route('admin.lesson-simulators.ai.review', $lessonSimulator),
             'edit_url' => route('admin.lesson-simulators.edit', $lessonSimulator),
-        ];
+        ]);
 
-        if ($status === 'completed' && $lessonSimulator->hasPlayableContent()) {
+        if ($generation->status === SimulatorAiGeneration::STATUS_COMPLETED && $lessonSimulator->hasPlayableContent()) {
             $bundle = $this->bundleStorage->load($lessonSimulator->slug);
             if ($bundle) {
                 $payload['bundle'] = [
@@ -248,40 +288,43 @@ class LessonSimulatorAiController extends Controller
         $validated['topic_description'] = $topicDescription;
 
         try {
-            [$topicKey, $options, $engine, $modelId] = $this->resolveGenerationContext(
-                $validated,
-                $lessonSimulator->topic_key,
-            );
-
+            $payload = $this->generationPayload($validated, $lessonSimulator->topic_key);
             $mode = $request->input('mode', 'async');
 
             if ($mode === 'sync') {
-                $result = $this->generationService->generateHtmlBundle($topicKey, $options);
-
-                $path = $this->bundleStorage->save($lessonSimulator->slug, array_merge($result['bundle'], [
-                    'meta' => $result['meta'],
-                ]));
-
-                $lessonSimulator->update([
-                    'title' => $result['title'],
-                    'description' => $topicDescription,
-                    'topic_key' => $topicKey,
-                    'bundle_path' => $path,
-                    'simulator_archetype' => $result['meta']['archetype'] ?? null,
-                    'ai_generation_meta' => array_merge($result['meta'], [
-                        'status' => 'completed',
-                        'completed_at' => now()->toIso8601String(),
-                    ]),
+                $generation = SimulatorAiGeneration::query()->create([
+                    'user_id' => Auth::id(),
+                    'lesson_simulator_id' => $lessonSimulator->id,
+                    'operation' => SimulatorAiGeneration::OPERATION_GENERATE,
+                    'status' => SimulatorAiGeneration::STATUS_QUEUED,
+                    'progress' => 0,
+                    'stage' => 'queued',
+                    'stage_label' => 'في الطابور…',
+                    'payload' => $payload,
                 ]);
+
+                $this->pipeline->run($generation);
+                $generation->refresh();
+
+                if ($generation->status !== SimulatorAiGeneration::STATUS_COMPLETED) {
+                    $message = $generation->error_message ?: 'تعذّر إكمال التوليد.';
+                    if ($request->expectsJson()) {
+                        return response()->json(['success' => false, 'message' => $message], 422);
+                    }
+
+                    return back()->with('error', $message);
+                }
+
+                $result = $generation->result;
 
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => true,
                         'data' => [
-                            'title' => $result['title'],
-                            'html' => $result['bundle']['html'],
-                            'css' => $result['bundle']['css'],
-                            'js' => $result['bundle']['js'],
+                            'title' => $result['title'] ?? '',
+                            'html' => $result['bundle']['html'] ?? '',
+                            'css' => $result['bundle']['css'] ?? '',
+                            'js' => $result['bundle']['js'] ?? '',
                         ],
                     ], 200, [], JSON_UNESCAPED_UNICODE);
                 }
@@ -292,30 +335,16 @@ class LessonSimulatorAiController extends Controller
             }
 
             $lessonSimulator->update([
-                'topic_key' => $topicKey,
+                'topic_key' => $payload['topic_key'],
                 'description' => $topicDescription,
-                'ai_generation_meta' => array_merge($lessonSimulator->ai_generation_meta ?? [], [
-                    'status' => 'pending',
-                    'engine' => $engine,
-                    'topic_description' => $topicDescription,
-                    'simulation_details' => $validated['simulation_details'] ?? null,
-                    'queued_at' => now()->toIso8601String(),
-                    'error' => null,
-                ]),
             ]);
 
-            GenerateLessonSimulatorJob::dispatch(
-                $lessonSimulator,
-                $topicKey,
-                $options,
-                $engine,
-                $modelId,
-            );
+            $this->jobStarter->start(Auth::user(), SimulatorAiGeneration::OPERATION_GENERATE, $payload, $lessonSimulator->id);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'status' => 'pending',
+                    'status' => 'queued',
                     'review_url' => route('admin.lesson-simulators.ai.review', $lessonSimulator),
                 ]);
             }
@@ -332,6 +361,76 @@ class LessonSimulatorAiController extends Controller
 
             return back()->with('error', 'تعذّر إعادة التوليد: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Continue a paused/failed staged generation: only the phases that are not
+     * done yet are regenerated, the plan and finished phases are reused.
+     */
+    public function resume(LessonSimulator $lessonSimulator): JsonResponse
+    {
+        $generation = $this->latestGeneration($lessonSimulator);
+
+        if (! $generation || ! $generation->isResumable()) {
+            return response()->json([
+                'success' => false,
+                'message' => $generation?->status === SimulatorAiGeneration::STATUS_COMPLETED
+                    ? 'اكتمل التوليد بالفعل.'
+                    : 'لا يوجد تقدم محفوظ لمتابعته. ابدأ توليداً جديداً.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $generation->update([
+            'status' => SimulatorAiGeneration::STATUS_QUEUED,
+            'stage' => 'resuming',
+            'stage_label' => 'استئناف التوليد…',
+            'error_message' => null,
+            'finished_at' => null,
+            'heartbeat_at' => now(),
+        ]);
+
+        $this->jobStarter->dispatch($generation);
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->fresh()->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Stop a running/queued generation. Honored at the next safe checkpoint
+     * (before the next attempt) — it cannot interrupt an AI call already in
+     * flight, but it stops the next one from starting, so a stuck run ends
+     * within one attempt instead of running indefinitely.
+     */
+    public function cancel(LessonSimulator $lessonSimulator): JsonResponse
+    {
+        $generation = $this->latestGeneration($lessonSimulator);
+
+        if (! $generation || ! in_array($generation->status, [
+            SimulatorAiGeneration::STATUS_QUEUED,
+            SimulatorAiGeneration::STATUS_RUNNING,
+        ], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد توليد قيد التشغيل لإيقافه.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $generation->markCancelled('تم إيقاف التوليد بطلب من المستخدم.');
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->fresh()->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    private function latestGeneration(LessonSimulator $lessonSimulator): ?SimulatorAiGeneration
+    {
+        return SimulatorAiGeneration::query()
+            ->where('lesson_simulator_id', $lessonSimulator->id)
+            ->latest('id')
+            ->first();
     }
 
     /**
@@ -352,62 +451,6 @@ class LessonSimulatorAiController extends Controller
     }
 
     /**
-     * @param  array<string, mixed>  $validated
-     * @return array{0: string, 1: array<string, mixed>}
-     */
-    private function resolveEngineContext(array $validated): array
-    {
-        $requestedEngine = $validated['simulators_engine'] ?? null;
-        if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
-            throw new \RuntimeException('لا يوجد موديل Laravel AI نشط.');
-        }
-
-        $useLaravel = $this->resolveWizardAiEngine($requestedEngine, 'simulators_engine');
-        $engine = $useLaravel ? 'laravel_ai' : 'legacy';
-
-        $options = [
-            'generation_mode' => 'html_bundle',
-            'engine' => $engine,
-            'archetype' => 'playground',
-        ];
-
-        if ($useLaravel) {
-            $laraModel = null;
-            if (! empty($validated['laravel_ai_model_id'])) {
-                $laraModel = LaravelAiModel::query()
-                    ->where('id', $validated['laravel_ai_model_id'])
-                    ->where('is_active', true)
-                    ->first();
-                if (! $laraModel) {
-                    throw new \RuntimeException('موديل Laravel AI المحدد غير متاح.');
-                }
-            } else {
-                $laraModel = LaravelAiModel::query()
-                    ->activeOrdered()
-                    ->forCapability('simulator.generate')
-                    ->first()
-                    ?? LaravelAiModel::query()->activeOrdered()->first();
-                if (! $laraModel) {
-                    throw new \RuntimeException('لا يوجد موديل Laravel AI نشط.');
-                }
-            }
-            $options['laravel_model'] = $laraModel;
-        } else {
-            $legacyModel = ! empty($validated['ai_model_id'])
-                ? AIModel::query()->where('id', $validated['ai_model_id'])->where('is_active', true)->first()
-                : app(AIModelService::class)->getAvailableModels('simulator_generation')->first()
-                    ?? app(AIModelService::class)->getAvailableModels('all')->first();
-
-            if (! $legacyModel) {
-                throw new \RuntimeException('لا يوجد موديل AI (النظام القديم) متاح.');
-            }
-            $options['legacy_model'] = $legacyModel;
-        }
-
-        return [$engine, $options];
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function validateGenerationRequest(Request $request, bool $allowPartialTopic = false): array
@@ -421,6 +464,7 @@ class LessonSimulatorAiController extends Controller
             'level' => 'required|in:beginner,intermediate,advanced',
             'archetype' => 'nullable|in:playground,stepper,auto',
             'simulation_details' => 'nullable|string|max:2000',
+            'output_language' => 'nullable|string|max:100',
             'simulator_category_id' => 'nullable|exists:simulator_categories,id',
             'simulators_engine' => 'nullable|in:laravel_ai,legacy',
             'ai_model_id' => 'nullable|exists:ai_models,id',
@@ -430,9 +474,9 @@ class LessonSimulatorAiController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{0: string, 1: array<string, mixed>, 2: string, 3: int}
+     * @return array<string, mixed>
      */
-    private function resolveGenerationContext(array $validated, ?string $fallbackTopicKey = null): array
+    private function generationPayload(array $validated, ?string $fallbackTopicKey = null): array
     {
         $topicKey = trim($validated['topic_key'] ?? '');
         if ($topicKey === '' || SimulatorTopicRegistry::isCustomKey($topicKey)) {
@@ -442,60 +486,52 @@ class LessonSimulatorAiController extends Controller
             $topicKey = $fallbackTopicKey;
         }
 
-        $requestedEngine = $validated['simulators_engine'] ?? null;
-        if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
-            throw new \RuntimeException('لا يوجد موديل Laravel AI نشط.');
-        }
+        $engine = $this->resolveEngine($validated['simulators_engine'] ?? null);
+        $this->assertActiveModel($engine, $validated);
 
-        $useLaravel = $this->resolveWizardAiEngine($requestedEngine, 'simulators_engine');
-        $engine = $useLaravel ? 'laravel_ai' : 'legacy';
-        $modelId = 0;
-
-        $options = [
+        return [
+            'topic_key' => $topicKey,
             'topic_description' => $validated['topic_description'],
             'simulation_details' => $validated['simulation_details'] ?? '',
             'primary_language' => $validated['primary_language'],
             'level' => $validated['level'],
             'archetype' => $validated['archetype'] ?? 'auto',
-            'generation_mode' => 'html_bundle',
+            'output_language' => $validated['output_language'] ?? 'العربية',
             'engine' => $engine,
+            'ai_model_id' => $validated['ai_model_id'] ?? null,
+            'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
         ];
+    }
 
-        if ($useLaravel) {
-            $laraModel = null;
-            if (! empty($validated['laravel_ai_model_id'])) {
-                $laraModel = LaravelAiModel::query()
-                    ->where('id', $validated['laravel_ai_model_id'])
-                    ->where('is_active', true)
-                    ->first();
-                if (! $laraModel) {
-                    throw new \RuntimeException('موديل Laravel AI المحدد غير متاح.');
-                }
-            } else {
-                $laraModel = LaravelAiModel::query()
-                    ->activeOrdered()
-                    ->forCapability('simulator.generate')
-                    ->first()
-                    ?? LaravelAiModel::query()->activeOrdered()->first();
-                if (! $laraModel) {
-                    throw new \RuntimeException('لا يوجد موديل Laravel AI نشط.');
-                }
-            }
-            $options['laravel_model'] = $laraModel;
-            $modelId = $laraModel->id;
-        } else {
-            $legacyModel = ! empty($validated['ai_model_id'])
-                ? AIModel::query()->where('id', $validated['ai_model_id'])->where('is_active', true)->first()
-                : app(AIModelService::class)->getAvailableModels('simulator_generation')->first()
-                    ?? app(AIModelService::class)->getAvailableModels('all')->first();
+    private function resolveEngine(?string $requestedEngine): string
+    {
+        return $this->resolveWizardAiEngine($requestedEngine, 'simulators_engine') ? 'laravel_ai' : 'legacy';
+    }
 
-            if (! $legacyModel) {
-                throw new \RuntimeException('لا يوجد موديل AI (النظام القديم) متاح.');
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertActiveModel(string $engine, array $validated): void
+    {
+        if ($engine === 'laravel_ai') {
+            $exists = ! empty($validated['laravel_ai_model_id'])
+                ? LaravelAiModel::query()->where('id', $validated['laravel_ai_model_id'])->where('is_active', true)->exists()
+                : LaravelAiModel::query()->where('is_active', true)->exists();
+
+            if (! $exists) {
+                throw new \RuntimeException('لا يوجد موديل Laravel AI نشط. أضف موديلاً أو اختر المحرك القديم.');
             }
-            $options['legacy_model'] = $legacyModel;
-            $modelId = $legacyModel->id;
+
+            return;
         }
 
-        return [$topicKey, $options, $engine, $modelId];
+        $exists = ! empty($validated['ai_model_id'])
+            ? AIModel::query()->where('id', $validated['ai_model_id'])->where('is_active', true)->exists()
+            : app(AIModelService::class)->getAvailableModels('simulator_generation')->isNotEmpty()
+                || app(AIModelService::class)->getAvailableModels('all')->isNotEmpty();
+
+        if (! $exists) {
+            throw new \RuntimeException('لا يوجد موديل AI (النظام القديم) متاح.');
+        }
     }
 }

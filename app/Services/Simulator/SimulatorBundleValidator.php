@@ -39,11 +39,14 @@ class SimulatorBundleValidator
         return ['valid' => empty($errors), 'errors' => $errors];
     }
 
+    /** Hosts a generated bundle may pull a real library from, each requiring a pinned version. */
+    private const ALLOWED_CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
+
     /**
      * @param  array{html: string, css: string, js: string}  $bundle
      * @return array{valid: bool, errors: list<string>}
      */
-    public function validate(array $bundle): array
+    public function validate(array $bundle, string $langCode = 'ar', string $textDirection = 'rtl'): array
     {
         $errors = [];
 
@@ -74,11 +77,13 @@ class SimulatorBundleValidator
         if (! preg_match('/<html[\s>]/i', $html)) {
             $errors[] = 'HTML يجب أن يحتوي على عنصر html.';
         }
-        if (! preg_match('/lang\s*=\s*["\']ar["\']/i', $html)) {
-            $errors[] = 'HTML يجب أن يستخدم lang="ar".';
+        $langCode = trim($langCode) ?: 'ar';
+        $textDirection = in_array($textDirection, ['ltr', 'rtl'], true) ? $textDirection : 'rtl';
+        if (! preg_match('/lang\s*=\s*["\']'.preg_quote($langCode, '/').'["\']/i', $html)) {
+            $errors[] = "HTML يجب أن يستخدم lang=\"{$langCode}\".";
         }
-        if (! str_contains($html, 'dir="rtl"') && ! str_contains($html, "dir='rtl'")) {
-            $errors[] = 'HTML يجب أن يستخدم dir="rtl".';
+        if (! str_contains($html, 'dir="'.$textDirection.'"') && ! str_contains($html, "dir='".$textDirection."'")) {
+            $errors[] = "HTML يجب أن يستخدم dir=\"{$textDirection}\".";
         }
         if (! str_contains($html, 'sim-app') && ! str_contains($html, 'class="sim-')) {
             $errors[] = 'HTML يجب أن يستخدم class sim-app أو sim-* (هيكل المحاكاة).';
@@ -93,7 +98,7 @@ class SimulatorBundleValidator
         if (preg_match_all('/<script[^>]+src\s*=\s*["\'](https?:\/\/[^"\']+)["\']/i', $html, $scriptMatches)) {
             foreach ($scriptMatches[1] as $src) {
                 if ($this->isDisallowedExternalScript($src)) {
-                    $errors[] = 'لا يُسمح بـ script خارجي (CDN) في HTML — استخدم __SIMULATOR_KIT__ و __BUNDLE_ASSETS__ فقط.';
+                    $errors[] = "لا يُسمح بـ script خارجي غير موثوق في HTML ({$src}) — استخدم __SIMULATOR_KIT__، __BUNDLE_ASSETS__، أو CDN موثوق (cdnjs.cloudflare.com / cdn.jsdelivr.net) مع إصدار محدد.";
                     break;
                 }
             }
@@ -127,6 +132,17 @@ class SimulatorBundleValidator
             return false;
         }
 
-        return (bool) preg_match('#^https?://#i', $src);
+        if (! preg_match('#^https?://#i', $src)) {
+            return false;
+        }
+
+        $host = parse_url($src, PHP_URL_HOST);
+        if ($host === null || ! in_array(strtolower($host), self::ALLOWED_CDN_HOSTS, true)) {
+            return true;
+        }
+
+        // Require a pinned version segment (e.g. /chart.js/4.4.1/... or @4.4.1) —
+        // an unpinned "latest" URL can silently change behavior after the fact.
+        return ! (bool) preg_match('#(?:@|/)\d+\.\d+(?:\.\d+)?(?:[/@]|$)#', $src);
     }
 }
