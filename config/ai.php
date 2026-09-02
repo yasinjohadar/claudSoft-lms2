@@ -77,6 +77,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Staged blog-post generation (outline -> sections), same shape as 'docs'
+    | above but tuned for shorter article sections instead of reference pages.
+    |--------------------------------------------------------------------------
+    */
+    'blog' => [
+        'outline_max_tokens' => (int) env('AI_BLOG_OUTLINE_MAX_TOKENS', 2048),
+        'section_max_tokens' => (int) env('AI_BLOG_SECTION_MAX_TOKENS', 4096),
+        'section_delay_ms' => (int) env('AI_BLOG_SECTION_DELAY_MS', 300),
+        'section_attempts' => (int) env('AI_BLOG_SECTION_ATTEMPTS', 4),
+        'outline_attempts' => (int) env('AI_BLOG_OUTLINE_ATTEMPTS', 3),
+        'rate_limit_retries' => (int) env('AI_BLOG_RATE_LIMIT_RETRIES', 2),
+        'retry_backoff' => (bool) env('AI_BLOG_RETRY_BACKOFF', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Staged simulator generation (plan -> html -> css -> js)
     |--------------------------------------------------------------------------
     */

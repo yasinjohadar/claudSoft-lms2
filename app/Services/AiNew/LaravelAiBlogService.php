@@ -185,9 +185,13 @@ PROMPT;
     }
 
     /**
+     * Also called by BlogAiPipelineService with the staged (outline+sections)
+     * assembly result instead of a single BlogDraftAgent response — the shape
+     * is identical ({title, content, excerpt}), so no change was needed here.
+     *
      * @param  array{title?: string, content?: string, excerpt?: string|null}  $draft
      */
-    private function expandDraftToWizardPayload(array $draft, array $options): array
+    public function expandDraftToWizardPayload(array $draft, array $options): array
     {
         $title = trim((string) ($draft['title'] ?? ''));
         $content = (string) ($draft['content'] ?? '');

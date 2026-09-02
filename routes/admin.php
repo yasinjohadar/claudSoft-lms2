@@ -1090,6 +1090,9 @@ Route::prefix('admin')
             Route::get('ai-posts/create', [AIBlogPostController::class, 'create'])->name('ai-posts.create');
             Route::post('ai-posts', [AIBlogPostController::class, 'store'])->name('ai-posts.store');
             Route::post('ai-posts/generate', [AIBlogPostController::class, 'generate'])->name('ai-posts.generate');
+            Route::get('ai-posts/jobs/{uuid}', [AIBlogPostController::class, 'jobStatus'])->name('ai-posts.jobs.show');
+            Route::post('ai-posts/jobs/{uuid}/resume', [AIBlogPostController::class, 'jobResume'])->name('ai-posts.jobs.resume');
+            Route::get('ai-posts/jobs/{uuid}/partial', [AIBlogPostController::class, 'jobPartial'])->name('ai-posts.jobs.partial');
 
             // Posts
             Route::resource('posts', BlogPostController::class)->names([

@@ -73,6 +73,16 @@ Schedule::command('reports:weekly-close-overdue')
 
 /*
 |--------------------------------------------------------------------------
+| Blog Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+Schedule::command('blog:publish-scheduled')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
 | Marketing Analytics Scheduled Tasks
 |--------------------------------------------------------------------------
 */

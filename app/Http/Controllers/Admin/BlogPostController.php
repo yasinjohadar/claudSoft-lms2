@@ -8,6 +8,7 @@ use App\Models\BlogCategory;
 use App\Models\BlogTag;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,9 @@ class BlogPostController extends Controller
 
             // Schema.org
             'schema_type' => 'nullable|string|max:50',
+            'schema_image' => 'nullable|string|max:500',
+            'schema_author_name' => 'nullable|string|max:255',
+            'schema_author_url' => 'nullable|url|max:500',
 
             // Flags
             'is_featured' => 'boolean',
@@ -113,14 +117,14 @@ class BlogPostController extends Controller
         try {
             // Use provided slug or generate from title
             $slug = $validated['slug'] ?? Str::slug($validated['title'], '-', 'ar');
-            
+
             // Clean slug: replace spaces with hyphens and remove invalid characters
             // Keep Arabic characters, English letters, numbers, and hyphens
             $slug = preg_replace('/\s+/', '-', trim($slug)); // Replace spaces with hyphens
             $slug = preg_replace('/[^\p{Arabic}a-zA-Z0-9-]/u', '', $slug); // Remove invalid chars
             $slug = preg_replace('/-+/', '-', $slug); // Replace multiple hyphens with single
             $slug = trim($slug, '-'); // Trim hyphens from start and end
-            
+
             // If slug is empty after conversion, use a fallback
             if (empty($slug)) {
                 $slug = 'post-' . time();
@@ -191,6 +195,10 @@ class BlogPostController extends Controller
 
             // Calculate reading time
             $post->calculateReadingTime();
+
+            if ($validated['status'] === 'published') {
+                Cache::forget('sitemap.xml');
+            }
 
             DB::commit();
 
@@ -275,6 +283,9 @@ class BlogPostController extends Controller
 
             // Schema.org
             'schema_type' => 'nullable|string|max:50',
+            'schema_image' => 'nullable|string|max:500',
+            'schema_author_name' => 'nullable|string|max:255',
+            'schema_author_url' => 'nullable|url|max:500',
 
             // Flags
             'is_featured' => 'boolean',
@@ -369,6 +380,15 @@ class BlogPostController extends Controller
             // Get old tags for count update
             $oldTags = $post->tags->pluck('id')->toArray();
 
+            // Track slug history so old links 301-redirect instead of 404ing
+            if ($post->slug !== $validated['slug']) {
+                $previousSlugs = $post->previous_slugs ?? [];
+                if (!in_array($post->slug, $previousSlugs, true)) {
+                    $previousSlugs[] = $post->slug;
+                }
+                $validated['previous_slugs'] = $previousSlugs;
+            }
+
             // Update post
             $post->update($validated);
 
@@ -387,6 +407,10 @@ class BlogPostController extends Controller
 
             // Recalculate reading time
             $post->calculateReadingTime();
+
+            if ($validated['status'] === 'published') {
+                Cache::forget('sitemap.xml');
+            }
 
             DB::commit();
 
@@ -483,6 +507,7 @@ class BlogPostController extends Controller
             }
         }
         $post->save();
+        Cache::forget('sitemap.xml');
 
         return back()->with('success', 'تم تحديث حالة نشر المقال');
     }

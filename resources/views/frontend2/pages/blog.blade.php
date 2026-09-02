@@ -1,27 +1,28 @@
 @extends('frontend2.layouts.master')
 
 @php
-    $pageTitle = 'المدونة | ' . config('app.name');
-    $pageDescription = 'مقالات وتدوينات في البرمجة، تطوير الويب، الموبايل والذكاء الاصطناعي. مدونة أكاديمية كلاودسوفت.';
+    $baseTitle = 'المدونة | ' . config('app.name');
+    $baseDescription = 'مقالات وتدوينات في البرمجة، تطوير الويب، الموبايل والذكاء الاصطناعي. مدونة أكاديمية كلاودسوفت.';
     $canonicalUrl = route('frontend.blog.index', request()->query());
-    $ogImage = asset('frontend2/assets/images/logo.png');
+    // Computed here, before @section('title', ...) — the shared SEO partial below
+    // renders inside @push('head'), which is too late to affect the <title> tag.
+    $currentPage = $posts->currentPage();
+    $pageTitle = $currentPage > 1 ? $baseTitle.' — صفحة '.$currentPage : $baseTitle;
+    $pageDescription = $currentPage > 1 ? $baseDescription.' (صفحة '.$currentPage.')' : $baseDescription;
 @endphp
 
 @section('title', $pageTitle)
 @section('meta_description', $pageDescription)
 
 @push('head')
-    <link rel="canonical" href="{{ $canonicalUrl }}">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ $canonicalUrl }}">
-    <meta property="og:title" content="{{ $pageTitle }}">
-    <meta property="og:description" content="{{ $pageDescription }}">
-    <meta property="og:image" content="{{ $ogImage }}">
-    <meta property="og:locale" content="ar_SA">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $pageTitle }}">
-    <meta name="twitter:description" content="{{ $pageDescription }}">
-    <meta name="twitter:image" content="{{ $ogImage }}">
+    @include('frontend2.pages.partials.blog-seo-collection', [
+        'type' => 'index',
+        'model' => null,
+        'posts' => $posts,
+        'canonicalUrl' => $canonicalUrl,
+        'pageTitle' => $pageTitle,
+        'pageDescription' => $pageDescription,
+    ])
 @endpush
 
 @section('content')
@@ -79,9 +80,9 @@
                             <div class="col-lg-6">
                                 <div style="height: 100%; min-height: 350px; position: relative; overflow: hidden;">
                                     @if($firstFeatured->featured_image)
-                                        <img src="{{ blog_image_url($firstFeatured->featured_image) }}" alt="{{ $firstFeatured->featured_image_alt ?: $firstFeatured->title }}" width="400" height="200" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                                        <img src="{{ blog_image_url($firstFeatured->featured_image) }}" alt="{{ $firstFeatured->featured_image_alt ?: $firstFeatured->title }}" width="400" height="200" loading="eager" fetchpriority="high" style="width: 100%; height: 100%; object-fit: cover;">
                                     @else
-                                        <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $firstFeatured->title }}" width="400" height="200" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                                        <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $firstFeatured->title }}" width="400" height="200" loading="eager" fetchpriority="high" style="width: 100%; height: 100%; object-fit: cover;">
                                     @endif
                                     <div style="position: absolute; top: 20px; right: 20px; background: var(--clr-primary); color: #fff; padding: 5px 18px; border-radius: 50px; font-size: 0.8rem; font-weight: 600;">
                                         <i class="fas fa-star"></i> مقال مميز
@@ -123,37 +124,7 @@
                     @if($firstFeatured && $post->id === $firstFeatured->id)
                         @continue
                     @endif
-                    <div class="col-lg-4 col-md-6">
-                        <div class="glass-panel blog-card animate-on-scroll animate-delay-{{ min($loop->iteration, 3) }}">
-                            <div class="blog-img-wrapper">
-                                @if($post->featured_image)
-                                    <img src="{{ blog_image_url($post->featured_image) }}" alt="{{ $post->featured_image_alt ?: $post->title }}" width="400" height="200" loading="lazy">
-                                @else
-                                    <img src="{{ asset('frontend2/assets/images/course-webdev.svg') }}" alt="{{ $post->title }}" width="400" height="200" loading="lazy">
-                                @endif
-                                @if($post->category)
-                                    <div style="position: absolute; top: 12px; right: 12px; background: var(--clr-primary); color: #fff; padding: 3px 12px; border-radius: 50px; font-size: 0.72rem; font-weight: 600;">{{ $post->category->name }}</div>
-                                @endif
-                            </div>
-                            <div class="blog-body">
-                                <div class="blog-meta">
-                                    <span><i class="fas fa-calendar-alt"></i> {{ $post->published_at ? $post->published_at->format('d F Y') : '—' }}</span>
-                                    @if($post->reading_time)
-                                        <span><i class="fas fa-clock"></i> {{ $post->reading_time }} دقائق</span>
-                                    @endif
-                                </div>
-                                <h5>{{ $post->title }}</h5>
-                                <p>{{ Str::limit(strip_tags($post->excerpt ?? ''), 100) }}</p>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--clr-border);">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <img src="{{ asset('frontend2/assets/images/logo.png') }}" alt="الكاتب" width="30" height="30" loading="lazy" style="width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--clr-primary); object-fit: cover;">
-                                        <span style="font-size: 0.8rem; font-weight: 600;">{{ $post->author?->name ?? 'المدير' }}</span>
-                                    </div>
-                                    <a href="{{ $post->url }}" class="read-more" style="margin-top: 0;">المزيد <i class="fas fa-arrow-left"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    @include('frontend2.pages.partials.blog-card', ['post' => $post, 'eager' => false])
                 @empty
                     <div class="col-12">
                         <div class="glass-panel text-center py-5 animate-on-scroll">

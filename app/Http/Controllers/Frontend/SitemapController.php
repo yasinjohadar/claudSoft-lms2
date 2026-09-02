@@ -8,6 +8,7 @@ use App\Models\BlogPost;
 use App\Models\BlogCategory;
 use App\Models\BlogTag;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 
 class SitemapController extends Controller
 {
@@ -15,6 +16,14 @@ class SitemapController extends Controller
      * Generate and return XML sitemap
      */
     public function index(): Response
+    {
+        $sitemap = Cache::remember('sitemap.xml', now()->addHour(), fn () => $this->build());
+
+        return response($sitemap, 200)
+            ->header('Content-Type', 'application/xml; charset=utf-8');
+    }
+
+    private function build(): string
     {
         $sitemap = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
@@ -136,8 +145,7 @@ class SitemapController extends Controller
 
         $sitemap .= '</urlset>';
 
-        return response($sitemap, 200)
-            ->header('Content-Type', 'application/xml; charset=utf-8');
+        return $sitemap;
     }
 
     /**

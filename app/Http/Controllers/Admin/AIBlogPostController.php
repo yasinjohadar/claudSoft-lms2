@@ -5,14 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\CleansUtf8AiResponse;
 use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
-use App\Models\AIModel;
+use App\Models\BlogAiGeneration;
+use App\Models\BlogAiSection;
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Models\LaravelAiModel;
 use App\Services\Ai\AIBlogPostService;
 use App\Services\Ai\AIModelService;
-use App\Services\AiNew\LaravelAiBlogService;
+use App\Services\Ai\BlogHtmlRepairer;
+use App\Services\AiNew\BlogAiJobStarter;
 use App\Services\Storage\StorageHelperService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +30,9 @@ class AIBlogPostController extends Controller
     public function __construct(
         private AIBlogPostService $blogPostService,
         private AIModelService $modelService,
-        private StorageHelperService $storageHelper
+        private StorageHelperService $storageHelper,
+        private BlogAiJobStarter $jobStarter,
+        private BlogHtmlRepairer $repairer = new BlogHtmlRepairer,
     ) {}
 
     /**
@@ -42,9 +46,8 @@ class AIBlogPostController extends Controller
         $models = $this->modelService->getAvailableModels('all');
 
         $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('blog_engine');
-        $laravelAiModels = $useLaravelAiEngine
-            ? LaravelAiModel::query()->activeOrdered()->get()
-            : collect();
+        $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
+        $blogEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
 
         return view('admin.blog.ai-posts.create', compact(
             'categories',
@@ -52,11 +55,14 @@ class AIBlogPostController extends Controller
             'models',
             'useLaravelAiEngine',
             'laravelAiModels',
+            'blogEngineChoiceAvailable',
         ));
     }
 
     /**
-     * AJAX endpoint لتوليد المحتوى
+     * AJAX endpoint لبدء توليد المحتوى — يبدأ مهمة في الطابور ويرجع فوراً برقم
+     * المهمة (uuid)؛ التوليد الفعلي (مخطط ثم أقسام لو متوسط/طويل) يتم في الخلفية
+     * عبر BlogAiPipelineService، بنفس آلية توليد صفحات التوثيق.
      */
     public function generate(Request $request)
     {
@@ -64,6 +70,7 @@ class AIBlogPostController extends Controller
             'topic' => 'required|string|max:500',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
+            'blog_engine' => 'nullable|in:laravel_ai,legacy',
             'content_length' => 'required|in:short,medium,long',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
@@ -76,100 +83,171 @@ class AIBlogPostController extends Controller
         ]);
 
         try {
-            $category = $validated['category_id']
-                ? BlogCategory::find($validated['category_id'])
-                : null;
-
-            $wizardOptions = [
-                'content_length' => $validated['content_length'],
-                'tone' => $validated['tone'] ?? 'professional',
-                'language' => $validated['language'] ?? 'ar',
-                'category' => $category,
-                'generate_seo' => $validated['generate_seo'] ?? true,
-                'generate_og' => $validated['generate_og'] ?? true,
-                'generate_twitter' => $validated['generate_twitter'] ?? true,
-                'generate_schema' => $validated['generate_schema'] ?? true,
-                'generate_keyword_synonyms' => $validated['generate_keyword_synonyms'] ?? true,
-            ];
-
-            if ($this->wizardUsesLaravelAiSdk('blog_engine')) {
-                $laraModel = null;
-                if (! empty($validated['laravel_ai_model_id'])) {
-                    $laraModel = LaravelAiModel::query()
-                        ->where('id', $validated['laravel_ai_model_id'])
-                        ->where('is_active', true)
-                        ->first();
-                    if (! $laraModel) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
-                        ], 400);
-                    }
-                }
-
-                $blogPostData = app(LaravelAiBlogService::class)->generateForLegacyWizard(
-                    $validated['topic'],
-                    $wizardOptions,
-                    Auth::user(),
-                    $laraModel,
-                );
-            } else {
-                $model = $validated['ai_model_id']
-                    ? AIModel::find($validated['ai_model_id'])
-                    : $this->modelService->getDefaultModel();
-
-                if (! $model) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'لا يوجد موديل AI متاح',
-                    ], 400);
-                }
-
-                $blogPostData = $this->blogPostService->generateBlogPost(
-                    $validated['topic'],
-                    $model,
-                    $wizardOptions
-                );
+            $requestedEngine = $validated['blog_engine'] ?? null;
+            if ($requestedEngine === 'laravel_ai' && ! LaravelAiModel::query()->where('is_active', true)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد موديل Laravel AI نشط. أضف موديلاً من لوحة «موديلات Laravel AI SDK» أو اختر المحرك القديم.',
+                ], 400);
             }
 
-            // تنظيف جميع البيانات من الأحرف غير الصالحة في UTF-8
-            $blogPostData = $this->cleanUtf8Data($blogPostData);
+            $engine = $this->resolveWizardAiEngine($requestedEngine, 'blog_engine') ? 'laravel_ai' : 'legacy';
+
+            if ($engine === 'laravel_ai' && ! empty($validated['laravel_ai_model_id'])) {
+                $laraModel = LaravelAiModel::query()
+                    ->where('id', $validated['laravel_ai_model_id'])
+                    ->where('is_active', true)
+                    ->first();
+                if (! $laraModel) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'موديل Laravel AI المحدد غير متاح أو غير نشط.',
+                    ], 400);
+                }
+            }
+
+            Log::info('AI blog generate engine resolved', [
+                'engine' => $engine,
+                'requested_engine' => $requestedEngine,
+                'content_length' => $validated['content_length'],
+                'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+                'ai_model_id' => $validated['ai_model_id'] ?? null,
+            ]);
+
+            $generation = $this->jobStarter->start(
+                Auth::user(),
+                BlogAiGeneration::OPERATION_GENERATE,
+                [
+                    'topic' => $validated['topic'],
+                    'blog_engine' => $engine,
+                    'ai_model_id' => $validated['ai_model_id'] ?? null,
+                    'laravel_ai_model_id' => $validated['laravel_ai_model_id'] ?? null,
+                    'content_length' => $validated['content_length'],
+                    'tone' => $validated['tone'] ?? 'professional',
+                    'language' => $validated['language'] ?? 'ar',
+                    'category_id' => $validated['category_id'] ?? null,
+                    'generate_seo' => $validated['generate_seo'] ?? true,
+                    'generate_og' => $validated['generate_og'] ?? true,
+                    'generate_twitter' => $validated['generate_twitter'] ?? true,
+                    'generate_schema' => $validated['generate_schema'] ?? true,
+                    'generate_keyword_synonyms' => $validated['generate_keyword_synonyms'] ?? true,
+                ]
+            );
 
             return response()->json([
                 'success' => true,
-                'data' => $blogPostData,
-            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
-
-        } catch (\Exception $e) {
-            Log::error('Error generating blog post with AI: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'validated_data' => $validated,
-                'model_id' => $validated['ai_model_id'] ?? null,
-                'topic' => $validated['topic'] ?? null,
+                'async' => true,
+                'job' => $generation->toStatusPayload(),
             ]);
-
-            // تحسين رسالة الخطأ لتكون أكثر وضوحاً
-            $errorMessage = $e->getMessage();
-
-            // تحديد نوع الخطأ وإعطاء رسالة مناسبة
-            if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'Timeout') !== false) {
-                $userMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى أو تقليل طول المحتوى المطلوب.';
-            } elseif (strpos($errorMessage, 'API Key') !== false || strpos($errorMessage, 'api key') !== false) {
-                $userMessage = 'مشكلة في API Key. يرجى التحقق من إعدادات الموديل.';
-            } elseif (strpos($errorMessage, 'quota') !== false || strpos($errorMessage, 'رصيد') !== false) {
-                $userMessage = 'رصيد الموديل غير كافٍ. يرجى التحقق من رصيدك.';
-            } elseif (strpos($errorMessage, 'connection') !== false || strpos($errorMessage, 'اتصال') !== false) {
-                $userMessage = 'مشكلة في الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.';
-            } else {
-                $userMessage = 'حدث خطأ أثناء توليد المقال: '.$errorMessage;
-            }
+        } catch (\Exception $e) {
+            Log::error('AI blog generate start: '.$e->getMessage(), [
+                'validated' => $validated,
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $userMessage,
-                'error_details' => config('app.debug') ? $e->getMessage() : null,
+                'message' => 'تعذر بدء التوليد: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function jobStatus(string $uuid)
+    {
+        $generation = BlogAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        // The worker died without reporting: stop the UI from polling forever.
+        if ($generation->isStale()) {
+            $generation->markPaused(
+                'توقّفت عملية التوليد دون استجابة من الخادم. الأقسام المكتملة محفوظة — اضغط «متابعة التوليد».'
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+    }
+
+    /**
+     * Continue a paused/failed staged generation: only the sections that are not
+     * done yet are regenerated, the outline and finished sections are reused.
+     */
+    public function jobResume(string $uuid)
+    {
+        $generation = BlogAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if (! $generation->isResumable()) {
+            return response()->json([
+                'success' => false,
+                'message' => $generation->status === BlogAiGeneration::STATUS_COMPLETED
+                    ? 'اكتمل التوليد بالفعل.'
+                    : 'لا يوجد تقدم محفوظ لمتابعته. ابدأ توليداً جديداً.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $generation->update([
+            'status' => BlogAiGeneration::STATUS_QUEUED,
+            'stage' => 'resuming',
+            'stage_label' => 'استئناف التوليد…',
+            'error_message' => null,
+            'finished_at' => null,
+            'heartbeat_at' => now(),
+        ]);
+
+        $this->jobStarter->dispatch($generation);
+
+        return response()->json([
+            'success' => true,
+            'job' => $generation->fresh()->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Assemble whatever sections finished so the admin can keep partial work
+     * without waiting for the missing sections.
+     */
+    public function jobPartial(string $uuid)
+    {
+        $generation = BlogAiGeneration::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $done = $generation->sections()
+            ->where('status', BlogAiSection::STATUS_DONE)
+            ->orderBy('position')
+            ->pluck('html')
+            ->filter()
+            ->values();
+
+        if ($done->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا توجد أقسام مكتملة بعد.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $outline = $generation->partial_result['outline'] ?? [];
+        // Partial assemblies get the same balancing as a finished run, so an
+        // article saved from here cannot carry an unclosed tag into the editor.
+        $content = $this->repairer->repairDocument($done->implode("\n"));
+
+        return response()->json([
+            'success' => true,
+            'result' => [
+                'title' => is_array($outline) ? trim((string) ($outline['title'] ?? '')) : '',
+                'slug' => is_array($outline) ? trim((string) ($outline['slug'] ?? '')) : '',
+                'excerpt' => is_array($outline) ? trim((string) ($outline['excerpt'] ?? '')) : '',
+                'content' => $content,
+            ],
+            'sections' => $generation->sectionSummary(),
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
     }
 
     /**
@@ -218,6 +296,9 @@ class AIBlogPostController extends Controller
             'schema_type' => 'nullable|string|max:50',
             'schema_headline' => 'nullable|string|max:255',
             'schema_description' => 'nullable|string',
+            'schema_image' => 'nullable|string|max:500',
+            'schema_author_name' => 'nullable|string|max:255',
+            'schema_author_url' => 'nullable|url|max:500',
 
             // Flags
             'is_featured' => 'boolean',

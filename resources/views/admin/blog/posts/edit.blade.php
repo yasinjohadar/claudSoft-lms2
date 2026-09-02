@@ -134,6 +134,27 @@
 
                     <div class="card custom-card mb-4">
                         <div class="card-header">
+                            <div class="card-title">Schema.org (بيانات هيكلية)</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">صورة Schema (رابط)</label>
+                                <input type="text" name="schema_image" class="form-control" value="{{ old('schema_image', $post->schema_image) }}">
+                                <small class="text-muted">اتركه فارغاً لاستخدام الصورة البارزة</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">اسم المؤلف (Schema)</label>
+                                <input type="text" name="schema_author_name" class="form-control" value="{{ old('schema_author_name', $post->schema_author_name) }}">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">رابط المؤلف (Schema)</label>
+                                <input type="url" name="schema_author_url" class="form-control" value="{{ old('schema_author_url', $post->schema_author_url) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card custom-card mb-4">
+                        <div class="card-header">
                             <div class="card-title">إحصائيات المقال</div>
                         </div>
                         <div class="card-body">

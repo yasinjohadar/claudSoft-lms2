@@ -1,19 +1,26 @@
 # robots.txt
+# Generated for Claud Soft Academy
 
 # Allow all search engines
 User-agent: *
 Allow: /
 Allow: /courses
+Allow: /course
 Allow: /blog
+Allow: /reviews
+Allow: /students
+Allow: /contact
+Allow: /yasin-jokhadar
 
 # Disallow admin and student panels
 Disallow: /admin/
 Disallow: /student/
 Disallow: /api/
+Disallow: /docs
 
 # Disallow private files
 Disallow: /storage/private/
+Disallow: /storage/temp/
 
 # Sitemap location
-# Note: This file will be served dynamically via route
-# Sitemap URL will be generated automatically
+Sitemap: https://claudsoft.com/sitemap.xml

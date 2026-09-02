@@ -143,6 +143,37 @@
                         </div>
                     </div>
 
+                    <!-- Schema.org -->
+                    <div class="card custom-card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">Schema.org (بيانات هيكلية)</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">صورة Schema (رابط)</label>
+                                <input type="text" name="schema_image" class="form-control @error('schema_image') is-invalid @enderror" value="{{ old('schema_image') }}">
+                                <small class="text-muted">اتركه فارغاً لاستخدام الصورة البارزة</small>
+                                @error('schema_image')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">اسم المؤلف (Schema)</label>
+                                <input type="text" name="schema_author_name" class="form-control @error('schema_author_name') is-invalid @enderror" value="{{ old('schema_author_name') }}">
+                                @error('schema_author_name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">رابط المؤلف (Schema)</label>
+                                <input type="url" name="schema_author_url" class="form-control @error('schema_author_url') is-invalid @enderror" value="{{ old('schema_author_url') }}">
+                                @error('schema_author_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Sidebar -->

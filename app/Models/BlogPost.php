@@ -16,6 +16,7 @@ class BlogPost extends Model
         // Basic Information
         'title',
         'slug',
+        'previous_slugs',
         'excerpt',
         'content',
         'featured_image',
@@ -103,6 +104,7 @@ class BlogPost extends Model
     ];
 
     protected $casts = [
+        'previous_slugs' => 'array',
         'breadcrumb_schema' => 'array',
         'related_posts' => 'array',
         'custom_meta' => 'array',
@@ -270,36 +272,91 @@ class BlogPost extends Model
             'twitter:title' => $this->twitter_title ?: $this->title,
             'twitter:description' => $this->twitter_description ?: $this->excerpt,
             'twitter:image' => $this->twitter_image ?: $this->featured_image,
-            'robots' => $this->robots_meta,
+            // Derived directly from the toggles editors actually use — the
+            // separate `robots_meta` column is never written by any admin
+            // form and was previously stuck at its DB default forever.
+            'robots' => ($this->is_indexable ? 'index' : 'noindex').','.($this->is_followable ? 'follow' : 'nofollow'),
         ];
     }
 
     /**
-     * Generate Schema.org JSON-LD
+     * Generate Schema.org JSON-LD (Article/BlogPosting/etc, per schema_type).
      */
     public function getSchemaJsonLd(): array
     {
-        return [
+        $image = $this->schema_image
+            ? blog_image_url($this->schema_image)
+            : ($this->featured_image ? blog_image_url($this->featured_image) : asset('frontend2/assets/images/logo.png'));
+
+        $data = [
             '@context' => 'https://schema.org',
-            '@type' => $this->schema_type,
+            '@type' => $this->schema_type ?: 'BlogPosting',
             'headline' => $this->schema_headline ?: $this->title,
-            'description' => $this->schema_description ?: $this->excerpt,
-            'image' => $this->schema_image ?: $this->featured_image,
-            'datePublished' => $this->schema_published_time ?: $this->published_at,
-            'dateModified' => $this->schema_modified_time ?: $this->updated_at,
+            'description' => $this->schema_description ?: Str::limit(strip_tags((string) $this->excerpt), 200),
+            'image' => $image,
+            'datePublished' => optional($this->schema_published_time ?: $this->published_at)->toIso8601String(),
+            'dateModified' => optional($this->schema_modified_time ?: $this->updated_at)->toIso8601String(),
             'author' => [
                 '@type' => 'Person',
-                'name' => $this->schema_author_name ?: $this->author?->name,
-                'url' => $this->schema_author_url,
+                'name' => $this->schema_author_name ?: ($this->author?->name ?? config('app.name')),
             ],
             'publisher' => [
                 '@type' => 'Organization',
                 'name' => config('app.name'),
                 'logo' => [
                     '@type' => 'ImageObject',
-                    'url' => asset('frontend/assets/images/logo.png'),
+                    'url' => asset('frontend2/assets/images/logo.png'),
                 ],
             ],
+            'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $this->url],
+            'inLanguage' => $this->language ?: 'ar',
+            'wordCount' => str_word_count(strip_tags((string) $this->content)),
+        ];
+
+        if ($this->schema_author_url) {
+            $data['author']['url'] = $this->schema_author_url;
+        }
+
+        if ($this->category) {
+            $data['articleSection'] = $this->category->name;
+        }
+
+        $tags = $this->relationLoaded('tags') ? $this->tags : $this->tags()->get();
+        if ($tags->isNotEmpty()) {
+            $data['keywords'] = $tags->pluck('name')->implode(', ');
+        }
+
+        if ($this->reading_time) {
+            $data['timeRequired'] = "PT{$this->reading_time}M";
+        }
+
+        return $data;
+    }
+
+    /**
+     * BreadcrumbList JSON-LD, built live from the category relationship —
+     * deliberately not stored in the `breadcrumb_schema` column, since a
+     * static blob would drift the moment the category is renamed (same class
+     * of staleness bug as a manually-set canonical_url after a slug change).
+     */
+    public function getBreadcrumbJsonLd(): array
+    {
+        $items = [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'الرئيسية', 'item' => route('frontend.home')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => 'المدونة', 'item' => route('frontend.blog.index')],
+        ];
+
+        if ($this->category) {
+            $items[] = ['@type' => 'ListItem', 'position' => 3, 'name' => $this->category->name, 'item' => $this->category->url];
+            $items[] = ['@type' => 'ListItem', 'position' => 4, 'name' => Str::limit($this->title, 60)];
+        } else {
+            $items[] = ['@type' => 'ListItem', 'position' => 3, 'name' => Str::limit($this->title, 60)];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => $items,
         ];
     }
 

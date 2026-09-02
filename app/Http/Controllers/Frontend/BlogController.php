@@ -84,12 +84,26 @@ class BlogController extends Controller
     /**
      * Display the specified blog post
      */
-    public function show(string $slug): View
+    public function show(string $slug): View|\Illuminate\Http\RedirectResponse
     {
         $post = BlogPost::with(['author', 'category', 'tags'])
                        ->where('slug', $slug)
                        ->published()
-                       ->firstOrFail();
+                       ->first();
+
+        if (!$post) {
+            // The slug may have changed since this URL was first indexed/shared —
+            // 301 to the current URL instead of losing the link's SEO value to a 404.
+            $redirectPost = BlogPost::published()
+                ->whereJsonContains('previous_slugs', $slug)
+                ->first();
+
+            if ($redirectPost) {
+                return redirect($redirectPost->url, 301);
+            }
+
+            abort(404);
+        }
 
         // Increment views count
         $post->incrementViews();
@@ -177,7 +191,7 @@ class BlogController extends Controller
                              ->popular(15)
                              ->get();
 
-        return view('frontend.pages.blog.category', compact(
+        return view('frontend2.pages.blog-category', compact(
             'category',
             'posts',
             'subcategories',
@@ -210,7 +224,7 @@ class BlogController extends Controller
                              ->popular(15)
                              ->get();
 
-        return view('frontend.pages.blog.tag', compact(
+        return view('frontend2.pages.blog-tag', compact(
             'tag',
             'posts',
             'categories',
@@ -248,7 +262,7 @@ class BlogController extends Controller
                              ->popular(15)
                              ->get();
 
-        return view('frontend.pages.blog.search', compact(
+        return view('frontend2.pages.blog-search', compact(
             'posts',
             'keyword',
             'categories',

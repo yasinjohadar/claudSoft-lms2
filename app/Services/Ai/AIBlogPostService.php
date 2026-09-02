@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Exceptions\Ai\AiProviderException;
 use App\Models\AIModel;
 use App\Models\BlogCategory;
 use App\Services\Ai\Concerns\ParsesAiJsonResponse;
@@ -13,9 +14,30 @@ class AIBlogPostService
 {
     use ParsesAiJsonResponse;
 
+    private ?BlogAiResultNormalizer $resultNormalizer = null;
+
+    private ?AiErrorClassifier $errorClassifier = null;
+
+    private ?BlogHtmlRepairer $repairer = null;
+
     public function __construct(
         private AIModelService $modelService
     ) {}
+
+    private function resultNormalizer(): BlogAiResultNormalizer
+    {
+        return $this->resultNormalizer ??= new BlogAiResultNormalizer;
+    }
+
+    private function errorClassifier(): AiErrorClassifier
+    {
+        return $this->errorClassifier ??= new AiErrorClassifier;
+    }
+
+    private function repairer(): BlogHtmlRepairer
+    {
+        return $this->repairer ??= new BlogHtmlRepairer;
+    }
 
     /**
      * توليد مقال كامل بالذكاء الاصطناعي
@@ -49,44 +71,7 @@ class AIBlogPostService
                 'content' => $content,
             ];
 
-            // توليد حقول SEO إذا كانت مفعلة
-            if ($options['generate_seo'] ?? true) {
-                $seoData = $this->generateSEOFields($title, $content, $topic, $model, $language);
-                $result = array_merge($result, $seoData);
-            }
-
-            // توليد Open Graph إذا كان مفعلاً
-            if ($options['generate_og'] ?? true) {
-                $ogData = $this->generateOpenGraph($title, $content, $excerpt, $model, $language);
-                $result = array_merge($result, $ogData);
-            }
-
-            // توليد Twitter Card إذا كان مفعلاً
-            if ($options['generate_twitter'] ?? true) {
-                $twitterData = $this->generateTwitterCard($title, $content, $excerpt, $model, $language);
-                $result = array_merge($result, $twitterData);
-            }
-
-            // توليد Schema.org إذا كان مفعلاً
-            if ($options['generate_schema'] ?? true) {
-                $schemaData = $this->generateSchema($title, $content, $excerpt, $model, $language);
-                $result = array_merge($result, $schemaData);
-            }
-
-            // توليد Focus Keyword Synonyms إذا كان مفعلاً
-            if ($options['generate_keyword_synonyms'] ?? true && isset($result['focus_keyword'])) {
-                $synonyms = $this->generateKeywordSynonyms($result['focus_keyword'], $model, $language);
-                $result['focus_keyword_synonyms'] = $synonyms;
-            }
-
-            // Canonical URL
-            $result['canonical_url'] = url('/blog/' . $slug);
-
-            // Reading time
-            $wordCount = str_word_count(strip_tags($content));
-            $result['reading_time'] = max(1, ceil($wordCount / 200));
-
-            return $result;
+            return $this->expandGeneratedPost($result, $topic, $model, $options);
 
         } catch (\Exception $e) {
             Log::error('Error generating blog post: ' . $e->getMessage(), [
@@ -104,6 +89,285 @@ class AIBlogPostService
             
             throw $e;
         }
+    }
+
+    /**
+     * Append SEO/OG/Twitter/Schema/synonyms/canonical/reading-time to an already
+     * assembled {title, slug, excerpt, content} post — shared tail for both the
+     * one-shot path (generateBlogPost) and the staged outline+sections path
+     * (BlogAiPipelineService), so both engines produce an identical final shape.
+     *
+     * @param  array{title: string, slug: string, excerpt: string, content: string}  $result
+     */
+    public function expandGeneratedPost(array $result, string $topic, AIModel $model, array $options = []): array
+    {
+        $language = $options['language'] ?? 'ar';
+        $title = $result['title'] ?? '';
+        $content = $result['content'] ?? '';
+        $excerpt = $result['excerpt'] ?? '';
+
+        // توليد حقول SEO إذا كانت مفعلة
+        if ($options['generate_seo'] ?? true) {
+            $seoData = $this->generateSEOFields($title, $content, $topic, $model, $language);
+            $result = array_merge($result, $seoData);
+        }
+
+        // توليد Open Graph إذا كان مفعلاً
+        if ($options['generate_og'] ?? true) {
+            $ogData = $this->generateOpenGraph($title, $content, $excerpt, $model, $language);
+            $result = array_merge($result, $ogData);
+        }
+
+        // توليد Twitter Card إذا كان مفعلاً
+        if ($options['generate_twitter'] ?? true) {
+            $twitterData = $this->generateTwitterCard($title, $content, $excerpt, $model, $language);
+            $result = array_merge($result, $twitterData);
+        }
+
+        // توليد Schema.org إذا كان مفعلاً
+        if ($options['generate_schema'] ?? true) {
+            $schemaData = $this->generateSchema($title, $content, $excerpt, $model, $language);
+            $result = array_merge($result, $schemaData);
+        }
+
+        // توليد Focus Keyword Synonyms إذا كان مفعلاً
+        if ($options['generate_keyword_synonyms'] ?? true && isset($result['focus_keyword'])) {
+            $synonyms = $this->generateKeywordSynonyms($result['focus_keyword'], $model, $language);
+            $result['focus_keyword_synonyms'] = $synonyms;
+        }
+
+        // Canonical URL
+        $result['canonical_url'] = url('/blog/'.$result['slug']);
+
+        // Reading time
+        $wordCount = str_word_count(strip_tags($content));
+        $result['reading_time'] = max(1, ceil($wordCount / 200));
+
+        return $result;
+    }
+
+    /**
+     * Plan a blog article as an outline (for staged medium/long generation).
+     *
+     * @param  array{
+     *   content_length?: string,
+     *   tone?: string,
+     *   language?: string,
+     *   category?: BlogCategory|null
+     * }  $options
+     * @return array{title?: string, slug?: string, excerpt?: string, sections?: list<array{heading?: string, brief?: string}>}
+     */
+    public function generateBlogOutline(
+        string $topic,
+        AIModel $model,
+        array $options,
+        int $sectionTarget,
+        ?int $maxTokens = null,
+    ): array {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $length = $options['content_length'] ?? 'medium';
+        /** @var BlogCategory|null $category */
+        $category = $options['category'] ?? null;
+
+        $langLine = $language === 'en'
+            ? 'Plan the article in English.'
+            : 'خطط المقال بالعربية.';
+        $categoryLine = $category ? "التصنيف: {$category->name}. " : '';
+        $pageBudget = BlogHtmlStyleGuide::pageBudget((string) $length);
+        $topicForPrompt = Str::limit(trim($topic), 1500);
+
+        $prompt = <<<PROMPT
+خطط مقال مدونة شاملاً ثم قسّمه إلى أقسام.
+
+الموضوع: {$topicForPrompt}
+{$categoryLine}
+عدد الأقسام المستهدف تقريباً: {$sectionTarget}
+طول المحتوى الإجمالي المستهدف: {$pageBudget}
+الأسلوب: {$tone}
+{$langLine}
+
+اجعل الأقسام تقرأ كعناوين فرعية طبيعية للمقال (وليست فصولاً موسوعية)، ولا تكرر أقساماً بنفس المعنى.
+
+أعد النتيجة كـ JSON فقط بهذا الشكل:
+{
+  "title": "عنوان المقال",
+  "slug": "slug-simple",
+  "excerpt": "ملخص قصير بدون HTML",
+  "sections": [
+    {"heading": "عنوان القسم", "brief": "جملة قصيرة عما سيغطيه القسم"}
+  ]
+}
+
+مهم: brief جملة قصيرة فقط. لا تكتب HTML هنا.
+PROMPT;
+
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'outline'),
+            $model->temperature ?? 0.6,
+        );
+
+        $data = $this->parseJSONResponse($response);
+        if ($data === []) {
+            $data = $this->resultNormalizer()->unwrapPayload($response);
+        }
+
+        $sections = $data['sections'] ?? null;
+        if (! is_array($sections) || count($sections) < 2) {
+            throw new AiProviderException(
+                'فشل بناء مخطط الأقسام من الموديل. غالباً قُطعت الاستجابة قبل اكتمال قائمة الأقسام.',
+                AiProviderException::KIND_TOO_LARGE,
+            );
+        }
+
+        return [
+            'title' => trim((string) ($data['title'] ?? '')),
+            'slug' => trim((string) ($data['slug'] ?? '')),
+            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
+            'sections' => array_values($sections),
+        ];
+    }
+
+    /**
+     * Generate one blog article section as HTML (legacy staged path).
+     *
+     * @param  array<string, mixed>  $outline
+     * @param  list<string>  $priorHeadings
+     * @param  array{tone?: string, language?: string, content_length?: string}  $options
+     * @param  list<string>  $laterHeadings
+     */
+    public function generateBlogSectionHtml(
+        string $topic,
+        array $outline,
+        string $heading,
+        string $brief,
+        array $priorHeadings,
+        AIModel $model,
+        array $options = [],
+        bool $compact = false,
+        ?int $maxTokens = null,
+        array $laterHeadings = [],
+    ): string {
+        $language = $options['language'] ?? 'ar';
+        $tone = $options['tone'] ?? 'professional';
+        $articleTitle = trim((string) ($outline['title'] ?? '')) ?: $topic;
+        $langLine = $language === 'en' ? 'Write this section in English.' : 'اكتب هذا القسم بالعربية.';
+        $prior = $priorHeadings === [] ? '(لا يوجد بعد)' : implode(' | ', $priorHeadings);
+        $styleGuide = BlogHtmlStyleGuide::block();
+        $contentLength = (string) ($options['content_length'] ?? 'medium');
+        $budgetLine = BlogHtmlStyleGuide::sectionBudget($contentLength, $compact);
+        $laterLine = $laterHeadings === []
+            ? ''
+            : 'أقسام لاحقة (لا تتناولها هنا): '.implode(' | ', $laterHeadings);
+
+        // Never a JSON envelope: asking a model to escape HTML inside a JSON
+        // string is what made it write whole programs on a single line.
+        $outputRule = "أعد HTML فقط. ابدأ مباشرة بـ <h2>{$heading}</h2>.\n"
+            .'ممنوع JSON، ممنوع علامات markdown، ممنوع أي شرح قبل أو بعد HTML.';
+
+        $prompt = <<<PROMPT
+اكتب قسماً واحداً فقط من مقال مدونة.
+
+موضوع المقال: {$topic}
+عنوان المقال: {$articleTitle}
+القسم الحالي: {$heading}
+ملخص القسم: {$brief}
+أقسام سابقة (للتماسك، لا تكررها): {$prior}
+{$laterLine}
+الأسلوب: {$tone}
+{$langLine}
+{$budgetLine}
+
+استخدم HTML فقط وفق الدليل:
+{$styleGuide}
+
+ابدأ بـ <h2>{$heading}</h2> ولا تُرجع أقساماً أخرى.
+
+{$outputRule}
+PROMPT;
+
+        $response = $this->callProvider(
+            $model,
+            $prompt,
+            $maxTokens ?? $this->tokensForStage($model, 'section', $compact, $contentLength),
+            $model->temperature ?? 0.7,
+        );
+
+        $rawHtml = $response;
+
+        $html = $this->resultNormalizer()->extractSectionHtml($rawHtml);
+        if ($html === '') {
+            $html = $this->resultNormalizer()->extractSectionHtml(
+                $this->resultNormalizer()->normalizeHtmlString($rawHtml)
+            );
+        }
+
+        if ($html === '') {
+            throw new AiProviderException(
+                'استجابة القسم لا تحتوي HTML صالحاً (غالباً قُطعت بسبب حد الرموز).',
+                AiProviderException::KIND_TOO_LARGE,
+            );
+        }
+
+        return $html;
+    }
+
+    /**
+     * Single provider round-trip that turns the legacy "empty string + getLastError()"
+     * convention into a classified exception the staged generator can act on.
+     */
+    private function callProvider(AIModel $model, string $prompt, int $maxTokens, float $temperature): string
+    {
+        $provider = AIProviderFactory::create($model);
+
+        try {
+            $response = $provider->generateText($prompt, [
+                'max_tokens' => $maxTokens,
+                'temperature' => $temperature,
+            ]);
+        } catch (AiProviderException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw $this->errorClassifier()->fromThrowable($e);
+        }
+
+        if (trim((string) $response) === '') {
+            throw $this->errorClassifier()->toException($provider->getLastError());
+        }
+
+        return $response;
+    }
+
+    /**
+     * Cap per-stage completion tokens — same shape as
+     * AIDocumentationPageService::tokensForStage() but reads the ai.blog.*
+     * config block and uses blog's shorter section budgets.
+     */
+    public function tokensForStage(
+        AIModel $model,
+        string $stage,
+        bool $compact = false,
+        string $contentLength = 'medium',
+    ): int {
+        $sectionCap = (int) config('ai.blog.section_max_tokens', 4096);
+        $cap = match ($stage) {
+            'outline' => (int) config('ai.blog.outline_max_tokens', 2048),
+            default => match ($contentLength) {
+                'short' => min($sectionCap, 2048),
+                'long' => $sectionCap,
+                default => min($sectionCap, 3072),
+            },
+        };
+        if ($compact) {
+            $cap = (int) max(512, floor($cap * 0.6));
+        }
+
+        $db = (int) ($model->max_tokens ?? 0);
+        $effective = $db > 0 ? min($db, $cap) : $cap;
+
+        return max(256, $effective);
     }
 
     /**

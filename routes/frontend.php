@@ -89,38 +89,6 @@ Route::middleware(['auth.query_token', 'auth:sanctum'])->group(function () {
 // Sitemap Route
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('frontend.sitemap');
 
-// Robots.txt Route (dynamic)
-Route::get('/robots.txt', function () {
-    $content = "# robots.txt\n";
-    $content .= '# Generated automatically for '.config('app.name')."\n\n";
-
-    $content .= "# Allow all search engines\n";
-    $content .= "User-agent: *\n";
-    $content .= "Allow: /\n";
-    $content .= "Allow: /courses\n";
-    $content .= "Allow: /course\n";
-    $content .= "Allow: /blog\n";
-    $content .= "Allow: /reviews\n";
-    $content .= "Allow: /students\n";
-    $content .= "Allow: /contact\n";
-    $content .= "Allow: /yasin-jokhadar\n\n";
-
-    $content .= "# Disallow admin and student panels\n";
-    $content .= "Disallow: /admin/\n";
-    $content .= "Disallow: /student/\n";
-    $content .= "Disallow: /api/\n";
-    $content .= "Disallow: /docs\n\n";
-
-    $content .= "# Disallow private files\n";
-    $content .= "Disallow: /storage/private/\n";
-    $content .= "Disallow: /storage/temp/\n\n";
-
-    $content .= "# Crawl-delay (optional, helps with server load)\n";
-    $content .= "# Crawl-delay: 1\n\n";
-
-    $content .= "# Sitemap location\n";
-    $content .= 'Sitemap: '.url('/sitemap.xml')."\n";
-
-    return response($content, 200)
-        ->header('Content-Type', 'text/plain; charset=utf-8');
-})->name('frontend.robots');
+// robots.txt is served as a static file at public/robots.txt — standard
+// Nginx/Apache config serves it directly without reaching the router, so a
+// dynamic route here would be dead code (it used to exist and never ran).
