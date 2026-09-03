@@ -45,6 +45,14 @@
         z-index: 1;
     }
 
+    .admin-users-table-card.admin-users-dropdown-open {
+        z-index: 3000;
+    }
+
+    .table-responsive.admin-users-dropdown-open {
+        overflow: visible;
+    }
+
     #usersGroupIdsChoices.choices {
         margin-bottom: 0;
         position: relative;
@@ -1005,6 +1013,21 @@
                     bodyEl.innerHTML = '<p class="text-danger mb-0">تعذر تحميل الملاحظات.</p>';
                 }
             });
+    });
+
+    // فتح قائمة إجراءات المستخدم يجب أن تظهر فوق الجدول، لا خلفه —
+    // نرفع z-index البطاقة ونلغي قصّ overflow مؤقتاً أثناء فتح القائمة فقط.
+    document.addEventListener('show.bs.dropdown', function(e) {
+        const card = e.target.closest('.admin-users-table-card');
+        if (!card) return;
+        card.classList.add('admin-users-dropdown-open');
+        e.target.closest('.table-responsive')?.classList.add('admin-users-dropdown-open');
+    });
+
+    document.addEventListener('hide.bs.dropdown', function(e) {
+        const card = e.target.closest('.admin-users-table-card');
+        if (card) card.classList.remove('admin-users-dropdown-open');
+        e.target.closest('.table-responsive')?.classList.remove('admin-users-dropdown-open');
     });
 })();
 </script>
