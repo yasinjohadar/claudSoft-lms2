@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CourseGroup;
 use App\Models\ProgrammingChallengeAttempt;
 use App\Services\ProgrammingChallenge\ChallengeSubmissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ChallengeGradingController extends Controller
@@ -57,12 +59,21 @@ class ChallengeGradingController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $attempts = ProgrammingChallengeAttempt::with(['challenge', 'student', 'latestSubmission.files'])
-            ->pendingGrading()
-            ->orderByDesc('submitted_at')
-            ->paginate(20);
+        $groupId = $request->get('group_id');
+
+        $query = ProgrammingChallengeAttempt::with(['challenge', 'student', 'latestSubmission.files'])
+            ->pendingGrading();
+
+        if (filled($groupId)) {
+            $studentIds = DB::table('course_group_members')->where('group_id', $groupId)->pluck('student_id');
+            $query->whereIn('user_id', $studentIds);
+        }
+
+        $attempts = $query->orderByDesc('submitted_at')
+            ->paginate(20)
+            ->appends($request->query());
 
         $stats = [
             'pending' => ProgrammingChallengeAttempt::pendingGrading()->count(),
@@ -75,7 +86,14 @@ class ChallengeGradingController extends Controller
                 ->count(),
         ];
 
-        return view('admin.pages.challenge-grading.index', compact('attempts', 'stats'));
+        $pendingStudentIds = ProgrammingChallengeAttempt::pendingGrading()->pluck('user_id')->unique();
+        $pendingGroupIds = DB::table('course_group_members')
+            ->whereIn('student_id', $pendingStudentIds)
+            ->distinct()
+            ->pluck('group_id');
+        $groups = CourseGroup::whereIn('id', $pendingGroupIds)->orderBy('name')->get();
+
+        return view('admin.pages.challenge-grading.index', compact('attempts', 'stats', 'groups', 'groupId'));
     }
 
     public function show(string $attemptId)

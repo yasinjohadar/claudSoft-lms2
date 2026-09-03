@@ -325,6 +325,29 @@
                 </div>
             </div>
 
+            @if($groups->isNotEmpty())
+                <div class="cg-queue__list mb-3">
+                    <div class="p-3">
+                        <form method="GET" class="row g-2 align-items-end">
+                            <div class="col-sm-4 col-md-3">
+                                <label class="form-label small text-muted mb-1">المجموعة</label>
+                                <select name="group_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">كل المجموعات</option>
+                                    @foreach($groups as $group)
+                                        <option value="{{ $group->id }}" {{ (string) $groupId === (string) $group->id ? 'selected' : '' }}>{{ $group->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @if($groupId)
+                                <div class="col-sm-4 col-md-3">
+                                    <a href="{{ route('admin.challenge-grading.index') }}" class="btn btn-light btn-sm">إلغاء الفلتر</a>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+            @endif
+
             <div class="cg-queue__stats">
                 <div class="cg-queue__stat cg-queue__stat--pending">
                     <span class="cg-queue__stat-icon"><i class="fe fe-clock"></i></span>

@@ -345,11 +345,14 @@ class ProgrammingChallengeController extends Controller
             ->with('success', 'تم حفظ حالات الاختبار بنجاح');
     }
 
-    public function attempts(string $id)
+    public function attempts(Request $request, string $id)
     {
         $challenge = ProgrammingChallenge::findOrFail($id);
 
-        $attempts = $challenge->attempts()
+        $gradeFilter = $request->get('grade_status');
+        $groupId = $request->get('group_id');
+
+        $query = $challenge->attempts()
             ->with([
                 'student',
                 'grader',
@@ -360,12 +363,35 @@ class ProgrammingChallengeController extends Controller
                         ->with('files');
                 },
             ])
-            ->whereIn('status', ['submitted', 'graded', 'returned', 'in_progress'])
-            ->orderByDesc('attempt_number')
-            ->orderByDesc('id')
-            ->paginate(30);
+            ->whereIn('status', ['submitted', 'graded', 'returned', 'in_progress']);
 
-        return view('admin.pages.programming-challenges.attempts', compact('challenge', 'attempts'));
+        if ($gradeFilter === 'graded') {
+            $query->where('status', 'graded');
+        } elseif ($gradeFilter === 'ungraded') {
+            // Submitted (arrived) but not yet graded — excludes attempts still in progress that haven't been submitted at all.
+            $query->whereIn('status', ['submitted', 'returned']);
+        }
+
+        if (filled($groupId)) {
+            $studentIds = DB::table('course_group_members')->where('group_id', $groupId)->pluck('student_id');
+            $query->whereIn('user_id', $studentIds);
+        }
+
+        $attempts = $query->orderByDesc('attempt_number')
+            ->orderByDesc('id')
+            ->paginate(30)
+            ->appends($request->query());
+
+        $groups = $challenge->targets()
+            ->with('group')
+            ->whereNotNull('group_id')
+            ->get()
+            ->pluck('group')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        return view('admin.pages.programming-challenges.attempts', compact('challenge', 'attempts', 'groups', 'gradeFilter', 'groupId'));
     }
 
     protected function uniqueSlug(string $title): string

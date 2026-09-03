@@ -44,6 +44,37 @@
                 </div>
             </div>
 
+            <div class="card custom-card mb-3">
+                <div class="card-body py-3">
+                    <form method="GET" class="row g-2 align-items-end">
+                        <div class="col-sm-4 col-md-3">
+                            <label class="form-label small text-muted mb-1">حالة التقييم</label>
+                            <select name="grade_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">الكل</option>
+                                <option value="graded" {{ $gradeFilter === 'graded' ? 'selected' : '' }}>مُقيَّم</option>
+                                <option value="ungraded" {{ $gradeFilter === 'ungraded' ? 'selected' : '' }}>غير مُقيَّم</option>
+                            </select>
+                        </div>
+                        @if($groups->isNotEmpty())
+                            <div class="col-sm-4 col-md-3">
+                                <label class="form-label small text-muted mb-1">المجموعة</label>
+                                <select name="group_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">كل المجموعات</option>
+                                    @foreach($groups as $group)
+                                        <option value="{{ $group->id }}" {{ (string) $groupId === (string) $group->id ? 'selected' : '' }}>{{ $group->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                        @if($gradeFilter || $groupId)
+                            <div class="col-sm-4 col-md-3">
+                                <a href="{{ route('programming-challenges.attempts', $challenge->id) }}" class="btn btn-light btn-sm">إلغاء الفلاتر</a>
+                            </div>
+                        @endif
+                    </form>
+                </div>
+            </div>
+
             <div class="row g-3 mb-3">
                 <div class="col-sm-4">
                     <div class="card custom-card mb-0">
@@ -118,7 +149,7 @@
                                             <a href="{{ route('admin.challenge-grading.show', $attempt->id) }}"
                                                class="btn btn-sm {{ $attempt->status === 'submitted' ? 'btn-primary' : 'btn-outline-primary' }}">
                                                 @if($attempt->status === 'submitted')
-                                                    تقييم
+                                                    <i class="fe fe-check-square me-1"></i>بدء التقييم
                                                 @else
                                                     عرض الكود والتقييم
                                                 @endif
