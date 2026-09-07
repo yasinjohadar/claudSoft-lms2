@@ -67,9 +67,9 @@
                         </h6>
                     </div>
                     <div class="card-body pt-2">
-                        <label class="form-label" for="batchTopics">المواضيع (افصل بين كل موضوع وآخر بفاصلة ,) <span class="text-danger">*</span></label>
-                        <textarea id="batchTopics" class="form-control" rows="10" placeholder="التوجيه في Laravel، اشرح بالتفصيل مع أمثلة كاملة وشرحها على شكل بلوك كود,&#10;أنواع البيانات في PHP,&#10;النماذج في HTML"></textarea>
-                        <p class="doc-ai-hint mb-0 mt-1"><span id="batchTopicsCount">0</span> موضوع مكتشف — الحد الأقصى 30 موضوعاً لكل دفعة. يمكن أن يمتد شرح الموضوع الواحد على عدة أسطر؛ الفاصلة (,) هي التي تفصل بين موضوع وآخر.</p>
+                        <label class="form-label" for="batchTopics">المواضيع (افصل بين كل موضوع وآخر بسطر فارغ — اضغط Enter مرتين) <span class="text-danger">*</span></label>
+                        <textarea id="batchTopics" class="form-control" rows="10" placeholder="التوجيه في Laravel، اشرح بالتفصيل مع أمثلة كاملة وشرحها على شكل بلوك كود&#10;&#10;أنواع البيانات في PHP&#10;&#10;النماذج في HTML"></textarea>
+                        <p class="doc-ai-hint mb-0 mt-1"><span id="batchTopicsCount">0</span> موضوع مكتشف — الحد الأقصى 30 موضوعاً لكل دفعة. يمكن أن يمتد شرح الموضوع الواحد على عدة أسطر متتالية؛ اترك سطراً فارغاً لتبدأ الموضوع التالي.</p>
                     </div>
                 </div>
 
@@ -320,10 +320,10 @@ document.documentElement.classList.add('loaded');
     function parseTopics() {
         const raw = document.getElementById('batchTopics').value || '';
         const seen = {};
-        return raw.split(',')
-            // A single topic's own explanation may span several lines; only the
-            // comma separates one topic from the next, so newlines inside a
-            // topic are collapsed into spaces instead of breaking it apart.
+        // A comma (Arabic "،" or Latin ",") is ordinary punctuation inside a topic's
+        // own explanation, so it can't be the separator. A blank line is: it never
+        // occurs naturally inside one topic's wrapped text, only between topics.
+        return raw.split(/\n\s*\n+/)
             .map(function (t) { return t.replace(/\s+/g, ' ').trim(); })
             .filter(function (t) {
                 if (!t) return false;
