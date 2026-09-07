@@ -69,7 +69,7 @@ class AIDocumentationBatchController extends Controller
     {
         $validated = $request->validate([
             'topics' => 'required|array|min:1|max:30',
-            'topics.*' => 'required|string|max:500',
+            'topics.*' => 'required|string|max:3000',
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
             'docs_engine' => 'nullable|in:laravel_ai,legacy',

@@ -458,6 +458,11 @@ document.documentElement.classList.add('loaded');
                 alert('الحد الأقصى 30 موضوعاً لكل دفعة');
                 return;
             }
+            const tooLong = topics.find(function (t) { return t.length > 3000; });
+            if (tooLong) {
+                alert('أحد المواضيع يتجاوز 3000 حرف — يرجى اختصار النص أو تقسيمه.');
+                return;
+            }
             if (!categoryId) {
                 alert('يرجى اختيار قسم التوثيق أولاً');
                 return;
