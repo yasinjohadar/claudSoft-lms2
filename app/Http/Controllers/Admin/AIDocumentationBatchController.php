@@ -173,7 +173,7 @@ class AIDocumentationBatchController extends Controller
     public function status(string $uuid)
     {
         $batch = DocumentationAiBatch::query()
-            ->with('items')
+            ->with('items.generation.sections')
             ->where('uuid', $uuid)
             ->where('user_id', Auth::id())
             ->firstOrFail();

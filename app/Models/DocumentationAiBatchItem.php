@@ -50,10 +50,25 @@ class DocumentationAiBatchItem extends Model
 
     public function toStatusPayload(): array
     {
+        $progress = null;
+        $stageLabel = null;
+        $sections = null;
+
+        // Only the in-flight item needs live generation detail — completed/failed/
+        // pending items don't, so this avoids an extra query per row on every poll.
+        if ($this->status === self::STATUS_RUNNING && $this->generation) {
+            $progress = (int) $this->generation->progress;
+            $stageLabel = $this->generation->stage_label;
+            $sections = $this->generation->isStaged() ? $this->generation->sectionSummary() : null;
+        }
+
         return [
             'position' => (int) $this->position,
             'topic' => $this->topic,
             'status' => $this->status,
+            'progress' => $progress,
+            'stage_label' => $stageLabel,
+            'sections' => $sections,
             'page_id' => $this->documentation_page_id,
             'edit_url' => $this->documentation_page_id
                 ? route('admin.docs.pages.edit', $this->documentation_page_id)

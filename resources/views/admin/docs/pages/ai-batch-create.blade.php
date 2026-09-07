@@ -365,6 +365,36 @@ document.documentElement.classList.add('loaded');
             badge.className = badgeClass(item.status);
             badge.textContent = badgeLabel(item.status);
             status.appendChild(badge);
+
+            if (item.status === 'running') {
+                const wrap = document.createElement('div');
+                wrap.className = 'mt-2';
+                wrap.style.minWidth = '220px';
+
+                const label = document.createElement('div');
+                label.className = 'small text-muted mb-1';
+                let text = item.stage_label || 'جاري التوليد…';
+                if (item.sections && item.sections.planned) {
+                    text += ' — تم توليد ' + item.sections.done + ' من ' + item.sections.planned + ' قسماً';
+                    if (item.sections.failed) {
+                        text += ' (فشل ' + item.sections.failed + ')';
+                    }
+                }
+                label.textContent = text;
+                wrap.appendChild(label);
+
+                const barOuter = document.createElement('div');
+                barOuter.className = 'progress';
+                barOuter.style.height = '6px';
+                const barInner = document.createElement('div');
+                barInner.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+                barInner.style.width = Math.max(0, Math.min(100, item.progress || 0)) + '%';
+                barOuter.appendChild(barInner);
+                wrap.appendChild(barOuter);
+
+                status.appendChild(wrap);
+            }
+
             if (item.status === 'failed' && item.error_message) {
                 const small = document.createElement('div');
                 small.className = 'text-danger small mt-1';
