@@ -83,6 +83,9 @@
                         <a href="{{ route('admin.docs.ai-pages.create') }}" class="btn btn-outline-secondary">
                             <i class="fe fe-cpu me-1"></i>توليد
                         </a>
+                        <a href="{{ route('admin.docs.ai-pages.batch.create') }}" class="btn btn-outline-secondary">
+                            <i class="fe fe-layers me-1"></i>توليد دفعة مواضيع
+                        </a>
                         <a href="{{ route('admin.docs.pages.create') }}" class="btn btn-primary">
                             <i class="fe fe-plus me-1"></i>إضافة صفحة
                         </a>

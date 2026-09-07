@@ -597,6 +597,9 @@
                                         <li class="slide {{ request()->routeIs('admin.docs.ai-pages.create') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.ai-pages.create') }}" class="side-menu__item">توليد بالذكاء الاصطناعي</a>
                                         </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.ai-pages.batch.*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.ai-pages.batch.create') }}" class="side-menu__item">توليد دفعة مواضيع (AI)</a>
+                                        </li>
                                         <li class="slide {{ request()->routeIs('admin.docs.ai-pages.enhance') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.ai-pages.enhance') }}" class="side-menu__item">إضافة أفكار (AI)</a>
                                         </li>
