@@ -1,0 +1,35 @@
+; تشغيل Laravel Horizon بشكل دائم على Linux (يحل محل عامل queue:work العادي)
+; الاستخدام:
+;   1. انسخ هذا الملف إلى السيرفر: مثلاً /etc/supervisor/conf.d/laravel-horizon.conf
+;   2. عدّل المسارات والأسطر المعلّمة أدناه (command, user, stdout_logfile)
+;   3. أوقف أولاً عامل queue:work القديم إن كان مفعّلاً:
+;        sudo supervisorctl stop laravel-queue-worker
+;        sudo rm /etc/supervisor/conf.d/laravel-queue-worker.conf   ; (أو أبقه معطّلاً كنسخة احتياطية)
+;   4. نفّذ: sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start laravel-horizon
+
+[program:laravel-horizon]
+process_name=%(program_name)s
+command=php /var/www/html/artisan horizon
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/html/storage/logs/horizon.log
+stopwaitsecs=3600
+; عدّل المسارات أعلاه:
+;   command: استبدل /var/www/html بمسار مشروعك
+;   user: المستخدم الذي يشغّل ويب سيرفرك (مثلاً www-data أو nginx أو اسم مستخدمك)
+;   stdout_logfile: مسار سجل Horizon داخل المشروع
+;
+; ملاحظات مهمة:
+;   - numprocs=1 صحيح هنا (وليس خطأ): Horizon عملية إشراف واحدة تدير عمّالها الداخلية
+;     بنفسها حسب config/horizon.php — بعكس queue:work حيث numprocs يمثل عدد العمّال الفعلي.
+;   - لا تُمرَّر أعلام مثل --sleep/--tries/--timeout هنا؛ Horizon يقرأ كل هذه الإعدادات
+;     من config/horizon.php (القسم 'defaults'/'environments') وليس من سطر الأوامر.
+;   - هذا الإعداد يتطلب أن يكون QUEUE_CONNECTION=redis في .env وأن يعمل خادم Redis
+;     فعلياً على هذا السيرفر — راجع HORIZON_SETUP_LINUX.md للخطوات كاملة قبل التبديل.
+;   - stopwaitsecs=3600 يطابق أطول timeout لمهمة موجودة (توليد التوثيق بالذكاء الاصطناعي)
+;     حتى تُمهَل المهام الجارية للإنهاء بأمان عند إعادة تشغيل Supervisor.
