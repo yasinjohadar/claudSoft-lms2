@@ -288,6 +288,7 @@ document.documentElement.classList.add('loaded');
     const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
     const statusUrlBase = @json(route('admin.docs.ai-pages.batch.show', ['uuid' => '__UUID__']));
     const cancelUrlBase = @json(route('admin.docs.ai-pages.batch.cancel', ['uuid' => '__UUID__']));
+    const resumeUrlBase = @json(route('admin.docs.ai-pages.batch.items.resume', ['uuid' => '__UUID__', 'item' => '__ITEM__']));
     const storeUrl = @json(route('admin.docs.ai-pages.batch.store'));
     const csrfToken = @json(csrf_token());
 
@@ -401,6 +402,16 @@ document.documentElement.classList.add('loaded');
                 small.textContent = item.error_message;
                 status.appendChild(small);
             }
+            if (item.status === 'failed' && item.resumable && batch.finished) {
+                const resumeBtn = document.createElement('button');
+                resumeBtn.type = 'button';
+                resumeBtn.className = 'btn btn-sm btn-primary mt-2';
+                resumeBtn.textContent = 'متابعة التوليد';
+                resumeBtn.addEventListener('click', function () {
+                    resumeItem(item.id, resumeBtn);
+                });
+                status.appendChild(resumeBtn);
+            }
             tr.appendChild(status);
 
             const actions = document.createElement('td');
@@ -438,7 +449,11 @@ document.documentElement.classList.add('loaded');
 
         renderItems(batch);
 
-        if (batch.finished && pollTimer) {
+        // A resumed item can briefly still look "finished" (batch status hasn't
+        // flipped back to running yet if the queue worker hasn't picked the job
+        // up) — don't stop polling while any item is actually in flight.
+        const anyRunning = (batch.items || []).some(function (i) { return i.status === 'running'; });
+        if (batch.finished && !anyRunning && pollTimer) {
             clearInterval(pollTimer);
             pollTimer = null;
         }
@@ -457,6 +472,32 @@ document.documentElement.classList.add('loaded');
         }
         tick();
         pollTimer = setInterval(tick, 3000);
+    }
+
+    function resumeItem(itemId, btn) {
+        if (!currentUuid) return;
+        btn.disabled = true;
+        const url = resumeUrlBase.replace('__UUID__', currentUuid).replace('__ITEM__', itemId);
+        fetch(url, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+            .then(function (res) {
+                if (res.body.success && res.body.batch) {
+                    renderBatch(res.body.batch);
+                    // The batch had already finished (polling stopped) — restart it
+                    // so the resumed item's live progress keeps updating.
+                    if (!pollTimer) startPolling(currentUuid);
+                    return;
+                }
+                btn.disabled = false;
+                alert(res.body.message || 'تعذّرت متابعة التوليد');
+            })
+            .catch(function () {
+                btn.disabled = false;
+                alert('تعذّرت متابعة التوليد — تحقق من الاتصال ثم أعد المحاولة');
+            });
     }
 
     function setSubmitting(isSubmitting) {

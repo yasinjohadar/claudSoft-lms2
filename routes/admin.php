@@ -1168,6 +1168,7 @@ Route::prefix('admin')
                 Route::post('/', [AIDocumentationBatchController::class, 'store'])->name('store');
                 Route::get('/{uuid}', [AIDocumentationBatchController::class, 'status'])->name('show');
                 Route::post('/{uuid}/cancel', [AIDocumentationBatchController::class, 'cancel'])->name('cancel');
+                Route::post('/{uuid}/items/{item}/resume', [AIDocumentationBatchController::class, 'resumeItem'])->name('items.resume');
             });
 
             Route::resource('pages', DocumentationPageController::class)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\UsesLaravelAiSdkForWizards;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentationAiBatch;
+use App\Models\DocumentationAiBatchItem;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use App\Models\LaravelAiModel;
@@ -196,6 +197,40 @@ class AIDocumentationBatchController extends Controller
         return response()->json([
             'success' => true,
             'batch' => $batch->fresh('items')->toStatusPayload(),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function resumeItem(string $uuid, DocumentationAiBatchItem $item)
+    {
+        $batch = DocumentationAiBatch::query()
+            ->with('items.generation.sections')
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if ((int) $item->batch_id !== (int) $batch->id) {
+            abort(404);
+        }
+
+        if (! $batch->isFinished()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الدفعة لا تزال قيد المعالجة — انتظر حتى تكتمل قبل المتابعة.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        if ($item->status !== DocumentationAiBatchItem::STATUS_FAILED || ! $item->generation?->isResumable()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد تقدم محفوظ لهذا الموضوع لمتابعته.',
+            ], 422, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        $this->runner->dispatchResume($item->id);
+
+        return response()->json([
+            'success' => true,
+            'batch' => $batch->fresh('items.generation.sections')->toStatusPayload(),
         ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 }

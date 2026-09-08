@@ -62,7 +62,12 @@ class DocumentationAiBatchItem extends Model
             $sections = $this->generation->isStaged() ? $this->generation->sectionSummary() : null;
         }
 
+        $resumable = $this->status === self::STATUS_FAILED
+            && $this->generation
+            && $this->generation->isResumable();
+
         return [
+            'id' => $this->id,
             'position' => (int) $this->position,
             'topic' => $this->topic,
             'status' => $this->status,
@@ -74,6 +79,7 @@ class DocumentationAiBatchItem extends Model
                 ? route('admin.docs.pages.edit', $this->documentation_page_id)
                 : null,
             'error_message' => $this->error_message,
+            'resumable' => $resumable,
         ];
     }
 }
