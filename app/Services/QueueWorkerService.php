@@ -26,6 +26,7 @@ class QueueWorkerService
         if ($pid !== null) {
             $this->clearPidFile();
         }
+
         return $this->hasQueueWorkProcess();
     }
 
@@ -34,10 +35,11 @@ class QueueWorkerService
      */
     public function getStoredPid(): ?int
     {
-        if (!File::exists($this->pidFile)) {
+        if (! File::exists($this->pidFile)) {
             return null;
         }
         $content = trim(File::get($this->pidFile));
+
         return is_numeric($content) ? (int) $content : null;
     }
 
@@ -72,11 +74,13 @@ class QueueWorkerService
         if ($pid !== null && $this->isProcessAlive($pid)) {
             $this->killProcess($pid);
             $this->clearPidFile();
+
             return ['success' => true, 'message' => 'تم إيقاف عامل الطابور.'];
         }
 
         if (PHP_OS_FAMILY === 'Windows') {
             $killed = $this->killQueueWorkProcessesWindows();
+
             return [
                 'success' => true,
                 'message' => $killed ? 'تم إيقاف عامل الطابور.' : 'لم يتم العثور على عملية عامل الطابور.',
@@ -88,6 +92,7 @@ class QueueWorkerService
             $this->killProcess($p);
         }
         $this->clearPidFile();
+
         return [
             'success' => true,
             'message' => count($pids) > 0 ? 'تم إيقاف عامل الطابور.' : 'لم يتم العثور على عملية عامل الطابور.',
@@ -95,7 +100,7 @@ class QueueWorkerService
     }
 
     /**
-     * Get status for display. Returns ['running' => bool, 'pid' => int|null, 'message' => string].
+     * Get status for display. Returns ['running' => bool, 'pid' => int|null, 'message' => string, 'type' => string|null].
      */
     public function status(): array
     {
@@ -104,11 +109,34 @@ class QueueWorkerService
         if ($running && $pid === null) {
             $pid = PHP_OS_FAMILY === 'Windows' ? null : $this->findQueueWorkPidsLinux()[0] ?? null;
         }
+
+        $horizonRunning = $this->hasHorizonProcess();
+
         return [
-            'running' => $running,
+            'running' => $running || $horizonRunning,
             'pid' => $pid,
-            'message' => $running ? 'عامل الطابور يعمل.' : 'عامل الطابور متوقف.',
+            'type' => $horizonRunning ? 'horizon' : ($running ? 'queue:work' : null),
+            'message' => match (true) {
+                $horizonRunning => 'Horizon يعمل.',
+                $running => 'عامل الطابور (queue:work) يعمل.',
+                default => 'لا يوجد عامل طابور يعمل حالياً.',
+            },
         ];
+    }
+
+    /**
+     * Whether a Horizon master process is currently running (Linux only — Horizon requires pcntl/posix).
+     */
+    public function hasHorizonProcess(): bool
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return false;
+        }
+
+        $out = [];
+        exec('pgrep -f "artisan horizon" 2>/dev/null', $out);
+
+        return count(array_filter($out, 'is_numeric')) > 0;
     }
 
     protected function startLinux(): array
@@ -125,6 +153,7 @@ class QueueWorkerService
         $pid = (int) trim(shell_exec($cmd) ?? '0');
         if ($pid > 0) {
             File::put($this->pidFile, (string) $pid);
+
             return [
                 'success' => true,
                 'message' => 'تم تشغيل عامل الطابور.',
@@ -132,6 +161,7 @@ class QueueWorkerService
             ];
         }
         Log::warning('Queue worker start failed: could not get PID');
+
         return [
             'success' => false,
             'message' => 'فشل تشغيل عامل الطابور (لم يتم الحصول على معرف العملية).',
@@ -151,6 +181,7 @@ class QueueWorkerService
         $pid = $pids[0] ?? null;
         if ($pid > 0) {
             File::put($this->pidFile, (string) $pid);
+
             return [
                 'success' => true,
                 'message' => 'تم تشغيل عامل الطابور.',
@@ -159,6 +190,7 @@ class QueueWorkerService
         }
 
         Log::warning('Queue worker start on Windows: process may have started but PID not found');
+
         return [
             'success' => true,
             'message' => 'تم بدء تشغيل عامل الطابور. إن لم يعمل، شغّله يدوياً: scripts\\queue-work.bat',
@@ -182,6 +214,7 @@ class QueueWorkerService
                 $pids[] = (int) $m[1];
             }
         }
+
         return $pids;
     }
 
@@ -189,22 +222,24 @@ class QueueWorkerService
     {
         if (PHP_OS_FAMILY === 'Windows') {
             $out = [];
-            exec('tasklist /FI "PID eq ' . $pid . '" /FO CSV /NH 2>nul', $out);
+            exec('tasklist /FI "PID eq '.$pid.'" /FO CSV /NH 2>nul', $out);
             $line = implode(' ', $out);
+
             return str_contains($line, (string) $pid);
         }
+
         return function_exists('posix_kill') ? @posix_kill($pid, 0) : file_exists("/proc/{$pid}");
     }
 
     protected function killProcess(int $pid): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
-            exec('taskkill /PID ' . $pid . ' /F 2>nul');
+            exec('taskkill /PID '.$pid.' /F 2>nul');
         } else {
             if (function_exists('posix_kill')) {
                 posix_kill($pid, SIGTERM);
             } else {
-                exec('kill ' . $pid . ' 2>/dev/null');
+                exec('kill '.$pid.' 2>/dev/null');
             }
         }
     }
@@ -222,6 +257,7 @@ class QueueWorkerService
             return count($this->findQueueWorkPidsWindows()) > 0;
         }
         $pids = $this->findQueueWorkPidsLinux();
+
         return count($pids) > 0;
     }
 
@@ -232,6 +268,7 @@ class QueueWorkerService
     {
         $out = [];
         exec('pgrep -f "artisan queue:work" 2>/dev/null', $out);
+
         return array_map('intval', array_filter($out, 'is_numeric'));
     }
 
@@ -250,6 +287,7 @@ class QueueWorkerService
                 $killed = true;
             }
         }
+
         return $killed;
     }
 }

@@ -97,3 +97,13 @@ Schedule::command('activitylog:clean', [
     ->daily()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Queue Monitor Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+Schedule::command('queue-logs:prune')
+    ->daily()
+    ->withoutOverlapping()
+    ->runInBackground();

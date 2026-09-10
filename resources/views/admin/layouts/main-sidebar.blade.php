@@ -1131,6 +1131,12 @@
                                         <i class="ri-database-2-line me-2"></i>معلومات قاعدة البيانات
                                     </a>
                                 </li>
+
+                                <li class="slide {{ request()->routeIs('admin.queue-monitor.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.queue-monitor.index') }}" class="side-menu__item {{ request()->routeIs('admin.queue-monitor.*') ? 'active' : '' }}">
+                                        <i class="ri-stack-line me-2"></i>قائمة المهام (الطابور)
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 

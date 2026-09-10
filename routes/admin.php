@@ -101,6 +101,7 @@ use App\Http\Controllers\Admin\ProgrammingChallengeController;
 use App\Http\Controllers\Admin\ProjectChallengeController;
 use App\Http\Controllers\Admin\ProjectGradingController;
 use App\Http\Controllers\Admin\ProjectTeamController;
+use App\Http\Controllers\Admin\QueueMonitorController;
 use App\Http\Controllers\Admin\QuestionBankController;
 use App\Http\Controllers\Admin\QuestionBankExportController;
 use App\Http\Controllers\Admin\QuestionBankAiGenerationController;
@@ -1640,6 +1641,18 @@ Route::prefix('admin')
             Route::get('/', [DatabaseInfoController::class, 'index'])->name('index');
             Route::post('/optimize/{table}', [DatabaseInfoController::class, 'optimize'])->name('optimize');
             Route::post('/analyze/{table}', [DatabaseInfoController::class, 'analyze'])->name('analyze');
+        });
+
+        Route::prefix('queue-monitor')->name('admin.queue-monitor.')->group(function () {
+            Route::get('/', [QueueMonitorController::class, 'index'])->name('index');
+            Route::get('/data', [QueueMonitorController::class, 'data'])->name('data');
+            Route::post('/failed/retry-all', [QueueMonitorController::class, 'retryAll'])->name('retry-all');
+            Route::post('/failed/{uuid}/retry', [QueueMonitorController::class, 'retry'])->name('retry');
+            Route::delete('/failed/{uuid}', [QueueMonitorController::class, 'destroy'])->name('destroy');
+            Route::delete('/failed', [QueueMonitorController::class, 'flush'])->name('flush');
+            Route::get('/worker/status', [QueueMonitorController::class, 'workerStatus'])->name('worker.status');
+            Route::post('/worker/start', [QueueMonitorController::class, 'workerStart'])->name('worker.start');
+            Route::post('/worker/stop', [QueueMonitorController::class, 'workerStop'])->name('worker.stop');
         });
 
     });
