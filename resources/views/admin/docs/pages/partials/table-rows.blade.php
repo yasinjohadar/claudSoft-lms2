@@ -1,8 +1,15 @@
 @forelse($pages as $page)
 <tr class="doc-pages-row">
+    <td class="doc-pages-select-cell">
+        <input type="checkbox" class="form-check-input docs-page-select"
+               value="{{ $page->id }}"
+               data-category-id="{{ $page->documentation_category_id }}"
+               aria-label="تحديد {{ $page->title }}">
+    </td>
     <td class="text-muted fw-semibold">{{ $loop->iteration + ($pages->currentPage() - 1) * $pages->perPage() }}</td>
     <td>
-        <a href="{{ route('admin.docs.pages.edit', $page) }}" class="doc-cat-name-link fw-semibold d-block text-truncate" style="max-width: 280px;">
+        {{-- No text-truncate / max-width here: the full title has to be readable. --}}
+        <a href="{{ route('admin.docs.pages.edit', $page) }}" class="doc-cat-name-link doc-pages-title fw-semibold d-block">
             {{ $page->title }}
         </a>
     </td>
@@ -16,8 +23,17 @@
         @endif
     </td>
     <td>
+        @if($page->research)
+            <a href="{{ route('admin.docs.researches.show', $page->research) }}" class="doc-cat-chip doc-cat-chip--tech text-decoration-none">
+                <i class="fe fe-search"></i>{{ $page->research->name }}
+            </a>
+        @else
+            <span class="text-muted">—</span>
+        @endif
+    </td>
+    <td>
         @if($page->parent)
-            <small class="text-muted text-truncate d-block" style="max-width: 140px;">{{ $page->parent->title }}</small>
+            <small class="text-muted doc-pages-parent d-block" title="{{ $page->parent->title }}">{{ $page->parent->title }}</small>
         @else
             <span class="text-muted">—</span>
         @endif
@@ -105,7 +121,7 @@
 </tr>
 @empty
 <tr>
-    <td colspan="8" class="text-center py-5">
+    <td colspan="10" class="text-center py-5">
         <div class="doc-cat-empty">
             <div class="doc-cat-empty__icon"><i class="fe fe-file-text"></i></div>
             <h6 class="mb-1">لا توجد صفحات بعد</h6>

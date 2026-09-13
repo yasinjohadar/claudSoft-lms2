@@ -7,11 +7,15 @@ use App\Http\Requests\Admin\SaveDocumentationPageRequest;
 use App\Models\Course;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
+use App\Models\DocumentationResearch;
 use App\Services\Documentation\DocumentationPdfExportService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class DocumentationPageController extends Controller
 {
@@ -34,15 +38,30 @@ class DocumentationPageController extends Controller
             'total' => DocumentationPage::count(),
             'published' => DocumentationPage::where('status', 'published')->count(),
             'draft' => DocumentationPage::where('status', 'draft')->count(),
-            'categories' => DocumentationCategory::count(),
+            'researches' => DocumentationResearch::count(),
         ];
 
-        return view('admin.docs.pages.index', compact('pages', 'categories', 'allCourses', 'stats'));
+        $researchesJson = $this->researchOptionsJson();
+
+        return view('admin.docs.pages.index', compact('pages', 'categories', 'allCourses', 'stats', 'researchesJson'));
     }
 
     private function paginatedDocumentationPages(Request $request): LengthAwarePaginator
     {
-        $query = DocumentationPage::with(['category', 'parent'])->orderByDesc('updated_at');
+        return $this->documentationPagesQuery($request)
+            ->with(['category', 'parent', 'research'])
+            ->orderByDesc('updated_at')
+            ->paginate(25)
+            ->withQueryString();
+    }
+
+    /**
+     * The filter block on its own, so "assign everything matching the current
+     * filter" resolves to exactly the rows the admin is looking at.
+     */
+    private function documentationPagesQuery(Request $request): Builder
+    {
+        $query = DocumentationPage::query();
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -56,11 +75,112 @@ class DocumentationPageController extends Controller
             $query->where('documentation_category_id', $request->documentation_category_id);
         }
 
+        if ($request->filled('documentation_research_id')) {
+            // "none" is how the admin finds what is still unassigned.
+            $request->documentation_research_id === 'none'
+                ? $query->whereNull('documentation_research_id')
+                : $query->where('documentation_research_id', $request->documentation_research_id);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        return $query->paginate(25)->withQueryString();
+        return $query;
+    }
+
+    /**
+     * Researches as a flat list for the category-dependent selects.
+     *
+     * @return list<array{id:int, category_id:int, label:string, group:string}>
+     */
+    private function researchOptionsJson(): array
+    {
+        return DocumentationResearch::query()
+            ->with('category:id,name')
+            ->ordered()
+            ->get()
+            ->map(fn (DocumentationResearch $r) => [
+                'id' => $r->id,
+                'category_id' => $r->documentation_category_id,
+                'label' => $r->name,
+                'group' => $r->category->name ?? '—',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Assign (or detach) a research for many pages at once — the only practical
+     * way to sort several hundred existing pages into researches.
+     */
+    public function bulkAssignResearch(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'documentation_research_id' => 'nullable|exists:documentation_researches,id',
+            'page_ids' => 'nullable|array',
+            'page_ids.*' => 'integer|exists:documentation_pages,id',
+            'select_all' => 'nullable|boolean',
+            'filters' => 'nullable|array',
+        ]);
+
+        $selectAll = $request->boolean('select_all');
+        $pageIds = array_map('intval', $validated['page_ids'] ?? []);
+
+        if (! $selectAll && $pageIds === []) {
+            return $this->bulkFail('لم تُحدَّد أي صفحة.');
+        }
+
+        $research = ! empty($validated['documentation_research_id'])
+            ? DocumentationResearch::find($validated['documentation_research_id'])
+            : null;
+
+        // The filters travel in their own "filters" key rather than at the top
+        // level: documentation_research_id means "the research to assign" in the
+        // payload but "only pages already in this research" to the filter, and
+        // reading both from one bag silently matched nothing.
+        $targets = $selectAll
+            ? $this->documentationPagesQuery(new Request((array) $request->input('filters', [])))
+            : DocumentationPage::query()->whereIn('id', $pageIds);
+
+        if ($research) {
+            // The same-category rule has to hold here too, not just in the form.
+            $mismatched = (clone $targets)
+                ->where('documentation_category_id', '!=', $research->documentation_category_id)
+                ->count();
+
+            if ($mismatched > 0) {
+                return $this->bulkFail(
+                    $mismatched.' صفحة لا تنتمي لقسم البحث «'.$research->name.'» — صفِّ القائمة على قسم البحث أولاً.'
+                );
+            }
+        }
+
+        // Count the matched rows, not update()'s return value: MySQL reports
+        // only *changed* rows, so re-assigning pages that were already in the
+        // research would tell the admin "0 pages assigned".
+        $assigned = (clone $targets)->count();
+
+        // toBase() so Eloquent does not touch updated_at: filing a page under a
+        // research is organisation, not an edit. Bumping it would overwrite the
+        // real "last edited" date of every page in one click — and the list is
+        // sorted by that column, so the whole ordering would be lost too.
+        DB::transaction(fn () => $targets->toBase()->update([
+            'documentation_research_id' => $research?->id,
+        ]));
+
+        return response()->json([
+            'success' => true,
+            'assigned' => $assigned,
+            'message' => $research
+                ? 'تم إسناد '.$assigned.' صفحة إلى البحث «'.$research->name.'».'
+                : 'تمت إزالة '.$assigned.' صفحة من البحث.',
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    private function bulkFail(string $message): JsonResponse
+    {
+        return response()->json(['success' => false, 'message' => $message], 422, [], JSON_UNESCAPED_UNICODE);
     }
 
     public function create(Request $request)
@@ -68,8 +188,12 @@ class DocumentationPageController extends Controller
         $categories = DocumentationCategory::active()->ordered()->get();
         $categoryId = $request->get('documentation_category_id');
         $parentOptions = $this->flatParentOptionsForCreate();
+        $researchesJson = $this->researchOptionsJson();
+        $researchId = $request->get('documentation_research_id');
 
-        return view('admin.docs.pages.create', compact('categories', 'parentOptions', 'categoryId'));
+        return view('admin.docs.pages.create', compact(
+            'categories', 'parentOptions', 'categoryId', 'researchesJson', 'researchId'
+        ));
     }
 
     public function store(SaveDocumentationPageRequest $request)
@@ -98,7 +222,11 @@ class DocumentationPageController extends Controller
             $documentation_page->id
         );
 
-        return view('admin.docs.pages.edit', compact('documentation_page', 'categories', 'parentOptions'));
+        $researchesJson = $this->researchOptionsJson();
+
+        return view('admin.docs.pages.edit', compact(
+            'documentation_page', 'categories', 'parentOptions', 'researchesJson'
+        ));
     }
 
     public function update(SaveDocumentationPageRequest $request, DocumentationPage $documentation_page)

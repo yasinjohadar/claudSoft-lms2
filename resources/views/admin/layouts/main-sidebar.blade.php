@@ -615,6 +615,12 @@
                                         <li class="slide {{ request()->routeIs('admin.docs.categories.create') ? 'active' : '' }}">
                                             <a href="{{ route('admin.docs.categories.create') }}" class="side-menu__item">إضافة قسم</a>
                                         </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.researches.index', 'admin.docs.researches.show', 'admin.docs.researches.edit') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.researches.index') }}" class="side-menu__item">أبحاث التوثيق</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.docs.researches.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.docs.researches.create') }}" class="side-menu__item">إضافة بحث</a>
+                                        </li>
                                     </ul>
                                 </li>
 

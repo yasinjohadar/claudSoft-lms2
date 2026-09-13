@@ -125,13 +125,21 @@
                             <div class="card-body pt-2">
                                 <div class="mb-3">
                                     <label class="form-label">القسم <span class="text-danger">*</span></label>
-                                    <select name="documentation_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
+                                    <select name="documentation_category_id" id="doc_category_id" class="form-select @error('documentation_category_id') is-invalid @enderror" required>
                                         <option value="">— اختر —</option>
                                         @foreach($categories as $cat)
                                             <option value="{{ $cat->id }}" {{ (string) old('documentation_category_id', $categoryId) === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
                                         @endforeach
                                     </select>
                                     @error('documentation_category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="doc_research_id">البحث (اختياري)</label>
+                                    <select name="documentation_research_id" id="doc_research_id" class="form-select @error('documentation_research_id') is-invalid @enderror">
+                                        <option value="">— بدون —</option>
+                                    </select>
+                                    <p class="doc-ai-hint mb-0">يجمع توثيقات موضوع واحد داخل القسم — مثل «الدوال».</p>
+                                    @error('documentation_research_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">صفحة أب (اختياري)</label>
@@ -187,6 +195,10 @@
 @section('scripts')
 <script>document.documentElement.classList.add('loaded');</script>
 @include('admin.docs.partials.tinymce-doc')
+@include('admin.docs.pages.partials.research-select-script', [
+    'researchesJson' => $researchesJson,
+    'selectedResearchId' => old('documentation_research_id', $researchId ?? null),
+])
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var titleEl = document.getElementById('doc_title');

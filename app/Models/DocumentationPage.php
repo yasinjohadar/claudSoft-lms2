@@ -14,12 +14,14 @@ class DocumentationPage extends Model
 
     protected $fillable = [
         'documentation_category_id',
+        'documentation_research_id',
         'parent_id',
         'title',
         'slug',
         'excerpt',
         'content',
         'sort_order',
+        'research_sort_order',
         'status',
         'published_at',
         'meta_title',
@@ -32,11 +34,17 @@ class DocumentationPage extends Model
         'published_at' => 'datetime',
         'is_indexable' => 'boolean',
         'sort_order' => 'integer',
+        'research_sort_order' => 'integer',
     ];
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(DocumentationCategory::class, 'documentation_category_id');
+    }
+
+    public function research(): BelongsTo
+    {
+        return $this->belongsTo(DocumentationResearch::class, 'documentation_research_id');
     }
 
     public function parent(): BelongsTo

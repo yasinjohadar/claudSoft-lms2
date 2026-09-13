@@ -36,6 +36,13 @@ class DocumentationCategory extends Model
         return $this->hasMany(DocumentationPage::class, 'documentation_category_id');
     }
 
+    public function researches(): HasMany
+    {
+        return $this->hasMany(DocumentationResearch::class, 'documentation_category_id')
+            ->orderBy('sort_order')
+            ->orderBy('name');
+    }
+
     public function rootPages(): HasMany
     {
         return $this->pages()->whereNull('parent_id')->orderBy('sort_order')->orderBy('title');

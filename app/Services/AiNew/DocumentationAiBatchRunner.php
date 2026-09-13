@@ -500,6 +500,10 @@ class DocumentationAiBatchRunner
 
         return DocumentationPage::create([
             'documentation_category_id' => $categoryId,
+            // Batches created before researches existed simply lack the key.
+            'documentation_research_id' => ! empty($settings['documentation_research_id'])
+                ? (int) $settings['documentation_research_id']
+                : null,
             'parent_id' => $parentId,
             'title' => $title,
             'slug' => $slug,

@@ -10,6 +10,7 @@ use App\Models\DocumentationAiGeneration;
 use App\Models\DocumentationAiSection;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
+use App\Models\DocumentationResearch;
 use App\Models\LaravelAiModel;
 use App\Services\Ai\AIModelService;
 use App\Services\AiNew\DocumentationAiBatchRunner;
@@ -62,6 +63,16 @@ class AIDocumentationBatchController extends Controller
             'label' => ($p->category->name ?? '—').' — '.$p->title,
         ])->values()->all();
 
+        $researchesJson = DocumentationResearch::query()
+            ->active()
+            ->ordered()
+            ->get(['id', 'documentation_category_id', 'name'])
+            ->map(fn (DocumentationResearch $r) => [
+                'id' => $r->id,
+                'category_id' => $r->documentation_category_id,
+                'label' => $r->name,
+            ])->values()->all();
+
         $useLaravelAiEngine = $this->wizardUsesLaravelAiSdk('docs_engine');
         $laravelAiModels = LaravelAiModel::query()->activeOrdered()->get();
         $docsEngineChoiceAvailable = $models->isNotEmpty() && $laravelAiModels->isNotEmpty();
@@ -79,6 +90,7 @@ class AIDocumentationBatchController extends Controller
             'categoryId',
             'defaultPublishedAt',
             'parentPagesJson',
+            'researchesJson',
             'useLaravelAiEngine',
             'laravelAiModels',
             'docsEngineChoiceAvailable',
@@ -148,6 +160,7 @@ class AIDocumentationBatchController extends Controller
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
             'documentation_category_id' => 'required|exists:documentation_categories,id',
+            'documentation_research_id' => 'nullable|exists:documentation_researches,id',
             'parent_id' => 'nullable|exists:documentation_pages,id',
             'generate_meta' => 'boolean',
             'status' => 'required|in:draft,published',
@@ -174,6 +187,14 @@ class AIDocumentationBatchController extends Controller
 
             if ($parent && (int) $parent->documentation_category_id !== (int) $category->id) {
                 return $this->fail('صفحة الأب يجب أن تنتمي لنفس القسم المختار', 422);
+            }
+
+            $research = ! empty($validated['documentation_research_id'])
+                ? DocumentationResearch::find($validated['documentation_research_id'])
+                : null;
+
+            if ($research && (int) $research->documentation_category_id !== (int) $category->id) {
+                return $this->fail('البحث يجب أن ينتمي لنفس القسم المختار', 422);
             }
 
             $requestedEngine = $validated['docs_engine'] ?? null;
@@ -208,6 +229,7 @@ class AIDocumentationBatchController extends Controller
                 'tone' => $validated['tone'] ?? 'professional',
                 'language' => $validated['language'] ?? 'ar',
                 'documentation_category_id' => (int) $validated['documentation_category_id'],
+                'documentation_research_id' => $validated['documentation_research_id'] ?? null,
                 'parent_id' => $validated['parent_id'] ?? null,
                 'generate_meta' => $validated['generate_meta'] ?? true,
                 'status' => $validated['status'],

@@ -216,6 +216,13 @@
                                 </select>
                             </div>
                             <div class="mb-3">
+                                <label class="form-label" for="batch_doc_research_id">البحث (اختياري)</label>
+                                <select id="batch_doc_research_id" class="form-select">
+                                    <option value="">— بدون —</option>
+                                </select>
+                                <p class="doc-ai-hint mb-0">كل صفحات هذه الدفعة ستُضاف إلى هذا البحث.</p>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label" for="batch_doc_parent_id">صفحة أب (اختياري)</label>
                                 <select id="batch_doc_parent_id" class="form-select">
                                     <option value="">— بدون —</option>
@@ -272,6 +279,7 @@ document.documentElement.classList.add('loaded');
 <script>
 (function () {
     const parentPages = @json($parentPagesJson);
+    const researches = @json($researchesJson);
     const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
     const storeUrl = @json(route('admin.docs.ai-pages.batch.store'));
     const csrfToken = @json(csrf_token());
@@ -302,6 +310,20 @@ document.documentElement.classList.add('loaded');
         if (current) sel.value = current;
     }
 
+    function refreshResearchOptions(preselect) {
+        const catId = document.getElementById('batch_doc_category_id').value;
+        const sel = document.getElementById('batch_doc_research_id');
+        const current = preselect !== undefined && preselect !== null ? String(preselect) : sel.value;
+        sel.innerHTML = '<option value="">— بدون —</option>';
+        researches.filter(function (r) { return String(r.category_id) === String(catId); }).forEach(function (r) {
+            const o = document.createElement('option');
+            o.value = r.id;
+            o.textContent = r.label;
+            sel.appendChild(o);
+        });
+        sel.value = current || '';
+    }
+
     function syncEngineVisibility() {
         if (!docsEngineChoiceAvailable) return;
         const laravelChecked = document.getElementById('batch_docs_engine_laravel_ai')?.checked;
@@ -316,6 +338,7 @@ document.documentElement.classList.add('loaded');
         if (!s) return;
         setVal('batch_doc_category_id', s.documentation_category_id);
         refreshParentOptions(s.parent_id);
+        refreshResearchOptions(s.documentation_research_id);
         setVal('batch_content_length', s.content_length);
         setVal('batch_tone', s.tone);
         setVal('batch_language', s.language);
@@ -372,8 +395,10 @@ document.documentElement.classList.add('loaded');
 
     document.addEventListener('DOMContentLoaded', function () {
         refreshParentOptions();
+        refreshResearchOptions();
         document.getElementById('batch_doc_category_id').addEventListener('change', function () {
             refreshParentOptions();
+            refreshResearchOptions('');
         });
         syncEngineVisibility();
         document.querySelectorAll('input[name="batch_docs_engine"]').forEach(function (el) {
@@ -428,6 +453,7 @@ document.documentElement.classList.add('loaded');
                 language: document.getElementById('batch_language').value,
                 documentation_category_id: categoryId,
                 parent_id: document.getElementById('batch_doc_parent_id').value || null,
+                documentation_research_id: document.getElementById('batch_doc_research_id').value || null,
                 generate_meta: document.getElementById('batch_generate_meta').checked,
                 status: document.getElementById('batch_status').value,
                 published_at: document.getElementById('batch_published_at').value || null,

@@ -49,6 +49,7 @@ use App\Http\Controllers\Admin\DeviceSecuritySettingsController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationPageController;
 use App\Http\Controllers\Admin\DocumentationPageDocumentationLinkController;
+use App\Http\Controllers\Admin\DocumentationResearchController;
 use App\Http\Controllers\Admin\EmailSettingController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\EvolutionChatsController;
@@ -1154,6 +1155,22 @@ Route::prefix('admin')
             Route::post('categories/{documentation_category}/toggle-active', [DocumentationCategoryController::class, 'toggleActive'])
                 ->name('categories.toggle-active');
 
+            Route::resource('researches', DocumentationResearchController::class)
+                ->parameters(['researches' => 'documentation_research'])
+                ->names([
+                    'index' => 'researches.index',
+                    'create' => 'researches.create',
+                    'store' => 'researches.store',
+                    'show' => 'researches.show',
+                    'edit' => 'researches.edit',
+                    'update' => 'researches.update',
+                    'destroy' => 'researches.destroy',
+                ]);
+            Route::post('researches/{documentation_research}/toggle-active', [DocumentationResearchController::class, 'toggleActive'])
+                ->name('researches.toggle-active');
+            Route::post('researches/{documentation_research}/reorder', [DocumentationResearchController::class, 'reorder'])
+                ->name('researches.reorder');
+
             Route::get('ai-pages/create', [AIDocumentationPageController::class, 'create'])->name('ai-pages.create');
             Route::get('ai-pages/improve', [AIDocumentationPageController::class, 'improve'])->name('ai-pages.improve');
             Route::get('ai-pages/enhance', [AIDocumentationPageController::class, 'enhance'])->name('ai-pages.enhance');
@@ -1190,6 +1207,9 @@ Route::prefix('admin')
                     'update' => 'pages.update',
                     'destroy' => 'pages.destroy',
                 ]);
+            // Literal segment — declared before any pages/{param} route.
+            Route::post('pages/bulk-assign-research', [DocumentationPageController::class, 'bulkAssignResearch'])
+                ->name('pages.bulk-assign-research');
             Route::post('pages/{documentation_page}/toggle-publish', [DocumentationPageController::class, 'togglePublish'])
                 ->name('pages.toggle-publish');
             Route::post('pages/{documentation_page}/documentation-links', [DocumentationPageDocumentationLinkController::class, 'store'])

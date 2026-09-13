@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\DocumentationPage;
+use App\Models\DocumentationResearch;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,11 @@ class SaveDocumentationPageRequest extends FormRequest
         if ($parent === '' || $parent === null) {
             $this->merge(['parent_id' => null]);
         }
+
+        $research = $this->input('documentation_research_id');
+        if ($research === '' || $research === null) {
+            $this->merge(['documentation_research_id' => null]);
+        }
     }
 
     /**
@@ -29,6 +35,7 @@ class SaveDocumentationPageRequest extends FormRequest
     {
         return [
             'documentation_category_id' => 'required|exists:documentation_categories,id',
+            'documentation_research_id' => 'nullable|exists:documentation_researches,id',
             'parent_id' => 'nullable|exists:documentation_pages,id',
             'title' => 'required|string|max:255',
             'slug' => ['nullable', 'string', 'max:255', 'regex:/^[\p{Arabic}a-zA-Z0-9\s-]+$/u'],
@@ -52,6 +59,13 @@ class SaveDocumentationPageRequest extends FormRequest
                 }
             }
 
+            if (! empty($this->input('documentation_research_id'))) {
+                $research = DocumentationResearch::find($this->input('documentation_research_id'));
+                if ($research && (int) $research->documentation_category_id !== (int) $this->input('documentation_category_id')) {
+                    $v->errors()->add('documentation_research_id', 'البحث يجب أن ينتمي لنفس القسم المختار');
+                }
+            }
+
             $docPage = $this->route('documentation_page');
             if ($docPage instanceof DocumentationPage
                 && $this->filled('parent_id')
@@ -65,6 +79,10 @@ class SaveDocumentationPageRequest extends FormRequest
     {
         if (empty($this->input('parent_id'))) {
             $this->merge(['parent_id' => null]);
+        }
+
+        if (empty($this->input('documentation_research_id'))) {
+            $this->merge(['documentation_research_id' => null]);
         }
 
         $slug = $this->normalizeSlug($this->input('slug'), $this->input('title'));
