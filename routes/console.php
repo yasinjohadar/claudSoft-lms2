@@ -107,3 +107,15 @@ Schedule::command('queue-logs:prune')
     ->daily()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Documentation AI Scheduled Tasks
+|--------------------------------------------------------------------------
+*/
+
+// تحرير مواضيع دفعات التوثيق العالقة بعد توقّف معالج الطابور - كل خمس دقائق
+Schedule::command('docs:reap-stalled-ai-batches')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -70,16 +70,96 @@ class DocumentationAiBatch extends Model
         ], true);
     }
 
+    /**
+     * Counts taken from the item rows, which are the authority. The completed/
+     * failed columns are a denormalised cache that several code paths used to
+     * increment by hand — easy to double-count once a reaper can also close an
+     * item, so nothing decides anything from them any more.
+     *
+     * @return array{completed:int, failed:int, running:int, pending:int, resume_queued:int, skipped:int}
+     */
+    public function itemStatusCounts(): array
+    {
+        $items = $this->relationLoaded('items')
+            ? $this->items
+            : $this->items()->get(['id', 'batch_id', 'status']);
+
+        $countOf = fn (string $status) => $items->where('status', $status)->count();
+
+        return [
+            'completed' => $countOf(DocumentationAiBatchItem::STATUS_COMPLETED),
+            'failed' => $countOf(DocumentationAiBatchItem::STATUS_FAILED),
+            'running' => $countOf(DocumentationAiBatchItem::STATUS_RUNNING),
+            'pending' => $countOf(DocumentationAiBatchItem::STATUS_PENDING),
+            'resume_queued' => $countOf(DocumentationAiBatchItem::STATUS_RESUME_QUEUED),
+            'skipped' => $countOf(DocumentationAiBatchItem::STATUS_SKIPPED),
+        ];
+    }
+
+    /** Re-sync the cache columns from the item rows. Idempotent by construction. */
+    public function recountFromItems(): void
+    {
+        $counts = $this->itemStatusCounts();
+
+        $this->forceFill([
+            'completed' => $counts['completed'],
+            'failed' => $counts['failed'],
+        ])->saveQuietly();
+    }
+
+    /** Nothing is in flight and nothing more is owed. */
+    public function hasOpenWork(): bool
+    {
+        $counts = $this->itemStatusCounts();
+
+        return $counts['running'] > 0 || $counts['pending'] > 0 || $counts['resume_queued'] > 0;
+    }
+
+    /**
+     * Unfinished, nothing running, yet topics are still waiting — the queue
+     * worker is almost certainly down, which no reaper should paper over by
+     * re-dispatching blindly.
+     */
+    public function isStalled(): bool
+    {
+        if ($this->isFinished()) {
+            return false;
+        }
+
+        $counts = $this->itemStatusCounts();
+        if ($counts['running'] > 0) {
+            return false;
+        }
+
+        if ($counts['pending'] === 0 && $counts['resume_queued'] === 0) {
+            return false;
+        }
+
+        return $this->updated_at?->lt(
+            now()->subMinutes(DocumentationAiGeneration::STALE_HEARTBEAT_MINUTES)
+        ) ?? false;
+    }
+
     public function toStatusPayload(): array
     {
+        $counts = $this->itemStatusCounts();
+        $items = $this->items->map(fn (DocumentationAiBatchItem $item) => $item->toStatusPayload())->all();
+
         return [
             'uuid' => $this->uuid,
             'status' => $this->status,
             'total' => (int) $this->total,
-            'completed' => (int) $this->completed,
-            'failed' => (int) $this->failed,
+            'completed' => $counts['completed'],
+            'failed' => $counts['failed'],
+            'incomplete' => count(array_filter($items, fn (array $i) => $i['is_incomplete'])),
+            'running' => $counts['running'],
+            'resume_queued' => $counts['resume_queued'],
+            'any_running' => $counts['running'] > 0 || $counts['resume_queued'] > 0,
             'finished' => $this->isFinished(),
-            'items' => $this->items->map(fn (DocumentationAiBatchItem $item) => $item->toStatusPayload())->all(),
+            'stalled' => $this->isStalled(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'finished_at' => $this->finished_at?->toIso8601String(),
+            'items' => $items,
         ];
     }
 }

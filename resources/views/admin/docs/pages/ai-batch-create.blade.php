@@ -5,15 +5,7 @@
 @section('styles')
 @include('admin.docs.categories.partials.styles')
 @include('admin.docs.pages.partials.ai-page-styles')
-<style>
-    .doc-ai-batch-table { width: 100%; font-size: .875rem; }
-    .doc-ai-batch-table td, .doc-ai-batch-table th { padding: .5rem .6rem; vertical-align: middle; }
-    .doc-ai-batch-badge { display:inline-block; padding:.2rem .55rem; border-radius:999px; font-size:.75rem; font-weight:600; }
-    .doc-ai-batch-badge--pending { background:#eef0f2; color:#6b7280; }
-    .doc-ai-batch-badge--running { background:#fff3cd; color:#8a6100; }
-    .doc-ai-batch-badge--completed { background:#e6f7ed; color:#0f7b42; }
-    .doc-ai-batch-badge--failed { background:#fdecea; color:#b3261e; }
-</style>
+@include('admin.docs.pages.partials.ai-batch-styles')
 @endsection
 
 @section('content')
@@ -46,6 +38,9 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('admin.docs.ai-pages.batch.index') }}" class="btn btn-light border">
+                            <i class="fe fe-clock me-1"></i>سجل الدفعات
+                        </a>
                         <a href="{{ route('admin.docs.pages.index') }}" class="btn btn-light border">
                             <i class="fe fe-list me-1"></i>قائمة الصفحات
                         </a>
@@ -56,6 +51,18 @@
                 </div>
             </div>
         </div>
+
+        @if(!empty($incompleteCount))
+            <div class="alert alert-warning border-0 d-flex flex-wrap align-items-center gap-2 doc-ai-animate">
+                <span class="flex-grow-1">
+                    <i class="fe fe-alert-circle me-1"></i>
+                    لديك <strong>{{ $incompleteCount }}</strong> موضوعاً غير مكتمل من دفعات سابقة — الأقسام المكتملة محفوظة ويمكن إكمالها.
+                </span>
+                <a href="{{ route('admin.docs.ai-pages.batch.index', ['incomplete' => 1]) }}" class="btn btn-sm btn-warning">
+                    <i class="fe fe-play-circle me-1"></i>عرضها ومتابعتها
+                </a>
+            </div>
+        @endif
 
         <div class="row g-4">
             <div class="col-lg-8">
@@ -172,41 +179,19 @@
                 </div>
 
                 <div class="card custom-card doc-ai-panel doc-cat-table-card doc-ai-animate mb-4">
-                    <div class="card-header doc-ai-panel__header border-0">
-                        <h6 class="doc-ai-panel__title">
+                    <div class="card-header doc-ai-panel__header border-0 d-flex justify-content-between align-items-center">
+                        <h6 class="doc-ai-panel__title mb-0">
                             <span class="doc-ai-panel__title-icon doc-ai-panel__title-icon--content"><i class="fe fe-activity"></i></span>
                             تقدّم الطابور
                         </h6>
+                        @if(!empty($initialBatch))
+                            <a href="{{ route('admin.docs.ai-pages.batch.show', $initialBatch['uuid']) }}" class="btn btn-sm btn-light border">
+                                <i class="fe fe-external-link me-1"></i>صفحة الدفعة
+                            </a>
+                        @endif
                     </div>
                     <div class="card-body pt-2">
-                        <div id="batchIdleMsg" class="doc-ai-hint mb-0">
-                            <i class="fe fe-info me-1"></i>
-                            لم تبدأ أي دفعة بعد. اكتب المواضيع واضغط «إضافة إلى الطابور».
-                        </div>
-                        <div id="batchProgressWrap" style="display:none;">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-muted" id="batchProgressLabel">في الطابور…</small>
-                                <button type="button" class="btn btn-sm btn-outline-danger" id="batchCancelBtn">
-                                    <i class="fe fe-x me-1"></i>إلغاء الدفعة
-                                </button>
-                            </div>
-                            <div class="progress mb-3" style="height: 8px;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="batchProgressBar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="doc-ai-batch-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>الموضوع</th>
-                                            <th>الحالة</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="batchItemsBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
+                        @include('admin.docs.pages.partials.ai-batch-progress')
                     </div>
                 </div>
             </div>
@@ -267,7 +252,7 @@
                                 <span class="btn-text">إضافة إلى الطابور</span>
                             </button>
                             <p class="doc-ai-hint mb-0">
-                                كل موضوع يُولَّد ثم تُحفظ صفحته فوراً — لا حاجة لمراجعة يدوية. يمكنك مغادرة الصفحة والعودة لاحقاً.
+                                كل موضوع يُولَّد ثم تُحفظ صفحته فوراً — لا حاجة لمراجعة يدوية. يمكنك مغادرة الصفحة والعودة لاحقاً؛ ستجد الدفعة كما تركتها.
                             </p>
                         </div>
                     </div>
@@ -282,23 +267,31 @@
 <script>
 document.documentElement.classList.add('loaded');
 </script>
+<script src="{{ asset('assets/libs/sweetalert2/sweetalert2.all.min.js') }}"></script>
+@include('admin.docs.pages.partials.ai-batch-scripts')
 <script>
 (function () {
     const parentPages = @json($parentPagesJson);
     const docsEngineChoiceAvailable = @json(!empty($docsEngineChoiceAvailable));
-    const statusUrlBase = @json(route('admin.docs.ai-pages.batch.show', ['uuid' => '__UUID__']));
-    const cancelUrlBase = @json(route('admin.docs.ai-pages.batch.cancel', ['uuid' => '__UUID__']));
-    const resumeUrlBase = @json(route('admin.docs.ai-pages.batch.items.resume', ['uuid' => '__UUID__', 'item' => '__ITEM__']));
     const storeUrl = @json(route('admin.docs.ai-pages.batch.store'));
     const csrfToken = @json(csrf_token());
+    const initialBatch = @json($initialBatch);
+    const initialSettings = @json($initialSettings);
 
-    let pollTimer = null;
-    let currentUuid = null;
+    function setVal(id, value) {
+        const el = document.getElementById(id);
+        if (el && value !== null && value !== undefined && value !== '') el.value = value;
+    }
 
-    function refreshParentOptions() {
+    function setChecked(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!value;
+    }
+
+    function refreshParentOptions(preselect) {
         const catId = document.getElementById('batch_doc_category_id').value;
         const sel = document.getElementById('batch_doc_parent_id');
-        const current = sel.value;
+        const current = preselect !== undefined && preselect !== null ? String(preselect) : sel.value;
         sel.innerHTML = '<option value="">— بدون —</option>';
         parentPages.filter(function (p) { return String(p.category_id) === String(catId); }).forEach(function (p) {
             const o = document.createElement('option');
@@ -316,6 +309,38 @@ document.documentElement.classList.add('loaded');
         const wG = document.getElementById('batch_docs_engine_legacy_wrap');
         if (wL) wL.style.display = laravelChecked ? '' : 'none';
         if (wG) wG.style.display = laravelChecked ? 'none' : '';
+    }
+
+    /** Put the form back the way the restored batch was configured. */
+    function restoreSettings(s) {
+        if (!s) return;
+        setVal('batch_doc_category_id', s.documentation_category_id);
+        refreshParentOptions(s.parent_id);
+        setVal('batch_content_length', s.content_length);
+        setVal('batch_tone', s.tone);
+        setVal('batch_language', s.language);
+        setVal('batch_status', s.status);
+        setVal('batch_sort_order', s.sort_order);
+        setChecked('batch_generate_meta', s.generate_meta);
+        setChecked('batch_is_indexable', s.is_indexable);
+        if (s.published_at) {
+            const d = new Date(s.published_at);
+            if (!isNaN(d.getTime())) {
+                const pad = function (n) { return String(n).padStart(2, '0'); };
+                setVal('batch_published_at',
+                    d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()));
+            }
+        }
+        if (docsEngineChoiceAvailable && s.docs_engine) {
+            const radio = document.getElementById(
+                s.docs_engine === 'laravel_ai' ? 'batch_docs_engine_laravel_ai' : 'batch_docs_engine_legacy'
+            );
+            if (radio) radio.checked = true;
+            syncEngineVisibility();
+        }
+        setVal('batch_laravel_ai_model_id', s.laravel_ai_model_id);
+        setVal('batch_ai_model_id', s.ai_model_id);
     }
 
     function parseTopics() {
@@ -338,168 +363,6 @@ document.documentElement.classList.add('loaded');
         document.getElementById('batchTopicsCount').textContent = parseTopics().length;
     }
 
-    function badgeClass(status) {
-        return 'doc-ai-batch-badge doc-ai-batch-badge--' + (status || 'pending');
-    }
-
-    function badgeLabel(status) {
-        const map = { pending: 'قيد الانتظار', running: 'جاري التوليد…', completed: 'مكتملة', failed: 'فشلت' };
-        return map[status] || status;
-    }
-
-    function renderItems(batch) {
-        const body = document.getElementById('batchItemsBody');
-        body.innerHTML = '';
-        (batch.items || []).forEach(function (item) {
-            const tr = document.createElement('tr');
-
-            const num = document.createElement('td');
-            num.textContent = item.position + 1;
-            tr.appendChild(num);
-
-            const topic = document.createElement('td');
-            topic.textContent = item.topic;
-            tr.appendChild(topic);
-
-            const status = document.createElement('td');
-            const badge = document.createElement('span');
-            badge.className = badgeClass(item.status);
-            badge.textContent = badgeLabel(item.status);
-            status.appendChild(badge);
-
-            if (item.status === 'running') {
-                const wrap = document.createElement('div');
-                wrap.className = 'mt-2';
-                wrap.style.minWidth = '220px';
-
-                const label = document.createElement('div');
-                label.className = 'small text-muted mb-1';
-                let text = item.stage_label || 'جاري التوليد…';
-                if (item.sections && item.sections.planned) {
-                    text += ' — تم توليد ' + item.sections.done + ' من ' + item.sections.planned + ' قسماً';
-                    if (item.sections.failed) {
-                        text += ' (فشل ' + item.sections.failed + ')';
-                    }
-                }
-                label.textContent = text;
-                wrap.appendChild(label);
-
-                const barOuter = document.createElement('div');
-                barOuter.className = 'progress';
-                barOuter.style.height = '6px';
-                const barInner = document.createElement('div');
-                barInner.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
-                barInner.style.width = Math.max(0, Math.min(100, item.progress || 0)) + '%';
-                barOuter.appendChild(barInner);
-                wrap.appendChild(barOuter);
-
-                status.appendChild(wrap);
-            }
-
-            if (item.status === 'failed' && item.error_message) {
-                const small = document.createElement('div');
-                small.className = 'text-danger small mt-1';
-                small.textContent = item.error_message;
-                status.appendChild(small);
-            }
-            if (item.status === 'failed' && item.resumable && batch.finished) {
-                const resumeBtn = document.createElement('button');
-                resumeBtn.type = 'button';
-                resumeBtn.className = 'btn btn-sm btn-primary mt-2';
-                resumeBtn.textContent = 'متابعة التوليد';
-                resumeBtn.addEventListener('click', function () {
-                    resumeItem(item.id, resumeBtn);
-                });
-                status.appendChild(resumeBtn);
-            }
-            tr.appendChild(status);
-
-            const actions = document.createElement('td');
-            if (item.edit_url) {
-                const a = document.createElement('a');
-                a.href = item.edit_url;
-                a.target = '_blank';
-                a.className = 'btn btn-sm btn-outline-secondary';
-                a.textContent = 'فتح الصفحة';
-                actions.appendChild(a);
-            }
-            tr.appendChild(actions);
-
-            body.appendChild(tr);
-        });
-    }
-
-    function renderBatch(batch) {
-        document.getElementById('batchIdleMsg').style.display = 'none';
-        document.getElementById('batchProgressWrap').style.display = '';
-
-        const done = (batch.completed || 0) + (batch.failed || 0);
-        const pct = batch.total ? Math.round((done / batch.total) * 100) : 0;
-        document.getElementById('batchProgressBar').style.width = pct + '%';
-
-        const labelMap = {
-            queued: 'في الطابور…',
-            running: 'جاري المعالجة… (' + done + ' من ' + batch.total + ')',
-            completed: 'اكتملت الدفعة بنجاح (' + batch.total + ' من ' + batch.total + ')',
-            completed_with_errors: 'اكتملت الدفعة مع بعض الأخطاء (' + batch.failed + ' فاشلة من ' + batch.total + ')',
-            cancelled: 'أُلغيت الدفعة',
-        };
-        document.getElementById('batchProgressLabel').textContent = labelMap[batch.status] || batch.status;
-        document.getElementById('batchCancelBtn').style.display = batch.finished ? 'none' : '';
-
-        renderItems(batch);
-
-        // A resumed item can briefly still look "finished" (batch status hasn't
-        // flipped back to running yet if the queue worker hasn't picked the job
-        // up) — don't stop polling while any item is actually in flight.
-        const anyRunning = (batch.items || []).some(function (i) { return i.status === 'running'; });
-        if (batch.finished && !anyRunning && pollTimer) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-        }
-    }
-
-    function startPolling(uuid) {
-        currentUuid = uuid;
-        if (pollTimer) clearInterval(pollTimer);
-        const url = statusUrlBase.replace('__UUID__', uuid);
-        function tick() {
-            fetch(url, { headers: { Accept: 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(function (res) {
-                    if (res.success && res.batch) renderBatch(res.batch);
-                });
-        }
-        tick();
-        pollTimer = setInterval(tick, 3000);
-    }
-
-    function resumeItem(itemId, btn) {
-        if (!currentUuid) return;
-        btn.disabled = true;
-        const url = resumeUrlBase.replace('__UUID__', currentUuid).replace('__ITEM__', itemId);
-        fetch(url, {
-            method: 'POST',
-            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        })
-            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
-            .then(function (res) {
-                if (res.body.success && res.body.batch) {
-                    renderBatch(res.body.batch);
-                    // The batch had already finished (polling stopped) — restart it
-                    // so the resumed item's live progress keeps updating.
-                    if (!pollTimer) startPolling(currentUuid);
-                    return;
-                }
-                btn.disabled = false;
-                alert(res.body.message || 'تعذّرت متابعة التوليد');
-            })
-            .catch(function () {
-                btn.disabled = false;
-                alert('تعذّرت متابعة التوليد — تحقق من الاتصال ثم أعد المحاولة');
-            });
-    }
-
     function setSubmitting(isSubmitting) {
         const btn = document.getElementById('batchSubmitBtn');
         const spinner = btn.querySelector('.loading-spinner');
@@ -509,7 +372,9 @@ document.documentElement.classList.add('loaded');
 
     document.addEventListener('DOMContentLoaded', function () {
         refreshParentOptions();
-        document.getElementById('batch_doc_category_id').addEventListener('change', refreshParentOptions);
+        document.getElementById('batch_doc_category_id').addEventListener('change', function () {
+            refreshParentOptions();
+        });
         syncEngineVisibility();
         document.querySelectorAll('input[name="batch_docs_engine"]').forEach(function (el) {
             el.addEventListener('change', syncEngineVisibility);
@@ -517,25 +382,32 @@ document.documentElement.classList.add('loaded');
         document.getElementById('batchTopics').addEventListener('input', updateTopicsCount);
         updateTopicsCount();
 
+        if (initialBatch && initialSettings) {
+            restoreSettings(initialSettings);
+        }
+
+        // Restores the batch table (and resumes polling) after a refresh.
+        window.DocAiBatch.attach({ initialBatch: initialBatch });
+
         document.getElementById('batchSubmitBtn').addEventListener('click', function () {
             const topics = parseTopics();
             const categoryId = document.getElementById('batch_doc_category_id').value;
 
             if (!topics.length) {
-                alert('يرجى إدخال موضوع واحد على الأقل');
+                window.DocAiBatch.toast({ icon: 'warning', title: 'يرجى إدخال موضوع واحد على الأقل' });
                 return;
             }
             if (topics.length > 30) {
-                alert('الحد الأقصى 30 موضوعاً لكل دفعة');
+                window.DocAiBatch.toast({ icon: 'warning', title: 'الحد الأقصى 30 موضوعاً لكل دفعة' });
                 return;
             }
             const tooLong = topics.find(function (t) { return t.length > 3000; });
             if (tooLong) {
-                alert('أحد المواضيع يتجاوز 3000 حرف — يرجى اختصار النص أو تقسيمه.');
+                window.DocAiBatch.toast({ icon: 'warning', title: 'أحد المواضيع يتجاوز 3000 حرف', text: 'اختصر النص أو قسّمه.' });
                 return;
             }
             if (!categoryId) {
-                alert('يرجى اختيار قسم التوثيق أولاً');
+                window.DocAiBatch.toast({ icon: 'warning', title: 'يرجى اختيار قسم التوثيق أولاً' });
                 return;
             }
 
@@ -571,34 +443,33 @@ document.documentElement.classList.add('loaded');
                     Accept: 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify(payload),
             })
                 .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
                 .then(function (res) {
                     setSubmitting(false);
                     if (res.body.success && res.body.batch) {
-                        renderBatch(res.body.batch);
-                        startPolling(res.body.batch.uuid);
+                        // A new batch replaces whatever was restored on screen.
+                        window.DocAiBatch.resetHistory();
+                        window.DocAiBatch.renderBatch(res.body.batch);
+                        window.DocAiBatch.startPolling(res.body.batch.uuid);
                         return;
                     }
-                    alert(res.body.message || 'تعذر بدء الدفعة');
+                    window.DocAiBatch.toast({
+                        icon: 'error',
+                        title: 'تعذر بدء الدفعة',
+                        text: res.body.message || '',
+                        timer: 7000,
+                    });
                 })
                 .catch(function () {
                     setSubmitting(false);
-                    alert('تعذر بدء الدفعة — تحقق من الاتصال ثم أعد المحاولة');
-                });
-        });
-
-        document.getElementById('batchCancelBtn').addEventListener('click', function () {
-            if (!currentUuid) return;
-            if (!confirm('إلغاء الدفعة؟ المواضيع التي لم تبدأ بعد لن تُعالَج.')) return;
-            fetch(cancelUrlBase.replace('__UUID__', currentUuid), {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (res) {
-                    if (res.success && res.batch) renderBatch(res.batch);
+                    window.DocAiBatch.toast({
+                        icon: 'error',
+                        title: 'تعذر بدء الدفعة',
+                        text: 'تحقق من الاتصال ثم أعد المحاولة.',
+                    });
                 });
         });
     });

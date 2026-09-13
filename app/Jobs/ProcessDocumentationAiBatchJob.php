@@ -51,11 +51,18 @@ class ProcessDocumentationAiBatchJob implements ShouldQueue
 
         $item = $batch->items()->where('status', DocumentationAiBatchItem::STATUS_RUNNING)->first();
         if ($item) {
-            $item->update([
-                'status' => DocumentationAiBatchItem::STATUS_FAILED,
-                'error_message' => $message,
-            ]);
-            $batch->increment('failed');
+            // Guarded on "still running" so this can't fight the runner's own
+            // terminal write, and counters are recomputed rather than nudged.
+            DocumentationAiBatchItem::query()
+                ->whereKey($item->id)
+                ->where('status', DocumentationAiBatchItem::STATUS_RUNNING)
+                ->update([
+                    'status' => DocumentationAiBatchItem::STATUS_FAILED,
+                    'error_message' => $message,
+                    'updated_at' => now(),
+                ]);
+
+            $batch->fresh()?->recountFromItems();
         }
 
         // Don't let one crashed job stall the rest of the batch.

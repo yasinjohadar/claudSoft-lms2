@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class DocumentationAiGeneration extends Model
@@ -156,7 +157,9 @@ class DocumentationAiGeneration extends Model
 
     public function isStaged(): bool
     {
-        return $this->sections()->exists();
+        return $this->relationLoaded('sections')
+            ? $this->sections->isNotEmpty()
+            : $this->sections()->exists();
     }
 
     /**
@@ -164,11 +167,13 @@ class DocumentationAiGeneration extends Model
      */
     public function sectionSummary(): array
     {
-        /** @var \Illuminate\Support\Collection<int, DocumentationAiSection> $sections */
+        /** @var Collection<int, DocumentationAiSection> $sections */
         $sections = $this->relationLoaded('sections') ? $this->sections : $this->sections()->get();
 
-        $done = $sections->where('status', DocumentationAiSection::STATUS_DONE)->count();
-        $failed = $sections->where('status', DocumentationAiSection::STATUS_FAILED);
+        // assemble() treats a "done" row with empty html as unfinished, so count the
+        // same way here — otherwise the UI can claim 13/13 while the run is paused.
+        $done = $sections->filter(fn (DocumentationAiSection $s) => $s->isDone())->count();
+        $failed = $sections->reject(fn (DocumentationAiSection $s) => $s->isDone());
 
         return [
             'planned' => $sections->count(),
@@ -185,7 +190,32 @@ class DocumentationAiGeneration extends Model
             return false;
         }
 
-        return $this->sections()->where('status', '!=', DocumentationAiSection::STATUS_DONE)->exists();
+        // Prefer the eager-loaded relation: batch polling asks this for every
+        // stopped item every few seconds, and a fresh query here was an N+1.
+        return $this->relationLoaded('sections')
+            ? $this->sections->contains(fn (DocumentationAiSection $s) => ! $s->isDone())
+            : $this->sections()->where('status', '!=', DocumentationAiSection::STATUS_DONE)->exists();
+    }
+
+    /** Short Arabic sentence describing the progress that is already saved. */
+    public function progressHint(): ?string
+    {
+        if (! $this->isStaged()) {
+            return null;
+        }
+
+        $summary = $this->sectionSummary();
+        if ($summary['planned'] === 0) {
+            return null;
+        }
+
+        $hint = 'تم توليد '.$summary['done'].' من '.$summary['planned'].' قسماً وحُفظت';
+
+        if ($summary['remaining'] > 0) {
+            $hint .= ' — متبقٍّ '.$summary['remaining'].' قسماً';
+        }
+
+        return $hint;
     }
 
     /** Running but the worker stopped writing heartbeats (process killed / crashed). */
@@ -216,6 +246,7 @@ class DocumentationAiGeneration extends Model
             'error_message' => $this->error_message,
             'sections' => $summary,
             'resumable' => $this->isResumable(),
+            'stale' => $this->isStale(),
             'partial_content_available' => $summary !== null && $summary['done'] > 0,
             'queue_hint' => $this->status === self::STATUS_QUEUED
                 && config('queue.default') !== 'sync',

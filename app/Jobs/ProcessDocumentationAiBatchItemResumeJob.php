@@ -13,9 +13,13 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Resumes one failed batch item, completing only its missing sections. Only
- * ever dispatched once the whole batch has already finished, so it never
- * runs concurrently with ProcessDocumentationAiBatchJob working another item.
+ * Deprecated compatibility shim.
+ *
+ * Resuming a topic no longer has its own driver: the item is parked in
+ * DocumentationAiBatchItem::STATUS_RESUME_QUEUED and picked up by the normal
+ * batch driver, which is what keeps one topic in flight at a time. This class
+ * only stays so instances already sitting in the queue when the change deploys
+ * still do the right thing instead of erroring.
  */
 class ProcessDocumentationAiBatchItemResumeJob implements ShouldQueue
 {
@@ -29,27 +33,19 @@ class ProcessDocumentationAiBatchItemResumeJob implements ShouldQueue
 
     public function handle(DocumentationAiBatchRunner $runner): void
     {
-        $runner->resumeItem($this->itemId);
+        $item = DocumentationAiBatchItem::query()->find($this->itemId);
+        if (! $item) {
+            return;
+        }
+
+        $runner->dispatchNext($item->batch_id);
     }
 
     public function failed(?Throwable $exception): void
     {
-        $message = $exception?->getMessage() ?: 'فشل غير معروف أثناء متابعة التوليد.';
-        Log::error('ProcessDocumentationAiBatchItemResumeJob failed', [
+        Log::error('ProcessDocumentationAiBatchItemResumeJob (shim) failed', [
             'item_id' => $this->itemId,
-            'message' => $message,
+            'message' => $exception?->getMessage(),
         ]);
-
-        $item = DocumentationAiBatchItem::query()->with('batch')->find($this->itemId);
-        if (! $item || ! $item->batch || $item->status !== DocumentationAiBatchItem::STATUS_RUNNING) {
-            return;
-        }
-
-        $item->update([
-            'status' => DocumentationAiBatchItem::STATUS_FAILED,
-            'error_message' => $message,
-        ]);
-
-        app(DocumentationAiBatchRunner::class)->finalizeBatchIfDone($item->batch->fresh());
     }
 }

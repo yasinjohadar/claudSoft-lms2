@@ -44,7 +44,20 @@ class DocumentationAiSection extends Model
 
     public function isDone(): bool
     {
-        return $this->status === self::STATUS_DONE && trim((string) $this->html) !== '';
+        if ($this->status !== self::STATUS_DONE) {
+            return false;
+        }
+
+        // Callers that poll this relation every few seconds load the row without
+        // its LONGTEXT body and project LENGTH(html) instead, so the emptiness
+        // check works off that projection when the body itself is absent.
+        if (! array_key_exists('html', $this->attributes)
+            && array_key_exists('html_length', $this->attributes)
+        ) {
+            return (int) $this->attributes['html_length'] > 0;
+        }
+
+        return trim((string) $this->html) !== '';
     }
 
     public function markDone(string $html, int $attempts): void
