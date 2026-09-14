@@ -49,8 +49,6 @@ class DashboardController extends Controller
             ['route' => 'groups.all', 'icon' => 'fe-users', 'title' => 'المجموعات', 'subtitle' => 'إدارة المجموعات', 'color' => 'indigo'],
             ['route' => 'admin.frontend-courses.index', 'icon' => 'fe-globe', 'title' => 'الواجهة', 'subtitle' => 'الكورسات الأمامية', 'color' => 'purple'],
             ['route' => 'admin.settings.email.index', 'icon' => 'fe-mail', 'title' => 'البريد', 'subtitle' => 'إعدادات البريد', 'color' => 'secondary'],
-            ['route' => 'admin.n8n.index', 'icon' => 'fe-zap', 'title' => 'n8n', 'subtitle' => 'تكامل n8n', 'color' => 'info'],
-            ['route' => 'admin.webhooks.index', 'icon' => 'fe-git-commit', 'title' => 'Webhooks', 'subtitle' => 'الويب هوكس', 'color' => 'teal'],
         ];
 
         return view('admin.dashboard', compact(

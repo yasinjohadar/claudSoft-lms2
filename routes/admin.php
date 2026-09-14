@@ -93,7 +93,6 @@ use App\Http\Controllers\Admin\LessonSimulatorController;
 use App\Http\Controllers\Admin\MarketingAnalyticsController;
 use App\Http\Controllers\Admin\MetaPixelSettingController;
 use App\Http\Controllers\Admin\ModuleCompletionReportController;
-use App\Http\Controllers\Admin\N8nWebhookController;
 use App\Http\Controllers\Admin\NotificationHubAdminController;
 use App\Http\Controllers\Admin\NotificationManagementController;
 use App\Http\Controllers\Admin\PasswordResetMessageSettingsController;
@@ -145,8 +144,6 @@ use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\WapiAutomationRuleController;
 use App\Http\Controllers\Admin\WapiTemplateController;
-use App\Http\Controllers\Admin\WebhookManagementController;
-use App\Http\Controllers\Admin\WebhookTokenController;
 use App\Http\Controllers\Admin\WhatsAppMessageController;
 use App\Http\Controllers\Admin\WhatsAppMessageTemplateController;
 use App\Http\Controllers\Admin\WhatsAppSettingsController;
@@ -1009,67 +1006,6 @@ Route::prefix('admin')
             Route::post('/{review}/reject', [FrontendReviewController::class, 'reject'])->name('reject');
             Route::post('/{review}/toggle-featured', [FrontendReviewController::class, 'toggleFeatured'])->name('toggle-featured');
             Route::delete('/{review}', [FrontendReviewController::class, 'destroy'])->name('destroy');
-        });
-
-        // ========== Webhooks Management Routes ==========
-        Route::prefix('webhooks')->name('admin.webhooks.')->group(function () {
-            Route::get('/', [WebhookManagementController::class, 'index'])->name('index');
-            Route::get('/submissions', [WebhookManagementController::class, 'submissions'])->name('submissions');
-            Route::get('/submissions/{submission}', [WebhookManagementController::class, 'showSubmission'])->name('submission.show');
-            Route::post('/submissions/{submission}/retry', [WebhookManagementController::class, 'retrySubmission'])->name('submission.retry');
-            Route::get('/logs', [WebhookManagementController::class, 'logs'])->name('logs');
-            Route::get('/logs/{log}', [WebhookManagementController::class, 'showLog'])->name('log.show');
-            Route::post('/cleanup', [WebhookManagementController::class, 'cleanupLogs'])->name('cleanup');
-            Route::get('/export', [WebhookManagementController::class, 'export'])->name('export');
-
-            // Webhook Tokens Management
-            Route::prefix('tokens')->name('tokens.')->group(function () {
-                Route::get('/', [WebhookTokenController::class, 'index'])->name('index');
-                Route::get('/create', [WebhookTokenController::class, 'create'])->name('create');
-                Route::post('/', [WebhookTokenController::class, 'store'])->name('store');
-                Route::get('/{token}', [WebhookTokenController::class, 'show'])->name('show');
-                Route::get('/{token}/edit', [WebhookTokenController::class, 'edit'])->name('edit');
-                Route::put('/{token}', [WebhookTokenController::class, 'update'])->name('update');
-                Route::delete('/{token}', [WebhookTokenController::class, 'destroy'])->name('destroy');
-                Route::post('/{token}/toggle', [WebhookTokenController::class, 'toggleActive'])->name('toggle');
-                Route::get('/generate/token', [WebhookTokenController::class, 'generateToken'])->name('generate');
-            });
-        });
-
-        // ========== n8n Webhooks Integration Routes ==========
-        Route::prefix('n8n')->name('admin.n8n.')->group(function () {
-            // Dashboard
-            Route::get('/', [N8nWebhookController::class, 'index'])->name('index');
-
-            // Endpoints Management
-            Route::get('/endpoints', [N8nWebhookController::class, 'endpoints'])->name('endpoints.index');
-            Route::get('/endpoints/create', [N8nWebhookController::class, 'createEndpoint'])->name('endpoints.create');
-            Route::post('/endpoints', [N8nWebhookController::class, 'storeEndpoint'])->name('endpoints.store');
-            Route::get('/endpoints/{endpoint}', [N8nWebhookController::class, 'showEndpoint'])->name('endpoints.show');
-            Route::get('/endpoints/{endpoint}/edit', [N8nWebhookController::class, 'editEndpoint'])->name('endpoints.edit');
-            Route::put('/endpoints/{endpoint}', [N8nWebhookController::class, 'updateEndpoint'])->name('endpoints.update');
-            Route::delete('/endpoints/{endpoint}', [N8nWebhookController::class, 'destroyEndpoint'])->name('endpoints.destroy');
-            Route::post('/endpoints/{endpoint}/toggle', [N8nWebhookController::class, 'toggleEndpoint'])->name('endpoints.toggle');
-            Route::post('/endpoints/{endpoint}/test', [N8nWebhookController::class, 'testEndpoint'])->name('endpoints.test');
-
-            // Logs Management
-            Route::get('/logs', [N8nWebhookController::class, 'logs'])->name('logs.index');
-            Route::get('/logs/{log}', [N8nWebhookController::class, 'showLog'])->name('logs.show');
-            Route::post('/logs/{log}/retry', [N8nWebhookController::class, 'retryLog'])->name('logs.retry');
-
-            // Incoming Handlers Management
-            Route::get('/handlers', [N8nWebhookController::class, 'handlers'])->name('handlers.index');
-            Route::get('/handlers/create', [N8nWebhookController::class, 'createHandler'])->name('handlers.create');
-            Route::post('/handlers', [N8nWebhookController::class, 'storeHandler'])->name('handlers.store');
-            Route::get('/handlers/{handler}', [N8nWebhookController::class, 'showHandler'])->name('handlers.show');
-            Route::get('/handlers/{handler}/edit', [N8nWebhookController::class, 'editHandler'])->name('handlers.edit');
-            Route::put('/handlers/{handler}', [N8nWebhookController::class, 'updateHandler'])->name('handlers.update');
-            Route::delete('/handlers/{handler}', [N8nWebhookController::class, 'destroyHandler'])->name('handlers.destroy');
-            Route::post('/handlers/{handler}/toggle', [N8nWebhookController::class, 'toggleHandler'])->name('handlers.toggle');
-
-            // Documentation & Statistics
-            Route::get('/documentation', [N8nWebhookController::class, 'documentation'])->name('documentation');
-            Route::get('/statistics', [N8nWebhookController::class, 'statistics'])->name('statistics');
         });
 
         // Frontend Courses Management

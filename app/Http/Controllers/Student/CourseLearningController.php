@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Student;
 
 use App\Events\CourseCompleted;
 use App\Events\LessonCompleted;
-use App\Events\N8nWebhookEvent;
 use App\Events\StudentActivityTracked;
 use App\Http\Controllers\Controller;
-use App\Models\Course;
 use App\Models\Assignment;
+use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -16,11 +15,14 @@ use App\Models\DocumentationPageLink;
 use App\Models\ModuleCompletion;
 use App\Models\Resource;
 use App\Models\SectionCompletion;
+use App\Models\Video;
 use App\Services\AccessControlService;
 use App\Services\Gamification\GamificationService;
+use App\Services\QuestionModule\QuestionModuleAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 class CourseLearningController extends Controller
 {
     /**
@@ -218,7 +220,7 @@ class CourseLearningController extends Controller
             $module->modulable->load(['questions.questionType']);
 
             if (auth()->check()) {
-                app(\App\Services\QuestionModule\QuestionModuleAttemptLifecycleService::class)
+                app(QuestionModuleAttemptLifecycleService::class)
                     ->reconcileForStudent($module->modulable, (int) auth()->id());
             }
         }
@@ -313,33 +315,10 @@ class CourseLearningController extends Controller
             // Dispatch LessonCompleted event for gamification
             LessonCompleted::dispatch(auth()->user(), $module);
 
-            // Dispatch n8n webhook event for lesson completion
-            event(new N8nWebhookEvent('lesson.completed', [
-                'student_id' => auth()->id(),
-                'student_name' => auth()->user()->name,
-                'student_email' => auth()->user()->email,
-                'lesson_id' => $module->id,
-                'lesson_title' => $module->title,
-                'course_id' => $module->course_id,
-                'course_title' => $module->course->title ?? null,
-                'completion_percentage' => $courseCompletion,
-                'completed_at' => now()->toIso8601String(),
-            ]));
-
             // Check if course is fully completed and dispatch event
             if ($courseCompletion >= 100) {
                 CourseCompleted::dispatch(auth()->user(), $module->course);
 
-                // Dispatch n8n webhook event for course completion
-                event(new N8nWebhookEvent('course.completed', [
-                    'student_id' => auth()->id(),
-                    'student_name' => auth()->user()->name,
-                    'student_email' => auth()->user()->email,
-                    'course_id' => $module->course_id,
-                    'course_title' => $module->course->title ?? null,
-                    'completion_percentage' => 100,
-                    'completed_at' => now()->toIso8601String(),
-                ]));
             }
 
             DB::commit();
@@ -578,7 +557,7 @@ class CourseLearningController extends Controller
                 ];
 
             case 'video':
-                $isBunny = $modulable instanceof \App\Models\Video && $modulable->isBunnyStreamVideo();
+                $isBunny = $modulable instanceof Video && $modulable->isBunnyStreamVideo();
 
                 return [
                     'video_type' => $modulable->video_type,

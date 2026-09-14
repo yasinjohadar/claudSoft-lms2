@@ -2,34 +2,48 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\N8nWebhookEvent;
 use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
 use App\Models\CampEnrollment;
+use App\Models\Certificate;
+use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseGroup;
-use App\Models\Invoice;
+use App\Models\CourseGroupMember;
+use App\Models\CourseGroupMembershipHistory;
 use App\Models\EmailSetting;
 use App\Models\EmailTemplate;
 use App\Models\EvolutionInstance;
-use App\Models\WhatsAppMessageTemplate;
+use App\Models\Invoice;
 use App\Models\Nationality;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\QuizAttempt;
+use App\Models\TrainingCamp;
 use App\Models\User;
 use App\Models\UserAdminNote;
+use App\Models\UserDevice;
+use App\Models\UserSession;
+use App\Models\WhatsAppMessageTemplate;
 use App\Rules\PhoneMatchesCountryCode;
 use App\Rules\UniqueUserFullPhone;
 use App\Services\Admin\ActivityLogService;
 use App\Services\Admin\AdminUserListQueryService;
+use App\Services\Auth\AccountCreatedCredentialDeliveryService;
+use App\Services\Auth\PasswordCredentialDeliveryService;
 use App\Services\Storage\StorageHelperService;
 use App\Services\Student\StudentAccountTierService;
 use App\Services\TrainingCampEnrollmentService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -189,7 +203,7 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{emailTemplates: \Illuminate\Database\Eloquent\Collection, emailSettings: \Illuminate\Database\Eloquent\Collection, defaultEmailSetting: ?EmailSetting}
+     * @return array{emailTemplates: Collection, emailSettings: Collection, defaultEmailSetting: ?EmailSetting}
      */
     private function emailFormData(): array
     {
@@ -201,7 +215,7 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{whatsappTemplates: \Illuminate\Database\Eloquent\Collection, evolutionInstances: \Illuminate\Database\Eloquent\Collection, defaultEvolutionInstance: ?EvolutionInstance}
+     * @return array{whatsappTemplates: Collection, evolutionInstances: Collection, defaultEvolutionInstance: ?EvolutionInstance}
      */
     private function whatsappFormData(): array
     {
@@ -303,23 +317,13 @@ class UserController extends Controller
             $user->assignStudentSerial();
         }
 
-        // Dispatch n8n webhook event
-        event(new N8nWebhookEvent('user.registered', [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'roles' => $user->roles->pluck('name')->toArray(),
-            'registered_at' => now()->toIso8601String(),
-        ]));
-
         $credentialsMessage = '';
         if ($request->boolean('send_credentials', true)) {
             try {
-                $result = app(\App\Services\Auth\AccountCreatedCredentialDeliveryService::class)->deliver(
+                $result = app(AccountCreatedCredentialDeliveryService::class)->deliver(
                     $user,
                     $request->password,
-                    \App\Services\Auth\AccountCreatedCredentialDeliveryService::CONTEXT_ADMIN_CREATE,
+                    AccountCreatedCredentialDeliveryService::CONTEXT_ADMIN_CREATE,
                 );
 
                 $parts = [];
@@ -335,7 +339,7 @@ class UserController extends Controller
                     $credentialsMessage = ' لكن تعذّر إرسال بعض قنوات بيانات الدخول.';
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send account credentials on admin create', [
+                Log::error('Failed to send account credentials on admin create', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -356,7 +360,7 @@ class UserController extends Controller
         $accountTierLabel = $tierService->label($accountTier);
 
         // Enrollments & course stats
-        $enrollments = \App\Models\CourseEnrollment::where('student_id', $id)
+        $enrollments = CourseEnrollment::where('student_id', $id)
             ->with(['course.category', 'course.instructor'])
             ->orderBy('enrollment_date', 'desc')
             ->get();
@@ -369,7 +373,7 @@ class UserController extends Controller
         ];
 
         // Quiz attempts
-        $quizAttempts = \App\Models\QuizAttempt::where('student_id', $id)
+        $quizAttempts = QuizAttempt::where('student_id', $id)
             ->with('quiz')
             ->orderByDesc('completed_at')
             ->limit(10)
@@ -382,12 +386,12 @@ class UserController extends Controller
         ];
 
         // Payments & invoices
-        $invoices = \App\Models\Invoice::where('student_id', $id)
+        $invoices = Invoice::where('student_id', $id)
             ->orderByDesc('issue_date')
             ->limit(10)
             ->get();
 
-        $payments = \App\Models\Payment::where('student_id', $id)
+        $payments = Payment::where('student_id', $id)
             ->with('paymentMethod', 'invoice')
             ->orderByDesc('payment_date')
             ->limit(10)
@@ -405,41 +409,41 @@ class UserController extends Controller
             ->get(['id', 'invoice_number', 'remaining_amount', 'total_amount', 'status']);
 
         // Certificates
-        $certificates = \App\Models\Certificate::where('user_id', $id)
+        $certificates = Certificate::where('user_id', $id)
             ->with('course')
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
 
         // Groups
-        $groups = \App\Models\CourseGroupMember::where('student_id', $id)
+        $groups = CourseGroupMember::where('student_id', $id)
             ->with(['group.courses'])
             ->orderByDesc('joined_at')
             ->get();
 
-        $groupMembershipHistories = \App\Models\CourseGroupMembershipHistory::forStudent((int) $id)
+        $groupMembershipHistories = CourseGroupMembershipHistory::forStudent((int) $id)
             ->with(['group.courses', 'joinedByUser', 'removedByUser'])
             ->orderByDesc('joined_at')
             ->get();
 
         // User Sessions
-        $userSessions = \App\Models\UserSession::where('user_id', $id)
+        $userSessions = UserSession::where('user_id', $id)
             ->withCount('activities')
             ->orderByDesc('started_at')
             ->limit(20)
             ->get();
 
         $sessionStats = [
-            'total' => \App\Models\UserSession::where('user_id', $id)->count(),
-            'active' => \App\Models\UserSession::where('user_id', $id)->where('status', 'active')->count(),
-            'completed' => \App\Models\UserSession::where('user_id', $id)->where('status', 'completed')->count(),
-            'avg_duration' => \App\Models\UserSession::where('user_id', $id)
+            'total' => UserSession::where('user_id', $id)->count(),
+            'active' => UserSession::where('user_id', $id)->where('status', 'active')->count(),
+            'completed' => UserSession::where('user_id', $id)->where('status', 'completed')->count(),
+            'avg_duration' => UserSession::where('user_id', $id)
                 ->whereNotNull('duration_seconds')
                 ->avg('duration_seconds'),
         ];
 
         // User Devices
-        $userDevices = \App\Models\UserDevice::where('user_id', $id)
+        $userDevices = UserDevice::where('user_id', $id)
             ->orderByDesc('last_used_at')
             ->get();
 
@@ -451,7 +455,7 @@ class UserController extends Controller
 
         $adminNotes = $user->adminNotes()->with('creator')->get();
 
-        $campEnrollments = \App\Models\CampEnrollment::where('student_id', $id)
+        $campEnrollments = CampEnrollment::where('student_id', $id)
             ->with(['camp.category', 'invoice'])
             ->orderByDesc('enrollment_date')
             ->get();
@@ -464,7 +468,7 @@ class UserController extends Controller
 
         $enrolledCampIds = $campEnrollments->pluck('camp_id')->all();
 
-        $availableGroups = \App\Models\CourseGroup::where('is_active', true)
+        $availableGroups = CourseGroup::where('is_active', true)
             ->whereDoesntHave('members', function ($query) use ($id) {
                 $query->where('student_id', $id);
             })
@@ -472,7 +476,7 @@ class UserController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $availableCamps = \App\Models\TrainingCamp::where('is_active', true)
+        $availableCamps = TrainingCamp::where('is_active', true)
             ->when(count($enrolledCampIds) > 0, fn ($q) => $q->whereNotIn('id', $enrolledCampIds))
             ->orderBy('name')
             ->get(['id', 'name', 'price', 'start_date', 'end_date', 'location']);
@@ -836,10 +840,10 @@ class UserController extends Controller
         ]);
 
         if ($request->boolean('send_credentials')) {
-            app(\App\Services\Auth\PasswordCredentialDeliveryService::class)->deliver(
+            app(PasswordCredentialDeliveryService::class)->deliver(
                 $user,
                 $validated['password'],
-                \App\Services\Auth\PasswordCredentialDeliveryService::CONTEXT_ADMIN_RESET
+                PasswordCredentialDeliveryService::CONTEXT_ADMIN_RESET
             );
         }
 
@@ -951,7 +955,7 @@ class UserController extends Controller
         }
 
         // جلب كل التسجيلات مع الكورسات
-        $enrollments = \App\Models\CourseEnrollment::where('student_id', $userId)
+        $enrollments = CourseEnrollment::where('student_id', $userId)
             ->with(['course.category', 'course.instructor'])
             ->orderBy('enrollment_date', 'desc')
             ->get();
@@ -983,7 +987,7 @@ class UserController extends Controller
         }
 
         // جلب المجموعات التي ينتمي إليها الطالب
-        $groupMemberships = \App\Models\CourseGroupMember::where('student_id', $user->id)
+        $groupMemberships = CourseGroupMember::where('student_id', $user->id)
             ->with(['group.courses' => function ($query) {
                 $query->wherePivot('is_visible', true);
             }])
@@ -991,7 +995,7 @@ class UserController extends Controller
             ->get();
 
         // جلب جميع الكورسات المسجلة فيها الطالب
-        $enrollments = \App\Models\CourseEnrollment::where('student_id', $user->id)
+        $enrollments = CourseEnrollment::where('student_id', $user->id)
             ->with(['course.category', 'course.instructor'])
             ->orderBy('enrollment_date', 'desc')
             ->get();
@@ -1003,12 +1007,12 @@ class UserController extends Controller
         })->unique()->toArray();
 
         $standaloneCourseIds = array_diff($enrolledCourseIds, $groupCourseIds);
-        $standaloneCourses = \App\Models\Course::whereIn('id', $standaloneCourseIds)
+        $standaloneCourses = Course::whereIn('id', $standaloneCourseIds)
             ->with(['category', 'instructor'])
             ->get();
 
         // جلب جميع المجموعات المتاحة (لإضافة الطالب إليها)
-        $availableGroups = \App\Models\CourseGroup::where('is_active', true)
+        $availableGroups = CourseGroup::where('is_active', true)
             ->whereDoesntHave('members', function ($query) use ($user) {
                 $query->where('student_id', $user->id);
             })
@@ -1017,7 +1021,7 @@ class UserController extends Controller
             ->get();
 
         // جلب جميع الكورسات المتاحة (غير المسجلة فيها الطالب)
-        $availableCourses = \App\Models\Course::where('is_published', true)
+        $availableCourses = Course::where('is_published', true)
             ->where('is_visible', true)
             ->whereNotIn('id', $enrolledCourseIds)
             ->with(['category', 'instructor'])
@@ -1046,7 +1050,7 @@ class UserController extends Controller
         ]);
 
         try {
-            $group = \App\Models\CourseGroup::findOrFail($validated['group_id']);
+            $group = CourseGroup::findOrFail($validated['group_id']);
 
             if ($group->hasMember($user)) {
                 $message = 'الطالب موجود بالفعل في هذه المجموعة';
@@ -1066,7 +1070,7 @@ class UserController extends Controller
 
             $role = $validated['role'] ?? 'member';
             $memberRecord = $group->addMember($user, $role, [
-                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_PROFILE,
+                'source' => CourseGroupMembershipHistory::SOURCE_PROFILE,
                 'reason' => $validated['reason'] ?? null,
             ]);
 
@@ -1081,14 +1085,14 @@ class UserController extends Controller
             $message = "تم إضافة الطالب {$user->name} إلى المجموعة {$group->name} بنجاح";
 
             if ($request->wantsJson()) {
-                $member = \App\Models\CourseGroupMember::query()
+                $member = CourseGroupMember::query()
                     ->where('group_id', $group->id)
                     ->where('student_id', $user->id)
                     ->with(['group.courses'])
                     ->first();
 
-                $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
-                $history = \App\Models\CourseGroupMembershipHistory::forStudent($user->id)
+                $total = CourseGroupMember::where('student_id', $user->id)->count();
+                $history = CourseGroupMembershipHistory::forStudent($user->id)
                     ->where('group_id', $group->id)
                     ->whereNull('left_at')
                     ->latest('joined_at')
@@ -1114,7 +1118,7 @@ class UserController extends Controller
             }
 
             return redirect()->back()->with('success', $message);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             if ($request->wantsJson()) {
                 throw $e;
             }
@@ -1132,7 +1136,7 @@ class UserController extends Controller
     /**
      * Add student to a training camp (AJAX from profile).
      */
-    public function addToCamp(Request $request, User $user, TrainingCampEnrollmentService $enrollmentService): JsonResponse|\Illuminate\Http\RedirectResponse
+    public function addToCamp(Request $request, User $user, TrainingCampEnrollmentService $enrollmentService): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
             'camp_id' => 'required|exists:training_camps,id',
@@ -1143,7 +1147,7 @@ class UserController extends Controller
         ]);
 
         try {
-            $camp = \App\Models\TrainingCamp::findOrFail($validated['camp_id']);
+            $camp = TrainingCamp::findOrFail($validated['camp_id']);
             $campFee = array_key_exists('price', $validated) && $validated['price'] !== null
                 ? (float) $validated['price']
                 : null;
@@ -1159,7 +1163,7 @@ class UserController extends Controller
 
             $enrollment->load(['camp.category', 'invoice']);
 
-            $campEnrollments = \App\Models\CampEnrollment::where('student_id', $user->id)->get();
+            $campEnrollments = CampEnrollment::where('student_id', $user->id)->get();
             $campStats = [
                 'total' => $campEnrollments->count(),
                 'approved' => $campEnrollments->where('status', 'approved')->count(),
@@ -1190,7 +1194,7 @@ class UserController extends Controller
             return $request->wantsJson()
                 ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
                 : redirect()->back()->with('error', $e->getMessage());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             if ($request->wantsJson()) {
                 throw $e;
             }
@@ -1293,7 +1297,7 @@ class UserController extends Controller
         User $user,
         CampEnrollment $enrollment,
         TrainingCampEnrollmentService $enrollmentService
-    ): JsonResponse|\Illuminate\Http\RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         if ((int) $enrollment->student_id !== (int) $user->id) {
             abort(404);
         }
@@ -1350,7 +1354,7 @@ class UserController extends Controller
         ]);
 
         try {
-            $group = \App\Models\CourseGroup::withCount('courses')->findOrFail($validated['group_id']);
+            $group = CourseGroup::withCount('courses')->findOrFail($validated['group_id']);
 
             if (! $group->hasMember($user)) {
                 $message = 'الطالب غير موجود في هذه المجموعة';
@@ -1365,7 +1369,7 @@ class UserController extends Controller
             $coursesCount = (int) $group->courses_count;
 
             $removed = $group->removeMember($user, [
-                'source' => \App\Models\CourseGroupMembershipHistory::SOURCE_PROFILE,
+                'source' => CourseGroupMembershipHistory::SOURCE_PROFILE,
                 'reason' => $validated['reason'] ?? null,
             ]);
 
@@ -1380,8 +1384,8 @@ class UserController extends Controller
             $message = "تم إلغاء انضمام الطالب {$user->name} من المجموعة {$groupName} بنجاح";
 
             if ($request->wantsJson()) {
-                $total = \App\Models\CourseGroupMember::where('student_id', $user->id)->count();
-                $history = \App\Models\CourseGroupMembershipHistory::forStudent($user->id)
+                $total = CourseGroupMember::where('student_id', $user->id)->count();
+                $history = CourseGroupMembershipHistory::forStudent($user->id)
                     ->where('group_id', $groupId)
                     ->whereNotNull('left_at')
                     ->latest('left_at')
@@ -1409,7 +1413,7 @@ class UserController extends Controller
             }
 
             return redirect()->back()->with('success', $message);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             if ($request->wantsJson()) {
                 throw $e;
             }
@@ -1435,10 +1439,10 @@ class UserController extends Controller
         ]);
 
         try {
-            $course = \App\Models\Course::findOrFail($request->course_id);
+            $course = Course::findOrFail($request->course_id);
 
             // التحقق من أن الطالب ليس مسجلاً في الكورس بالفعل
-            $existingEnrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+            $existingEnrollment = CourseEnrollment::where('course_id', $course->id)
                 ->where('student_id', $user->id)
                 ->first();
 
@@ -1449,7 +1453,7 @@ class UserController extends Controller
 
             // التحقق من أن الكورس ليس ممتلئاً
             if ($course->max_students) {
-                $currentEnrollments = \App\Models\CourseEnrollment::where('course_id', $course->id)->count();
+                $currentEnrollments = CourseEnrollment::where('course_id', $course->id)->count();
                 if ($currentEnrollments >= $course->max_students) {
                     return redirect()->back()
                         ->with('error', 'الكورس ممتلئ');
@@ -1457,7 +1461,7 @@ class UserController extends Controller
             }
 
             // تسجيل الطالب في الكورس
-            $enrollment = \App\Models\CourseEnrollment::create([
+            $enrollment = CourseEnrollment::create([
                 'course_id' => $course->id,
                 'student_id' => $user->id,
                 'enrollment_date' => now(),
@@ -1467,22 +1471,7 @@ class UserController extends Controller
                 'certificate_issued' => false,
             ]);
 
-            // Dispatch n8n webhook event
             if ($enrollment->enrollment_status === 'active') {
-                try {
-                    event(new N8nWebhookEvent('student.enrolled', [
-                        'student_id' => $user->id,
-                        'student_name' => $user->name ?? null,
-                        'student_email' => $user->email ?? null,
-                        'course_id' => $course->id,
-                        'course_title' => $course->title ?? null,
-                        'enrollment_id' => $enrollment->id,
-                        'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                        'enrolled_by' => $enrollment->enrolled_by,
-                    ]));
-                } catch (\Exception $e) {
-                    \Log::warning('Webhook event failed for enrollment '.$enrollment->id.': '.$e->getMessage());
-                }
                 event(new StudentEnrolledInCourse($user, $course, $enrollment));
             }
 
@@ -1504,10 +1493,10 @@ class UserController extends Controller
         ]);
 
         try {
-            $course = \App\Models\Course::findOrFail($request->course_id);
+            $course = Course::findOrFail($request->course_id);
 
             // البحث عن التسجيل
-            $enrollment = \App\Models\CourseEnrollment::where('course_id', $course->id)
+            $enrollment = CourseEnrollment::where('course_id', $course->id)
                 ->where('student_id', $user->id)
                 ->first();
 
@@ -1517,7 +1506,7 @@ class UserController extends Controller
             }
 
             // التحقق من أن الطالب ليس مسجلاً في الكورس من خلال مجموعة
-            $groupEnrollments = \App\Models\CourseGroupMember::where('student_id', $user->id)
+            $groupEnrollments = CourseGroupMember::where('student_id', $user->id)
                 ->whereHas('group.courses', function ($query) use ($course) {
                     $query->where('courses.id', $course->id);
                 })

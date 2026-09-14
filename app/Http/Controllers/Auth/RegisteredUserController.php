@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Events\N8nWebhookEvent;
 use App\Rules\UniqueUserFullPhone;
 use App\Services\Auth\PhoneOtpService;
-use App\Enums\OtpPurpose;
 use App\Services\Gamification\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
@@ -39,7 +39,7 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
@@ -100,14 +100,6 @@ class RegisteredUserController extends Controller
         session()->forget('referral_code');
 
         event(new Registered($user));
-
-        // Dispatch n8n webhook event
-        event(new N8nWebhookEvent('user.registered', [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'registered_at' => now()->toIso8601String(),
-        ]));
 
         Auth::login($user);
 

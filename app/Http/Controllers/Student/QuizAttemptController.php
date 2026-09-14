@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Student;
 
+use App\Events\QuizCompleted;
 use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseModule;
 use App\Models\QuestionBank;
 use App\Models\Quiz;
-use App\Models\QuizAttempt;
-use App\Models\QuizResponse;
-use App\Models\QuizSettings;
 use App\Models\QuizAnalytics;
+use App\Models\QuizAttempt;
 use App\Services\Quiz\QuizAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Events\QuizCompleted;
 
 class QuizAttemptController extends Controller
 {
@@ -21,6 +21,7 @@ class QuizAttemptController extends Controller
         protected QuizAttemptStartService $attemptStartService,
         protected QuizAttemptLifecycleService $attemptLifecycle,
     ) {}
+
     /**
      * Display available quizzes for student.
      */
@@ -68,7 +69,7 @@ class QuizAttemptController extends Controller
                 ->count('quiz_id'),
         ];
 
-        $courses = \App\Models\Course::whereIn('id',
+        $courses = Course::whereIn('id',
             Quiz::whereIn('course_id', $enrolledCourseIds)
                 ->where('is_published', true)
                 ->where('is_visible', true)
@@ -79,7 +80,7 @@ class QuizAttemptController extends Controller
         $quizzes = $query->paginate(15);
 
         // Add attempt information for each quiz
-        $quizzes->getCollection()->transform(function($quiz) use ($studentId) {
+        $quizzes->getCollection()->transform(function ($quiz) use ($studentId) {
             $quiz->student_attempts_count = $quiz->attempts()
                 ->where('student_id', $studentId)
                 ->count();
@@ -109,7 +110,7 @@ class QuizAttemptController extends Controller
             ->findOrFail($id);
 
         // Check if student can access this quiz
-        if (!$this->canAccessQuiz($quiz, $studentId)) {
+        if (! $this->canAccessQuiz($quiz, $studentId)) {
             return redirect()->route('student.quizzes.index')
                 ->withErrors(['error' => 'ليس لديك صلاحية للوصول إلى هذا الاختبار']);
         }
@@ -156,7 +157,7 @@ class QuizAttemptController extends Controller
                 'quiz_password' => 'required|string',
             ]);
 
-            if (!$quiz->settings->verifyPassword($request->quiz_password)) {
+            if (! $quiz->settings->verifyPassword($request->quiz_password)) {
                 return back()->withErrors(['quiz_password' => 'كلمة المرور غير صحيحة']);
             }
         }
@@ -179,7 +180,7 @@ class QuizAttemptController extends Controller
         }
 
         // Check if can attempt
-        if (!$quiz->canAttempt($studentId)) {
+        if (! $quiz->canAttempt($studentId)) {
             return back()->withErrors(['error' => 'لا يمكنك بدء محاولة جديدة للاختبار']);
         }
 
@@ -298,13 +299,13 @@ class QuizAttemptController extends Controller
             'quiz.settings',
             'quiz.quizQuestions.question.questionType',
             'quiz.quizQuestions.question.options',
-            'responses'
+            'responses',
         ])->findOrFail($attemptId);
 
         $studentId = auth()->id();
 
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه المحاولة');
         }
 
@@ -313,8 +314,8 @@ class QuizAttemptController extends Controller
                 $attempt->abandon();
             }
 
-            $moduleId = \App\Models\CourseModule::query()
-                ->where('modulable_type', \App\Models\Quiz::class)
+            $moduleId = CourseModule::query()
+                ->where('modulable_type', Quiz::class)
                 ->where('modulable_id', $attempt->quiz_id)
                 ->value('id');
 
@@ -398,10 +399,10 @@ class QuizAttemptController extends Controller
         $studentId = auth()->id();
 
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بالوصول إلى هذه المحاولة'
+                'message' => 'غير مصرح لك بالوصول إلى هذه المحاولة',
             ], 403);
         }
 
@@ -409,7 +410,7 @@ class QuizAttemptController extends Controller
         if ($attempt->status !== 'in_progress') {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكن حفظ الإجابة، المحاولة غير نشطة'
+                'message' => 'لا يمكن حفظ الإجابة، المحاولة غير نشطة',
             ], 400);
         }
 
@@ -436,7 +437,7 @@ class QuizAttemptController extends Controller
             // If answer parameter is provided, use it (new format like QuestionModule)
             if ($request->has('answer')) {
                 $answer = $validated['answer'];
-                
+
                 // Convert JSON string to array if needed
                 if (is_string($answer)) {
                     $decoded = json_decode($answer, true);
@@ -455,7 +456,7 @@ class QuizAttemptController extends Controller
                         ]);
                     } else {
                         $response->update([
-                            'response_text' => (string)$answer,
+                            'response_text' => (string) $answer,
                             'response_data' => ['answer' => $answer],
                         ]);
                     }
@@ -469,14 +470,14 @@ class QuizAttemptController extends Controller
                 } elseif (in_array($questionType, ['short_answer', 'essay'])) {
                     // Text answer
                     $response->update([
-                        'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string)$answer),
+                        'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string) $answer),
                         'response_data' => ['answer' => $answer],
                     ]);
                 } elseif (in_array($questionType, ['numerical', 'calculated'])) {
                     // Numerical answer - save as response_text (string representation of number)
                     $response->update([
-                        'response_text' => is_string($answer) ? $answer : (is_numeric($answer) ? (string)$answer : ''),
-                        'response_data' => ['answer' => $answer, 'numeric_value' => is_numeric($answer) ? (float)$answer : null],
+                        'response_text' => is_string($answer) ? $answer : (is_numeric($answer) ? (string) $answer : ''),
+                        'response_data' => ['answer' => $answer, 'numeric_value' => is_numeric($answer) ? (float) $answer : null],
                     ]);
                 } elseif ($questionType === 'fill_blanks') {
                     $map = is_array($answer) ? $answer : ['0' => $answer];
@@ -513,12 +514,12 @@ class QuizAttemptController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم حفظ الإجابة بنجاح'
+                'message' => 'تم حفظ الإجابة بنجاح',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء حفظ الإجابة'
+                'message' => 'حدث خطأ أثناء حفظ الإجابة',
             ], 500);
         }
     }
@@ -532,7 +533,7 @@ class QuizAttemptController extends Controller
         $studentId = auth()->id();
 
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             return response()->json(['success' => false], 403);
         }
 
@@ -556,7 +557,7 @@ class QuizAttemptController extends Controller
         $studentId = auth()->id();
 
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             return back()->withErrors(['error' => 'غير مصرح لك بالوصول إلى هذه المحاولة']);
         }
 
@@ -576,13 +577,13 @@ class QuizAttemptController extends Controller
                             // If JSON decode fails, treat as string
                             $answer = $answerJson;
                         }
-                        
+
                         $response = $attempt->responses()->where('question_id', $questionId)->first();
                         if ($response) {
                             // Get question type
                             $question = $response->question ?? QuestionBank::withTrashed()->with('questionType')->find($questionId);
                             $questionType = $question->questionType->name ?? '';
-                            
+
                             // Save based on question type (same logic as saveAnswer)
                             if (in_array($questionType, ['multiple_choice_single', 'true_false'])) {
                                 if (is_array($answer)) {
@@ -592,7 +593,7 @@ class QuizAttemptController extends Controller
                                     ]);
                                 } else {
                                     $response->update([
-                                        'response_text' => (string)$answer,
+                                        'response_text' => (string) $answer,
                                         'response_data' => ['answer' => $answer],
                                     ]);
                                 }
@@ -604,7 +605,7 @@ class QuizAttemptController extends Controller
                                 ]);
                             } elseif (in_array($questionType, ['short_answer', 'essay'])) {
                                 $response->update([
-                                    'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string)$answer),
+                                    'response_text' => is_string($answer) ? $answer : (is_array($answer) ? json_encode($answer, JSON_UNESCAPED_UNICODE) : (string) $answer),
                                     'response_data' => ['answer' => $answer],
                                 ]);
                             } elseif ($questionType === 'fill_blanks') {
@@ -637,7 +638,7 @@ class QuizAttemptController extends Controller
                         ]);
                     }
                 }
-                
+
                 // Reload responses after saving
                 $attempt->load(['responses.question.questionType', 'responses.question.options']);
             }
@@ -646,8 +647,8 @@ class QuizAttemptController extends Controller
                 $attempt->abandon();
                 DB::commit();
 
-                $moduleId = $request->input('module_id') ?? \App\Models\CourseModule::query()
-                    ->where('modulable_type', \App\Models\Quiz::class)
+                $moduleId = $request->input('module_id') ?? CourseModule::query()
+                    ->where('modulable_type', Quiz::class)
                     ->where('modulable_id', $attempt->quiz_id)
                     ->value('id');
 
@@ -689,17 +690,17 @@ class QuizAttemptController extends Controller
             // Auto-grade all auto-gradable questions (only those that don't require manual grading)
             foreach ($attempt->responses as $response) {
                 $questionType = $response->question->questionType->name ?? '';
-                
+
                 // Only auto-grade questions that don't require manual grading
                 // short_answer and essay require manual grading
                 $requiresManualGrading = in_array($questionType, ['short_answer', 'essay']);
-                
+
                 // Improved check if response has an answer
                 $hasAnswer = false;
                 $answerDetails = [];
-                
+
                 // Check response_data (for complex question types)
-                if (!empty($response->response_data)) {
+                if (! empty($response->response_data)) {
                     if (is_array($response->response_data)) {
                         // Check if it's not empty array and has actual values
                         $hasValues = false;
@@ -720,11 +721,11 @@ class QuizAttemptController extends Controller
                         $answerDetails['data'] = $response->response_data;
                     }
                 }
-                
+
                 // Check selected_option_ids (for multiple choice, true/false)
-                if (!$hasAnswer && !empty($response->selected_option_ids)) {
+                if (! $hasAnswer && ! empty($response->selected_option_ids)) {
                     if (is_array($response->selected_option_ids)) {
-                        $hasAnswer = !empty(array_filter($response->selected_option_ids));
+                        $hasAnswer = ! empty(array_filter($response->selected_option_ids));
                     } else {
                         $hasAnswer = true;
                     }
@@ -733,9 +734,9 @@ class QuizAttemptController extends Controller
                         $answerDetails['data'] = $response->selected_option_ids;
                     }
                 }
-                
+
                 // Check response_text (for text-based answers)
-                if (!$hasAnswer && !empty($response->response_text)) {
+                if (! $hasAnswer && ! empty($response->response_text)) {
                     $text = trim($response->response_text);
                     if ($text !== '' && $text !== 'null' && $text !== '[]') {
                         $hasAnswer = true;
@@ -743,7 +744,7 @@ class QuizAttemptController extends Controller
                         $answerDetails['data'] = $text;
                     }
                 }
-                
+
                 \Log::info('Response grading check', [
                     'response_id' => $response->id,
                     'question_id' => $response->question_id,
@@ -754,8 +755,8 @@ class QuizAttemptController extends Controller
                     'is_correct_before' => $response->is_correct,
                     'score_obtained_before' => $response->score_obtained,
                 ]);
-                
-                if (!$requiresManualGrading && $hasAnswer) {
+
+                if (! $requiresManualGrading && $hasAnswer) {
                     try {
                         $response->autoGrade();
                         // Reload to get updated values
@@ -783,7 +784,7 @@ class QuizAttemptController extends Controller
                         'question_id' => $response->question_id,
                         'question_type' => $questionType,
                     ]);
-                } elseif (!$hasAnswer) {
+                } elseif (! $hasAnswer) {
                     \Log::warning('Response has no answer, skipping auto-grade', [
                         'response_id' => $response->id,
                         'question_id' => $response->question_id,
@@ -791,7 +792,7 @@ class QuizAttemptController extends Controller
                     ]);
                 }
             }
-            
+
             \Log::info('=== QUIZ AUTO-GRADING END ===', [
                 'attempt_id' => $attempt->id,
             ]);
@@ -818,28 +819,14 @@ class QuizAttemptController extends Controller
                 $timeSpent
             );
 
-            // Dispatch n8n webhook event
-            event(new \App\Events\N8nWebhookEvent('quiz.completed', [
-                'student_id' => auth()->id(),
-                'student_name' => auth()->user()->name,
-                'student_email' => auth()->user()->email,
-                'quiz_id' => $attempt->quiz_id,
-                'quiz_title' => $attempt->quiz->title ?? null,
-                'course_id' => $attempt->quiz->course_id ?? null,
-                'attempt_id' => $attempt->id,
-                'score' => $attempt->points_earned ?? 0,
-                'total_questions' => $attempt->quiz->quizQuestions()->count(),
-                'time_spent' => $timeSpent,
-                'completed_at' => now()->toIso8601String(),
-            ]));
-
             DB::commit();
 
             return redirect()->route('student.quizzes.review.show', $attemptId)
                 ->with('success', 'تم تسليم الاختبار بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'حدث خطأ أثناء تسليم الاختبار: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'حدث خطأ أثناء تسليم الاختبار: '.$e->getMessage()]);
         }
     }
 
@@ -854,18 +841,18 @@ class QuizAttemptController extends Controller
 
         // Verify ownership
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك'
+                'message' => 'غير مصرح لك',
             ], 403);
         }
 
         // Can only mark as completed if already submitted/graded
-        if (!in_array($attempt->status, ['submitted', 'graded'])) {
+        if (! in_array($attempt->status, ['submitted', 'graded'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'يجب تسليم الاختبار أولاً'
+                'message' => 'يجب تسليم الاختبار أولاً',
             ], 400);
         }
 
@@ -874,12 +861,12 @@ class QuizAttemptController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم وضع علامة الإنجاز بنجاح'
+                'message' => 'تم وضع علامة الإنجاز بنجاح',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ'
+                'message' => 'حدث خطأ',
             ], 500);
         }
     }
@@ -951,12 +938,12 @@ class QuizAttemptController extends Controller
             ->where('enrollment_status', 'active')
             ->exists();
 
-        if (!$isEnrolled) {
+        if (! $isEnrolled) {
             return false;
         }
 
         // Check if published and visible
-        if (!$quiz->is_published || !$quiz->is_visible) {
+        if (! $quiz->is_published || ! $quiz->is_visible) {
             return false;
         }
 
@@ -972,16 +959,16 @@ class QuizAttemptController extends Controller
         $studentId = auth()->id();
 
         // Verify ownership - use type casting for consistency
-        if ((int)$attempt->student_id !== (int)$studentId) {
+        if ((int) $attempt->student_id !== (int) $studentId) {
             return response()->json(['success' => false], 403);
         }
 
         $totalQuestions = $attempt->responses()->count();
         $answeredQuestions = $attempt->responses()
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNotNull('response_text')
-                  ->orWhereNotNull('response_data')
-                  ->orWhereNotNull('selected_option_ids');
+                    ->orWhereNotNull('response_data')
+                    ->orWhereNotNull('selected_option_ids');
             })
             ->count();
 
@@ -1002,7 +989,7 @@ class QuizAttemptController extends Controller
                 'completion_percentage' => $totalQuestions > 0 ? ($answeredQuestions / $totalQuestions) * 100 : 0,
                 'time_spent' => $timeSpent,
                 'time_remaining' => $timeRemaining,
-            ]
+            ],
         ]);
     }
 }

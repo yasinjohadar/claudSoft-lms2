@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Api\Student;
 
-use App\Events\N8nWebhookEvent;
 use App\Events\StudentEnrolledInCourse;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\Quiz;
+use App\Models\Video;
 use App\Services\AccessControlService;
 use App\Services\Student\StudentCourseVisibilityService;
 use Illuminate\Http\JsonResponse;
@@ -268,7 +269,7 @@ class CourseController extends Controller
                             'content' => $modulable->content !== null ? (string) $modulable->content : null,
                             'reading_time' => isset($modulable->reading_time) ? (int) $modulable->reading_time : null,
                             // Bunny: دائماً الرابط الموقّع من getEmbedUrl() — لا نُرجع URL خام بدون token (يسبب 403).
-                            'video_url' => $modulable instanceof \App\Models\Video
+                            'video_url' => $modulable instanceof Video
                                 ? $modulable->getEmbedUrl()
                                 : (isset($modulable->video_url) ? (string) $modulable->video_url : null),
                             'video_path' => isset($modulable->video_path) ? (string) $modulable->video_path : null,
@@ -279,7 +280,7 @@ class CourseController extends Controller
                             $content['resource_url'] = $modulable->resource_url !== null ? (string) $modulable->resource_url : null;
                             $content['display_mode'] = $modulable->display_mode !== null ? (string) $modulable->display_mode : 'external';
                         }
-                        if ($modulable instanceof \App\Models\Quiz) {
+                        if ($modulable instanceof Quiz) {
                             $quiz = $modulable;
                             $quiz->loadMissing('settings');
                             $studentId = (int) $user->id;
@@ -418,16 +419,6 @@ class CourseController extends Controller
             DB::commit();
 
             if ($enrollmentStatus === 'active') {
-                event(new N8nWebhookEvent('student.enrolled', [
-                    'student_id' => $enrollment->student_id,
-                    'student_name' => $student->name,
-                    'student_email' => $student->email,
-                    'course_id' => $enrollment->course_id,
-                    'course_title' => $course->title,
-                    'enrollment_id' => $enrollment->id,
-                    'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                    'enrolled_by' => $enrollment->enrolled_by,
-                ]));
                 event(new StudentEnrolledInCourse($student, $course, $enrollment));
             }
 
@@ -481,15 +472,6 @@ class CourseController extends Controller
 
             $enrollment->delete();
             DB::commit();
-
-            event(new N8nWebhookEvent('student.unenrolled', [
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'student_email' => $student->email,
-                'course_id' => $course->id,
-                'course_title' => $course->title,
-                'unenrolled_at' => now()->toIso8601String(),
-            ]));
 
             return response()->json([
                 'success' => true,

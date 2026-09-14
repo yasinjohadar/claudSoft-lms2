@@ -1,8 +1,33 @@
 <?php
 
+use App\Http\Middleware\AcceptTokenFromQueryParam;
+use App\Http\Middleware\AuthenticateWebOrSanctumToken;
+use App\Http\Middleware\CheckDeviceBlocked;
+use App\Http\Middleware\CheckUserActive;
+use App\Http\Middleware\EnforceSessionDeviceBinding;
+use App\Http\Middleware\EnforceSingleSession;
+use App\Http\Middleware\EnsureLocalDevLoginAvailable;
+use App\Http\Middleware\EnsurePublicRegistrationEnabled;
+use App\Http\Middleware\EnsureRecentPhoneVerification;
+use App\Http\Middleware\ImpersonateMiddleware;
+use App\Http\Middleware\LogStudentApiRequests;
+use App\Http\Middleware\OptionalSanctumAuth;
+use App\Http\Middleware\ParseMultipartFormData;
+use App\Http\Middleware\RequireCompleteStudentProfile;
+use App\Http\Middleware\SessionTrackingMiddleware;
+use App\Http\Middleware\SetApplicationLocale;
+use App\Providers\StorageHelperServiceProvider;
+use App\Providers\StorageServiceProvider;
+use App\Support\SessionExpiredRedirect;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,7 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // طلبات /api/* يجب ألا تُحوَّل لصفحة login (خصوصاً مشغّل الفيديو HTML داخل iframe الديسكتوب)
-        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+        $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('api/*') || $request->is('api')) {
                 return null;
             }
@@ -22,36 +47,35 @@ return Application::configure(basePath: dirname(__DIR__))
             return '/login';
         });
 
-       $middleware->alias([
-            'auth.query_token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
-            'auth.token' => \App\Http\Middleware\AcceptTokenFromQueryParam::class,
-            'auth.web_or_sanctum' => \App\Http\Middleware\AuthenticateWebOrSanctumToken::class,
-            'log.student.api' => \App\Http\Middleware\LogStudentApiRequests::class,
-            'optional.sanctum' => \App\Http\Middleware\OptionalSanctumAuth::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
-            'check.device.blocked' => \App\Http\Middleware\CheckDeviceBlocked::class,
-            'single.session' => \App\Http\Middleware\EnforceSingleSession::class,
-            'session.device.binding' => \App\Http\Middleware\EnforceSessionDeviceBinding::class,
-            'webhook.verify' => \App\Http\Middleware\VerifyWebhookSignature::class,
-            'impersonate' => \App\Http\Middleware\ImpersonateMiddleware::class,
-            'student.profile.complete' => \App\Http\Middleware\RequireCompleteStudentProfile::class,
-            'phone.verified.recent' => \App\Http\Middleware\EnsureRecentPhoneVerification::class,
-            'local.dev.login' => \App\Http\Middleware\EnsureLocalDevLoginAvailable::class,
-            'public.registration' => \App\Http\Middleware\EnsurePublicRegistrationEnabled::class,
+        $middleware->alias([
+            'auth.query_token' => AcceptTokenFromQueryParam::class,
+            'auth.token' => AcceptTokenFromQueryParam::class,
+            'auth.web_or_sanctum' => AuthenticateWebOrSanctumToken::class,
+            'log.student.api' => LogStudentApiRequests::class,
+            'optional.sanctum' => OptionalSanctumAuth::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'role-list' => PermissionMiddleware::class,
+            'check.user.active' => CheckUserActive::class,
+            'check.device.blocked' => CheckDeviceBlocked::class,
+            'single.session' => EnforceSingleSession::class,
+            'session.device.binding' => EnforceSessionDeviceBinding::class,
+            'impersonate' => ImpersonateMiddleware::class,
+            'student.profile.complete' => RequireCompleteStudentProfile::class,
+            'phone.verified.recent' => EnsureRecentPhoneVerification::class,
+            'local.dev.login' => EnsureLocalDevLoginAvailable::class,
+            'public.registration' => EnsurePublicRegistrationEnabled::class,
         ]);
 
         // Add middleware to parse multipart/form-data for PUT/PATCH requests - PREPEND to run first
         $middleware->web(prepend: [
-            \App\Http\Middleware\ParseMultipartFormData::class,
-            \App\Http\Middleware\SetApplicationLocale::class,
+            ParseMultipartFormData::class,
+            SetApplicationLocale::class,
         ]);
 
         $middleware->api(prepend: [
-            \App\Http\Middleware\SetApplicationLocale::class,
+            SetApplicationLocale::class,
         ]);
 
         // Sanctum: السماح بجلسة المتصفح على نفس النطاق (claudsoft.com وغيره)
@@ -59,17 +83,17 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add impersonate middleware to web group to share data with views
         $middleware->web(append: [
-            \App\Http\Middleware\ImpersonateMiddleware::class,
+            ImpersonateMiddleware::class,
         ]);
-        
+
         // Add session tracking middleware to track user sessions and activities
         $middleware->web(append: [
-            \App\Http\Middleware\SessionTrackingMiddleware::class,
-            \App\Http\Middleware\CheckDeviceBlocked::class,
-            \App\Http\Middleware\EnforceSingleSession::class,
-            \App\Http\Middleware\EnforceSessionDeviceBinding::class,
+            SessionTrackingMiddleware::class,
+            CheckDeviceBlocked::class,
+            EnforceSingleSession::class,
+            EnforceSessionDeviceBinding::class,
         ]);
-        
+
         // Add debug middleware for question modules (only in debug mode and not in production)
         // Disabled by default to avoid potential issues - enable manually if needed for debugging
         // if (config('app.debug') && config('app.env') !== 'production') {
@@ -82,16 +106,16 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__.'/../app/Listeners',
     ])
     ->withProviders([
-        App\Providers\StorageServiceProvider::class,
-        App\Providers\StorageHelperServiceProvider::class,
+        StorageServiceProvider::class,
+        StorageHelperServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request, \Throwable $e) {
+        $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
             return $request->is('api/*') || $request->expectsJson();
         });
 
         // منع تحويل /api/* إلى HTML login عند فشل التوكن (مشغّل الديسكتوب يطلب Accept: text/html)
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*') || $request->is('api')) {
                 return response()->json([
                     'success' => false,
@@ -103,9 +127,9 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
-        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (TokenMismatchException $e, Request $request) {
             if ($request->expectsJson()) {
-                $redirect = \App\Support\SessionExpiredRedirect::resolve($request);
+                $redirect = SessionExpiredRedirect::resolve($request);
 
                 return response()->json([
                     'message' => 'انتهت صلاحية الجلسة. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
@@ -115,7 +139,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->view('errors.419', [
-                'redirect' => \App\Support\SessionExpiredRedirect::resolve($request),
+                'redirect' => SessionExpiredRedirect::resolve($request),
             ], 419);
         });
     })->create();

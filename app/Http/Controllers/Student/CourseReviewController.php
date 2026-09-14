@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseReview;
-use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 
 class CourseReviewController extends Controller
@@ -15,7 +14,7 @@ class CourseReviewController extends Controller
         // Check if student is enrolled in the course
         $enrollment = $course->enrollments()->where('student_id', auth()->id())->first();
 
-        if (!$enrollment) {
+        if (! $enrollment) {
             return back()->with('error', 'يجب أن تكون مسجلاً في الكورس لتتمكن من كتابة مراجعة');
         }
 
@@ -39,20 +38,6 @@ class CourseReviewController extends Controller
         $validated['status'] = 'pending'; // Will be reviewed by admin
 
         $review = CourseReview::create($validated);
-
-        // Dispatch n8n webhook event
-        event(new N8nWebhookEvent('course.review.created', [
-            'review_id' => $review->id,
-            'student_id' => auth()->id(),
-            'student_name' => auth()->user()->name,
-            'student_email' => auth()->user()->email,
-            'course_id' => $course->id,
-            'course_title' => $course->title,
-            'rating' => $review->rating,
-            'title' => $review->title,
-            'status' => $review->status,
-            'created_at' => now()->toIso8601String(),
-        ]));
 
         return back()->with('success', 'تم إرسال مراجعتك بنجاح! سيتم نشرها بعد موافقة الإدارة');
     }

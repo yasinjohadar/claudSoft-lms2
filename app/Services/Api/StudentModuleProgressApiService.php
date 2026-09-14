@@ -4,9 +4,9 @@ namespace App\Services\Api;
 
 use App\Events\CourseCompleted;
 use App\Events\LessonCompleted;
-use App\Events\N8nWebhookEvent;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
+use App\Models\CourseSection;
 use App\Models\ModuleCompletion;
 use App\Models\SectionCompletion;
 use App\Models\User;
@@ -58,30 +58,9 @@ class StudentModuleProgressApiService
 
             LessonCompleted::dispatch($student, $module);
 
-            event(new N8nWebhookEvent('lesson.completed', [
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'student_email' => $student->email,
-                'lesson_id' => $module->id,
-                'lesson_title' => $module->title,
-                'course_id' => $module->course_id,
-                'course_title' => $module->course->title ?? null,
-                'completion_percentage' => $courseCompletion,
-                'completed_at' => now()->toIso8601String(),
-            ]));
-
             if ($courseCompletion >= 100) {
                 CourseCompleted::dispatch($student, $module->course);
 
-                event(new N8nWebhookEvent('course.completed', [
-                    'student_id' => $student->id,
-                    'student_name' => $student->name,
-                    'student_email' => $student->email,
-                    'course_id' => $module->course_id,
-                    'course_title' => $module->course->title ?? null,
-                    'completion_percentage' => 100,
-                    'completed_at' => now()->toIso8601String(),
-                ]));
             }
 
             DB::commit();
@@ -190,7 +169,7 @@ class StudentModuleProgressApiService
      */
     private function updateSectionCompletion(int $sectionId, int $studentId): void
     {
-        $section = \App\Models\CourseSection::with('modules')->find($sectionId);
+        $section = CourseSection::with('modules')->find($sectionId);
 
         if (! $section) {
             return;

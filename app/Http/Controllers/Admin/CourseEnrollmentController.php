@@ -3,21 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BulkEnrollmentSession;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseGroup;
-use App\Models\BulkEnrollmentSession;
+use App\Models\ModuleCompletion;
 use App\Models\User;
-use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class CourseEnrollmentController extends Controller
 {
@@ -36,10 +36,10 @@ class CourseEnrollmentController extends Controller
             // Search filter
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->whereHas('student', function($q) use ($search) {
+                $query->whereHas('student', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('name_ar', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('name_ar', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -51,16 +51,16 @@ class CourseEnrollmentController extends Controller
             // Sort filter
             $sort = $request->get('sort', 'recent');
             $needsJoin = false;
-            
+
             switch ($sort) {
                 case 'progress':
                     $query->orderBy('completion_percentage', 'desc')
-                          ->orderBy('enrollment_date', 'desc');
+                        ->orderBy('enrollment_date', 'desc');
                     break;
                 case 'name':
                     $query->join('users', 'course_enrollments.student_id', '=', 'users.id')
-                          ->orderBy('users.name', 'asc')
-                          ->select('course_enrollments.*');
+                        ->orderBy('users.name', 'asc')
+                        ->select('course_enrollments.*');
                     $needsJoin = true;
                     break;
                 case 'recent':
@@ -70,7 +70,7 @@ class CourseEnrollmentController extends Controller
             }
 
             $enrollments = $query->paginate(20)->appends($request->query());
-            
+
             // Reload relationships if we used join
             if ($needsJoin) {
                 $enrollments->load(['student', 'enrolledBy']);
@@ -96,7 +96,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.courses.index')
-                ->with('error', 'حدث خطأ أثناء تحميل التسجيلات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل التسجيلات: '.$e->getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ class CourseEnrollmentController extends Controller
     {
         try {
             $course = Course::findOrFail($courseId);
-            
+
             // Get students not yet enrolled in this course
             $enrolledIds = CourseEnrollment::where('course_id', $courseId)
                 ->pluck('student_id')
@@ -122,7 +122,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -148,7 +148,7 @@ class CourseEnrollmentController extends Controller
             $sendNotification = $request->has('send_notification');
 
             DB::beginTransaction();
-            
+
             $course = Course::findOrFail($courseId);
             $studentIds = array_unique($validated['student_ids']); // Remove duplicates
             $enrollmentStatus = $validated['enrollment_status'] ?? 'active';
@@ -164,10 +164,10 @@ class CourseEnrollmentController extends Controller
 
             if (empty($newStudentIds)) {
                 DB::rollBack();
-                $message = count($studentIds) === 1 
+                $message = count($studentIds) === 1
                     ? 'الطالب مسجل بالفعل في هذا الكورس'
                     : 'جميع الطلاب المحددين مسجلون بالفعل في هذا الكورس';
-                
+
                 return redirect()
                     ->back()
                     ->withInput()
@@ -179,13 +179,14 @@ class CourseEnrollmentController extends Controller
             if ($course->max_students) {
                 $currentEnrollments = CourseEnrollment::where('course_id', $courseId)->count();
                 $availableSlots = $course->max_students - $currentEnrollments;
-                
+
                 if ($availableSlots < count($newStudentIds)) {
                     DB::rollBack();
+
                     return redirect()
                         ->back()
                         ->withInput()
-                        ->withErrors(['course' => "الكورس لديه {$availableSlots} مقعد متاح فقط. لا يمكن إضافة " . count($newStudentIds) . " طالب"])
+                        ->withErrors(['course' => "الكورس لديه {$availableSlots} مقعد متاح فقط. لا يمكن إضافة ".count($newStudentIds).' طالب'])
                         ->with('error', "الكورس لديه {$availableSlots} مقعد متاح فقط");
                 }
             }
@@ -193,7 +194,7 @@ class CourseEnrollmentController extends Controller
             // Create enrollments
             $enrollments = [];
             $enrolledById = auth()->id();
-            
+
             foreach ($newStudentIds as $studentId) {
                 $enrollments[] = CourseEnrollment::create([
                     'course_id' => $courseId,
@@ -207,32 +208,10 @@ class CourseEnrollmentController extends Controller
 
             DB::commit();
 
-            // Dispatch n8n webhook events for active enrollments
-            if ($enrollmentStatus === 'active') {
-                foreach ($enrollments as $enrollment) {
-                    try {
-                        $student = $enrollment->student;
-                        event(new N8nWebhookEvent('student.enrolled', [
-                            'student_id' => $enrollment->student_id,
-                            'student_name' => $student->name ?? null,
-                            'student_email' => $student->email ?? null,
-                            'course_id' => $enrollment->course_id,
-                            'course_title' => $course->title ?? null,
-                            'enrollment_id' => $enrollment->id,
-                            'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                            'enrolled_by' => $enrollment->enrolled_by,
-                        ]));
-                    } catch (\Exception $e) {
-                        // Log webhook error but don't fail enrollment
-                        \Log::warning('Webhook event failed: ' . $e->getMessage());
-                    }
-                }
-            }
-
             // Build success message
             $enrolledCount = count($enrollments);
             $skippedCount = count($existingEnrollments);
-            
+
             $message = '';
             if ($enrolledCount > 0) {
                 if ($enrolledCount === 1) {
@@ -241,7 +220,7 @@ class CourseEnrollmentController extends Controller
                     $message = "تم تسجيل {$enrolledCount} طلاب بنجاح";
                 }
             }
-            
+
             if ($skippedCount > 0) {
                 if ($message) {
                     $message .= '. ';
@@ -256,7 +235,7 @@ class CourseEnrollmentController extends Controller
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
                 ->with('success', $message);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return redirect()
                 ->back()
                 ->withInput()
@@ -264,16 +243,16 @@ class CourseEnrollmentController extends Controller
                 ->with('error', 'يرجى التحقق من البيانات المدخلة');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Enrollment error: ' . $e->getMessage(), [
+            \Log::error('Enrollment error: '.$e->getMessage(), [
                 'course_id' => $courseId,
                 'student_id' => $request->input('student_id'),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء التسجيل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء التسجيل: '.$e->getMessage());
         }
     }
 
@@ -284,11 +263,12 @@ class CourseEnrollmentController extends Controller
     {
         try {
             $course = Course::findOrFail($courseId);
+
             return view('admin.pages.enrollments.bulk-enroll', compact('course'));
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -324,7 +304,7 @@ class CourseEnrollmentController extends Controller
             ]);
 
             // Read Excel file
-            $fullPath = storage_path('app/' . $filePath);
+            $fullPath = storage_path('app/'.$filePath);
             $spreadsheet = IOFactory::load($fullPath);
             $worksheet = $spreadsheet->getActiveSheet();
             $rows = $worksheet->toArray();
@@ -350,24 +330,26 @@ class CourseEnrollmentController extends Controller
                     if (empty($email)) {
                         $skipCount++;
                         $session->addSkipped();
+
                         continue;
                     }
 
                     // Find student by email
                     $student = User::where('email', $email)->first();
 
-                    if (!$student) {
+                    if (! $student) {
                         $failCount++;
                         $errors[] = [
                             'row' => $rowNumber,
                             'email' => $email,
-                            'error' => 'الطالب غير موجود في النظام'
+                            'error' => 'الطالب غير موجود في النظام',
                         ];
                         $session->addFailure([
                             'row' => $rowNumber,
                             'email' => $email,
-                            'error' => 'الطالب غير موجود في النظام'
+                            'error' => 'الطالب غير موجود في النظام',
                         ]);
+
                         continue;
                     }
 
@@ -379,6 +361,7 @@ class CourseEnrollmentController extends Controller
                     if ($exists) {
                         $skipCount++;
                         $session->addSkipped();
+
                         continue;
                     }
 
@@ -396,12 +379,12 @@ class CourseEnrollmentController extends Controller
                     $successDetails[] = [
                         'row' => $rowNumber,
                         'email' => $email,
-                        'name' => $student->name
+                        'name' => $student->name,
                     ];
                     $session->addSuccess([
                         'row' => $rowNumber,
                         'email' => $email,
-                        'name' => $student->name
+                        'name' => $student->name,
                     ]);
 
                 } catch (\Exception $e) {
@@ -409,12 +392,12 @@ class CourseEnrollmentController extends Controller
                     $errors[] = [
                         'row' => $rowNumber,
                         'email' => $email ?? 'N/A',
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ];
                     $session->addFailure([
                         'row' => $rowNumber,
                         'email' => $email ?? 'N/A',
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -440,7 +423,7 @@ class CourseEnrollmentController extends Controller
                     'failed' => $failCount,
                     'skipped' => $skipCount,
                     'errors' => $errors,
-                    'success_details' => $successDetails
+                    'success_details' => $successDetails,
                 ]);
 
         } catch (\Exception $e) {
@@ -452,7 +435,7 @@ class CourseEnrollmentController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء التسجيل الجماعي: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء التسجيل الجماعي: '.$e->getMessage());
         }
     }
 
@@ -484,7 +467,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -512,6 +495,7 @@ class CourseEnrollmentController extends Controller
 
                 if ($exists) {
                     $skipCount++;
+
                     continue;
                 }
 
@@ -523,18 +507,6 @@ class CourseEnrollmentController extends Controller
                     'enrolled_by' => auth()->id(),
                     'completion_percentage' => 0,
                 ]);
-
-                // Dispatch n8n webhook event
-                event(new N8nWebhookEvent('student.enrolled', [
-                    'student_id' => $enrollment->student_id,
-                    'student_name' => $enrollment->student->name ?? null,
-                    'student_email' => $enrollment->student->email ?? null,
-                    'course_id' => $enrollment->course_id,
-                    'course_title' => $course->title ?? null,
-                    'enrollment_id' => $enrollment->id,
-                    'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                    'enrolled_by' => $enrollment->enrolled_by,
-                ]));
 
                 $successCount++;
             }
@@ -555,7 +527,7 @@ class CourseEnrollmentController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء التسجيل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء التسجيل: '.$e->getMessage());
         }
     }
 
@@ -566,9 +538,9 @@ class CourseEnrollmentController extends Controller
     {
         try {
             $course = Course::findOrFail($courseId);
-            $groups = CourseGroup::whereHas('courses', function($query) use ($courseId) {
-                    $query->where('courses.id', $courseId);
-                })
+            $groups = CourseGroup::whereHas('courses', function ($query) use ($courseId) {
+                $query->where('courses.id', $courseId);
+            })
                 ->withCount('members')
                 ->get();
 
@@ -576,7 +548,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('error', 'حدث خطأ: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ: '.$e->getMessage());
         }
     }
 
@@ -605,6 +577,7 @@ class CourseEnrollmentController extends Controller
 
                 if ($exists) {
                     $skipCount++;
+
                     continue;
                 }
 
@@ -636,7 +609,7 @@ class CourseEnrollmentController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تسجيل المجموعة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تسجيل المجموعة: '.$e->getMessage());
         }
     }
 
@@ -656,16 +629,6 @@ class CourseEnrollmentController extends Controller
 
             DB::commit();
 
-            // Dispatch n8n webhook event
-            event(new N8nWebhookEvent('student.unenrolled', [
-                'student_id' => $studentId,
-                'student_name' => $enrollment->student->name ?? null,
-                'student_email' => $enrollment->student->email ?? null,
-                'course_id' => $courseId,
-                'course_title' => $courseTitle,
-                'unenrolled_at' => now()->toIso8601String(),
-            ]));
-
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
                 ->with('success', 'تم إلغاء تسجيل الطالب بنجاح');
@@ -675,7 +638,7 @@ class CourseEnrollmentController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إلغاء التسجيل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إلغاء التسجيل: '.$e->getMessage());
         }
     }
 
@@ -700,7 +663,7 @@ class CourseEnrollmentController extends Controller
                 // Try required modules first, then fall back to all modules
                 $requiredModules = $section->modules()->where('is_required', true);
                 $totalModules = $requiredModules->count();
-                
+
                 // If no required modules, count all modules
                 if ($totalModules === 0) {
                     $modulesToCheck = $section->modules()->get();
@@ -708,7 +671,7 @@ class CourseEnrollmentController extends Controller
                 } else {
                     $modulesToCheck = $requiredModules->get();
                 }
-                
+
                 $completedModules = 0;
                 foreach ($modulesToCheck as $module) {
                     if ($module->isCompletedBy($enrollment->student)) {
@@ -725,8 +688,8 @@ class CourseEnrollmentController extends Controller
             }
 
             // Get recent completions
-            $recentCompletions = \App\Models\ModuleCompletion::where('student_id', $enrollment->student_id)
-                ->whereHas('module', function($q) use ($enrollment) {
+            $recentCompletions = ModuleCompletion::where('student_id', $enrollment->student_id)
+                ->whereHas('module', function ($q) use ($enrollment) {
                     $q->where('course_id', $enrollment->course_id);
                 })
                 ->with('module')
@@ -737,7 +700,7 @@ class CourseEnrollmentController extends Controller
             // Get statistics - use required modules, fallback to all modules
             $requiredModulesQuery = $enrollment->course->modules()->where('is_required', true);
             $totalModulesCount = $requiredModulesQuery->count();
-            
+
             if ($totalModulesCount === 0) {
                 // Fallback to all modules if no required modules
                 $moduleIds = $enrollment->course->modules()->pluck('course_modules.id');
@@ -745,10 +708,10 @@ class CourseEnrollmentController extends Controller
             } else {
                 $moduleIds = $requiredModulesQuery->pluck('course_modules.id');
             }
-            
+
             $stats = [
                 'total_modules' => $totalModulesCount,
-                'completed_modules' => \App\Models\ModuleCompletion::where('student_id', $enrollment->student_id)
+                'completed_modules' => ModuleCompletion::where('student_id', $enrollment->student_id)
                     ->whereIn('module_id', $moduleIds)
                     ->where('completion_status', 'completed')
                     ->count(),
@@ -764,7 +727,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل تفاصيل التقدم: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل تفاصيل التقدم: '.$e->getMessage());
         }
     }
 
@@ -831,7 +794,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('courses.enrollments.index', $courseId)
-                ->with('error', 'حدث خطأ أثناء تحميل التقرير: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل التقرير: '.$e->getMessage());
         }
     }
 
@@ -846,13 +809,13 @@ class CourseEnrollmentController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->whereHas('student', function($q) use ($search) {
+                $query->whereHas('student', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 })
-                ->orWhereHas('course', function($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%");
-                });
+                    ->orWhereHas('course', function ($q) use ($search) {
+                        $q->where('title', 'like', "%{$search}%");
+                    });
             }
 
             // Filter by course
@@ -894,7 +857,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.dashboard')
-                ->with('error', 'حدث خطأ أثناء تحميل الانضمامات: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الانضمامات: '.$e->getMessage());
         }
     }
 
@@ -905,7 +868,7 @@ class CourseEnrollmentController extends Controller
     {
         try {
             // Create new Spreadsheet
-            $spreadsheet = new Spreadsheet();
+            $spreadsheet = new Spreadsheet;
             $sheet = $spreadsheet->getActiveSheet();
 
             // Set sheet name
@@ -916,16 +879,16 @@ class CourseEnrollmentController extends Controller
                 'font' => [
                     'bold' => true,
                     'size' => 12,
-                    'color' => ['rgb' => 'FFFFFF']
+                    'color' => ['rgb' => 'FFFFFF'],
                 ],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '667eea']
+                    'startColor' => ['rgb' => '667eea'],
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER
-                ]
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
             ];
 
             // Set headers
@@ -961,10 +924,10 @@ class CourseEnrollmentController extends Controller
             $writer = new Xlsx($spreadsheet);
 
             // Set headers for download
-            $fileName = 'enrollment_template_' . date('Y-m-d') . '.xlsx';
+            $fileName = 'enrollment_template_'.date('Y-m-d').'.xlsx';
 
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment;filename="' . $fileName . '"');
+            header('Content-Disposition: attachment;filename="'.$fileName.'"');
             header('Cache-Control: max-age=0');
 
             // Save to output
@@ -974,7 +937,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء تحميل القالب: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل القالب: '.$e->getMessage());
         }
     }
 
@@ -1003,7 +966,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء قبول الطلب: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء قبول الطلب: '.$e->getMessage());
         }
     }
 
@@ -1031,7 +994,7 @@ class CourseEnrollmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء رفض الطلب: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء رفض الطلب: '.$e->getMessage());
         }
     }
 }

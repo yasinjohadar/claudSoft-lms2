@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\N8nWebhookEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
@@ -429,24 +428,10 @@ class CourseController extends Controller
             $validated['updated_by'] = auth()->id();
 
             // Convert boolean fields
-            $wasPublished = $course->is_published;
             $validated['is_published'] = $request->has('is_published');
             $validated['is_featured'] = $request->has('is_featured');
 
             $course->update($validated);
-
-            // Dispatch n8n webhook event when course is published
-            if ($course->is_published && ! $wasPublished) {
-                event(new N8nWebhookEvent('course.published', [
-                    'course_id' => $course->id,
-                    'course_title' => $course->title,
-                    'course_slug' => $course->slug,
-                    'category_id' => $course->course_category_id,
-                    'instructor_id' => $course->created_by,
-                    'published_at' => now()->toIso8601String(),
-                    'published_by' => auth()->id(),
-                ]));
-            }
 
             DB::commit();
 
@@ -601,25 +586,11 @@ class CourseController extends Controller
     {
         try {
             $course = Course::findOrFail($id);
-            $wasPublished = $course->is_published;
             $course->is_published = ! $course->is_published;
             $course->updated_by = auth()->id();
             $course->save();
 
             $status = $course->is_published ? 'منشور' : 'مسودة';
-
-            // Dispatch n8n webhook event when course is published
-            if ($course->is_published && ! $wasPublished) {
-                event(new N8nWebhookEvent('course.published', [
-                    'course_id' => $course->id,
-                    'course_title' => $course->title,
-                    'course_slug' => $course->slug,
-                    'category_id' => $course->course_category_id,
-                    'instructor_id' => $course->created_by,
-                    'published_at' => now()->toIso8601String(),
-                    'published_by' => auth()->id(),
-                ]));
-            }
 
             // Always return JSON for this endpoint (it's called via AJAX)
             return response()->json([

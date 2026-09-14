@@ -21,7 +21,6 @@ use App\Events\Gamification\StreakUpdated;
 use App\Events\InvoiceCreated;
 use App\Events\LessonBecameVisible;
 use App\Events\LessonCompleted;
-use App\Events\N8nWebhookEvent;
 use App\Events\PaymentReceived;
 use App\Events\QuizCompleted;
 // n8n Webhook Events
@@ -33,7 +32,6 @@ use App\Listeners\AssessmentNotificationListener;
 use App\Listeners\CourseNotificationListener;
 use App\Listeners\Gamification\SendNotificationListener;
 use App\Listeners\IssueCertificateOnCompletion;
-use App\Listeners\N8nWebhookListener;
 use App\Listeners\PaymentNotificationListener;
 use App\Listeners\StudentActionNotificationListener;
 use App\Listeners\WapiAutomation\SendWapiOnCourseCompleted;
@@ -117,11 +115,6 @@ class EventServiceProvider extends ServiceProvider
         ],
         LeaderboardRankChanged::class => [
             SendNotificationListener::class,
-        ],
-
-        // n8n Webhook Events
-        N8nWebhookEvent::class => [
-            N8nWebhookListener::class,
         ],
 
         StudentEnrolledInCourse::class => [

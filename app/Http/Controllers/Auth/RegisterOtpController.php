@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\OtpPurpose;
+use App\Events\Registered;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Auth\PhoneOtpService;
-use App\Events\Registered;
-use App\Events\N8nWebhookEvent;
 use App\Services\Gamification\ReferralService;
 use App\Support\InternationalPhoneDigits;
 use Illuminate\Http\RedirectResponse;
@@ -68,12 +67,6 @@ class RegisterOtpController extends Controller
         session()->forget(['pending_registration', 'referral_code']);
 
         event(new Registered($user));
-        event(new N8nWebhookEvent('user.registered', [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'registered_at' => now()->toIso8601String(),
-        ]));
 
         Auth::login($user);
 

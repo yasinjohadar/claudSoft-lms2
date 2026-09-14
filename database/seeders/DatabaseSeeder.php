@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -115,14 +114,8 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🔗 بدء إعداد نظام n8n Webhooks...');
         $this->command->info('');
 
-        // 19. معالجات Incoming Webhooks
-        $this->command->info('📍 المرحلة 19: إضافة معالجات n8n Incoming Webhooks');
-        $this->call(N8nIncomingWebhookHandlerSeeder::class);
         $this->command->info('');
 
-        // 20. نقاط النهاية للـ Outgoing Webhooks
-        $this->command->info('📍 المرحلة 20: إضافة نقاط نهاية n8n Outgoing Webhooks');
-        $this->call(N8nWebhookEndpointSeeder::class);
         $this->command->info('');
 
         // 21. التوثيق (أقسام + صفحات تجريبية)

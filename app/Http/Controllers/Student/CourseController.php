@@ -11,7 +11,6 @@ use App\Models\ModuleCompletion;
 use App\Services\AccessControlService;
 use App\Services\Gamification\ReferralService;
 use App\Services\Student\StudentCourseVisibilityService;
-use App\Events\N8nWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -30,10 +29,10 @@ class CourseController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('short_description', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('short_description', 'like', "%{$search}%");
                 });
             }
 
@@ -55,7 +54,7 @@ class CourseController extends Controller
             // Filter by price
             if ($request->filled('price_filter')) {
                 if ($request->price_filter === 'free') {
-                    $query->where(function($q) {
+                    $query->where(function ($q) {
                         $q->whereNull('price')->orWhere('price', 0);
                     });
                 } elseif ($request->price_filter === 'paid') {
@@ -82,7 +81,7 @@ class CourseController extends Controller
 
             return view('student.pages.courses.index', compact('courses', 'categories', 'levels', 'languages'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل الكورسات: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل الكورسات: '.$e->getMessage());
         }
     }
 
@@ -113,9 +112,9 @@ class CourseController extends Controller
             // Search
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->whereHas('course', function($q) use ($search) {
+                $query->whereHas('course', function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
@@ -147,7 +146,7 @@ class CourseController extends Controller
 
             return view('student.pages.courses.my-courses', compact('enrollments', 'stats', 'pendingMembershipNotices'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل كورساتي: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تحميل كورساتي: '.$e->getMessage());
         }
     }
 
@@ -158,23 +157,23 @@ class CourseController extends Controller
     {
         try {
             $student = auth()->user();
-            $accessControl = new AccessControlService();
-            
+            $accessControl = new AccessControlService;
+
             $course = Course::with([
                 'category',
-                'sections' => function($q) {
+                'sections' => function ($q) {
                     $q->where('course_sections.is_visible', true)->orderBy('sort_order');
                 },
-                'sections.modules' => function($q) {
+                'sections.modules' => function ($q) {
                     $q->where('course_modules.is_visible', true)->orderBy('sort_order');
                 },
                 'sections.modules.modulable',
-                'instructors'
+                'instructors',
             ])->findOrFail($id);
 
             // Check course access using AccessControlService
             $courseAccess = $accessControl->canAccessCourse($course, $student);
-            if (!$courseAccess['can_access']) {
+            if (! $courseAccess['can_access']) {
                 return redirect()
                     ->route('student.courses.my-courses')
                     ->with('error', $courseAccess['reason'] ?? 'هذا الكورس غير متاح حالياً');
@@ -223,7 +222,7 @@ class CourseController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('student.courses.my-courses')
-                ->with('error', 'حدث خطأ أثناء تحميل الكورس: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحميل الكورس: '.$e->getMessage());
         }
     }
 
@@ -238,7 +237,7 @@ class CourseController extends Controller
             $student = auth()->user();
 
             // Check if course is published and visible
-            if (!$course->is_published || !$course->is_visible) {
+            if (! $course->is_published || ! $course->is_visible) {
                 return redirect()
                     ->back()
                     ->with('error', 'هذا الكورس غير متاح للتسجيل');
@@ -299,20 +298,6 @@ class CourseController extends Controller
 
             DB::commit();
 
-            // Dispatch n8n webhook event (only for active enrollments)
-            if ($enrollmentStatus === 'active') {
-                event(new N8nWebhookEvent('student.enrolled', [
-                    'student_id' => $enrollment->student_id,
-                    'student_name' => $student->name,
-                    'student_email' => $student->email,
-                    'course_id' => $enrollment->course_id,
-                    'course_title' => $course->title,
-                    'enrollment_id' => $enrollment->id,
-                    'enrollment_date' => $enrollment->enrollment_date->toIso8601String(),
-                    'enrolled_by' => $enrollment->enrolled_by,
-                ]));
-            }
-
             $message = $enrollmentStatus === 'pending'
                 ? 'تم إرسال طلب التسجيل بنجاح. في انتظار الموافقة'
                 : 'تم التسجيل في الكورس بنجاح';
@@ -325,7 +310,7 @@ class CourseController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء التسجيل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء التسجيل: '.$e->getMessage());
         }
     }
 
@@ -343,7 +328,7 @@ class CourseController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$enrollment) {
+            if (! $enrollment) {
                 return redirect()
                     ->back()
                     ->with('error', 'أنت غير مسجل في هذا الكورس');
@@ -360,16 +345,6 @@ class CourseController extends Controller
 
             DB::commit();
 
-            // Dispatch n8n webhook event
-            event(new N8nWebhookEvent('student.unenrolled', [
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'student_email' => $student->email,
-                'course_id' => $course->id,
-                'course_title' => $course->title,
-                'unenrolled_at' => now()->toIso8601String(),
-            ]));
-
             return redirect()
                 ->route('student.courses.my-courses')
                 ->with('success', 'تم إلغاء التسجيل من الكورس بنجاح');
@@ -378,7 +353,7 @@ class CourseController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء إلغاء التسجيل: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إلغاء التسجيل: '.$e->getMessage());
         }
     }
 

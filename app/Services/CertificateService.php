@@ -6,14 +6,13 @@ use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\User;
 use App\Models\GamificationNotification;
+use App\Models\User;
 use App\Notifications\CertificateIssuedNotification;
-use App\Events\N8nWebhookEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class CertificateService
 {
@@ -30,8 +29,8 @@ class CertificateService
         // التحقق من الأهلية
         if ($enrollment) {
             $eligibility = $template->checkEligibility($enrollment);
-            if (!$eligibility['eligible']) {
-                throw new \Exception('الطالب غير مؤهل للحصول على الشهادة: ' . implode(', ', $eligibility['reasons']));
+            if (! $eligibility['eligible']) {
+                throw new \Exception('الطالب غير مؤهل للحصول على الشهادة: '.implode(', ', $eligibility['reasons']));
             }
         }
 
@@ -77,7 +76,7 @@ class CertificateService
             'user_id' => $user->id,
             'type' => 'certificate_issued',
             'title' => '🎓 تم إصدار شهادتك!',
-            'message' => 'تهانينا! تم إصدار شهادة إتمام كورس "' . $course->name . '" بنجاح.',
+            'message' => 'تهانينا! تم إصدار شهادة إتمام كورس "'.$course->name.'" بنجاح.',
             'icon' => 'fas fa-certificate text-success fa-lg',
             'action_url' => route('student.certificates.show', $certificate->id),
             'related_type' => Certificate::class,
@@ -90,32 +89,6 @@ class CertificateService
             'is_read' => false,
         ]);
 
-        // Dispatch n8n webhook event
-        event(new N8nWebhookEvent('certificate.issued', [
-            'certificate_id' => $certificate->id,
-            'certificate_number' => $certificate->certificate_number,
-            'verification_code' => $certificate->verification_code,
-            'verification_url' => $certificate->verification_url,
-            'student_id' => $user->id,
-            'student_name' => $user->name,
-            'student_email' => $user->email,
-            'course_id' => $course->id,
-            'course_title' => $course->title ?? $course->name,
-            'course_name' => $course->name,
-            'template_id' => $template->id,
-            'template_name' => $template->name ?? null,
-            'issue_date' => $certificate->issue_date->toIso8601String(),
-            'completion_date' => $certificate->completion_date?->toIso8601String(),
-            'expiry_date' => $certificate->expiry_date?->toIso8601String(),
-            'completion_percentage' => $certificate->completion_percentage,
-            'attendance_percentage' => $certificate->attendance_percentage,
-            'final_exam_score' => $certificate->final_exam_score,
-            'course_hours' => $certificate->course_hours,
-            'issued_by' => $issuedBy,
-            'pdf_path' => $certificate->pdf_path,
-            'qr_code_path' => $certificate->qr_code_path,
-        ]));
-
         return $certificate->fresh();
     }
 
@@ -124,11 +97,11 @@ class CertificateService
      */
     public function generateQrCode(Certificate $certificate): string
     {
-        $qrCodePath = 'certificates/qr-codes/' . $certificate->verification_code . '.png';
-        $qrCodeFullPath = storage_path('app/public/' . $qrCodePath);
+        $qrCodePath = 'certificates/qr-codes/'.$certificate->verification_code.'.png';
+        $qrCodeFullPath = storage_path('app/public/'.$qrCodePath);
 
         // إنشاء المجلد إذا لم يكن موجوداً
-        if (!file_exists(dirname($qrCodeFullPath))) {
+        if (! file_exists(dirname($qrCodeFullPath))) {
             mkdir(dirname($qrCodeFullPath), 0755, true);
         }
 
@@ -175,10 +148,10 @@ class CertificateService
             ->setOption('isRemoteEnabled', true);
 
         // حفظ PDF
-        $pdfPath = 'certificates/pdf/' . $certificate->certificate_number . '.pdf';
-        $pdfFullPath = storage_path('app/public/' . $pdfPath);
+        $pdfPath = 'certificates/pdf/'.$certificate->certificate_number.'.pdf';
+        $pdfFullPath = storage_path('app/public/'.$pdfPath);
 
-        if (!file_exists(dirname($pdfFullPath))) {
+        if (! file_exists(dirname($pdfFullPath))) {
             mkdir(dirname($pdfFullPath), 0755, true);
         }
 
@@ -197,15 +170,15 @@ class CertificateService
     {
         $template = $certificate->template;
 
-        if (!$template->hasTemplateFile()) {
+        if (! $template->hasTemplateFile()) {
             throw new \Exception('ملف القالب غير موجود');
         }
 
         // قراءة صورة القالب
-        $templatePath = storage_path('app/public/' . $template->template_file);
+        $templatePath = storage_path('app/public/'.$template->template_file);
 
         // إنشاء مدير الصور
-        $manager = new ImageManager(new Driver());
+        $manager = new ImageManager(new Driver);
         $image = $manager->read($templatePath);
 
         // إضافة النصوص على الصورة
@@ -214,11 +187,11 @@ class CertificateService
         foreach ($fieldPositions as $field => $position) {
             $text = $this->getFieldValue($field, $certificate);
 
-            if (!empty($text) && isset($position['x'], $position['y'])) {
+            if (! empty($text) && isset($position['x'], $position['y'])) {
                 $image->text(
                     $text,
-                    (int)$position['x'],
-                    (int)$position['y'],
+                    (int) $position['x'],
+                    (int) $position['y'],
                     function ($font) use ($position) {
                         $font->filename(public_path('fonts/NotoKufiArabic-Regular.ttf'));
                         $font->size($position['size'] ?? 24);
@@ -233,7 +206,7 @@ class CertificateService
         // إضافة QR Code إذا كان موجوداً
         if ($certificate->qr_code_path && isset($fieldPositions['{qr_code}'])) {
             $qrPosition = $fieldPositions['{qr_code}'];
-            $qrCodePath = storage_path('app/public/' . $certificate->qr_code_path);
+            $qrCodePath = storage_path('app/public/'.$certificate->qr_code_path);
 
             if (file_exists($qrCodePath)) {
                 $qrImage = $manager->read($qrCodePath);
@@ -242,32 +215,32 @@ class CertificateService
                 $image->place(
                     $qrImage,
                     'top-left',
-                    (int)($qrPosition['x'] ?? 0),
-                    (int)($qrPosition['y'] ?? 0)
+                    (int) ($qrPosition['x'] ?? 0),
+                    (int) ($qrPosition['y'] ?? 0)
                 );
             }
         }
 
         // حفظ الصورة المعدلة
-        $imagePath = 'certificates/images/' . $certificate->certificate_number . '.png';
-        $imageFullPath = storage_path('app/public/' . $imagePath);
+        $imagePath = 'certificates/images/'.$certificate->certificate_number.'.png';
+        $imageFullPath = storage_path('app/public/'.$imagePath);
 
-        if (!file_exists(dirname($imageFullPath))) {
+        if (! file_exists(dirname($imageFullPath))) {
             mkdir(dirname($imageFullPath), 0755, true);
         }
 
         $image->save($imageFullPath);
 
         // تحويل الصورة إلى PDF
-        $html = '<html><body style="margin:0;padding:0;"><img src="' . $imageFullPath . '" style="width:100%;height:100%;"/></body></html>';
+        $html = '<html><body style="margin:0;padding:0;"><img src="'.$imageFullPath.'" style="width:100%;height:100%;"/></body></html>';
 
         $pdf = Pdf::loadHTML($html)
             ->setPaper($template->page_size, $template->orientation);
 
-        $pdfPath = 'certificates/pdf/' . $certificate->certificate_number . '.pdf';
-        $pdfFullPath = storage_path('app/public/' . $pdfPath);
+        $pdfPath = 'certificates/pdf/'.$certificate->certificate_number.'.pdf';
+        $pdfFullPath = storage_path('app/public/'.$pdfPath);
 
-        if (!file_exists(dirname($pdfFullPath))) {
+        if (! file_exists(dirname($pdfFullPath))) {
             mkdir(dirname($pdfFullPath), 0755, true);
         }
 
@@ -305,7 +278,7 @@ class CertificateService
         // QR Code
         if ($certificate->qr_code_path) {
             $qrCodeUrl = storage_url($certificate->qr_code_path);
-            $replacements['{qr_code}'] = '<img src="' . $qrCodeUrl . '" width="150" height="150" />';
+            $replacements['{qr_code}'] = '<img src="'.$qrCodeUrl.'" width="150" height="150" />';
         } else {
             $replacements['{qr_code}'] = '';
         }
@@ -328,10 +301,10 @@ class CertificateService
             '{issue_date_ar}' => $certificate->issue_date->locale('ar')->translatedFormat('d F Y'),
             '{completion_date}' => $certificate->completion_date?->format('Y-m-d') ?? '-',
             '{expiry_date}' => $certificate->expiry_date?->format('Y-m-d') ?? '-',
-            '{completion_percentage}' => (string)($certificate->completion_percentage ?? '-'),
-            '{attendance_percentage}' => (string)($certificate->attendance_percentage ?? '-'),
-            '{final_exam_score}' => (string)($certificate->final_exam_score ?? '-'),
-            '{course_hours}' => (string)($certificate->course_hours ?? '-'),
+            '{completion_percentage}' => (string) ($certificate->completion_percentage ?? '-'),
+            '{attendance_percentage}' => (string) ($certificate->attendance_percentage ?? '-'),
+            '{final_exam_score}' => (string) ($certificate->final_exam_score ?? '-'),
+            '{course_hours}' => (string) ($certificate->course_hours ?? '-'),
             '{verification_code}' => $certificate->verification_code,
             default => '',
         };
@@ -344,7 +317,7 @@ class CertificateService
     {
         $certificate = Certificate::byVerificationCode($verificationCode)->first();
 
-        if (!$certificate) {
+        if (! $certificate) {
             return null;
         }
 

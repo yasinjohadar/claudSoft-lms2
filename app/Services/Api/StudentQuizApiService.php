@@ -8,10 +8,8 @@ use App\Models\QuestionBank;
 use App\Models\Quiz;
 use App\Models\QuizAnalytics;
 use App\Models\QuizAttempt;
-use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\User;
-use App\Services\Api\StudentModuleProgressApiService;
 use App\Services\Quiz\QuizAttemptLifecycleService;
 use App\Services\Quiz\QuizAttemptStartService;
 use Illuminate\Support\Collection;
@@ -221,20 +219,6 @@ class StudentQuizApiService
                 $attempt->id,
                 $timeSpent
             );
-
-            event(new \App\Events\N8nWebhookEvent('quiz.completed', [
-                'student_id' => $user->id,
-                'student_name' => $user->name,
-                'student_email' => $user->email,
-                'quiz_id' => $attempt->quiz_id,
-                'quiz_title' => $attempt->quiz->title ?? null,
-                'course_id' => $attempt->quiz->course_id ?? null,
-                'attempt_id' => $attempt->id,
-                'score' => (int) round((float) ($attempt->total_score ?? 0)),
-                'total_questions' => $attempt->quiz->quizQuestions()->count(),
-                'time_spent' => $timeSpent,
-                'completed_at' => now()->toIso8601String(),
-            ]));
 
             DB::commit();
             $attempt->refresh();

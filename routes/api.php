@@ -1,22 +1,15 @@
 <?php
 
-use App\Http\Controllers\Api\N8nWebhookController;
+use App\Http\Controllers\Api\EvolutionWebhookController;
 use App\Http\Controllers\Api\Student\AssignmentApiController as StudentAssignmentApiController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
-use App\Http\Controllers\Api\Student\ChallengeApiController as ProgrammingChallengeApiController;
 use App\Http\Controllers\Api\Student\CertificateApiController as StudentCertificateApiController;
+use App\Http\Controllers\Api\Student\ChallengeApiController as ProgrammingChallengeApiController;
 use App\Http\Controllers\Api\Student\CourseController as StudentCourseController;
-use App\Http\Controllers\Api\Student\DashboardApiController as StudentDashboardApiController;
-use App\Http\Controllers\Api\Student\FeedbackApiController as StudentFeedbackApiController;
-use App\Http\Controllers\Api\Student\GroupApiController as StudentGroupApiController;
-use App\Http\Controllers\Api\Student\PlatformReviewApiController as StudentPlatformReviewApiController;
-use App\Http\Controllers\Api\Student\QuestionModuleStatsApiController as StudentQuestionModuleStatsApiController;
-use App\Http\Controllers\Api\Student\StudentNotesApiController as StudentStudentNotesApiController;
-use App\Http\Controllers\Api\Student\StudyReportApiController as StudentStudyReportApiController;
-use App\Http\Controllers\Api\Student\TrainingCampApiController as StudentTrainingCampApiController;
-use App\Http\Controllers\Api\Student\WeeklyReportApiController as StudentWeeklyReportApiController;
 use App\Http\Controllers\Api\Student\CourseProgressApiController as StudentCourseProgressApiController;
+use App\Http\Controllers\Api\Student\DashboardApiController as StudentDashboardApiController;
 use App\Http\Controllers\Api\Student\ExternalResourceApiController as StudentExternalResourceApiController;
+use App\Http\Controllers\Api\Student\FeedbackApiController as StudentFeedbackApiController;
 use App\Http\Controllers\Api\Student\Gamification\AchievementApiController as StudentAchievementApiController;
 use App\Http\Controllers\Api\Student\Gamification\BadgeApiController as StudentBadgeApiController;
 use App\Http\Controllers\Api\Student\Gamification\ChallengeApiController as StudentChallengeApiController;
@@ -24,14 +17,21 @@ use App\Http\Controllers\Api\Student\Gamification\LeaderboardApiController as St
 use App\Http\Controllers\Api\Student\Gamification\PointsApiController as StudentPointsApiController;
 use App\Http\Controllers\Api\Student\Gamification\ShopApiController as StudentShopApiController;
 use App\Http\Controllers\Api\Student\Gamification\StreakApiController as StudentStreakApiController;
+use App\Http\Controllers\Api\Student\GroupApiController as StudentGroupApiController;
 use App\Http\Controllers\Api\Student\InvoiceController as StudentInvoiceApiController;
 use App\Http\Controllers\Api\Student\ModulePlaybackApiController as StudentModulePlaybackApiController;
 use App\Http\Controllers\Api\Student\ModuleProgressApiController as StudentModuleProgressApiController;
 use App\Http\Controllers\Api\Student\NotificationController as StudentNotificationApiController;
 use App\Http\Controllers\Api\Student\NotificationHubController as StudentNotificationHubApiController;
+use App\Http\Controllers\Api\Student\PlatformReviewApiController as StudentPlatformReviewApiController;
 use App\Http\Controllers\Api\Student\ProfileController as StudentProfileController;
+use App\Http\Controllers\Api\Student\QuestionModuleStatsApiController as StudentQuestionModuleStatsApiController;
 use App\Http\Controllers\Api\Student\QuizApiController as StudentQuizApiController;
-use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\Student\StudentNotesApiController as StudentStudentNotesApiController;
+use App\Http\Controllers\Api\Student\StudyReportApiController as StudentStudyReportApiController;
+use App\Http\Controllers\Api\Student\TrainingCampApiController as StudentTrainingCampApiController;
+use App\Http\Controllers\Api\Student\WeeklyReportApiController as StudentWeeklyReportApiController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WhatsAppController;
 use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\WhatsAppWebWebhookController;
@@ -219,24 +219,6 @@ Route::prefix('wapi/whatsapp')
 // Webhook Routes (Public - no auth required, but signature verification)
 Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
 
-    Route::get('/test', [WebhookController::class, 'test'])->name('test');
-
-    Route::post('/wpforms', [WebhookController::class, 'wpforms'])
-        ->middleware('webhook.verify:wpforms')
-        ->name('wpforms');
-
-    Route::prefix('n8n')->name('n8n.')->group(function () {
-        Route::post('/incoming', [N8nWebhookController::class, 'incoming'])
-            ->middleware('webhook.verify:n8n')
-            ->name('incoming');
-
-        Route::get('/handlers', [N8nWebhookController::class, 'handlers'])
-            ->name('handlers');
-
-        Route::get('/handlers/{handlerType}', [N8nWebhookController::class, 'handlerDocs'])
-            ->name('handler.docs');
-    });
-
     Route::prefix('whatsapp')
         ->name('whatsapp.')
         ->middleware(['throttle:60,1'])
@@ -256,14 +238,14 @@ Route::prefix('webhooks')->name('api.webhooks.')->group(function () {
         ->name('evolution.')
         ->middleware(['throttle:120,1'])
         ->group(function () {
-            Route::post('/{instance?}', [\App\Http\Controllers\Api\EvolutionWebhookController::class, 'handle'])
+            Route::post('/{instance?}', [EvolutionWebhookController::class, 'handle'])
                 // [^/]+ لا [a-zA-Z0-9_-]+ : أسماء instances قد تحوي مسافات ونقاطاً.
                 // الاسم يُستخدم كنصّ فقط ويُطابَق لاحقاً مع evolution_instances.
                 ->where('instance', '[^/]+')
                 ->name('handle');
         });
 
-    Route::post('/telegram', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle'])
+    Route::post('/telegram', [TelegramWebhookController::class, 'handle'])
         ->middleware(['throttle:120,1'])
         ->name('telegram.handle');
 });
