@@ -67,7 +67,7 @@
                 </div>
                 <div class="col-lg-5 order-1 order-lg-2">
                     <div class="hero-image-wrapper animate-on-scroll">
-                        <img src="{{ asset('frontend2/assets/images/hero-img.jpg') }}"
+                        <img src="{{ asset('frontend2/assets/images/hero-img.jpg') }}?v={{ @filemtime(public_path('frontend2/assets/images/hero-img.jpg')) ?: '1' }}"
                             alt="تمثيل بصري لتقنية وبرمجة — أكاديمية كلاودسوفت"
                             class="hero-img"
                             width="900"
