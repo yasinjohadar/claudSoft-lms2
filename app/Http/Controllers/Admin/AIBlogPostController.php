@@ -8,19 +8,17 @@ use App\Http\Controllers\Controller;
 use App\Models\BlogAiGeneration;
 use App\Models\BlogAiSection;
 use App\Models\BlogCategory;
-use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Models\LaravelAiModel;
 use App\Services\Ai\AIBlogPostService;
 use App\Services\Ai\AIModelService;
 use App\Services\Ai\BlogHtmlRepairer;
 use App\Services\AiNew\BlogAiJobStarter;
+use App\Services\Blog\BlogPostWriter;
 use App\Services\Storage\StorageHelperService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AIBlogPostController extends Controller
 {
@@ -32,6 +30,7 @@ class AIBlogPostController extends Controller
         private AIModelService $modelService,
         private StorageHelperService $storageHelper,
         private BlogAiJobStarter $jobStarter,
+        private BlogPostWriter $postWriter,
         private BlogHtmlRepairer $repairer = new BlogHtmlRepairer,
     ) {}
 
@@ -71,7 +70,7 @@ class AIBlogPostController extends Controller
             'ai_model_id' => 'nullable|exists:ai_models,id',
             'laravel_ai_model_id' => 'nullable|exists:laravel_ai_models,id',
             'blog_engine' => 'nullable|in:laravel_ai,legacy',
-            'content_length' => 'required|in:short,medium,long',
+            'content_length' => 'required|in:short,medium,long,very_long',
             'tone' => 'nullable|in:professional,friendly,technical,casual,formal',
             'language' => 'nullable|in:ar,en',
             'category_id' => 'nullable|exists:blog_categories,id',
@@ -311,96 +310,25 @@ class AIBlogPostController extends Controller
             'tags.*' => 'exists:blog_tags,id',
         ]);
 
-        DB::beginTransaction();
-
         try {
-            // Use provided slug or generate from title
-            $slug = $validated['slug'] ?? Str::slug($validated['title'], '-', 'ar');
-
-            // Clean slug
-            $slug = preg_replace('/\s+/', '-', trim($slug));
-            $slug = preg_replace('/[^\p{Arabic}a-zA-Z0-9-]/u', '', $slug);
-            $slug = preg_replace('/-+/', '-', $slug);
-            $slug = trim($slug, '-');
-
-            if (empty($slug)) {
-                $slug = 'post-'.time();
-            }
-
-            // Check for unique slug
-            $counter = 1;
-            $originalSlug = $slug;
-            while (BlogPost::where('slug', $slug)->exists()) {
-                $slug = $originalSlug.'-'.$counter++;
-            }
-
-            $validated['slug'] = $slug;
-
-            // Set author
-            $validated['author_id'] = Auth::id();
-
-            // Map category_id to blog_category_id
-            if (isset($validated['category_id'])) {
-                $validated['blog_category_id'] = $validated['category_id'];
-                unset($validated['category_id']);
-            }
-
-            // Handle featured image upload
             if ($request->hasFile('featured_image')) {
-                $featuredImagePath = $this->storageHelper->storeUploadedFileWithFailover('blog_images', 'blog/images', $request->file('featured_image'), 'image');
+                $featuredImagePath = $this->storageHelper->storeUploadedFileWithFailover(
+                    'blog_images', 'blog/images', $request->file('featured_image'), 'image'
+                );
                 if ($featuredImagePath) {
                     $validated['featured_image'] = $featuredImagePath;
                 }
             }
 
-            // Set published_at if status is published and not set
-            if ($validated['status'] === 'published') {
-                if (! isset($validated['published_at']) ||
-                    (isset($validated['published_at']) && strtotime($validated['published_at']) > time())) {
-                    $validated['published_at'] = now();
-                }
-            }
+            $validated['tag_ids'] = $validated['tags'] ?? [];
+            unset($validated['tags']);
 
-            // Set defaults
-            if (! isset($validated['schema_type'])) {
-                $validated['schema_type'] = 'Article';
-            }
-
-            if (! isset($validated['is_indexable'])) {
-                $validated['is_indexable'] = true;
-            }
-
-            if (! isset($validated['og_type'])) {
-                $validated['og_type'] = 'article';
-            }
-
-            if (! isset($validated['og_locale'])) {
-                $validated['og_locale'] = 'ar_SA';
-            }
-
-            if (! isset($validated['twitter_card'])) {
-                $validated['twitter_card'] = 'summary_large_image';
-            }
-
-            // Calculate reading time
-            $wordCount = str_word_count(strip_tags($validated['content']));
-            $validated['reading_time'] = max(1, ceil($wordCount / 200)); // Assuming 200 words per minute
-
-            // Create post
-            $post = BlogPost::create($validated);
-
-            // Attach tags
-            if (isset($validated['tags']) && is_array($validated['tags'])) {
-                $post->tags()->sync($validated['tags']);
-            }
-
-            DB::commit();
+            $post = $this->postWriter->create($validated);
 
             return redirect()->route('admin.blog.posts.edit', $post->id)
                 ->with('success', 'تم إنشاء المقال بنجاح باستخدام الذكاء الاصطناعي!');
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Error storing AI-generated blog post: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'validated_data' => $validated,

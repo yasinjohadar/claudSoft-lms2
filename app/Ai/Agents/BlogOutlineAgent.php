@@ -20,7 +20,9 @@ class BlogOutlineAgent implements Agent, HasStructuredOutput
     {
         return 'You plan blog article outlines. Return JSON matching the schema exactly. '
             .'Sections must read as natural article subheadings (not encyclopedia chapters) '
-            .'and must not overlap in content.';
+            .'and must not overlap in content. '
+            .'Also suggest 3 to 6 short topical tags for the article (1-3 words each, '
+            .'written in the same language as the article, no hashtags, no duplicates).';
     }
 
     public function schema(JsonSchema $schema): array
@@ -36,6 +38,9 @@ class BlogOutlineAgent implements Agent, HasStructuredOutput
                     'brief' => $schema->string()->required(),
                 ]))
                 ->required(),
+            // Optional on purpose: the single-article wizard predates tags and must
+            // keep working against a model that omits them.
+            'tags' => $schema->array()->items($schema->string()),
         ];
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AccountCreatedMessageSettingsController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AdminHeaderNotificationController;
 use App\Http\Controllers\Admin\AdminMessageController;
+use App\Http\Controllers\Admin\AIBlogBatchController;
 use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AIDocumentationBatchController;
@@ -1033,6 +1034,21 @@ Route::prefix('admin')
             Route::get('ai-posts/jobs/{uuid}', [AIBlogPostController::class, 'jobStatus'])->name('ai-posts.jobs.show');
             Route::post('ai-posts/jobs/{uuid}/resume', [AIBlogPostController::class, 'jobResume'])->name('ai-posts.jobs.resume');
             Route::get('ai-posts/jobs/{uuid}/partial', [AIBlogPostController::class, 'jobPartial'])->name('ai-posts.jobs.partial');
+
+            // AI Posts — batch generation (queue driven, one article at a time)
+            Route::prefix('ai-posts/batch')->name('ai-posts.batch.')->group(function () {
+                Route::get('/', [AIBlogBatchController::class, 'create'])->name('create');
+                Route::post('/', [AIBlogBatchController::class, 'store'])->name('store');
+                // Literal segments must stay above the {uuid} catch-all.
+                Route::get('/history', [AIBlogBatchController::class, 'index'])->name('index');
+                Route::get('/{uuid}', [AIBlogBatchController::class, 'show'])->name('show');
+                Route::get('/{uuid}/status', [AIBlogBatchController::class, 'status'])->name('status');
+                Route::post('/{uuid}/cancel', [AIBlogBatchController::class, 'cancel'])->name('cancel');
+                Route::post('/{uuid}/restart', [AIBlogBatchController::class, 'restart'])->name('restart');
+                Route::post('/{uuid}/resume-all', [AIBlogBatchController::class, 'resumeAll'])->name('resume-all');
+                Route::post('/{uuid}/items/{item}/resume', [AIBlogBatchController::class, 'resumeItem'])->name('items.resume');
+                Route::post('/{uuid}/items/{item}/release', [AIBlogBatchController::class, 'releaseItem'])->name('items.release');
+            });
 
             // Posts
             Route::resource('posts', BlogPostController::class)->names([

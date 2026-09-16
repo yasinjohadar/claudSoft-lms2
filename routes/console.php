@@ -119,3 +119,9 @@ Schedule::command('docs:reap-stalled-ai-batches')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// تحرير مقالات دفعات المدونة العالقة بعد توقّف معالج الطابور - كل خمس دقائق
+Schedule::command('blog:reap-stalled-ai-batches')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

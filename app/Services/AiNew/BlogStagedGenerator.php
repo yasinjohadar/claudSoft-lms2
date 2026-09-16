@@ -486,7 +486,38 @@ class BlogStagedGenerator
             'content' => $shaped['content'],
             'meta_title' => $shaped['meta_title'] ?? null,
             'meta_description' => $shaped['meta_description'] ?? null,
+            // Planned with the outline, so a resumed run keeps the same tags
+            // without spending another provider call on them.
+            'tags' => $this->outlineTags($outline),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $outline
+     * @return list<string>
+     */
+    private function outlineTags(array $outline): array
+    {
+        $tags = $outline['tags'] ?? [];
+        if (is_string($tags)) {
+            $tags = preg_split('/[,،]/u', $tags) ?: [];
+        }
+        if (! is_array($tags)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($tags as $tag) {
+            if (! is_scalar($tag)) {
+                continue;
+            }
+            $tag = trim((string) $tag);
+            if ($tag !== '') {
+                $clean[] = $tag;
+            }
+        }
+
+        return array_values($clean);
     }
 
     /**

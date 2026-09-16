@@ -147,6 +147,7 @@ class LaravelAiBlogService
             'short' => 'roughly 500–800 words',
             'medium' => 'roughly 1000–1500 words',
             'long' => 'roughly 2000–3000 words',
+            'very_long' => 'roughly 4000–6500 words',
         ];
         $lengthText = $lengthMap[$contentLength] ?? $lengthMap['medium'];
 

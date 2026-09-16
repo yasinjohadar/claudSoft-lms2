@@ -161,8 +161,10 @@ class BlogAiGeneration extends Model
         /** @var \Illuminate\Support\Collection<int, BlogAiSection> $sections */
         $sections = $this->relationLoaded('sections') ? $this->sections : $this->sections()->get();
 
-        $done = $sections->where('status', BlogAiSection::STATUS_DONE)->count();
-        $failed = $sections->where('status', BlogAiSection::STATUS_FAILED);
+        // assemble() treats a "done" row with empty html as unfinished, so count the
+        // same way here — otherwise the UI can claim 13/13 while the run is paused.
+        $done = $sections->filter(fn (BlogAiSection $s) => $s->isDone())->count();
+        $failed = $sections->reject(fn (BlogAiSection $s) => $s->isDone());
 
         return [
             'planned' => $sections->count(),
@@ -179,7 +181,32 @@ class BlogAiGeneration extends Model
             return false;
         }
 
-        return $this->sections()->where('status', '!=', BlogAiSection::STATUS_DONE)->exists();
+        // Prefer the eager-loaded relation: batch polling asks this for every
+        // stopped item every few seconds, and a fresh query here was an N+1.
+        return $this->relationLoaded('sections')
+            ? $this->sections->contains(fn (BlogAiSection $s) => ! $s->isDone())
+            : $this->sections()->where('status', '!=', BlogAiSection::STATUS_DONE)->exists();
+    }
+
+    /** Short Arabic sentence describing the progress that is already saved. */
+    public function progressHint(): ?string
+    {
+        if (! $this->isStaged()) {
+            return null;
+        }
+
+        $summary = $this->sectionSummary();
+        if ($summary['planned'] === 0) {
+            return null;
+        }
+
+        $hint = 'تم توليد '.$summary['done'].' من '.$summary['planned'].' قسماً وحُفظت';
+
+        if ($summary['remaining'] > 0) {
+            $hint .= ' — متبقٍّ '.$summary['remaining'].' قسماً';
+        }
+
+        return $hint;
     }
 
     /** Running but the worker stopped writing heartbeats (process killed / crashed). */

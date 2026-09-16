@@ -107,7 +107,7 @@ class BlogAiPipelineService
         $engine = (string) ($payload['blog_engine'] ?? 'legacy');
         $contentLength = (string) ($payload['content_length'] ?? 'medium');
         $options = $this->wizardOptionsFromPayload($payload);
-        $useStaged = in_array($contentLength, ['medium', 'long'], true);
+        $useStaged = in_array($contentLength, ['medium', 'long', 'very_long'], true);
 
         Log::info('Blog AI generate path', [
             'uuid' => $generation->uuid,
@@ -243,21 +243,27 @@ class BlogAiPipelineService
     private function expandStagedResult(array $staged, string $topic, array $payload, array $options, bool $useLaravelAi): array
     {
         if ($useLaravelAi) {
-            return $this->laravelAiBlogService->expandDraftToWizardPayload([
+            $expanded = $this->laravelAiBlogService->expandDraftToWizardPayload([
                 'title' => $staged['title'] ?? '',
                 'content' => $staged['content'] ?? '',
                 'excerpt' => $staged['excerpt'] ?? '',
             ], $options);
+        } else {
+            $legacyModel = $this->resolveLegacyModel($payload);
+
+            $expanded = $this->legacyBlog->expandGeneratedPost([
+                'title' => $staged['title'] ?? '',
+                'slug' => $staged['slug'] ?? '',
+                'excerpt' => $staged['excerpt'] ?? '',
+                'content' => $staged['content'] ?? '',
+            ], $topic, $legacyModel, $options);
         }
 
-        $legacyModel = $this->resolveLegacyModel($payload);
+        // Both expanders rebuild the payload key by key, so the outline's tag
+        // suggestions have to be re-attached here or they never reach the saver.
+        $expanded['tags'] = $staged['tags'] ?? [];
 
-        return $this->legacyBlog->expandGeneratedPost([
-            'title' => $staged['title'] ?? '',
-            'slug' => $staged['slug'] ?? '',
-            'excerpt' => $staged['excerpt'] ?? '',
-            'content' => $staged['content'] ?? '',
-        ], $topic, $legacyModel, $options);
+        return $expanded;
     }
 
     /**
@@ -297,8 +303,9 @@ class BlogAiPipelineService
 
 اجعل الأقسام تقرأ كعناوين فرعية طبيعية للمقال (وليست فصولاً موسوعية)، ولا تكرر أقساماً بنفس المعنى.
 
-أعد: title, slug, excerpt, sections[{heading, brief}].
+أعد: title, slug, excerpt, sections[{heading, brief}], tags[].
 كل brief جملة قصيرة توضّح ما سيُغطى في القسم فقط.
+tags: من 3 إلى 6 وسوم قصيرة (كلمة إلى ثلاث كلمات) تصف موضوع المقال، بلغة المقال نفسها، بلا رمز # وبلا تكرار.
 PROMPT;
 
         $started = hrtime(true);
@@ -417,6 +424,7 @@ PROMPT;
         return match ($contentLength) {
             'short' => min($cap, 2048),
             'long' => $cap,
+            'very_long' => (int) config('ai.blog.very_long_section_max_tokens', 6144),
             default => min($cap, 3072),
         };
     }
@@ -426,6 +434,7 @@ PROMPT;
         return match ($length) {
             'short' => 3,
             'long' => 8,
+            'very_long' => 13,
             default => 5,
         };
     }

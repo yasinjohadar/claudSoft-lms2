@@ -196,10 +196,12 @@ class AIBlogPostService
   "excerpt": "ملخص قصير بدون HTML",
   "sections": [
     {"heading": "عنوان القسم", "brief": "جملة قصيرة عما سيغطيه القسم"}
-  ]
+  ],
+  "tags": ["وسم", "وسم آخر"]
 }
 
 مهم: brief جملة قصيرة فقط. لا تكتب HTML هنا.
+tags: من 3 إلى 6 وسوم قصيرة (كلمة إلى ثلاث كلمات) تصف موضوع المقال، بلغة المقال نفسها، بلا رمز # وبلا تكرار.
 PROMPT;
 
         $response = $this->callProvider(
@@ -227,7 +229,37 @@ PROMPT;
             'slug' => trim((string) ($data['slug'] ?? '')),
             'excerpt' => trim((string) ($data['excerpt'] ?? '')),
             'sections' => array_values($sections),
+            // Optional: a model that ignores the tags line must not break the outline.
+            'tags' => $this->normalizeOutlineTags($data['tags'] ?? null),
         ];
+    }
+
+    /**
+     * Tags are advisory: accept a JSON array, a comma separated string, or nothing.
+     *
+     * @return list<string>
+     */
+    private function normalizeOutlineTags(mixed $tags): array
+    {
+        if (is_string($tags)) {
+            $tags = preg_split('/[,،]/u', $tags) ?: [];
+        }
+        if (! is_array($tags)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($tags as $tag) {
+            if (! is_scalar($tag)) {
+                continue;
+            }
+            $tag = trim((string) $tag);
+            if ($tag !== '') {
+                $clean[] = $tag;
+            }
+        }
+
+        return array_values($clean);
     }
 
     /**
@@ -357,6 +389,7 @@ PROMPT;
             default => match ($contentLength) {
                 'short' => min($sectionCap, 2048),
                 'long' => $sectionCap,
+                'very_long' => (int) config('ai.blog.very_long_section_max_tokens', 6144),
                 default => min($sectionCap, 3072),
             },
         };
@@ -385,7 +418,11 @@ PROMPT;
             'short' => '500-800 كلمة',
             'medium' => '1000-1500 كلمة',
             'long' => '2000-3000 كلمة',
+            'very_long' => '4000-6500 كلمة',
         ];
+        // generateBlogPost() is public: an unknown length must not become a fatal
+        // undefined-key access on the prompt line below.
+        $lengthText = $lengthMap[$contentLength] ?? $lengthMap['medium'];
 
         $toneMap = [
             'professional' => 'احترافي ومهني',
@@ -401,7 +438,7 @@ PROMPT;
 
 الموضوع: {$topic}
 {$categoryContext}
-الطول المطلوب: {$lengthMap[$contentLength]}
+الطول المطلوب: {$lengthText}
 الأسلوب: {$toneMap[$tone]}
 
 المتطلبات:

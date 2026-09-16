@@ -53,6 +53,26 @@ trait UsesLaravelAiSdkForWizards
         ?int $laravelAiModelId = null,
         ?int $legacyAiModelId = null,
     ): bool {
+        return $this->resolveWizardAiEngineWithModels(
+            $requestedEngine,
+            'docs_engine',
+            $laravelAiModelId,
+            $legacyAiModelId,
+        );
+    }
+
+    /**
+     * Engine resolution that also honours an explicitly picked model id, for
+     * wizards where the admin chooses a model rather than a stack.
+     *
+     * @param  'blog_engine'|'docs_engine'|'questions_engine'|'reports_engine'|'simulators_engine'  $featureEngineKey
+     */
+    protected function resolveWizardAiEngineWithModels(
+        ?string $requestedEngine,
+        string $featureEngineKey,
+        ?int $laravelAiModelId = null,
+        ?int $legacyAiModelId = null,
+    ): bool {
         if ($requestedEngine === 'laravel_ai') {
             return true;
         }
@@ -78,6 +98,6 @@ trait UsesLaravelAiSdkForWizards
             return false;
         }
 
-        return $this->wizardUsesLaravelAiSdk('docs_engine');
+        return $this->wizardUsesLaravelAiSdk($featureEngineKey);
     }
 }

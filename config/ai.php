@@ -84,6 +84,9 @@ return [
     'blog' => [
         'outline_max_tokens' => (int) env('AI_BLOG_OUTLINE_MAX_TOKENS', 2048),
         'section_max_tokens' => (int) env('AI_BLOG_SECTION_MAX_TOKENS', 4096),
+        // very_long is the blog twin of docs' 'long': more sections AND more room
+        // per section. Raising section_max_tokens instead would silently widen 'long'.
+        'very_long_section_max_tokens' => (int) env('AI_BLOG_VERY_LONG_SECTION_MAX_TOKENS', 6144),
         'section_delay_ms' => (int) env('AI_BLOG_SECTION_DELAY_MS', 300),
         'section_attempts' => (int) env('AI_BLOG_SECTION_ATTEMPTS', 4),
         'outline_attempts' => (int) env('AI_BLOG_OUTLINE_ATTEMPTS', 3),

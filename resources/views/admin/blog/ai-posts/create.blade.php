@@ -141,8 +141,9 @@
                                             <option value="short">قصير (500-800 كلمة)</option>
                                             <option value="medium" selected>متوسط (1000-1500 كلمة)</option>
                                             <option value="long">طويل (2000-3000 كلمة)</option>
+                                            <option value="very_long">طويل جداً (4000-6500 كلمة)</option>
                                         </select>
-                                        <small class="text-muted d-block mt-1">الطويل/المتوسط يُولَّد على مراحل (مخطط ثم أقسام ثم تجميع) عبر الموديل المختار.</small>
+                                        <small class="text-muted d-block mt-1">المتوسط فما فوق يُولَّد على مراحل (مخطط ثم أقسام ثم تجميع) عبر الموديل المختار — «طويل جداً» يُكتب على 13 قسماً ويستغرق وقتاً أطول.</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" for="tone">الأسلوب</label>

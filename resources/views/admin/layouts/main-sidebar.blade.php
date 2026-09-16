@@ -570,8 +570,14 @@
                                         <li class="slide {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.blog.posts.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.posts.*') ? 'active' : '' }}">المقالات</a>
                                         </li>
-                                        <li class="slide {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.blog.ai-posts.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.*') ? 'active' : '' }}">إنشاء مقال بالذكاء الاصطناعي</a>
+                                        <li class="slide {{ request()->routeIs('admin.blog.ai-posts.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.ai-posts.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.create') ? 'active' : '' }}">إنشاء مقال بالذكاء الاصطناعي</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.blog.ai-posts.batch.create') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.ai-posts.batch.create') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.batch.create') ? 'active' : '' }}">توليد دفعة مقالات (AI)</a>
+                                        </li>
+                                        <li class="slide {{ request()->routeIs('admin.blog.ai-posts.batch.index', 'admin.blog.ai-posts.batch.show') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.blog.ai-posts.batch.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.ai-posts.batch.index', 'admin.blog.ai-posts.batch.show') ? 'active' : '' }}">سجل الدفعات والمقالات الناقصة</a>
                                         </li>
                                         <li class="slide {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.blog.categories.index') }}" class="side-menu__item {{ request()->routeIs('admin.blog.categories.*') ? 'active' : '' }}">التصنيفات</a>

@@ -236,8 +236,11 @@ class BlogPost extends Model
      */
     public function calculateReadingTime(): int
     {
-        $wordCount = str_word_count(strip_tags($this->content));
-        $readingTime = ceil($wordCount / 200); // Average reading speed: 200 words per minute
+        // str_word_count() counts zero words in Arabic, which is how every Arabic
+        // article ended up with the same reading time. Split on Unicode whitespace.
+        $text = trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $this->content)));
+        $wordCount = $text === '' ? 0 : count(preg_split('/\s+/u', $text) ?: []);
+        $readingTime = max(1, (int) ceil($wordCount / 200)); // Average reading speed: 200 wpm
 
         $this->reading_time = $readingTime;
         $this->save();

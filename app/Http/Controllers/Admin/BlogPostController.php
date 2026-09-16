@@ -112,6 +112,8 @@ class BlogPostController extends Controller
             'tags.*' => 'exists:blog_tags,id',
         ]);
 
+        // TODO(blog-writer): fold this into App\Services\Blog\BlogPostWriter — update()
+        // has extra semantics (previous_slugs, image replacement) that need their own pass.
         DB::beginTransaction();
 
         try {
@@ -298,6 +300,8 @@ class BlogPostController extends Controller
             'tags.*' => 'exists:blog_tags,id',
         ]);
 
+        // TODO(blog-writer): fold this into App\Services\Blog\BlogPostWriter — update()
+        // has extra semantics (previous_slugs, image replacement) that need their own pass.
         DB::beginTransaction();
 
         try {
