@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\EvolutionWebhookController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\V1\CourseController as MobileCourseController;
+use App\Http\Controllers\Api\Mobile\V1\FinanceController as MobileFinanceController;
 use App\Http\Controllers\Api\Mobile\V1\ModuleCompletionController as MobileModuleCompletionController;
 use App\Http\Controllers\Api\Mobile\V1\ModuleDocumentController as MobileModuleDocumentController;
 use App\Http\Controllers\Api\Mobile\V1\ModulePlaybackController as MobileModulePlaybackController;
@@ -80,6 +81,11 @@ Route::prefix('mobile/v1')->name('api.mobile.v1.')->group(function () {
 
         Route::get('courses', [MobileCourseController::class, 'index'])->name('courses.index');
         Route::get('courses/{course}', [MobileCourseController::class, 'show'])->whereNumber('course')->name('courses.show');
+
+        Route::get('finance/summary', [MobileFinanceController::class, 'summary'])->name('finance.summary');
+        Route::get('invoices', [MobileFinanceController::class, 'invoices'])->name('invoices.index');
+        Route::get('invoices/{invoice}', [MobileFinanceController::class, 'invoice'])->whereNumber('invoice')->name('invoices.show');
+        Route::get('payments', [MobileFinanceController::class, 'payments'])->name('payments.index');
 
         Route::get('modules/{module}/playback', MobileModulePlaybackController::class)->whereNumber('module')->name('modules.playback');
         Route::get('modules/{module}/document', [MobileModuleDocumentController::class, 'show'])->whereNumber('module')->name('modules.document');

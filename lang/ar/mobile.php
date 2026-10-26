@@ -14,6 +14,7 @@ return [
     'avatar_missing' => 'لا توجد صورة شخصية لحذفها.',
     'password_changed' => 'تم تغيير كلمة المرور بنجاح.',
     'course_not_found' => 'الكورس غير موجود أو لست مسجّلاً فيه.',
+    'invoice_not_found' => 'الفاتورة غير موجودة.',
     'module_not_found' => 'الدرس غير موجود.',
     'module_has_no_document' => 'هذا الدرس لا يحتوي على محتوى مكتوب.',
     'module_not_video' => 'هذا الدرس ليس فيديو.',
