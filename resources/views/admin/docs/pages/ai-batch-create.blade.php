@@ -38,6 +38,9 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <a href="{{ route('admin.docs.ai-pages.suggest-titles') }}" class="btn btn-light border">
+                            <i class="fe fe-list me-1"></i>اقتراح عناوين
+                        </a>
                         <a href="{{ route('admin.docs.ai-pages.batch.index') }}" class="btn btn-light border">
                             <i class="fe fe-clock me-1"></i>سجل الدفعات
                         </a>
@@ -76,7 +79,7 @@
                     <div class="card-body pt-2">
                         <label class="form-label" for="batchTopics">المواضيع (افصل بين كل موضوع وآخر بسطر فارغ — اضغط Enter مرتين) <span class="text-danger">*</span></label>
                         <textarea id="batchTopics" class="form-control" rows="10" placeholder="التوجيه في Laravel، اشرح بالتفصيل مع أمثلة كاملة وشرحها على شكل بلوك كود&#10;&#10;أنواع البيانات في PHP&#10;&#10;النماذج في HTML"></textarea>
-                        <p class="doc-ai-hint mb-0 mt-1"><span id="batchTopicsCount">0</span> موضوع مكتشف — الحد الأقصى 30 موضوعاً لكل دفعة. يمكن أن يمتد شرح الموضوع الواحد على عدة أسطر متتالية؛ اترك سطراً فارغاً لتبدأ الموضوع التالي.</p>
+                        <p class="doc-ai-hint mb-0 mt-1"><span id="batchTopicsCount">0</span> موضوع مكتشف — الحد الأقصى 100 موضوع لكل دفعة. يمكن أن يمتد شرح الموضوع الواحد على عدة أسطر متتالية؛ اترك سطراً فارغاً لتبدأ الموضوع التالي.</p>
                     </div>
                 </div>
 
@@ -386,6 +389,26 @@ document.documentElement.classList.add('loaded');
         document.getElementById('batchTopicsCount').textContent = parseTopics().length;
     }
 
+    /** Titles handed over from the suggest-titles page; filled in, never auto-submitted. */
+    function applyPrefill() {
+        let prefill = null;
+        try {
+            prefill = JSON.parse(sessionStorage.getItem('docAiBatchPrefill') || 'null');
+            sessionStorage.removeItem('docAiBatchPrefill');
+        } catch (e) {}
+        if (!prefill || !Array.isArray(prefill.topics) || !prefill.topics.length) return;
+
+        document.getElementById('batchTopics').value = prefill.topics.join('\n\n');
+        if (prefill.documentation_category_id) {
+            setVal('batch_doc_category_id', prefill.documentation_category_id);
+            refreshParentOptions('');
+            refreshResearchOptions('');
+        }
+        setVal('batch_language', prefill.language);
+        updateTopicsCount();
+        window.DocAiBatch.toast({ icon: 'info', title: 'أُضيف ' + prefill.topics.length + ' موضوعاً من صفحة الاقتراح', text: 'راجع الإعدادات ثم أضفها إلى الطابور.' });
+    }
+
     function setSubmitting(isSubmitting) {
         const btn = document.getElementById('batchSubmitBtn');
         const spinner = btn.querySelector('.loading-spinner');
@@ -411,6 +434,8 @@ document.documentElement.classList.add('loaded');
             restoreSettings(initialSettings);
         }
 
+        applyPrefill();
+
         // Restores the batch table (and resumes polling) after a refresh.
         window.DocAiBatch.attach({ initialBatch: initialBatch });
 
@@ -422,8 +447,8 @@ document.documentElement.classList.add('loaded');
                 window.DocAiBatch.toast({ icon: 'warning', title: 'يرجى إدخال موضوع واحد على الأقل' });
                 return;
             }
-            if (topics.length > 30) {
-                window.DocAiBatch.toast({ icon: 'warning', title: 'الحد الأقصى 30 موضوعاً لكل دفعة' });
+            if (topics.length > 100) {
+                window.DocAiBatch.toast({ icon: 'warning', title: 'الحد الأقصى 100 موضوع لكل دفعة' });
                 return;
             }
             const tooLong = topics.find(function (t) { return t.length > 3000; });

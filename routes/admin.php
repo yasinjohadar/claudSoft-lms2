@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\AIBlogPostController;
 use App\Http\Controllers\Admin\AIContentController;
 use App\Http\Controllers\Admin\AIDocumentationBatchController;
 use App\Http\Controllers\Admin\AIDocumentationPageController;
+use App\Http\Controllers\Admin\AIDocumentationTitleSuggestionController;
 use App\Http\Controllers\Admin\AIFrontendCourseController;
 use App\Http\Controllers\Admin\AIGradingSettingsController;
 use App\Http\Controllers\Admin\AIModelController;
@@ -1133,6 +1134,8 @@ Route::prefix('admin')
             Route::post('ai-pages/jobs/{uuid}/resume', [AIDocumentationPageController::class, 'jobResume'])->name('ai-pages.jobs.resume');
             Route::get('ai-pages/jobs/{uuid}/partial', [AIDocumentationPageController::class, 'jobPartial'])->name('ai-pages.jobs.partial');
             Route::post('ai-pages', [AIDocumentationPageController::class, 'store'])->name('ai-pages.store');
+            Route::get('ai-pages/suggest-titles', [AIDocumentationTitleSuggestionController::class, 'create'])->name('ai-pages.suggest-titles');
+            Route::post('ai-pages/suggest-titles', [AIDocumentationTitleSuggestionController::class, 'suggest'])->name('ai-pages.suggest-titles.generate');
 
             Route::prefix('ai-pages/batch')->name('ai-pages.batch.')->group(function () {
                 Route::get('/', [AIDocumentationBatchController::class, 'create'])->name('create');
