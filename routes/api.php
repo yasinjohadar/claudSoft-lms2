@@ -1,6 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\EvolutionWebhookController;
+use App\Http\Controllers\Api\Mobile\V1\AuthController as MobileAuthController;
+use App\Http\Controllers\Api\Mobile\V1\CourseController as MobileCourseController;
+use App\Http\Controllers\Api\Mobile\V1\ModuleCompletionController as MobileModuleCompletionController;
+use App\Http\Controllers\Api\Mobile\V1\ModuleDocumentController as MobileModuleDocumentController;
+use App\Http\Controllers\Api\Mobile\V1\ModulePlaybackController as MobileModulePlaybackController;
+use App\Http\Controllers\Api\Mobile\V1\ProfileController as MobileProfileController;
 use App\Http\Controllers\Api\Student\AssignmentApiController as StudentAssignmentApiController;
 use App\Http\Controllers\Api\Student\AuthController as StudentAuthController;
 use App\Http\Controllers\Api\Student\CertificateApiController as StudentCertificateApiController;
@@ -48,6 +54,39 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('country-codes', [StudentAuthController::class, 'countryCodes'])->name('country-codes');
+
+// ========== Mobile App API v1 (تطبيق الجوال — للطلاب فقط) ==========
+Route::prefix('mobile/v1')->name('api.mobile.v1.')->group(function () {
+    Route::post('auth/login', [MobileAuthController::class, 'login'])->middleware('throttle:6,1')->name('auth.login');
+
+    // صفحة الدرس المكتوب لـ WebView/iframe: محمية برابط موقّع مؤقت بدلاً من التوكن.
+    Route::get('modules/{module}/document/view', [MobileModuleDocumentController::class, 'view'])
+        ->whereNumber('module')->middleware('throttle:120,1')->name('modules.document.view');
+
+    // مشغّل الفيديو المحمي: تذكرة معتمة قصيرة العمر (لا يُكشف رابط الفيديو للتطبيق).
+    Route::get('modules/{module}/player', [MobileModulePlaybackController::class, 'player'])
+        ->whereNumber('module')->middleware('throttle:60,1')->name('modules.player');
+
+    Route::middleware(['auth:sanctum', 'mobile.student', 'student.profile.complete'])->group(function () {
+        Route::post('auth/logout', [MobileAuthController::class, 'logout'])->name('auth.logout');
+        Route::get('auth/me', [MobileAuthController::class, 'me'])->name('auth.me');
+
+        Route::get('profile', [MobileProfileController::class, 'show'])->name('profile.show');
+        Route::put('profile', [MobileProfileController::class, 'update'])->name('profile.update');
+        Route::post('profile/avatar', [MobileProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+        Route::delete('profile/avatar', [MobileProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
+        Route::put('profile/password', [MobileProfileController::class, 'changePassword'])->name('profile.password');
+        Route::get('nationalities', [MobileProfileController::class, 'nationalities'])->name('nationalities');
+
+        Route::get('courses', [MobileCourseController::class, 'index'])->name('courses.index');
+        Route::get('courses/{course}', [MobileCourseController::class, 'show'])->whereNumber('course')->name('courses.show');
+
+        Route::get('modules/{module}/playback', MobileModulePlaybackController::class)->whereNumber('module')->name('modules.playback');
+        Route::get('modules/{module}/document', [MobileModuleDocumentController::class, 'show'])->whereNumber('module')->name('modules.document');
+        Route::post('modules/{module}/complete', [MobileModuleCompletionController::class, 'store'])->whereNumber('module')->name('modules.complete');
+        Route::delete('modules/{module}/complete', [MobileModuleCompletionController::class, 'destroy'])->whereNumber('module')->name('modules.incomplete');
+    });
+});
 
 // ========== Student API (للتطبيقات مثل Flutter) ==========
 Route::prefix('student')->name('api.student.')->group(function () {

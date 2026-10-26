@@ -31,6 +31,14 @@ class StudentProfileCompletionService
         'api.student.profile.update',
         'api.student.nationalities',
         'api.student.logout',
+        'api.mobile.v1.auth.me',
+        'api.mobile.v1.auth.logout',
+        'api.mobile.v1.profile.show',
+        'api.mobile.v1.profile.update',
+        'api.mobile.v1.profile.avatar.update',
+        'api.mobile.v1.profile.avatar.delete',
+        'api.mobile.v1.profile.password',
+        'api.mobile.v1.nationalities',
     ];
 
     public function isEnforcementEnabled(): bool

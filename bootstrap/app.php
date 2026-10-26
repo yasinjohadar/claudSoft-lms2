@@ -63,6 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'session.device.binding' => EnforceSessionDeviceBinding::class,
             'impersonate' => ImpersonateMiddleware::class,
             'student.profile.complete' => RequireCompleteStudentProfile::class,
+            'mobile.student' => \App\Http\Middleware\EnsureMobileStudent::class,
             'phone.verified.recent' => EnsureRecentPhoneVerification::class,
             'local.dev.login' => EnsureLocalDevLoginAvailable::class,
             'public.registration' => EnsurePublicRegistrationEnabled::class,

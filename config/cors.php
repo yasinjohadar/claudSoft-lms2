@@ -12,7 +12,9 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // storage/*: public images (courses, profile photos) served through Laravel routes,
+    // so Flutter Web can load and render them directly.
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*'],
 
     'allowed_methods' => ['*'],
 
