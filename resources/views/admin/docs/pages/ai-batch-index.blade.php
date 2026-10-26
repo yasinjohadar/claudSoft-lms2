@@ -115,8 +115,10 @@
                             <tbody>
                                 @foreach($batches as $batch)
                                     @php
-                                        $done = $batch->completed_count + $batch->failed_count;
-                                        $pct = $batch->total ? (int) round($done / $batch->total * 100) : 0;
+                                        // Green is only what actually got saved; stopped topics get their own amber slice.
+                                        $pct = $batch->total ? (int) round($batch->completed_count / $batch->total * 100) : 0;
+                                        $failedPct = $batch->total ? (int) round($batch->failed_count / $batch->total * 100) : 0;
+                                        $noProgressCount = max(0, $batch->failed_count - $batch->resumable_count);
                                         $statusMap = [
                                             'queued' => ['في الطابور', 'pending'],
                                             'running' => ['جارية', 'running'],
@@ -135,6 +137,7 @@
                                         <td style="min-width:180px;">
                                             <div class="progress doc-ai-hist-bar mb-1">
                                                 <div class="progress-bar bg-success" style="width: {{ $pct }}%"></div>
+                                                <div class="progress-bar bg-warning" style="width: {{ $failedPct }}%"></div>
                                             </div>
                                             <small class="text-muted">
                                                 مكتملة {{ $batch->completed_count }}
@@ -145,15 +148,33 @@
                                                     · قيد الانتظار {{ $batch->open_count }}
                                                 @endif
                                             </small>
+                                            @if($batch->failed_count)
+                                                <small class="d-block text-muted">
+                                                    @if($batch->resumable_count)
+                                                        <i class="fe fe-check-circle text-success"></i> تم التحقق: {{ $batch->resumable_count }} قابل للمتابعة (أقسامه المكتملة محفوظة)
+                                                    @endif
+                                                    @if($noProgressCount)
+                                                        <span class="d-block"><i class="fe fe-alert-circle text-danger"></i> {{ $noProgressCount }} بلا تقدم محفوظ — يحتاج إعادة توليد من دفعة جديدة</span>
+                                                    @endif
+                                                </small>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="doc-ai-batch-badge doc-ai-batch-badge--{{ $badgeKey }}">{{ $label }}</span>
                                         </td>
-                                        <td class="text-end">
+                                        <td class="text-end text-nowrap">
+                                            @if($batch->resumable_count && ! $batch->open_count)
+                                                <button type="button" class="btn btn-sm btn-warning doc-ai-hist-resume"
+                                                        data-url="{{ route('admin.docs.ai-pages.batch.resume-all', $batch->uuid) }}"
+                                                        data-show-url="{{ route('admin.docs.ai-pages.batch.show', $batch->uuid) }}"
+                                                        data-count="{{ $batch->resumable_count }}">
+                                                    <span class="spinner-border spinner-border-sm" role="status" style="display:none;"></span>
+                                                    <i class="fe fe-play-circle me-1"></i>متابعة ({{ $batch->resumable_count }})
+                                                </button>
+                                            @endif
                                             <a href="{{ route('admin.docs.ai-pages.batch.show', $batch->uuid) }}"
-                                               class="btn btn-sm {{ $batch->failed_count ? 'btn-primary' : 'btn-outline-secondary' }}">
-                                                <i class="fe fe-eye me-1"></i>
-                                                {{ $batch->failed_count ? 'عرض ومتابعة' : 'عرض التفاصيل' }}
+                                               class="btn btn-sm btn-outline-secondary">
+                                                <i class="fe fe-eye me-1"></i>عرض التفاصيل
                                             </a>
                                         </td>
                                     </tr>
@@ -175,5 +196,57 @@
 @section('scripts')
 <script>
 document.documentElement.classList.add('loaded');
+</script>
+<script src="{{ asset('assets/libs/sweetalert2/sweetalert2.all.min.js') }}"></script>
+<script>
+(function () {
+    const csrfToken = @json(csrf_token());
+
+    function toast(opts) {
+        if (typeof Swal === 'undefined') {
+            if (opts.icon === 'error') alert(opts.title + (opts.text ? '\n' + opts.text : ''));
+            return;
+        }
+        Swal.fire(Object.assign({
+            toast: true,
+            position: 'top-start',
+            showConfirmButton: false,
+            timer: 6000,
+            timerProgressBar: true,
+        }, opts));
+    }
+
+    function setBusy(btn, busy) {
+        btn.disabled = busy;
+        btn.querySelector('.spinner-border').style.display = busy ? '' : 'none';
+    }
+
+    // The server re-checks every topic before queueing it (resumeAll →
+    // queueResume), so a stale count here can never resume a finished topic.
+    document.querySelectorAll('.doc-ai-hist-resume').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            setBusy(btn, true);
+            fetch(btn.dataset.url, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                credentials: 'same-origin',
+            })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+                .then(function (res) {
+                    if (res.body.success) {
+                        // The detail page polls the batch, so progress is visible there.
+                        window.location.href = btn.dataset.showUrl;
+                        return;
+                    }
+                    setBusy(btn, false);
+                    toast({ icon: 'warning', title: 'تعذرت المتابعة', text: res.body.message || '' });
+                })
+                .catch(function () {
+                    setBusy(btn, false);
+                    toast({ icon: 'error', title: 'تعذرت المتابعة', text: 'تحقق من الاتصال ثم أعد المحاولة.' });
+                });
+        });
+    });
+})();
 </script>
 @endsection

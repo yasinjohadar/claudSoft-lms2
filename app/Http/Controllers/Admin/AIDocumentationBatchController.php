@@ -121,6 +121,9 @@ class AIDocumentationBatchController extends Controller
                 'items as completed_count' => fn ($q) => $q->where('status', DocumentationAiBatchItem::STATUS_COMPLETED),
                 'items as failed_count' => fn ($q) => $q->where('status', DocumentationAiBatchItem::STATUS_FAILED),
                 'items as open_count' => fn ($q) => $q->whereIn('status', DocumentationAiBatchItem::OPEN_STATUSES),
+                // "Failed" alone is not proof a topic is unfinished: only count the
+                // ones with no saved page and saved sections still missing.
+                'items as resumable_count' => fn ($q) => $this->scopeResumable($q),
             ])
             ->when($onlyIncomplete, fn ($q) => $q->having('failed_count', '>', 0))
             ->latest()
@@ -330,7 +333,8 @@ class AIDocumentationBatchController extends Controller
         $resumed = [];
 
         foreach ($this->loadBatch($uuid)->items as $item) {
-            if ($item->status !== DocumentationAiBatchItem::STATUS_FAILED) {
+            // A topic that already has its page is done, whatever its status says.
+            if ($item->status !== DocumentationAiBatchItem::STATUS_FAILED || $item->documentation_page_id) {
                 continue;
             }
 
@@ -442,17 +446,33 @@ class AIDocumentationBatchController extends Controller
 
     private function incompleteItemsCountForUser(): int
     {
-        return DocumentationAiBatchItem::query()
-            ->whereHas('batch', fn ($q) => $q->where('user_id', Auth::id()))
+        return $this->scopeResumable(
+            DocumentationAiBatchItem::query()
+                ->whereHas('batch', fn ($q) => $q->where('user_id', Auth::id()))
+        )->count();
+    }
+
+    /**
+     * SQL mirror of DocumentationAiBatchItem::isIncomplete(): stopped, never
+     * saved as a page, with saved sections that are still missing.
+     *
+     * @template TQuery of \Illuminate\Database\Eloquent\Builder
+     *
+     * @param  TQuery  $query
+     * @return TQuery
+     */
+    private function scopeResumable($query)
+    {
+        return $query
             ->where('status', DocumentationAiBatchItem::STATUS_FAILED)
+            ->whereNull('documentation_page_id')
             ->whereHas('generation', fn ($q) => $q
                 ->whereIn('status', [
                     DocumentationAiGeneration::STATUS_PAUSED,
                     DocumentationAiGeneration::STATUS_FAILED,
                 ])
                 ->whereHas('sections', fn ($s) => $s->where('status', '!=', DocumentationAiSection::STATUS_DONE))
-            )
-            ->count();
+            );
     }
 
     /** @param  array<string, mixed>  $extra */
