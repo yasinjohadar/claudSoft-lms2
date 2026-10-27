@@ -7,10 +7,11 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 // تنزيل تطبيق أندرويد (APK): رابط ثابت لأحدث إصدار + رابط لكل إصدار.
-Route::get('/app/download', [MobileAppDownloadController::class, 'latest'])
+// (المسارات التي تبدأ بـ /app/ محجوبة من إعدادات الاستضافة، لذا /download/app.)
+Route::get('/download/app', [MobileAppDownloadController::class, 'latest'])
     ->middleware('throttle:30,1')
     ->name('mobile-app.download');
-Route::get('/app/download/{release}', [MobileAppDownloadController::class, 'release'])
+Route::get('/download/app/{release}', [MobileAppDownloadController::class, 'release'])
     ->whereNumber('release')
     ->middleware('throttle:30,1')
     ->name('mobile-app.download.release');

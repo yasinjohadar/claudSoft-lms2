@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Storage;
 /**
  * تنزيل تطبيق أندرويد (APK) خارج Google Play.
  *
- * - /app/download           رابط ثابت يشاركه الأدمن مع الطلاب: يعطي دائماً أحدث إصدار نشط.
- * - /app/download/{release} إصدار محدد (هذا ما يفتحه زر "تحديث الآن" داخل التطبيق).
+ * - /download/app           رابط ثابت يشاركه الأدمن مع الطلاب: يعطي دائماً أحدث إصدار نشط.
+ * - /download/app/{release} إصدار محدد (هذا ما يفتحه زر "تحديث الآن" داخل التطبيق).
  */
 class MobileAppDownloadController extends Controller
 {
