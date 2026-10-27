@@ -59,7 +59,8 @@
                                 'admin.notifications.*',
                                 'admin.messages.*',
                                 'admin.reminders.*',
-                                'admin.calendar.*'
+                                'admin.calendar.*',
+                                'admin.mobile-app-releases.*'
                             );
                             $contentActive = request()->routeIs('admin.blog.*', 'admin.docs.*', 'admin.faqs.*', 'admin.lesson-simulators.*');
                             $gamificationActive = request()->routeIs('admin.gamification.*');
@@ -500,6 +501,12 @@
                                             <a href="{{ route('admin.notifications.statistics') }}" class="side-menu__item {{ request()->routeIs('admin.notifications.statistics') ? 'active' : '' }}">الإحصائيات</a>
                                         </li>
                                     </ul>
+                                </li>
+
+                                <li class="slide {{ request()->routeIs('admin.mobile-app-releases.*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.mobile-app-releases.index') }}" class="side-menu__item {{ request()->routeIs('admin.mobile-app-releases.*') ? 'active' : '' }}">
+                                        <i class="fas fa-mobile-alt me-2"></i>تحديثات تطبيق الجوال
+                                    </a>
                                 </li>
 
                                 <li class="slide {{ request()->routeIs('admin.messages.*') ? 'active' : '' }}">

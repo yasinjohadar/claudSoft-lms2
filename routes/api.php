@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\EvolutionWebhookController;
+use App\Http\Controllers\Api\Mobile\V1\AppVersionController as MobileAppVersionController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\V1\CourseController as MobileCourseController;
 use App\Http\Controllers\Api\Mobile\V1\DeviceController as MobileDeviceController;
@@ -62,6 +63,9 @@ Route::get('country-codes', [StudentAuthController::class, 'countryCodes'])->nam
 // ========== Mobile App API v1 (تطبيق الجوال — للطلاب فقط) ==========
 Route::prefix('mobile/v1')->name('api.mobile.v1.')->group(function () {
     Route::post('auth/login', [MobileAuthController::class, 'login'])->middleware('throttle:6,1')->name('auth.login');
+
+    // فحص تحديثات التطبيق (عام: يُفرض التحديث الإجباري حتى قبل تسجيل الدخول).
+    Route::get('app/version', [MobileAppVersionController::class, 'show'])->middleware('throttle:60,1')->name('app.version');
 
     // استعادة كلمة المرور (نفس منطق الويب: بريد / واتساب عبر Evolution / رمز OTP واتساب).
     Route::get('auth/forgot-password/options', [StudentAuthController::class, 'forgotPasswordOptions'])

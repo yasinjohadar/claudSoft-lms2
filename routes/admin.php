@@ -94,6 +94,7 @@ use App\Http\Controllers\Admin\LessonSimulatorAiController;
 use App\Http\Controllers\Admin\LessonSimulatorController;
 use App\Http\Controllers\Admin\MarketingAnalyticsController;
 use App\Http\Controllers\Admin\MetaPixelSettingController;
+use App\Http\Controllers\Admin\MobileAppReleaseController;
 use App\Http\Controllers\Admin\ModuleCompletionReportController;
 use App\Http\Controllers\Admin\NotificationHubAdminController;
 use App\Http\Controllers\Admin\NotificationManagementController;
@@ -1185,6 +1186,18 @@ Route::prefix('admin')
             'destroy' => 'admin.faqs.destroy',
         ]);
         Route::post('faqs/{faq}/toggle-active', [FaqController::class, 'toggleActive'])->name('admin.faqs.toggle-active');
+
+        // ========== Mobile App Releases (تحديثات تطبيق الجوال) ==========
+        Route::resource('mobile-app-releases', MobileAppReleaseController::class)->except('show')->names([
+            'index' => 'admin.mobile-app-releases.index',
+            'create' => 'admin.mobile-app-releases.create',
+            'store' => 'admin.mobile-app-releases.store',
+            'edit' => 'admin.mobile-app-releases.edit',
+            'update' => 'admin.mobile-app-releases.update',
+            'destroy' => 'admin.mobile-app-releases.destroy',
+        ]);
+        Route::post('mobile-app-releases/{mobileAppRelease}/toggle-active', [MobileAppReleaseController::class, 'toggleActive'])->name('admin.mobile-app-releases.toggle-active');
+        Route::post('mobile-app-releases/{mobileAppRelease}/notify', [MobileAppReleaseController::class, 'notify'])->name('admin.mobile-app-releases.notify');
 
         // ========== Student Gifts Routes ==========
         Route::prefix('gifts')->name('admin.gifts.')->group(function () {
