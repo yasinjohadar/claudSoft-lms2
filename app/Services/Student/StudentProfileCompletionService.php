@@ -39,6 +39,15 @@ class StudentProfileCompletionService
         'api.mobile.v1.profile.avatar.delete',
         'api.mobile.v1.profile.password',
         'api.mobile.v1.nationalities',
+        'api.mobile.v1.notifications.index',
+        'api.mobile.v1.notifications.unread-count',
+        'api.mobile.v1.notifications.read-all',
+        'api.mobile.v1.notifications.read',
+        'api.mobile.v1.notifications.destroy',
+        'api.mobile.v1.realtime.config',
+        'api.mobile.v1.broadcasting.auth',
+        'api.mobile.v1.devices.store',
+        'api.mobile.v1.devices.destroy',
     ];
 
     public function isEnforcementEnabled(): bool

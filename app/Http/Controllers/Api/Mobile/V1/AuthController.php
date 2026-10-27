@@ -74,6 +74,10 @@ class AuthController extends BaseMobileController
 
     public function logout(Request $request): JsonResponse
     {
+        if ($fcmToken = $request->input('fcm_token')) {
+            $request->user()->notificationDeviceTokens()->where('token', (string) $fcmToken)->update(['is_active' => false]);
+        }
+
         $request->user()->currentAccessToken()?->delete();
 
         return $this->success(null, __('mobile.logout_success'));

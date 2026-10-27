@@ -4,6 +4,7 @@ namespace App\Services\Gamification;
 
 use App\Models\User;
 use App\Models\GamificationNotification;
+use App\Events\UserNotificationBroadcasted;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BadgeEarnedEmail;
@@ -51,6 +52,8 @@ class NotificationService
                 'type' => $type,
             ]);
 
+            $this->broadcast($notification);
+
             return $notification;
 
         } catch (\Exception $e) {
@@ -60,6 +63,35 @@ class NotificationService
                 'error' => $e->getMessage(),
             ]);
             return null;
+        }
+    }
+
+    /**
+     * بث فوري (Reverb) لصندوق الطالب — نفس القناة والحدث المستخدمين في مركز الإشعارات،
+     * فيصل للويب وتطبيق الجوال. فشل البث لا يمنع حفظ الإشعار.
+     */
+    protected function broadcast(GamificationNotification $notification): void
+    {
+        try {
+            event(new UserNotificationBroadcasted($notification->user_id, [
+                'notification_id' => null,
+                'inbox_id' => $notification->id,
+                'event_key' => $notification->type,
+                'title' => $notification->title,
+                'body' => $notification->message,
+                'data' => [
+                    'type' => $notification->type,
+                    'icon' => $notification->icon,
+                    'action_url' => $notification->action_url,
+                    'related_type' => $notification->related_type,
+                    'related_id' => $notification->related_id,
+                ],
+            ]));
+        } catch (\Throwable $e) {
+            Log::warning('Gamification notification broadcast failed', [
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

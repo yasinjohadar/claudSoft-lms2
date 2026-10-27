@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\EvolutionWebhookController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\V1\CourseController as MobileCourseController;
+use App\Http\Controllers\Api\Mobile\V1\DeviceController as MobileDeviceController;
+use App\Http\Controllers\Api\Mobile\V1\NotificationController as MobileNotificationController;
+use App\Http\Controllers\Api\Mobile\V1\RealtimeController as MobileRealtimeController;
 use App\Http\Controllers\Api\Mobile\V1\FinanceController as MobileFinanceController;
 use App\Http\Controllers\Api\Mobile\V1\ModuleCompletionController as MobileModuleCompletionController;
 use App\Http\Controllers\Api\Mobile\V1\ModuleDocumentController as MobileModuleDocumentController;
@@ -91,6 +94,17 @@ Route::prefix('mobile/v1')->name('api.mobile.v1.')->group(function () {
 
         Route::get('courses', [MobileCourseController::class, 'index'])->name('courses.index');
         Route::get('courses/{course}', [MobileCourseController::class, 'show'])->whereNumber('course')->name('courses.show');
+
+        // الإشعارات: الصندوق + الإشعارات الفورية (Reverb) + توكن FCM للجهاز.
+        Route::get('notifications', [MobileNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('notifications/unread-count', [MobileNotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('notifications/read-all', [MobileNotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::post('notifications/{notification}/read', [MobileNotificationController::class, 'markRead'])->whereNumber('notification')->name('notifications.read');
+        Route::delete('notifications/{notification}', [MobileNotificationController::class, 'destroy'])->whereNumber('notification')->name('notifications.destroy');
+        Route::get('realtime/config', [MobileRealtimeController::class, 'config'])->name('realtime.config');
+        Route::post('broadcasting/auth', [MobileRealtimeController::class, 'auth'])->middleware('throttle:60,1')->name('broadcasting.auth');
+        Route::post('devices', [MobileDeviceController::class, 'store'])->name('devices.store');
+        Route::delete('devices', [MobileDeviceController::class, 'destroy'])->name('devices.destroy');
 
         Route::get('finance/summary', [MobileFinanceController::class, 'summary'])->name('finance.summary');
         Route::get('invoices', [MobileFinanceController::class, 'invoices'])->name('invoices.index');

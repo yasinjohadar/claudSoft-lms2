@@ -38,11 +38,12 @@ class NotificationHubService
         $databasePayload['channels'] = $resolvedChannels;
 
         $notificationId = null;
+        $inboxId = null;
 
         if (in_array('database', $resolvedChannels, true)) {
             $user->notify(new HubDatabaseNotification($databasePayload));
             $notificationId = (string) optional($user->notifications()->latest()->first())->id;
-            $this->storeLegacyStudentInboxNotification($user, $eventKey, $databasePayload, $notificationId);
+            $inboxId = $this->storeLegacyStudentInboxNotification($user, $eventKey, $databasePayload, $notificationId)?->id;
 
             NotificationDeliveryLog::create([
                 'user_id' => $user->id,
@@ -59,6 +60,8 @@ class NotificationHubService
             try {
                 event(new UserNotificationBroadcasted($user->id, [
                     'notification_id' => $notificationId,
+                    // معرّف الصندوق (gamification_notifications) — يستخدمه تطبيق الجوال.
+                    'inbox_id' => $inboxId,
                     'event_key' => $eventKey,
                     'title' => $databasePayload['title'] ?? null,
                     'body' => $databasePayload['body'] ?? null,
@@ -233,7 +236,7 @@ class NotificationHubService
         string $eventKey,
         array $databasePayload,
         ?string $notificationId
-    ): void {
+    ): ?GamificationNotification {
         $data = $databasePayload['data'] ?? [];
 
         $metadata = [
@@ -250,7 +253,7 @@ class NotificationHubService
             $metadata['is_message'] = true;
         }
 
-        GamificationNotification::create([
+        return GamificationNotification::create([
             'user_id' => $user->id,
             'type' => (string) ($data['type'] ?? $eventKey),
             'title' => (string) ($databasePayload['title'] ?? 'إشعار جديد'),
