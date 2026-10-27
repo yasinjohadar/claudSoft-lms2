@@ -60,6 +60,16 @@ Route::get('country-codes', [StudentAuthController::class, 'countryCodes'])->nam
 Route::prefix('mobile/v1')->name('api.mobile.v1.')->group(function () {
     Route::post('auth/login', [MobileAuthController::class, 'login'])->middleware('throttle:6,1')->name('auth.login');
 
+    // استعادة كلمة المرور (نفس منطق الويب: بريد / واتساب عبر Evolution / رمز OTP واتساب).
+    Route::get('auth/forgot-password/options', [StudentAuthController::class, 'forgotPasswordOptions'])
+        ->middleware('throttle:30,1')->name('auth.forgot-password.options');
+    Route::post('auth/forgot-password', [StudentAuthController::class, 'forgotPassword'])
+        ->middleware('throttle:5,1')->name('auth.forgot-password');
+    Route::post('auth/forgot-password/verify-otp', [StudentAuthController::class, 'verifyForgotPasswordOtp'])
+        ->middleware('throttle:10,1')->name('auth.forgot-password.verify-otp');
+    Route::post('auth/reset-password', [StudentAuthController::class, 'resetPassword'])
+        ->middleware('throttle:10,1')->name('auth.reset-password');
+
     // صفحة الدرس المكتوب لـ WebView/iframe: محمية برابط موقّع مؤقت بدلاً من التوكن.
     Route::get('modules/{module}/document/view', [MobileModuleDocumentController::class, 'view'])
         ->whereNumber('module')->middleware('throttle:120,1')->name('modules.document.view');
