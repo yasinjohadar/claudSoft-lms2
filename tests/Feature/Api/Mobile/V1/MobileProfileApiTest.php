@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Mobile\V1;
 use App\Services\Student\StudentProfilePhotoService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 class MobileProfileApiTest extends MobileApiMysqlTestCase
@@ -18,6 +19,23 @@ class MobileProfileApiTest extends MobileApiMysqlTestCase
             ->assertOk()
             ->assertJsonPath('data.id', $student->id)
             ->assertJsonPath('data.name_ar', 'طالب');
+    }
+
+    public function test_avatar_uses_the_photo_whose_file_exists(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('users/photos/admin-upload.png', 'png');
+
+        // `photo` points to a deleted file, `avatar` (set from the admin panel) exists.
+        $student = $this->student(['photo' => 'profile-photos/missing.jpg', 'avatar' => 'users/photos/admin-upload.png']);
+        Sanctum::actingAs($student);
+
+        $response = $this->getJson('/api/mobile/v1/profile')->assertOk()->assertJsonPath('data.has_avatar', true);
+        $this->assertStringContainsString('users/photos/admin-upload.png', $response->json('data.avatar_url'));
+
+        // Neither file exists: no broken image, the app shows the initial instead.
+        $student->forceFill(['avatar' => 'users/photos/gone.png'])->save();
+        $this->getJson('/api/mobile/v1/profile')->assertOk()->assertJsonPath('data.has_avatar', false);
     }
 
     public function test_update_profile_keeping_same_phone(): void
@@ -49,6 +67,8 @@ class MobileProfileApiTest extends MobileApiMysqlTestCase
     {
         $student = $this->student();
         Sanctum::actingAs($student);
+        Storage::fake('public');
+        Storage::disk('public')->put('profile-photos/student_test.jpg', 'jpg');
 
         $this->mock(StudentProfilePhotoService::class, function ($mock) {
             $mock->shouldReceive('store')->once()->andReturn('profile-photos/student_test.jpg');

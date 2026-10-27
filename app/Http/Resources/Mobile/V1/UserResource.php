@@ -4,6 +4,8 @@ namespace App\Http\Resources\Mobile\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin \App\Models\User
@@ -34,7 +36,7 @@ class UserResource extends JsonResource
             'city' => $this->city,
             'address' => $this->address,
             'avatar_url' => $this->avatarUrl(),
-            'has_avatar' => filled($this->photo ?: $this->avatar),
+            'has_avatar' => filled($this->photoPath()),
             'profile_completion' => [
                 'percentage' => $completion['percentage'],
                 'missing_fields' => $completion['missing_fields'],
@@ -45,8 +47,49 @@ class UserResource extends JsonResource
         ];
     }
 
+    private ?string $resolvedPhoto = null;
+
+    private bool $photoResolved = false;
+
     private function avatarUrl(): string
     {
-        return student_profile_photo_url($this->resource, $this->photo ?: $this->avatar);
+        return student_profile_photo_url($this->resource, $this->photoPath());
+    }
+
+    /**
+     * الصورة الفعلية للطالب.
+     * الحساب قد يحمل صورتين: `avatar` (تُرفع من لوحة الأدمن، users/photos) و `photo` (من ملف الطالب، profile-photos).
+     * نختار أول صورة ملفها موجود فعلاً — كي لا يظهر رابط مكسور إذا حُذف ملف إحداهما.
+     */
+    private function photoPath(): ?string
+    {
+        if ($this->photoResolved) {
+            return $this->resolvedPhoto;
+        }
+        $this->photoResolved = true;
+
+        $candidates = array_values(array_unique(array_filter([$this->photo, $this->avatar])));
+        if ($candidates === []) {
+            return $this->resolvedPhoto = null;
+        }
+
+        $storage = app(\App\Services\Storage\StorageHelperService::class);
+        foreach ($candidates as $path) {
+            $relative = preg_replace('#^/?storage/#', '', ltrim((string) $path, '/'));
+            try {
+                // Local disk first (fast); the failover check may reach cloud storage, so it's cached.
+                $exists = filter_var($path, FILTER_VALIDATE_URL)
+                    || Storage::disk('public')->exists($relative)
+                    || Cache::remember('mobile:photo-exists:'.md5($relative), 600,
+                        fn () => $storage->fileExistsWithFailover('public', $relative));
+                if ($exists) {
+                    return $this->resolvedPhoto = $path;
+                }
+            } catch (\Throwable $e) {
+                // try the next one
+            }
+        }
+
+        return $this->resolvedPhoto = null;
     }
 }
