@@ -39,6 +39,23 @@
                 </div>
             </div>
 
+            <!-- Permanent download link (Android APK) -->
+            <div class="card custom-card">
+                <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                    <div class="avatar avatar-lg bg-primary-transparent">
+                        <i class="fas fa-link fs-20 text-primary"></i>
+                    </div>
+                    <div class="flex-fill" style="min-width: 220px;">
+                        <div class="fw-semibold mb-1">رابط تنزيل التطبيق (أندرويد)</div>
+                        <div class="text-muted small">رابط ثابت يعطي دائماً أحدث إصدار نشط — شاركه مع الطلاب للتثبيت أول مرة.</div>
+                    </div>
+                    <div class="input-group" style="max-width: 460px;">
+                        <input type="text" class="form-control" id="permanentLink" value="{{ route('mobile-app.download') }}" dir="ltr" readonly>
+                        <button class="btn btn-outline-primary" type="button" id="copyPermanentLink"><i class="fas fa-copy me-1"></i>نسخ</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Latest per platform -->
             <div class="row">
                 @foreach (\App\Models\MobileAppRelease::PLATFORMS as $key => $label)
@@ -128,8 +145,11 @@
                                                 <td>
                                                     <a href="{{ $release->download_url }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
                                                         <i class="fas {{ $release->distribution === 'store' ? 'fa-store' : 'fa-download' }} me-1"></i>
-                                                        {{ $release->distribution === 'store' ? 'المتجر' : 'رابط مباشر' }}
+                                                        {{ $release->distribution === 'store' ? 'المتجر' : ($release->hasApk() ? 'ملف APK' : 'رابط مباشر') }}
                                                     </a>
+                                                    @if ($release->hasApk())
+                                                        <div class="text-muted small">{{ $release->apk_size_label }} • {{ $release->download_count }} تنزيل</div>
+                                                    @endif
                                                 </td>
                                                 <td>
                                                     <button type="button" class="btn btn-sm toggle-active {{ $release->is_active ? 'btn-success-light' : 'btn-danger-light' }}"
@@ -319,6 +339,18 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+        document.getElementById('copyPermanentLink').addEventListener('click', async function () {
+            const input = document.getElementById('permanentLink');
+            try {
+                await navigator.clipboard.writeText(input.value);
+            } catch (e) {
+                input.select();
+                document.execCommand('copy');
+            }
+            this.innerHTML = '<i class="fas fa-check me-1"></i>تم النسخ';
+            setTimeout(() => this.innerHTML = '<i class="fas fa-copy me-1"></i>نسخ', 2000);
+        });
 
         document.querySelectorAll('.toggle-active').forEach(button => {
             button.addEventListener('click', async function () {

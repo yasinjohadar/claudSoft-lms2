@@ -37,12 +37,35 @@
             @error('distribution')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
-        <div class="col-md-8">
-            <label for="download_url" class="form-label">رابط التحديث <span class="text-danger">*</span></label>
+        <div class="col-md-8" id="apk_upload_group">
+            <label for="apk" class="form-label">ملف التطبيق (APK)</label>
+            @if ($release->hasApk())
+                <div class="alert alert-success py-2 px-3 mb-2 d-flex flex-wrap align-items-center gap-2 small">
+                    <i class="fas fa-file-download"></i>
+                    <span>ملف مرفوع: <strong dir="ltr">{{ $release->apkDownloadName() }}</strong> ({{ $release->apk_size_label }})</span>
+                    <a href="{{ route('mobile-app.download.release', $release) }}" class="ms-auto">تنزيل للتجربة</a>
+                </div>
+            @endif
+            <input type="file" class="form-control @error('apk') is-invalid @enderror" id="apk" name="apk" accept=".apk,application/vnd.android.package-archive">
+            @error('apk')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <small class="text-muted">
+                {{ $release->hasApk() ? 'اختر ملفاً جديداً لاستبدال الملف الحالي.' : 'ارفع ملف APK هنا وسيُنشأ رابط التنزيل تلقائياً.' }}
+                أقصى حجم يسمح به الخادم حالياً: <strong dir="ltr">{{ ini_get('upload_max_filesize') }}</strong>.
+            </small>
+        </div>
+
+        <div class="col-md-8" id="download_url_group">
+            <label for="download_url" class="form-label" id="download_url_label">رابط التحديث</label>
             <input type="url" class="form-control @error('download_url') is-invalid @enderror" id="download_url" name="download_url"
-                   value="{{ old('download_url', $release->download_url) }}" dir="ltr" required>
+                   value="{{ old('download_url', $release->hasApk() ? '' : $release->download_url) }}" dir="ltr">
             @error('download_url')<div class="invalid-feedback">{{ $message }}</div>@enderror
             <small class="text-muted" id="download_url_hint"></small>
+            @if ($release->hasApk())
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="remove_apk" name="remove_apk" value="1">
+                    <label class="form-check-label small" for="remove_apk">احذف الملف المرفوع واستخدم الرابط أعلاه بدلاً منه</label>
+                </div>
+            @endif
         </div>
 
         <div class="col-12">
@@ -99,14 +122,24 @@
         const url = document.getElementById('download_url');
         const hint = document.getElementById('download_url_hint');
 
+        const apkGroup = document.getElementById('apk_upload_group');
+        const urlLabel = document.getElementById('download_url_label');
+
         function refreshHint() {
-            const direct = distribution.value === 'direct';
             const ios = platform.value === 'ios';
+            if (ios && distribution.value === 'direct') distribution.value = 'store';
+            distribution.querySelector('option[value="direct"]').disabled = ios;
+
+            const direct = distribution.value === 'direct';
+            apkGroup.style.display = direct ? '' : 'none';
+            urlLabel.innerHTML = direct
+                ? 'أو رابط خارجي لملف APK <span class="text-muted small">(اختياري إذا رفعت الملف)</span>'
+                : 'رابط التحديث <span class="text-danger">*</span>';
             url.placeholder = direct
-                ? 'https://claudsoft.com/downloads/claudsoft-1.1.0.apk'
+                ? 'https://example.com/claudsoft-1.1.0.apk'
                 : (ios ? 'https://apps.apple.com/app/id0000000000' : 'https://play.google.com/store/apps/details?id=com.claudsoft.app');
             hint.textContent = direct
-                ? 'رابط مباشر لملف APK (أندرويد فقط). سيُفتح في المتصفح لتنزيله وتثبيته.'
+                ? 'استخدمه فقط إذا كان الملف مرفوعاً في مكان آخر (مثلاً لأن حجمه أكبر من حد الرفع).'
                 : (ios ? 'رابط التطبيق في App Store.' : 'رابط التطبيق في Google Play.');
         }
 

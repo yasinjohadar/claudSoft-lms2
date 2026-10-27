@@ -7,6 +7,8 @@ use App\Models\MobileAppRelease;
 use App\Services\MobileApp\MobileAppReleaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -38,7 +40,7 @@ class MobileAppReleaseController extends Controller
     {
         $release = new MobileAppRelease([
             'platform' => 'android',
-            'distribution' => 'store',
+            'distribution' => 'direct',
             'is_active' => true,
             'is_forced' => false,
         ]);
@@ -53,8 +55,10 @@ class MobileAppReleaseController extends Controller
     {
         $data = $this->validated($request);
         $data['created_by'] = auth()->id();
+        $data['download_url'] ??= '';
 
         $release = MobileAppRelease::create($data);
+        $this->storeApk($request, $release);
 
         if ($request->boolean('notify_now')) {
             $sent = $this->releases->notifyStudents($release, $request->boolean('app_users_only', true));
@@ -74,7 +78,18 @@ class MobileAppReleaseController extends Controller
 
     public function update(Request $request, MobileAppRelease $mobileAppRelease)
     {
-        $mobileAppRelease->update($this->validated($request, $mobileAppRelease));
+        $data = $this->validated($request, $mobileAppRelease);
+        // ملف مرفوع سابقاً: يبقى رابطه الداخلي ما لم يُستبدل برابط خارجي.
+        if (blank($data['download_url'] ?? null) || $mobileAppRelease->hasApk()) {
+            unset($data['download_url']);
+        }
+        if ($request->boolean('remove_apk') && $mobileAppRelease->hasApk() && filled($request->input('download_url'))) {
+            $this->deleteApk($mobileAppRelease);
+            $data['download_url'] = $request->input('download_url');
+        }
+
+        $mobileAppRelease->update($data);
+        $this->storeApk($request, $mobileAppRelease);
 
         return redirect()->route('admin.mobile-app-releases.index')
             ->with('success', 'تم تحديث بيانات الإصدار بنجاح');
@@ -82,6 +97,7 @@ class MobileAppReleaseController extends Controller
 
     public function destroy(Request $request, MobileAppRelease $mobileAppRelease)
     {
+        $this->deleteApk($mobileAppRelease);
         $mobileAppRelease->delete();
 
         if ($request->expectsJson() || $request->ajax()) {
@@ -130,8 +146,41 @@ class MobileAppReleaseController extends Controller
         }
     }
 
+    /**
+     * يحفظ ملف APK المرفوع (إن وُجد) ويجعل رابط الإصدار رابط التنزيل الداخلي.
+     */
+    protected function storeApk(Request $request, MobileAppRelease $release): void
+    {
+        if (! $request->hasFile('apk')) {
+            return;
+        }
+
+        $file = $request->file('apk');
+        $name = sprintf('claudsoft-%s-%d-%s.apk', $release->version_name, $release->build_number, Str::random(8));
+        $path = $file->storeAs('mobile-apk', $name, MobileAppRelease::APK_DISK);
+
+        $this->deleteApk($release);
+
+        $release->forceFill([
+            'apk_path' => $path,
+            'apk_size' => $file->getSize(),
+            'distribution' => 'direct',
+            'download_url' => route('mobile-app.download.release', $release),
+        ])->save();
+    }
+
+    protected function deleteApk(MobileAppRelease $release): void
+    {
+        if ($release->hasApk()) {
+            Storage::disk(MobileAppRelease::APK_DISK)->delete($release->apk_path);
+            $release->forceFill(['apk_path' => null, 'apk_size' => null]);
+        }
+    }
+
     protected function validated(Request $request, ?MobileAppRelease $release = null): array
     {
+        $needsUrl = ! $request->hasFile('apk') && ! ($release?->hasApk() && ! $request->boolean('remove_apk'));
+
         $data = $request->validate([
             'platform' => ['required', Rule::in(array_keys(MobileAppRelease::PLATFORMS))],
             'version_name' => ['required', 'string', 'max:30', 'regex:/^\d+(\.\d+){0,3}$/'],
@@ -142,7 +191,9 @@ class MobileAppReleaseController extends Controller
                     ->ignore($release?->id),
             ],
             'distribution' => ['required', Rule::in(array_keys(MobileAppRelease::DISTRIBUTIONS))],
-            'download_url' => ['required', 'url', 'max:1000'],
+            'download_url' => [Rule::requiredIf($needsUrl), 'nullable', 'url', 'max:1000'],
+            // APK كبير الحجم: الحد الفعلي أيضاً upload_max_filesize و post_max_size في PHP.
+            'apk' => ['nullable', 'file', 'extensions:apk', 'max:307200', Rule::prohibitedIf($request->input('platform') === 'ios')],
             'release_notes' => ['nullable', 'string', 'max:3000'],
             'is_forced' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
@@ -150,6 +201,11 @@ class MobileAppReleaseController extends Controller
             'version_name.regex' => 'رقم الإصدار يجب أن يكون بصيغة مثل 1.2.0',
             'build_number.unique' => 'رقم البناء مستخدم مسبقاً لهذه المنصة',
             'download_url.url' => 'رابط التحميل غير صالح',
+            'download_url.required' => 'ارفع ملف APK أو أدخل رابط التحديث',
+            'apk.extensions' => 'يجب أن يكون الملف بصيغة .apk',
+            'apk.max' => 'حجم الملف أكبر من 300 ميجابايت',
+            'apk.uploaded' => 'فشل رفع الملف — غالباً حجمه أكبر من الحد المسموح في إعدادات PHP على الخادم',
+            'apk.prohibited' => 'ملف APK خاص بأندرويد فقط',
         ], [
             'platform' => 'المنصة',
             'version_name' => 'رقم الإصدار',
@@ -157,7 +213,9 @@ class MobileAppReleaseController extends Controller
             'distribution' => 'طريقة التوزيع',
             'download_url' => 'رابط التحميل',
             'release_notes' => 'ملاحظات الإصدار',
+            'apk' => 'ملف التطبيق',
         ]);
+        unset($data['apk']);
 
         $data['is_forced'] = $request->boolean('is_forced');
         $data['is_active'] = $request->boolean('is_active');

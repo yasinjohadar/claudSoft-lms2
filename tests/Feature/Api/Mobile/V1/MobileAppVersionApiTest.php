@@ -6,7 +6,9 @@ use App\Events\UserNotificationBroadcasted;
 use App\Models\GamificationNotification;
 use App\Models\MobileAppRelease;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 class MobileAppVersionApiTest extends MobileApiMysqlTestCase
@@ -145,6 +147,86 @@ class MobileAppVersionApiTest extends MobileApiMysqlTestCase
             ->deleteJson(route('admin.mobile-app-releases.destroy', $release))
             ->assertOk();
         $this->assertNull(MobileAppRelease::find($release->id));
+    }
+
+    public function test_admin_uploads_apk_and_students_download_it(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->post(route('admin.mobile-app-releases.store'), [
+                'platform' => 'android',
+                'version_name' => '1.1.0',
+                'build_number' => 2,
+                'distribution' => 'direct',
+                'apk' => UploadedFile::fake()->create('app-release.apk', 2048, 'application/vnd.android.package-archive'),
+                'is_active' => 1,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.mobile-app-releases.index'));
+
+        $release = MobileAppRelease::firstWhere('build_number', 2);
+        $this->assertTrue($release->hasApk());
+        $this->assertSame(route('mobile-app.download.release', $release), $release->download_url);
+        Storage::disk('local')->assertExists($release->apk_path);
+
+        // The app gets the internal link…
+        $this->getJson('/api/mobile/v1/app/version?platform=android&build=1')
+            ->assertJsonPath('data.latest.download_url', route('mobile-app.download.release', $release))
+            ->assertJsonPath('data.latest.distribution', 'direct');
+
+        // …which serves the APK as an installable Android package.
+        auth()->logout();
+        $this->get(route('mobile-app.download.release', $release))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.android.package-archive')
+            ->assertDownload('ClaudSoft-1.1.0.apk');
+
+        // The permanent link always gives the newest active build.
+        $this->get(route('mobile-app.download'))->assertOk()->assertDownload('ClaudSoft-1.1.0.apk');
+        $this->assertSame(2, $release->fresh()->download_count);
+
+        // A paused release is no longer downloadable.
+        $release->update(['is_active' => false]);
+        $this->get(route('mobile-app.download.release', $release))->assertNotFound();
+        $this->get(route('mobile-app.download'))->assertNotFound();
+    }
+
+    public function test_apk_requires_a_file_or_link_and_deleting_removes_the_file(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->post(route('admin.mobile-app-releases.store'), [
+                'platform' => 'android', 'version_name' => '1.1.0', 'build_number' => 2, 'distribution' => 'direct',
+            ])
+            ->assertSessionHasErrors('download_url');
+
+        $this->actingAs($admin)
+            ->post(route('admin.mobile-app-releases.store'), [
+                'platform' => 'android', 'version_name' => '1.1.0', 'build_number' => 2, 'distribution' => 'direct',
+                'apk' => UploadedFile::fake()->create('notes.zip', 10),
+            ])
+            ->assertSessionHasErrors('apk');
+
+        $this->actingAs($admin)->post(route('admin.mobile-app-releases.store'), [
+            'platform' => 'android', 'version_name' => '1.1.0', 'build_number' => 2, 'distribution' => 'direct',
+            'apk' => UploadedFile::fake()->create('a.apk', 10), 'is_active' => 1,
+        ]);
+        $release = MobileAppRelease::firstWhere('build_number', 2);
+        $path = $release->apk_path;
+
+        // Editing without a new file keeps the uploaded APK and its link.
+        $this->actingAs($admin)->put(route('admin.mobile-app-releases.update', $release), [
+            'platform' => 'android', 'version_name' => '1.1.1', 'build_number' => 2, 'distribution' => 'direct', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($path, $release->fresh()->apk_path);
+        $this->assertSame(route('mobile-app.download.release', $release), $release->fresh()->download_url);
+
+        $this->actingAs($admin)->deleteJson(route('admin.mobile-app-releases.destroy', $release))->assertOk();
+        Storage::disk('local')->assertMissing($path);
     }
 
     public function test_students_cannot_open_admin_page(): void

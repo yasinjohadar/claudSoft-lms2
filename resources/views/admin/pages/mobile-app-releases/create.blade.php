@@ -29,7 +29,7 @@
                         <div class="card-header">
                             <div class="card-title">بيانات الإصدار</div>
                         </div>
-                        <form action="{{ route('admin.mobile-app-releases.store') }}" method="POST">
+                        <form action="{{ route('admin.mobile-app-releases.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             @include('admin.pages.mobile-app-releases._form')
                             <div class="card-footer">

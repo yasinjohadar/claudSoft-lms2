@@ -23,6 +23,9 @@ class MobileAppRelease extends Model
         'release_notes',
         'distribution',
         'download_url',
+        'apk_path',
+        'apk_size',
+        'download_count',
         'is_forced',
         'is_active',
         'notified_at',
@@ -36,7 +39,28 @@ class MobileAppRelease extends Model
         'is_active' => 'boolean',
         'notified_at' => 'datetime',
         'notified_count' => 'integer',
+        'apk_size' => 'integer',
+        'download_count' => 'integer',
     ];
+
+    /** قرص ملفات APK المرفوعة (خاص؛ لا يُعرض إلا عبر مسار التنزيل). */
+    public const APK_DISK = 'local';
+
+    public function hasApk(): bool
+    {
+        return filled($this->apk_path);
+    }
+
+    /** اسم الملف الذي يراه الطالب عند التنزيل. */
+    public function apkDownloadName(): string
+    {
+        return "ClaudSoft-{$this->version_name}.apk";
+    }
+
+    public function getApkSizeLabelAttribute(): ?string
+    {
+        return $this->apk_size ? number_format($this->apk_size / 1048576, 1).' MB' : null;
+    }
 
     public function creator(): BelongsTo
     {

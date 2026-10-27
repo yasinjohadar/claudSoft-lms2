@@ -1,9 +1,19 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\MobileAppDownloadController;
 use App\Http\Controllers\PhoneCountryAjaxValidationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+
+// تنزيل تطبيق أندرويد (APK): رابط ثابت لأحدث إصدار + رابط لكل إصدار.
+Route::get('/app/download', [MobileAppDownloadController::class, 'latest'])
+    ->middleware('throttle:30,1')
+    ->name('mobile-app.download');
+Route::get('/app/download/{release}', [MobileAppDownloadController::class, 'release'])
+    ->whereNumber('release')
+    ->middleware('throttle:30,1')
+    ->name('mobile-app.download.release');
 
 Route::post('/ajax/validate-phone-country', PhoneCountryAjaxValidationController::class)
     ->middleware('throttle:120,1')
